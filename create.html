@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create a Character — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  /* ── create-page specific UI ── */
+  .builder { position:relative; z-index:5; max-width:1320px; margin:0 auto;
+    padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px;
+    display:grid; grid-template-columns:minmax(0,460px) minmax(0,1fr); gap:26px; align-items:start; }
+  @media (max-width:980px){ .builder{ grid-template-columns:1fr; } }
+
+  .formcard { background:#f7f6f2; border:1px solid var(--card-edge); border-radius:10px;
+    padding:20px 22px; box-shadow:0 10px 26px rgba(40,12,30,.35); color:#241a12; }
+  .formcard h2 { font-family:'Cinzel',serif; color:var(--maroon); margin:0 0 4px; font-size:1.35rem; }
+  .formcard .sub { font-size:.86rem; color:#6b5d49; margin:0 0 18px; }
+
+  .fld { margin-bottom:15px; }
+  .fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.82rem;
+    letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:5px; }
+  .fld .hint { font-weight:400; text-transform:none; letter-spacing:0; color:#8a7a63; font-size:.78rem; }
+  .fld input[type=text], .fld textarea, .fld select {
+    width:100%; font-family:'Libre Franklin',sans-serif; font-size:.95rem; color:#241a12;
+    background:#fffdf8; border:1px solid #cdbfa0; border-radius:6px; padding:9px 11px; }
+  .fld textarea { resize:vertical; min-height:64px; line-height:1.4; }
+  .fld input:focus, .fld textarea:focus, .fld select:focus { outline:2px solid #b98; border-color:#b98; }
+
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  fieldset { border:1px dashed #c9b78f; border-radius:8px; padding:12px 14px; margin:0 0 15px; }
+  legend { font-family:'Oswald',sans-serif; font-weight:600; font-size:.82rem; letter-spacing:.04em;
+    text-transform:uppercase; color:#5b4632; padding:0 6px; }
+
+  .jinx-row { display:grid; grid-template-columns:1fr 86px auto; gap:8px; margin-bottom:8px; align-items:start; }
+  .jinx-row textarea { grid-column:1 / -1; min-height:46px; }
+  .btn { font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
+    border:none; border-radius:7px; padding:9px 16px; font-size:.9rem; }
+  .btn-sm { padding:6px 12px; font-size:.82rem; }
+  .btn-ghost { background:#ece3d2; color:#5b4632; }
+  .btn-ghost:hover { background:#e0d5bf; }
+  .btn-del { background:#e7d3d3; color:#9A0D12; }
+  .btn-primary { background:linear-gradient(180deg,#8a3526,#5B1F21); color:#f3ead4; }
+  .btn-primary:hover { filter:brightness(1.08); }
+  .btn-pub { background:linear-gradient(180deg,#2f7d3e,#1c5429); color:#eafaee; font-size:1rem; padding:12px 22px; }
+  .btn-pub:hover { filter:brightness(1.08); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+
+  .artthumb { margin-top:8px; max-width:130px; max-height:130px; border:1px solid #cdbfa0;
+    border-radius:6px; background:#fffdf8; display:none; }
+
+  .token-box { background:#fbf2e2; border:1px solid #d8c08a; border-radius:8px; padding:13px 15px; margin-bottom:18px; }
+  .token-box .warn { font-size:.8rem; color:#8a5a1a; margin:6px 0 0; line-height:1.4; }
+  details.help { margin-top:8px; font-size:.84rem; color:#5b4632; }
+  details.help summary { cursor:pointer; font-weight:600; }
+  details.help ol { margin:8px 0 0; padding-left:20px; line-height:1.5; }
+
+  .preview-pane { position:sticky; top:74px; }
+  .preview-label { font-family:'Cinzel',serif; color:var(--parch); letter-spacing:.06em;
+    font-size:1rem; margin:0 0 10px; opacity:.85; }
+  #preview { width:100%; height:78vh; border:1px solid rgba(214,196,150,.3);
+    border-radius:10px; background:#1d0a1a; box-shadow:0 10px 26px rgba(0,0,0,.5); }
+
+  #status { margin-top:14px; padding:12px 14px; border-radius:8px; font-size:.92rem; display:none; }
+  #status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+  #status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+  #status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+  #status a { color:inherit; font-weight:700; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>
+    </a>
+    <nav class="crumb"><a href="index.html">Characters</a><span class="sep">›</span><span class="here">Create</span></nav>
+  </header>
+
+  <div class="builder">
+
+    <!-- ════ FORM ════ -->
+    <div class="formcard">
+      <h2>Create a Character</h2>
+      <p class="sub">Fill this out, watch the live preview, then publish straight to the wiki.</p>
+
+      <!-- token -->
+      <div class="token-box">
+        <div class="fld" style="margin:0">
+          <label for="token">GitHub token <span class="hint">(stored only in this browser)</span></label>
+          <input type="text" id="token" placeholder="github_pat_…" autocomplete="off">
+        </div>
+        <p class="warn">⚠ This token can write to your repo — treat it like a password. Never share a screenshot of it. Use it only on your own device.</p>
+        <details class="help">
+          <summary>How do I get a token?</summary>
+          <ol>
+            <li>GitHub → your profile → <b>Settings</b></li>
+            <li><b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b></li>
+            <li><b>Generate new token</b>. Repository access → <b>Only select repositories</b> → <code>botc-homebrew-wiki</code></li>
+            <li>Permissions → <b>Contents</b> → <b>Read and write</b></li>
+            <li>Generate, copy it, paste above. It saves in this browser so you only do this once.</li>
+          </ol>
+        </details>
+      </div>
+
+      <div class="fld">
+        <label for="name">Character name *</label>
+        <input type="text" id="name" placeholder="e.g. The Cartographer">
+      </div>
+
+      <div class="row2">
+        <div class="fld">
+          <label for="team">Team *</label>
+          <select id="team">
+            <option value="townsfolk">Townsfolk</option>
+            <option value="outsider">Outsider</option>
+            <option value="minion">Minion</option>
+            <option value="demon">Demon</option>
+            <option value="traveller">Traveller</option>
+            <option value="fabled">Fabled</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="creator">Creator</label>
+          <input type="text" id="creator" placeholder="DJ_DJ_DJ">
+        </div>
+      </div>
+
+      <div class="fld">
+        <label for="ability">Ability line * <span class="hint">(bold line at top of Summary)</span></label>
+        <textarea id="ability" placeholder="Each night, choose a player: ..."></textarea>
+      </div>
+
+      <div class="fld">
+        <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
+        <input type="text" id="lede" placeholder="The Cartographer maps the unseen.">
+      </div>
+
+      <div class="fld">
+        <label for="bullets">Summary bullets <span class="hint">(one per line)</span></label>
+        <textarea id="bullets" placeholder="First clarifying rule.&#10;Second clarifying rule."></textarea>
+      </div>
+
+      <div class="fld">
+        <label for="howto">How to Run <span class="hint">(one paragraph per line · wrap reminder tokens like [[POISONED]])</span></label>
+        <textarea id="howto" placeholder="At the start of the first night, ...&#10;Each night thereafter, ..."></textarea>
+      </div>
+
+      <div class="fld">
+        <label for="callout">How-to-Run note <span class="hint">(optional callout box)</span></label>
+        <input type="text" id="callout" placeholder="Remember to ...">
+      </div>
+
+      <div class="fld">
+        <label for="examples">Examples <span class="hint">(one per line)</span></label>
+        <textarea id="examples" placeholder="The Cartographer chooses ... Good wins."></textarea>
+      </div>
+
+      <div class="fld">
+        <label for="tips">Tips &amp; Tricks <span class="hint">(one per line)</span></label>
+        <textarea id="tips" placeholder="Bluff that you ...&#10;Watch for ..."></textarea>
+      </div>
+
+      <div class="row2">
+        <div class="fld">
+          <label for="quote">Flavour quote</label>
+          <input type="text" id="quote" placeholder="The map is not the territory.">
+        </div>
+        <div class="fld">
+          <label for="appears">Appears in</label>
+          <input type="text" id="appears" placeholder="Ravenswood Chronicle">
+        </div>
+      </div>
+
+      <div class="fld">
+        <label for="tags">Tags</label>
+        <input type="text" id="tags" placeholder="Information, Setup">
+      </div>
+
+      <div class="fld">
+        <label for="art">Character art *</label>
+        <input type="file" id="art" accept="image/*">
+        <img id="artthumb" class="artthumb" alt="art preview">
+      </div>
+
+      <fieldset>
+        <legend>Jinxes</legend>
+        <div id="jinxes"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addjinx">+ Add jinx</button>
+      </fieldset>
+
+      <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- ════ PREVIEW ════ -->
+    <div class="preview-pane">
+      <p class="preview-label">Live preview</p>
+      <iframe id="preview" title="Character preview"></iframe>
+    </div>
+
+  </div>
+
+  <script src="assets/render.js"></script>
+  <script>
+    // ─── repo config ──────────────────────────────────────────
+    var OWNER = 'djclocktower';
+    var REPO  = 'botc-homebrew-wiki';
+    var BRANCH = 'main';
+    var SITE_ROOT = new URL('.', location.href).href; // for preview base + success link
+
+    var $ = function (id) { return document.getElementById(id); };
+    var artDataURL = null;
+
+    // restore token
+    try { var t = localStorage.getItem('gh_token'); if (t) $('token').value = t; } catch (e) {}
+    $('token').addEventListener('input', function () {
+      try { localStorage.setItem('gh_token', $('token').value.trim()); } catch (e) {}
+    });
+
+    // ─── jinx rows ────────────────────────────────────────────
+    function addJinx(name, align, text) {
+      var row = document.createElement('div');
+      row.className = 'jinx-row';
+      row.innerHTML =
+        '<input type="text" class="jx-name" placeholder="Jinxed character (e.g. Goon)">' +
+        '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del">✕</button>' +
+        '<textarea class="jx-text" placeholder="Jinx rule text…"></textarea>';
+      $('jinxes').appendChild(row);
+      if (name) row.querySelector('.jx-name').value = name;
+      if (align) row.querySelector('.jx-align').value = align;
+      if (text) row.querySelector('.jx-text').value = text;
+      row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
+      row.querySelectorAll('input,select,textarea').forEach(function (el) {
+        el.addEventListener('input', update);
+      });
+    }
+    $('addjinx').addEventListener('click', function () { addJinx(); });
+
+    // ─── gather form into data object ─────────────────────────
+    function lines(id) {
+      return $(id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    }
+    function gather() {
+      var jinxes = [];
+      document.querySelectorAll('.jinx-row').forEach(function (r) {
+        var n = r.querySelector('.jx-name').value.trim();
+        if (n) jinxes.push({
+          name: n,
+          align: r.querySelector('.jx-align').value,
+          text: r.querySelector('.jx-text').value.trim()
+        });
+      });
+      return {
+        name: $('name').value.trim(),
+        team: $('team').value,
+        creator: $('creator').value.trim(),
+        ability: $('ability').value.trim(),
+        lede: $('lede').value.trim(),
+        summaryBullets: lines('bullets'),
+        howToRun: lines('howto'),
+        callout: $('callout').value.trim(),
+        examples: lines('examples'),
+        tips: lines('tips'),
+        quote: $('quote').value.trim(),
+        appearsIn: $('appears').value.trim(),
+        tags: $('tags').value.trim(),
+        jinxes: jinxes
+      };
+    }
+
+    // ─── slug ─────────────────────────────────────────────────
+    function slugify(s) {
+      return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
+    // ─── live preview ─────────────────────────────────────────
+    function update() {
+      var d = gather();
+      var inner = window.renderCharacter(d, artDataURL || '');
+      var doc =
+        '<!doctype html><html><head><meta charset="utf-8">' +
+        '<base href="' + SITE_ROOT + '">' +
+        '<link rel="stylesheet" href="assets/styles.css">' +
+        '</head><body>' +
+        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
+        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span></a></header>' +
+        '<main class="wrap">' + inner + '</main></body></html>';
+      $('preview').srcdoc = doc;
+    }
+    // debounce
+    var deb;
+    function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
+    ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips','quote','appears','tags']
+      .forEach(function (id) { $(id).addEventListener('input', schedule); });
+
+    // ─── art handling (resize to max 600px, PNG) ──────────────
+    $('art').addEventListener('change', function (e) {
+      var file = e.target.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 600, w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w >= h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          artDataURL = cv.toDataURL('image/png');
+          var th = $('artthumb'); th.src = artDataURL; th.style.display = 'block';
+          update();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ─── GitHub API helpers ───────────────────────────────────
+    function utf8b64(str) { return btoa(unescape(encodeURIComponent(str))); }
+    function b64utf8(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))); }
+    function headers() {
+      return {
+        'Authorization': 'Bearer ' + $('token').value.trim(),
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      };
+    }
+    function apiURL(path) {
+      return 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + path;
+    }
+    function ghGet(path) {
+      return fetch(apiURL(path) + '?ref=' + BRANCH + '&_=' + Date.now(), { headers: headers() })
+        .then(function (r) {
+          if (r.status === 404) return null;
+          if (!r.ok) return r.json().then(function (j) { throw new Error('GET ' + path + ': ' + r.status + ' ' + (j.message || '')); });
+          return r.json();
+        });
+    }
+    function ghPut(path, contentB64, message, sha) {
+      var body = { message: message, content: contentB64, branch: BRANCH };
+      if (sha) body.sha = sha;
+      return fetch(apiURL(path), { method: 'PUT', headers: headers(), body: JSON.stringify(body) })
+        .then(function (r) {
+          if (!r.ok) return r.json().then(function (j) { throw new Error('PUT ' + path + ': ' + r.status + ' ' + (j.message || '')); });
+          return r.json();
+        });
+    }
+
+    function setStatus(cls, html) { var s = $('status'); s.className = cls; s.innerHTML = html; }
+
+    // ─── publish ──────────────────────────────────────────────
+    $('publish').addEventListener('click', function () {
+      var d = gather();
+      var token = $('token').value.trim();
+      if (!token) return setStatus('err', 'Paste your GitHub token first.');
+      if (!d.name) return setStatus('err', 'A character name is required.');
+      if (!d.ability) return setStatus('err', 'An ability line is required.');
+      if (!artDataURL) return setStatus('err', 'Please upload character art.');
+
+      var slug = slugify(d.name);
+      var artPath = 'assets/art/' + slug + '.png';
+      d.art = 'art/' + slug + '.png';
+      d.page = 'character.html?c=' + slug;
+
+      $('publish').disabled = true;
+      setStatus('work', 'Publishing… uploading art');
+
+      var artB64 = artDataURL.split(',')[1];
+
+      // 1) art (overwrite if it exists)
+      ghGet(artPath).then(function (existing) {
+        return ghPut(artPath, artB64, 'Add art for ' + d.name, existing && existing.sha);
+      })
+      // 2) characters.json (read, upsert, write)
+      .then(function () {
+        setStatus('work', 'Publishing… updating character list');
+        return ghGet('characters.json');
+      })
+      .then(function (file) {
+        var list = [];
+        var sha = null;
+        if (file) { sha = file.sha; try { list = JSON.parse(b64utf8(file.content)); } catch (e) { list = []; } }
+        // upsert by slug
+        var entry = {
+          slug: slug, name: d.name, team: d.team, ability: d.ability,
+          art: d.art, page: d.page,
+          creator: d.creator, lede: d.lede, summaryBullets: d.summaryBullets,
+          howToRun: d.howToRun, callout: d.callout, examples: d.examples,
+          tips: d.tips, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
+          jinxes: d.jinxes
+        };
+        var i = list.findIndex(function (c) { return c.slug === slug; });
+        if (i >= 0) list[i] = entry; else list.push(entry);
+        var json = JSON.stringify(list, null, 2);
+        return ghPut('characters.json', utf8b64(json), 'Add/update character: ' + d.name, sha);
+      })
+      .then(function () {
+        var url = SITE_ROOT + 'character.html?c=' + slug;
+        setStatus('ok', '✓ Published! Your page will be live in ~1 minute at <a href="' + url + '" target="_blank">' + url + '</a><br>(GitHub Pages needs a moment to rebuild — refresh if it 404s at first.)');
+        $('publish').disabled = false;
+      })
+      .catch(function (err) {
+        setStatus('err', '✗ ' + err.message + (err.message.indexOf('401') > -1 || err.message.indexOf('403') > -1 ? ' — check your token has Contents: Read and write on this repo.' : ''));
+        $('publish').disabled = false;
+      });
+    });
+
+    // first paint
+    addJinx();
+    update();
+  </script>
+</body>
+</html>

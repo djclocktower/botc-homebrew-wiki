@@ -246,3 +246,33 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   .reveal { animation: none; opacity: 1; transform: none; }
   html    { scroll-behavior: auto; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   GENERATED CHARACTER PAGES (form-created, Cinzel text headings)
+   ════════════════════════════════════════════════════════════════ */
+.gen-title {
+  font-family: 'Cinzel', serif; font-weight: 700; color: var(--parch);
+  font-size: clamp(2.4rem, 7vw, 5rem); letter-spacing: .04em; line-height: 1;
+  margin: 6px 0 clamp(14px, 2.5vw, 26px); text-shadow: 0 3px 12px rgba(0,0,0,.5);
+}
+.gen-sech-wrap { text-align: center; margin-bottom: 10px; }
+.gen-sech-wrap::after {
+  content: ""; display: block; width: 62%; max-width: 240px; height: 2px;
+  margin: 8px auto 0; background: linear-gradient(90deg, transparent, var(--rule), transparent);
+}
+.gen-sech {
+  font-family: 'Cinzel', serif; font-weight: 700; color: var(--maroon);
+  letter-spacing: .08em; text-transform: uppercase;
+  font-size: clamp(1.2rem, 2.6vw, 1.7rem); margin: 0;
+}
+.jinx.noicon { grid-template-columns: 1fr; }
+
+/* homepage create button */
+.create-btn {
+  display: inline-block; margin-top: 20px;
+  font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .06em;
+  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
+  padding: 11px 28px; border-radius: 8px; text-decoration: none;
+  box-shadow: 0 6px 16px rgba(40,12,30,.4); transition: transform .2s ease;
+}
+.create-btn:hover { transform: translateY(-2px); }

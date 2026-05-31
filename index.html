@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOTC HomeBrew Wiki</title>
-<link rel="stylesheet" href="assets/styles.css">
 <link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 
@@ -22,76 +22,66 @@
   <div class="home-hero">
     <h1>HomeBrew Characters</h1>
     <p>Fan-made additions for Blood on the Clocktower</p>
+    <a class="create-btn" href="create.html">+ Create a Character</a>
   </div>
 
-  <main class="home-panel">
-
-    <!-- MINION -->
-    <section class="type-section reveal" id="minion">
-      <h2 class="type-header">Minion</h2>
-      <div class="type-rule"></div>
-      <div class="char-grid">
-        <a class="char-card" href="characters/folie-a-deux.html">
-          <img class="char-card-thumb" src="assets/emblem.png" alt="Folie à Deux emblem">
-          <div class="char-card-info">
-            <div class="char-card-name">Folie à Deux</div>
-            <div class="char-card-type">Minion</div>
-            <div class="char-card-ability">2 Outsiders are Evil, learn each other, and may lose their abilities.</div>
-            <span class="char-card-link">View Character →</span>
-          </div>
-        </a>
-        <div class="empty-card">+ Add a Minion<br>Duplicate a character page to get started</div>
-      </div>
-    </section>
-
-    <!-- TOWNSFOLK -->
-    <section class="type-section reveal" id="townsfolk">
-      <h2 class="type-header">Townsfolk</h2>
-      <div class="type-rule"></div>
-      <div class="char-grid">
-        <a class="char-card" href="characters/la-revolution.html">
-          <img class="char-card-thumb" src="assets/larev_char_art.png" alt="La Révolution art">
-          <div class="char-card-info">
-            <div class="char-card-name">La Révolution</div>
-            <div class="char-card-type good">Townsfolk</div>
-            <div class="char-card-ability">If evil wins, all players make a hand signal. If most match &amp; the Demon's doesn't, good wins instead.</div>
-            <span class="char-card-link">View Character →</span>
-          </div>
-        </a>
-        <div class="empty-card">+ Add a Townsfolk<br>Duplicate a character page to get started</div>
-      </div>
-    </section>
-
-    <!-- OUTSIDER -->
-    <section class="type-section reveal">
-      <h2 class="type-header">Outsider</h2>
-      <div class="type-rule"></div>
-      <div class="char-grid">
-        <div class="empty-card">+ Add an Outsider<br>Duplicate a character page to get started</div>
-      </div>
-    </section>
-
-    <!-- DEMON -->
-    <section class="type-section reveal" id="demon">
-      <h2 class="type-header">Demon</h2>
-      <div class="type-rule"></div>
-      <div class="char-grid">
-        <a class="char-card" href="characters/hemomagus.html">
-          <img class="char-card-thumb" src="assets/hemo_char_art.png" alt="Hemomagus art">
-          <div class="char-card-info">
-            <div class="char-card-name">Hemomagus</div>
-            <div class="char-card-type">Demon</div>
-            <div class="char-card-ability">Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies.</div>
-            <span class="char-card-link">View Character →</span>
-          </div>
-        </a>
-        <div class="empty-card">+ Add a Demon<br>Duplicate a character page to get started</div>
-      </div>
-    </section>
-
+  <main class="home-panel" id="panel">
+    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script>
+    var TEAMS = [
+      ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
+      ['minion', 'Minion'], ['demon', 'Demon'],
+      ['traveller', 'Traveller'], ['fabled', 'Fabled']
+    ];
+    var GOOD = { townsfolk: 1, outsider: 1 };
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function card(c) {
+      var typeClass = GOOD[c.team] ? ' good' : '';
+      return '<a class="char-card" href="' + esc(c.page) + '">' +
+        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art">' +
+        '<div class="char-card-info">' +
+        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc((window.TEAM_LABEL && window.TEAM_LABEL[c.team]) || c.team) + '</div>' +
+        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
+        '<span class="char-card-link">View Character →</span>' +
+        '</div></a>';
+    }
+
+    fetch('characters.json?_=' + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (list) {
+        window.TEAM_LABEL = window.TEAM_LABEL || {
+          townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+          demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+        };
+        var panel = document.getElementById('panel');
+        var html = '';
+        TEAMS.forEach(function (t) {
+          var key = t[0], label = t[1];
+          var chars = list.filter(function (c) { return c.team === key; });
+          // always show the 4 core teams; only show traveller/fabled if populated
+          if (!chars.length && (key === 'traveller' || key === 'fabled')) return;
+          html += '<section class="type-section" id="' + key + '">' +
+            '<h2 class="type-header">' + label + '</h2><div class="type-rule"></div>' +
+            '<div class="char-grid">';
+          html += chars.map(card).join('');
+          html += '<a class="char-card empty-card" href="create.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">+ Add a ' + label + '</a>';
+          html += '</div></section>';
+        });
+        panel.innerHTML = html;
+      })
+      .catch(function () {
+        document.getElementById('panel').innerHTML =
+          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+      });
+  </script>
 </body>
 </html>

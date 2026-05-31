@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "folie-a-deux",
+    "name": "Folie à Deux",
+    "team": "minion",
+    "ability": "2 Outsiders are Evil, learn each other, and may lose their abilities.",
+    "art": "emblem.png",
+    "page": "characters/folie-a-deux.html"
+  },
+  {
+    "slug": "la-revolution",
+    "name": "La Révolution",
+    "team": "townsfolk",
+    "ability": "If evil wins, all players make a hand signal. If most match & the Demon's doesn't, good wins instead.",
+    "art": "larev_char_art.png",
+    "page": "characters/la-revolution.html"
+  },
+  {
+    "slug": "hemomagus",
+    "name": "Hemomagus",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies.",
+    "art": "hemo_char_art.png",
+    "page": "characters/hemomagus.html"
+  }
+]
