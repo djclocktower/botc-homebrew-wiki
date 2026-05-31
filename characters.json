@@ -22,5 +22,46 @@
     "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies.",
     "art": "hemo_char_art.png",
     "page": "characters/hemomagus.html"
+  },
+  {
+    "slug": "martyr",
+    "name": "Martyr",
+    "team": "outsider",
+    "ability": "When you die, if the next player to die is the Demon, your team loses. (Not on the last day.)",
+    "art": "art/martyr.png",
+    "page": "character.html?c=martyr",
+    "creator": "DJ_DJ_DJ",
+    "lede": "The Martyr’s sacrifice for their belief must be honored.",
+    "summaryBullets": [
+      "When the Martyr dies, the Demon wants to die right after.",
+      "Evil wins immediately if the Demon dies after the Martyr.",
+      "Dead Demons can’t proc the Martyr’s wincon.",
+      "If the Martyr dies while drunk or poisoned, nothing happens and their ability does not activate.",
+      "The final day is the day that the Storyteller thinks is most likely to be  the last day of the game – the day where, if the Demon is not executed, evil will win. This most likely means the day with only 3 living players remaining."
+    ],
+    "howToRun": [
+      "When the Martyr dies (by any means) place the “MARTYRED” reminder in the center of the grim.",
+      "If the next player to die is a Demon, and it’s not the last day, declare that the game is over and the Martyr’s team has lost.",
+      "If the next player to die is not the Demon remove the “MARTYRED” token."
+    ],
+    "callout": "A already dead player cannot die again, so if a dead demon is “killed” or  executed, the game continues and evil does not immediately win.",
+    "examples": [
+      "The Martyr dies in the night. The next day, town executes the Demon. Evil wins.",
+      "The Martyr is executed and dies during the day. That night, the Demon attacks itself and dies. Evil wins.",
+      "The Martyr is executed and dies. That night, the Assassin chooses the dead Imp. Nothing happens."
+    ],
+    "tips": [
+      "HIDE!!!! If you get executed, you risk a instant loss. Keep quiet who you really are.",
+      "Find 1 trusted good player and reveal to them. Maybe you can even swap roles to get the demon to kill itself!",
+      "Try to get killed at night. You are much safer from a instant loss this way.",
+      "When you die at night consider who you next execute very carefully. Try executing someone who is most likely a minion rather then a demon, or even a player",
+      "everyone trusts.",
+      "If someone wants to be executed after you die at night, be wary. they might just be the Demon!",
+      "When you die at night, keep quiet about who you are. Evil won’t know they want to execute the Demon, and if town decides to skip a execution then you are much safer."
+    ],
+    "quote": "I fear no lion, no Roman, nor any beast  from the pit. For my God is awesome,  and he is with me even now.",
+    "appearsIn": "Ravenswood Chronicles",
+    "tags": "",
+    "jinxes": []
   }
 ]
