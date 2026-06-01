@@ -289,3 +289,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   transition: transform .2s ease;
 }
 .ccc-bar img:hover { transform: scale(1.04); }
+
+/* community created content topbar badge */
+.topbar-badge {
+  height: 32px;
+  width: auto;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.45));
+  flex-shrink: 0;
+}
