@@ -107,9 +107,9 @@
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
-    var jinxCard = '';
+    var jinxInner = '';
     if (jinxes.length) {
-      jinxCard = '<aside class="char-side"><div class="card">' +
+      jinxInner = '<div class="card">' +
         '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px">Jinxes</h2>' +
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
@@ -119,8 +119,10 @@
             '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
             '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
         }).join('') +
-        '</div></aside>';
+        '</div>';
     }
+
+    var sideBar = '<aside class="char-side">' + jinxInner + renderJsonBox(d) + '</aside>';
 
     return '<h1 class="gen-title">' + esc(d.name || 'Unnamed') + '</h1>' +
       '<div class="char-layout">' +
@@ -128,9 +130,8 @@
       '<div class="cols"><div>' + summaryCol + '</div><div>' + howCol + '</div></div>' +
       examplesBlock + tipsBlock +
       '</section>' +
-      infoCard + jinxCard +
-      '</div>' +
-      renderJsonBox(d);
+      infoCard + sideBar +
+      '</div>';
   }
 
   /* ── one-time delegated handlers for JSON box toggle + copy ── */
