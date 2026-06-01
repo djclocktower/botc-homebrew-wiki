@@ -122,7 +122,17 @@
         '</div>';
     }
 
-    var sideBar = '<aside class="char-side">' + jinxInner + renderJsonBox(d) + '</aside>';
+    // no jinxes: fold JSON box into the infocard; with jinxes: keep sidebar
+    var sideBar, infoCardFinal;
+    if (jinxes.length) {
+      sideBar       = '<aside class="char-side">' + jinxInner + renderJsonBox(d) + '</aside>';
+      infoCardFinal = infoCard;
+    } else {
+      sideBar       = '';
+      // strip closing </div> and append the JSON box before it
+      infoCardFinal = infoCard.slice(0, -6) +
+        '<div style="margin-top:14px">' + renderJsonBox(d) + '</div></div>';
+    }
 
     return '<h1 class="gen-title">' + esc(d.name || 'Unnamed') + '</h1>' +
       '<div class="char-layout">' +
@@ -130,7 +140,7 @@
       '<div class="cols"><div>' + summaryCol + '</div><div>' + howCol + '</div></div>' +
       examplesBlock + tipsBlock +
       '</section>' +
-      infoCard + sideBar +
+      infoCardFinal + sideBar +
       '</div>';
   }
 
