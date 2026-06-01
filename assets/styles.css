@@ -281,11 +281,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .ccc-bar {
   position: relative; z-index: 5;
   display: flex; justify-content: center; align-items: center;
-  padding: 18px 20px 28px;
+  padding: 14px 20px 24px;
 }
 .ccc-bar img {
-  height: 60px; width: auto;
-  filter: drop-shadow(0 3px 8px rgba(0,0,0,.55));
+  height: clamp(28px, 6vw, 44px); width: auto; max-width: 80%;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
   transition: transform .2s ease;
 }
 .ccc-bar img:hover { transform: scale(1.04); }
