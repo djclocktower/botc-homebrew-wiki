@@ -288,7 +288,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* ════════════════════════════════════════════════════════════════
    JSON BOX (official-schema export, collapsible, on every char page)
    ════════════════════════════════════════════════════════════════ */
-.json-box { margin: 24px 0 0; }
+.json-box { margin: 0; }
 .json-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: linear-gradient(180deg, #f7f6f2, #ece3d2);
