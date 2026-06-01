@@ -1,24 +1,71 @@
-/* Shared character renderer — used by character.html (live) and create.html (preview)
-   so the preview always matches what gets published. */
+/* Shared character renderer — used by character.html (live), the static
+   character pages (JSON box only), and create.html (preview).
+   Guarantees the preview/published output always match. */
 (function () {
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  // escape, then turn [[TEXT]] into reminder-token pills
   function tok(s) {
     return esc(s).replace(/\[\[(.+?)\]\]/g, '<span class="tok">$1</span>');
   }
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
-      esc(name.trim().replace(/\s+/g, '_'));
+      esc(String(name).trim().replace(/\s+/g, '_'));
+  }
+  function slugId(name) {
+    return String(name || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').slice(0, 50);
   }
 
+  /* ── Build official-schema JSON object from character data ── */
+  function buildSchema(d) {
+    var o = {
+      id: d.jsonId || slugId(d.name),
+      name: d.name || '',
+      team: d.team || 'townsfolk',
+      ability: d.ability || ''
+    };
+    if (d.image) o.image = d.image;
+    if (d.edition) o.edition = d.edition;
+    var fl = d.flavor || d.quote;
+    if (fl) o.flavor = String(fl).replace(/^["']|["']$/g, '');
+    o.firstNight = Number(d.firstNight) || 0;
+    o.firstNightReminder = d.firstNightReminder || '';
+    o.otherNight = Number(d.otherNight) || 0;
+    o.otherNightReminder = d.otherNightReminder || '';
+    if (d.reminders && d.reminders.length) o.reminders = d.reminders;
+    if (d.remindersGlobal && d.remindersGlobal.length) o.remindersGlobal = d.remindersGlobal;
+    if (d.setup) o.setup = true;
+    if (d.jinxes && d.jinxes.length) {
+      var jx = d.jinxes.map(function (j) {
+        return { id: j.id || slugId(j.name), reason: j.text || j.reason || '' };
+      }).filter(function (j) { return j.id; });
+      if (jx.length) o.jinxes = jx;
+    }
+    if (d.special && d.special.length) o.special = d.special;
+    return o;
+  }
+  function schemaJSON(d) { return JSON.stringify(buildSchema(d), null, 2); }
+
+  /* ── Collapsible JSON box ── */
+  function renderJsonBox(d) {
+    var json = schemaJSON(d);
+    return '<div class="json-box">' +
+      '<div class="json-bar">' +
+      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="false">JSON <span class="json-arrow">&#9662;</span></span>' +
+      '<button type="button" class="json-copy">Copy JSON</button>' +
+      '</div>' +
+      '<pre class="json-body" hidden><code>' + esc(json) + '</code></pre>' +
+      '</div>';
+  }
+
+  /* ── Full character page body ── */
   function renderCharacter(d, artSrc) {
     var team = d.team || 'townsfolk';
     var label = TEAM_LABEL[team] || team;
@@ -26,7 +73,7 @@
     var paras    = (d.howToRun || []).filter(function (x) { return x && x.trim(); });
     var examples = (d.examples || []).filter(function (x) { return x && x.trim(); });
     var tips     = (d.tips || []).filter(function (x) { return x && x.trim(); });
-    var jinxes   = (d.jinxes || []).filter(function (j) { return j && j.name && j.name.trim(); });
+    var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
 
     var summaryCol =
       '<div class="gen-sech-wrap"><h2 class="gen-sech">Summary</h2></div>' +
@@ -54,7 +101,7 @@
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + esc(d.tags) + '</dd>' : '') +
       '</dl>';
 
-    var quoteClean = (d.quote || '').replace(/^["']|["']$/g, '');
+    var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
     var infoCard = '<div class="card char-infocard">' +
       (artSrc ? '<img class="emblem" src="' + esc(artSrc) + '" alt="' + esc(d.name) + '">' : '') +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
@@ -66,10 +113,11 @@
         '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px">Jinxes</h2>' +
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
+          var nm = j.name || j.id;
           return '<div class="jinx noicon"><div class="jbody">' +
-            '<a class="jname ' + al + '" href="' + jinxURL(j.name) +
-            '" target="_blank" rel="noopener noreferrer">' + esc(j.name) + '</a>' +
-            '<span class="jtext">' + esc(j.text || '') + '</span></div></div>';
+            '<a class="jname ' + al + '" href="' + jinxURL(nm) +
+            '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
+            '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
         }).join('') +
         '</div></aside>';
     }
@@ -81,9 +129,41 @@
       examplesBlock + tipsBlock +
       '</section>' +
       infoCard + jinxCard +
-      '</div>';
+      '</div>' +
+      renderJsonBox(d);
+  }
+
+  /* ── one-time delegated handlers for JSON box toggle + copy ── */
+  if (typeof document !== 'undefined' && !window.__jsonBoxBound) {
+    window.__jsonBoxBound = true;
+    document.addEventListener('click', function (e) {
+      var tg = e.target.closest && e.target.closest('.json-bar-toggle');
+      if (tg) {
+        var box = tg.closest('.json-box');
+        var open = box.classList.toggle('open');
+        tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+        box.querySelector('.json-body').hidden = !open;
+        return;
+      }
+      var cp = e.target.closest && e.target.closest('.json-copy');
+      if (cp) {
+        var b = cp.closest('.json-box');
+        var txt = b.querySelector('code').textContent;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(txt).then(function () {
+            cp.textContent = 'Copied!'; setTimeout(function () { cp.textContent = 'Copy JSON'; }, 1500);
+          }, function () {
+            cp.textContent = 'Copy failed'; setTimeout(function () { cp.textContent = 'Copy JSON'; }, 1500);
+          });
+        }
+      }
+    });
   }
 
   window.renderCharacter = renderCharacter;
+  window.renderJsonBox = renderJsonBox;
+  window.buildSchema = buildSchema;
+  window.schemaJSON = schemaJSON;
+  window.slugId = slugId;
   window.TEAM_LABEL = TEAM_LABEL;
 })();
