@@ -5,7 +5,46 @@
     "team": "minion",
     "ability": "2 Outsiders are Evil, learn each other, and may lose their abilities.",
     "art": "emblem.png",
-    "page": "characters/folie-a-deux.html"
+    "page": "characters/folie-a-deux.html",
+    "flavor": "Two's company, Three's a crowd.",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Pair",
+      "No Ability"
+    ],
+    "setup": true,
+    "image": "https://botchomebrew.wiki/assets/emblem.png",
+    "jinxes": [
+      {
+        "id": "alchemist",
+        "reason": "If the Alchemist has the Folie à Duex, ability, the pair do not become evil or learn each other but are drunk, even if the Alchemist is dead."
+      },
+      {
+        "id": "hatter",
+        "reason": "If a Minion chooses Folie à Duex they & another player become Evil Outsiders & learn each other."
+      },
+      {
+        "id": "ogre",
+        "reason": "A paired Ogre cannot turn good due to their own ability. Instead, they learn their friends alignment."
+      },
+      {
+        "id": "goon",
+        "reason": "A paired Goon cannot turn good due to their own ability."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller gains the Folie à Duex ability, an Outsider becomes evil and learns a evil player."
+      },
+      {
+        "id": "pithag",
+        "reason": "If the Pit-Hag creates a Folie à Duex, the selected player and the Pit-Hag become Evil Outsiders. Paired Outsiders cannot change characters."
+      },
+      {
+        "id": "kazali",
+        "reason": "If the Kazali chooses to create a Folie à Deux the Storyteller may create additional Outsiders."
+      }
+    ]
   },
   {
     "slug": "la-revolution",
@@ -13,7 +52,14 @@
     "team": "townsfolk",
     "ability": "If evil wins, all players make a hand signal. If most match & the Demon's doesn't, good wins instead.",
     "art": "larev_char_art.png",
-    "page": "characters/la-revolution.html"
+    "page": "characters/la-revolution.html",
+    "flavor": "For life! For liberty! And for no more bedtime!!!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [],
+    "setup": false,
+    "image": "https://botchomebrew.wiki/assets/larev_char_art.png",
+    "jinxes": []
   },
   {
     "slug": "hemomagus",
@@ -21,7 +67,38 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies.",
     "art": "hemo_char_art.png",
-    "page": "characters/hemomagus.html"
+    "page": "characters/hemomagus.html",
+    "flavor": "Town is full. Blood is fuel.",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Cloaked",
+      "Guess Used"
+    ],
+    "setup": true,
+    "image": "https://botchomebrew.wiki/assets/hemo_char_art.png",
+    "jinxes": [
+      {
+        "id": "widow",
+        "reason": "If the Widow is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
+      },
+      {
+        "id": "spy",
+        "reason": "If the Spy is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
+      },
+      {
+        "id": "klutz",
+        "reason": "If the Klutz is Cloaked, they learn they are the Klutz."
+      },
+      {
+        "id": "zealot",
+        "reason": "If the Zealot is Cloaked, they learn they are the Zealot."
+      },
+      {
+        "id": "butler",
+        "reason": "If the Butler is Cloaked, they learn they are the Butler."
+      }
+    ]
   },
   {
     "slug": "martyr",
