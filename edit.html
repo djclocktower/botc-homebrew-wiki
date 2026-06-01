@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Character — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .builder{position:relative;z-index:5;max-width:1320px;margin:0 auto;
+    padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px;
+    display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:26px;align-items:start}
+  @media(max-width:980px){.builder{grid-template-columns:1fr}}
+  .formcard{background:#f7f6f2;border:1px solid var(--card-edge);border-radius:10px;
+    padding:20px 22px;box-shadow:0 10px 26px rgba(40,12,30,.35);color:#241a12}
+  .formcard h2{font-family:'Cinzel',serif;color:var(--maroon);margin:0 0 4px;font-size:1.35rem}
+  .formcard .sub{font-size:.86rem;color:#6b5d49;margin:0 0 18px}
+  .fld{margin-bottom:15px}
+  .fld label{display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.82rem;
+    letter-spacing:.04em;text-transform:uppercase;color:#5b4632;margin-bottom:5px}
+  .fld .hint{font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63;font-size:.78rem}
+  .fld input[type=text],.fld input[type=number],.fld textarea,.fld select{
+    width:100%;font-family:'Libre Franklin',sans-serif;font-size:.95rem;color:#241a12;
+    background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:9px 11px}
+  .fld textarea{resize:vertical;min-height:64px;line-height:1.4}
+  .fld input:focus,.fld textarea:focus,.fld select:focus{outline:2px solid #b98;border-color:#b98}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  fieldset{border:1px dashed #c9b78f;border-radius:8px;padding:12px 14px;margin:0 0 15px}
+  legend{font-family:'Oswald',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.04em;
+    text-transform:uppercase;color:#5b4632;padding:0 6px}
+  fieldset.import{border-color:#a9c0e0;background:#f2f6fc}
+  fieldset.import legend{color:#234f74}
+  .jinx-row{display:grid;grid-template-columns:1fr 86px auto;gap:8px;margin-bottom:8px;align-items:start}
+  .jinx-row textarea{grid-column:1/-1;min-height:46px}
+  .btn{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    border:none;border-radius:7px;padding:9px 16px;font-size:.9rem}
+  .btn-sm{padding:6px 12px;font-size:.82rem}
+  .btn-ghost{background:#ece3d2;color:#5b4632}
+  .btn-ghost:hover{background:#e0d5bf}
+  .btn-blue{background:#2f6fb8;color:#fff}
+  .btn-blue:hover{filter:brightness(1.08)}
+  .btn-del{background:#e7d3d3;color:#9A0D12}
+  .btn-save{background:linear-gradient(180deg,#2f6fb8,#1a4a82);color:#eaf0fc;font-size:1rem;padding:12px 22px}
+  .btn-save:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .artthumb{margin-top:8px;max-width:130px;max-height:130px;border:1px solid #cdbfa0;
+    border-radius:6px;background:#fffdf8;display:none}
+  .token-box{background:#fbf2e2;border:1px solid #d8c08a;border-radius:8px;padding:13px 15px;margin-bottom:18px}
+  .token-box .warn{font-size:.8rem;color:#8a5a1a;margin:6px 0 0;line-height:1.4}
+  details.help{margin-top:8px;font-size:.84rem;color:#5b4632}
+  details.help summary{cursor:pointer;font-weight:600}
+  details.help ol{margin:8px 0 0;padding-left:20px;line-height:1.5}
+  .static-warn{position:relative;z-index:5;max-width:1320px;margin:0 auto;
+    padding:0 clamp(12px,3vw,34px) 18px}
+  .static-warn-inner{background:#fff8e6;border:1px solid #d8b86a;border-radius:8px;
+    padding:12px 16px;font-size:.9rem;color:#6b4c00}
+  .static-warn-inner strong{display:block;margin-bottom:4px;color:#5a3a00}
+  .slug-pill{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;
+    background:#ece3d2;border:1px solid #c9b78f;border-radius:4px;padding:2px 8px;color:#5b4632}
+  .loading-msg{position:relative;z-index:5;text-align:center;
+    color:rgba(236,225,200,.7);padding:60px 20px;font-size:1.1rem}
+  .ck{display:flex;align-items:center;gap:8px}
+  .ck input{width:auto}
+  .preview-pane{position:sticky;top:74px}
+  .preview-label{font-family:'Cinzel',serif;color:var(--parch);letter-spacing:.06em;
+    font-size:1rem;margin:0 0 10px;opacity:.85}
+  #preview{width:100%;height:78vh;border:1px solid rgba(214,196,150,.3);
+    border-radius:10px;background:#1d0a1a;box-shadow:0 10px 26px rgba(0,0,0,.5)}
+  #status,#importmsg{margin-top:10px;padding:10px 13px;border-radius:8px;font-size:.9rem;display:none}
+  #status.ok,#importmsg.ok{display:block;background:#dff0e2;color:#1c5429;border:1px solid #9bcfa9}
+  #status.err,#importmsg.err{display:block;background:#f6dede;color:#9A0D12;border:1px solid #d99}
+  #status.work,#importmsg.work{display:block;background:#e9eefb;color:#234f74;border:1px solid #aac0e6}
+  #status a{color:inherit;font-weight:700}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" id="crumb">
+      <a href="index.html">Characters</a><span class="sep">›</span>
+      <span class="here">Edit</span>
+    </nav>
+  </header>
+
+  <div class="loading-msg" id="loading">Loading character&hellip;</div>
+  <div class="static-warn" id="static-warn" style="display:none">
+    <div class="static-warn-inner">
+      <strong>&#9888; Hand-built page &mdash; limited edit</strong>
+      This character has a hand-built HTML page. Changes here update the
+      <strong>homepage card</strong> and <strong>JSON export box</strong> only.
+      The page&rsquo;s layout, art, and written content won&rsquo;t change.
+      To fully edit a hand-built page, ask Claude to update the HTML directly.
+    </div>
+  </div>
+
+  <div class="builder" id="builder" style="display:none">
+
+    <div class="formcard">
+      <h2>Edit Character</h2>
+      <p class="sub" id="edit-sub">Loading&hellip;</p>
+
+      <!-- token -->
+      <div class="token-box">
+        <div class="fld" style="margin:0">
+          <label for="token">GitHub token <span class="hint">(stored only in this browser)</span></label>
+          <input type="text" id="token" placeholder="github_pat_&hellip;" autocomplete="off">
+        </div>
+        <p class="warn">&#9888; This token can write to your repo &mdash; treat it like a password.</p>
+        <details class="help">
+          <summary>How do I get a token?</summary>
+          <ol>
+            <li>GitHub &rarr; <b>Settings</b> &rarr; <b>Developer settings</b></li>
+            <li><b>Fine-grained tokens</b> &rarr; <b>Generate new token</b></li>
+            <li>Repository access: <code>botc-homebrew-wiki</code> &rarr; Contents: <b>Read and write</b></li>
+          </ol>
+        </details>
+      </div>
+
+      <!-- import from JSON (optional) -->
+      <fieldset class="import">
+        <legend>Import from JSON (optional)</legend>
+        <p class="sub" style="margin:0 0 8px">Paste or upload an official-schema JSON to overwrite ability, flavour, night order, reminders &amp; jinxes.</p>
+        <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
+        <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
+        <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
+        <div id="importmsg"></div>
+      </fieldset>
+
+      <div class="fld">
+        <label for="name">Character name *</label>
+        <input type="text" id="name">
+        <div class="sub" style="margin-top:5px">Slug: <span class="slug-pill" id="slug-display">&hellip;</span></div>
+      </div>
+      <div class="row2">
+        <div class="fld">
+          <label for="team">Team *</label>
+          <select id="team">
+            <option value="townsfolk">Townsfolk</option>
+            <option value="outsider">Outsider</option>
+            <option value="minion">Minion</option>
+            <option value="demon">Demon</option>
+            <option value="traveller">Traveller</option>
+            <option value="fabled">Fabled</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label for="creator">Creator</label>
+          <input type="text" id="creator">
+        </div>
+      </div>
+      <div class="fld">
+        <label for="ability">Ability line * <span class="hint">(also the JSON ability)</span></label>
+        <textarea id="ability"></textarea>
+      </div>
+      <div class="fld">
+        <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
+        <input type="text" id="lede">
+      </div>
+      <div class="fld">
+        <label for="bullets">Summary bullets <span class="hint">(one per line)</span></label>
+        <textarea id="bullets"></textarea>
+      </div>
+      <div class="fld">
+        <label for="howto">How to Run <span class="hint">(one paragraph per line &middot; [[TOKEN]] for reminder pills)</span></label>
+        <textarea id="howto"></textarea>
+      </div>
+      <div class="fld">
+        <label for="callout">How-to-Run note <span class="hint">(optional callout box)</span></label>
+        <input type="text" id="callout">
+      </div>
+      <div class="fld">
+        <label for="examples">Examples <span class="hint">(one per line)</span></label>
+        <textarea id="examples"></textarea>
+      </div>
+      <div class="fld">
+        <label for="tips">Tips &amp; Tricks <span class="hint">(one per line)</span></label>
+        <textarea id="tips"></textarea>
+      </div>
+      <div class="row2">
+        <div class="fld">
+          <label for="quote">Flavour quote <span class="hint">(JSON flavor)</span></label>
+          <input type="text" id="quote">
+        </div>
+        <div class="fld">
+          <label for="appears">Appears in</label>
+          <input type="text" id="appears">
+        </div>
+      </div>
+      <div class="fld">
+        <label for="tags">Tags</label>
+        <input type="text" id="tags">
+      </div>
+
+      <div class="fld">
+        <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
+        <input type="file" id="art" accept="image/*">
+        <img id="artthumb" class="artthumb" alt="current art">
+        <div id="arturl" class="sub" style="margin-top:6px"></div>
+      </div>
+
+      <!-- night order & tokens -->
+      <fieldset>
+        <legend>Night Order &amp; Tokens (for JSON export)</legend>
+        <div class="fld">
+          <label for="edition">Edition <span class="hint">(optional, e.g. experimental)</span></label>
+          <input type="text" id="edition">
+        </div>
+        <div class="row2">
+          <div class="fld">
+            <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn&rsquo;t wake)</span></label>
+            <input type="number" id="firstNight" value="0" min="0" step="0.01">
+          </div>
+          <div class="fld">
+            <label for="otherNight">Other-nights wake priority</label>
+            <input type="number" id="otherNight" value="0" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="fld">
+          <label for="fnReminder">First-night reminder <span class="hint">(:reminder: marks token placement)</span></label>
+          <textarea id="fnReminder"></textarea>
+        </div>
+        <div class="fld">
+          <label for="onReminder">Other-nights reminder</label>
+          <textarea id="onReminder"></textarea>
+        </div>
+        <div class="fld">
+          <label for="reminders">Reminder tokens <span class="hint">(one per line)</span></label>
+          <textarea id="reminders"></textarea>
+        </div>
+        <div class="fld">
+          <label for="remindersGlobal">Global reminder tokens <span class="hint">(optional)</span></label>
+          <textarea id="remindersGlobal"></textarea>
+        </div>
+        <div class="fld ck">
+          <input type="checkbox" id="setup">
+          <label for="setup" style="margin:0">Affects setup (e.g. [+1 Outsider])</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Jinxes</legend>
+        <div id="jinxes"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addjinx">+ Add jinx</button>
+      </fieldset>
+
+      <button type="button" class="btn btn-save" id="save">Save Changes</button>
+      <div id="status"></div>
+    </div>
+
+    <!-- preview -->
+    <div class="preview-pane">
+      <p class="preview-label">Live preview</p>
+      <iframe id="preview" title="Character preview"></iframe>
+    </div>
+
+  </div>
+
+  <script src="assets/render.js"></script>
+  <script>
+    var OWNER = 'djclocktower', REPO = 'botc-homebrew-wiki', BRANCH = 'main';
+    var SITE_ROOT = new URL('.', location.href).href;
+    var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
+    var $ = function(id){ return document.getElementById(id); };
+
+    // the original slug from the URL — used as the upsert key throughout
+    var originalSlug = new URLSearchParams(location.search).get('c') || '';
+    // the original entry from characters.json (preserved for art/page fields)
+    var originalEntry = null;
+    // has the user uploaded new art?
+    var artChanged = false;
+    var artDataURL = null;
+
+    // restore token
+    try { var t = localStorage.getItem('gh_token'); if(t) $('token').value = t; } catch(e){}
+    $('token').addEventListener('input', function(){
+      try{ localStorage.setItem('gh_token', $('token').value.trim()); }catch(e){}
+    });
+
+    // ── jinx rows ──
+    function addJinx(name, align, text){
+      var row = document.createElement('div'); row.className = 'jinx-row';
+      row.innerHTML =
+        '<input type="text" class="jx-name" placeholder="Jinxed character">' +
+        '<select class="jx-align"><option value="good">Good</option><option value="evil">Evil</option></select>' +
+        '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
+        '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
+      $('jinxes').appendChild(row);
+      if(name)  row.querySelector('.jx-name').value  = name;
+      if(align) row.querySelector('.jx-align').value = align;
+      if(text)  row.querySelector('.jx-text').value  = text;
+      row.querySelector('.jx-del').addEventListener('click', function(){ row.remove(); update(); });
+      row.querySelectorAll('input,select,textarea').forEach(function(el){ el.addEventListener('input', update); });
+    }
+    $('addjinx').addEventListener('click', function(){ addJinx(); });
+
+    function lines(id){ return $(id).value.split('\n').map(function(s){return s.trim();}).filter(Boolean); }
+
+    function gather(){
+      var jinxes = [];
+      document.querySelectorAll('.jinx-row').forEach(function(r){
+        var n = r.querySelector('.jx-name').value.trim();
+        if(n) jinxes.push({name:n, align:r.querySelector('.jx-align').value,
+                           text:r.querySelector('.jx-text').value.trim()});
+      });
+      return {
+        name: $('name').value.trim(), team: $('team').value,
+        creator: $('creator').value.trim(), ability: $('ability').value.trim(),
+        lede: $('lede').value.trim(), summaryBullets: lines('bullets'),
+        howToRun: lines('howto'), callout: $('callout').value.trim(),
+        examples: lines('examples'), tips: lines('tips'),
+        quote: $('quote').value.trim(), appearsIn: $('appears').value.trim(),
+        tags: $('tags').value.trim(), edition: $('edition').value.trim(),
+        firstNight: Number($('firstNight').value)||0,
+        firstNightReminder: $('fnReminder').value.trim(),
+        otherNight: Number($('otherNight').value)||0,
+        otherNightReminder: $('onReminder').value.trim(),
+        reminders: lines('reminders'), remindersGlobal: lines('remindersGlobal'),
+        setup: $('setup').checked, jinxes: jinxes
+      };
+    }
+
+    // ── live preview ──
+    var PREVIEW_SCRIPT =
+      '<scr'+'ipt>document.addEventListener("click",function(e){'+
+      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");'+
+      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}'+
+      'var c=e.target.closest&&e.target.closest(".json-copy");'+
+      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}'+
+      '});</scr'+'ipt>';
+    function update(){
+      var d = gather();
+      var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
+      var inner = window.renderCharacter(d, src);
+      var doc = '<!doctype html><html><head><meta charset="utf-8"><base href="'+SITE_ROOT+'">'+
+        '<link rel="stylesheet" href="assets/styles.css"></head><body>'+
+        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">'+
+        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>'+
+        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>'+
+        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'</body></html>';
+      $('preview').srcdoc = doc;
+    }
+    var deb;
+    function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
+    ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
+     'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
+     'reminders','remindersGlobal','setup'].forEach(function(id){
+      $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
+    });
+
+    // ── art upload ──
+    function loadImageToCanvas(src, crossOrigin){
+      return new Promise(function(resolve, reject){
+        var img = new Image(); if(crossOrigin) img.crossOrigin='anonymous';
+        img.onload = function(){
+          var max=600, w=img.width, h=img.height;
+          if(w>max||h>max){ if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+          var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          try{ resolve(cv.toDataURL('image/png')); }catch(e){ reject(e); }
+        };
+        img.onerror = function(){ reject(new Error('load failed')); };
+        img.src = src;
+      });
+    }
+    $('art').addEventListener('change', function(e){
+      var file = e.target.files[0]; if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        loadImageToCanvas(ev.target.result, false).then(function(url){
+          artDataURL = url; artChanged = true;
+          var th=$('artthumb'); th.src=url; th.style.display='block';
+          update();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // ── JSON import ──
+    function normalizeJinx(j){
+      return { name: j.name||j.id||'', align: j.align||'good', text: j.text||j.reason||'' };
+    }
+    function applyImport(obj){
+      function set(id,v){ if(v!=null) $(id).value=v; }
+      set('name', obj.name||'');
+      if(obj.team && $('team').querySelector('option[value="'+obj.team+'"]')) $('team').value=obj.team;
+      set('ability', obj.ability||'');
+      set('quote', (obj.flavor||'').replace(/^["']|["']$/g,''));
+      set('edition', obj.edition||'');
+      set('firstNight', obj.firstNight!=null?obj.firstNight:0);
+      set('otherNight', obj.otherNight!=null?obj.otherNight:0);
+      set('fnReminder', obj.firstNightReminder||'');
+      set('onReminder', obj.otherNightReminder||'');
+      set('reminders', (obj.reminders||[]).join('\n'));
+      set('remindersGlobal', (obj.remindersGlobal||[]).join('\n'));
+      $('setup').checked = !!obj.setup;
+      document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
+      (obj.jinxes||[]).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
+      if(!(obj.jinxes||[]).length) addJinx();
+      var imgUrl = Array.isArray(obj.image)?obj.image[0]:obj.image;
+      var msg = $('importmsg');
+      if(imgUrl){
+        msg.className='work'; msg.textContent='Trying to load icon from '+imgUrl+' …';
+        loadImageToCanvas(imgUrl,true).then(function(url){
+          artDataURL=url; artChanged=true;
+          var th=$('artthumb'); th.src=url; th.style.display='block';
+          $('arturl').textContent='';
+          msg.className='ok'; msg.textContent='Imported (icon loaded).'; update();
+        }).catch(function(){
+          artDataURL=null; artChanged=false;
+          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a> (host blocked auto-load — upload manually if needed)';
+          msg.className='ok'; msg.textContent='Imported. Upload art manually if you want to change the icon.'; update();
+        });
+      } else {
+        msg.className='ok'; msg.textContent='Imported successfully.';
+      }
+      update();
+    }
+    $('importjson').addEventListener('click', function(){
+      var raw = $('jsonpaste').value.trim();
+      var go = function(text){
+        try{
+          var data = JSON.parse(text), obj = data;
+          if(Array.isArray(data)){
+            obj = data.filter(function(x){ return x&&typeof x==='object'&&x.id!=='_meta'&&x.ability; })[0];
+            if(!obj) throw new Error('No character with an ability found in that array.');
+          }
+          if(!obj||!obj.ability) throw new Error('No "ability" field found.');
+          applyImport(obj);
+        }catch(e){ var m=$('importmsg'); m.className='err'; m.textContent='Import failed: '+e.message; }
+      };
+      if(raw){ go(raw); return; }
+      var f=$('jsonfile').files[0];
+      if(!f){ var m=$('importmsg'); m.className='err'; m.textContent='Choose a file or paste JSON first.'; return; }
+      var fr=new FileReader(); fr.onload=function(ev){ go(ev.target.result); }; fr.readAsText(f);
+    });
+
+    // ── populate form from entry ──
+    function populateForm(entry){
+      originalEntry = entry;
+      $('name').value            = entry.name || '';
+      $('team').value            = entry.team || 'townsfolk';
+      $('creator').value         = entry.creator || '';
+      $('ability').value         = entry.ability || '';
+      $('lede').value            = entry.lede || '';
+      $('bullets').value         = (entry.summaryBullets || []).join('\n');
+      $('howto').value           = (entry.howToRun || []).join('\n');
+      $('callout').value         = entry.callout || '';
+      $('examples').value        = (entry.examples || []).join('\n');
+      $('tips').value            = (entry.tips || []).join('\n');
+      $('quote').value           = entry.quote || entry.flavor || '';
+      $('appears').value         = entry.appearsIn || '';
+      $('tags').value            = entry.tags || '';
+      $('edition').value         = entry.edition || '';
+      $('firstNight').value      = entry.firstNight || 0;
+      $('otherNight').value      = entry.otherNight || 0;
+      $('fnReminder').value      = entry.firstNightReminder || '';
+      $('onReminder').value      = entry.otherNightReminder || '';
+      $('reminders').value       = (entry.reminders || []).join('\n');
+      $('remindersGlobal').value = (entry.remindersGlobal || []).join('\n');
+      $('setup').checked         = !!entry.setup;
+      $('slug-display').textContent = originalSlug;
+
+      // jinxes
+      document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
+      (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
+      if(!(entry.jinxes||[]).length) addJinx();
+
+      // load existing art thumbnail
+      var artURL = SITE_ROOT + 'assets/' + entry.art;
+      $('arturl').textContent = 'Current: ' + entry.art;
+      loadImageToCanvas(artURL, true).then(function(url){
+        artDataURL = url; artChanged = false; // loaded but not "changed" by user
+        var th=$('artthumb'); th.src=url; th.style.display='block';
+        $('arturl').textContent = '';
+        update();
+      }).catch(function(){
+        // CORS or load failed — just show the path, art not required
+        artDataURL = null;
+        update();
+      });
+
+      // static page warning
+      var isStatic = entry.page && !entry.page.startsWith('character.html');
+      if(isStatic) $('static-warn').style.display='block';
+
+      // update breadcrumb + sub text
+      $('crumb').innerHTML =
+        '<a href="index.html">Characters</a><span class="sep">›</span>'+
+        '<a href="'+entry.page+'">'+(entry.name||originalSlug)+'</a>'+
+        '<span class="sep">›</span><span class="here">Edit</span>';
+      $('edit-sub').textContent = 'Editing: ' + entry.name +
+        (isStatic ? ' (hand-built page — see warning above)' : '');
+
+      document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
+      update();
+    }
+
+    // ── GitHub API ──
+    function utf8b64(str){ return btoa(unescape(encodeURIComponent(str))); }
+    function b64utf8(b64){ return decodeURIComponent(escape(atob(b64.replace(/\n/g,'')))); }
+    function hdrs(){ return {'Authorization':'Bearer '+$('token').value.trim(),
+      'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}; }
+    function apiURL(p){ return 'https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+p; }
+    function ghGet(p){
+      return fetch(apiURL(p)+'?ref='+BRANCH+'&_='+Date.now(),{headers:hdrs()})
+        .then(function(r){
+          if(r.status===404) return null;
+          if(!r.ok) return r.json().then(function(j){ throw new Error('GET '+p+': '+r.status+' '+(j.message||'')); });
+          return r.json();
+        });
+    }
+    function ghPut(p,b64,msg,sha){
+      var body={message:msg,content:b64,branch:BRANCH}; if(sha) body.sha=sha;
+      return fetch(apiURL(p),{method:'PUT',headers:hdrs(),body:JSON.stringify(body)})
+        .then(function(r){ if(!r.ok) return r.json().then(function(j){ throw new Error('PUT '+p+': '+r.status+' '+(j.message||'')); }); return r.json(); });
+    }
+    function setStatus(cls,html){ var s=$('status'); s.className=cls; s.innerHTML=html; }
+
+    // ── save ──
+    $('save').addEventListener('click', function(){
+      var d = gather();
+      var token = $('token').value.trim();
+      if(!token) return setStatus('err','Paste your GitHub token first.');
+      if(!d.name) return setStatus('err','A character name is required.');
+      if(!d.ability) return setStatus('err','An ability line is required.');
+
+      $('save').disabled = true;
+      var p = Promise.resolve();
+
+      // upload new art only if user explicitly changed it
+      if(artChanged && artDataURL){
+        setStatus('work','Saving&hellip; uploading new art');
+        var artPath = 'assets/art/'+originalSlug+'.png';
+        var artB64 = artDataURL.split(',')[1];
+        p = p.then(function(){
+          return ghGet(artPath).then(function(ex){
+            return ghPut(artPath, artB64, 'Update art for '+d.name, ex&&ex.sha);
+          });
+        });
+      }
+
+      p = p.then(function(){
+        setStatus('work','Saving&hellip; updating character list');
+        return ghGet('characters.json');
+      }).then(function(file){
+        var list=[], sha=null;
+        if(file){ sha=file.sha; try{ list=JSON.parse(b64utf8(file.content)); }catch(e){ list=[]; } }
+
+        var i = list.findIndex(function(c){ return c.slug===originalSlug; });
+        var base = (i>=0) ? list[i] : (originalEntry||{});
+
+        // build updated entry — preserve slug, page, and art/image unless art was changed
+        var entry = Object.assign({}, base, {
+          slug: originalSlug,
+          name: d.name, team: d.team, ability: d.ability,
+          creator: d.creator, lede: d.lede, summaryBullets: d.summaryBullets,
+          howToRun: d.howToRun, callout: d.callout, examples: d.examples,
+          tips: d.tips, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
+          edition: d.edition, firstNight: d.firstNight,
+          firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
+          otherNightReminder: d.otherNightReminder, reminders: d.reminders,
+          remindersGlobal: d.remindersGlobal, setup: d.setup, jinxes: d.jinxes
+        });
+        if(artChanged){
+          entry.art   = 'art/'+originalSlug+'.png';
+          entry.image = ART_BASE+originalSlug+'.png';
+        }
+
+        if(i>=0) list[i]=entry; else list.push(entry);
+        return ghPut('characters.json', utf8b64(JSON.stringify(list,null,2)),
+                     'Edit character: '+d.name, sha);
+      }).then(function(){
+        var url = SITE_ROOT + (originalEntry&&originalEntry.page ? originalEntry.page : 'character.html?c='+originalSlug);
+        setStatus('ok','&#10003; Saved! Live in ~1 minute. <a href="'+url+'" target="_blank">View character &rarr;</a>');
+        $('save').disabled = false;
+      }).catch(function(err){
+        setStatus('err','&#10007; '+err.message+
+          ((err.message.indexOf('401')>-1||err.message.indexOf('403')>-1)
+            ?' &mdash; check the token has Contents: Read and write.':''));
+        $('save').disabled = false;
+      });
+    });
+
+    // ── on load: fetch character data ──
+    if(!originalSlug){
+      $('loading').textContent = 'No character specified. Add ?c=slug to the URL.';
+    } else {
+      fetch('characters.json?_='+Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(list){
+          var entry = list.filter(function(c){ return c.slug===originalSlug; })[0];
+          if(!entry){
+            $('loading').textContent = 'Character "'+originalSlug+'" not found in characters.json.';
+            return;
+          }
+          $('loading').style.display = 'none';
+          $('builder').style.display = 'grid';
+          populateForm(entry);
+        })
+        .catch(function(){
+          $('loading').textContent = 'Could not load characters.json.';
+        });
+    }
+  </script>
+</body>
+</html>
