@@ -276,3 +276,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   box-shadow: 0 6px 16px rgba(40,12,30,.4); transition: transform .2s ease;
 }
 .create-btn:hover { transform: translateY(-2px); }
+
+/* community created content topbar badge */
+.topbar-badge {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  height: 46px; width: auto;
+  filter: drop-shadow(0 2px 5px rgba(0,0,0,.5));
+  pointer-events: none;
+}
+@media (max-width: 700px) { .topbar-badge { display: none; } }
