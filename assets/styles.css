@@ -318,3 +318,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: .82rem; line-height: 1.5;
 }
 .json-body code { white-space: pre; }
+
+/* edit link in breadcrumb */
+.edit-link {
+  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
+  color: rgba(236,225,200,.5); border: 1px solid rgba(236,225,200,.2);
+  border-radius: 4px; padding: 2px 8px; margin-left: 10px;
+  transition: color .15s, border-color .15s; white-space: nowrap;
+}
+.edit-link:hover { color: var(--parch); border-color: rgba(236,225,200,.55); }
