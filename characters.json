@@ -140,5 +140,48 @@
     "appearsIn": "Ravenswood Chronicles",
     "tags": "",
     "jinxes": []
+  },
+  {
+    "slug": "pozzo",
+    "name": "Pozzo",
+    "team": "outsider",
+    "ability": "Evil players & the Storyteller may make wishes. Once per game (or if you die by execution), privately learn them & grant 1.",
+    "art": "art/pozzo.png",
+    "page": "character.html?c=pozzo",
+    "image": "https://botchomebrew.wiki/assets/art/pozzo.png",
+    "creator": "Dj_Dj_Dj",
+    "lede": "The Pozzo grants wishes",
+    "summaryBullets": [
+      "Blah blah",
+      "Blah bleh"
+    ],
+    "howToRun": [
+      "Evil players may privately or publicly make wishes."
+    ],
+    "callout": "Make wushesgood",
+    "examples": [
+      "The pozzo",
+      "The pozzi",
+      "The peezo"
+    ],
+    "tips": [
+      "Wish grants"
+    ],
+    "quote": "Wishing well, oh wishing well, there’s  magic in the air. Wishing well, dear wishing well, do you have a coin to spare?",
+    "appearsIn": "Ravenswood Chronicle",
+    "tags": "",
+    "edition": "Ravenswood Chronicle",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "?",
+      "?",
+      "?"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
