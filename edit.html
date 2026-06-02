@@ -149,6 +149,14 @@
         <label for="tips">Tips &amp; Tricks <span class="hint">(one per line)</span></label>
         <textarea id="tips"></textarea>
       </div>
+      <div class="fld" id="bluffing-fld" style="display:none">
+        <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
+        <textarea id="bluffing"></textarea>
+      </div>
+      <div class="fld" id="fighting-fld" style="display:none">
+        <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
+        <textarea id="fighting"></textarea>
+      </div>
       <div class="row2">
         <div class="fld">
           <label for="quote">Flavour quote <span class="hint">(JSON flavor)</span></label>
@@ -269,6 +277,7 @@
         lede: $('lede').value.trim(), summaryBullets: lines('bullets'),
         howToRun: lines('howto'), callout: $('callout').value.trim(),
         examples: lines('examples'), tips: lines('tips'),
+        bluffing: lines('bluffing'), fighting: lines('fighting'),
         quote: $('quote').value.trim(), appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(), edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value)||0,
@@ -306,7 +315,7 @@
     function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
      'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup'].forEach(function(id){
+     'reminders','remindersGlobal','setup','bluffing','fighting'].forEach(function(id){
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -410,6 +419,8 @@
       $('callout').value         = entry.callout || '';
       $('examples').value        = (entry.examples || []).join('\n');
       $('tips').value            = (entry.tips || []).join('\n');
+      $('bluffing').value        = (entry.bluffing || []).join('\n');
+      $('fighting').value        = (entry.fighting || []).join('\n');
       $('quote').value           = entry.quote || entry.flavor || '';
       $('appears').value         = entry.appearsIn || '';
       $('tags').value            = entry.tags || '';
@@ -445,8 +456,23 @@
         '<span class="sep">›</span><span class="here">Edit</span>';
       $('edit-sub').textContent = 'Editing: ' + entry.name;
       document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
+      updatePerspectiveFields();
       update();
     }
+
+    // ── show/hide bluffing & fighting fields based on team ──
+    var GOOD_TEAMS = { townsfolk: 1, outsider: 1 };
+    function updatePerspectiveFields() {
+      var team = $('team').value;
+      var name = $('name').value.trim() || 'Character';
+      var isGood = !!GOOD_TEAMS[team];
+      $('bluffing-fld').style.display = isGood ? '' : 'none';
+      $('fighting-fld').style.display = !isGood ? '' : 'none';
+      $('bluffing-label').textContent = name;
+      $('fighting-label').textContent = name;
+    }
+    $('team').addEventListener('change', updatePerspectiveFields);
+    $('name').addEventListener('input', updatePerspectiveFields);
 
     // ── Worker API helpers ──
     function workerGet(path){
