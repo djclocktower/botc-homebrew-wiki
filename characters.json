@@ -348,5 +348,60 @@
         "text": "If the Herbalist gains the Boffin ability, the Herbalist does not learn what ability the Demon has."
       }
     ]
+  },
+  {
+    "slug": "perfumer",
+    "name": "Perfumer",
+    "team": "townsfolk",
+    "ability": "Once per game, at night, choose a player or an evil character: if in play, that player learns that the Perfumer is in play.",
+    "art": "art/perfumer.png",
+    "page": "character.html?c=perfumer",
+    "image": "https://botchomebrew.wiki/assets/art/perfumer.png",
+    "creator": "Taiyi",
+    "appearsIn": "Babybus, A Midsummer Night's Dream",
+    "quote": "Tonight I've prepared two perfumes: one as honest as a love letter, and the other... like a rose on a bear trap. Darling, which one do you think you're smelling?",
+    "lede": "The Perfumer's main profession is perfumery, and their side business is fishing.",
+    "summaryBullets": [
+      "The Perfumer can let other players know the Perfumer is in play, or go \"fishing\" by letting an evil character learn that the Perfumer is in play — because the player who receives the notification doesn't know which method the Perfumer used.",
+      "If the Perfumer names a character not in play, nobody learns that the Perfumer is in play. The ability is still spent.",
+      "If the Perfumer names the Marionette and a Marionette is in play, wake the Marionette's player and show them that the Perfumer is in play — but do not reveal they are the Marionette.",
+      "If there are multiple players of the same character type in play, the Storyteller chooses which one learns that the Perfumer is in play.",
+      "A good-aligned Marionette is still an evil character. The Perfumer may name the Marionette and notify a good-aligned Marionette.",
+      "The Vortox does not affect the Perfumer's ability. The notification is always true regardless of how the Perfumer targeted."
+    ],
+    "howToRun": [
+      "Each night, wake the Perfumer. If they shake their head and do not use their ability, put them to sleep.",
+      "If they point to a player or name an evil character, put them to sleep. Wake the player they chose, or the player whose character was named. Show that player the [[THIS ABILITY AFFECTS YOU]] reminder token and the Perfumer character token, then put them to sleep. Place the [[ABILITY USED]] reminder token next to the Perfumer's character token. Do not wake the Perfumer on future nights.",
+      "If the Perfumer is drunk or poisoned when they use their ability: put them to sleep as normal, but do not wake the chosen player and do not show any tokens. Still place the [[ABILITY USED]] reminder token — their once-per-game ability has been spent regardless."
+    ],
+    "callout": "",
+    "examples": [
+      "Momo is the Perfumer. At night she chooses Ducky. Ducky is woken and learns that the Perfumer is in play.",
+      "Momo is the Perfumer. At night she chooses the Goblin character. Ducky is the Goblin. Ducky is woken and learns that the Perfumer is in play.",
+      "Momo is the Perfumer. At night she chooses the Goblin character. No Goblin is in play. Nobody learns that the Perfumer is in play."
+    ],
+    "tips": [
+      "Don't approach the player you targeted. Wait for them to announce that the Perfumer is in play. If you go to them first, you remove the ambiguity and an evil player can claim freely without fear.",
+      "Target a player you trust. When they announce that the Perfumer is in play, it corroborates your claim and confirms your identity to the town.",
+      "Target a player you're suspicious of. If they don't come forward to announce they've been notified, that silence is meaningful — an evil player sitting on the information is a significant tell.",
+      "Name an evil character and wait. If a player announces they've learned the Perfumer is in play, you can be nearly certain they are that evil character.",
+      "If targeting the Demon feels too risky, naming the Marionette is a strong alternative. If a player announces they were notified, the Demon is almost certainly their neighbour.",
+      "[Bluffing] If you are a Minion not afraid of execution, claim you chose a specific player and accuse them of being evil for staying quiet about the notification.",
+      "[Bluffing] Coordinate with an evil teammate: one claims to be the Perfumer, the other claims to have received the notification — corroborating each other simultaneously.",
+      "[Bluffing] If you have a Goblin teammate, have them announce first that they learned the Perfumer is in play, then claim to be the Perfumer and say you named a Demon — steering town toward executing the Goblin."
+    ],
+    "tags": "Expose Role, Limited Ability",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 3,
+    "otherNightReminder": "Wake the Perfumer. If they act, put them to sleep. Wake the targeted player, show them THIS ABILITY AFFECTS YOU and the Perfumer token. Place ABILITY USED. Do not wake the Perfumer again.",
+    "reminders": [
+      "Ability Used",
+      "Learns"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
