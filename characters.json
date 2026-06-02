@@ -346,7 +346,7 @@
     "slug": "perfumer",
     "name": "Perfumer",
     "team": "townsfolk",
-    "ability": "Once per game, at night, choose a player or an evil character: if in play, that player learns that the Perfumer is in play.",
+    "ability": "Once per game, at night, choose a player or an evil character: they learn a Perfumer is in play.",
     "art": "art/perfumer.png",
     "page": "character.html?c=perfumer",
     "image": "https://botchomebrew.wiki/assets/art/perfumer.png",
