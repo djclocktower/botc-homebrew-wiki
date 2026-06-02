@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tag — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb" id="crumb">
+      <a href="index.html">Characters</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+  </header>
+
+  <div class="home-hero">
+    <h1 id="hero-title">Loading…</h1>
+    <p>Fan-made additions for Blood on the Clocktower</p>
+  </div>
+
+  <main class="home-panel" id="panel">
+    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+    var GOOD = { townsfolk: 1, outsider: 1 };
+    var TEAM_LABEL = {
+      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+    };
+
+    function toTitleCase(s) {
+      return s.replace(/\w\S*/g, function(w) {
+        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+      });
+    }
+
+    var rawTag = new URLSearchParams(location.search).get('t') || '';
+    var displayTag = toTitleCase(rawTag);
+
+    document.title = displayTag + ' — BOTC HomeBrew Wiki';
+    document.getElementById('hero-title').textContent = displayTag;
+    document.getElementById('crumb').innerHTML =
+      '<a href="index.html">Characters</a><span class="sep">›</span>' +
+      '<a href="tags.html">Tags</a><span class="sep">›</span>' +
+      '<span class="here">' + displayTag + '</span>';
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function hasTag(c, tag) {
+      return (c.tags || '').split(',').some(function(t) {
+        return t.trim().toLowerCase() === tag.toLowerCase();
+      });
+    }
+
+    function card(c) {
+      var typeClass = GOOD[c.team] ? ' good' : '';
+      return '<a class="char-card" href="' + esc(c.page) + '">' +
+        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art">' +
+        '<div class="char-card-info">' +
+        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
+        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
+        '<span class="char-card-link">View Character →</span>' +
+        '</div></a>';
+    }
+
+    fetch('characters.json?_=' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        var panel = document.getElementById('panel');
+        if (!rawTag) {
+          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tag specified. <a href="tags.html" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          return;
+        }
+        var chars = list.filter(function(c) { return hasTag(c, rawTag); });
+        if (!chars.length) {
+          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found with tag <strong>' + esc(displayTag) + '</strong>. <a href="tags.html" style="color:#7fb2e6">Browse all tags</a>.</p>';
+          return;
+        }
+        panel.innerHTML =
+          '<div class="type-section">' +
+          '<div class="char-grid">' +
+          chars.map(card).join('') +
+          '</div></div>';
+      })
+      .catch(function() {
+        document.getElementById('panel').innerHTML =
+          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+      });
+  </script>
+  <script>
+  (function () {
+    var ROOT = '';
+    var input = document.getElementById('search-input');
+    var drop  = document.getElementById('search-drop');
+    if (!input || !drop) return;
+    var allChars = null, fetchPromise = null;
+    function ensureData() {
+      if (allChars) return Promise.resolve(allChars);
+      if (fetchPromise) return fetchPromise;
+      fetchPromise = fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();}).then(function(list){allChars=list;return list;});
+      return fetchPromise;
+    }
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var GOOD={townsfolk:1,outsider:1};
+    var TEAM_LABEL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
+    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return [c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
+    function render(results,q){if(!results.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=results.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(c.page)+'" role="option"><img class="search-result-thumb" src="'+esc('assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TEAM_LABEL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
+    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
+    var debTimer;
+    input.addEventListener('input',function(){clearTimeout(debTimer);var q=input.value.trim();if(!q){close();return;}debTimer=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
+    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
+    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
+    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
+    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
+    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
+  })();
+  </script>
+</body>
+</html>
