@@ -73,6 +73,8 @@
     var paras    = (d.howToRun || []).filter(function (x) { return x && x.trim(); });
     var examples = (d.examples || []).filter(function (x) { return x && x.trim(); });
     var tips     = (d.tips || []).filter(function (x) { return x && x.trim(); });
+    var bluffing = (d.bluffing || []).filter(function (x) { return x && x.trim(); });
+    var fighting = (d.fighting || []).filter(function (x) { return x && x.trim(); });
     var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
 
     var summaryCol =
@@ -94,6 +96,14 @@
     var tipsBlock = tips.length ?
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Tips &amp; Tricks</h2></div>' +
         '<ul>' + tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
+
+    var charName = esc(d.name || 'Character');
+    var bluffingBlock = bluffing.length ?
+      ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Bluffing as the ' + charName + '</h2></div>' +
+        '<ul>' + bluffing.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
+    var fightingBlock = fighting.length ?
+      ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
+        '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
       (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
@@ -142,7 +152,7 @@
       '<div class="char-layout">' +
       '<section class="char-parchment card">' +
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
-      examplesBlock + tipsBlock +
+      examplesBlock + tipsBlock + bluffingBlock + fightingBlock +
       '</section>' +
       infoCardFinal + sideBar +
       '</div>';
