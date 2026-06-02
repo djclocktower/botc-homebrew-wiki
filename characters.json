@@ -51,44 +51,37 @@
       {
         "name": "Alchemist",
         "align": "good",
-        "text": "If the Alchemist has the Folie à Duex, ability, the pair do not become evil or learn each other but are drunk, even if the Alchemist is dead.",
-        "id": "alchemist"
+        "text": "If the Alchemist has the Folie à Duex, ability, the pair do not become evil or learn each other but are drunk, even if the Alchemist is dead."
       },
       {
         "name": "Hatter",
         "align": "good",
-        "text": "If a Minion chooses Folie à Duex they & another player become Evil Outsiders & learn each other.",
-        "id": "hatter"
+        "text": "If a Minion chooses Folie à Duex they & another player become Evil Outsiders & learn each other."
       },
       {
         "name": "Ogre",
         "align": "good",
-        "text": "A paired Ogre cannot turn good due to their own ability. Instead, they learn their friends alignment.",
-        "id": "ogre"
+        "text": "A paired Ogre cannot turn good due to their own ability. Instead, they learn their friends alignment."
       },
       {
         "name": "Goon",
         "align": "good",
-        "text": "A paired Goon cannot turn good due to their own ability.",
-        "id": "goon"
+        "text": "A paired Goon cannot turn good due to their own ability."
       },
       {
         "name": "Plague Doctor",
         "align": "good",
-        "text": "If the Storyteller gains the Folie à Duex ability, an Outsider becomes evil and learns a evil player.",
-        "id": "plaguedoctor"
+        "text": "If the Storyteller gains the Folie à Duex ability, an Outsider becomes evil and learns a evil player."
       },
       {
         "name": "Pit-Hag",
         "align": "evil",
-        "text": "If the Pit-Hag creates a Folie à Duex, the selected player and the Pit-Hag become Evil Outsiders. Paired Outsiders cannot change characters.",
-        "id": "pithag"
+        "text": "If the Pit-Hag creates a Folie à Duex, the selected player and the Pit-Hag become Evil Outsiders. Paired Outsiders cannot change characters."
       },
       {
         "name": "Kazali",
         "align": "evil",
-        "text": "If the Kazali chooses to create a Folie à Deux the Storyteller may create additional Outsiders.",
-        "id": "kazali"
+        "text": "If the Kazali chooses to create a Folie à Deux the Storyteller may create additional Outsiders."
       }
     ]
   },
