@@ -46,7 +46,6 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .artthumb{margin-top:8px;max-width:130px;max-height:130px;border:1px solid #cdbfa0;
     border-radius:6px;background:#fffdf8;display:none}
-
   .slug-pill{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;
     background:#ece3d2;border:1px solid #c9b78f;border-radius:4px;padding:2px 8px;color:#5b4632}
   .loading-msg{position:relative;z-index:5;text-align:center;
@@ -77,14 +76,13 @@
       <a href="index.html">Characters</a><span class="sep">›</span>
       <span class="here">Edit</span>
     </nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
   </header>
 
   <div class="loading-msg" id="loading">Loading character&hellip;</div>
-  
 
   <div class="builder" id="builder" style="display:none">
 
@@ -92,7 +90,6 @@
       <h2>Edit Character</h2>
       <p class="sub" id="edit-sub">Loading&hellip;</p>
 
-      <!-- import from JSON (optional) -->
       <fieldset class="import">
         <legend>Import from JSON (optional)</legend>
         <p class="sub" style="margin:0 0 8px">Paste or upload an official-schema JSON to overwrite ability, flavour, night order, reminders &amp; jinxes.</p>
@@ -166,7 +163,6 @@
         <label for="tags">Tags</label>
         <input type="text" id="tags">
       </div>
-
       <div class="fld">
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
         <input type="file" id="art" accept="image/*">
@@ -174,7 +170,6 @@
         <div id="arturl" class="sub" style="margin-top:6px"></div>
       </div>
 
-      <!-- night order & tokens -->
       <fieldset>
         <legend>Night Order &amp; Tokens (for JSON export)</legend>
         <div class="fld">
@@ -192,7 +187,7 @@
           </div>
         </div>
         <div class="fld">
-          <label for="fnReminder">First-night reminder <span class="hint">(:reminder: marks token placement)</span></label>
+          <label for="fnReminder">First-night reminder</label>
           <textarea id="fnReminder"></textarea>
         </div>
         <div class="fld">
@@ -223,7 +218,6 @@
       <div id="status"></div>
     </div>
 
-    <!-- preview -->
     <div class="preview-pane">
       <p class="preview-label">Live preview</p>
       <iframe id="preview" title="Character preview"></iframe>
@@ -233,11 +227,9 @@
 
   <script src="assets/render.js"></script>
   <script>
-    // ── Worker URL — only thing that changed from the old version ──
     var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
-
-    var SITE_ROOT = new URL('.', location.href).href;
-    var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
+    var SITE_ROOT  = new URL('.', location.href).href;
+    var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
     var $ = function(id){ return document.getElementById(id); };
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
@@ -290,155 +282,26 @@
 
     // ── live preview ──
     var PREVIEW_SCRIPT =
-      '<scr'+'ipt>document.addEventListener("click",function(e){'+
-      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");'+
-      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}'+
-      'var c=e.target.closest&&e.target.closest(".json-copy");'+
-      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}'+
-      '});</scr'+'ipt>';
+      '<scr'+'ipt>document.addEventListener("click",function(e){' +
+      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
+      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
+      'var c=e.target.closest&&e.target.closest(".json-copy");' +
+      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
+      '});<\/scr'+'ipt>';
+
     function update(){
       var d = gather();
       var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
       var inner = window.renderCharacter(d, src);
-      var doc = '<!doctype html><html><head><meta charset="utf-8"><base href="'+SITE_ROOT+'">'+
-        '<link rel="stylesheet" href="assets/styles.css"></head><body>'+
-        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">'+
-        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>'+
-        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>'+
-        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'<script>
-  (function () {
-    // asset prefix differs for pages in characters/ subfolder
-    var ROOT = (function () {
-      var s = document.querySelector('link[rel="stylesheet"]');
-      if (!s) return '';
-      var href = s.getAttribute('href');
-      return href.replace('assets/styles.css', '');
-    })();
-
-    var input = document.getElementById('search-input');
-    var drop  = document.getElementById('search-drop');
-    if (!input || !drop) return;
-
-    var allChars = null;
-    var fetchPromise = null;
-
-    function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = fetch(ROOT + 'characters.json?_=' + Date.now())
-        .then(function (r) { return r.json(); })
-        .then(function (list) { allChars = list; return list; });
-      return fetchPromise;
-    }
-
-    function esc(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    var GOOD = { townsfolk: 1, outsider: 1 };
-    var TEAM_LABEL = {
-      townsfolk:'Townsfolk', outsider:'Outsider', minion:'Minion',
-      demon:'Demon', traveller:'Traveller', fabled:'Fabled'
-    };
-
-    function search(q) {
-      q = q.trim().toLowerCase();
-      if (!q || !allChars) return [];
-      return allChars.filter(function (c) {
-        var haystack = [
-          c.name || '',
-          c.ability || '',
-          c.tags || '',
-          c.lede || '',
-          c.team || ''
-        ].join(' ').toLowerCase();
-        return haystack.indexOf(q) !== -1;
-      }).slice(0, 8);
-    }
-
-    function render(results, q) {
-      if (!results.length) {
-        drop.innerHTML = '<div class="search-empty">No characters found for \u201c' + esc(q) + '\u201d</div>';
-        return;
-      }
-      drop.innerHTML = results.map(function (c) {
-        var typeClass = GOOD[c.team] ? ' good' : '';
-        var ability = c.ability || '';
-        if (ability.length > 80) ability = ability.slice(0, 80) + '…';
-        return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
-          '<img class="search-result-thumb" src="' + esc(ROOT + 'assets/' + c.art) + '" alt="">' +
-          '<div class="search-result-info">' +
-          '<span class="search-result-name">' + esc(c.name) + '</span>' +
-          '<span class="search-result-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</span>' +
-          '<span class="search-result-ability">' + esc(ability) + '</span>' +
-          '</div></a>';
-      }).join('');
-    }
-
-    function open() {
-      drop.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }
-    function close() {
-      drop.hidden = true;
-      input.setAttribute('aria-expanded', 'false');
-    }
-
-    var debTimer;
-    input.addEventListener('input', function () {
-      clearTimeout(debTimer);
-      var q = input.value.trim();
-      if (!q) { close(); return; }
-      debTimer = setTimeout(function () {
-        ensureData().then(function () {
-          var results = search(q);
-          render(results, q);
-          open();
-        });
-      }, 150);
-    });
-
-    input.addEventListener('focus', function () {
-      if (input.value.trim() && allChars) open();
-    });
-
-    // Keyboard navigation
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { close(); input.blur(); return; }
-      if (e.key === 'ArrowDown') {
-        var first = drop.querySelector('.search-result');
-        if (first) { e.preventDefault(); first.focus(); }
-        return;
-      }
-    });
-    drop.addEventListener('keydown', function (e) {
-      var cur = document.activeElement;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        var next = cur.nextElementSibling;
-        if (next) next.focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        var prev = cur.previousElementSibling;
-        if (prev) prev.focus(); else input.focus();
-      } else if (e.key === 'Escape') {
-        close(); input.focus();
-      }
-    });
-
-    // Close on outside click
-    document.addEventListener('click', function (e) {
-      if (!document.getElementById('search-wrap').contains(e.target)) close();
-    });
-
-    // Prefetch on hover so results feel instant
-    document.getElementById('search-wrap').addEventListener('mouseenter', ensureData);
-  })();
-</script></html>';
+      var doc = '<!doctype html><html><head><meta charset="utf-8"><base href="'+SITE_ROOT+'">' +
+        '<link rel="stylesheet" href="assets/styles.css"></head><body>' +
+        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
+        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
+        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
+        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'</body></html>';
       $('preview').srcdoc = doc;
     }
+
     var deb;
     function schedule(){ clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
@@ -507,7 +370,7 @@
           msg.className='ok'; msg.textContent='Imported (icon loaded).'; update();
         }).catch(function(){
           artDataURL=null; artChanged=false;
-          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a> (upload manually if needed)';
+          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a>';
           msg.className='ok'; msg.textContent='Imported. Upload art manually if you want to change the icon.'; update();
         });
       } else {
@@ -610,7 +473,6 @@
       $('save').disabled = true;
       var p = Promise.resolve();
 
-      // upload new art only if user explicitly changed it
       if(artChanged && artDataURL){
         setStatus('work','Saving&hellip; uploading new art');
         var artPath = 'assets/art/'+originalSlug+'.png';
@@ -632,10 +494,8 @@
           try{ list = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g,''))))); }
           catch(e){ list=[]; }
         }
-
         var i = list.findIndex(function(c){ return c.slug===originalSlug; });
         var base = (i>=0) ? list[i] : (originalEntry||{});
-
         var entry = Object.assign({}, base, {
           slug: originalSlug,
           name: d.name, team: d.team, ability: d.ability,
@@ -651,7 +511,6 @@
           entry.art   = 'art/'+originalSlug+'.png';
           entry.image = ART_BASE+originalSlug+'.png';
         }
-
         if(i>=0) list[i]=entry; else list.push(entry);
         var jsonB64 = btoa(unescape(encodeURIComponent(JSON.stringify(list,null,2))));
         return workerPut('characters.json', jsonB64, 'Edit character: '+d.name, sha);
@@ -686,5 +545,28 @@
         });
     }
   </script>
+
+  <script>
+  (function(){
+    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
+    if(!input||!drop)return;
+    var allChars=null,fetchPromise=null;
+    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch('characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
+    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(c.page)+'" role="option"><img class="search-result-thumb" src="'+esc('assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
+    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
+    var deb;
+    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
+    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
+    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
+    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
+    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
+    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
+  })();
+  </script>
+
 </body>
 </html>
