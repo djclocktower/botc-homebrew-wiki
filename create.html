@@ -143,6 +143,14 @@
         <label for="tips">Tips &amp; Tricks <span class="hint">(one per line)</span></label>
         <textarea id="tips"></textarea>
       </div>
+      <div class="fld" id="bluffing-fld" style="display:none">
+        <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
+        <textarea id="bluffing"></textarea>
+      </div>
+      <div class="fld" id="fighting-fld" style="display:none">
+        <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
+        <textarea id="fighting"></textarea>
+      </div>
       <div class="row2">
         <div class="fld">
           <label for="quote">Flavour quote <span class="hint">(JSON flavor)</span></label>
@@ -271,6 +279,8 @@
         callout: $('callout').value.trim(),
         examples: lines('examples'),
         tips: lines('tips'),
+        bluffing: lines('bluffing'),
+        fighting: lines('fighting'),
         quote: $('quote').value.trim(),
         appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
@@ -452,7 +462,7 @@
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
      'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup'].forEach(function (id) {
+     'reminders','remindersGlobal','setup','bluffing','fighting'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -642,6 +652,21 @@
 
     addJinx();
     update();
+
+    // ── show/hide bluffing & fighting fields based on team ──
+    var GOOD_TEAMS = { townsfolk: 1, outsider: 1 };
+    function updatePerspectiveFields() {
+      var team = $('team').value;
+      var name = $('name').value.trim() || 'Character';
+      var isGood = !!GOOD_TEAMS[team];
+      $('bluffing-fld').style.display = isGood ? '' : 'none';
+      $('fighting-fld').style.display = !isGood ? '' : 'none';
+      $('bluffing-label').textContent = name;
+      $('fighting-label').textContent = name;
+    }
+    $('team').addEventListener('change', updatePerspectiveFields);
+    $('name').addEventListener('input', updatePerspectiveFields);
+    updatePerspectiveFields();
   </script>
 </body>
 </html>
