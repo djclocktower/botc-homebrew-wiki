@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Authors — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Characters</a><span class="sep">›</span>
+      <span class="here">Authors</span>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+  </header>
+
+  <div class="home-hero">
+    <h1>Authors</h1>
+    <p>Browse characters by creator</p>
+  </div>
+
+  <main class="home-panel" id="panel">
+    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading authors…</p>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    fetch('characters.json?_=' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(list) {
+        // Build case-insensitive author map: lowercased key → {display, count}
+        // First occurrence of each name wins for display capitalisation
+        var authorMap = {};
+        list.forEach(function(c) {
+          var raw = (c.creator || '').trim();
+          if (!raw) return;
+          var key = raw.toLowerCase();
+          if (authorMap[key]) {
+            authorMap[key].count++;
+          } else {
+            authorMap[key] = { display: raw, count: 1 };
+          }
+        });
+
+        var panel = document.getElementById('panel');
+        var keys = Object.keys(authorMap).sort(function(a, b) {
+          return authorMap[b].count - authorMap[a].count || a.localeCompare(b);
+        });
+
+        if (!keys.length) {
+          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No authors found yet.</p>';
+          return;
+        }
+
+        panel.innerHTML =
+          '<div class="tags-index">' +
+          keys.map(function(key) {
+            var a = authorMap[key];
+            return '<a class="tag-pill" href="author.html?a=' + encodeURIComponent(a.display) + '">' +
+              esc(a.display) +
+              '<span class="tag-count">' + a.count + '</span>' +
+              '</a>';
+          }).join('') +
+          '</div>';
+      })
+      .catch(function() {
+        document.getElementById('panel').innerHTML =
+          '<p style="text-align:center;color:#e6a;padding:30px">Could not load authors.</p>';
+      });
+  </script>
+  <script>
+  (function(){
+    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
+    if(!input||!drop)return;
+    var allChars=null,fetchPromise=null;
+    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch('characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
+    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(c.page)+'" role="option"><img class="search-result-thumb" src="'+esc('assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
+    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
+    var deb;
+    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
+    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
+    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
+    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
+    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
+    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
+  })();
+  </script>
+</body>
+</html>
