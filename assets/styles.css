@@ -14,7 +14,7 @@
 
 /* ─── Base ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 body {
   margin: 0;
   font-family: 'Libre Franklin', -apple-system, sans-serif;
@@ -40,6 +40,7 @@ body::after {
 /* ─── Top Bar ────────────────────────────────────────────────── */
 .topbar {
   position: sticky; top: 0; z-index: 30;
+  width: 100vw; left: 0; box-sizing: border-box;
   display: flex; align-items: center; justify-content: space-between;
   gap: 16px; flex-wrap: wrap;
   padding: 9px clamp(14px, 4vw, 40px);
