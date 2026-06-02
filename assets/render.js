@@ -95,7 +95,7 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Tips &amp; Tricks</h2></div>' +
         '<ul>' + tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd>' + esc(label) + '</dd>' +
+    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
       (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd>' + esc(d.creator) + '</dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + esc(d.tags) + '</dd>' : '') +
