@@ -442,3 +442,35 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   .search-drop { width: 100%; right: 0; left: 0; }
   .topbar { flex-wrap: wrap; }
 }
+
+/* ── Tag links (in character info card) ─────────────────────────── */
+.tag-link {
+  color: var(--good-name);
+  text-decoration: none;
+}
+.tag-link:hover { text-decoration: underline; }
+.tag-sep { color: var(--ink); }
+
+/* ── Tags index page ─────────────────────────────────────────────── */
+.tags-index {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding: 8px 0 48px;
+}
+.tag-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: .95rem; letter-spacing: .04em;
+  text-decoration: none;
+  background: var(--card); border: 1px solid var(--card-edge);
+  border-radius: 8px; padding: 10px 16px;
+  color: var(--maroon);
+  box-shadow: 0 4px 12px rgba(40,12,30,.22);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.tag-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(40,12,30,.35); }
+.tag-count {
+  font-family: 'Libre Franklin', sans-serif; font-weight: 700;
+  font-size: .78rem; background: rgba(91,31,33,.12);
+  color: var(--maroon); border-radius: 20px;
+  padding: 1px 8px; min-width: 22px; text-align: center;
+}
