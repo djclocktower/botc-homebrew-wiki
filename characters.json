@@ -215,6 +215,10 @@
         "text": "If the Butler is Cloaked, they learn they are the Butler.",
         "id": "butler"
       }
+    ],
+    "fighting": [
+      "Track who seems surprised by night deaths — the Hemomagus's swap kills an Outsider, which may catch evil players off guard.",
+      "If an Outsider dies unexpectedly at night alongside another player, a Hemomagus swap may have occurred."
     ]
   },
   {
@@ -392,6 +396,10 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [
+      "Claim you targeted a specific good player and wait for them to confirm — if they don't, suggest they're acting suspiciously.",
+      "Coordinate with a teammate: they claim to have received the notification while you claim to be the Perfumer."
+    ]
   }
 ]
