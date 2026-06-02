@@ -98,7 +98,11 @@
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
       (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd>' + esc(d.creator) + '</dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
-      (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + esc(d.tags) + '</dd>' : '') +
+      (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
+        t = t.trim(); if(!t) return '';
+        var display = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); });
+        return '<a class="tag-link" href="tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
+      }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       '</dl>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
