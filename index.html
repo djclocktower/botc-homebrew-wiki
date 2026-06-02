@@ -72,7 +72,7 @@
           // always show the 4 core teams; only show traveller/fabled if populated
           if (!chars.length && (key === 'traveller' || key === 'fabled')) return;
           html += '<section class="type-section" id="' + key + '">' +
-            '<h2 class="type-header">' + label + '</h2><div class="type-rule"></div>' +
+            '<h2 class="type-header"><a href="team.html?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
             '<div class="char-grid">';
           html += chars.map(card).join('');
           html += '<a class="char-card empty-card" href="create.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">+ Add a ' + label + '</a>';
