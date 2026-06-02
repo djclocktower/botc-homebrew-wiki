@@ -332,11 +332,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* ── Team page links ─────────────────────────────────────────────── */
 /* Type: link in info card on character pages */
 .type-link {
-  color: var(--ink);
+  color: var(--good-name);
   text-decoration: none;
-  border-bottom: 1px solid rgba(0,0,0,.2);
 }
-.type-link:hover { border-bottom-color: var(--maroon); color: var(--maroon); }
+.type-link:hover { text-decoration: underline; }
 
 /* Team header links on homepage */
 .team-header-link {
