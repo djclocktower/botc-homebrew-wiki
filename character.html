@@ -44,7 +44,7 @@
         var label = (window.TEAM_LABEL[d.team] || d.team);
         document.getElementById('crumb').innerHTML =
           '<a href="index.html">Characters</a><span class="sep">›</span>' +
-          '<a href="index.html#' + d.team + '">' + label + '</a>' +
+          '<a href="team.html?t=' + d.team + '">' + label + '</a>' +
           '<span class="sep">›</span><span class="here">' + d.name + '</span>' +
           '';
         var eb = document.getElementById('edit-btn');
