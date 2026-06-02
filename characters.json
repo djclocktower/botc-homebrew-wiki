@@ -188,38 +188,34 @@
       {
         "name": "Widow",
         "align": "evil",
-        "text": "If the Widow is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night.",
-        "id": "widow"
+        "text": "If the Widow is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
       },
       {
         "name": "Spy",
         "align": "evil",
-        "text": "If the Spy is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night.",
-        "id": "spy"
+        "text": "If the Spy is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
       },
       {
         "name": "Klutz",
         "align": "good",
-        "text": "If the Klutz is Cloaked, they learn they are the Klutz.",
-        "id": "klutz"
+        "text": "If the Klutz is Cloaked, they learn they are the Klutz."
       },
       {
         "name": "Zealot",
         "align": "good",
-        "text": "If the Zealot is Cloaked, they learn they are the Zealot.",
-        "id": "zealot"
+        "text": "If the Zealot is Cloaked, they learn they are the Zealot."
       },
       {
         "name": "Butler",
         "align": "good",
-        "text": "If the Butler is Cloaked, they learn they are the Butler.",
-        "id": "butler"
+        "text": "If the Butler is Cloaked, they learn they are the Butler."
       }
     ],
     "fighting": [
       "Track who seems surprised by night deaths — the Hemomagus's swap kills an Outsider, which may catch evil players off guard.",
       "If an Outsider dies unexpectedly at night alongside another player, a Hemomagus swap may have occurred."
-    ]
+    ],
+    "bluffing": []
   },
   {
     "slug": "martyr",
