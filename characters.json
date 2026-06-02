@@ -183,5 +183,46 @@
     "remindersGlobal": [],
     "setup": false,
     "jinxes": []
+  },
+  {
+    "slug": "herbalist",
+    "name": "Herbalist ♊︎",
+    "team": "townsfolk",
+    "ability": "Once per game, at night, you may choose to gain the ability of a non-listed character that will benefit the losing alignment. You learn which.",
+    "art": "art/herbalist.png",
+    "page": "character.html?c=herbalist",
+    "image": "https://botchomebrew.wiki/assets/art/herbalist.png",
+    "creator": "",
+    "lede": "",
+    "summaryBullets": [],
+    "howToRun": [],
+    "callout": "",
+    "examples": [],
+    "tips": [],
+    "quote": "Don’t worry, a pinch of salt mixed with the mushrooms from the hills down south will do the trick. You’ll be fine in no time! I just need to remember if this is salt or sugar…",
+    "appearsIn": "",
+    "tags": "",
+    "edition": "",
+    "firstNight": 9.2,
+    "firstNightReminder": "The Herbalist nods or shakes their head. If they nod, they gain an ability and learn which.",
+    "otherNight": 7.2,
+    "otherNightReminder": "The Herbalist nods or shakes their head. If they nod, they gain an ability and learn which.",
+    "reminders": [],
+    "remindersGlobal": [
+      "Is the Herbalist"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "name": "bountyhunter",
+        "align": "good",
+        "text": "If the Herbalist gains the Bounty Hunter ability, a Townsfolk might turn evil."
+      },
+      {
+        "name": "boffin",
+        "align": "good",
+        "text": "If the Herbalist gains the Boffin ability, the Herbalist does not learn what ability the Demon has."
+      }
+    ]
   }
 ]
