@@ -3,46 +3,92 @@
     "slug": "folie-a-deux",
     "name": "Folie à Deux",
     "team": "minion",
-    "ability": "2 Outsiders are Evil, learn each other, and may lose their abilities.",
+    "ability": "2 Outsiders are Evil, learn each other, and may lose their abilities (they learn this). [+1 or +2 Outsiders, -1 Folie à Deux]",
     "art": "emblem.png",
-    "page": "characters/folie-a-deux.html",
-    "flavor": "Two's company, Three's a crowd.",
+    "page": "character.html?c=folie-a-deux",
+    "image": "https://botchomebrew.wiki/assets/emblem.png",
+    "creator": "dj_dj_dj",
+    "appearsIn": "",
+    "quote": "Two's company, Three's a crowd.",
+    "lede": "The Folie à Deux causes 2 Outsiders to fall into insanity at the cost of a Minion.",
+    "summaryBullets": [
+      "Folie à Deux makes town have to do double the work to find a second, isolated evil team.",
+      "The Folie à Deux is not actually in play, so abilities that target by character will miss it, nor can it be drunk or poisoned.",
+      "There will always be at least 2 Outsiders in play. A setup with fewer than two Outsiders and a Folie à Deux is illegal.",
+      "Players must continue to follow their ability rules until they are explicitly told they have lost them. It is still considered cheating to break ability rules if they have lost their ability but haven't been informed."
+    ],
+    "howToRun": [
+      "While setting up the game, remove 1 Minion token and add 1 Outsider Token. You may also remove 1 Townsfolk token and add an additional Outsider token (this is required if there is only 1 Outsider).",
+      "At the start of the first night, select any 2 Outsiders, rotate their tokens 180 degrees and add the [[PAIR]] reminder tokens. Wake one of the pair and show them the Folie à Deux token and a thumbs down to indicate they are evil, and point to the other member of the pair. Repeat with the other paired player.",
+      "If at any point you think a paired player should lose their ability, add the [[NO ABILITY]] reminder to them. That night wake the player and show them the [[NO ABILITY]] token, even if they are dead."
+    ],
+    "callout": "",
+    "examples": [
+      "On the first night the Folie à Deux pair learn each other. At the start of the first day they pretend to be the Evil Twins.",
+      "The Demon kills the Ravenkeeper, and they select the Evil Recluse who registers as a Demon. On the last day, the Town executes the Recluse and the Evil team wins.",
+      "The Evil Saint is nominated and about to die. The Storyteller makes them lose their ability and upon their execution, the game continues. That night, the Saint is awoken to learn they lost their ability."
+    ],
+    "tips": [
+      "Coordinate with your partner in crime! Two heads are better than one. By collaborating, you can spread misinformation and create chaos more effectively.",
+      "You are expendable! Executions are a limited resource for the good team, and every day you are executed is a day a powerful Minion or the Demon survives, and if you are an Outsider like Barber or Sweetheart it's in your best interest to die.",
+      "Be cautious with your votes and nominations. You never know if the player you're executing is an Evil teammate.",
+      "You are not defined by your ability. Are you the Zealot who wants to hide who you really are? The Storyteller might throw you a lifeline and take away your ability, so you don't have to vote every nomination!",
+      "Look evil, but not too evil. Your goal is to mislead the good team into thinking you are the main threat, taking pressure off your teammates, so act accordingly!"
+    ],
+    "tags": "Setup",
+    "edition": "",
     "firstNight": 0,
+    "firstNightReminder": "",
     "otherNight": 0,
+    "otherNightReminder": "",
     "reminders": [
       "Pair",
       "No Ability"
     ],
+    "remindersGlobal": [],
     "setup": true,
-    "image": "https://botchomebrew.wiki/assets/emblem.png",
     "jinxes": [
       {
-        "id": "alchemist",
-        "reason": "If the Alchemist has the Folie à Duex, ability, the pair do not become evil or learn each other but are drunk, even if the Alchemist is dead."
+        "name": "Alchemist",
+        "align": "good",
+        "text": "If the Alchemist has the Folie à Duex, ability, the pair do not become evil or learn each other but are drunk, even if the Alchemist is dead.",
+        "id": "alchemist"
       },
       {
-        "id": "hatter",
-        "reason": "If a Minion chooses Folie à Duex they & another player become Evil Outsiders & learn each other."
+        "name": "Hatter",
+        "align": "good",
+        "text": "If a Minion chooses Folie à Duex they & another player become Evil Outsiders & learn each other.",
+        "id": "hatter"
       },
       {
-        "id": "ogre",
-        "reason": "A paired Ogre cannot turn good due to their own ability. Instead, they learn their friends alignment."
+        "name": "Ogre",
+        "align": "good",
+        "text": "A paired Ogre cannot turn good due to their own ability. Instead, they learn their friends alignment.",
+        "id": "ogre"
       },
       {
-        "id": "goon",
-        "reason": "A paired Goon cannot turn good due to their own ability."
+        "name": "Goon",
+        "align": "good",
+        "text": "A paired Goon cannot turn good due to their own ability.",
+        "id": "goon"
       },
       {
-        "id": "plaguedoctor",
-        "reason": "If the Storyteller gains the Folie à Duex ability, an Outsider becomes evil and learns a evil player."
+        "name": "Plague Doctor",
+        "align": "good",
+        "text": "If the Storyteller gains the Folie à Duex ability, an Outsider becomes evil and learns a evil player.",
+        "id": "plaguedoctor"
       },
       {
-        "id": "pithag",
-        "reason": "If the Pit-Hag creates a Folie à Duex, the selected player and the Pit-Hag become Evil Outsiders. Paired Outsiders cannot change characters."
+        "name": "Pit-Hag",
+        "align": "evil",
+        "text": "If the Pit-Hag creates a Folie à Duex, the selected player and the Pit-Hag become Evil Outsiders. Paired Outsiders cannot change characters.",
+        "id": "pithag"
       },
       {
-        "id": "kazali",
-        "reason": "If the Kazali chooses to create a Folie à Deux the Storyteller may create additional Outsiders."
+        "name": "Kazali",
+        "align": "evil",
+        "text": "If the Kazali chooses to create a Folie à Deux the Storyteller may create additional Outsiders.",
+        "id": "kazali"
       }
     ]
   },
@@ -50,53 +96,131 @@
     "slug": "la-revolution",
     "name": "La Révolution",
     "team": "townsfolk",
-    "ability": "If evil wins, all players make a hand signal. If most match & the Demon's doesn't, good wins instead.",
+    "ability": "If evil wins, even if you are dead, all players make a hand signal. If most match & the Demon's doesn't, good wins instead.",
     "art": "larev_char_art.png",
-    "page": "characters/la-revolution.html",
-    "flavor": "For life! For liberty! And for no more bedtime!!!",
-    "firstNight": 0,
-    "otherNight": 0,
-    "reminders": [],
-    "setup": false,
+    "page": "character.html?c=la-revolution",
     "image": "https://botchomebrew.wiki/assets/larev_char_art.png",
+    "creator": "",
+    "appearsIn": "",
+    "quote": "For life! For liberty! And for no more bedtime!!!",
+    "lede": "La Révolution sparks a silent revolt.",
+    "summaryBullets": [
+      "The hand signal can be anything, as long as they match at the end of the game.",
+      "If a Minion matches the hand signal, good still wins. The Demon's must match for Evil to win.",
+      "La Révolution's ability activates even if they are dead. If they are drunk or poisoned, it does not activate.",
+      "Half or more of the hand signals must match. Outsider and Minion hand signals count along with Townsfolk.",
+      "Hand signals must be clear and distinct.",
+      "La Révolution's hand signal does not need to match as long as most still do."
+    ],
+    "howToRun": [
+      "If Evil would win the game, from an ability or game rules, ask for silence and declare that La Révolution is in play.",
+      "On a count of 3, all players may make a hand signal. Ensure that you can see all signals clearly and no players change their signal after the count.",
+      "If half or more signals are clearly the same, check the Demon's hand signal. If it is not the same, declare that the game is over and Good has won."
+    ],
+    "callout": "To ensure that the game is fair for all players, make sure that the hand signals are clearly legible and the same before declaring a good victory.",
+    "examples": [
+      "La Révolution tells a small group that the signal is a peace sign. Later, they show a peace sign to a player they believe is good from across the room. The game ends, and most players show a peace sign. Good wins.",
+      "La Révolution tells a player that the sign is a thumbs down. That player tells another player, who tells the Demon. Evil wins the game and most players show a thumbs down. The Demon also shows a thumbs down. Evil wins.",
+      "Evil wins with La Révolution in play. Some players show an ok sign, and the Demon shows a closed fist. Most signs don't match, and Evil wins."
+    ],
+    "tips": [
+      "You don't need to talk to players to show them the sign of the revolution. A quick flash of the signal from across the room or right before night will communicate it just as well!",
+      "You decide the signal of the revolution. Try to make it something obscure and not easily guessed like a sideways thumb.",
+      "Your ability works just as well if you are alive or dead, so consider bluffing a powerful kill to waste a demon kill. Be wary of poison or drunkenness however, as that will cause your ability to not work.",
+      "Try to bluff a fake signal when you think the Demon is watching. You might be able to trick them into thinking they got lucky and saw the real signal!",
+      "Is nobody acting like they've been Cloaked? They might have figured out what they are quickly! Look on the script for characters that could do that and watch the players that claim to be them."
+    ],
+    "tags": "Wincon, Public action, Saftey Net",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
     "jinxes": []
   },
   {
     "slug": "hemomagus",
     "name": "Hemomagus",
     "team": "demon",
-    "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies.",
+    "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies. [+1 Outsider]",
     "art": "hemo_char_art.png",
-    "page": "characters/hemomagus.html",
-    "flavor": "Town is full. Blood is fuel.",
+    "page": "character.html?c=hemomagus",
+    "image": "https://botchomebrew.wiki/assets/hemo_char_art.png",
+    "creator": "DJ_DJ_DJ",
+    "appearsIn": "Ravenswood Chronicle",
+    "quote": "Town is full. Blood is fuel.",
+    "lede": "The Hemomagus uses the blood of Outsiders to fuel their magic.",
+    "summaryBullets": [
+      "If a Hemomagus attacks a Minion, they swap characters instead of the Minion dying, as long as there is a living Outsider.",
+      "When a swap accours, a living Outsider must die that night. Which Outsider dies is decided by the Storyteller, not the Hemomagus.",
+      "If the Hemomagus chooses a Minion and there are no living Outsiders, the Minion dies as usual.",
+      "Hemomagus swaps can happen as many times as there are living minions.",
+      "Deaths caused by a Hemomagus swap still count as Demon kills."
+    ],
+    "howToRun": [
+      "While setting up the game, take a good character token out and replace it with a blank token. When gathering tokens, replace the blank token with the one you removed in the grimoire and mark them with the [[CLOAKED]] reminder.",
+      "At any time during the game, if the Cloak publicly guesses which player is Cloaked and is incorrect, mark the Cloak with the [[GUESS USED]] reminder. Future guesses by the Cloak have no effect.",
+      "At any time during the game, if the Cloak publicly guesses which player is Cloaked and is correct, the game ends. Declare that the evil team wins."
+    ],
+    "callout": "",
+    "examples": [
+      "The Cloak guesses the Ravenkeeper, who is bluffing the Soldier. They are Cloaked, and Evil wins.",
+      "The Cloak guesses the Preacher. The Preacher is not Cloaked and nothing happens.",
+      "The Saint is Cloaked and thinks they are the Recluse. They are executed, and Evil wins."
+    ],
+    "tips": [
+      "Sit back and observe. Does someone look surprised that a player was executed when they were nominated? They might not have known they are the Virgin.",
+      "Your ability can obscure Outsiders as well. Remember that when choosing who to frame or get executed.",
+      "Instead of looking for who is Cloaked, look for who you're sure isn't. People who claim right away and aren't double claimed probably are not Cloaked.",
+      "Take a very close look at players that claim to be a demon bluff. They may be mistaken for what they are!",
+      "Try to bluff being Cloaked yourself! Play around claiming your character and be shy about sharing info. Good players might assume you are Cloaked!",
+      "Is nobody acting like they've been Cloaked? They might have figured out what they are quickly! Look on the script for characters that could do that and watch the players that claim to be them."
+    ],
+    "tags": "Mobility, Outsider Mod, Setup",
+    "edition": "",
     "firstNight": 0,
+    "firstNightReminder": "",
     "otherNight": 0,
+    "otherNightReminder": "",
     "reminders": [
       "Cloaked",
       "Guess Used"
     ],
+    "remindersGlobal": [],
     "setup": true,
-    "image": "https://botchomebrew.wiki/assets/hemo_char_art.png",
     "jinxes": [
       {
-        "id": "widow",
-        "reason": "If the Widow is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
+        "name": "Widow",
+        "align": "evil",
+        "text": "If the Widow is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night.",
+        "id": "widow"
       },
       {
-        "id": "spy",
-        "reason": "If the Spy is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night."
+        "name": "Spy",
+        "align": "evil",
+        "text": "If the Spy is (or has been) in play, the Cloak & the Cloaked player become poisoned at the start of the 1st night.",
+        "id": "spy"
       },
       {
-        "id": "klutz",
-        "reason": "If the Klutz is Cloaked, they learn they are the Klutz."
+        "name": "Klutz",
+        "align": "good",
+        "text": "If the Klutz is Cloaked, they learn they are the Klutz.",
+        "id": "klutz"
       },
       {
-        "id": "zealot",
-        "reason": "If the Zealot is Cloaked, they learn they are the Zealot."
+        "name": "Zealot",
+        "align": "good",
+        "text": "If the Zealot is Cloaked, they learn they are the Zealot.",
+        "id": "zealot"
       },
       {
-        "id": "butler",
-        "reason": "If the Butler is Cloaked, they learn they are the Butler."
+        "name": "Butler",
+        "align": "good",
+        "text": "If the Butler is Cloaked, they learn they are the Butler.",
+        "id": "butler"
       }
     ]
   },
