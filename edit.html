@@ -46,11 +46,7 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .artthumb{margin-top:8px;max-width:130px;max-height:130px;border:1px solid #cdbfa0;
     border-radius:6px;background:#fffdf8;display:none}
-  .static-warn{position:relative;z-index:5;max-width:1320px;margin:0 auto;
-    padding:0 clamp(12px,3vw,34px) 18px}
-  .static-warn-inner{background:#fff8e6;border:1px solid #d8b86a;border-radius:8px;
-    padding:12px 16px;font-size:.9rem;color:#6b4c00}
-  .static-warn-inner strong{display:block;margin-bottom:4px;color:#5a3a00}
+
   .slug-pill{display:inline-block;font-family:ui-monospace,Consolas,monospace;font-size:.82rem;
     background:#ece3d2;border:1px solid #c9b78f;border-radius:4px;padding:2px 8px;color:#5b4632}
   .loading-msg{position:relative;z-index:5;text-align:center;
@@ -84,15 +80,7 @@
   </header>
 
   <div class="loading-msg" id="loading">Loading character&hellip;</div>
-  <div class="static-warn" id="static-warn" style="display:none">
-    <div class="static-warn-inner">
-      <strong>&#9888; Hand-built page &mdash; limited edit</strong>
-      This character has a hand-built HTML page. Changes here update the
-      <strong>homepage card</strong> and <strong>JSON export box</strong> only.
-      The page&rsquo;s layout, art, and written content won&rsquo;t change.
-      To fully edit a hand-built page, ask Claude to update the HTML directly.
-    </div>
-  </div>
+  
 
   <div class="builder" id="builder" style="display:none">
 
@@ -453,15 +441,11 @@
         update();
       });
 
-      var isStatic = entry.page && !entry.page.startsWith('character.html');
-      if(isStatic) $('static-warn').style.display='block';
-
       $('crumb').innerHTML =
         '<a href="index.html">Characters</a><span class="sep">›</span>'+
         '<a href="'+(entry.page||'#')+'">'+(entry.name||originalSlug)+'</a>'+
         '<span class="sep">›</span><span class="here">Edit</span>';
-      $('edit-sub').textContent = 'Editing: ' + entry.name +
-        (isStatic ? ' (hand-built page — see warning above)' : '');
+      $('edit-sub').textContent = 'Editing: ' + entry.name;
       document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
       update();
     }
