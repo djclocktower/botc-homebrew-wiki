@@ -256,7 +256,12 @@
     "quote": "I fear no lion, no Roman, nor any beast  from the pit. For my God is awesome,  and he is with me even now.",
     "appearsIn": "Ravenswood Chronicles",
     "tags": "",
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [
+      "Test bluffing tip 1",
+      "Test bluffing tip 2"
+    ],
+    "fighting": []
   },
   {
     "slug": "pozzo",
