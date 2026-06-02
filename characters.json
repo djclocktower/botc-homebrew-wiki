@@ -394,8 +394,10 @@
     "setup": false,
     "jinxes": [],
     "bluffing": [
-      "Claim you targeted a specific good player and wait for them to confirm — if they don't, suggest they're acting suspiciously.",
-      "Coordinate with a teammate: they claim to have received the notification while you claim to be the Perfumer."
-    ]
+      "If you are a Minion not afraid of execution, claim you chose a specific player and accuse them of being evil for staying quiet about the notification.",
+      "Coordinate with an evil teammate: one claims to be the Perfumer, the other claims to have received the notification — corroborating each other simultaneously.",
+      "If you have a Goblin teammate, have them announce first that they learned the Perfumer is in play, then claim to be the Perfumer and say you named a Demon — steering town toward executing the Goblin."
+    ],
+    "fighting": []
   }
 ]
