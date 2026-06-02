@@ -81,10 +81,10 @@
       (d.lede ? '<p class="lede">' + esc(d.lede) + '</p>' : '') +
       (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' : '');
 
-    var howCol =
-      '<div class="gen-sech-wrap"><h2 class="gen-sech">How to Run</h2></div>' +
-      paras.map(function (p) { return '<p>' + tok(p) + '</p>'; }).join('') +
+    var howColBody = paras.map(function (p) { return '<p>' + tok(p) + '</p>'; }).join('') +
       (d.callout && d.callout.trim() ? '<div class="callout">' + tok(d.callout) + '</div>' : '');
+    var howCol = howColBody ?
+      '<div class="gen-sech-wrap"><h2 class="gen-sech">How to Run</h2></div>' + howColBody : '';
 
     var examplesBlock = examples.length ?
       ('<div class="examples"><div class="gen-sech-wrap"><h2 class="gen-sech">Examples</h2></div>' +
@@ -141,7 +141,7 @@
     return '<h1 class="gen-title">' + esc(d.name || 'Unnamed') + '</h1>' +
       '<div class="char-layout">' +
       '<section class="char-parchment card">' +
-      '<div class="cols"><div>' + summaryCol + '</div><div>' + howCol + '</div></div>' +
+      (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
       examplesBlock + tipsBlock +
       '</section>' +
       infoCardFinal + sideBar +
