@@ -474,3 +474,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: var(--maroon); border-radius: 20px;
   padding: 1px 8px; min-width: 22px; text-align: center;
 }
+
+/* ── Author link (in character info card) ────────────────────────── */
+.author-link {
+  color: var(--good-name);
+  text-decoration: none;
+}
+.author-link:hover { text-decoration: underline; }
