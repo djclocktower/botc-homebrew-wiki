@@ -214,13 +214,13 @@
     "setup": false,
     "jinxes": [
       {
-        "name": "bountyhunter",
+        "name": "Bounty Hunter",
         "align": "good",
         "text": "If the Herbalist gains the Bounty Hunter ability, a Townsfolk might turn evil."
       },
       {
-        "name": "boffin",
-        "align": "good",
+        "name": "Boffin",
+        "align": "evil",
         "text": "If the Herbalist gains the Boffin ability, the Herbalist does not learn what ability the Demon has."
       }
     ]
