@@ -324,8 +324,9 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase; text-decoration: none;
   color: rgba(236,225,200,.5); border: 1px solid rgba(236,225,200,.2);
-  border-radius: 4px; padding: 2px 8px; margin-left: 10px;
+  border-radius: 4px; padding: 2px 8px; margin-left: 12px;
   transition: color .15s, border-color .15s; white-space: nowrap;
+  vertical-align: middle;
 }
 .edit-link:hover { color: var(--parch); border-color: rgba(236,225,200,.55); }
 
