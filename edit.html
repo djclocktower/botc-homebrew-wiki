@@ -45,11 +45,6 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .artthumb{margin-top:8px;max-width:130px;max-height:130px;border:1px solid #cdbfa0;
     border-radius:6px;background:#fffdf8;display:none}
-  .token-box{background:#fbf2e2;border:1px solid #d8c08a;border-radius:8px;padding:13px 15px;margin-bottom:18px}
-  .token-box .warn{font-size:.8rem;color:#8a5a1a;margin:6px 0 0;line-height:1.4}
-  details.help{margin-top:8px;font-size:.84rem;color:#5b4632}
-  details.help summary{cursor:pointer;font-weight:600}
-  details.help ol{margin:8px 0 0;padding-left:20px;line-height:1.5}
   .static-warn{position:relative;z-index:5;max-width:1320px;margin:0 auto;
     padding:0 clamp(12px,3vw,34px) 18px}
   .static-warn-inner{background:#fff8e6;border:1px solid #d8b86a;border-radius:8px;
@@ -103,23 +98,6 @@
     <div class="formcard">
       <h2>Edit Character</h2>
       <p class="sub" id="edit-sub">Loading&hellip;</p>
-
-      <!-- token -->
-      <div class="token-box">
-        <div class="fld" style="margin:0">
-          <label for="token">GitHub token <span class="hint">(stored only in this browser)</span></label>
-          <input type="text" id="token" placeholder="github_pat_&hellip;" autocomplete="off">
-        </div>
-        <p class="warn">&#9888; This token can write to your repo &mdash; treat it like a password.</p>
-        <details class="help">
-          <summary>How do I get a token?</summary>
-          <ol>
-            <li>GitHub &rarr; <b>Settings</b> &rarr; <b>Developer settings</b></li>
-            <li><b>Fine-grained tokens</b> &rarr; <b>Generate new token</b></li>
-            <li>Repository access: <code>botc-homebrew-wiki</code> &rarr; Contents: <b>Read and write</b></li>
-          </ol>
-        </details>
-      </div>
 
       <!-- import from JSON (optional) -->
       <fieldset class="import">
@@ -262,24 +240,17 @@
 
   <script src="assets/render.js"></script>
   <script>
-    var OWNER = 'djclocktower', REPO = 'botc-homebrew-wiki', BRANCH = 'main';
+    // ── Worker URL — only thing that changed from the old version ──
+    var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
+
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
     var $ = function(id){ return document.getElementById(id); };
 
-    // the original slug from the URL — used as the upsert key throughout
-    var originalSlug = new URLSearchParams(location.search).get('c') || '';
-    // the original entry from characters.json (preserved for art/page fields)
+    var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
-    // has the user uploaded new art?
-    var artChanged = false;
-    var artDataURL = null;
-
-    // restore token
-    try { var t = localStorage.getItem('gh_token'); if(t) $('token').value = t; } catch(e){}
-    $('token').addEventListener('input', function(){
-      try{ localStorage.setItem('gh_token', $('token').value.trim()); }catch(e){}
-    });
+    var artChanged    = false;
+    var artDataURL    = null;
 
     // ── jinx rows ──
     function addJinx(name, align, text){
@@ -412,7 +383,7 @@
           msg.className='ok'; msg.textContent='Imported (icon loaded).'; update();
         }).catch(function(){
           artDataURL=null; artChanged=false;
-          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a> (host blocked auto-load — upload manually if needed)';
+          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a> (upload manually if needed)';
           msg.className='ok'; msg.textContent='Imported. Upload art manually if you want to change the icon.'; update();
         });
       } else {
@@ -465,68 +436,55 @@
       $('setup').checked         = !!entry.setup;
       $('slug-display').textContent = originalSlug;
 
-      // jinxes
       document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
       (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
       if(!(entry.jinxes||[]).length) addJinx();
 
-      // load existing art thumbnail
       var artURL = SITE_ROOT + 'assets/' + entry.art;
       $('arturl').textContent = 'Current: ' + entry.art;
       loadImageToCanvas(artURL, true).then(function(url){
-        artDataURL = url; artChanged = false; // loaded but not "changed" by user
+        artDataURL = url; artChanged = false;
         var th=$('artthumb'); th.src=url; th.style.display='block';
         $('arturl').textContent = '';
         update();
       }).catch(function(){
-        // CORS or load failed — just show the path, art not required
         artDataURL = null;
         update();
       });
 
-      // static page warning
       var isStatic = entry.page && !entry.page.startsWith('character.html');
       if(isStatic) $('static-warn').style.display='block';
 
-      // update breadcrumb + sub text
       $('crumb').innerHTML =
         '<a href="index.html">Characters</a><span class="sep">›</span>'+
-        '<a href="'+entry.page+'">'+(entry.name||originalSlug)+'</a>'+
+        '<a href="'+(entry.page||'#')+'">'+(entry.name||originalSlug)+'</a>'+
         '<span class="sep">›</span><span class="here">Edit</span>';
       $('edit-sub').textContent = 'Editing: ' + entry.name +
         (isStatic ? ' (hand-built page — see warning above)' : '');
-
       document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
       update();
     }
 
-    // ── GitHub API ──
-    function utf8b64(str){ return btoa(unescape(encodeURIComponent(str))); }
-    function b64utf8(b64){ return decodeURIComponent(escape(atob(b64.replace(/\n/g,'')))); }
-    function hdrs(){ return {'Authorization':'Bearer '+$('token').value.trim(),
-      'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}; }
-    function apiURL(p){ return 'https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+p; }
-    function ghGet(p){
-      return fetch(apiURL(p)+'?ref='+BRANCH+'&_='+Date.now(),{headers:hdrs()})
-        .then(function(r){
-          if(r.status===404) return null;
-          if(!r.ok) return r.json().then(function(j){ throw new Error('GET '+p+': '+r.status+' '+(j.message||'')); });
-          return r.json();
-        });
+    // ── Worker API helpers ──
+    function workerGet(path){
+      return fetch(WORKER_URL + '?path=' + encodeURIComponent(path))
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(j && j.error) throw new Error(j.error); return j; });
     }
-    function ghPut(p,b64,msg,sha){
-      var body={message:msg,content:b64,branch:BRANCH}; if(sha) body.sha=sha;
-      return fetch(apiURL(p),{method:'PUT',headers:hdrs(),body:JSON.stringify(body)})
-        .then(function(r){ if(!r.ok) return r.json().then(function(j){ throw new Error('PUT '+p+': '+r.status+' '+(j.message||'')); }); return r.json(); });
+    function workerPut(path, contentB64, message, sha){
+      return fetch(WORKER_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: path, content: contentB64, message: message, sha: sha || undefined })
+      }).then(function(r){ return r.json(); })
+        .then(function(j){ if(j && j.error) throw new Error(j.error); return j; });
     }
     function setStatus(cls,html){ var s=$('status'); s.className=cls; s.innerHTML=html; }
 
     // ── save ──
     $('save').addEventListener('click', function(){
       var d = gather();
-      var token = $('token').value.trim();
-      if(!token) return setStatus('err','Paste your GitHub token first.');
-      if(!d.name) return setStatus('err','A character name is required.');
+      if(!d.name)    return setStatus('err','A character name is required.');
       if(!d.ability) return setStatus('err','An ability line is required.');
 
       $('save').disabled = true;
@@ -536,25 +494,28 @@
       if(artChanged && artDataURL){
         setStatus('work','Saving&hellip; uploading new art');
         var artPath = 'assets/art/'+originalSlug+'.png';
-        var artB64 = artDataURL.split(',')[1];
+        var artB64  = artDataURL.split(',')[1];
         p = p.then(function(){
-          return ghGet(artPath).then(function(ex){
-            return ghPut(artPath, artB64, 'Update art for '+d.name, ex&&ex.sha);
+          return workerGet(artPath).then(function(ex){
+            return workerPut(artPath, artB64, 'Update art for '+d.name, ex && ex.sha);
           });
         });
       }
 
       p = p.then(function(){
         setStatus('work','Saving&hellip; updating character list');
-        return ghGet('characters.json');
+        return workerGet('characters.json');
       }).then(function(file){
         var list=[], sha=null;
-        if(file){ sha=file.sha; try{ list=JSON.parse(b64utf8(file.content)); }catch(e){ list=[]; } }
+        if(file){
+          sha = file.sha;
+          try{ list = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g,''))))); }
+          catch(e){ list=[]; }
+        }
 
         var i = list.findIndex(function(c){ return c.slug===originalSlug; });
         var base = (i>=0) ? list[i] : (originalEntry||{});
 
-        // build updated entry — preserve slug, page, and art/image unless art was changed
         var entry = Object.assign({}, base, {
           slug: originalSlug,
           name: d.name, team: d.team, ability: d.ability,
@@ -572,16 +533,14 @@
         }
 
         if(i>=0) list[i]=entry; else list.push(entry);
-        return ghPut('characters.json', utf8b64(JSON.stringify(list,null,2)),
-                     'Edit character: '+d.name, sha);
+        var jsonB64 = btoa(unescape(encodeURIComponent(JSON.stringify(list,null,2))));
+        return workerPut('characters.json', jsonB64, 'Edit character: '+d.name, sha);
       }).then(function(){
         var url = SITE_ROOT + (originalEntry&&originalEntry.page ? originalEntry.page : 'character.html?c='+originalSlug);
         setStatus('ok','&#10003; Saved! Live in ~1 minute. <a href="'+url+'" target="_blank">View character &rarr;</a>');
         $('save').disabled = false;
       }).catch(function(err){
-        setStatus('err','&#10007; '+err.message+
-          ((err.message.indexOf('401')>-1||err.message.indexOf('403')>-1)
-            ?' &mdash; check the token has Contents: Read and write.':''));
+        setStatus('err','&#10007; '+err.message);
         $('save').disabled = false;
       });
     });
