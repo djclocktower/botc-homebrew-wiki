@@ -45,8 +45,6 @@
   .btn:disabled { opacity:.5; cursor:not-allowed; }
   .artthumb { margin-top:8px; max-width:130px; max-height:130px; border:1px solid #cdbfa0;
     border-radius:6px; background:#fffdf8; display:none; }
-  .token-box { background:#fbf2e2; border:1px solid #d8c08a; border-radius:8px; padding:13px 15px; margin-bottom:18px; }
-  .token-box .warn { font-size:.8rem; color:#8a5a1a; margin:6px 0 0; line-height:1.4; }
   details.help { margin-top:8px; font-size:.84rem; color:#5b4632; }
   details.help summary { cursor:pointer; font-weight:600; }
   details.help ol { margin:8px 0 0; padding-left:20px; line-height:1.5; }
@@ -81,24 +79,6 @@
       <h2>Create a Character</h2>
       <p class="sub">Fill this out, watch the live preview, then publish straight to the wiki.</p>
 
-      <!-- token -->
-      <div class="token-box">
-        <div class="fld" style="margin:0">
-          <label for="token">GitHub token <span class="hint">(stored only in this browser)</span></label>
-          <input type="text" id="token" placeholder="github_pat_&hellip;" autocomplete="off">
-        </div>
-        <p class="warn">&#9888; This token can write to your repo &mdash; treat it like a password. Use it only on your own device.</p>
-        <details class="help">
-          <summary>How do I get a token?</summary>
-          <ol>
-            <li>GitHub &rarr; <b>Settings</b> &rarr; <b>Developer settings</b></li>
-            <li><b>Personal access tokens</b> &rarr; <b>Fine-grained tokens</b> &rarr; <b>Generate new token</b></li>
-            <li>Repository access &rarr; <b>Only select repositories</b> &rarr; <code>botc-homebrew-wiki</code></li>
-            <li>Permissions &rarr; <b>Contents</b> &rarr; <b>Read and write</b>, then generate &amp; paste above.</li>
-          </ol>
-        </details>
-      </div>
-
       <!-- import from JSON -->
       <fieldset class="import">
         <legend>Import from JSON (optional)</legend>
@@ -127,7 +107,7 @@
         </div>
         <div class="fld">
           <label for="creator">Creator</label>
-          <input type="text" id="creator" placeholder="DJ_DJ_DJ">
+          <input type="text" id="creator" placeholder="Your name or handle">
         </div>
       </div>
       <div class="fld">
@@ -237,19 +217,16 @@
 
   <script src="assets/render.js"></script>
   <script>
-    var OWNER = 'djclocktower', REPO = 'botc-homebrew-wiki', BRANCH = 'main';
+    // ── Worker URL — the only thing that changed from the old version ──
+    var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
+
     var SITE_ROOT = new URL('.', location.href).href;
-    var ART_BASE = 'https://botchomebrew.wiki/assets/art/';
-    var $ = function (id) { return document.getElementById(id); };
-    var artDataURL = null;     // committed PNG (from upload or CORS-loaded import)
-    var importedImage = null;  // original image URL from imported JSON
+    var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
+    var $         = function (id) { return document.getElementById(id); };
+    var artDataURL   = null;
+    var importedImage = null;
 
-    try { var t = localStorage.getItem('gh_token'); if (t) $('token').value = t; } catch (e) {}
-    $('token').addEventListener('input', function () {
-      try { localStorage.setItem('gh_token', $('token').value.trim()); } catch (e) {}
-    });
-
-    // ── jinx rows ──
+    // ── jinx rows ──────────────────────────────────────────────────
     function addJinx(name, align, text) {
       var row = document.createElement('div');
       row.className = 'jinx-row';
@@ -259,15 +236,17 @@
         '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
-      if (name) row.querySelector('.jx-name').value = name;
+      if (name)  row.querySelector('.jx-name').value  = name;
       if (align) row.querySelector('.jx-align').value = align;
-      if (text) row.querySelector('.jx-text').value = text;
+      if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
       row.querySelectorAll('input,select,textarea').forEach(function (el) { el.addEventListener('input', update); });
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
-    function lines(id) { return $(id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); }
+    function lines(id) {
+      return $(id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    }
 
     function gather() {
       var jinxes = [];
@@ -308,7 +287,7 @@
         .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     }
 
-    // ── live preview (includes JSON box + toggle script) ──
+    // ── live preview ───────────────────────────────────────────────
     var PREVIEW_SCRIPT =
       '<scr' + 'ipt>document.addEventListener("click",function(e){' +
       'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
@@ -316,6 +295,7 @@
       'var c=e.target.closest&&e.target.closest(".json-copy");' +
       'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
       '});</scr' + 'ipt>';
+
     function update() {
       var d = gather();
       var inner = window.renderCharacter(d, artDataURL || importedImage || '');
@@ -338,23 +318,27 @@
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
-    // ── art handling (resize to max 600px, PNG) ──
+    // ── art handling ───────────────────────────────────────────────
     function loadImageToCanvas(src, crossOrigin) {
       return new Promise(function (resolve, reject) {
         var img = new Image();
         if (crossOrigin) img.crossOrigin = 'anonymous';
         img.onload = function () {
           var max = 600, w = img.width, h = img.height;
-          if (w > max || h > max) { if (w >= h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+          if (w > max || h > max) {
+            if (w >= h) { h = Math.round(h * max / w); w = max; }
+            else        { w = Math.round(w * max / h); h = max; }
+          }
           var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
           cv.getContext('2d').drawImage(img, 0, 0, w, h);
           try { resolve(cv.toDataURL('image/png')); }
-          catch (e) { reject(e); } // tainted canvas (CORS)
+          catch (e) { reject(e); }
         };
         img.onerror = function () { reject(new Error('load failed')); };
         img.src = src;
       });
     }
+
     $('art').addEventListener('change', function (e) {
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
@@ -368,45 +352,48 @@
       reader.readAsDataURL(file);
     });
 
-    // ── GitHub API ──
-    function utf8b64(str) { return btoa(unescape(encodeURIComponent(str))); }
-    function b64utf8(b64) { return decodeURIComponent(escape(atob(b64.replace(/\n/g, '')))); }
-    function headers() { return { 'Authorization': 'Bearer ' + $('token').value.trim(),
-      'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; }
-    function apiURL(p) { return 'https://api.github.com/repos/' + OWNER + '/' + REPO + '/contents/' + p; }
-    function ghGet(p) {
-      return fetch(apiURL(p) + '?ref=' + BRANCH + '&_=' + Date.now(), { headers: headers() })
-        .then(function (r) { if (r.status === 404) return null;
-          if (!r.ok) return r.json().then(function (j) { throw new Error('GET ' + p + ': ' + r.status + ' ' + (j.message || '')); });
-          return r.json(); });
+    // ── Worker API helpers (replaces direct GitHub API calls) ──────
+    function workerGet(path) {
+      return fetch(WORKER_URL + '?path=' + encodeURIComponent(path))
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.error) throw new Error(j.error);
+          return j; // null if 404
+        });
     }
-    function ghPut(p, b64, msg, sha) {
-      var body = { message: msg, content: b64, branch: BRANCH }; if (sha) body.sha = sha;
-      return fetch(apiURL(p), { method: 'PUT', headers: headers(), body: JSON.stringify(body) })
-        .then(function (r) { if (!r.ok) return r.json().then(function (j) { throw new Error('PUT ' + p + ': ' + r.status + ' ' + (j.message || '')); }); return r.json(); });
+
+    function workerPut(path, contentB64, message, sha) {
+      return fetch(WORKER_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: path, content: contentB64, message: message, sha: sha || undefined })
+      }).then(function (r) { return r.json(); })
+        .then(function (j) {
+          if (j && j.error) throw new Error(j.error);
+          return j;
+        });
     }
+
     function setStatus(cls, html) { var s = $('status'); s.className = cls; s.innerHTML = html; }
 
-    // ── import from JSON ──
+    // ── import from JSON ───────────────────────────────────────────
     function applyImport(obj) {
       function set(id, v) { if (v != null) $(id).value = v; }
-      set('name', obj.name || '');
+      set('name',    obj.name    || '');
       if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) $('team').value = obj.team;
       set('ability', obj.ability || '');
-      set('quote', (obj.flavor || '').replace(/^["']|["']$/g, ''));
+      set('quote',   (obj.flavor || '').replace(/^["']|["']$/g, ''));
       set('edition', obj.edition || '');
       set('firstNight', obj.firstNight != null ? obj.firstNight : 0);
       set('otherNight', obj.otherNight != null ? obj.otherNight : 0);
       set('fnReminder', obj.firstNightReminder || '');
       set('onReminder', obj.otherNightReminder || '');
-      set('reminders', (obj.reminders || []).join('\n'));
+      set('reminders',       (obj.reminders       || []).join('\n'));
       set('remindersGlobal', (obj.remindersGlobal || []).join('\n'));
       $('setup').checked = !!obj.setup;
-      // jinxes
       document.querySelectorAll('.jinx-row').forEach(function (r) { r.remove(); });
       (obj.jinxes || []).forEach(function (j) { addJinx(j.id || '', 'good', j.reason || ''); });
       if (!(obj.jinxes || []).length) addJinx();
-      // image
       var imgUrl = Array.isArray(obj.image) ? obj.image[0] : obj.image;
       var msg = $('importmsg');
       if (imgUrl) {
@@ -425,6 +412,7 @@
       }
       update();
     }
+
     $('importjson').addEventListener('click', function () {
       var raw = $('jsonpaste').value.trim();
       var go = function (text) {
@@ -447,56 +435,71 @@
       var fr = new FileReader(); fr.onload = function (ev) { go(ev.target.result); }; fr.readAsText(f);
     });
 
-    // ── publish ──
+    // ── publish ────────────────────────────────────────────────────
     $('publish').addEventListener('click', function () {
       var d = gather();
-      var token = $('token').value.trim();
-      if (!token) return setStatus('err', 'Paste your GitHub token first.');
-      if (!d.name) return setStatus('err', 'A character name is required.');
+      if (!d.name)    return setStatus('err', 'A character name is required.');
       if (!d.ability) return setStatus('err', 'An ability line is required.');
       if (!artDataURL) return setStatus('err', 'Please upload character art (or import a JSON whose icon can be loaded).');
 
-      var slug = slugify(d.name);
+      var slug    = slugify(d.name);
       var artPath = 'assets/art/' + slug + '.png';
-      d.art = 'art/' + slug + '.png';
-      d.page = 'character.html?c=' + slug;
-      d.image = ART_BASE + slug + '.png';        // self-hosted icon URL for the JSON
+      d.art   = 'art/' + slug + '.png';
+      d.page  = 'character.html?c=' + slug;
+      d.image = ART_BASE + slug + '.png';
 
       $('publish').disabled = true;
       setStatus('work', 'Publishing&hellip; uploading art');
+
       var artB64 = artDataURL.split(',')[1];
 
-      ghGet(artPath).then(function (ex) {
-        return ghPut(artPath, artB64, 'Add art for ' + d.name, ex && ex.sha);
-      }).then(function () {
-        setStatus('work', 'Publishing&hellip; updating character list');
-        return ghGet('characters.json');
-      }).then(function (file) {
-        var list = [], sha = null;
-        if (file) { sha = file.sha; try { list = JSON.parse(b64utf8(file.content)); } catch (e) { list = []; } }
-        var entry = {
-          slug: slug, name: d.name, team: d.team, ability: d.ability,
-          art: d.art, page: d.page, image: d.image, creator: d.creator,
-          lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
-          callout: d.callout, examples: d.examples, tips: d.tips, quote: d.quote,
-          appearsIn: d.appearsIn, tags: d.tags, edition: d.edition,
-          firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
-          otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
-          reminders: d.reminders, remindersGlobal: d.remindersGlobal,
-          setup: d.setup, jinxes: d.jinxes
-        };
-        var i = list.findIndex(function (c) { return c.slug === slug; });
-        if (i >= 0) list[i] = entry; else list.push(entry);
-        return ghPut('characters.json', utf8b64(JSON.stringify(list, null, 2)),
-                     'Add/update character: ' + d.name, sha);
-      }).then(function () {
-        var url = SITE_ROOT + 'character.html?c=' + slug;
-        setStatus('ok', '&#10003; Published! Live in ~1 minute at <a href="' + url + '" target="_blank">' + url + '</a><br>(GitHub Pages needs a moment to rebuild &mdash; refresh if it 404s at first.)');
-        $('publish').disabled = false;
-      }).catch(function (err) {
-        setStatus('err', '&#10007; ' + err.message + ((err.message.indexOf('401') > -1 || err.message.indexOf('403') > -1) ? ' &mdash; check the token has Contents: Read and write on this repo.' : ''));
-        $('publish').disabled = false;
-      });
+      // Step 1: upload art
+      workerGet(artPath)
+        .then(function (ex) {
+          return workerPut(artPath, artB64, 'Add art for ' + d.name, ex && ex.sha);
+        })
+        // Step 2: update characters.json
+        .then(function () {
+          setStatus('work', 'Publishing&hellip; updating character list');
+          return workerGet('characters.json');
+        })
+        .then(function (file) {
+          var list = [], sha = null;
+          if (file) {
+            sha = file.sha;
+            try {
+              var raw = atob(file.content.replace(/\n/g, ''));
+              list = JSON.parse(decodeURIComponent(escape(raw)));
+            } catch (e) { list = []; }
+          }
+          var entry = {
+            slug: slug, name: d.name, team: d.team, ability: d.ability,
+            art: d.art, page: d.page, image: d.image, creator: d.creator,
+            lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
+            callout: d.callout, examples: d.examples, tips: d.tips, quote: d.quote,
+            appearsIn: d.appearsIn, tags: d.tags, edition: d.edition,
+            firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
+            otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
+            reminders: d.reminders, remindersGlobal: d.remindersGlobal,
+            setup: d.setup, jinxes: d.jinxes
+          };
+          var i = list.findIndex(function (c) { return c.slug === slug; });
+          if (i >= 0) list[i] = entry; else list.push(entry);
+
+          // UTF-8 safe base64 encode
+          var jsonStr  = JSON.stringify(list, null, 2);
+          var jsonB64  = btoa(unescape(encodeURIComponent(jsonStr)));
+          return workerPut('characters.json', jsonB64, 'Add/update character: ' + d.name, sha);
+        })
+        .then(function () {
+          var url = SITE_ROOT + 'character.html?c=' + slug;
+          setStatus('ok', '&#10003; Published! Live in ~1 minute at <a href="' + url + '" target="_blank">' + url + '</a><br>(GitHub Pages needs ~60 seconds to rebuild &mdash; refresh if it 404s at first.)');
+          $('publish').disabled = false;
+        })
+        .catch(function (err) {
+          setStatus('err', '&#10007; ' + err.message);
+          $('publish').disabled = false;
+        });
     });
 
     addJinx();
