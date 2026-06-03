@@ -401,5 +401,44 @@
       "If you have a Goblin teammate, have them announce first that they learned the Perfumer is in play, then claim to be the Perfumer and say you named a Demon — steering town toward executing the Goblin."
     ],
     "fighting": []
+  },
+  {
+    "slug": "jackal",
+    "name": "Jackal",
+    "team": "townsfolk",
+    "ability": "Each day, you may publicly choose a player: they die tonight unless another player objects.",
+    "art": "art/jackal.png",
+    "page": "character.html?c=jackal",
+    "image": "https://botchomebrew.wiki/assets/art/jackal.png",
+    "creator": "DJ_DJ_DJ",
+    "lede": "The Jackal picks off loners.",
+    "summaryBullets": [
+      "Each day, the Jackal may publicly choose a player. If no other players object to the kill, that player dies that night.",
+      "The Jackal’s choice must be public, and all players must be aware of it. If the Jackal attempts to hide their choice, it will not count."
+    ],
+    "howToRun": [
+      "Each day, if the Jackal publicly claims to be the Jackal and chooses a player, repeat their choice back to the group and have a moment for players to voice their objections.",
+      "If none object, mark the player they chose with the “HUNTED” reminder.",
+      "That night, if a player is marked with the “HUNTED” reminder, they die."
+    ],
+    "callout": "Optional rule: the Storyteller may limit the  number of players that make a Jackal claim   to three players per day. Only use this rule if so many players are bluffing Jackal that  the game slows down and ceases to be fun.",
+    "examples": [],
+    "tips": [],
+    "bluffing": [],
+    "fighting": [],
+    "quote": "You see, Brother Lion, if I should  get lost or killed the world would  not miss me, but you, Brother  Lion—you——!”",
+    "appearsIn": "Ravenswood Chronicle",
+    "tags": "Death mod, Public action",
+    "edition": "Ravenswood Chronicle",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "HUNTED"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
