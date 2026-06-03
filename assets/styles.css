@@ -68,8 +68,8 @@ body::after {
 }
 /* brand-text removed — replaced by headertext.png image */
 .brand-header-text {
-  height: 42px; width: auto; display: block;
-  filter: drop-shadow(0 1px 4px rgba(0,0,0,.5));
+  height: 44px; width: auto; display: block;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
 }
 .crumb { font-size: .8rem; letter-spacing: .04em; color: rgba(236,225,200,.6); white-space: nowrap; }
 .crumb a { color: rgba(236,225,200,.6); text-decoration: none; }
