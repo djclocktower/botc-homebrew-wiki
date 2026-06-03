@@ -51,6 +51,7 @@
   details.help ol { margin:8px 0 0; padding-left:20px; line-height:1.5; }
   .ck { display:flex; align-items:center; gap:8px; }
   .ck input { width:auto; }
+  #ability-count { font-size:.78rem; color:#8a7a63; float:right; margin-top:3px; }
   .preview-pane { position:sticky; top:74px; }
   .preview-label { font-family:'Cinzel',serif; color:var(--parch); letter-spacing:.06em;
     font-size:1rem; margin:0 0 10px; opacity:.85; }
@@ -118,6 +119,7 @@
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(bold line at top of Summary; also the JSON ability)</span></label>
         <textarea id="ability" placeholder="Each night, choose a player: &hellip;"></textarea>
+        <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
         <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
@@ -533,6 +535,14 @@
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
     updatePerspectiveFields();
+    // ── ability character counter ──
+    (function() {
+      var ta = $('ability'), ct = document.getElementById('ability-count');
+      if (!ta || !ct) return;
+      function update() { var n = ta.value.length; ct.textContent = n + ' character' + (n === 1 ? '' : 's'); }
+      ta.addEventListener('input', update);
+      update();
+    })();
 
     // ── auto-expanding textareas ──
     function autoExpand(el) {
