@@ -433,6 +433,8 @@
       $('remindersGlobal').value = (entry.remindersGlobal || []).join('\n');
       $('setup').checked         = !!entry.setup;
       $('slug-display').textContent = originalSlug;
+      // expand textareas to fit loaded content
+      document.querySelectorAll('.fld textarea').forEach(function(ta) { autoExpand(ta); });
 
       document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
       (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
@@ -473,6 +475,17 @@
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
+
+    // ── auto-expanding textareas ──
+    function autoExpand(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+    document.querySelectorAll('.fld textarea').forEach(function(ta) {
+      ta.style.overflowY = 'hidden';
+      ta.addEventListener('input', function() { autoExpand(ta); });
+      autoExpand(ta);
+    });
 
     // ── Worker API helpers ──
     function workerGet(path){
