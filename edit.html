@@ -52,6 +52,7 @@
     color:rgba(236,225,200,.7);padding:60px 20px;font-size:1.1rem}
   .ck{display:flex;align-items:center;gap:8px}
   .ck input{width:auto}
+  #ability-count { font-size:.78rem; color:#8a7a63; float:right; margin-top:3px; }
   .preview-pane{position:sticky;top:74px}
   .preview-label{font-family:'Cinzel',serif;color:var(--parch);letter-spacing:.06em;
     font-size:1rem;margin:0 0 10px;opacity:.85}
@@ -124,6 +125,7 @@
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(also the JSON ability)</span></label>
         <textarea id="ability"></textarea>
+        <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
         <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
@@ -413,6 +415,7 @@
       $('team').value            = entry.team || 'townsfolk';
       $('creator').value         = entry.creator || '';
       $('ability').value         = entry.ability || '';
+      (function(){ var ta=$('ability'),ct=document.getElementById('ability-count'); if(ta&&ct){ var n=ta.value.length; ct.textContent=n+' character'+(n===1?'':'s'); } })();
       $('lede').value            = entry.lede || '';
       $('bullets').value         = (entry.summaryBullets || []).join('\n');
       $('howto').value           = (entry.howToRun || []).join('\n');
@@ -475,6 +478,14 @@
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
+    // ── ability character counter ──
+    (function() {
+      var ta = $('ability'), ct = document.getElementById('ability-count');
+      if (!ta || !ct) return;
+      function update() { var n = ta.value.length; ct.textContent = n + ' character' + (n === 1 ? '' : 's'); }
+      ta.addEventListener('input', update);
+      update();
+    })();
 
     // ── auto-expanding textareas ──
     function autoExpand(el) {
