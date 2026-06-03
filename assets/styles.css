@@ -1,5 +1,13 @@
 /* ─── Google Fonts ─────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,800;1,400&family=Oswald:wght@500;600;700&family=EB+Garamond:ital,wght@1,400;1,500&display=swap');
+/* Dumbledor 2 - self-hosted, licensed for free personal & commercial use */
+@font-face {
+  font-family: 'Dumbledor2';
+  src: url('fonts/dumbledor2.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,800;1,400&family=Oswald:wght@500;600;700&family=EB+Garamond:ital,wght@1,400;1,500&display=swap');
 
 /* ─── Variables ────────────────────────────────────────────── */
 :root {
@@ -173,7 +181,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-align: center;
 }
 .home-hero h1 {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: clamp(2rem, 6vw, 3.8rem);
   color: var(--parch); letter-spacing: .06em;
   margin: 0 0 .3em;
@@ -190,7 +198,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .type-section { margin-bottom: 48px; }
 .type-header {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   letter-spacing: .14em; text-transform: uppercase;
   color: var(--parch); margin: 0 0 4px;
@@ -209,7 +217,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .char-card-thumb { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
 .char-card-info { flex: 1; min-width: 0; }
 .char-card-name {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: 1.05rem; color: var(--maroon);
   margin: 0 0 3px; line-height: 1.15;
 }
@@ -251,10 +259,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 
 /* ════════════════════════════════════════════════════════════════
-   GENERATED CHARACTER PAGES (form-created, Cinzel text headings)
+   GENERATED CHARACTER PAGES (form-created, Dumbledor2 text headings)
    ════════════════════════════════════════════════════════════════ */
 .gen-title {
-  font-family: 'Cinzel', serif; font-weight: 700; color: var(--parch);
+  font-family: 'Dumbledor2', serif; font-weight: 700; color: var(--parch);
   font-size: clamp(2.4rem, 7vw, 5rem); letter-spacing: .04em; line-height: 1;
   margin: 6px 0 clamp(14px, 2.5vw, 26px); text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
@@ -264,7 +272,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin: 8px auto 0; background: linear-gradient(90deg, transparent, var(--rule), transparent);
 }
 .gen-sech {
-  font-family: 'Cinzel', serif; font-weight: 700; color: var(--maroon);
+  font-family: 'Dumbledor2', serif; font-weight: 700; color: var(--maroon);
   letter-spacing: .08em; text-transform: uppercase;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem); margin: 0;
 }
@@ -273,7 +281,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* homepage create button */
 .create-btn {
   display: inline-block; margin-top: 20px;
-  font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: .06em;
+  font-family: 'Dumbledor2', serif; font-weight: 600; letter-spacing: .06em;
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
   padding: 11px 28px; border-radius: 8px; text-decoration: none;
   box-shadow: 0 6px 16px rgba(40,12,30,.4); transition: transform .2s ease;
@@ -300,7 +308,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .json-box.open .json-bar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .json-bar-toggle {
-  font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: .08em;
+  font-family: 'Dumbledor2', serif; font-weight: 700; letter-spacing: .08em;
   color: var(--maroon); cursor: pointer; user-select: none;
   display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1rem;
 }
@@ -410,7 +418,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   min-width: 0;
 }
 .search-result-name {
-  font-family: 'Cinzel', serif;
+  font-family: 'Dumbledor2', serif;
   font-weight: 700; font-size: .92rem;
   color: var(--parch);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
