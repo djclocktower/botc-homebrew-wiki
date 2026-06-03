@@ -66,8 +66,11 @@ body::after {
   height: 54px; width: auto; display: block;
   filter: drop-shadow(0 1px 3px rgba(0,0,0,.4));
 }
-.brand-text { font-size: .87rem; line-height: 1.15; font-weight: 500; letter-spacing: .02em; }
-.brand-text b { display: block; font-weight: 700; font-size: .96rem; }
+/* brand-text removed — replaced by headertext.png image */
+.brand-header-text {
+  height: 42px; width: auto; display: block;
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,.5));
+}
 .crumb { font-size: .8rem; letter-spacing: .04em; color: rgba(236,225,200,.6); white-space: nowrap; }
 .crumb a { color: rgba(236,225,200,.6); text-decoration: none; }
 .crumb a:hover { color: #fff; }
@@ -248,6 +251,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   .char-parchment, .char-infocard, .char-side { grid-column: 1; grid-row: auto; }
   .char-infocard { order: -1; }
   .brand-skull  { height: 44px; }
+  .brand-header-text { height: 34px; }
 }
 @media (max-width: 480px) {
   .ex           { padding: 14px 34px; }
