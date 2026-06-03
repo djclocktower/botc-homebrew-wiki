@@ -291,7 +291,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* ════════════════════════════════════════════════════════════════
    JSON BOX (official-schema export, collapsible, on every char page)
    ════════════════════════════════════════════════════════════════ */
-.json-box { margin: 0; }
+.json-box { margin: 0; min-width: 0; max-width: 100%; }
 .json-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: linear-gradient(180deg, #f7f6f2, #ece3d2);
@@ -312,17 +312,16 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4; flex-shrink: 0;
 }
 .json-copy:hover { filter: brightness(1.08); }
-.json-box { overflow: hidden; }
 .json-body {
   margin: 0; background: #1d1420; color: #e8dcc0;
   border: 1px solid var(--card-edge); border-top: none;
   border-radius: 0 0 9px 9px; padding: 16px 18px;
   overflow-x: auto; overflow-y: auto; max-height: 540px;
-  max-width: 100%; box-sizing: border-box;
+  width: 100%; box-sizing: border-box;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: .82rem; line-height: 1.5;
 }
-.json-body code { white-space: pre; display: block; min-width: max-content; }
+.json-body code { white-space: pre; display: block; }
 
 /* edit link in breadcrumb */
 .edit-link {
