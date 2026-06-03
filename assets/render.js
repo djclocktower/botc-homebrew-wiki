@@ -31,14 +31,15 @@
       team: d.team || 'townsfolk',
       ability: d.ability || ''
     };
-    if (d.image) o.image = d.image;
+    // image as array (required by official script tool)
+    if (d.image) o.image = Array.isArray(d.image) ? d.image : [d.image];
     if (d.edition) o.edition = d.edition;
     var fl = d.flavor || d.quote;
     if (fl) o.flavor = String(fl).replace(/^["']|["']$/g, '');
     o.firstNight = Number(d.firstNight) || 0;
-    o.firstNightReminder = d.firstNightReminder || '';
+    if (d.firstNightReminder) o.firstNightReminder = d.firstNightReminder;
     o.otherNight = Number(d.otherNight) || 0;
-    o.otherNightReminder = d.otherNightReminder || '';
+    if (d.otherNightReminder) o.otherNightReminder = d.otherNightReminder;
     if (d.reminders && d.reminders.length) o.reminders = d.reminders;
     if (d.remindersGlobal && d.remindersGlobal.length) o.remindersGlobal = d.remindersGlobal;
     if (d.setup) o.setup = true;
@@ -51,7 +52,10 @@
     if (d.special && d.special.length) o.special = d.special;
     return o;
   }
-  function schemaJSON(d) { return JSON.stringify(buildSchema(d), null, 2); }
+  function schemaJSON(d) {
+    var meta = { id: '_meta', name: '' };
+    return JSON.stringify([meta, buildSchema(d)], null, 2);
+  }
 
   /* ── Collapsible JSON box ── */
   function renderJsonBox(d) {
