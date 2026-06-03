@@ -533,6 +533,17 @@
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
     updatePerspectiveFields();
+
+    // ── auto-expanding textareas ──
+    function autoExpand(el) {
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+    document.querySelectorAll('.fld textarea').forEach(function(ta) {
+      ta.style.overflowY = 'hidden';
+      ta.addEventListener('input', function() { autoExpand(ta); });
+      autoExpand(ta);
+    });
   </script>
   <script>
   (function(){
