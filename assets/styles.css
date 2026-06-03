@@ -71,6 +71,7 @@ body::after {
   position: relative; z-index: 5;
   max-width: 1240px; margin: 0 auto;
   padding: clamp(16px,3.5vw,40px) clamp(12px,3vw,40px) 64px;
+  overflow-x: hidden;
 }
 .foot {
   text-align: center; margin-top: 26px;
