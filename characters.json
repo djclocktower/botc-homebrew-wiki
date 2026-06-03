@@ -440,5 +440,37 @@
     "remindersGlobal": [],
     "setup": false,
     "jinxes": []
+  },
+  {
+    "slug": "acolyte",
+    "name": "Acolyte",
+    "team": "outsider",
+    "ability": "Each day, privately ask a yes/no question. All but 1 Acolyte are drunk till dusk. [Acolytes might replace info characters]",
+    "art": "art/acolyte.png",
+    "page": "character.html?c=acolyte",
+    "image": "https://botchomebrew.wiki/assets/art/acolyte.png",
+    "creator": "DJ_DJ_DJ",
+    "lede": "The Acolyte is still learning.",
+    "summaryBullets": [],
+    "howToRun": [],
+    "callout": "",
+    "examples": [],
+    "tips": [],
+    "bluffing": [],
+    "fighting": [],
+    "quote": "Another day another bender! No retreat and no surrender!",
+    "appearsIn": "Ravenswood Chronicle",
+    "tags": "Info",
+    "edition": "Ravenswood Chronicle",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Sober"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
