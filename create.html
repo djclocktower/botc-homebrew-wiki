@@ -72,10 +72,10 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb"><a href="index.html">Characters</a><span class="sep">&rsaquo;</span><span class="here">Create</span></nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
   </header>
 
   <div class="builder">
@@ -322,140 +322,7 @@
         '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
         '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
         '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">' + inner + '</main>' + PREVIEW_SCRIPT + '<script>
-  (function () {
-    // asset prefix differs for pages in characters/ subfolder
-    var ROOT = (function () {
-      var s = document.querySelector('link[rel="stylesheet"]');
-      if (!s) return '';
-      var href = s.getAttribute('href');
-      return href.replace('assets/styles.css', '');
-    })();
-
-    var input = document.getElementById('search-input');
-    var drop  = document.getElementById('search-drop');
-    if (!input || !drop) return;
-
-    var allChars = null;
-    var fetchPromise = null;
-
-    function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = fetch(ROOT + 'characters.json?_=' + Date.now())
-        .then(function (r) { return r.json(); })
-        .then(function (list) { allChars = list; return list; });
-      return fetchPromise;
-    }
-
-    function esc(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    var GOOD = { townsfolk: 1, outsider: 1 };
-    var TEAM_LABEL = {
-      townsfolk:'Townsfolk', outsider:'Outsider', minion:'Minion',
-      demon:'Demon', traveller:'Traveller', fabled:'Fabled'
-    };
-
-    function search(q) {
-      q = q.trim().toLowerCase();
-      if (!q || !allChars) return [];
-      return allChars.filter(function (c) {
-        var haystack = [
-          c.name || '',
-          c.ability || '',
-          c.tags || '',
-          c.lede || '',
-          c.team || ''
-        ].join(' ').toLowerCase();
-        return haystack.indexOf(q) !== -1;
-      }).slice(0, 8);
-    }
-
-    function render(results, q) {
-      if (!results.length) {
-        drop.innerHTML = '<div class="search-empty">No characters found for \u201c' + esc(q) + '\u201d</div>';
-        return;
-      }
-      drop.innerHTML = results.map(function (c) {
-        var typeClass = GOOD[c.team] ? ' good' : '';
-        var ability = c.ability || '';
-        if (ability.length > 80) ability = ability.slice(0, 80) + '…';
-        return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
-          '<img class="search-result-thumb" src="' + esc(ROOT + 'assets/' + c.art) + '" alt="">' +
-          '<div class="search-result-info">' +
-          '<span class="search-result-name">' + esc(c.name) + '</span>' +
-          '<span class="search-result-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</span>' +
-          '<span class="search-result-ability">' + esc(ability) + '</span>' +
-          '</div></a>';
-      }).join('');
-    }
-
-    function open() {
-      drop.hidden = false;
-      input.setAttribute('aria-expanded', 'true');
-    }
-    function close() {
-      drop.hidden = true;
-      input.setAttribute('aria-expanded', 'false');
-    }
-
-    var debTimer;
-    input.addEventListener('input', function () {
-      clearTimeout(debTimer);
-      var q = input.value.trim();
-      if (!q) { close(); return; }
-      debTimer = setTimeout(function () {
-        ensureData().then(function () {
-          var results = search(q);
-          render(results, q);
-          open();
-        });
-      }, 150);
-    });
-
-    input.addEventListener('focus', function () {
-      if (input.value.trim() && allChars) open();
-    });
-
-    // Keyboard navigation
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { close(); input.blur(); return; }
-      if (e.key === 'ArrowDown') {
-        var first = drop.querySelector('.search-result');
-        if (first) { e.preventDefault(); first.focus(); }
-        return;
-      }
-    });
-    drop.addEventListener('keydown', function (e) {
-      var cur = document.activeElement;
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        var next = cur.nextElementSibling;
-        if (next) next.focus();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        var prev = cur.previousElementSibling;
-        if (prev) prev.focus(); else input.focus();
-      } else if (e.key === 'Escape') {
-        close(); input.focus();
-      }
-    });
-
-    // Close on outside click
-    document.addEventListener('click', function (e) {
-      if (!document.getElementById('search-wrap').contains(e.target)) close();
-    });
-
-    // Prefetch on hover so results feel instant
-    document.getElementById('search-wrap').addEventListener('mouseenter', ensureData);
-  })();
-</script>
-
-</body></html>';
+        '<main class="wrap">' + inner + '</main>' + PREVIEW_SCRIPT + '</body></html>';
       $('preview').srcdoc = doc;
     }
     var deb;
@@ -653,7 +520,6 @@
     addJinx();
     update();
 
-    // ── show/hide bluffing & fighting fields based on team ──
     var GOOD_TEAMS = { townsfolk: 1, outsider: 1 };
     function updatePerspectiveFields() {
       var team = $('team').value;
@@ -667,6 +533,27 @@
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
     updatePerspectiveFields();
+  </script>
+  <script>
+  (function(){
+    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
+    if(!input||!drop)return;
+    var allChars=null,fetchPromise=null;
+    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch('characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
+    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(c.page)+'" role="option"><img class="search-result-thumb" src="'+esc('assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
+    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
+    var deb;
+    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
+    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
+    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
+    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
+    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
+    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
+  })();
   </script>
 </body>
 </html>
