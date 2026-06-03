@@ -223,7 +223,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .type-header {
   font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: clamp(1.1rem, 2.5vw, 1.5rem);
-  letter-spacing: .14em; text-transform: uppercase;
+  letter-spacing: .06em; text-transform: uppercase;
   color: var(--parch); margin: 0 0 4px;
 }
 .type-rule { height: 2px; margin-bottom: 20px; background: linear-gradient(90deg, var(--rule), transparent); }
