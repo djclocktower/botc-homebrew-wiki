@@ -204,7 +204,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-align: center;
 }
 .home-hero h1 {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: clamp(2rem, 6vw, 3.8rem);
   color: var(--parch); letter-spacing: .06em;
   margin: 0 0 .3em;
@@ -240,7 +240,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .char-card-thumb { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
 .char-card-info { flex: 1; min-width: 0; }
 .char-card-name {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 700;
   font-size: 1.05rem; color: var(--maroon);
   margin: 0 0 3px; line-height: 1.15;
 }
@@ -286,7 +286,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    GENERATED CHARACTER PAGES (form-created, Dumbledor2 text headings)
    ════════════════════════════════════════════════════════════════ */
 .gen-title {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
+  font-family: 'Dumbledor2', serif; font-weight: 700; color: var(--parch);
   font-size: clamp(2.4rem, 7vw, 5rem); letter-spacing: .04em; line-height: 1;
   margin: 6px 0 clamp(14px, 2.5vw, 26px); text-shadow: 0 3px 12px rgba(0,0,0,.5);
 }
@@ -300,7 +300,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .gen-sech {
   font-family: 'Dumbledor2', serif; font-weight: 700; color: var(--maroon);
-  letter-spacing: .04em; text-transform: uppercase;
+  letter-spacing: .04em;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem); margin: 0;
 }
 .jinx.noicon { grid-template-columns: 1fr; }
@@ -308,7 +308,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* homepage create button */
 .create-btn {
   display: inline-block; margin-top: 20px;
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 600; letter-spacing: .06em;
+  font-family: 'Dumbledor2', serif; font-weight: 600; letter-spacing: .06em;
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
   padding: 11px 28px; border-radius: 8px; text-decoration: none;
   box-shadow: 0 6px 16px rgba(40,12,30,.4); transition: transform .2s ease;
@@ -335,7 +335,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .json-box.open .json-bar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .json-bar-toggle {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; letter-spacing: .08em;
+  font-family: 'Dumbledor2', serif; font-weight: 700; letter-spacing: .08em;
   color: var(--maroon); cursor: pointer; user-select: none;
   display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1rem;
 }
@@ -445,7 +445,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   min-width: 0;
 }
 .search-result-name {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-family: 'Dumbledor2', serif;
   font-weight: 700; font-size: .92rem;
   color: var(--parch);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
