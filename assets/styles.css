@@ -383,7 +383,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   flex-shrink: 0;
 }
 .search-input {
-  font-family: 'Libre Franklin', sans-serif;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
   font-size: .88rem;
   width: clamp(140px, 22vw, 260px);
   padding: 7px 12px 7px 32px;
@@ -499,7 +499,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .tag-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(40,12,30,.35); }
 .tag-count {
-  font-family: 'Libre Franklin', sans-serif; font-weight: 700;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700;
   font-size: .78rem; background: rgba(91,31,33,.12);
   color: var(--maroon); border-radius: 20px;
   padding: 1px 8px; min-width: 22px; text-align: center;
