@@ -10,10 +10,16 @@
 <style>
   .builder{position:relative;z-index:5;max-width:1320px;margin:0 auto;
     padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px;
-    display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:26px;align-items:start}
-  @media(max-width:980px){.builder{grid-template-columns:1fr}}
+    display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:26px;align-items:start;
+    box-sizing:border-box}
+  @media(max-width:980px){
+    .builder{grid-template-columns:1fr;padding:12px 12px 40px}
+    .row2{grid-template-columns:1fr}
+    .jinx-row{grid-template-columns:1fr auto}
+    .jinx-row textarea{grid-column:1 / -1}
+  }
   .formcard{background:#f7f6f2;border:1px solid var(--card-edge);border-radius:10px;
-    padding:20px 22px;box-shadow:0 10px 26px rgba(40,12,30,.35);color:#241a12}
+    padding:20px 22px;box-shadow:0 10px 26px rgba(40,12,30,.35);color:#241a12;max-width:100%;box-sizing:border-box;overflow-x:hidden}
   .formcard h2{font-family:'Dumbledor2',serif;color:var(--maroon);margin:0 0 4px;font-size:1.35rem}
   .formcard .sub{font-size:.86rem;color:#6b5d49;margin:0 0 18px}
   .fld{margin-bottom:15px}
@@ -21,7 +27,7 @@
     letter-spacing:.04em;text-transform:uppercase;color:#5b4632;margin-bottom:5px}
   .fld .hint{font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63;font-size:.78rem}
   .fld input[type=text],.fld input[type=number],.fld textarea,.fld select{
-    width:100%;font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.95rem;color:#241a12;
+    width:100%;max-width:100%;box-sizing:border-box;font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.95rem;color:#241a12;
     background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:9px 11px}
   .fld textarea{resize:none;min-height:64px;line-height:1.4;overflow-y:hidden}
   .fld input:focus,.fld textarea:focus,.fld select:focus{outline:2px solid #b98;border-color:#b98}
