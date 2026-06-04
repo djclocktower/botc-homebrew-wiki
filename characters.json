@@ -474,5 +474,1289 @@
     "remindersGlobal": [],
     "setup": false,
     "jinxes": []
+  },
+  {
+    "slug": "sculptor-fall-of-rome",
+    "name": "Sculptor",
+    "team": "townsfolk",
+    "ability": "You start knowing a player. Each night*, you learn the alignment of their most recent nomination.",
+    "art": "art/sculptor-fall-of-rome.png",
+    "page": "character.html?c=sculptor-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/sculptor-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Sculptor learns the alignment of players that their sculpture has nominated during the day.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the Sculptor's first night, wake the Sculptor and point to a player, place the [[SCULPTURE]] reminder token next to the shown player. The shown player can be of any alignment.",
+      "Each day, during nominations, if the player that the Sculptor was shown nominates, place the [[NOMINATED]] reminder token next to the nominated player. If a [[NOMINATED]] reminder token is already on the grimoire, remove it, and place it next to the nominated player.",
+      "Each night, if a player has the [[NOMINATED]] reminder token next to them, wake the Sculptor. The Sculptor learns the current alignment of the player with the [[NOMINATED]] token next to them. If no players have the [[NOMINATED]] token next to them, the Sculptor is not woken.",
+      "If the Sculptor is drunk, poisoned or is actually Hannibal, they learn arbitrary information. If the Sculptor is a Bad Omen, they must learn false information — the opposing alignment.",
+      "The Sculptor can be shown any player as their Sculpture. However, be extremely cautious before showing the Glykon as the Sculpture, as all their nominations will falsely register.",
+      "A Sculptor cannot learn the alignment of a Traveller, as a call for exile is not a nomination."
+    ],
+    "callout": "",
+    "examples": [
+      "Mia is the Actor, and Rob is the Temptress. On the first night the Sculptor is shown Mia as their Sculpture. During nominations Mia nominates Rob. That night the Sculptor is woken and shown a thumbs down as Rob is evil. Unfortunately for the Sculptor, Mia dies in the night. The following day Mia is unable to nominate. However, the Sculptor still gets to wake that night and learns the alignment of Mia's most recent nomination, Rob, who is evil."
+    ],
+    "tips": [],
+    "quote": "\"The sculptor's hand can only break the spell to free the figures slumbering in the stone.\" — Michelangelo 1501 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Nomination, Information",
+    "edition": "",
+    "firstNight": 18,
+    "firstNightReminder": "Point to a player. Place the SCULPTURE token next to that player.",
+    "otherNight": 19,
+    "otherNightReminder": "If the player with the SCULPTURE token nominated today. Show the Sculptor an evil thumbs down sign if the nominated player is evil. Otherwise: show the Sculptor a good thumbs up sign. Remove the NOMINATED token (if any).",
+    "reminders": [
+      "Sculpture",
+      "Nominated"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "vestal-virgin-fall-of-rome",
+    "name": "Vestal Virgin",
+    "team": "townsfolk",
+    "ability": "You start knowing 1 good & 1 evil character, 1 of which is in-play. When they die, that night you learn 1 good & 1 evil character, 1 of which is in-play.",
+    "art": "art/vestal-virgin-fall-of-rome.png",
+    "page": "character.html?c=vestal-virgin-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/vestal-virgin-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Vestal Virgin learns an in-play and out-of-play character. They learn more if the in-play character dies.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the Vestal Virgin's first night, wake the player and show them one good character and one evil character, one of which is in play. Place the [[LEARNS]] reminder token next to the player with the in-play character.",
+      "Each night, if the player with the [[LEARNS]] reminder token is dead, wake the Vestal Virgin and show them one good and one evil character, one of which is in play. If the in-play character is alive, do not wake the Vestal Virgin.",
+      "If the Vestal Virgin is drunk, poisoned or is actually Hannibal, the Storyteller may show correct information, two in-play characters, or two out-of-play characters.",
+      "If the Vestal Virgin is a Bad Omen, they must be shown either two in-play characters, or two out-of-play characters.",
+      "There is no limit to the number of times the Vestal Virgin can gain new information."
+    ],
+    "callout": "",
+    "examples": [
+      "Annie is the Augur. On the first night, the Vestal Virgin learns the Actor and the Augur. Annie is executed today. As the Augur died today, that night the Vestal Virgin learns the Physician and Cleopatra, one of which is in play.",
+      "Callum is the Scholar. On the first night the Vestal Virgin learns the Scholar and Hannibal. The next day the Vestal Virgin is nominated by the Glykon so is poisoned. Callum dies during the night. As the Scholar died, the Vestal Virgin learns new information that same night. However, the Storyteller provides arbitrary information, as they are Glykon poisoned."
+    ],
+    "tips": [],
+    "quote": "\"Some are of the opinion that these vestals had no other business than the preservation of the sacred fire; but others conceive that they were keepers of other divine secrets, concealed from all but themselves.\" — Plutarch c. 49 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Setup",
+    "edition": "",
+    "firstNight": 19,
+    "firstNightReminder": "Show 1 good and 1 evil character token: one of these is in play. Place the LEARNS next to the in-play character.",
+    "otherNight": 20,
+    "otherNightReminder": "If the player with the LEARNS token died today, remove the token. Show 1 good and 1 evil character token: one of these is in play. Place the LEARNS next to the in-play character.",
+    "reminders": [
+      "Learns"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "physician-fall-of-rome",
+    "name": "Physician",
+    "team": "townsfolk",
+    "ability": "Each night, choose two players (not yourself): they are sober, healthy & get true info tonight. The 1st time the Demon kills one, you learn the Demon type.",
+    "art": "art/physician-fall-of-rome.png",
+    "page": "character.html?c=physician-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/physician-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Physician ensures their team gets correct information.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each night, remove any [[PATIENT]] reminder tokens, if any. Wake the Physician and ask them to choose two players. Place the [[PATIENT]] reminder token next to the two players.",
+      "If a player with a [[PATIENT]] reminder token is killed by the Demon, place the [[1ST DEMON]] reminder token next to the Physician. If the [[1ST DEMON]] reminder token is already next to the Physician, do not wake the Physician. Otherwise wake the Physician and show them the Demon token.",
+      "If the Physician is drunk, poisoned or is actually Hannibal, their ability has no effect and they learn arbitrary information. If the Physician is a Bad Omen their ability has no effect and they must learn a false Demon token.",
+      "If Cleopatra chooses the Physician second and the [[1ST DEMON]] token is not next to the Physician, take note of this for the following night. If both players die from Cleopatra, and the Physician chose the other person attacked, the Physician will still wake because the deaths occur in the order of selection."
+    ],
+    "callout": "",
+    "examples": [
+      "Edgard is a Bad Omen who believes they are the Sculptor and Avery is the Mortician. At night, the Physician protects both Edgard and Avery. On the same night Avery is targeted by Caesar, and dies. The Physician learns this, and is shown the Caesar character token. Additionally, Edgard is woken to learn information. Despite being a Bad Omen, the information they learn tonight must be true as they have been chosen by the Physician.",
+      "During the first day, five good players claim Spartacus, including a Bad Omen, and Jonah the Trumpeter. The same day, Jonah was nominated by the Glykon. That night, the Physician chooses to protect Jonah, who wakes to learn the number of evil players that publicly claimed Spartacus. Despite being Physician protected, the misregistration of Jonah and possibly the Bad Omen are still in effect. Jonah learns a '2'."
+    ],
+    "tips": [],
+    "quote": "\"Some patients recover, because they believe in doctors.\" — Hippocrates of Kos c. 460 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Protection, Information",
+    "edition": "",
+    "firstNight": 17,
+    "firstNightReminder": "The Physician points to two players not themselves. Mark both players with the PATIENT token.",
+    "otherNight": 11,
+    "otherNightReminder": "Remove all PATIENT tokens. The Physician points to two players not themselves. Mark both players with the PATIENT token. If a player with a PATIENT token was killed by the Demon, place the 1ST DEMON token next to the Physician and wake the Physician and show them Demon token.",
+    "reminders": [
+      "Patient",
+      "1st Demon"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "legionary-fall-of-rome",
+    "name": "Legionary",
+    "team": "townsfolk",
+    "ability": "Each night, you learn how many living evil players are sat clockwise between yourself and the next living Legionary. [+0 to +2 Legionary]",
+    "art": "art/legionary-fall-of-rome.png",
+    "page": "character.html?c=legionary-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/legionary-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "There may be up to three Legionaries in play. Each learns how many living evil players are sat between them.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During setup if Legionary is in play the Storyteller may choose to add up to two additional Legionary tokens to the bag in place of other Townsfolk.",
+      "Each night, wake the Legionaries separately. They learn the number of evil players sitting clockwise between them and the next living Legionary. If they are the only Legionary, they learn clockwise to themselves.",
+      "If a Legionary is drunk, poisoned or is actually Hannibal, that Legionary gains arbitrary information. If a Legionary is a Bad Omen they must learn any number not equal to the number of evil players between them and the next living Legionary.",
+      "An evil Legionary (for example one turned by the Temptress) still functions normally to other Legionaries. They are not counted in the number of Evil players by themselves or other Legionaries.",
+      "A Blacksmith or Scholar-nominated Outsider cannot be turned into a Legionary if there is another true Legionary in play.",
+      "Legionary can only be given as a bluff to the Demon, or the Minions in a Hannibal game, if there are no true Legionaries in play."
+    ],
+    "callout": "",
+    "examples": [
+      "Adam, Patrick and George are Legionaries. Three evil players are sat between Adam to Patrick clockwise, and a single evil is sat between George to Adam clockwise. On the first night, Adam learns a '3', Patrick learns a '0', and George learns a '1'. A few nights later, Adam & George have died. Patrick as the last living Legionary learns clockwise to themselves, learning the number of living evils — a '4'."
+    ],
+    "tips": [],
+    "quote": "\"We find that the Romans owed the conquest of the world to no other cause than continual military training, exact observance of discipline in their camps, and unwearied cultivation of the other arts of war.\" — Vegetius c. 385 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Setup",
+    "edition": "",
+    "firstNight": 20,
+    "firstNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of living evil players between the Legionary and the next clockwise Legionary (exclusive).",
+    "otherNight": 21,
+    "otherNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of living evil players between the Legionary and the next clockwise Legionary (exclusive).",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": true,
+    "jinxes": []
+  },
+  {
+    "slug": "trumpeter-fall-of-rome",
+    "name": "Trumpeter",
+    "team": "townsfolk",
+    "ability": "Each night*, you learn how many evil players publicly claimed to be Spartacus today.",
+    "art": "art/trumpeter-fall-of-rome.png",
+    "page": "character.html?c=trumpeter-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/trumpeter-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Trumpeter learns how many of the Spartacus claims are evil.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Immediately before waking the Trumpeter each night, if an evil player publicly claimed to be Spartacus today, place an [[EVIL CLAIM]] reminder token next to the player alongside the I AM SPARTACUS! fabled reminder token.",
+      "Each night, wake the Trumpeter. The Trumpeter learns the number equal to the number of [[EVIL CLAIM]] reminder tokens. If none are present they learn a '0'. Remove any [[EVIL CLAIM]] reminder tokens.",
+      "If the Trumpeter is drunk, poisoned or is actually Hannibal, they learn arbitrary information. If the Trumpeter is a Bad Omen, they must learn false information.",
+      "If a player's alignment switches during the day or night, the Trumpeter learns information in accordance to their alignment when the Trumpeter wakes at night."
+    ],
+    "callout": "",
+    "examples": [
+      "Sophia, Robert and Felix are the Haruspex, Merchant and Caesar respectively. During the day all three publicly claim that they are Spartacus. That night, the Trumpeter wakes and learns a '2', as two evil players publicly claimed to be Spartacus today.",
+      "Avery, Tameka and Seth are the Mortician, Scholar and a Bad Omen respectively. During the day all three publicly claim to be Spartacus. That night, the Trumpeter wakes and learns a '1' as the Bad Omen is registering as evil.",
+      "The Trumpeter is actually a Bad Omen. Greg is Hannibal and Anne is the Temptress. During the day Greg and Anne both publicly claim Spartacus. That night, the Trumpeter wakes and learns a '0', as they are receiving false information."
+    ],
+    "tips": [],
+    "quote": "\"I have done everything that I should, but the outcome is in the hand of fortune.\" — Nero Claudius Caesar 37 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Spartacus, Information",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 22,
+    "otherNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of evil players who publicly claimed to be Spartacus today.",
+    "reminders": [
+      "Evil Claim"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "mortician-fall-of-rome",
+    "name": "Mortician",
+    "team": "townsfolk",
+    "ability": "Each night*, if a player died by execution today you learn if either of their living neighbours are evil.",
+    "art": "art/mortician-fall-of-rome.png",
+    "page": "character.html?c=mortician-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/mortician-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Mortician learns if a player's living neighbours are evil when the player dies by execution.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During nominations, if a player is executed and dies, place the [[RECENTLY EXECUTED]] reminder token by the player.",
+      "Each night, if a [[RECENTLY EXECUTED]] reminder token is next to a player, wake the Mortician. They learn if either of the player's current living neighbours are evil, and remove the [[RECENTLY EXECUTED]] reminder token. If one or both of the living neighbours are evil tell the Mortician 'yes', otherwise tell the player 'no'. If no player has a [[RECENTLY EXECUTED]] token, do not wake the Mortician.",
+      "If a Sibyl is in play and uses their ability, executing and killing a player, place the second [[RECENTLY EXECUTED]] reminder token next to the player. Wake the Mortician as normal. Clarify which piece of information they are receiving first by pointing to the associated player.",
+      "If the Mortician is drunk, poisoned or is actually Hannibal, they learn arbitrary information. If the Mortician is a Bad Omen, they must learn the opposite answer to the correct information.",
+      "The Mortician learns information about a player's living neighbours at the point in the night order the Mortician wakes. If that player's living neighbour dies during the night, the Mortician checks the new living neighbours instead."
+    ],
+    "callout": "",
+    "examples": [
+      "Tom is the Physician and Jacob is the Winemaker, both good. During nominations the player sat between the two is executed and dies. That night, the Mortician learns a 'no'.",
+      "Kohav is the Sibyl. On the second day, a player is executed and dies, and the Storyteller gestures to Kohav asking whether they would like to choose a dead player to nominate. They do so, and the selected player nominates and gets another player executed. That night, the Mortician wakes and learns information about both executed players."
+    ],
+    "tips": [],
+    "quote": "\"Let no one weep for me, or celebrate my funeral with mourning; for I still live, as I pass to and fro through the mouths of men.\" — Quintus Ennius 239 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Execution",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 23,
+    "otherNightReminder": "If a player was executed today: Show the head signal (nod 'yes', shake 'no') for whether one of the neighbours is evil.",
+    "reminders": [
+      "Recently Executed"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "standard-bearer-fall-of-rome",
+    "name": "Standard Bearer",
+    "team": "townsfolk",
+    "ability": "When you are nominated, you may make a unique public statement about the nominator (not yourself). Tonight, you learn if the statement was true.",
+    "art": "art/standard-bearer-fall-of-rome.png",
+    "page": "character.html?c=standard-bearer-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/standard-bearer-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Standard Bearer learns whether their public statement is true or false about the player that nominates them.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During nominations, if the Standard Bearer chooses to make a public statement as part of their defence, make note. Place the [[TRUE]] or [[FALSE]] reminder token next to the player if the statement is either true or false about their nominator respectively.",
+      "Each night, if the Standard Bearer has a [[TRUE]] or [[FALSE]] reminder token next to them, wake the Standard Bearer. They learn which token is next to them. Remove any [[TRUE]] or [[FALSE]] reminder tokens.",
+      "If the Standard Bearer is drunk, poisoned or is actually Hannibal, they learn arbitrary information. If the Standard Bearer is a Bad Omen, they must learn the opposite of the reminder token.",
+      "A unique public statement must satisfy a new unique criteria that the Storyteller can check against. Two statements that check either side of a condition are not unique — binary statements cannot be asked twice, even if addressing the other side. Statements must be about the nominator, but can go beyond their role or alignment."
+    ],
+    "callout": "",
+    "examples": [
+      "Jonah is the Trumpeter. During nominations Jonah nominates the Standard Bearer. As part of their defence the Standard Bearer publicly announces that 'the player who nominated me today is a Townsfolk'. At night, the Standard Bearer learns 'true'.",
+      "Matthew is a Bad Omen but believes they are the Actor. During nominations Matthew nominates the Standard Bearer. During their defence the Standard Bearer publicly announces that 'the player who nominated me today is the Actor'. At night, the Standard Bearer learns 'false'.",
+      "On the second day, the Standard Bearer publicly announces 'the player who nominated me today is good'. At night, the Standard Bearer does not wake as today's public statement was not unique."
+    ],
+    "tips": [
+      "When you are the Standard Bearer, be creative with your statements. If playing in person, you could refer to physical characteristics. If playing online, you still have a wide range of things to say about tokens, alignments, position, types of role, and anything else you can think about.",
+      "When you are not the Standard Bearer, you are free to make Standard Bearer statements anyway, whether covering for a real Standard Bearer or bluffing as evil.",
+      "Some example statements: 'My nominator is on the good team.' / '...has the same colour shirt as a demon.' / '...was selected by an evil player last night.' / '...is the last living member of their team.' / '...is Spartacus.'"
+    ],
+    "quote": "\"Say not always what you know. But always know what you say.\" — Tiberius Claudius Caesar 10 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Nomination, Public",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 24,
+    "otherNightReminder": "If the Standard Bearer's public statement was true: show the head signal (nod 'true'). Otherwise: show the head signal (shake 'false').",
+    "reminders": [
+      "True",
+      "False"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "centurion-fall-of-rome",
+    "name": "Centurion",
+    "team": "townsfolk",
+    "ability": "If you nominate & execute a living player, their team loses. You are safe from the Demon. If you publicly claimed to be Spartacus today, you are drunk until dawn.",
+    "art": "art/centurion-fall-of-rome.png",
+    "page": "character.html?c=centurion-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/centurion-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Centurion can end the game at any point with their nomination.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During the day, if the Centurion claimed to be Spartacus today, place the [[DRUNK]] reminder token next to the Centurion alongside the I AM SPARTACUS! fabled reminder token.",
+      "If the Centurion nominated a player, and the nominated player is executed that day whilst the Centurion is sober & healthy, the game ends & the executed player's team loses.",
+      "If the Centurion is sober and they are targeted by the Demon and would normally die, they don't.",
+      "The Centurion's ability checks for a player's team, not their alignment, so ignore misregistration. If the sober Centurion nominates a Bad Omen who is executed, evil wins. If the sober Centurion nominates the Glykon who is executed, good wins."
+    ],
+    "callout": "",
+    "examples": [
+      "Brandon is the Haruspex. During nominations, the Centurion nominates Brandon and gathers enough votes to put them on the block. That day, Brandon is executed. The game ends, and the good team have won.",
+      "Robert is the Merchant. During nominations, the Centurion nominates Robert and with enough votes, puts them on the block. Before the day closes, the Centurion publicly claims to be Spartacus, making them drunk. That day, Robert is executed and the game continues. During the night, the Centurion is targeted by a Demon and dies as they are drunk.",
+      "Phoebe and Graham are the Centurion and the Augur. During the day, Phoebe does not claim Spartacus and nominates Graham. Graham is executed and dies. The game continues, because Phoebe is now a Bad Omen."
+    ],
+    "tips": [],
+    "quote": "\"It is easier to find men who will volunteer to die, than to find those who are willing to endure pain with patience.\" — Julius Caesar 100 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Wincon, Spartacus, Safe",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Drunk"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "merchant-fall-of-rome",
+    "name": "Merchant",
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, choose to learn the characters of players that have nominated you.",
+    "art": "art/merchant-fall-of-rome.png",
+    "page": "character.html?c=merchant-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/merchant-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Merchant chooses when to learn all the characters that have nominated them — but only once.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each day, if a player nominated the Merchant, place a [[NOMINATED]] reminder token next to that player.",
+      "Each night, other than the first, if the Merchant has a [[NO ABILITY]] reminder token next to them, do not wake them. Otherwise: ask the Merchant if they would like to use their ability. If yes, show the character tokens of any players with the [[NOMINATED]] reminder tokens.",
+      "If the Merchant is drunk, poisoned or is actually Hannibal, they learn arbitrary information. If the Merchant is a Bad Omen, they must learn all false information — a true character token must not be shown.",
+      "If a player who nominated the Merchant changes character, the Merchant learns the character at the time of using their ability. The Storyteller can show the roles in any order, and should vary the order so that the Merchant cannot know which player is which character."
+    ],
+    "callout": "",
+    "examples": [
+      "Rook is the Haruspex. During nominations Rook nominates the Merchant. That night, the Merchant wakes and uses their ability. They learn the Haruspex.",
+      "Laurel, Victoria and Jack are the Blacksmith, The Twins and Cleopatra respectively. Over the next three days all three nominate the Merchant. On the fourth night, the Merchant wakes and uses their ability. They learn the Blacksmith, The Twins and Cleopatra in no particular order."
+    ],
+    "tips": [],
+    "quote": "\"Greed is but a word jealous men inflict upon the ambitious.\" — Marcus Licinius Crassus 115 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Nomination",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 26,
+    "otherNightReminder": "If the Merchant has not yet used their ability: the Merchant either shows a shake 'no' head signal, or a nod 'yes' head signal. If the Merchant chose 'yes', show the character tokens of players with a NOMINATED token (in any order). Place the NO ABILITY token.",
+    "reminders": [
+      "Nominated",
+      "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "gladiator-fall-of-rome",
+    "name": "Gladiator",
+    "team": "townsfolk",
+    "ability": "Once per game, during the day, publicly choose a living player. Tonight, you and they wake & silently play roshambo: whoever loses dies (someone must lose).",
+    "art": "art/gladiator-fall-of-rome.png",
+    "page": "character.html?c=gladiator-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/gladiator-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Gladiator challenges players to a fight to the death.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During the day, if the Gladiator publicly claims Gladiator and chooses a player, place the [[DUEL]] token next to that player.",
+      "Each night, if a player has the [[DUEL]] token next to them wake both that player and the Gladiator at the same time. Have both players silently play roshambo, each choosing rock, paper or scissors. If both players choose the same, have them play again until someone wins. Place the [[DEAD]] reminder token next to the player that lost — they die. Place the [[NO ABILITY]] token next to the Gladiator.",
+      "A drunk or poisoned Gladiator who challenges a player during the day, and then is sober that night, will wake for the duel.",
+      "A sober Gladiator who challenges a player during the day, and then is drunk or poisoned that night, will not wake for the duel. Remember to place the [[NO ABILITY]] token next to the Gladiator."
+    ],
+    "callout": "",
+    "examples": [
+      "Jack and Lindsey are Cleopatra and the Gladiator respectively. During the day Lindsey publicly claims Gladiator and chooses Jack. That night, both Jack and Lindsey wake and silently play roshambo. After two games, Lindsey wins. Jack dies. The game is over as the Demon is dead, and the good team wins.",
+      "Ellie and Anne are the Gladiator and the Temptress respectively. During the day, Ellie challenges Anne to a duel. That same day, Anne is executed and dies. That night, Ellie is still alive, so both Ellie and Anne wake and play roshambo, even though Anne is already dead. Anne wins roshambo, and Ellie dies."
+    ],
+    "tips": [
+      "Warn everyone before the night phase how you will run a Gladiator duel whenever someone claims Gladiator, whether truly or as a bluff.",
+      "In person, the Storyteller must count down silently (e.g. with finger signals) so that both players can see. Make it clear whether you expect players to reveal on 1 or 0."
+    ],
+    "quote": "\"Forgive me. I was trained with swords! Not with words.\" — Crixus 72 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Kill, Public, Duel",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 18,
+    "otherNightReminder": "If the Gladiator used their ability today wake the Gladiator and the player they chose: both players silently play roshambo. If they both chose the same, play again. Play until someone wins. The loser dies.",
+    "reminders": [
+      "Duel",
+      "Dead",
+      "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "actor-fall-of-rome",
+    "name": "Actor",
+    "team": "townsfolk",
+    "ability": "Once per game, during the day, publicly guess 3 players' character types (not yourself, 1 guess per type). That night, you learn how many you got correct.",
+    "art": "art/actor-fall-of-rome.png",
+    "page": "character.html?c=actor-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/actor-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Actor publicly guesses the character types of three people, learning how many they got right that night.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Before nominations, if the Actor decides to publicly guess the types of 3 players' characters, place a [[CORRECT]] reminder token next to each player they correctly guess.",
+      "That night, wake the Actor. The Actor learns the number equal to the number of [[CORRECT]] reminder tokens on the grimoire, then place the [[NO ABILITY]] reminder token.",
+      "If the Actor is drunk or poisoned when making their guesses, but sober when waking at night, they learn correct information. If the Actor is drunk or poisoned at night, or is actually Hannibal, they learn arbitrary information. If the Actor is a Bad Omen, they must learn any number other than the correct number.",
+      "If a player switches character types during the day, the Actor learns if they were correct at the point they made the public statement."
+    ],
+    "callout": "",
+    "examples": [
+      "Helen, Victoria and Bruce are the Physician, The Twins and Standard Bearer respectively. During the first day, the Actor guesses that Helen is a Townsfolk, Victoria is an Outsider and Bruce is a Minion. That night, the Actor learns a '2', meaning two of their guesses were correct.",
+      "Tameka, Anne and Jack are the Scholar, the Temptress and Cleopatra respectively. The Actor guesses that Tameka is a Townsfolk, Anne is a Minion, and Jack is the Demon. That night, the Actor learns a '3', all three guesses were correct."
+    ],
+    "tips": [
+      "Make sure to remember when an Actor is guessing that a Bad Omen is an Outsider, even though it has a Townsfolk token on the grimoire."
+    ],
+    "quote": "\"Have I played the part well? Then applaud me as I exit!\" — Caesar Augustus 63 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Public",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 25,
+    "otherNightReminder": "If the Actor used their ability today: Show the hand signal for the number (0, 1, 2, or 3) of CORRECT markers. Place the NO ABILITY marker.",
+    "reminders": [
+      "Correct",
+      "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "blacksmith-fall-of-rome",
+    "name": "Blacksmith",
+    "team": "townsfolk",
+    "ability": "The 1st time the Demon kills you, you live & gain a not-in-play Townsfolk ability.",
+    "art": "art/blacksmith-fall-of-rome.png",
+    "page": "character.html?c=blacksmith-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/blacksmith-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "If the Blacksmith is killed by the Demon they live and gain a new ability.",
+    "summaryBullets": [],
+    "howToRun": [
+      "If the Blacksmith is targeted by the Demon for the first time, and would normally die, instead place the [[IS THE BLACKSMITH]] reminder token next to the Blacksmith. Replace the Blacksmith character token with a not-in-play Townsfolk ability. Wake the Blacksmith and show them the 'You are' card, then show them their new character ability.",
+      "If the Blacksmith is drunk, poisoned, is actually Hannibal or a Bad Omen, their ability malfunctions."
+    ],
+    "callout": "",
+    "examples": [
+      "At night, the Blacksmith is targeted by Crassus. The Blacksmith, instead of dying, lives and gains the Centurion's ability.",
+      "On the first night, the Blacksmith is targeted by Cleopatra. The next day, the Blacksmith nominates. That night, instead of dying, the Blacksmith lives and gains the Actor's ability.",
+      "The Blacksmith is sat next to Janet, the Winemaker, who is drunk on odd nights. On night two, Janet is causing her townsfolk neighbours to be drunk. That night, the Blacksmith is targeted by Caesar, and dies. The Blacksmith's ability does not function as they are drunk."
+    ],
+    "tips": [
+      "A Blacksmith who gains a not-in-play Townsfolk ability has not actually changed character. They will still register as the Blacksmith to the Haruspex or the Merchant. An evil Blacksmith remains evil.",
+      "Remember that the Blacksmith only activates when a Demon tries to kill them. A Haruspex or Gladiator that kills the Blacksmith will not trigger the Blacksmith's ability."
+    ],
+    "quote": "\"Every new beginning comes from some other beginning's end.\" — Lucius Annaeus Seneca 4 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Safe, Ability",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 17,
+    "otherNightReminder": "If the Blacksmith was killed by a Demon. Show the Blacksmith a not-in-play Townsfolk character token. Swap the not-in-play character token with the Blacksmith token. Place the IS THE BLACKSMITH token next to the not-in-play character token. Wake the Blacksmith and show 'You are', then their new character ability.",
+    "reminders": [
+      "Is the Blacksmith"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "scholar-fall-of-rome",
+    "name": "Scholar",
+    "team": "townsfolk",
+    "ability": "The 1st time you nominate a living Outsider, they immediately become a not-in-play Townsfolk. [+1 Outsider]",
+    "art": "art/scholar-fall-of-rome.png",
+    "page": "character.html?c=scholar-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/scholar-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Scholar converts the first Outsider they nominate into a not-in-play Townsfolk.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During setup if the Scholar is in play add an Outsider to the bag due to the Scholar's Outsider modification. If the Scholar is intended to be a Bad Omen or Hannibal, do not add an extra Outsider to the bag.",
+      "The first time the Scholar nominates a living Outsider place the [[NO ABILITY]] reminder token by the Scholar. Place the [[LECTURED]] reminder token next to the nominated player — they immediately turn into a not-in-play Townsfolk. At night, the nominated player learns this.",
+      "If the Scholar is drunk, poisoned, is actually Hannibal or a Bad Omen, their ability has no effect. If they nominate an Outsider for the first time whilst drunk or poisoned, place the [[NO ABILITY]] reminder token by the Scholar."
+    ],
+    "callout": "",
+    "examples": [
+      "Victoria is The Twins. During nominations the Scholar nominates Victoria. At dusk, Victoria learns that they are now the good Centurion.",
+      "Elwyn is the Winemaker. On the second day Elwyn is turned evil by the Temptress. The next day, during nominations the Scholar nominates Elwyn. At dusk, Elwyn learns that they are now the evil Actor."
+    ],
+    "tips": [
+      "An Outsider changed into a Townsfolk by a Scholar does not change alignment. It is helpful to remind an evil Outsider that they are still evil, as they will be shown a new token for a character that is normally good.",
+      "The change from Outsider to Townsfolk is immediate. Whilst the player does not learn until dusk, they are now a Townsfolk. Be wary of giving the Centurion ability to the Outsider when they have nominated and currently have someone on the block."
+    ],
+    "quote": "\"When you arise in the morning, think of what a precious privilege it is to be alive — to breathe, to think, to enjoy, to love.\" — Marcus Aurelius 121 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Setup, Ability",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 2,
+    "otherNightReminder": "If the Scholar nominated an Outsider today, place the NO ABILITY token. Wake the nominated player. Show 'You are', then their new character token.",
+    "reminders": [
+      "Lectured",
+      "No Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": true,
+    "jinxes": []
+  },
+  {
+    "slug": "the-twins-fall-of-rome",
+    "name": "The Twins",
+    "team": "outsider",
+    "ability": "You start knowing a player: if either of you are executed, all Townsfolk are drunk until dusk tomorrow.",
+    "art": "art/the-twins-fall-of-rome.png",
+    "page": "character.html?c=the-twins-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/the-twins-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "If either of Romulus or Remus are executed, all Townsfolk become drunk.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the first night, wake The Twins, and point to a player. Place the [[REMUS]] reminder token next to that player.",
+      "Each night, remove any [[TOWNSFOLK DRUNK]] reminder tokens. If a player with the [[REMUS]] reminder token or The Twins was executed today, place the [[TOWNSFOLK DRUNK]] reminder token next to The Twins.",
+      "If The Twins dies, remove the [[REMUS]] reminder token."
+    ],
+    "callout": "",
+    "examples": [
+      "Mack is Spartacus. On the first night, The Twins are woken and shown Mack. After a couple of days, Mack is executed and dies. That night and tomorrow until dusk, all Townsfolk are drunk.",
+      "Connor is Hannibal. On the first night, The Twins are woken and shown Connor. During nominations, Connor is nominated, then executed and dies. The game continues, and all Townsfolk are drunk until tomorrow dusk."
+    ],
+    "tips": [
+      "Remus can be any player, including an evil one. Typically The Twins will want to stop Remus being executed until they themselves die, so making a player Remus may grant them some protection early on.",
+      "Given that they might be granted some early protection, showing an evil player, or another Outsider, may be a good way to support evil.",
+      "Note that all references to The Twins are to the Outsider character itself, also known as Romulus. Remus is another character known to The Twins, not part of the character. Waking The Twins means wake Romulus; Remus is not woken."
+    ],
+    "quote": "\"The quarrel that arose between Remus and Romulus demonstrated the division of the earthly city against itself...\" — Augustine of Hippo 354 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Drunk, Execution",
+    "edition": "",
+    "firstNight": 16,
+    "firstNightReminder": "Point to a player. Place the REMUS token next to that player.",
+    "otherNight": 10,
+    "otherNightReminder": "If The Twins has a TOWNSFOLK DRUNK token, all Townsfolk are drunk until dusk.",
+    "reminders": [
+      "Remus",
+      "Townsfolk Drunk"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "winemaker-fall-of-rome",
+    "name": "Winemaker",
+    "team": "outsider",
+    "ability": "Your Townsfolk neighbours are drunk, but every other night, you are drunk until dusk, even if you are dead.",
+    "art": "art/winemaker-fall-of-rome.png",
+    "page": "character.html?c=winemaker-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/winemaker-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Every other day the Winemaker drunkens their closest Townsfolk neighbours — but they don't know which day it starts.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the first night, place the [[ODD]] or [[EVEN]] reminder token next to the Winemaker. If an [[ODD]] reminder token, the Winemaker is drunk on all odd nights (first, third, fifth...). If an [[EVEN]] reminder token, the Winemaker is drunk on all even nights (second, fourth, sixth...).",
+      "On odd nights, if the [[EVEN]] reminder token is next to the Winemaker place the [[DRUNK]] reminder token next to the Winemaker's Townsfolk neighbours. Otherwise: remove all [[DRUNK]] reminder tokens.",
+      "If the Winemaker is drunk or poisoned, their ability malfunctions. Remove all [[DRUNK]] reminder tokens. The [[ODD]] and [[EVEN]] reminder tokens remain."
+    ],
+    "callout": "",
+    "examples": [
+      "Daniel is the Actor and May is the Centurion, both Winemaker's closest Townsfolk neighbours. The Winemaker is drunk on the first night and sober on the second. During the second night, Daniel and May are drunk — Daniel gets arbitrary information and May is not safe from the Demon.",
+      "Lorelei the Winemaker is drunk on odd nights. On night three, the Physician protects Lorelei and Emily again. This time the Physician and Lorelei are stuck in an infinite loop of becoming sober then drunk, so tonight all of Lorelei, Emily and the Physician are drunk."
+    ],
+    "tips": [
+      "It is important to track whether the current night is odd or even, and the placement and removal of the DRUNK reminder tokens will assist with that. Remember that the first night is Night One; there is no Night Zero."
+    ],
+    "quote": "\"In wine, there's truth.\" — Pliny the Elder 23 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Drunk, Neighbour",
+    "edition": "",
+    "firstNight": 15,
+    "firstNightReminder": "Place either the ODD or EVEN token. If ODD, the Winemaker is drunk on the 1st night and every other night after. Otherwise: the Winemaker is drunk on the 2nd night and every other night after.",
+    "otherNight": 9,
+    "otherNightReminder": "Check which ODD or EVEN token is placed. If an odd night and the ODD token is placed, the Winemaker is drunk until dusk. If an even night and the EVEN token is placed, the Winemaker is drunk until dusk. Otherwise their Townsfolk neighbours are drunk until dusk.",
+    "reminders": [
+      "Odd",
+      "Even",
+      "Drunk"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "spartacus-fall-of-rome",
+    "name": "Spartacus",
+    "team": "outsider",
+    "ability": "If an evil player guesses you (once), your team loses. You might register as a Townsfolk; each day, if you did not publicly claim to be Spartacus, you don't.",
+    "art": "art/spartacus-fall-of-rome.png",
+    "page": "character.html?c=spartacus-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/spartacus-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Spartacus has to hide from the evil team, otherwise they risk losing the game for good.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the first night, Spartacus might register as a Townsfolk.",
+      "Each night, other than the first, if Spartacus has an [[I AM SPARTACUS!]] reminder token next to them, they might register as a Townsfolk. Otherwise, they register as an Outsider and as Spartacus.",
+      "Each day, if an evil player publicly claims to be evil and chooses a player as Spartacus, place the [[GUESS USED]] reminder token next to Spartacus. If the player they chose was Spartacus, evil wins. If the [[GUESS USED]] reminder token was already next to Spartacus, that guess is not valid.",
+      "If Spartacus is drunk or poisoned, their ability malfunctions and they register as an Outsider and as Spartacus."
+    ],
+    "callout": "",
+    "examples": [
+      "Cory is Spartacus and Maggie is the evil Merchant, having been turned by the Temptress. During the day Maggie publicly claims to be evil and guesses that Cory is Spartacus. Evil guessed Spartacus correctly and the game ends.",
+      "Adrian is the Standard Bearer. During the day Adrian publicly claims to be evil and guesses a player as Spartacus. As Adrian is good, evil's guess is not used. During the same day Ifan, the Augur, publicly claims to be evil and guesses that Donna is Spartacus. Donna is the Physician, so Evil guessed Spartacus incorrectly and lose their guess for the rest of the game."
+    ],
+    "tips": [
+      "During the day, listen to Spartacus. If picked by the Haruspex at night, after publicly claiming Spartacus that day, show the Haruspex a Townsfolk character that Spartacus is bluffing. If they are bluffing a Demon bluff, show them a different Townsfolk.",
+      "The Storyteller may refuse to acknowledge a Spartacus guess if they feel the player is using it against their own will and is being pressured by other players."
+    ],
+    "quote": "\"A man must not accept his fate. Or he will be destroyed by it.\" — Spartacus c. 103 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Spartacus, Wincon, Misregister",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Guess Used"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "bad-omen-fall-of-rome",
+    "name": "Bad Omen",
+    "team": "outsider",
+    "ability": "You do not know you are a Bad Omen. You think you are a Townsfolk, but you receive false information. You might register as evil, even if dead.",
+    "art": "art/bad-omen-fall-of-rome.png",
+    "page": "character.html?c=bad-omen-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/bad-omen-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "A Bad Omen thinks that they are a Townsfolk. They have no idea that they are actually a Bad Omen.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During setup if the Bad Omen is in play add a Townsfolk to the bag instead of the Bad Omen token.",
+      "If a player is a Bad Omen, place the [[IS A BAD OMEN]] reminder token next to the player. The player's ability malfunctions and/or receives false information. The player might register as evil to other abilities.",
+      "If a Bad Omen is drunk or poisoned their ability continues to malfunction, but they learn arbitrary information instead of it having to be false."
+    ],
+    "callout": "",
+    "examples": [
+      "Edgard believes that they are the Sculptor, but they are actually a Bad Omen. Edgard is shown a player, their Sculpture, on the first night. During nominations their Sculpture nominates. That night, Edgard learns the false alignment of the nominated player.",
+      "Merlin believes that they are the Centurion, but they are actually a Bad Omen. Merlin nominates what they believe to be an evil player and gets them executed in the hopes to instantly win the game for good. Because Merlin is a Bad Omen, and not actually the Centurion, the game continues as normal."
+    ],
+    "tips": [
+      "A Bad Omen can register as evil, however they do not register as a Minion or Demon. Alignment misregistration is optional, but information given must always be false.",
+      "True information in Fall of Rome is that which a sober and healthy character would receive. False information is anything other than true information — work out what is true, including any misregistration, then give any other information.",
+      "The Physician ability overrides that of a chosen Bad Omen. A Bad Omen who has been chosen by a sober Physician receives true information."
+    ],
+    "quote": "\"Beware the Ides of March.\" — Julius Caesar 100 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Setup, False Info, Misregister",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [
+      "Is a Bad Omen"
+    ],
+    "setup": true,
+    "jinxes": []
+  },
+  {
+    "slug": "temptress-fall-of-rome",
+    "name": "Temptress",
+    "team": "minion",
+    "ability": "On your 1st night choose two players: they learn that they were chosen. The 1st time one of them dies by execution, the other becomes evil that night.",
+    "art": "art/temptress-fall-of-rome.png",
+    "page": "character.html?c=temptress-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/temptress-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Temptress seduces two players to join their team — however only one can become evil.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On the first night, wake the Temptress and ask them to choose two players. Place the [[SEDUCED]] reminder token next to the two players. Wake the two players separately showing the 'This character selected you' card, then the Temptress token.",
+      "If a player with the [[SEDUCED]] reminder token is executed today and died, remove their [[SEDUCED]] reminder token. That night, wake the player with the remaining [[SEDUCED]] reminder token. Show them the 'You are' card and then the thumbs down evil signal. They are now evil. Remove their [[SEDUCED]] reminder token and replace it with the [[EVIL]] reminder token.",
+      "If the Temptress dies, remove the [[SEDUCED]] reminder tokens, if any. If the Temptress is drunk or poisoned, their ability does not work for that day.",
+      "A dead player selected by the Temptress can still become evil, as long as they were killed by a means other than execution."
+    ],
+    "callout": "",
+    "examples": [
+      "Maria is the Scholar and Kiera is the Sculptor. On the first night, the Temptress picks Maria and Kiera. On the third day during nominations, Kiera is executed and dies. That night, Maria turns evil.",
+      "Patrick is the good Emperor, Gwen is Spartacus and Declan is the Blacksmith. On the first night, the Temptress picks Gwen and Declan. One day, Declan is nominated and executed, but does not die as Patrick decides to overrule their execution. That night, Gwen does not become evil as Declan did not die by execution."
+    ],
+    "tips": [
+      "Note that while choosing another Minion is a valid tactic, if the Temptress chooses themselves and is executed, the other Tempted player will not turn evil as the Temptress ability is lost on death."
+    ],
+    "quote": "\"Nothing could part us in life, but now in death, we are likely to change places...\" — Cleopatra VII 69 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Alignment Change, Execution",
+    "edition": "",
+    "firstNight": 12,
+    "firstNightReminder": "The Temptress points to two players. Place the SEDUCED token next to the two players. Wake the two players separately. Show the 'This character selected you' card, then the Temptress token.",
+    "otherNight": 3,
+    "otherNightReminder": "If a player with a SEDUCED token is executed and dies, remove their SEDUCED token. The player with the remaining SEDUCED turns evil. Remove their SEDUCED token and replace it with the EVIL token. Wake the evil player and show them the 'You are' card and the thumbs down evil signal.",
+    "reminders": [
+      "Seduced",
+      "Evil"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "haruspex-fall-of-rome",
+    "name": "Haruspex",
+    "team": "minion",
+    "ability": "Each night, choose a player: you learn their character. The 1st player you choose twice in this way, dies. [+ Spartacus]",
+    "art": "art/haruspex-fall-of-rome.png",
+    "page": "character.html?c=haruspex-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/haruspex-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Haruspex learns a player and their character one day at a time. On a single occasion the Haruspex gets to kill a player they have learnt.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During setup if the Haruspex is in play add the Spartacus character token to bag. Spartacus can either replace an Outsider or a Townsfolk.",
+      "Each night, wake the Haruspex and ask them to choose a player. Place the [[FORETOLD]] reminder token next to the chosen player and show the Haruspex the chosen player's character. If the chosen player already has a [[FORETOLD]] reminder token, show the Haruspex that player's character. Swap the existing [[FORETOLD]] reminder token with the [[DEAD]] reminder token — the chosen player dies. Place the [[CAN'T KILL]] reminder token next to the Haruspex.",
+      "If the [[CAN'T KILL]] reminder token is next to the Haruspex, the Haruspex can no longer kill any more players. The Haruspex is still woken to choose players.",
+      "If the Haruspex is drunk or poisoned, they learn an arbitrary character for the chosen player. If the chosen player had a [[FORETOLD]] token, they do not die, but the [[CAN'T KILL]] reminder token is still placed."
+    ],
+    "callout": "",
+    "examples": [
+      "Julia, Ellen and Wes are the Vestal Virgin, Trumpeter and Physician. So far the Haruspex has chosen Julia, Ellen and Wes. On the fourth night, the Haruspex chooses Ellen. The Haruspex again learns that Ellen is the Trumpeter and Ellen dies.",
+      "Max is a Bad Omen who believes that they are the Physician. At night, the Haruspex chooses Max and learns that they are a Bad Omen. A few nights later, the Haruspex chooses Max again. The Haruspex learns that Max is now the Actor and Max dies."
+    ],
+    "tips": [
+      "If the Haruspex picks a player with the Spartacus character token, and Spartacus has upheld their public claims of being Spartacus, register the player as a Townsfolk. During the day, in case this interaction happens, listen to the Spartacus player to see what Townsfolk they are bluffing."
+    ],
+    "quote": "\"...it is in and by means of piety and religion, and this especial wisdom of perceiving that all things are governed and managed by the divine power of the immortal gods, that we have been and are superior to all other countries and nations.\" — Cicero 106 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Information, Kill, Setup",
+    "edition": "",
+    "firstNight": 14,
+    "firstNightReminder": "The Haruspex points to a player. Show that player's character token. Place a FORETOLD token next that player.",
+    "otherNight": 16,
+    "otherNightReminder": "The Haruspex points to a player. Show that player's character token. Place a FORETOLD token next that player: if that player already has a FORETOLD token, that player dies. Also place the CAN'T KILL token next to the Haruspex.",
+    "reminders": [
+      "Foretold",
+      "Dead",
+      "Can't Kill"
+    ],
+    "remindersGlobal": [],
+    "setup": true,
+    "jinxes": []
+  },
+  {
+    "slug": "glykon-fall-of-rome",
+    "name": "Glykon",
+    "team": "minion",
+    "ability": "You might register as good. Until dawn, players you nominate register as the opposing alignment & if a Townsfolk, are also poisoned.",
+    "art": "art/glykon-fall-of-rome.png",
+    "page": "character.html?c=glykon-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/glykon-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Glykon can misregister players and themselves, even poisoning good players in the process.",
+    "summaryBullets": [],
+    "howToRun": [
+      "If the Glykon nominates a player place the [[SNAKE BITE]] reminder token next to that player. That player misregisters as the opposite alignment. If that player is a Townsfolk, place the [[POISONED]] reminder token next to that player.",
+      "At the end of the night, remove all [[SNAKE BITE]] and [[POISONED]] reminder tokens."
+    ],
+    "callout": "",
+    "examples": [
+      "Travis and Stacey are the Standard Bearer and Scholar. During nominations, Stacey nominates Travis. In their defence Travis states 'the person who nominated today is evil'. The same day the Glykon nominates Stacey. That night, Travis learns 'True' because Stacey is registering as evil.",
+      "Duncan is the Trumpeter. During nominations, Duncan is nominated by the Glykon. Duncan is registering as evil to other abilities, and tonight they are also poisoned. They learn an arbitrary number pertaining to the number of evil players who publicly claimed Spartacus today."
+    ],
+    "tips": [
+      "Note that the misregistration of alignment for those nominated by the Glykon is mandatory, not optional. A Bad Omen nominated by the Glykon must register as evil."
+    ],
+    "quote": "\"When they went in, the thing, of course, seemed to them a miracle, that the formerly tiny snake within a few days had turned into so great a serpent, with a human face, moreover, and tame!\" — Lucian Of Samosata 125 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Misregister, Poison, Nomination",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Snake Bite",
+      "Poisoned"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "augur-fall-of-rome",
+    "name": "Augur",
+    "team": "minion",
+    "ability": "If a Townsfolk nominates you, they immediately become a Bad Omen.",
+    "art": "art/augur-fall-of-rome.png",
+    "page": "character.html?c=augur-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/augur-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Augur turns Townsfolk into Outsiders — specifically the Bad Omen.",
+    "summaryBullets": [],
+    "howToRun": [
+      "During nominations, if the Augur is nominated by a Townsfolk, place an [[IS A BAD OMEN]] reminder token by the player. They instantaneously become a Bad Omen.",
+      "If the Augur is executed the same day a Townsfolk has nominated them, the Townsfolk still remains a Bad Omen. If the Augur dies, all players that have become a Bad Omen remain as a Bad Omen.",
+      "If the Augur is drunk or poisoned and is nominated by a Townsfolk, nothing happens."
+    ],
+    "callout": "",
+    "examples": [
+      "Scott is the Gladiator. During nominations Scott nominates the Augur. Scott instantly becomes a Bad Omen. Scott does not learn this.",
+      "Kelly is The Twins. During nominations Kelly nominates the Augur. Nothing happens as Kelly is an Outsider.",
+      "Michael is the Trumpeter and Jenny is the Augur. During nominations Michael nominates Jenny. Michael instantly becomes a Bad Omen. That night, Michael learns false information."
+    ],
+    "tips": [
+      "Remember that the change is instantaneous and have it in mind when opening nominations. This is important if, for example, the Scholar nominates someone who has just nominated the Augur, as it may be the first Outsider they have nominated."
+    ],
+    "quote": "\"That everything in war and in peace, at home and abroad, was done only after taking the auspices?\" — Titus Livy 59 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Bad Omen, Nomination, Conversion",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "cleopatra-fall-of-rome",
+    "name": "Cleopatra",
+    "team": "demon",
+    "ability": "Each night, choose two players: if they nominate tomorrow, they die that night. Each day, if a good player (Travellers don't count) does not nominate, evil wins.",
+    "art": "art/cleopatra-fall-of-rome.png",
+    "page": "character.html?c=cleopatra-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/cleopatra-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Cleopatra selects two players: if they nominate tomorrow they die. If no good player nominates, evil wins.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each night, wake Cleopatra and ask them to choose two players. Place the [[CHOSEN]] reminder token next to the two players.",
+      "During the day, if a player marked with the [[CHOSEN]] reminder token nominates, replace the [[CHOSEN]] reminder token with a [[DEAD]] reminder token. That player dies tonight.",
+      "If no good players (excluding players that register as evil) nominated today, the game ends and the evil team wins. Check this condition when closing nominations, prior to executing anyone who is about to die.",
+      "If a player marked with a [[CHOSEN]] reminder token did not nominate today, remove the [[CHOSEN]] reminder token from the player."
+    ],
+    "callout": "",
+    "examples": [
+      "At night, Cleopatra selects Reid and Tommy, who are the Sculptor and Merchant. Tomorrow Reid nominates and that night Reid dies. The following day no good player nominates. After closing nominations, the Storyteller announces that the evil team have won.",
+      "Mark is the Gladiator confirmed to most of town. Some players are reluctant to nominate, so town suggest that Mark, and only Mark nominates today. Mark nominates Jean, the Augur, and instantly becomes a Bad Omen. No other nominations are made today, and the Storyteller elects to register the Bad Omen as evil. The game ends as Cleopatra is in play, and evil wins."
+    ],
+    "tips": [
+      "For Cleopatra's alternative win condition, you must take account of what alignment players register as, not just what team they are on or started on. The Storyteller should generally choose to register the Glykon as evil.",
+      "The numbered [[CHOSEN]] reminder tokens help to record the order of Cleopatra's choices."
+    ],
+    "quote": "\"Fool! Don't you see now that I could have poisoned you a hundred times had I been able to live without you!\" — Cleopatra VII 69 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Wincon, Nomination, Kill",
+    "edition": "",
+    "firstNight": 13,
+    "firstNightReminder": "Cleopatra points to two players.",
+    "otherNight": 12,
+    "otherNightReminder": "If a previously chosen player nominated today they die. Remove all CHOSEN tokens. Cleopatra points to two players. Place the CHOSEN token next to both players.",
+    "reminders": [
+      "Chosen",
+      "Dead"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "crassus-fall-of-rome",
+    "name": "Crassus",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If the 1st Crassus publicly claims to be Spartacus & dies with 5 or more players alive, an evil player becomes Crassus.",
+    "art": "art/crassus-fall-of-rome.png",
+    "page": "character.html?c=crassus-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/crassus-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Crassus kills a player each night, and if caught is able to make a copy of themselves — albeit publicly.",
+    "summaryBullets": [],
+    "howToRun": [
+      "On Crassus' first night place the [[1ST CRASSUS]] reminder token next to Crassus. If the [[1ST CRASSUS]] reminder token is already on the grimoire, do not move it.",
+      "Each night except the first, ask Crassus to choose a player. Mark the chosen player with the [[DEAD]] reminder token. They die.",
+      "If there are five or more non-Traveller players alive and Crassus dies, check whether Crassus has both a [[1ST CRASSUS]] reminder token and an [[I AM SPARTACUS!]] reminder token. If they do, an evil player becomes Crassus.",
+      "If a new Crassus is created, wake them and show them a 'You are' card, then the Crassus token."
+    ],
+    "callout": "",
+    "examples": [
+      "Reggie starts as Crassus. On the second night, Reggie chooses Malik, the Merchant. Malik dies. People believe that Reggie is evil. Reggie had already publicly claimed Spartacus, and throughout nominations escapes execution. That night, Reggie chooses themselves, and dies. As they were the 1st Crassus to die and publicly claimed Spartacus, a Minion becomes the new evil Crassus.",
+      "Shane is the evil Blacksmith, after being turned by the Temptress. Before nominations, Crassus publicly claimed to be Spartacus. During nominations, Crassus is executed and dies. As they were the 1st Crassus to die and publicly claimed Spartacus, Shane becomes the new evil Crassus."
+    ],
+    "tips": [
+      "A Bad Omen or Glykon-nominated player could in theory register as Evil and become Crassus if the first Crassus dies having claimed Spartacus, however this is not advised. They would become a good Crassus, and could kill themselves to win."
+    ],
+    "quote": "\"Those who aim at great deeds must also suffer greatly...\" — Plutarch c. 49 A.D.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Kill, Spartacus, Demon",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 13,
+    "otherNightReminder": "Crassus points to a player. That player dies. If the 1st Crassus publicly claimed to be Spartacus today and points to themselves (or was executed), with 5 or more players alive, replace the character of 1 evil player with a spare Crassus token. Show the 'You are' card, then the Crassus token.",
+    "reminders": [
+      "Dead",
+      "1st Crassus"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "hannibal-fall-of-rome",
+    "name": "Hannibal",
+    "team": "demon",
+    "ability": "You think you are a good character, but you are not. Minions learn 3 bluffs. Each night*, a player might die. The 1st Hannibal to die, becomes good. [+1 Hannibal]",
+    "art": "art/hannibal-fall-of-rome.png",
+    "page": "character.html?c=hannibal-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/hannibal-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Hannibal believes that they are a good player but they are actually the Demon.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Decide which characters are going to be Hannibal. Once all the tokens have been pulled from the bag, place the [[IS HANNIBAL]] reminder tokens next to the two players with the chosen characters. They are now Hannibal, the Demon, and evil — they do not learn this.",
+      "On the first night during Minion information, when showing the Demon point to the players who have the [[IS HANNIBAL]] token next to their characters and show the Hannibal token. Show the Minions three not-in-play characters.",
+      "On subsequent nights, a player might die for each living Hannibal. Place the [[DEAD]] reminder token(s) next to the chosen player(s). They die.",
+      "If a Hannibal dies, that night wake the player and inform them that they are a good Hannibal."
+    ],
+    "callout": "",
+    "examples": [
+      "Ashley is Hannibal, but they believe they are the Trumpeter. Josh is also a Hannibal, but they believe they are the Mortician. Throughout the game they learn arbitrary information. On the second night, the Storyteller decides to kill two players, one for each living Hannibal.",
+      "Hannah puts herself forward to be executed to help gather Mortician information on their neighbours. Hannah is executed and the game continues. Hannah was the first Hannibal to be executed. That night, Hannah is woken and told that they are Hannibal and are now good. Sid is now the last living Hannibal and will remain evil for the rest of the game."
+    ],
+    "tips": [
+      "The Storyteller has a lot of control through choosing the Hannibal deaths every night. Remember that this includes the option of zero or up to two deaths. If in doubt, begin by mimicking a potential Cleopatra by killing only players that nominated.",
+      "The time may come for the Hannibals to turn on each other. The Storyteller should not normally leave both Hannibal players alive for the whole game. If neither Hannibal has been executed, the Storyteller should normally kill one Hannibal at night.",
+      "A Hannibal who thinks they are a Gladiator will likely be swiftly discovered, unless there is a plausible reason for the ability not to function, such as being sat next to a Winemaker."
+    ],
+    "quote": "\"I will either find a way or make one.\" — Hannibal 247 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Setup, False Info, Demon",
+    "edition": "",
+    "firstNight": 11,
+    "firstNightReminder": "Select 2 good players and place the IS HANNIBAL reminder tokens. Wake all Minions together, show them the Hannibals and show them three not-in-play character tokens (these must be the same).",
+    "otherNight": 14,
+    "otherNightReminder": "Choose a player, that player dies. If a Hannibal died today, wake that player and show them the 'You are' card, the Hannibal token and then the thumbs up good signal.",
+    "reminders": [],
+    "remindersGlobal": [
+      "Is Hannibal",
+      "Dead"
+    ],
+    "setup": true,
+    "jinxes": []
+  },
+  {
+    "slug": "caesar-fall-of-rome",
+    "name": "Caesar",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. The 1st time an evil player dies by execution, that night, choose an additional player: they die.",
+    "art": "art/caesar-fall-of-rome.png",
+    "page": "character.html?c=caesar-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/caesar-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Caesar kills a player each night, and the first time an evil player died by execution today, they kill another.",
+    "summaryBullets": [],
+    "howToRun": [
+      "The first time an evil player is executed and dies, place the [[BETRAYAL]] reminder token next to Caesar.",
+      "Each night other than the first, if there is no [[KILL USED]] reminder token next to Caesar and an evil player died by execution today (shown by the [[BETRAYAL]] reminder token), ask Caesar to choose two players. Mark the chosen players with the [[DEAD]] reminder tokens. They die. Place the [[KILL USED]] reminder token next to Caesar. Otherwise, ask Caesar to choose a player. Mark the chosen player with the [[DEAD]] reminder token. They die.",
+      "If a good player was nominated by the Glykon and executed that day, and they are the first 'evil' player to be executed, Caesar gets an extra kill that night."
+    ],
+    "callout": "",
+    "examples": [
+      "Amir is the Vestal Virgin. At the end of nominations, Amir is executed and dies. At night, Caesar chooses a player, who dies. During the second day, Olivier is executed and dies. Olivier was the evil Haruspex. That night, Caesar is woken and prompted to choose two players. Both chosen players die.",
+      "Jenna is the evil Mortician, having been turned by the Temptress. At the end of nominations, Jenna is executed and dies. At night, Caesar is prompted to choose two players, who die."
+    ],
+    "tips": [
+      "Caesar's second kill happens the first time an evil player dies by execution, not just minions. This includes a good player nominated by the Glykon (who registers as evil), and might include a Bad Omen if you choose to register them as evil."
+    ],
+    "quote": "\"I came, I saw, I conquered.\" — Julius Caesar 100 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Kill, Execution, Demon",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 15,
+    "otherNightReminder": "If an evil player was executed today, Caesar points to two players. Otherwise: Caesar points to a player. Chosen players die.",
+    "reminders": [
+      "Betrayal",
+      "Used",
+      "Dead"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "mercenary-fall-of-rome",
+    "name": "Mercenary",
+    "team": "traveller",
+    "ability": "Each night*, gain the ability of a player who publicly claimed Spartacus today. If a Mercenary is exiled, you are exiled too. [+1 Mercenary of opposing alignment]",
+    "art": "art/mercenary-fall-of-rome.png",
+    "page": "character.html?c=mercenary-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/mercenary-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Mercenaries gain abilities dependent on the town's claims — however if one is exiled the other is too.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each night, except from the first, place the [[GOOD ABILITY]] reminder token next to a player with an I AM SPARTACUS! Fabled reminder token. Wake the good Mercenary and show them the character token of the player with the [[GOOD ABILITY]] reminder token — the good Mercenary has that ability until they receive a new ability the following night. Complete the same process for the evil Mercenary using the [[EVIL ABILITY]] reminder token.",
+      "If one of the Mercenaries is exiled, exile the other Mercenary simultaneously."
+    ],
+    "callout": "",
+    "examples": [
+      "Evie and Chris are the good and evil Mercenaries. On the first day Helen the Physician and Brandon the Haruspex publicly claim Spartacus. That night Evie gains the Physician ability and Chris gains the Haruspex ability. The following day, Elwyn the Winemaker claims Spartacus. That night both Evie and Chris gain the Winemaker ability. On the third day, Chris is nominated for exile and gathers enough votes. Both Evie and Chris are exiled simultaneously."
+    ],
+    "tips": [
+      "The Mercenaries are designed for two people who arrive late or expected to leave early together. Do not assign this role to people who are expected to leave at different times.",
+      "Optionally, you can wake the Mercenaries with the other Travellers. If doing so and a Mercenary uses a public role like Actor, Standard Bearer, or Gladiator, and tonight gets that role, retroactively give the Mercenary the information pertaining to their public action that day."
+    ],
+    "quote": "",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Spartacus, Ability",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 4,
+    "otherNightReminder": "Show the Mercenary a character that publicly claimed to be Spartacus today, they have that ability tonight and tomorrow until dusk.",
+    "reminders": [
+      "Good",
+      "Evil",
+      "Good Ability",
+      "Evil Ability"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "architect-fall-of-rome",
+    "name": "Architect",
+    "team": "traveller",
+    "ability": "Each night*, choose a player: 1) they become a not-in-play character of the same type, or 2) they swap characters with a player of the same type.",
+    "art": "art/architect-fall-of-rome.png",
+    "page": "character.html?c=architect-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/architect-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Architect swaps or replaces player tokens at night.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each night, but not the first, wake the Architect and ask them to choose a player. Place the [[REDESIGNED]] reminder token next to that player. Place an additional [[REDESIGNED]] reminder token next to a player of the same character type, or choose not to.",
+      "If only 1 [[REDESIGNED]] reminder token is on the grimoire, replace the character token of that player with a not-in-play character of the same type. Wake the player and show them the 'You are' card, then their new character token.",
+      "If 2 [[REDESIGNED]] reminder tokens are on the grimoire, swap the character tokens of those two players. Wake each player separately and show them the 'You are' card, then their new character token."
+    ],
+    "callout": "",
+    "examples": [
+      "Nyla and Bruce are the Actor and Standard Bearer. At night, the Architect chooses Nyla. Nyla and Bruce's character tokens are swapped. They are woken separately and shown their new character token.",
+      "Jack is Cleopatra. At night, the Architect chooses Jack. Jack's character token is replaced with the Caesar token. Jack is woken and shown that they are now Caesar."
+    ],
+    "tips": [],
+    "quote": "\"I found Rome a city of bricks and left it the city of marbles.\" — Caesar Augustus 63 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Ability, Character Change",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 7,
+    "otherNightReminder": "The Architect points to a player. Choose which ability will effect the chosen player. Treat them accordingly (not-in-play character or character swap). Wake affected players individually. Show 'You are', then their new character token.",
+    "reminders": [
+      "Redesigned"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "sibyl-fall-of-rome",
+    "name": "Sibyl",
+    "team": "traveller",
+    "ability": "Each day, after the 1st execution, you may publicly choose a dead player: they may nominate. If the majority of the dead and yourself agree, they are executed.",
+    "art": "art/sibyl-fall-of-rome.png",
+    "page": "character.html?c=sibyl-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/sibyl-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Sibyl consults with the dead, letting them nominate and execute players.",
+    "summaryBullets": [],
+    "howToRun": [
+      "After the first execution each day, if the Sibyl publicly chooses a dead player, that dead player may nominate. If the majority of the dead and the Sibyl agree, they are executed."
+    ],
+    "callout": "",
+    "examples": [
+      "Murphy dies during the night. Jamie, the good Sibyl travels in. The next day Jamie, after the 1st execution, chooses Murphy. That day Murphy is able to nominate and does so. Talia will receive new information tonight as their 'Sculpture' Murphy nominated a new player.",
+      "Sophia is the Glykon. On the first day Sophia was executed and dies. The Sibyl picks Sophia. Sophia nominates a good player, but neither Sophia nor the Sibyl decide to vote on it. The good player is not executed nor are they affected by the Glykon's ability, as Sophia was dead when they nominated."
+    ],
+    "tips": [
+      "The majority required is equal to half the number of dead players and the Sibyl. The Sibyl themself does not have to agree if the votes from the dead reach the majority.",
+      "Note that the Mortician will gain information from every execution, so is a more powerful role than normal when the Sibyl is in play."
+    ],
+    "quote": "\"To such a degree will I be changed that I will be visible to no one; but I will be recognized by my voice. And with my voice, to you, I give a second chance.\"",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Nomination, Dead",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "high-priest-1-fall-of-rome",
+    "name": "High Priest (Pontifex Maximus)",
+    "team": "traveller",
+    "ability": "Each day, publicly choose a unique living player to bless: if a majority of players agree, something good happens to them.",
+    "art": "art/high-priest-1-fall-of-rome.png",
+    "page": "character.html?c=high-priest-1-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/high-priest-1-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each day, if the High Priest chooses to bless a player, announce to the town that there will be a vote. Dead players may vote and do not require a ghost vote to do so. If a majority voted place the [[BLESSED]] reminder token next to the chosen player, otherwise place the [[FAILED]] reminder token. That player cannot be selected again by the High Priest. The effect of the blessing is up to the discretion of the storyteller — inherently it should help the player and/or their team.",
+      "If the High Priest chooses a player that they have already blessed or tried to bless, ask the High Priest to choose a different player."
+    ],
+    "callout": "",
+    "examples": [
+      "Antonio is a Bad Omen who believes they are the Trumpeter. During the day the High Priest chooses to bless Antonio. The town vote and a majority is met. To bless Antonio, the Storyteller removes the BAD OMEN reminder token, so that Antonio will receive true information.",
+      "Anne is the Temptress. During the day the High Priest chooses to bless Anne. The town vote and a majority is achieved. After being blessed, Anne's Demon is executed and dies, however the game continues. The Storyteller wakes Anne and shows her the Cleopatra token — Anne is the new Demon."
+    ],
+    "tips": [
+      "There are two High Priest variants available. Only one type of High Priest can be in a game of Fall of Rome.",
+      "The Pontifex Maximus leads to a more chaotic and random version of Fall of Rome. The Storyteller can freely use the High Priest to provide good or evil players, when blessed, a large range of 'good' things.",
+      "The Pontiff provides for a more solvable, information-centric contribution."
+    ],
+    "quote": "\"To ignore the signs of the gods is itself to deny their very existence.\" — Cicero 106 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Blessing, Chaos",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 5,
+    "otherNightReminder": "If the High Priest successfully blessed a player today, something good happens to that player and/or their team.",
+    "reminders": [
+      "Blessed",
+      "Failed"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "high-priest-2-fall-of-rome",
+    "name": "High Priest (Pontiff)",
+    "team": "traveller",
+    "ability": "Each day, publicly choose a unique living player to bless: if a majority of players agree, tomorrow they may learn a statement. Tonight, choose if it's true.",
+    "art": "art/high-priest-2-fall-of-rome.png",
+    "page": "character.html?c=high-priest-2-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/high-priest-2-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each day, if the High Priest chooses to bless a player, announce to the town that there will be a vote. If a majority voted place the [[BLESSED]] reminder token next to the chosen player, otherwise place the [[FAILED]] reminder token. That player cannot be selected again.",
+      "Each night, if the High Priest successfully blessed a player today, wake the High Priest. The High Priest chooses whether the statement is true tomorrow with a hand signal (true 'thumbs up', false 'thumbs down')."
+    ],
+    "callout": "",
+    "examples": [],
+    "tips": [
+      "There are two High Priest variants available. Only one type of High Priest can be in a game of Fall of Rome.",
+      "The Pontiff provides for a more solvable, information-centric contribution, with the added ability for the High Priest to choose whether the blessed players receive true or false information."
+    ],
+    "quote": "\"Deny everything, burn the records, say these are lies, anything not to recognise that gods look after our human affairs.\" — Cicero 106 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Blessing, Information",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 6,
+    "otherNightReminder": "If the High Priest successfully blessed a player today, wake the High Priest. The High Priest chooses whether the statement is true tomorrow with a hand signal (true 'thumbs up', false 'thumbs down').",
+    "reminders": [
+      "Blessed",
+      "Failed",
+      "True",
+      "False"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "emperor-fall-of-rome",
+    "name": "Emperor",
+    "team": "traveller",
+    "ability": "Each day, choose the 1st execution's outcome. If you choose to protect today's execution: they survive. Otherwise, tonight you learn their alignment.",
+    "art": "art/emperor-fall-of-rome.png",
+    "page": "character.html?c=emperor-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/emperor-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "The Emperor decides the outcome of the executions — with a thumbs up or a thumbs down.",
+    "summaryBullets": [],
+    "howToRun": [
+      "Each day, before the execution goes through ask the Emperor whether they will overturn the execution (thumbs up), or go through with the execution (thumbs down). If they overturn the execution the player executed does not die. The game continues and everyone goes to sleep.",
+      "Each night, if the Emperor went through with today's execution (thumbs down), wake the Emperor. They learn the player's alignment. If good, tell them 'good' (thumbs up) otherwise tell them 'evil' (thumbs down)."
+    ],
+    "callout": "",
+    "examples": [
+      "Patrizia is a Bad Omen who believes they are the Standard Bearer. During the day they are nominated and executed. Before the execution goes through the Storyteller calls upon the Emperor. The Emperor shows a thumbs down. Patrizia is executed and dies. That night, the Emperor learns that Patrizia is evil as they are falsely registering as a Bad Omen.",
+      "Gary is Crassus. During the day they are nominated and executed. The Emperor decides to save Gary by showing a thumbs up. Gary is executed and does not die, and the game continues."
+    ],
+    "tips": [],
+    "quote": "\"Which death is preferable to every other? The unexpected.\"",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Traveller, Execution, Information",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 8,
+    "otherNightReminder": "If a player was executed today and the outcome was not overturned by the Emperor: Show the hand signal (thumbs down 'evil', thumbs up 'good') for the players alignment.",
+    "reminders": [
+      "Executed"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
+  },
+  {
+    "slug": "i-am-spartacus-fall-of-rome",
+    "name": "\"I Am Spartacus!\"",
+    "team": "fabled",
+    "ability": "Each day, up to half the living players (rounded up & Travellers don't count) may publicly claim to be Spartacus.",
+    "art": "art/i-am-spartacus-fall-of-rome.png",
+    "page": "character.html?c=i-am-spartacus-fall-of-rome",
+    "image": "https://botchomebrew.wiki/assets/art/i-am-spartacus-fall-of-rome.png",
+    "creator": "Alex",
+    "lede": "Living players may publicly stake their claim as Spartacus each day.",
+    "summaryBullets": [],
+    "howToRun": [
+      "At the start of the day, remove all [[I AM SPARTACUS!]] reminder tokens, if any.",
+      "During the day, if a player publicly claims to be Spartacus place the [[I AM SPARTACUS!]] reminder token next to that player.",
+      "Only up to half the living players (rounded up and not counting Travellers) may publicly claim to be Spartacus.",
+      "Players may ask the Storyteller during the day who has publicly claimed to be Spartacus so far. This is public information that the Storyteller can divulge."
+    ],
+    "callout": "",
+    "examples": [
+      "Mack is Spartacus. During the day, Mack publicly claims to be Spartacus. The Storyteller places the I AM SPARTACUS! reminder token next to Spartacus. Spartacus' ability condition is met, and they might register as a Townsfolk.",
+      "Gary is Crassus. During the day, Gary publicly claims to be Spartacus. The Storyteller places the I AM SPARTACUS! reminder token next to Crassus. Crassus' ability condition is met — if they die today or tonight, a living evil player becomes Crassus."
+    ],
+    "tips": [
+      "Mechanical Spartacus claims are a large part of the game. The Storyteller should emphasise this at the start of the game, and reiterate that they are happy to state who has claimed Spartacus each day when asked. The Storyteller should also inform players how many mechanical claims are left.",
+      "Consider using physical markers visible in the Town Square to show who has claimed Spartacus. Flags and hats are a fun way to show who has claimed Spartacus today.",
+      "Make clear to the players that you will not be able to confirm Spartacus claims from previous days, only the current day."
+    ],
+    "quote": "\"The ego cuts deeper than the flesh.\" — Spartacus c. 103 B.C.",
+    "appearsIn": "Fall of Rome",
+    "tags": "Fall of Rome, Spartacus, Fabled",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "I am Spartacus!"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
