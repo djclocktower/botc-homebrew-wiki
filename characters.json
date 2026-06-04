@@ -454,8 +454,11 @@
     "creator": "DJ_DJ_DJ",
     "lede": "The Acolyte is still learning.",
     "summaryBullets": [],
-    "howToRun": [],
-    "callout": "",
+    "howToRun": [
+      "Each day, Acolytes can request a private chat with you. Take them away from the circle so you cannot be overheard. They will ask you a question. Whisper “Yes,” “No,” or “I don’t know,” to them, or if you cannot answer in one of these ways, prompt the Acolyte to ask again in a different way.",
+      "Each night, mark one Acolyte with the [[SOBER]] reminder. They are sober tomorrow, and all other Acolytes are drunk."
+    ],
+    "callout": "Like the Artist, evil players bluffing as the Acolyte may request a private chat with you and pretend to ask a question. To help them bluff, you can pretend to give an answer by nodding or shaking your head.",
     "examples": [],
     "tips": [],
     "bluffing": [],
@@ -473,7 +476,18 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [
+      {
+        "name": "Pit-Hag",
+        "align": "evil",
+        "text": "If there is a spare token, the Pit-Hag can create an extra Acolyte."
+      },
+      {
+        "name": "Boffin",
+        "align": "evil",
+        "text": "If theres is a spare token, the Boffin can give the Demon the Village Idiot ability."
+      }
+    ]
   },
   {
     "slug": "sculptor-fall-of-rome",
