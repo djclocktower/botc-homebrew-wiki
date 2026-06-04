@@ -639,7 +639,29 @@
     var here=location.pathname.split('/').pop()||'index.html';
     drop.querySelectorAll('a').forEach(function(a){if(a.getAttribute('href')===here)a.classList.add('active');});
     function positionDrop(){var tb=document.querySelector('.topbar');if(tb)drop.style.top=tb.getBoundingClientRect().height+'px';}
-    btn.addEventListener('click',function(){positionDrop();var open=drop.classList.toggle('open');btn.classList.toggle('open',open);btn.setAttribute('aria-expanded',open?'true':'false');});
+    btn.addEventListener('click',function(){
+      positionDrop();
+      var open=drop.classList.toggle('open');
+      btn.classList.toggle('open',open);
+      btn.setAttribute('aria-expanded',open?'true':'false');
+      // focus the nav search when opening
+      if(open){var ns=document.getElementById('nav-search-input');if(ns)setTimeout(function(){ns.focus();},80);}
+    });
+    // nav search → mirror to topbar search input and trigger it
+    var navSearch=document.getElementById('nav-search-input');
+    var topSearch=document.getElementById('search-input');
+    if(navSearch){
+      navSearch.addEventListener('input',function(){
+        if(topSearch){topSearch.value=navSearch.value;topSearch.dispatchEvent(new Event('input'));}
+        else{
+          // no topbar search (create/edit pages) — navigate to homepage with query
+          if(navSearch.value.trim()) window.location.href='index.html';
+        }
+      });
+      navSearch.addEventListener('keydown',function(e){
+        if(e.key==='Escape'){drop.classList.remove('open');btn.classList.remove('open');btn.setAttribute('aria-expanded','false');}
+      });
+    }
     window.addEventListener('resize',positionDrop);
     document.addEventListener('click',function(e){if(!btn.contains(e.target)&&!drop.contains(e.target)){drop.classList.remove('open');btn.classList.remove('open');btn.setAttribute('aria-expanded','false');}});
   })();
