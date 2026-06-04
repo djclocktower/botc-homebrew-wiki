@@ -656,3 +656,153 @@ body:has(.creator-sidebar) .foot {
   overflow: visible;
   text-overflow: unset;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   SCRIPT BUILDER
+   ════════════════════════════════════════════════════════════════ */
+.sb-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 0;
+  align-items: start;
+}
+/* Add sidebar — scrollable, fixed-ish to left */
+.sb-add-sidebar {
+  position: sticky;
+  top: 56px;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+.sb-add-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  border-right: 4px solid var(--parch-frame);
+  padding: 16px 12px;
+}
+.sb-add-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sb-add-title {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .04em; color: var(--maroon);
+  margin: 0 0 10px;
+}
+.sb-close-mobile { display: none; background: none; border: none; font-size: 1.3rem; color: var(--maroon); cursor: pointer; }
+.sb-filter {
+  width: 100%; box-sizing: border-box; margin-bottom: 10px;
+  font-family: 'TradeGothicLT', sans-serif; font-size: .9rem;
+  padding: 7px 10px; border: 2px solid var(--parch-frame); background: #fffdf8;
+  color: var(--ink);
+}
+.sb-add-list { flex: 1; overflow-y: auto; padding-right: 4px; }
+.sb-add-list::-webkit-scrollbar { width: 6px; }
+.sb-add-list::-webkit-scrollbar-thumb { background: var(--parch-frame); }
+.sb-add-group { margin-bottom: 12px; }
+.sb-add-grouphead {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .82rem; letter-spacing: .08em; color: var(--evil);
+  margin: 0 0 4px; padding-bottom: 3px; border-bottom: 1px solid var(--parch-frame);
+}
+.sb-add-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  background: none; border: none; cursor: pointer;
+  padding: 4px 6px; text-align: left;
+  font-family: 'TradeGothicLT', sans-serif; color: var(--maroon);
+  transition: background .12s;
+}
+.sb-add-item:hover { background: rgba(91,31,33,.08); }
+.sb-add-item.on { background: rgba(44,123,208,.12); }
+.sb-add-thumb { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+.sb-add-name { flex: 1; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-add-plus { font-weight: 700; font-size: 1rem; color: var(--good-name); flex-shrink: 0; min-width: 18px; text-align: center; }
+.sb-add-item.on .sb-add-plus { color: var(--good-name); }
+.sb-loading { color: #8a7a63; font-size: .9rem; text-align: center; padding: 20px; }
+
+/* Main script area */
+.sb-main { padding: 0 clamp(12px,3vw,40px) 64px; }
+.sb-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+}
+.sb-count {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; color: var(--parch); letter-spacing: .04em;
+}
+.sb-toolbar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.sb-btn {
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .03em;
+  cursor: pointer; border: none; padding: 9px 16px; font-size: .88rem;
+  color: #f3ead4; transition: filter .15s;
+}
+.sb-btn:hover { filter: brightness(1.1); }
+.sb-btn-export { background: linear-gradient(180deg,#2f7d3e,#1c5429); }
+.sb-btn-copy { background: linear-gradient(180deg,#2f6fb8,#1d4a80); }
+.sb-btn-clear { background: linear-gradient(180deg,#8a3526,#5B1F21); }
+.sb-script-group { margin-bottom: 26px; }
+.sb-script-grouphead {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.2rem; letter-spacing: .06em; color: var(--parch);
+  margin: 0 0 10px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--parch-frame);
+}
+.sb-script-grouphead span { color: rgba(236,225,200,.6); font-size: .85rem; }
+.sb-script-item {
+  display: flex; align-items: center; gap: 14px;
+  background-color: var(--card); background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame);
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.sb-script-thumb { width: 50px; height: 50px; object-fit: contain; flex-shrink: 0; }
+.sb-script-info { flex: 1; min-width: 0; }
+.sb-script-name {
+  display: block; font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.05rem; color: var(--maroon); text-decoration: none; line-height: 1.1;
+}
+.sb-script-name:hover { color: var(--evil); }
+.sb-script-ability { font-size: .85rem; color: var(--ink); line-height: 1.3; }
+.sb-script-remove {
+  background: none; border: 2px solid var(--evil); color: var(--evil);
+  cursor: pointer; font-size: 1rem; width: 32px; height: 32px; flex-shrink: 0;
+  transition: background .15s;
+}
+.sb-script-remove:hover { background: var(--evil); color: #fff; }
+.sb-empty { color: rgba(236,225,200,.6); text-align: center; padding: 40px; font-size: 1rem; }
+.sb-mobile-toggle { display: none; }
+
+/* Mobile */
+@media (max-width: 820px) {
+  .sb-layout { grid-template-columns: 1fr; }
+  .sb-mobile-toggle {
+    display: block; position: sticky; top: 56px; z-index: 15;
+    width: 100%; border: none; cursor: pointer;
+    font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .04em;
+    font-size: 1rem; padding: 12px; color: #f3ead4;
+    background: linear-gradient(180deg,#2f6fb8,#1d4a80);
+  }
+  .sb-add-sidebar {
+    position: fixed; top: 0; left: 0; width: 86%; max-width: 340px;
+    height: 100vh; z-index: 50;
+    transform: translateX(-100%); transition: transform .25s ease;
+  }
+  .sb-add-sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,.5); }
+  .sb-add-inner { padding-top: 20px; }
+  .sb-close-mobile { display: block; }
+}
+
+/* ── Add to Script button on character pages ── */
+.add-to-script-btn {
+  display: block; width: 100%; box-sizing: border-box;
+  margin-top: 14px;
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em;
+  cursor: pointer; border: none; padding: 11px 16px; font-size: .95rem;
+  color: #f3ead4; background: linear-gradient(180deg,#2f6fb8,#1d4a80);
+  transition: filter .15s;
+}
+.add-to-script-btn:hover { filter: brightness(1.1); }
+.add-to-script-btn.on { background: linear-gradient(180deg,#2f7d3e,#1c5429); }
