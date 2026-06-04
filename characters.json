@@ -634,7 +634,9 @@
     "reminders": [],
     "remindersGlobal": [],
     "setup": true,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "trumpeter-fall-of-rome",
