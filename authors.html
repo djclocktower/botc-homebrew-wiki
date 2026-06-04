@@ -140,7 +140,19 @@
       var open = drop.classList.toggle('open');
       btn.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
     });
+    // nav search mirrors topbar search
+    var navSearch = document.getElementById('nav-search-input');
+    var topSearch = document.getElementById('search-input');
+    if (navSearch) {
+      navSearch.addEventListener('input', function(){
+        if (topSearch) { topSearch.value = navSearch.value; topSearch.dispatchEvent(new Event('input')); }
+      });
+      navSearch.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+      });
+    }
     window.addEventListener('resize', positionDrop);
     document.addEventListener('click', function(e){
       if (!btn.contains(e.target) && !drop.contains(e.target)){
