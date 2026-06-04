@@ -338,11 +338,15 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .json-arrow { transition: transform .2s ease; font-size: .85em; }
 .json-box.open .json-arrow { transform: rotate(180deg); }
 .json-copy {
-  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em;
-  cursor: pointer; border: none; border-radius: 0; padding: 7px 14px; font-size: .82rem;
-  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4; flex-shrink: 0;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
+  cursor: pointer; font-size: .78rem; flex-shrink: 0;
+  padding: 5px 13px;
+  color: var(--maroon);
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  transition: background .15s, color .15s;
 }
-.json-copy:hover { filter: brightness(1.08); }
+.json-copy:hover { background: var(--parch-frame); color: #fff; }
 .json-body {
   margin: 0; background: #1d1420; color: #e8dcc0;
   border: 1px solid var(--card-edge); border-top: none;
@@ -799,13 +803,21 @@ body:has(.creator-sidebar) .foot {
 .add-to-script-btn {
   display: block; width: 100%; box-sizing: border-box;
   margin-top: 14px;
-  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em;
-  cursor: pointer; border: none; padding: 11px 16px; font-size: .95rem;
-  color: #f3ead4; background: linear-gradient(180deg,#2f6fb8,#1d4a80);
-  transition: filter .15s;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
+  cursor: pointer; font-size: .9rem;
+  padding: 10px 16px;
+  color: var(--maroon);
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  transition: background .15s, color .15s, border-color .15s;
 }
-.add-to-script-btn:hover { filter: brightness(1.1); }
-.add-to-script-btn.on { background: linear-gradient(180deg,#2f7d3e,#1c5429); }
+.add-to-script-btn:hover { background: var(--parch-frame); color: #fff; }
+.add-to-script-btn.on {
+  background: var(--maroon);
+  border-color: var(--maroon);
+  color: var(--parch);
+}
+.add-to-script-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
 
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {
