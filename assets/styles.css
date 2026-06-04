@@ -148,7 +148,7 @@ p { margin: 0 0 .8em; }
 ul { list-style: none; margin: .2em 0 0; padding: 0; }
 li { position: relative; padding-left: 1.1em; margin: 0 0 .85em; }
 li::before { content: "•"; position: absolute; left: 0; color: var(--evil); font-weight: 700; }
-.tok { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 3px; }
+.tok { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
 .examples { margin-top: 18px; }
 .ex { position: relative; text-align: center; margin: 0 auto 16px; max-width: 760px; background: var(--ex-bg); border: 2px solid var(--ex-frame); border-radius: 0; padding: 20px 54px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), inset 0 0 0 4px var(--ex-frame), inset 0 0 0 6px rgba(255,255,255,.2); }
 .ex:last-child { margin-bottom: 4px; }
@@ -171,7 +171,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* JSON & TOKENS card */
 .json-head { display:block; width:100%; max-width:280px; height:auto; margin:4px auto 12px; }
-.json-qr   { display:block; width:min(90%,230px); height:auto; margin:0 auto 4px; border-radius:4px; }
+.json-qr   { display:block; width:min(90%,230px); height:auto; margin:0 auto 4px; border-radius:0; }
 .char-side { display: flex; flex-direction: column; gap: clamp(16px,2.2vw,26px); }
 .emblem { display: block; width: min(78%, 260px); height: auto; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
@@ -179,7 +179,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .info { display: grid; grid-template-columns: 90px 1fr; gap: 8px 8px; color: var(--ink); font-size: .98rem; }
 .info dt { font-weight: 600; } .info dd { margin: 0; }
 .jhead { margin: 2px auto 12px; }
-.jinx { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; padding: 9px 4px; border-radius: 7px; transition: background .18s ease; }
+.jinx { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; padding: 9px 4px; border-radius: 0; transition: background .18s ease; }
 .jinx + .jinx { border-top: 1px solid rgba(180,160,120,.4); }
 .jinx:hover { background: rgba(91,31,33,.05); }
 .jico { width: 48px; height: 48px; object-fit: contain; }
@@ -257,7 +257,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .empty-card {
   background: rgba(243,239,229,.08); border: 2px dashed rgba(183,156,111,.35);
-  border-radius: 9px; padding: 28px 18px;
+  border-radius: 0; padding: 28px 18px;
   text-align: center; color: rgba(236,225,200,.4);
   font-size: .92rem; letter-spacing: .04em;
 }
@@ -343,7 +343,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .json-box.open .json-arrow { transform: rotate(180deg); }
 .json-copy {
   font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em;
-  cursor: pointer; border: none; border-radius: 6px; padding: 7px 14px; font-size: .82rem;
+  cursor: pointer; border: none; border-radius: 0; padding: 7px 14px; font-size: .82rem;
   background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4; flex-shrink: 0;
 }
 .json-copy:hover { filter: brightness(1.08); }
@@ -395,7 +395,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: .88rem;
   width: clamp(140px, 22vw, 260px);
   padding: 7px 12px 7px 32px;
-  border-radius: 20px;
+  border-radius: 0;
   border: 1px solid rgba(214,196,150,.3);
   background: rgba(255,255,255,.08) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23c8b98a' stroke-width='2.5' stroke-linecap='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 10px center;
   color: var(--parch);
@@ -438,7 +438,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .search-result-thumb {
   width: 40px; height: 40px;
   object-fit: contain; flex-shrink: 0;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .search-result-info {
   display: flex; flex-direction: column; gap: 1px;
@@ -475,7 +475,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 @media (max-width: 480px) {
   .search-wrap { margin-left: 0; width: 100%; order: 3; }
-  .search-input { width: 100%; border-radius: 8px; }
+  .search-input { width: 100%; border-radius: 0; }
   .search-input:focus { width: 100%; }
   .search-drop { width: 100%; right: 0; left: 0; }
   .topbar { flex-wrap: wrap; }
@@ -509,7 +509,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .tag-count {
   font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-weight: 700;
   font-size: .78rem; background: rgba(91,31,33,.12);
-  color: var(--maroon); border-radius: 20px;
+  color: var(--maroon); border-radius: 0;
   padding: 1px 8px; min-width: 22px; text-align: center;
 }
 
