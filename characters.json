@@ -1774,5 +1774,56 @@
     "jinxes": [],
     "bluffing": [],
     "fighting": []
+  },
+  {
+    "slug": "bard",
+    "name": "Bard",
+    "team": "townsfolk",
+    "ability": "Each day, publicly choose any living players: recently chosen Townsfolk are drunk. Each night*, learn how many are drunk this way.",
+    "art": "art/bard.png",
+    "page": "character.html?c=bard",
+    "image": "https://botchomebrew.wiki/assets/art/bard.png",
+    "creator": "",
+    "lede": "The Bard can get Townsfolk drunk to learn their numbers.",
+    "summaryBullets": [
+      "The Bard learns the number of \"Drunk\" tokens placed at the moment the information is revealed to them.",
+      "The drunkenness caused by the Bard lasts from the moment they publicly select a player until the next Bard's public selection.",
+      "Aim to have the Bard make only one public selection per day; repeatedly adjusting drunk tokens is cumbersome. The Bard cannot retract a player they have already selected, but if necessary, they may supplement their selection with additional players.",
+      "If a Townsfolk drunkened by the Bard becomes a non-townsfolk role, that player immediately regains sobriety (drunkenness is removed).",
+      "The Bard may only select living players during their choice. If a Townsfolk they select dies during the night, it does not affect the Bard's determination that they are drunk."
+    ],
+    "howToRun": [
+      "At any point during the day, the Bard may publicly select any living player. After selection, place a [[DRUNK]] token next to the chosen townsfolk's token and remove any previously placed [[DRUNK]] tokens.",
+      "These players become drunk from this point onward until the Bard makes another public selection.",
+      "During the night phase, wake the Bard and show them the number of \"Drunk\" tokens currently in play."
+    ],
+    "callout": "",
+    "examples": [
+      "On the first day, the Bard publicly chooses three players, including two Townsfolk. The two Townsfolk players immediately become drunk. That night, the Bard wakes and learns \"2\".",
+      "On the first day, the Bard publicly chooses three players, including two Townsfolk. The Townsfolk immediately become drunk. That night, the Demon kills the Bard. The 2 Townsfolk become sober and their abilities work normally that night.",
+      "On the first day, the Bard chooses the Gambler, who then becomes drunk. That night the Pit-Hag turns the Gambler into the Klutz. As the Klutz is no longer a Townsfolk, they become sober."
+    ],
+    "tips": [
+      "Before publicly declaring your choice, it's best to communicate with the player you intend to select to avoid drunkening crucial Townsfolk roles. Of course, you may choose not to do so, but you risk being executed outright.",
+      "If you wish to select a player with a daytime ability like the Artist, it's best to let them activate their ability first. Otherwise, your selection may cause them to become drunk immediately.",
+      "Encourage other players to claim they are the Bard. This makes it difficult for the Demon to identify the real Bard among you early on.",
+      "You may choose only Townsfolk who have already used their abilities. This both verifies their Townsfolk status and avoids drunkening crucial Townsfolk.",
+      "You can choose only Outsiders. If you learn they are Townsfolk, your information is definitely wrong.",
+      "Before selecting too many players, think carefully. Getting a large number of Townsfolk drunk might not be a good idea for the good team, and it's hard to tell who's a townsfolk and who isn't in a crowd of players."
+    ],
+    "quote": "Souls touched by my fingertips shall plunge into dreams. While you stagger in alcohol's embrace, I count the vibrating silk strings... Three? Five? These numbers reveal how many honest souls expose lies' shapes within sweet slumber.",
+    "appearsIn": "",
+    "tags": "Drunk, Information, Public",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 3,
+    "otherNightReminder": "Wake the Bard. Show them the number of DRUNK tokens currently in play.",
+    "reminders": [
+      "Drunk"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
