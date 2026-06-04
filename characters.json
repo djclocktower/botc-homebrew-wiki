@@ -1452,7 +1452,9 @@
       "Dead"
     ],
     "setup": true,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "caesar-fall-of-rome",
