@@ -832,6 +832,17 @@ body:has(.creator-sidebar) .foot {
   flex-direction: column;
 }
 .nav-dropdown.open { display: flex; }
+.nav-dropdown-search {
+  padding: 10px clamp(14px,4vw,40px);
+  border-bottom: 1px solid rgba(189,168,154,.2);
+}
+.nav-dropdown-search input {
+  width: 100%; box-sizing: border-box;
+  font-family: 'TradeGothicLT', sans-serif; font-size: .95rem;
+  padding: 9px 14px; border: 2px solid var(--parch-frame);
+  background: rgba(255,253,248,.1); color: var(--parch);
+}
+.nav-dropdown-search input::placeholder { color: rgba(236,225,200,.5); }
 .nav-dropdown a {
   padding: 14px clamp(14px,4vw,40px);
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
