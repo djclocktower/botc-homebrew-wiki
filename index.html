@@ -209,11 +209,17 @@
     drop.querySelectorAll('a').forEach(function(a){
       if (a.getAttribute('href') === here) a.classList.add('active');
     });
+    function positionDrop(){
+      var tb = document.querySelector('.topbar');
+      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
+    }
     btn.addEventListener('click', function(){
+      positionDrop();
       var open = drop.classList.toggle('open');
       btn.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
+    window.addEventListener('resize', positionDrop);
     document.addEventListener('click', function(e){
       if (!btn.contains(e.target) && !drop.contains(e.target)){
         drop.classList.remove('open');
