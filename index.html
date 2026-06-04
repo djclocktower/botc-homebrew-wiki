@@ -17,7 +17,7 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <span class="here">All Characters</span><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="authors.html">Authors</a>
+      <span class="here">All Characters</span><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="authors.html">Authors</a><span class="sep">·</span><a href="creators.html">Creators</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -25,19 +25,13 @@
   </div>
   </header>
 
-  <div class="home-hero">
-    <h1>HomeBrew Characters</h1>
-    <p>Fan-made additions for Blood on the Clocktower</p>
-    <a class="create-btn" href="create.html">+ Create a Character</a>
-  </div>
-
-  <div class="home-layout">
-
-    <!-- ── Creator Icons sidebar ── -->
-    <aside class="creator-sidebar">
-      <div class="creator-sidebar-inner">
+  <!-- Fixed left sidebar -->
+  <aside class="creator-sidebar" id="creator-sidebar">
+    <div class="creator-sidebar-inner">
+      <a href="creators.html" class="creator-sidebar-title-link">
         <h2 class="creator-sidebar-title">Creator Icons</h2>
-        <div class="creator-grid">
+      </a>
+      <div class="creator-grid">
           <a class="creator-pill" href="author.html?a=Aba"><span class="creator-sym">⁛</span><span class="creator-name">Aba</span></a>
           <a class="creator-pill" href="author.html?a=Alex"><span class="creator-sym">∞</span><span class="creator-name">Alex</span></a>
           <a class="creator-pill" href="author.html?a=Amelia"><span class="creator-sym">ψ</span><span class="creator-name">Amelia</span></a>
@@ -102,14 +96,22 @@
           <a class="creator-pill" href="author.html?a=Varii"><span class="creator-sym">♡</span><span class="creator-name">Varii</span></a>
           <a class="creator-pill" href="author.html?a=Wrendle"><span class="creator-sym">♠</span><span class="creator-name">Wrendle</span></a>
         </div>
-      </div>
-    </aside>
+    </div>
+  </aside>
 
-    <!-- ── Character grid ── -->
-    <main class="home-panel" id="panel">
-      <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
-    </main>
+  <div class="home-hero">
+    <h1>HomeBrew Characters</h1>
+    <p>Fan-made additions for Blood on the Clocktower</p>
+    <a class="create-btn" href="create.html">+ Create a Character</a>
+  </div>
 
+  <main class="home-panel" id="panel">
+    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
+  </main>
+
+  <!-- Mobile creator bar (bottom) -->
+  <div class="creator-mobile-bar">
+    <a href="creators.html" class="creator-mobile-link">View All Creator Icons →</a>
   </div>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
@@ -121,7 +123,6 @@
       ['traveller', 'Traveller'], ['fabled', 'Fabled']
     ];
     var GOOD = { townsfolk: 1, outsider: 1 };
-
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -137,7 +138,6 @@
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';
     }
-
     fetch('characters.json?_=' + Date.now())
       .then(function (r) { return r.json(); })
       .then(function (list) {
@@ -166,27 +166,16 @@
       });
   </script>
   <script>
-  (function () {
-    var ROOT = (function () {
-      var s = document.querySelector('link[rel="stylesheet"]');
-      if (!s) return '';
-      var href = s.getAttribute('href');
-      return href.replace('assets/styles.css', '');
-    })();
-    var input = document.getElementById('search-input');
-    var drop  = document.getElementById('search-drop');
-    if (!input || !drop) return;
-    var allChars = null, fetchPromise = null;
-    function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = fetch(ROOT + 'characters.json?_=' + Date.now()).then(function(r){return r.json();}).then(function(list){allChars=list;return list;});
-      return fetchPromise;
-    }
+  (function(){
+    var ROOT=(function(){var s=document.querySelector('link[rel="stylesheet"]');if(!s)return'';return s.getAttribute('href').replace('assets/styles.css','');})();
+    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
+    if(!input||!drop)return;
+    var allChars=null,fetchPromise=null;
+    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch(ROOT+'characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
     function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
     var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
     function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
-    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for “'+esc(q)+'”</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
     function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
     function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
     var deb;
