@@ -1832,7 +1832,7 @@
     "slug": "archlich",
     "name": "Archlich",
     "team": "demon",
-    "ability": "Each night*, choose a player: they die. The first time a dead player is chosen by the Archlich's ability, they choose 2 players: whichever of those is not the Demon dies.",
+    "ability": "Each night*, choose a player: they die. The 1st time you choose each dead player, they choose 2 players: chosen non-demons die.",
     "art": "art/archlich.png",
     "page": "character.html?c=archlich",
     "image": "https://botchomebrew.wiki/assets/art/archlich.png",
@@ -1877,6 +1877,8 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   }
 ]
