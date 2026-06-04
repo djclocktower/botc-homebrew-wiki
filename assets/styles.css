@@ -106,12 +106,11 @@ body::after {
 
 /* ─── Cards ──────────────────────────────────────────────────── */
 .card {
-  background: var(--card); border: 1px solid var(--card-edge);
+  background: var(--card); border: 2px solid var(--parch-frame);
   border-radius: 0; padding: 18px 20px;
   box-shadow: 0 8px 20px rgba(40,12,30,.32);
-  transition: transform .25s ease, box-shadow .25s ease;
 }
-.card:hover { transform: translateY(-3px); box-shadow: 0 14px 28px rgba(40,12,30,.4); }
+/* no hover transform on character page cards — border stays consistent */
 
 /* ─── Reveal animation ───────────────────────────────────────── */
 .reveal { opacity: 0; transform: translateY(14px); animation: rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
@@ -129,12 +128,10 @@ body::after {
   position: relative; border-radius: 0;
   padding: clamp(18px,2.6vw,34px) clamp(18px,2.8vw,38px);
   background-color: var(--parch); background-image: url('parchment.jpg'); background-size: 360px;
-  border: 1px solid var(--parch-frame);
-  box-shadow: 0 20px 48px -16px rgba(0,0,0,.6),
-    inset 0 0 0 2px rgba(255,255,255,.6),
-    inset 0 0 0 4px var(--parch-frame),
-    inset 0 0 0 7px rgba(255,255,255,.25),
-    inset 0 0 0 9px var(--parch-frame);
+  border: 2px solid var(--parch-frame);
+  box-shadow: 0 20px 48px -16px rgba(0,0,0,.6);
+  outline: 4px solid var(--parch-frame);
+  outline-offset: 3px;
 }
 .sech { display: block; height: auto; margin: 0 auto 2px; }
 .sech-wrap { text-align: center; margin-bottom: 10px; }
@@ -230,7 +227,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .char-card {
   display: flex; gap: 14px; align-items: flex-start;
-  background: var(--card); border: 1px solid var(--card-edge);
+  background: var(--card); border: 2px solid var(--parch-frame);
   border-radius: 0; padding: 16px;
   text-decoration: none; color: inherit;
   box-shadow: 0 6px 16px rgba(40,12,30,.28);
