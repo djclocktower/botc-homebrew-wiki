@@ -120,7 +120,7 @@ body::after {
 /* ════════════════════════════════════════════════════════════════
    CHARACTER PAGE STYLES
    ════════════════════════════════════════════════════════════════ */
-.char-title { display: block; width: min(72%, 720px); height: auto; margin: 6px 0 clamp(14px,2.5vw,26px); filter: drop-shadow(0 3px 10px rgba(0,0,0,.45)); }
+.char-title { display: block; width: min(90%, 900px); height: auto; margin: 4px 0 6px; filter: drop-shadow(0 4px 16px rgba(0,0,0,.7)); }
 .char-layout { display: grid; grid-template-columns: minmax(0, 1.86fr) minmax(290px, 1fr); column-gap: clamp(16px,2.4vw,30px); row-gap: clamp(16px,2.2vw,26px); align-items: start; }
 .char-parchment { grid-column: 1; grid-row: 1 / span 2; }
 .char-infocard  { grid-column: 2; grid-row: 1; }
@@ -287,8 +287,8 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    ════════════════════════════════════════════════════════════════ */
 .gen-title {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
-  font-size: clamp(2.4rem, 7vw, 5rem); letter-spacing: .04em; line-height: 1;
-  margin: 6px 0 clamp(14px, 2.5vw, 26px); text-shadow: 0 3px 12px rgba(0,0,0,.5);
+  font-size: clamp(3.2rem, 10vw, 7rem); letter-spacing: .04em; line-height: 1;
+  margin: 4px 0 6px; text-shadow: 0 4px 18px rgba(0,0,0,.7), 0 2px 4px rgba(0,0,0,.5);
 }
 .gen-sech-wrap {
   text-align: center; margin-bottom: 10px;
