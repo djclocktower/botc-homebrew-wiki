@@ -132,7 +132,12 @@
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
           var nm = j.name || j.id;
-          return '<div class="jinx noicon"><div class="jbody">' +
+          var iconId = slugId(nm);
+          var iconSrc = 'https://script.bloodontheclocktower.com/img/' + iconId + '.png';
+          return '<div class="jinx">' +
+            '<img class="jico" src="' + iconSrc + '" alt="' + esc(nm) + ' token"' +
+            ' onerror="this.style.display=\'none\';this.parentNode.classList.add(\'noicon\')"> ' +
+            '<div class="jbody">' +
             '<a class="jname ' + al + '" href="' + jinxURL(nm) +
             '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
             '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
