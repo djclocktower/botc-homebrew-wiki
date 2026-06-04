@@ -453,7 +453,12 @@
     "image": "https://botchomebrew.wiki/assets/art/acolyte.png",
     "creator": "DJ_DJ_DJ",
     "lede": "The Acolyte is still learning.",
-    "summaryBullets": [],
+    "summaryBullets": [
+      "Each day, the Acolyte can learn an answer to any yes or no question... but most of the time they'll be drunk.",
+      "During setup, Acolytes can replace info characters. Info characters are defined as any character that prompts the storyteller to give a player information. An easy way to understand is any character that would be effected by Vortox may also be replaced by an Acolyte.",
+      "The question may deal with anything at all, phrased in any way they want. The Storyteller honestly answers “yes,” “no,” or “I don’t know.”",
+      "It is up to the Artist to talk with the Storyteller, not the other way around. This isn’t a public conversation, and the group can’t listen in. It’s private."
+    ],
     "howToRun": [
       "Each day, Acolytes can request a private chat with you. Take them away from the circle so you cannot be overheard. They will ask you a question. Whisper “Yes,” “No,” or “I don’t know,” to them, or if you cannot answer in one of these ways, prompt the Acolyte to ask again in a different way.",
       "Each night, mark one Acolyte with the [[SOBER]] reminder. They are sober tomorrow, and all other Acolytes are drunk."
