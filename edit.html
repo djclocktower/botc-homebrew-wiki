@@ -81,7 +81,17 @@
       <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
     </div>
-  </header>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <a href="index.html">All Characters</a>
+  <a href="tags.html">Tags</a>
+  <a href="creators.html">Creators</a>
+  <a href="script.html">Script Builder</a>
+  <a href="create.html">Create a Character</a>
+</nav>
 
   <div class="loading-msg" id="loading">Loading character&hellip;</div>
 
@@ -309,7 +319,32 @@
         '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
         '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
         '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'</body></html>';
+        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'
+  <script>
+  (function(){
+    var btn = document.getElementById('hamburger');
+    var drop = document.getElementById('nav-dropdown');
+    if (!btn || !drop) return;
+    // Mark current page as active
+    var here = location.pathname.split('/').pop() || 'index.html';
+    drop.querySelectorAll('a').forEach(function(a){
+      if (a.getAttribute('href') === here) a.classList.add('active');
+    });
+    btn.addEventListener('click', function(){
+      var open = drop.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', function(e){
+      if (!btn.contains(e.target) && !drop.contains(e.target)){
+        drop.classList.remove('open');
+        btn.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+      }
+    });
+  })();
+  </script>
+</body></html>';
       $('preview').srcdoc = doc;
     }
 
