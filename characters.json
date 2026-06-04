@@ -1783,7 +1783,7 @@
     "art": "art/bard.png",
     "page": "character.html?c=bard",
     "image": "https://botchomebrew.wiki/assets/art/bard.png",
-    "creator": "",
+    "creator": "Taiyi",
     "lede": "The Bard can get Townsfolk drunk to learn their numbers.",
     "summaryBullets": [
       "The Bard learns the number of \"Drunk\" tokens placed at the moment the information is revealed to them.",
@@ -1812,7 +1812,7 @@
       "Before selecting too many players, think carefully. Getting a large number of Townsfolk drunk might not be a good idea for the good team, and it's hard to tell who's a townsfolk and who isn't in a crowd of players."
     ],
     "quote": "Souls touched by my fingertips shall plunge into dreams. While you stagger in alcohol's embrace, I count the vibrating silk strings... Three? Five? These numbers reveal how many honest souls expose lies' shapes within sweet slumber.",
-    "appearsIn": "",
+    "appearsIn": "Midsummer nights dream",
     "tags": "Drunk, Information, Public",
     "edition": "",
     "firstNight": 0,
