@@ -629,7 +629,7 @@ body:has(.creator-sidebar) .foot {
 /* ── Creators page (wide grid) ────────────────────────────────── */
 .creators-page-box {
   background-color: var(--parch);
-  background-image: url('assets/parchment.jpg');
+  background-image: url('parchment.jpg');
   background-size: cover;
   border: 4px solid var(--parch-frame);
   padding: 28px 32px;
