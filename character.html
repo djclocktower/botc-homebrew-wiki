@@ -55,10 +55,38 @@
         var eb = document.getElementById('edit-btn');
         if (eb) { eb.href = 'edit.html?c=' + slug; eb.style.display = ''; }
         content.innerHTML = window.renderCharacter(d, 'assets/' + d.art);
+        mountScriptButton(d.slug);
       })
       .catch(function () {
         content.innerHTML = '<p style="color:#e6a">Could not load character data.</p>';
       });
+
+    // ── Add to Script button (localStorage, instant) ──
+    var SCRIPT_KEY = 'botc_script';
+    function getScript() { try { return JSON.parse(localStorage.getItem(SCRIPT_KEY)) || []; } catch (e) { return []; } }
+    function setScript(a) { try { localStorage.setItem(SCRIPT_KEY, JSON.stringify(a)); } catch (e) {} }
+    function mountScriptButton(slug) {
+      // place the button at the top of the info card
+      var infocard = document.querySelector('.char-infocard');
+      if (!infocard) return;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'add-to-script-btn';
+      function sync() {
+        var on = getScript().indexOf(slug) !== -1;
+        btn.classList.toggle('on', on);
+        btn.textContent = on ? '✓ On Your Script' : '+ Add to Script';
+      }
+      btn.addEventListener('click', function () {
+        var s = getScript();
+        var i = s.indexOf(slug);
+        if (i === -1) s.push(slug); else s.splice(i, 1);
+        setScript(s);
+        sync();
+      });
+      sync();
+      infocard.appendChild(btn);
+    }
   </script>
 <script>
   (function () {
