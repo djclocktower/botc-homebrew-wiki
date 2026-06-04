@@ -843,8 +843,28 @@ body:has(.creator-sidebar) .foot {
 .nav-dropdown a:hover { background: rgba(189,168,154,.1); color: #fff; }
 .nav-dropdown a.active { color: rgba(236,225,200,.5); pointer-events: none; }
 
-/* Show hamburger on mobile, hide desktop crumb */
+/* Position the dropdown relative to the topbar.
+   The dropdown is a sibling of .topbar, so anchor it to the sticky topbar's bottom. */
+.nav-dropdown {
+  top: auto;
+}
+
+/* Show hamburger on mobile, hide desktop crumb + search bar */
 @media (max-width: 880px) {
   .hamburger { display: flex; }
-  .topbar { position: relative; flex-wrap: nowrap; }
+  .topbar {
+    position: sticky; flex-wrap: nowrap;
+    gap: 8px;
+  }
+  /* hide the inline search on mobile — search is reachable via pages; keeps topbar tidy */
+  .topbar .search-wrap { display: none; }
+  /* dropdown sits directly under the sticky topbar */
+  .nav-dropdown {
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+  }
+}
+@media (min-width: 881px) {
+  /* never show the mobile dropdown on desktop even if toggled */
+  .nav-dropdown { display: none !important; }
 }
