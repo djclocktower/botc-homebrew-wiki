@@ -515,3 +515,93 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-decoration: none;
 }
 .author-link:hover { text-decoration: underline; }
+
+/* ════════════════════════════════════════════════════════════════
+   HOMEPAGE TWO-COLUMN LAYOUT + CREATOR ICONS SIDEBAR
+   ════════════════════════════════════════════════════════════════ */
+.home-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 clamp(12px,3vw,40px) 64px;
+  align-items: start;
+}
+
+/* ── Creator sidebar ──────────────────────────────────────────── */
+.creator-sidebar {
+  position: sticky;
+  top: 80px;
+}
+.creator-sidebar-inner {
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame);
+  padding: 16px;
+}
+.creator-sidebar-title {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .06em;
+  color: var(--maroon); text-align: center;
+  margin: 0 0 12px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--parch-frame);
+}
+.creator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.creator-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  text-decoration: none;
+  color: var(--maroon);
+  transition: background .15s;
+  border-radius: 0;
+  font-size: .85rem;
+  line-height: 1.2;
+}
+.creator-pill:hover {
+  background: rgba(91,31,33,.08);
+  color: var(--evil);
+}
+.creator-sym {
+  font-size: 1.1rem;
+  min-width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--maroon);
+  font-family: serif;
+}
+.creator-name {
+  font-size: .8rem;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── home-panel becomes the right column ─────────────────────── */
+.home-layout .home-panel {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Responsive: stack on narrow screens ─────────────────────── */
+@media (max-width: 860px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+  .creator-sidebar {
+    position: static;
+  }
+  .creator-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
