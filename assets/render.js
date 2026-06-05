@@ -133,7 +133,7 @@
           var al = (j.align === 'evil') ? 'evil' : 'good';
           var nm = j.name || j.id;
           var iconId = slugId(nm);
-          var iconSrc = 'https://script.bloodontheclocktower.com/img/' + iconId + '.png';
+          var iconSrc = 'https://botchomebrew.wiki/assets/jinx-icons/' + iconId + '.png';
           return '<div class="jinx">' +
             '<img class="jico" src="' + iconSrc + '" alt="' + esc(nm) + ' token"' +
             ' onerror="this.style.display=\'none\';this.parentNode.classList.add(\'noicon\')"> ' +
