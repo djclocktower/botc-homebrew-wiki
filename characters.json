@@ -1685,7 +1685,9 @@
     "reminders": [],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "high-priest-1-fall-of-rome",
