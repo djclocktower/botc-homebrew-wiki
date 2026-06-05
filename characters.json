@@ -1390,7 +1390,9 @@
     "reminders": [],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "cleopatra-fall-of-rome",
