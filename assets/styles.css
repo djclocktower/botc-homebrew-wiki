@@ -325,15 +325,15 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .json-box { margin: 0; }
 .json-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: linear-gradient(180deg, #f7f6f2, #ece3d2);
-  border: 1px solid var(--card-edge); border-radius: 0;
-  padding: 10px 16px; box-shadow: 0 6px 16px rgba(40,12,30,.28);
+  background: var(--parch);
+  border: 2px solid var(--parch-frame); border-radius: 0;
+  padding: 10px 16px;
 }
-.json-box.open .json-bar { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.json-box.open .json-bar { border-bottom: none; }
 .json-bar-toggle {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; letter-spacing: .08em;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400; letter-spacing: .08em;
   color: var(--maroon); cursor: pointer; user-select: none;
-  display: flex; align-items: center; gap: 8px; flex: 1; font-size: 1rem;
+  display: flex; align-items: center; gap: 8px; flex: 1; font-size: .9rem;
 }
 .json-arrow { transition: transform .2s ease; font-size: .85em; }
 .json-box.open .json-arrow { transform: rotate(180deg); }
@@ -349,7 +349,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .json-copy:hover { background: var(--parch-frame); color: #fff; }
 .json-body {
   margin: 0; background: #1d1420; color: #e8dcc0;
-  border: 1px solid var(--card-edge); border-top: none;
+  border: 2px solid var(--parch-frame); border-top: none;
   border-radius: 0; padding: 16px 18px;
   overflow: auto; max-height: 540px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
