@@ -178,7 +178,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .jinx { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; padding: 9px 4px; border-radius: 0; transition: background .18s ease; }
 .jinx + .jinx { border-top: 1px solid rgba(180,160,120,.4); }
 .jinx:hover { background: rgba(91,31,33,.05); }
-.jico { width: 48px; height: 48px; object-fit: contain; mix-blend-mode: multiply; }
+.jico { width: 48px; height: 48px; object-fit: contain; }
 .jbody { min-width: 0; }
 .jname { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.05rem; line-height: 1.1; margin-bottom: 2px; text-decoration: none; }
 .jname:hover { text-decoration: underline; }
