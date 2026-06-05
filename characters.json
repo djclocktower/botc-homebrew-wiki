@@ -835,7 +835,9 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "merchant-fall-of-rome",
