@@ -1888,12 +1888,7 @@
     "tips": [
       "As the Archlich, you must learn to make use of corpses. If you only ever choose living players, you are playing as a perfectly ordinary Demon with no special ability. Every dead player is a resource — think carefully about how to use the dead to your advantage.",
       "Choosing a dead evil player is a smart move. They will kill in your interests and will not voluntarily reveal your existence — but the number of dead evil players is always limited.",
-      "Dead good players are an inexhaustible supply. However, the good team will learn you exist when a dead good player announces they were chosen. They may also choose targets you'd rather they didn't — including you. If they choose you and you don't die, they will be almost certain you are the Demon.",
-      "If multiple deaths seem Archlich-caused but no player has claimed to have been chosen, at least one previously dead player must be evil — most likely one who died by execution.",
-      "If a player claims they were chosen by the Archlich and the living player they chose did not die, that player who didn't die is almost certainly the Demon.",
-      "Do not blindly trust dead players who claim they were chosen by the Archlich. Evil players can use this tactic to steer the good team into incorrect assumptions or lead the town to execute a good player.",
-      "If you are a dead good player woken by the Archlich, choose carefully. You could pick 2 dead players to minimise further deaths, or choose players you believe to be evil to reduce the evil team's numbers. The choice is yours.",
-      "If you were previously woken by the Archlich and the living player you chose did not die, that player is almost certainly the Demon. Announce this publicly."
+      "Dead good players are an inexhaustible supply. However, the good team will learn you exist when a dead good player announces they were chosen. They may also choose targets you'd rather they didn't — including you. If they choose you and you don't die, they will be almost certain you are the Demon."
     ],
     "quote": "I heard you. The resentment in your soul toward death, the hunger for power. The world fears you — and I admire you. Accept this gift. Your corpse will become my first masterpiece, and your will shall become the law by which all living things are judged. Breathe deep this sweet terror... it will be the first meal of your new life.",
     "appearsIn": "A Midsummer Night's Dream",
@@ -1911,6 +1906,12 @@
     "setup": false,
     "jinxes": [],
     "bluffing": [],
-    "fighting": []
+    "fighting": [
+      "If multiple deaths seem Archlich-caused but no player has claimed to have been chosen, at least one previously dead player must be evil — most likely one who died by execution.",
+      "If a player claims they were chosen by the Archlich and the living player they chose did not die, that player who didn't die is almost certainly the Demon.",
+      "Do not blindly trust dead players who claim they were chosen by the Archlich. Evil players can use this tactic to steer the good team into incorrect assumptions or lead the town to execute a good player.",
+      "If you are a dead good player woken by the Archlich, choose carefully. You could pick 2 dead players to minimise further deaths, or choose players you believe to be evil to reduce the evil team's numbers. The choice is yours.",
+      "If you were previously woken by the Archlich and the living player you chose did not die, that player is almost certainly the Demon. Announce this publicly."
+    ]
   }
 ]
