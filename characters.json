@@ -1179,7 +1179,9 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "bad-omen-fall-of-rome",
