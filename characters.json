@@ -1222,7 +1222,9 @@
       "Is a Bad Omen"
     ],
     "setup": true,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "temptress-fall-of-rome",
