@@ -1136,7 +1136,9 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "spartacus-fall-of-rome",
