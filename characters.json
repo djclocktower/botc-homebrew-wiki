@@ -1961,5 +1961,1511 @@
       "If you are a dead good player woken by the Archlich, choose carefully. You could pick 2 dead players to minimise further deaths, or choose players you believe to be evil to reduce the evil team's numbers. The choice is yours.",
       "If you were previously woken by the Archlich and the living player you chose did not die, that player is almost certainly the Demon. Announce this publicly."
     ]
+  },
+  {
+    "slug": "ban-xian",
+    "name": "Ban Xian",
+    "team": "townsfolk",
+    "ability": "If you are chosen by a character’s ability at night, an evil player will be targeted instead.",
+    "art": "art/ban-xian.png",
+    "page": "character.html?c=ban-xian",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/banxian_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "That man is always covered in grime or rambling incoherently. I can’t get a grip on him.",
+    "lede": "The Ban Xian channels misdirection, turning the evil team's own weapons back upon them.",
+    "summaryBullets": [
+      "Any player who uses an ability to choose the Ban Xian at night instead targets a randomly chosen evil player — the Ban Xian's choice is silently redirected before the ability resolves.",
+      "Neither the Ban Xian nor the choosing player learns that a redirect has occurred.",
+      "Only abilities that require an active choice can be redirected. Passive or non-targeting abilities are unaffected.",
+      "After a redirect, the ability resolves against the new target without re-checking selection restrictions — a Snake Charmer's target might be an already-dead evil player, a Devil's Advocate might end up protecting themselves.",
+      "If an ability targets multiple players and the Ban Xian is one of them, only the Ban Xian's slot is redirected — the other targets remain unchanged. The redirect won't create a duplicate target.",
+      "If there is no valid evil player to redirect to, the Ban Xian is targeted as normal.",
+      "A single target can only be redirected once per ability — a redirected target cannot be further redirected by the Ambassador.",
+      "The Ban Xian's ability only triggers at night. During the day it has no effect — the Psychopath can kill the Ban Xian without redirection."
+    ],
+    "howToRun": [
+      "Each night, if any player uses an ability that requires them to choose a player and they select the Ban Xian, secretly redirect that choice to any evil player before resolving the ability. Do not wake the Ban Xian or inform either player.",
+      "When resolving the ability, treat the evil player as the chosen target. Do not re-evaluate pre-colon conditions — apply only the post-colon effect to the new target.",
+      "The Assassin is an exception: if the Assassin targets the Ban Xian, the Ban Xian dies immediately without redirection.",
+      "If the Abbot neighbors the Ban Xian and an evil ability is about to be redirected, the redirect happens before the Abbot's protection triggers — the evil ability never technically targets the Ban Xian."
+    ],
+    "examples": [
+      "The Investigator chooses the Ban Xian and a Recluse. The Ban Xian's ability redirects the Ban Xian's slot to the Imp. The Investigator learns that one of the Imp and the Recluse is a Minion.",
+      "The Devil's Advocate chose to protect themselves the previous night. On the second night they choose the Ban Xian — the Storyteller redirects to the Devil's Advocate themselves. The Devil's Advocate continues to be immune to execution. Next night they cannot choose the Ban Xian again (they tracked who they chose, not who they hit).",
+      "The Psychopath kills the Ban Xian during the day. The Ban Xian dies, since their ability is inactive during the day."
+    ],
+    "tips": [
+      "Claim a role that evil players are likely to visit — if the evil team targets you, they only help you. Bluffing as a Fortune Teller or Undertaker can bait valuable night actions into backfiring.",
+      "You may never know if your ability triggers, but you can infer it: if an evil player claims to have gotten info on you, their info was likely corrupted by your redirect.",
+      "Be wary of the Assassin — their kill bypasses your ability entirely and will kill you outright.",
+      "Your ability only protects against abilities that involve choosing. Players poisoning you through other mechanics or abilities that don't make a choice bypass you entirely."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "riot",
+        "reason": "If a Riot player nominates the Ban Xian on day 3, another evil player dies instead of the Ban Xian, and nominates next. If the nominator is the only living evil player, the Ban Xian dies as normal."
+      },
+      {
+        "id": "kazali",
+        "reason": "The Kazali can choose that the Ban Xian player is one of their evil Minions."
+      },
+      {
+        "id": "lleech",
+        "reason": "The Lleech’s poisoning or host choice cannot be redirected."
+      }
+    ]
+  },
+  {
+    "slug": "face-changer",
+    "name": "Face Changer",
+    "team": "townsfolk",
+    "ability": "If you are mad that you are a good character: tonight, you might gain their ability until dusk (once per character).",
+    "art": "art/face-changer.png",
+    "page": "character.html?c=face-changer",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/facechanger_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "One minute of glory on stage, ten years of hard work off stage.",
+    "lede": "The Face Changer is a master of theatrical deception, earning new powers by convincing the town they are someone else.",
+    "summaryBullets": [
+      "If the Face Changer is publicly mad (convincingly claims) that they are a specific good character during the day, the Storyteller may grant them that character's ability until the next dusk.",
+      "Each ability can only be gained once — the Face Changer cannot gain the same character's ability more than once in a game.",
+      "Being mad must be convincing and sustained. Simply naming a character is not enough; the Face Changer must genuinely act the part and give a believable reason for the claim.",
+      "The Storyteller decides whether the performance was convincing enough to grant the ability — a more compelling portrayal increases the chance of success.",
+      "Some abilities (like Singer or Seamstress) activate at specific times. If the Face Changer gains such an ability, they gain it at the moment they claim it, not necessarily at night.",
+      "Having gained an ability on a previous night does not prevent the Face Changer from claiming the same character again — it just won't grant the ability again."
+    ],
+    "howToRun": [
+      "During the day, observe whether the Face Changer is convincingly and publicly claiming to be a specific good character.",
+      "If you decide to grant the ability, that night swap the Face Changer's character token for the claimed character's token and place the IS THE FACE CHANGER reminder. The Face Changer wakes and acts as that character.",
+      "At dusk, remove the ability — return their token and reminder. The Face Changer loses the ability.",
+      "When judging 'convincing madness', consider whether the player gave a satisfying explanation for why they previously claimed differently. Typically 1–2 ability grants per game is appropriate, though you may reward an exceptional performance with more."
+    ],
+    "examples": [
+      "On day one, the Face Changer claims to be the Fortune Teller. That night they gain the Fortune Teller's ability and learn that yes, one of their two chosen players is the Demon. On day two they claim to be the Seamstress — they immediately gain the ability and use it. On day three they claim to be the Sage, but their excuse for the previous claims is unconvincing. The Storyteller does not grant the ability, and that night the Demon kills them.",
+      "The Face Changer spends several days claiming to be the Chambermaid. They gain the Chambermaid's ability only on the first night — a character's ability can only be granted once. The next day they switch to claiming to be the Knight and receive the Knight's ability."
+    ],
+    "tips": [
+      "Plan your character arc. Each claim is a one-time opportunity — pick characters with abilities that help your current situation most.",
+      "The more believable your performance, the more likely you are to be granted the ability. Give your town a compelling narrative for why you're switching characters.",
+      "Be aware that convincingly claiming evil characters won't help you — only good characters' abilities can be gained.",
+      "Consider claiming characters whose abilities benefit from you being alive and active, since your power only lasts until the next dusk."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Mad",
+      "Has ability"
+    ],
+    "remindersGlobal": [
+      "Is the Face Changer"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "firewatcher",
+    "name": "Firewatcher",
+    "team": "townsfolk",
+    "ability": "Each night*, guess your number of steps to the 1st to die tonight: if correct, you might die tonight, but no one else.",
+    "art": "art/firewatcher.png",
+    "page": "character.html?c=firewatcher",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/firewatcher_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Have you not heard of the prohibition on candles? This could burn the village down in this weather!",
+    "lede": "The Firewatcher patrols the dark streets each night, turning their vigilance into a shield for the whole town.",
+    "summaryBullets": [
+      "Each night (not the first), the Firewatcher guesses a number — the number of seats away they believe the first player to die tonight will be.",
+      "If the first death of the night is exactly that many seats from the Firewatcher, every other player is protected from dying tonight. The Firewatcher may then die instead.",
+      "Dead players still count toward seat distance. In the late game, a correct guess may protect only one or two living players.",
+      "The Firewatcher can guess 0, meaning they believe they themselves will die first. If correct, all other players are saved, and the Firewatcher dies after all other death effects resolve.",
+      "If no one dies at night, or if the first death is not at the guessed distance, the Firewatcher's ability does not trigger and they are safe.",
+      "If the Firewatcher is unable to save the player at the guessed distance (e.g. the Assassin kills them, bypassing protection), the ability does not trigger and deaths resolve normally."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Firewatcher. They hold up fingers to indicate their guess. Place PROTECTED reminder tokens on the players that distance away on both sides.",
+      "If any ability causes a death this night and the dying player has a PROTECTED token, move the token to the centre of the Grimoire. From this point on, no other player (except the Firewatcher) can die tonight.",
+      "Decide whether the Firewatcher dies. If so, mark them with the DEAD reminder. At dawn, remove all PROTECTED tokens and announce the night's deaths without explaining their cause.",
+      "If the first death of the night is not a PROTECTED player, remove all PROTECTED tokens immediately and resolve the death normally — the Firewatcher's ability does not trigger.",
+      "Note: The Brocadier cannot save the Firewatcher from their own ability's self-death, as the Firewatcher's protection prevents the Brocadier from dying."
+    ],
+    "examples": [
+      "The Firewatcher guesses 2. The Demon attacks a player 2 seats away; the Godfather then attacks a player 3 seats away (the Demon acts first). Both players survive, and the Storyteller chooses to kill the Firewatcher.",
+      "The Firewatcher guesses 2. The Demon (Pukka) chooses not to attack, but the Assassin kills the player 2 seats away. That player dies — the Assassin's kill is not an ability that can be blocked — and the Firewatcher survives.",
+      "The Firewatcher guesses 2. The Demon attacks the player 3 seats away, then the Godfather attacks the player 2 seats away. The Demon acts first, so the first death is 3 seats away. Both players die, and the Firewatcher survives."
+    ],
+    "tips": [
+      "Pay attention to who is sitting near you. Strong info roles seated close make tempting Demon targets — guessing short distances is often wise.",
+      "Guessing 0 is a bold gambit — if the Demon is targeting you, you save everyone else. But you'll almost certainly die.",
+      "Dead players still count for distance calculations. Keep track of the seat order carefully as players die — your effective coverage shrinks each night.",
+      "If your ability doesn't trigger for several nights, it may mean the Demon is attacking far from you, or no one is dying. Use this as information about where threats might be coming from."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 19.1,
+    "otherNightReminder": "The Firewatcher holds up a number of fingers (0, 1, 2 etc.). :reminder: :reminder:",
+    "reminders": [
+      "Protected",
+      "Protected",
+      "Dead"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "leviathan",
+        "reason": "If the Leviathan is in play, the Firewatcher-protected players are safe from all evil abilities."
+      },
+      {
+        "id": "riot",
+        "reason": "If the Riot is in play, the Firewatcher-protected players are safe from all evil abilities."
+      }
+    ]
+  },
+  {
+    "slug": "waiter",
+    "name": "Waiter",
+    "team": "townsfolk",
+    "ability": "You start knowing 2 good players: 1 is drunk, even if you are dead.",
+    "art": "art/waiter.png",
+    "page": "character.html?c=waiter",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/waiter_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Welcome back, sir! The usual, I assume?",
+    "lede": "The Waiter knows exactly who needs looking after — but one of them has had something slipped into their drink.",
+    "summaryBullets": [
+      "At the start of the game you learn two good players. One of those two players is drunk for the entire game, even after you die.",
+      "You do not learn which of the two players is drunk.",
+      "The drunk player's ability functions as normal from their perspective — they receive information and take actions — but their ability gives false results or has no effect.",
+      "Your ability persists after death: as long as you were ever in play, one of those two players remains drunk."
+    ],
+    "howToRun": [
+      "On the first night, wake the Waiter. Point to two good players. Put the DRUNK reminder on one of them and KNOWN on the other. Put the Waiter to sleep.",
+      "The DRUNK player remains drunk for the entire game, even if the Waiter dies. Treat their ability accordingly — give them plausible but false information.",
+      "Do not reveal which player is drunk to anyone, including the Waiter."
+    ],
+    "examples": [
+      "The Waiter is shown the Empath and the Fortune Teller. The Fortune Teller is drunk. Each night, the Fortune Teller chooses players and the Storyteller gives false readings — the Fortune Teller never correctly identifies the Demon.",
+      "The Waiter dies on night two. The drunk player remains drunk for the rest of the game.",
+      "The Waiter is shown two players. The Empath is drunk — their neighbor count is always false. The town trusts the Empath's numbers throughout, leading them astray."
+    ],
+    "tips": [
+      "You know two good players — share this information carefully. They are valuable allies, but one is unreliable.",
+      "Try to figure out which of your two known players is behaving strangely or giving info that doesn't match the game state. That's likely your drunk.",
+      "Don't reveal both names at once. If evil learns who your pair is, they know neither can fully be trusted and may use that to confuse the town.",
+      "Even after you die, the drunk persists. Consider whether revealing your pair on your deathbed helps or hurts the town."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 46.6,
+    "firstNightReminder": "Point to 2 good players. :reminder: :reminder:",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Known",
+      "Drunk"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "singer",
+    "name": "Singer",
+    "team": "townsfolk",
+    "ability": "Once per game, during the day, publicly choose any volunteers. If a Demon is chosen, you die tonight.",
+    "art": "art/singer.png",
+    "page": "character.html?c=singer",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/singer_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "A singsong girl, unaware of the sorrow of a conquered state, is singing Backyard Flowers on the river’s other shore.",
+    "lede": "The Singer serenades the crowd and invites them to step forward — but if the Demon accepts, the performance ends in tragedy.",
+    "summaryBullets": [
+      "Once per game, during the day, the Singer publicly announces they are using their ability and invites any players to volunteer.",
+      "Volunteers publicly step forward. The Singer may choose any of them — or none.",
+      "If the Singer chooses a player who is the Demon, the Singer dies that night.",
+      "The Singer does not learn anything from the selection — they learn only through the consequence (dying) whether they chose the Demon.",
+      "This ability can only be used once. After use, the Singer has no ability for the rest of the game."
+    ],
+    "howToRun": [
+      "If the Singer uses their ability during the day, announce that the Singer is performing and ask for volunteers. Any player may publicly volunteer.",
+      "The Singer then chooses a volunteer (or declines). Note their choice privately.",
+      "That night, if the chosen player is the Demon (and the Singer is not drunk or poisoned), kill the Singer with the DEAD reminder."
+    ],
+    "examples": [
+      "The Singer calls for volunteers. Three players step forward: the Fortune Teller, the Baron, and the Imp. The Singer chooses the Baron. Nothing happens that night.",
+      "The Singer calls for volunteers. The Imp steps forward, hoping to misdirect. The Singer picks them — and dies that night.",
+      "No one volunteers when the Singer calls. The Singer uses their ability choosing no one, and it is spent for the rest of the game."
+    ],
+    "tips": [
+      "Watch who does NOT volunteer. The Demon may avoid stepping forward to dodge the risk — an absence can be as telling as a presence.",
+      "Conversely, a confident Demon might volunteer knowing they're well-hidden. Don't assume a volunteer is safe.",
+      "Save your ability for a moment when you're confident about a specific player — it only fires once.",
+      "If you volunteer as a non-Demon player, you're helping the Singer gather information. Consider whether you want to be in their candidate pool."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 58.2,
+    "otherNightReminder": "If the Singer is marked with the DEAD reminder, they die.",
+    "reminders": [
+      "No ability",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "abbot",
+    "name": "Abbot",
+    "team": "townsfolk",
+    "ability": "Each night, the 1st time an evil ability begins affecting one of your alive neighbors, it fails: you learn when this happens.",
+    "art": "art/abbot.png",
+    "page": "character.html?c=abbot",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/abbot_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Always polish the mirror of the mind, so that no dust can collect.",
+    "lede": "The Abbot's serenity forms a barrier — no evil may reach through to harm those resting in his shadow.",
+    "summaryBullets": [
+      "Each night, the first time an evil player's ability begins to affect one of your living neighbors, that ability fails and you learn it has been blocked.",
+      "You only block the very first evil ability affecting a neighbor each night — subsequent evil actions against your neighbors that same night resolve normally.",
+      "You do not learn which neighbor was targeted or which evil player tried to act — only that your ability triggered.",
+      "Dead neighbors are not protected.",
+      "Your ability blocks the effect before it resolves — your neighbor is safe from that action, not just healed afterward."
+    ],
+    "howToRun": [
+      "Each night, monitor whether any evil abilities target the Abbot's living neighbors. If one does, do not resolve that ability. Wake the Abbot and signal that their ability has triggered (e.g., nod or show a reminder).",
+      "The Abbot's ability only blocks once per night. If a second evil ability targets a neighbor the same night, it resolves normally.",
+      "If the Leviathan or Riot executes a neighbor during the day, the Abbot's ability triggers: that neighbor does not die, the Abbot learns their ability activated, and the ability cannot activate again that night."
+    ],
+    "examples": [
+      "The Demon kills the Abbot's right neighbor. The Abbot's ability triggers — the neighbor does not die, and the Abbot learns their ability fired. Later that night, the Poisoner poisons the same neighbor — this resolves normally since the Abbot already blocked once.",
+      "The Kazali creates a Minion from the player neighboring the Abbot. The Abbot's ability would trigger, but the Kazali jinx states this is permitted — the Abbot cannot stop the Kazali."
+    ],
+    "tips": [
+      "Sitting next to powerful information roles makes you extremely valuable. Evil will be reluctant to attack your neighbors — or will waste attempts trying.",
+      "Your protection is reactive, not announced — evil doesn't know you've blocked them until the player survives. Use this surprise to track which nights evil tried to act near you.",
+      "Tell trusted players near you that they have some protection. They might take bolder actions knowing there's a safety net.",
+      "Be aware that you only stop the first evil ability per night. If two evil abilities target your neighbors, only one is blocked — plan accordingly."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Pacified"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "leviathan",
+        "reason": "If the Leviathan nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight."
+      },
+      {
+        "id": "kazali",
+        "reason": "The Kazali can choose that a player neighboring the Abbot is one of their evil Minions."
+      },
+      {
+        "id": "riot",
+        "reason": "If the Riot nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight."
+      }
+    ]
+  },
+  {
+    "slug": "brocadier",
+    "name": "Brocadier",
+    "team": "townsfolk",
+    "ability": "Each night*, choose a player: until dusk, if they die, you die instead.",
+    "art": "art/brocadier.png",
+    "page": "character.html?c=brocadier",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/brocadier_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Come hell or high water, I will protect you, my liege!",
+    "lede": "The Brocadier swears an oath of protection — standing between their chosen ward and death itself.",
+    "summaryBullets": [
+      "Each night (not the first), you choose a player. If that player dies before the next dusk, you die instead.",
+      "You can protect yourself.",
+      "If your chosen player would die, you die — regardless of the cause of death. The protected player is completely safe from dying that night.",
+      "If you are drunk or poisoned, your chosen player is not protected.",
+      "Your protection lasts until dusk of the following day — you protect against night kills and any ability-caused deaths during that period."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Brocadier. They point to a player. Put the PROTECTED reminder on that player. Put the Brocadier to sleep.",
+      "If the protected player would die for any reason before the next dusk, kill the Brocadier instead — place DEAD on the Brocadier and remove DEAD from the protected player.",
+      "At dawn, remove the PROTECTED reminder."
+    ],
+    "examples": [
+      "The Brocadier protects the Slayer. The Demon kills the Slayer — the Brocadier dies instead, and the Slayer survives.",
+      "The Brocadier protects themselves. The Demon attacks the Brocadier — the Brocadier dies (they protected themselves, so they die for themselves).",
+      "The Brocadier is poisoned. They choose the Empath. The Demon kills the Empath — the Empath dies normally, the Brocadier survives."
+    ],
+    "tips": [
+      "Protect players whose abilities are still needed — a Fortune Teller in the late game or a Slayer who hasn't fired are prime candidates.",
+      "Evil knows you exist if you survive after your protected player should have died. Use this carefully — your survival tells the town someone was protected.",
+      "Consider protecting yourself on nights when you feel particularly targeted. You are valuable as long as you can keep protecting others.",
+      "Coordinate with your protected player if you trust them — they can take risks knowing you have their back tonight."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 19.3,
+    "otherNightReminder": "The Brocadier points to a player. :reminder:",
+    "reminders": [
+      "Protected",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "herb-doctor",
+    "name": "Herb Doctor",
+    "team": "townsfolk",
+    "ability": "Each night, choose a player (not yourself): you learn a word related to their ability.",
+    "art": "art/herb-doctor.png",
+    "page": "character.html?c=herb-doctor",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/herbdoctor_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Increased heart rate. Your qi is weak, dispersing.",
+    "lede": "The Herb Doctor reads the hidden afflictions of the town — one careful word at a time.",
+    "summaryBullets": [
+      "Each night, you choose a player (not yourself) and learn one word related to their character's ability.",
+      "The Storyteller chooses an appropriate word that relates to the chosen player's ability — it could describe a mechanic, a keyword, or a concept from that ability.",
+      "The word is chosen by the Storyteller and may be vague or precise depending on how much information the Storyteller wishes to give.",
+      "If your chosen player is drunk or poisoned, or if you are drunk or poisoned, the word you receive may be false.",
+      "The word relates to the player's current character ability, not their team alignment."
+    ],
+    "howToRun": [
+      "Each night, wake the Herb Doctor. They point to any player except themselves. Write one word on a piece of paper that meaningfully relates to that player's character ability. Show the word to the Herb Doctor. Put them to sleep.",
+      "Choose the word carefully — it should be genuinely useful but not give away everything immediately. For example, for a Fortune Teller you might write 'Demon'; for an Undertaker, 'execution'; for a Poisoner, 'drunk'.",
+      "If the Herb Doctor or the target is drunk or poisoned, the word may be false or misleading."
+    ],
+    "examples": [
+      "The Herb Doctor chooses the Mayor. The Storyteller writes 'bounce'. The Herb Doctor knows this player's ability involves some kind of redirection or passing.",
+      "The Herb Doctor chooses the Demon. The Storyteller writes 'kill'. The Herb Doctor gains a strong lead on the Demon's identity.",
+      "The Herb Doctor is poisoned. They choose the Empath — the Storyteller writes 'distance', which would normally be correct, but since the Herb Doctor is poisoned they could write any word."
+    ],
+    "tips": [
+      "Cross-reference the word you receive with the script. If the word narrows it down to two or three characters, you have powerful deduction material.",
+      "Target players you already have suspicions about — a word that confirms or denies your theory is more valuable than information about a known-safe player.",
+      "Be careful about revealing your information publicly early. Evil players know what word their own ability would generate — they might bluff around it.",
+      "If you receive the same word for two different players, they likely share an ability mechanic. This can help cluster your deductions."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 60.5,
+    "firstNightReminder": "The Herb Doctor points to a player. Write down a word relating to that player’s ability and show it to the Herb Doctor.",
+    "otherNight": 79.1,
+    "otherNightReminder": "The Herb Doctor points to a player. Write down a word relating to that player’s ability and show it to the Herb Doctor.",
+    "reminders": [],
+    "setup": false
+  },
+  {
+    "slug": "stargazer",
+    "name": "Stargazer",
+    "team": "townsfolk",
+    "ability": "You start knowing if your closest evil player is clockwise, anti-clockwise or equal. If they neighbor you, this info is false.",
+    "art": "art/stargazer.png",
+    "page": "character.html?c=stargazer",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/stargazer_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Strange phenomena in the heavens. Something wicked approaches.",
+    "lede": "The Stargazer reads celestial omens to divine where evil lurks — though those who stand too close may confound the stars.",
+    "summaryBullets": [
+      "At the start of the game you learn whether your closest evil player is clockwise, anti-clockwise, or equidistant from you.",
+      "If the closest evil player is your immediate neighbor, the information is false.",
+      "The information reflects the state at the start of the game and does not update as players die or change alignment.",
+      "If multiple evil players are equidistant from you, the Storyteller chooses one to be the reference for the directional information.",
+      "Dead players still count for seat distance."
+    ],
+    "howToRun": [
+      "On the first night, wake the Stargazer. Determine which evil player (alive or dead) is closest to the Stargazer by seat count.",
+      "If that player is the Stargazer's immediate neighbor, point in a false direction or down (for false equidistant). Otherwise, point clockwise, anti-clockwise, or down for equidistant.",
+      "Put the Stargazer to sleep. This ability provides no further information after the first night."
+    ],
+    "examples": [
+      "The Stargazer has the Poisoner two seats clockwise and the Imp five seats anti-clockwise. The Storyteller points clockwise.",
+      "The Stargazer's immediate neighbor is the Baron. The Storyteller points anti-clockwise as false information.",
+      "The closest evil player is equidistant on both sides. The Storyteller points down."
+    ],
+    "tips": [
+      "Your information tells you a direction, not a specific player — use it to narrow your suspicions to a half of the circle.",
+      "If your immediate neighbor is evil, your info is false — the fact that it seems to point away from your neighbors might itself be a clue.",
+      "Share your information with players who have complementary knowledge. A Fortune Teller working the same side of the circle as your info points can triangulate faster.",
+      "Your info is fixed from night one and doesn't update — late game deaths don't change which direction evil started in."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 66.1,
+    "firstNightReminder": "Point clockwise or anticlockwise, or down if equidistant.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "setup": false
+  },
+  {
+    "slug": "enlightened-one",
+    "name": "Enlightened One",
+    "team": "townsfolk",
+    "ability": "You think you are an Outsider. If affected by an evil player’s ability, you first become a not-in-play Townsfolk.",
+    "art": "art/enlightened-one.png",
+    "page": "character.html?c=enlightened-one",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/enlightenedone_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The Six Paths are trees obscuring the forest; in truth, all beings are equal.",
+    "lede": "The Enlightened One wears the mask of an Outsider — and when evil tries to unmask them, they vanish into a new identity.",
+    "summaryBullets": [
+      "You are a Townsfolk who thinks you are an Outsider. You are set up believing you have an Outsider character and ability.",
+      "If an evil player's ability affects you, before the ability resolves, you first become a not-in-play Townsfolk. The evil ability then may or may not affect your new character.",
+      "The Enlightened One is not removed from the bag during setup — they are placed as if they were an Outsider. [Setup ability: affects character distribution]",
+      "The transformation is permanent — once you become a new Townsfolk, you keep that character for the rest of the game."
+    ],
+    "howToRun": [
+      "During setup, treat the Enlightened One token as an Outsider for bag-building purposes. Place the IS THE ENLIGHTENED ONE global reminder in the Grimoire.",
+      "Place a not-in-play Townsfolk token face-down under their Grimoire slot so you know what they will transform into.",
+      "If an evil ability targets the Enlightened One, first change their character to the prepared Townsfolk. Then resolve the evil ability against them as their new character.",
+      "Reveal the character change at an appropriate moment — typically when the transformation is discovered or when it affects game state."
+    ],
+    "examples": [
+      "The Enlightened One thinks they are a Recluse. The Poisoner poisons them — before the poison takes effect, they transform into an in-play Townsfolk character, say a Monk. The Monk ability now applies to them instead.",
+      "The Demon kills the Enlightened One. Before death resolves, they become a not-in-play Townsfolk. They then die as that character.",
+      "The Enlightened One is drunk — their evil-triggered transformation doesn't occur since they have no ability while drunk."
+    ],
+    "tips": [
+      "You genuinely believe you are an Outsider — play your claimed role as if it's real. Your transformation is a surprise to you as much as anyone.",
+      "If you transform, pay close attention to what triggered it — that means an evil player targeted you. You may have narrowed down who evil is.",
+      "Your new Townsfolk identity may grant you a powerful ability. Use it immediately and transparently — the town needs to know the situation changed.",
+      "Telling the town you believe you're an Outsider is risky: evil knows what you are and may avoid targeting you to prevent your transformation."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [
+      "Is the Enlightened One"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "villageidiot",
+        "reason": "If there is a spare token, the Enlightened One can become an extra Village Idiot. If so, the drunk Village Idiot might change."
+      },
+      {
+        "id": "boffin",
+        "reason": "The Demon cannot have the Enlightened One ability."
+      }
+    ]
+  },
+  {
+    "slug": "actor",
+    "name": "Actor",
+    "team": "townsfolk",
+    "ability": "All Actors know each other and jointly reverse the victory conditions, even if dead. [All good characters are Actors]",
+    "art": "art/actor.png",
+    "page": "character.html?c=actor",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/actor_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "If we shadows have offended, think but this and all is mended, that you have but slumber’d here, while these visions did appear.",
+    "lede": "The Actors know each other as kindred players in the same grand fiction — and together they can rewrite the ending.",
+    "summaryBullets": [
+      "Every good character in the game is replaced by an Actor. All Actors know each other from the first night.",
+      "If the Actors jointly reverse the victory conditions, good wins when evil would normally win, and vice versa. This applies even to dead Actors.",
+      "The reversal is absolute — any win condition that would end the game for evil instead ends it for good, and any condition that would end it for good ends it for evil.",
+      "Setup: all good characters are Actors. [-no separate setup change — this replaces all good roles]"
+    ],
+    "howToRun": [
+      "On the first night, wake all Actors together. They see each other. Put them to sleep.",
+      "All Actors are aware of each other's identities. They work together to manipulate the game's win conditions.",
+      "Monitor whether the Actors have collectively agreed to reverse win conditions. If they have, flip all victory outcomes for the rest of the game.",
+      "The reversal is a collective decision — if Actors are split or uncertain, the default victory conditions apply."
+    ],
+    "examples": [
+      "The Actors decide early to reverse win conditions. The Demon kills the last Town player — normally evil wins, but under the reversal good wins.",
+      "An Actor dies before deciding. The remaining Actors reverse the conditions — the dead Actor's vote also counts since the ability works even if dead.",
+      "The Actors cannot agree on a reversal. The game proceeds with standard win conditions."
+    ],
+    "tips": [
+      "Coordinate secretly with your fellow Actors — you all know each other, so use that network to plan without evil knowing.",
+      "The reversal can be a powerful late-game trump card. Let evil think they've won, then flip the outcome.",
+      "Be careful: if evil figures out you're Actors working together, they may try to kill you before you can coordinate the reversal.",
+      "A Pit-Hag cannot create an Actor — use this as a safety against character-change shenanigans."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 23.2,
+    "firstNightReminder": "Wake all Actors together.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "spy",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "eviltwin",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "widow",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "summoner",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "godfather",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "wraith",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "legion",
+        "reason": "At any time, a Legion player can tell the Storyteller that they would like to die. Tonight, the Storyteller wakes all Legion players: if all agree, all die."
+      },
+      {
+        "id": "leviathan",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "lilmonsta",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "pukka",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "riot",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "zombuul",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "yaggababble",
+        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "pithag",
+        "reason": "A Pit-Hag cannot create an Actor."
+      },
+      {
+        "id": "atheist",
+        "reason": "The Actor cannot reverse the victory conditions on executing the Storyteller."
+      },
+      {
+        "id": "kazali",
+        "reason": "Both characters cannot be in play at the start of the game. If an ability turns a good player into the Actor on the first night, the Minions are selected before this happens."
+      },
+      {
+        "id": "lordoftyphon",
+        "reason": "Both characters cannot be in play at the start of the game. If an ability turns a good player into the Actor on the first night, the Minions are selected before this happens."
+      },
+      {
+        "id": "goblin",
+        "reason": "The Actor cannot reverse the victory conditions due to the Goblin’s ability."
+      },
+      {
+        "id": "fearmonger",
+        "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability."
+      }
+    ]
+  },
+  {
+    "slug": "rascal",
+    "name": "Rascal",
+    "team": "townsfolk",
+    "ability": "Each night, choose a Townsfolk character: their ability yields false info until dusk.",
+    "art": "art/rascal.png",
+    "page": "character.html?c=rascal",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/rascal_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "This one’s mine! This one, too!",
+    "lede": "The Rascal has sticky fingers and a mischievous streak — whatever they touch gets a little bit wrong.",
+    "summaryBullets": [
+      "Each night (including the first), you choose a Townsfolk character from the script. That character's ability gives false information until the next dusk.",
+      "You choose a character type, not a specific player — if no one in the game has that character, the ability has no effect.",
+      "The chosen Townsfolk player still receives information as normal, but their ability's results are false.",
+      "Your effect lasts until dusk — it persists through the following day and resets the next night when you choose again."
+    ],
+    "howToRun": [
+      "Each night, wake the Rascal. They point to any Townsfolk character on the script sheet. Place the FALSE INFO reminder on the matching player's token. Put the Rascal to sleep.",
+      "That night, give the chosen Townsfolk false information when their ability fires — a wrong answer, a wrong count, a misleading word.",
+      "At dusk, remove the FALSE INFO reminder. The Rascal chooses again the following night."
+    ],
+    "examples": [
+      "The Rascal chooses Fortune Teller. The Fortune Teller wakes and asks about two players — the Storyteller says 'yes' even though neither is the Demon.",
+      "The Rascal chooses Empath. The Empath wakes — the Storyteller gives a count of 0 even though both neighbors are evil.",
+      "The Rascal chooses a Townsfolk character not in play. Nothing happens — no one is affected."
+    ],
+    "tips": [
+      "Target the most trusted information role in play — if the town is building their case around a Fortune Teller's reads, corrupting those reads derails everything.",
+      "Vary your targets. If you always corrupt the same player, the town may notice a pattern of unreliable information from one source.",
+      "You can corrupt your own cover story: choose a character you're claiming to be, making your 'ability result' wrong — this can paradoxically make you seem more trustworthy since 'your' info is also wrong.",
+      "Coordinate with your Demon about who to corrupt — the Demon knows who to kill, you know whose information to invalidate the same night."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 46.8,
+    "firstNightReminder": "The Rascal points to any Townsfolk character on their character sheet. :reminder:",
+    "otherNight": 19.3,
+    "otherNightReminder": "The Rascal points to any Townsfolk character on their character sheet. :reminder:",
+    "reminders": [
+      "False info"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "yinyang-diviner",
+    "name": "Yinyang Diviner",
+    "team": "townsfolk",
+    "ability": "You start knowing 2 good & 2 evil characters, exactly 2 of which are in play.",
+    "art": "art/yinyang-diviner.png",
+    "page": "character.html?c=yinyang-diviner",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/yinyangdiviner_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The great Xuanwu is before us. Gods return to their temples, ghosts return to their graves, monsters return to the mountains and forests!",
+    "lede": "The Yinyang Diviner stands at the boundary of light and shadow, knowing exactly which forces walk the earth — though not quite where.",
+    "summaryBullets": [
+      "At the start of the game you learn four characters: 2 good and 2 evil. Exactly 2 of these 4 are currently in play.",
+      "You know that one good and one evil character among your four are real — but you don't know which good one and which evil one.",
+      "The characters shown are actual characters in play, not bluffs — but the other two are not in the game.",
+      "This is a one-time piece of information received on the first night."
+    ],
+    "howToRun": [
+      "On the first night, wake the Yinyang Diviner. Choose 2 good characters currently in play and 2 evil characters currently in play. Show all four character tokens to the Yinyang Diviner. Put them to sleep.",
+      "If the Yinyang Diviner is drunk or poisoned, you may show false characters — some or all may not be in play, or the good/evil split may be wrong."
+    ],
+    "examples": [
+      "In play: Investigator, Slayer, Poisoner, Imp. The Storyteller shows: Slayer (in play, good), Fortune Teller (not in play), Baron (not in play), Imp (in play, evil). The Yinyang Diviner knows exactly one of the good pair and one of the evil pair is real.",
+      "The Yinyang Diviner is poisoned. The Storyteller shows four characters, none of which are in play."
+    ],
+    "tips": [
+      "You know one evil character that exists in the game — this is powerful even if you can't pinpoint the player. Share your evil options with the town.",
+      "Combine your information with other players' claims. If someone claims to be a character from your 'not real' group, they're either lying or you received false info.",
+      "Your good pair also helps: if one of your good characters is claimed by someone and their play seems consistent, you've found a trustworthy ally — and narrowed your evil candidates.",
+      "Be aware that your info is first-night only. Character changes (Pit-Hag, Barber) may make your information stale by mid-game."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 53.2,
+    "firstNightReminder": "Show the Yinyang Diviner the 4 character tokens.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Learned",
+      "Learned"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "turncoat",
+    "name": "Turncoat",
+    "team": "outsider",
+    "ability": "On your 1st night, choose another player. The 1st time one of you dies by execution, the other turns evil that night.",
+    "art": "art/turncoat.png",
+    "page": "character.html?c=turncoat",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/turncoat_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "I fear his hesitation will cost the general this unique opportunity. A pity.",
+    "lede": "The Turncoat binds their fate to a rival — and when one falls, the other is pulled across the line.",
+    "summaryBullets": [
+      "On your first night, you choose another player as your Rival.",
+      "The first time either you or your Rival dies by execution, the other turns evil that night.",
+      "If you die by execution, your Rival turns evil. If your Rival dies by execution, you turn evil.",
+      "Only death by execution triggers this — night kills, ability deaths, and other causes of death do not.",
+      "Once one of you has turned evil, the other's ability has no further effect."
+    ],
+    "howToRun": [
+      "On the first night, wake the Turncoat. They point to another player. Place the RIVAL reminder on that player. Put the Turncoat to sleep.",
+      "Track executions during the day. The first time the Turncoat or their Rival is executed and dies, wake the other that night. Show them the YOU ARE token and thumbs down for evil. They are now evil.",
+      "On subsequent nights, if the remaining trigger condition hasn't fired yet, continue monitoring — the ability doesn't expire until it fires."
+    ],
+    "examples": [
+      "The Turncoat chooses the Investigator as Rival. On day three, the Investigator is executed. That night, the Turncoat turns evil and learns this.",
+      "The Turncoat is executed on day two. That night, their Rival (the Mayor) turns evil.",
+      "The Turncoat's Rival is killed by the Demon at night. Nothing happens — the ability only triggers on executions."
+    ],
+    "tips": [
+      "You have an incentive to avoid being executed — and to protect your Rival from execution too. This creates a genuine conflict of interest with the town.",
+      "Consider who you choose as Rival carefully. Choosing a likely-to-be-executed Minion means you'll turn evil on a Minion execution — potentially very soon.",
+      "If you turn evil, you gain your new alignment immediately but the town doesn't know it. Use your insider status carefully.",
+      "As a good player who doesn't know about Turncoat: if an execution suddenly seems to benefit evil more than expected, consider whether there's a Turncoat in play."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 57.5,
+    "firstNightReminder": "The Turncoat points to another player. Mark that player with the RIVAL reminder token. :reminder:",
+    "otherNight": 34.5,
+    "otherNightReminder": "The first time the Turncoat or the player marked RIVAL dies by execution, wake the other one, show them the YOU ARE info token and show a thumbs down for evil.",
+    "reminders": [
+      "Rival"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "lummox",
+    "name": "Lummox",
+    "team": "outsider",
+    "ability": "If you die, 1 alive neighbor might die tonight.",
+    "art": "art/lummox.png",
+    "page": "character.html?c=lummox",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/lummox_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Born under an unlucky star? Nonsense! I can’t be faulted for the misfortunes of people around me!",
+    "lede": "The Lummox is a walking catastrophe — their death sends a shockwave through the players nearest to them.",
+    "summaryBullets": [
+      "When you die, the Storyteller may kill one of your alive neighbors that night.",
+      "This is a 'might' effect — the Storyteller chooses whether to trigger it and which neighbor.",
+      "Only living neighbors are eligible. If both neighbors are dead, no additional death occurs.",
+      "This triggers regardless of how you die — by execution, night kill, or ability."
+    ],
+    "howToRun": [
+      "When the Lummox dies (by any means), that night, decide whether to kill one of their living neighbors. If so, place a DEAD reminder on one neighbor.",
+      "Announce at dawn that an additional player has died. You may choose not to trigger the effect — use your judgment based on game balance."
+    ],
+    "examples": [
+      "The Lummox is executed on day two. That night, the Storyteller kills their right neighbor, who is the Empath.",
+      "The Lummox is killed by the Demon. The Storyteller opts not to kill either neighbor.",
+      "The Lummox dies. Both neighbors are already dead — no additional death is possible."
+    ],
+    "tips": [
+      "Seat yourself next to players you suspect are evil. If they kill you, they might accidentally kill another evil player.",
+      "Revealing yourself as a Lummox can deter executions — the town won't want to risk losing a good neighbor.",
+      "Conversely, don't reveal too early. If evil knows about you they'll be careful about killing you near their Minions.",
+      "If you die and no neighbor dies, that's a clue — either the Storyteller chose mercy or your neighbors were valuable to keep alive."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 58.1,
+    "otherNightReminder": "If the Lummox died today, one of their living neighbors might die. :reminder:",
+    "reminders": [
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "ambassador",
+    "name": "Ambassador",
+    "team": "outsider",
+    "ability": "When an evil player is chosen by an ability at night, you might be targeted instead (once per night), even if dead.",
+    "art": "art/ambassador.png",
+    "page": "character.html?c=ambassador",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/ambassador_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The only thing worse than travelling alone in the wilderness is the company one might find there.",
+    "lede": "The Ambassador draws danger to themselves — taking hits meant for evil so that the town can see where threats are really aimed.",
+    "summaryBullets": [
+      "When an evil player is chosen by an ability at night, the Storyteller may redirect that ability to target you instead.",
+      "This can only happen once per night.",
+      "Your ability works even if you are dead — abilities targeting evil players may still redirect to your corpse.",
+      "You do not learn when your ability triggers."
+    ],
+    "howToRun": [
+      "Each night, if any ability targets an evil player, you may redirect that ability to target the Ambassador instead. You may only redirect once per night.",
+      "The original evil player is untouched. The ability resolves as if it had originally chosen the Ambassador.",
+      "If the Ambassador is drunk or poisoned, their ability is suppressed — redirects don't occur while they have no ability.",
+      "The Lleech jinx: the Lleech's poisoning or host choice cannot be redirected to the Ambassador."
+    ],
+    "examples": [
+      "The Fortune Teller chooses the Baron and another player. The Storyteller redirects the Baron's slot to the Ambassador — the Fortune Teller gets a reading based on the Ambassador instead.",
+      "The Undertaker checks last night's execution. The executed player was the Poisoner. The Storyteller redirects this check to the Ambassador — the Undertaker sees the Ambassador's character.",
+      "The Ambassador is dead. The Slayer shoots at the Demon. The Storyteller redirects — the Demon survives, and the Slayer's shot is wasted on the Ambassador."
+    ],
+    "tips": [
+      "Your ability means evil players have some protection from targeting abilities — but it also means information about evil gets muddied. This is double-edged.",
+      "If an information role gets a reading that seems wildly off, consider whether the Ambassador redirected their action.",
+      "Being dead doesn't stop you — the Ambassador is one of the few characters whose ability persists usefully after death.",
+      "Coordinate with your team: if you know you've been redirected (because an info role got wrong data), that means someone targeted an evil player that night."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Targeted tonight"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "lleech",
+        "reason": "The Lleech’s poisoning or host choice cannot be redirected."
+      }
+    ]
+  },
+  {
+    "slug": "pedant",
+    "name": "Pedant",
+    "team": "outsider",
+    "ability": "The Demon knows you’re in play. If they privately guess you (once): tonight, they may choose a player to die (even if you die).",
+    "art": "art/pedant.png",
+    "page": "character.html?c=pedant",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/pedant_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "I accept my fate, but first tell me: at whose hands am I dying?",
+    "lede": "The Pedant is a walking liability — the Demon knows they're out there, and one successful guess unlocks a free kill.",
+    "summaryBullets": [
+      "From the start, the Demon knows the Pedant is in play (not who they are).",
+      "Once per game, the Demon may privately tell the Storyteller who they believe the Pedant is.",
+      "If the Demon's guess is correct, the Demon gains one bonus kill that night — they may choose any player to die, even if the Pedant also dies that night.",
+      "The Demon's guess is completely private and the town doesn't know if a guess was made.",
+      "If the Demon never guesses, or guesses wrong, the bonus kill never triggers."
+    ],
+    "howToRun": [
+      "On the first night, wake the Demon. Show them the Pedant token to inform them that the Pedant is in play. Put the Demon to sleep.",
+      "On any subsequent night, the Demon may whisper to you who they think the Pedant is. If correct, that night wake the Demon again (or handle in order), show them the Pedant token, and let them point to any player — that player dies. Mark them with DEAD.",
+      "Place the GUESS USED reminder when the Demon has used their guess, whether or not it was correct."
+    ],
+    "examples": [
+      "The Demon guesses the correct Pedant on night three. That night the Demon kills their normal target and additionally kills the Mayor — two deaths.",
+      "The Demon guesses the wrong player. The Pedant is safe, and the Demon has no more guesses.",
+      "The Demon never guesses. The Pedant's ability never triggers."
+    ],
+    "tips": [
+      "Don't reveal that you're the Pedant early — the Demon is trying to find you. Once they do, they get a free kill.",
+      "If two players die in one night and there's no obvious explanation, the Demon may have found the Pedant.",
+      "As a Pedant, behave unpredictably. Don't make yourself obviously stand out — the Demon is watching for tells.",
+      "Misdirecting the Demon about who the Pedant is (e.g., someone claiming to be Pedant to absorb the guess) can waste the Demon's one guess."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 24.1,
+    "firstNightReminder": "Show the Demon the Pedant character token.",
+    "otherNight": 55.9,
+    "otherNightReminder": "If the Demon guessed the Pedant player correctly, wake the Demon and show them the Pedant token. They may point to any player: that player DIES. :reminder:",
+    "reminders": [
+      "Guess used",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "bug-keeper",
+    "name": "Bug Keeper",
+    "team": "minion",
+    "ability": "Each night*, if you were alive when nominated today, your nominator dies, even if you die first.",
+    "art": "art/bug-keeper.png",
+    "page": "character.html?c=bug-keeper",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/bugkeeper_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The venom of the centipede, who ate the spider, who ate the scorpion, who ate the snakeâ€¦ No, it’s not enough!",
+    "lede": "The Bug Keeper's venom doesn't kill outright — it waits, striking back at anyone bold enough to nominate them.",
+    "summaryBullets": [
+      "Each night (not the first), if the Bug Keeper was alive and nominated today, their nominator dies tonight.",
+      "If the Bug Keeper was nominated multiple times, each nominator dies.",
+      "The Bug Keeper themselves may also die that night (from nomination or other causes) without canceling the effect — the nominator still dies.",
+      "If the Bug Keeper was not nominated today, nothing happens."
+    ],
+    "howToRun": [
+      "Track who nominated the Bug Keeper each day. If the Bug Keeper was alive when nominated, that night kill those nominators with DEAD reminders.",
+      "If the Bug Keeper dies during the day (by execution), still apply the effect that night — the ability says 'if you were alive when nominated', not 'if you are alive tonight'.",
+      "The Plague Doctor jinx: if the Storyteller would gain the Bug Keeper ability, a living Minion gains it in addition to their own ability."
+    ],
+    "examples": [
+      "The Bug Keeper is nominated by the Slayer and survives the vote. That night, the Slayer dies.",
+      "The Bug Keeper is nominated, then later executed that day. Both the nominator and the Bug Keeper die that night.",
+      "No one nominates the Bug Keeper today. Nothing happens that night."
+    ],
+    "tips": [
+      "Let it be known you're the Bug Keeper early — it will deter nominations. The town won't want to lose a player just for nominating you.",
+      "If you're confident enough about a Demon, consider letting yourself be nominated to bait the nominator into dying — especially if the nominator is suspicious.",
+      "Be careful: revealing your identity means evil knows not to nominate you. They'll find other ways to deal with you.",
+      "If a player dies the night after nominating someone and there's no obvious cause, the Bug Keeper may be in play."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 57.1,
+    "otherNightReminder": "Any player who nominated the alive Bug Keeper dies.",
+    "reminders": [
+      "Dead"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller would gain the Bug Keeper ability, a living Minion gains the Bug Keeper ability in addition to their own ability, and learns this."
+      }
+    ]
+  },
+  {
+    "slug": "vixen",
+    "name": "Vixen",
+    "team": "minion",
+    "ability": "On your 1st night, choose a player: they learn the Vixen is in play. If you die by execution, they become evil tonight.",
+    "art": "art/vixen.png",
+    "page": "character.html?c=vixen",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/vixen_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Your Majesty, the concubine had two sisters. They send their condolences and have requested an audience.",
+    "lede": "The Vixen weaves a quiet enchantment on her first night — and if she falls, the enchanted one falls with her into darkness.",
+    "summaryBullets": [
+      "On your first night, you choose a player. They learn the Vixen is in play, but not who the Vixen is.",
+      "If you die by execution, the Charmed player turns evil that night.",
+      "If you die by any other means, the Charmed player does not turn evil.",
+      "The Charmed player knows the Vixen is in play from the start — they may deduce they are Charmed."
+    ],
+    "howToRun": [
+      "On the first night, wake the Vixen. They point to a player. Place the CHARMED reminder on that player. Put the Vixen to sleep. Wake the Charmed player, show them the THIS CHARACTER SELECTED YOU token and the Vixen character token. Put them to sleep.",
+      "If the Vixen is executed and dies, that night flip the Charmed player's token evil-side up. Wake them, show YOU ARE and thumbs down for evil.",
+      "The Plague Doctor jinx: a living Minion may gain the Vixen's ability in addition to their own."
+    ],
+    "examples": [
+      "The Vixen charms the Empath. The town executes the Vixen on day three. That night, the Empath turns evil.",
+      "The Demon kills the Vixen. The Charmed player remains good — only execution triggers the conversion.",
+      "The Charmed player tells the town they were charmed by the Vixen. The town is now reluctant to execute the Vixen."
+    ],
+    "tips": [
+      "Charm a powerful information role — if they turn evil, that's devastating to the good team's information network.",
+      "Let evil know who you've charmed, so they know who to protect you with — keeping you alive keeps your Charmed ally safe.",
+      "The Charmed player knows someone is the Vixen. They might deduce it's you. Bluff carefully.",
+      "If you're the Charmed player, you know someone is the Vixen — but you don't know who. Be careful about pushing too hard to execute someone who might be the Vixen."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 40.2,
+    "firstNightReminder": "The Vixen points to a player. :reminder: Put the Vixen to sleep and wake the chosen player. Show them the THIS CHARACTER SELECTED YOU info token and the Vixen character token. Put them to sleep.",
+    "otherNight": 32.2,
+    "otherNightReminder": "If the Vixen died by execution today, turn the character token marked CHARMED upside-down. Wake that player, show them the YOU ARE info token, and thumbs down for evil.",
+    "reminders": [
+      "Charmed"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "heretic",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller would gain the Vixen ability, a living Minion gains the Vixen ability in addition to their own ability, and learns this."
+      }
+    ]
+  },
+  {
+    "slug": "corpse-walker",
+    "name": "Corpse Walker",
+    "team": "minion",
+    "ability": "The 1st time each of your Townsfolk neighbors die, they register as alive. [-1 Outsider]",
+    "art": "art/corpse-walker.png",
+    "page": "character.html?c=corpse-walker",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/corpsewalker_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "Only journey under the cover of darkness, and never let them find out that your stomach is full of straw.",
+    "lede": "The Corpse Walker raises the dead — but only for long enough to confuse everyone about who's truly gone.",
+    "summaryBullets": [
+      "The first time each of your living Townsfolk neighbors dies, they register as alive until the end of the game (or until your ability no longer applies).",
+      "Registering as alive means abilities that check living/dead status treat them as alive — but they are still dead and cannot speak or vote.",
+      "You have two Townsfolk neighbors (one on each side), so this effect can trigger at most twice.",
+      "Setup: [-1 Outsider] — one fewer Outsider in the game.",
+      "If you are drunk or poisoned, your neighbors do not register as alive when they die."
+    ],
+    "howToRun": [
+      "When a Townsfolk neighbor of the Corpse Walker dies for the first time, place the UNDEAD reminder on their token. They now register as alive to abilities.",
+      "If that player's slot is targeted by an ability that checks for living status, treat them as alive. If directly targeted to die again, nothing happens.",
+      "If the Corpse Walker dies, their undead neighbors may return to registering as dead — or remain undead per the Storyteller's judgment."
+    ],
+    "examples": [
+      "The Corpse Walker's right neighbor (the Empath) is killed by the Demon. The Empath registers as alive. The Undertaker next night sees the Empath as if they hadn't been executed.",
+      "The Corpse Walker's left neighbor (the Slayer) is executed. The Slayer registers as alive — a player using an ability to check for dead players doesn't see the Slayer.",
+      "Both Townsfolk neighbors die. Both are undead. The town counts only 2 living players, but abilities count 4."
+    ],
+    "tips": [
+      "Your undead neighbors create confusion about who is alive and dead — use this to mislead evil about when the final day is approaching.",
+      "Sit next to powerful roles. When they die, their continued 'alive' registration may protect others from deducing who was killed.",
+      "Be aware that the [-1 Outsider] setup change makes you easier to find — the Outsider count will be off by one.",
+      "If you can keep your identity secret, evil won't know why their kills aren't showing up in the living count."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Undead",
+      "Undead"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller would gain the Corpse Walker ability, a living Minion gains the Corpse Walker ability in addition to their own ability, and learns this."
+      }
+    ]
+  },
+  {
+    "slug": "imperialist",
+    "name": "Imperialist",
+    "team": "minion",
+    "ability": "Players who are mad that they want to live or die (you start by choosing which) might be immediately executed.",
+    "art": "art/imperialist.png",
+    "page": "character.html?c=imperialist",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/imperialist_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "He deserved to be beheaded! Yes, he broke curfew, my lord!",
+    "lede": "The Imperialist turns the town's survival instincts into a weapon — madness about life or death carries a swift and lethal penalty.",
+    "summaryBullets": [
+      "On your first night, you choose whether your ability targets players who are 'mad they want to live' or 'mad they want to die'.",
+      "Players who publicly and sincerely claim (are mad) to want what you chose — to live or to die — might be immediately executed.",
+      "The Storyteller decides whether a player is genuinely mad about this and whether to execute them.",
+      "This is a passive ability — you don't take an action each night, only the initial choice."
+    ],
+    "howToRun": [
+      "On the first night, wake the Imperialist. Show them the LIVE and DIE reminder tokens and let them point to one. Place the chosen token in the Grimoire. Put the Imperialist to sleep.",
+      "During the day, if any player seems genuinely and publicly mad that they want to live (or die, per the choice), you may immediately execute them.",
+      "Use this sparingly and fairly — only trigger it when a player is clearly and publicly performing the targeted madness."
+    ],
+    "examples": [
+      "The Imperialist chose 'DIE'. A player dramatically insists they want to be executed. The Storyteller executes them immediately.",
+      "The Imperialist chose 'LIVE'. A player begs not to be executed and loudly insists they want to stay alive. The Storyteller executes them mid-plea.",
+      "A player calmly says they'd rather not die today. The Storyteller decides this is not mad enough and takes no action."
+    ],
+    "tips": [
+      "Your ability creates paranoia about expressing preferences publicly. Once the town knows an Imperialist might be in play, players become reluctant to advocate strongly for their own survival.",
+      "Choose 'LIVE' if you want to punish players who desperately defend themselves during nominations.",
+      "Keep your choice secret if possible — if the town knows which way you chose, they'll simply avoid performing the relevant madness.",
+      "Coordinate with the Demon: if a key good player is being diplomatic, getting them to strongly advocate for living might get them executed."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 38.5,
+    "firstNightReminder": "Show the Imperialist the LIVE and DIE reminder tokens: they point to one. Put the chosen token in the Grimoire. :reminder:",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Live",
+      "Die"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "tao-tie",
+    "name": "Tao Tie",
+    "team": "demon",
+    "ability": "Each night*, choose up to 4 players (or 1 Traveller): if all are different character types, they die. [+1 Outsider]",
+    "art": "art/tao-tie.png",
+    "page": "character.html?c=tao-tie",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/taotie_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The beast looks like a ram with the face of a human, eyes under its armpits, tiger teeth and a baby’s voice. It devours people, and its name is Tao Tie.",
+    "lede": "The Tao Tie is a gluttonous horror that devours entire factions in a single night — if you spread the feast wide enough.",
+    "summaryBullets": [
+      "Each night (not the first), choose up to 4 players OR a single Traveller. If every chosen player is of a different character type (Townsfolk, Outsider, Minion, Demon, Traveller), all chosen players die.",
+      "If any two chosen players share the same character type, no one dies.",
+      "Choosing fewer than 4 players is valid — a single player or a Townsfolk/Outsider pair always works. The restriction is about type uniqueness.",
+      "Choosing a single Traveller always succeeds.",
+      "Setup: [+1 Outsider] — one additional Outsider in the game."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Tao Tie. They shake their head (no kill) or point to up to 4 players. Place DEAD reminders on each chosen player.",
+      "Check: are all chosen players of different character types? If yes, all die. If any two share a type, remove all DEAD reminders — no one dies.",
+      "Announce deaths at dawn without specifying cause.",
+      "If the Tao Tie chooses a single Traveller, that Traveller dies."
+    ],
+    "examples": [
+      "The Tao Tie chooses the Empath (Townsfolk), the Recluse (Outsider), and the Poisoner (Minion). All three are different types — all three die.",
+      "The Tao Tie chooses the Empath (Townsfolk) and the Slayer (Townsfolk). Both are Townsfolk — no one dies.",
+      "The Tao Tie chooses the Beggar (Traveller) alone. The Beggar dies."
+    ],
+    "tips": [
+      "Planning a 4-player kill requires knowing one of each type. Focus your information gathering on identifying which type each player is.",
+      "Even a 2-player kill (one Townsfolk, one Minion) is extremely efficient — two types, two kills.",
+      "Outsiders are usually easy to identify since they often self-reveal. Use them as the anchor for your kill combination.",
+      "If you can't confirm types, a safe single-player kill keeps you hidden and avoids wasting a night on a failed 4-person attempt."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.21,
+    "otherNightReminder": "The Tao Tie shakes their head no, or points to up to 4 players. :reminder: :reminder: :reminder: :reminder:",
+    "reminders": [
+      "Dead",
+      "Dead",
+      "Dead",
+      "Dead"
+    ],
+    "setup": true
+  },
+  {
+    "slug": "tao-wu",
+    "name": "Tao Wu",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If you die, an alive Minion instead loses their ability. You learn no Demon info.",
+    "art": "art/tao-wu.png",
+    "page": "character.html?c=tao-wu",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/taowu_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The beast looks like a tiger with a human face, a mouth full of fangs and a tail of 18 foot. It destroys the land in its wake, and it is named Tao Wu.",
+    "lede": "The Tao Wu kills without learning — a blind predator who leaves a trail of powerless Minions in their wake.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player: they die.",
+      "You do not receive Demon information on the first night — you are not told who the Minions are.",
+      "If you die, one alive Minion permanently loses their ability instead of the normal Demon-death succession rules.",
+      "The Minion that loses their ability is chosen by the Storyteller.",
+      "The NO ABILITY reminder marks which Minion(s) have lost their abilities."
+    ],
+    "howToRun": [
+      "On the first night, do not wake the Tao Wu to give Demon info. They wake with no information about their Minions.",
+      "Each subsequent night, wake the Tao Wu. They point to a player. That player dies.",
+      "If the Tao Wu is executed and dies, choose one alive Minion and place the NO ABILITY reminder on their token. That Minion permanently loses their ability.",
+      "Multiple Tao Wu deaths (via Pit-Hag changes, etc.) may disable multiple Minions."
+    ],
+    "examples": [
+      "The Tao Wu is executed on day three. The Storyteller chooses the Poisoner to lose their ability — the Poisoner can no longer poison anyone.",
+      "The Tao Wu is killed by a Slayer. The Storyteller selects the Baron. The Baron's extra Outsiders remain in play, but the Baron can no longer add them.",
+      "The Tao Wu is changed to a different Demon via Pit-Hag. The prior Minion that lost their ability stays that way."
+    ],
+    "tips": [
+      "Not knowing your Minions is a serious handicap. Spend early days trying to identify your evil team through deduction and coded conversation.",
+      "Your death penalty for Minions deters your own team from selling you out — they lose an ability if you die.",
+      "Target strong information roles early. Without knowing who your Minions are, you can't coordinate closely — make each kill count independently.",
+      "If you can secretly identify yourself to Minions during the day, you gain the coordination advantage without the first-night reveal."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 22.8,
+    "firstNightReminder": "Do not wake the Tao Wu to give Demon info.",
+    "otherNight": 55.22,
+    "otherNightReminder": "The Tao Wu points to a player. That player DIES. :reminder:",
+    "reminders": [
+      "Dead",
+      "No Ability",
+      "No Ability",
+      "No Ability"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "The Scarlet Woman registers as having no ability to the Tao Wu."
+      },
+      {
+        "id": "eviltwin",
+        "reason": "The Evil Twin registers as having no ability to the Tao Wu."
+      },
+      {
+        "id": "mastermind",
+        "reason": "The Mastermind registers as having no ability to the Tao Wu."
+      },
+      {
+        "id": "organgrinder",
+        "reason": "If the Tao Wu is about to be executed and the alive Organ Grinder has their ability, the Storyteller announces that no one is executed."
+      },
+      {
+        "id": "marionette",
+        "reason": "The Tao Wu does not learn who the Marionette is. If the Marionette has no ability due to the Tao Wu’s ability, the Tao Wu learns who the Marionette is, but the Marionette learns nothing."
+      },
+      {
+        "id": "hatter",
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+      },
+      {
+        "id": "pithag",
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+      },
+      {
+        "id": "engineer",
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+      },
+      {
+        "id": "snakecharmer",
+        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back."
+      },
+      {
+        "id": "barber",
+        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back."
+      }
+    ]
+  },
+  {
+    "slug": "hun-dun",
+    "name": "Hun Dun",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If a Townsfolk neighbor dies this way, good non-Travellers are poisoned until dusk.",
+    "art": "art/hun-dun.png",
+    "page": "character.html?c=hun-dun",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/hundun_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The beast is a four-winged bird, red as cinnabar fire and with six legs but no face. It can sing and dance, and it is known as Hun Dun.",
+    "lede": "The Hun Dun kills without discrimination — and when they strike too close to home, the whole town pays the price.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player: they die.",
+      "If the player who dies is a Townsfolk and is your immediate neighbor, all good non-Traveller players are poisoned until the next dusk.",
+      "The poisoning affects every good player except Travellers — their abilities give false info and have no effect.",
+      "The poisoning lasts until the following dusk — it affects the day's conversations and any day-abilities."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Hun Dun. They point to a player. That player dies.",
+      "If the dead player is a Townsfolk and was the Hun Dun's immediate neighbor (by seat), place the GOOD ARE POISONED reminder token in the Grimoire. All good non-Traveller players are now poisoned.",
+      "At dusk, remove the GOOD ARE POISONED reminder. The poisoning ends.",
+      "During the poisoned period, give false information to all good players whose abilities fire — treat them as drunk."
+    ],
+    "examples": [
+      "The Hun Dun kills their right neighbor, who is the Empath (Townsfolk). All good players are poisoned until dusk. The Investigator, Slayer, and others receive false results.",
+      "The Hun Dun kills the Baron (Minion) who is their neighbor. The Baron is not a Townsfolk — no poisoning occurs.",
+      "The Hun Dun kills a Townsfolk three seats away. No poisoning — they must be an immediate neighbor."
+    ],
+    "tips": [
+      "Choose your seat carefully. Sitting next to powerful Townsfolk means you can poison the whole good team when you kill them.",
+      "Use the mass poisoning strategically — on nights where multiple good abilities would fire, making all those results false creates maximum confusion.",
+      "Be aware that the poisoning is visible in effect. If too many players get obviously wrong information the same night, the town may deduce the Hun Dun is in play.",
+      "Your regular kills are unconditional — use them to eliminate threats regardless of poisoning opportunities."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.19,
+    "otherNightReminder": "The Hun Dun points to a player. That player dies. :reminder: If they are a Townsfolk neighbor of the Hun Dun, all good players (except Travellers) are poisoned until dusk. :reminder:",
+    "reminders": [
+      "Dead",
+      "Good are poisoned"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "qiong-qi",
+    "name": "Qiong Qi",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die and, if an Outsider died today, register as alive, and another player dies. [+1 Outsider]",
+    "art": "art/qiong-qi.png",
+    "page": "character.html?c=qiong-qi",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/qiongqi_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "The beast resembles a winged ox, with spines like a hedgehog and bark like a hound. It eats humans, and it bears the name Qiong Qi.",
+    "lede": "The Qiong Qi turns the town's executioner instincts into its own advantage — Outsider deaths fuel its most terrifying nights.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player: they die.",
+      "If an Outsider died today (by execution or ability), your chosen player additionally registers as alive, and you immediately choose a second player who also dies.",
+      "The player registering as alive means abilities and the living count treat them as alive despite being dead.",
+      "Setup: [+1 Outsider] — one additional Outsider is in the game."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Qiong Qi. They point to a player. That player dies. Place the UNDEAD reminder if an Outsider died today — the first chosen player registers as alive. Let the Qiong Qi point to a second player; that player also dies.",
+      "If no Outsider died today, only the first chosen player dies. The Qiong Qi points once.",
+      "The UNDEAD player continues to register as alive until the Qiong Qi's ability no longer applies or the Storyteller removes the reminder."
+    ],
+    "examples": [
+      "An Outsider was executed today. The Qiong Qi kills the Fortune Teller — they register as alive (UNDEAD). The Qiong Qi also kills the Slayer. Two players die, one appears to still be living.",
+      "No Outsider died today. The Qiong Qi kills the Empath. Just one death.",
+      "The Qiong Qi kills a player who registers as alive. The following day, the Monk tries to protect them and can — they are still considered alive."
+    ],
+    "tips": [
+      "Encourage Outsider executions. Argue for executing Outsider-claiming players — each Outsider execution gives you a double kill at night.",
+      "The +1 Outsider setup means there's an extra Outsider in play. This makes Outsider executions more likely to happen naturally.",
+      "The UNDEAD player confuses living counts. Use this to delay the final day — if the town thinks there are more players alive than there are, they may not realize how close the game is.",
+      "Plan your double kill carefully — use the second kill to remove a powerful protector or information role."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.2,
+    "otherNightReminder": "The Qiong Qi points to a player. That player dies. If an Outsider died today, the chosen player registers as alive & you choose another player who dies. :reminder: :reminder:",
+    "reminders": [
+      "Undead",
+      "Undead",
+      "Dead",
+      "Died today"
+    ],
+    "setup": true
+  },
+  {
+    "slug": "pauper",
+    "name": "Pauper",
+    "team": "traveller",
+    "ability": "Each day, you may publicly choose a player (not yourself) to pick a non-Demon ability: you might gain it until dawn.",
+    "art": "art/pauper.png",
+    "page": "character.html?c=pauper",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/pauper_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "I’ve had a rough spell, but I can still work. Give me the opportunity to prove myself, and you won’t be disappointed!",
+    "lede": "The Pauper has nothing — but their empty hands can hold another's gift, if only for the night.",
+    "summaryBullets": [
+      "Each day, you may publicly choose a player (not yourself) to name a non-Demon character ability. You might gain that ability until the next dawn.",
+      "The ability must be from a non-Demon character — Townsfolk, Outsider, Minion, Traveller, and Fabled abilities are eligible.",
+      "The Storyteller decides whether you actually gain the named ability.",
+      "This is a Traveller ability — the town may exile you if they choose."
+    ],
+    "howToRun": [
+      "When the Pauper publicly chooses a player and names an ability, decide whether to grant that ability to the Pauper until dawn. If so, treat the Pauper as having that ability for the remainder of the day and that night.",
+      "Place the BEGGING reminder on the Pauper to track when they've used their daily action.",
+      "At dawn, the Pauper loses any gained ability. The IS THE PAUPER global reminder stays in the Grimoire throughout."
+    ],
+    "examples": [
+      "The Pauper asks the Slayer to give them the Slayer ability. The Storyteller grants it — that night the Pauper may shoot as a Slayer.",
+      "The Pauper asks for the Poisoner ability. The Storyteller grants it — that night the Pauper poisons a player of their choice.",
+      "The Pauper asks for the Demon's ability. This is a Demon ability — the Storyteller cannot grant it."
+    ],
+    "tips": [
+      "As a Traveller, you're a wildcard. Choose abilities that give you information or protection — or abilities that the town desperately needs.",
+      "If you gain a killing ability (like Slayer), use it wisely — it's a one-night window.",
+      "Let the town know what you're borrowing. Transparency builds trust and prevents confusion when abilities fire from unexpected sources.",
+      "Watch out for exile — Travellers can be exiled by the town if they become suspicious."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Begging"
+    ],
+    "remindersGlobal": [
+      "Is the Pauper"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "qilin",
+    "name": "Qilin",
+    "team": "fabled",
+    "ability": "On the final day, something good might happen to the most engaged player.",
+    "art": "art/qilin.png",
+    "page": "character.html?c=qilin",
+    "image": [
+      "https://bloodstar.clocktica.com/p/Eliderad/Temple_Fair/qilin_temple_fair.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — Temple Fair",
+    "tags": "Temple Fair",
+    "quote": "麟之趾，振振公子，于嗟麟兮！ 麟之定，振振公姓，于嗟麟兮！ 麟之角，振振公族，于嗟麟兮！",
+    "lede": "The Qilin is an omen of prosperity — on the last day, virtue may find its reward.",
+    "summaryBullets": [
+      "On the final day, the Storyteller may choose to do something good for the most engaged player.",
+      "What 'something good' means is up to the Storyteller — it could be an ability, information, protection, or another benefit.",
+      "The most engaged player is determined by the Storyteller's judgment — participation, good faith play, and creativity are considered.",
+      "This is a Fabled ability — it is not secret and is announced at the start of the game."
+    ],
+    "howToRun": [
+      "Announce at the start of the game that the Qilin is in play. Observe player engagement throughout the game.",
+      "On the final day, identify the most engaged player and grant them something good — a piece of information, a one-use ability, or another meaningful benefit.",
+      "Use this to reward creative, invested, and good-faith play."
+    ],
+    "examples": [
+      "The most engaged player has been asking insightful questions all game. On the final day, the Storyteller privately tells them who the Demon is.",
+      "A player has been coordinating brilliantly for good. On the final day, they gain the Slayer ability for one use.",
+      "The Storyteller feels all players were equally engaged and does not use the reminder token."
+    ],
+    "tips": [
+      "Play with full engagement from turn one — the Qilin rewards players who invest in the game, not just those who get lucky.",
+      "As the Storyteller, use the Qilin's benefit to create a memorable dramatic moment on the final day.",
+      "Good players should try to earn the reward through quality play — but don't let the reward become the focus. The game is the point."
+    ],
+    "edition": "temple-fair",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Something good"
+    ],
+    "setup": false
   }
 ]
