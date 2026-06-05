@@ -1309,7 +1309,9 @@
     ],
     "remindersGlobal": [],
     "setup": true,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "glykon-fall-of-rome",
