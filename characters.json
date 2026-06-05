@@ -1434,7 +1434,9 @@
     ],
     "remindersGlobal": [],
     "setup": false,
-    "jinxes": []
+    "jinxes": [],
+    "bluffing": [],
+    "fighting": []
   },
   {
     "slug": "crassus-fall-of-rome",
