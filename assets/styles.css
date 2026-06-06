@@ -989,12 +989,7 @@ body:has(.creator-sidebar) .foot {
   font-size: 1.15rem; color: var(--maroon);
   margin: 0 0 6px; line-height: 1.15;
 }
-.collection-tagline {
-  font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: .98rem; color: var(--ink);
-  margin: 0 0 14px; line-height: 1.35;
-  flex: 1;
-}
+
 .collection-footer {
   display: flex; justify-content: space-between; align-items: baseline;
   padding-top: 10px;
