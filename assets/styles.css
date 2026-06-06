@@ -526,25 +526,17 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* ── Fixed left sidebar ────────────────────────────────────────── */
 .creator-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 220px;
-  height: 100vh;
-  z-index: 20;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* now an in-flow panel on the homepage, not fixed */
+  position: static;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  z-index: auto;
 }
-.creator-sidebar::-webkit-scrollbar { width: 4px; }
-.creator-sidebar::-webkit-scrollbar-thumb { background: var(--parch-frame); }
+
+
 .creator-sidebar-inner {
-  background-color: var(--parch);
-  background-image: url('parchment.jpg');
-  background-size: cover;
-  background-repeat: no-repeat;
-  border-right: 4px solid var(--parch-frame);
-  padding: 70px 12px 24px;
-  min-height: 100%;
+  padding: 0;
 }
 .creator-sidebar-title-link {
   text-decoration: none;
@@ -560,19 +552,38 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .creator-sidebar-title:hover { color: var(--evil); }
 .creator-grid {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
 }
+.creator-grid::-webkit-scrollbar { height: 4px; }
+.creator-grid::-webkit-scrollbar-track { background: rgba(180,160,120,.15); }
+.creator-grid::-webkit-scrollbar-thumb { background: var(--parch-frame); border-radius: 2px; }
 .creator-pill {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
+  gap: 6px;
+  padding: 6px 12px 6px 8px;
   text-decoration: none;
   color: var(--maroon);
-  transition: background .15s;
-  font-size: .82rem;
-  line-height: 1.3;
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  white-space: nowrap;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  transition: background .15s, transform .15s;
+  font-size: .85rem;
+  line-height: 1.2;
+}
+.creator-pill:hover {
+  background: var(--parch-frame);
+  color: #fff;
+  transform: translateY(-1px);
 }
 .creator-pill:hover {
   background: rgba(91,31,33,.08);
@@ -595,18 +606,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 
 /* Push page content right to make room for sidebar */
-body:has(.creator-sidebar) .home-hero,
-body:has(.creator-sidebar) .home-panel,
-body:has(.creator-sidebar) .foot {
-  margin-left: 220px;
-}
+/* sidebar margin-left removed — content now centred */
 
 /* Mobile bottom bar — sidebar hidden, show link instead */
-.creator-mobile-bar {
-  display: none;
-}
+.creator-mobile-bar { display: none; }
 @media (max-width: 860px) {
-  .creator-sidebar { display: none; }
+  
   .creator-mobile-bar {
     display: block;
     margin: 0 clamp(12px,3vw,40px) 32px;
@@ -623,11 +628,7 @@ body:has(.creator-sidebar) .foot {
     color: var(--maroon); text-decoration: none;
   }
   .creator-mobile-link:hover { color: var(--evil); }
-  body:has(.creator-sidebar) .home-hero,
-  body:has(.creator-sidebar) .home-panel,
-  body:has(.creator-sidebar) .foot {
-    margin-left: 0;
-  }
+  
 }
 
 /* ── Creators page (wide grid) ────────────────────────────────── */
