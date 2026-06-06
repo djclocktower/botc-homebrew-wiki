@@ -20,7 +20,7 @@
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
     </div>
     <nav class="crumb" aria-label="Breadcrumb" id="crumb">
-      <a href="index.html">Characters</a>
+      <a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -34,7 +34,8 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">All Characters</a>
+  <a href="index.html">Home</a>
+  <a href="all-characters.html">All Characters</a>
   <a href="tags.html">Tags</a>
   <a href="creators.html">Creators</a>
   <a href="script.html">Script Builder</a>
@@ -56,13 +57,13 @@
       .then(function (list) {
         var d = list.filter(function (c) { return c.slug === slug; })[0];
         if (!d) {
-          content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Character not found. <a href="index.html" style="color:#7fb2e6">Back to all characters</a>.</p>';
+          content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Character not found. <a href="all-characters.html" style="color:#7fb2e6">Back to all characters</a>.</p>';
           return;
         }
         document.title = d.name + ' — BOTC HomeBrew Wiki';
         var label = (window.TEAM_LABEL[d.team] || d.team);
         document.getElementById('crumb').innerHTML =
-          '<a href="index.html">Characters</a><span class="sep">›</span>' +
+          '<a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>' +
           '<a href="team.html?t=' + d.team + '">' + label + '</a>' +
           '<span class="sep">›</span><span class="here">' + d.name + '</span>';
         var eb = document.getElementById('edit-btn');
