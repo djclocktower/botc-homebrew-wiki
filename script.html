@@ -7,6 +7,55 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<style>
+/* ─── Script builder: ability dropdown ───────────────────── */
+.sb-add-row {
+  display: flex; flex-wrap: wrap; align-items: stretch;
+  border-bottom: 1px solid rgba(180,160,120,.25);
+}
+.sb-add-row:last-child { border-bottom: none; }
+
+/* The main row button (thumb + name) fills available width */
+.sb-add-item {
+  flex: 1; display: flex; align-items: center;
+  gap: 10px; padding: 7px 8px 7px 10px;
+  background: none; border: none; cursor: pointer;
+  text-align: left; color: var(--ink); min-width: 0;
+  transition: background .14s;
+}
+.sb-add-item:hover { background: rgba(91,31,33,.06); }
+.sb-add-item.on { background: rgba(91,31,33,.10); }
+.sb-add-item.on .sb-add-name { color: var(--maroon); font-weight: 600; }
+
+/* Thin left border stripe when selected */
+.sb-add-item.on { box-shadow: inset 3px 0 0 var(--maroon); }
+
+/* Chevron button */
+.sb-add-chevron {
+  flex-shrink: 0; width: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-left: 1px solid rgba(180,160,120,.25);
+  cursor: pointer; color: rgba(91,31,33,.5);
+  font-size: .85rem; line-height: 1;
+  transition: background .14s, color .14s, transform .18s;
+}
+.sb-add-chevron:hover { background: rgba(91,31,33,.07); color: var(--maroon); }
+.sb-add-chevron.open {
+  color: var(--maroon);
+  transform: rotate(180deg);
+}
+
+/* Ability drawer — spans full row width */
+.sb-add-ability {
+  flex-basis: 100%; width: 100%;
+  padding: 8px 12px 10px 44px;   /* indent to clear the thumb */
+  font-size: .84rem; line-height: 1.45;
+  color: var(--ink);
+  background: rgba(243,239,229,.55);
+  border-top: 1px solid rgba(180,160,120,.2);
+  font-style: italic;
+}
+</style>
 </head>
 <body>
 
@@ -130,11 +179,17 @@
         html += '<div class="sb-add-group"><h3 class="sb-add-grouphead">' + esc(label) + '</h3>';
         group.forEach(function (c) {
           var on = onScript(c.slug);
-          html += '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-            '<img class="sb-add-thumb" src="assets/' + esc(c.art) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-            '<span class="sb-add-name">' + esc(c.name) + '</span>' +
-            '<span class="sb-add-plus">' + (on ? '✓' : '+') + '</span>' +
-            '</button>';
+          var ability = c.ability || '';
+          html += '<div class="sb-add-row">' +
+            '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
+              '<img class="sb-add-thumb" src="assets/' + esc(c.art) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<span class="sb-add-name">' + esc(c.name) + '</span>' +
+            '</button>' +
+            (ability
+              ? '<button type="button" class="sb-add-chevron" data-slug="' + esc(c.slug) + '" aria-label="Show ability" aria-expanded="false">&#9662;</button>' +
+                '<div class="sb-add-ability" id="sba-' + esc(c.slug) + '" hidden>' + esc(ability) + '</div>'
+              : '') +
+            '</div>';
         });
         html += '</div>';
       });
@@ -199,6 +254,19 @@
 
     // ── event wiring ──
     document.getElementById('sb-add-list').addEventListener('click', function (e) {
+      // Chevron: toggle ability dropdown, do NOT toggle script membership
+      var chev = e.target.closest('.sb-add-chevron');
+      if (chev) {
+        var slug = chev.getAttribute('data-slug');
+        var panel = document.getElementById('sba-' + slug);
+        if (!panel) return;
+        var open = !panel.hidden;
+        panel.hidden = open;
+        chev.setAttribute('aria-expanded', open ? 'false' : 'true');
+        chev.classList.toggle('open', !open);
+        return;
+      }
+      // Row body: toggle script membership
       var item = e.target.closest('.sb-add-item');
       if (item) toggle(item.getAttribute('data-slug'));
     });
