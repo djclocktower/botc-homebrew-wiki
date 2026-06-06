@@ -228,22 +228,17 @@
     // Collection definitions (with typo-tolerant matchers)
     var COLLECTIONS = [
       { slug: 'Fall of Rome',
-        match: ['fallofrome'],
-        tagline: 'Imperial intrigue and senatorial schemes.' },
+        match: ['fallofrome'] },
       { slug: 'Festival of Lanterns — Temple Fair',
         displayName: 'Temple Fair',
-        match: ['festivaloflanternstemplefair','templefair'],
-        tagline: 'Chinese mythology and traditional festivals.' },
+        match: ['festivaloflanternstemplefair','templefair'] },
       { slug: 'Festival of Lanterns — The Storm Is Coming',
         displayName: 'The Storm Is Coming',
-        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'],
-        tagline: 'Wisdom, fate, and approaching tempest.' },
+        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
       { slug: 'Ravenswood Chronicle',
-        match: ['ravenswoodchronicle','ravenswoodchronicles'],
-        tagline: 'Original characters by djclocktower.' },
+        match: ['ravenswoodchronicle','ravenswoodchronicles'] },
       { slug: "A Midsummer Night's Dream",
-        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"],
-        tagline: 'Shakespearean enchantment and faerie mischief.' }
+        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"] }
     ];
 
     function classifyCollection(appearsIn){
@@ -280,7 +275,6 @@
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         '<div class="collection-icons">' + iconsHTML + '</div>' +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
-        '<p class="collection-tagline">' + esc(tagline) + '</p>' +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
@@ -368,7 +362,7 @@
               return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
             }).join('') + '</div>' +
             '<h3 class="collection-name">Standalone Characters</h3>' +
-            '<p class="collection-tagline">Loose characters and one-offs not in a collection.</p>' +
+            
             '<div class="collection-footer">' +
               '<span class="collection-count">' + standalone.length + ' character' + (standalone.length===1?'':'s') + '</span>' +
               '<span class="collection-arrow">Browse →</span>' +
