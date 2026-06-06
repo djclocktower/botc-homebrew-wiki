@@ -544,38 +544,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   border-bottom: 1px solid var(--parch-frame);
 }
 .creator-sidebar-title:hover { color: var(--evil); }
-.creator-details {
-  width: 100%;
-}
-.creator-details summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  background: var(--parch);
-  border: 2px solid var(--parch-frame);
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-.creator-details summary::-webkit-details-marker { display: none; }
-.creator-details summary:hover { background: var(--parch-frame); }
-.creator-details summary:hover .creator-details-label,
-.creator-details summary:hover .creator-details-arrow { color: #fff; }
-.creator-details[open] summary { border-bottom: none; }
-.creator-details-label {
-  font-family: 'Dumbledor2', serif; text-transform: uppercase;
-  font-weight: 400; letter-spacing: .08em;
-  font-size: 1rem; color: var(--maroon);
-}
-.creator-details-arrow {
-  font-size: .85em; color: var(--maroon);
-  transition: transform .2s ease;
-}
-.creator-details[open] .creator-details-arrow {
-  transform: rotate(180deg);
-}
+/* creator-details dropdown removed */
 .creator-grid {
   display: flex;
   flex-direction: row;
