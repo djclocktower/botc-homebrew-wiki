@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOTC HomeBrew Wiki</title>
+<meta name="description" content="A community library of fan-made characters for Blood on the Clocktower. Browse curated collections, read full almanac entries, and export to the official script tool.">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
@@ -17,7 +18,7 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <span class="here">All Characters</span><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a>
+      <span class="here">Home</span><span class="sep">·</span><a href="all-characters.html">All Characters</a><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -31,7 +32,8 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">All Characters</a>
+  <a href="index.html">Home</a>
+  <a href="all-characters.html">All Characters</a>
   <a href="tags.html">Tags</a>
   <a href="creators.html">Creators</a>
   <a href="script.html">Script Builder</a>
@@ -112,14 +114,88 @@
     </div>
   </aside>
 
-  <div class="home-hero">
-    <h1>HomeBrew Characters</h1>
-    <p>Fan-made additions for Blood on the Clocktower</p>
-    <a class="create-btn" href="create.html">+ Create a Character</a>
-  </div>
+  <!-- ── HERO ───────────────────────────────────────────────── -->
+  <section class="landing-hero">
+    <h1>Fan-Made Characters for Blood on the Clocktower</h1>
+    <p class="landing-intro">A community library of homebrew characters for the social-deduction game of midnight murder, hidden roles, and town-vs-evil intrigue. Browse curated collections, read full almanac entries, export to the official script tool, or design your own.</p>
+    <div class="landing-stats" id="landing-stats">— loading —</div>
+    <div class="landing-ctas">
+      <a class="cta-primary" href="all-characters.html">Browse All Characters</a>
+      <a class="cta-secondary" href="create.html">+ Create a Character</a>
+    </div>
+  </section>
 
-  <main class="home-panel" id="panel">
-    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
+  <main class="home-panel">
+
+    <!-- ── COLLECTIONS ──────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Collections</h2>
+      <div class="type-rule"></div>
+      <div class="collections-grid" id="collections-grid">
+        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
+      </div>
+    </section>
+
+    <!-- ── BROWSE PATHS ─────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Browse the Wiki</h2>
+      <div class="type-rule"></div>
+      <div class="browse-paths">
+        <a class="browse-card" href="all-characters.html">
+          <div class="browse-card-sym">⚖</div>
+          <h3 class="browse-card-title">By Team</h3>
+          <p class="browse-card-desc">Townsfolk, Outsiders, Minions, Demons, Travellers, and Fabled.</p>
+          <span class="browse-card-count" id="bc-team">—</span>
+        </a>
+        <a class="browse-card" href="creators.html">
+          <div class="browse-card-sym">✎</div>
+          <h3 class="browse-card-title">By Creator</h3>
+          <p class="browse-card-desc">Characters designed by the community, each with a unique sigil.</p>
+          <span class="browse-card-count" id="bc-creator">—</span>
+        </a>
+        <a class="browse-card" href="tags.html">
+          <div class="browse-card-sym">⚐</div>
+          <h3 class="browse-card-title">By Tag</h3>
+          <p class="browse-card-desc">Wincon, Setup, Mobility, Public Action — find characters by mechanic.</p>
+          <span class="browse-card-count" id="bc-tag">—</span>
+        </a>
+        <a class="browse-card" href="script.html">
+          <div class="browse-card-sym">☷</div>
+          <h3 class="browse-card-title">Script Builder</h3>
+          <p class="browse-card-desc">Assemble characters into a custom script and export to the script tool.</p>
+          <span class="browse-card-count">Build your own</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ── RECENTLY ADDED ───────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Recently Added</h2>
+      <div class="type-rule"></div>
+      <div class="recent-strip" id="recent-strip">
+        <p style="text-align:center;color:rgba(236,225,200,.6);padding:18px;width:100%">Loading…</p>
+      </div>
+    </section>
+
+    <!-- ── FEATURED ─────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Featured Character</h2>
+      <div class="type-rule"></div>
+      <div class="featured-wrap" id="featured-wrap">
+        <p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">Loading…</p>
+      </div>
+    </section>
+
+    <!-- ── ABOUT ────────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">About This Wiki</h2>
+      <div class="type-rule"></div>
+      <div class="about-card">
+        <p>The BOTC HomeBrew Wiki is a community-maintained library of fan-made characters for <em>Blood on the Clocktower</em>. Every character page includes full almanac content — summary rules, How to Run instructions, examples, jinxes, and an official-schema JSON export ready to drop into the script tool.</p>
+        <p>Anyone can contribute a character using the built-in <a href="create.html">authoring tool</a>. Browse the existing characters for inspiration, and credit goes to the original creator on every page.</p>
+        <p class="about-disclaimer">Fan-made content. Not affiliated with The Pandemonium Institute. For the official game, rules, and merchandise, visit <a href="https://bloodontheclocktower.com/" target="_blank" rel="noopener">bloodontheclocktower.com</a>.</p>
+      </div>
+    </section>
   </main>
 
   <!-- Mobile creator bar (bottom) -->
@@ -129,55 +205,225 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- ────────────────────────────────────────────────────────
+       LANDING PAGE DATA — collections, browse counts, recent, featured
+       ──────────────────────────────────────────────────────── -->
   <script>
-    var TEAMS = [
-      ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
-      ['minion', 'Minion'], ['demon', 'Demon'],
-      ['traveller', 'Traveller'], ['fabled', 'Fabled']
-    ];
+  (function(){
+    var TEAM_LABEL = {
+      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+    };
     var GOOD = { townsfolk: 1, outsider: 1 };
-    function esc(s) {
-      return String(s == null ? '' : s).replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    function esc(s){
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    function card(c) {
-      var typeClass = GOOD[c.team] ? ' good' : '';
-      return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art">' +
-        '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc((window.TEAM_LABEL && window.TEAM_LABEL[c.team]) || c.team) + '</div>' +
-        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
-        '<span class="char-card-link">View Character →</span>' +
-        '</div></a>';
+    function norm(s){
+      return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
+
+    // Collection definitions (with typo-tolerant matchers)
+    var COLLECTIONS = [
+      { slug: 'Fall of Rome',
+        match: ['fallofrome'],
+        tagline: 'Imperial intrigue and senatorial schemes.' },
+      { slug: 'Festival of Lanterns — Temple Fair',
+        displayName: 'Temple Fair',
+        match: ['festivaloflanternstemplefair','templefair'],
+        tagline: 'Chinese mythology and traditional festivals.' },
+      { slug: 'Festival of Lanterns — The Storm Is Coming',
+        displayName: 'The Storm Is Coming',
+        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'],
+        tagline: 'Wisdom, fate, and approaching tempest.' },
+      { slug: 'Ravenswood Chronicle',
+        match: ['ravenswoodchronicle','ravenswoodchronicles'],
+        tagline: 'Original characters by djclocktower.' },
+      { slug: "A Midsummer Night's Dream",
+        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"],
+        tagline: 'Shakespearean enchantment and faerie mischief.' }
+    ];
+
+    function classifyCollection(appearsIn){
+      var n = norm(appearsIn);
+      if (!n) return null;
+      for (var i = 0; i < COLLECTIONS.length; i++){
+        if (COLLECTIONS[i].match.indexOf(n) > -1) return i;
+      }
+      return -1; // unknown / standalone
+    }
+
+    function pickIcons(charList, n){
+      // pick up to n characters with art, varying teams if possible
+      var withArt = charList.filter(function(c){ return c.art; });
+      var out = [];
+      var teamsSeen = {};
+      // first pass: one per team
+      for (var i = 0; i < withArt.length && out.length < n; i++){
+        var t = withArt[i].team;
+        if (!teamsSeen[t]) { out.push(withArt[i]); teamsSeen[t] = 1; }
+      }
+      // fill remaining
+      for (var i = 0; i < withArt.length && out.length < n; i++){
+        if (out.indexOf(withArt[i]) === -1) out.push(withArt[i]);
+      }
+      return out;
+    }
+
+    function collectionTileHTML(name, tagline, count, icons){
+      var iconsHTML = icons.map(function(c){
+        return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
+      }).join('');
+      var href = 'all-characters.html?collection=' + encodeURIComponent(name);
+      return '<a class="collection-tile" href="' + esc(href) + '">' +
+        '<div class="collection-icons">' + iconsHTML + '</div>' +
+        '<h3 class="collection-name">' + esc(name) + '</h3>' +
+        '<p class="collection-tagline">' + esc(tagline) + '</p>' +
+        '<div class="collection-footer">' +
+          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
+          '<span class="collection-arrow">Browse →</span>' +
+        '</div>' +
+      '</a>';
+    }
+
+    function recentCardHTML(c){
+      var tc = GOOD[c.team] ? ' good' : '';
+      var label = TEAM_LABEL[c.team] || c.team;
+      return '<a class="recent-card" href="' + esc(c.page) + '">' +
+        '<img class="recent-thumb" src="assets/' + esc(c.art) + '" alt="">' +
+        '<div class="recent-name">' + esc(c.name) + '</div>' +
+        '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
+      '</a>';
+    }
+
+    function featuredCardHTML(c){
+      var tc = GOOD[c.team] ? ' good' : '';
+      var label = TEAM_LABEL[c.team] || c.team;
+      var lede = c.lede || c.quote || '';
+      var ability = c.ability || '';
+      var creator = c.creator || '';
+      var appears = c.appearsIn || '';
+      return '<a class="featured-card" href="' + esc(c.page) + '">' +
+        '<img class="featured-art" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + '">' +
+        '<div class="featured-body">' +
+          '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
+          '<h3 class="featured-name">' + esc(c.name) + '</h3>' +
+          (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
+          (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
+          '<div class="featured-meta">' +
+            (creator ? '<span>by ' + esc(creator) + '</span>' : '') +
+            (appears ? '<span>· ' + esc(appears) + '</span>' : '') +
+          '</div>' +
+          '<span class="featured-link">View Full Page →</span>' +
+        '</div>' +
+      '</a>';
+    }
+
     fetch('characters.json?_=' + Date.now())
-      .then(function (r) { return r.json(); })
-      .then(function (list) {
-        window.TEAM_LABEL = window.TEAM_LABEL || {
-          townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-          demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
-        };
-        var panel = document.getElementById('panel');
-        var html = '';
-        TEAMS.forEach(function (t) {
-          var key = t[0], label = t[1];
-          var chars = list.filter(function (c) { return c.team === key; });
-          if (!chars.length && (key === 'traveller' || key === 'fabled')) return;
-          html += '<section class="type-section" id="' + key + '">' +
-            '<h2 class="type-header"><a href="team.html?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
-            '<div class="char-grid">';
-          html += chars.map(card).join('');
-          html += '<a class="char-card empty-card" href="create.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">+ Add a ' + label + '</a>';
-          html += '</div></section>';
+      .then(function(r){ return r.json(); })
+      .then(function(list){
+        // ── Stats ─────────────────────────────────────────────
+        var collected = {};
+        list.forEach(function(c){
+          var idx = classifyCollection(c.appearsIn);
+          if (idx === null || idx < 0) return;
+          var key = COLLECTIONS[idx].slug;
+          (collected[key] = collected[key] || []).push(c);
         });
-        panel.innerHTML = html;
+        var creatorSet = {};
+        list.forEach(function(c){
+          var cr = c.creator || '';
+          if (!cr) return;
+          // split on common delimiters
+          cr.split(/[,&]| and /).forEach(function(n){
+            n = n.trim();
+            if (n) creatorSet[n] = 1;
+          });
+        });
+        var nCollections = Object.keys(collected).length;
+        var nCreators = Object.keys(creatorSet).length;
+        document.getElementById('landing-stats').textContent =
+          list.length + ' characters · ' +
+          nCollections + ' collection' + (nCollections===1?'':'s') + ' · ' +
+          nCreators + ' creator' + (nCreators===1?'':'s');
+
+        // ── Collections grid ──────────────────────────────────
+        var grid = document.getElementById('collections-grid');
+        var html = '';
+        COLLECTIONS.forEach(function(coll){
+          var chars = collected[coll.slug] || [];
+          if (!chars.length) return; // skip empty collections
+          var displayName = coll.displayName || coll.slug;
+          var icons = pickIcons(chars, 4);
+          html += collectionTileHTML(displayName, coll.tagline, chars.length, icons);
+        });
+        // "Standalone" tile for unclassified characters
+        var standalone = list.filter(function(c){ return classifyCollection(c.appearsIn) === -1 || !c.appearsIn; });
+        if (standalone.length){
+          var icons = pickIcons(standalone, 4);
+          html += '<a class="collection-tile" href="all-characters.html">' +
+            '<div class="collection-icons">' + icons.map(function(c){
+              return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
+            }).join('') + '</div>' +
+            '<h3 class="collection-name">Standalone Characters</h3>' +
+            '<p class="collection-tagline">Loose characters and one-offs not in a collection.</p>' +
+            '<div class="collection-footer">' +
+              '<span class="collection-count">' + standalone.length + ' character' + (standalone.length===1?'':'s') + '</span>' +
+              '<span class="collection-arrow">Browse →</span>' +
+            '</div>' +
+          '</a>';
+        }
+        grid.innerHTML = html || '<p style="text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections found.</p>';
+
+        // ── Browse-paths counts ───────────────────────────────
+        var teams = {};
+        list.forEach(function(c){ teams[c.team || ''] = 1; });
+        document.getElementById('bc-team').textContent = list.length + ' characters';
+        document.getElementById('bc-creator').textContent = nCreators + ' creators';
+        // Tags count
+        var tagSet = {};
+        list.forEach(function(c){
+          var t = c.tags || '';
+          if (!t) return;
+          t.split(',').forEach(function(x){
+            x = x.trim();
+            if (x) tagSet[x] = 1;
+          });
+        });
+        document.getElementById('bc-tag').textContent = Object.keys(tagSet).length + ' tags';
+
+        // ── Recently added (last 8 in array order) ────────────
+        var recent = list.slice().reverse().slice(0, 8);
+        document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
+
+        // ── Featured (rotates daily) ──────────────────────────
+        // Pick characters that have substantial content (lede, art) for the featured spot
+        var eligible = list.filter(function(c){
+          return c.art && (c.lede || c.ability) && c.name;
+        });
+        if (eligible.length){
+          var day = Math.floor(Date.now() / 86400000);
+          var picked = eligible[day % eligible.length];
+          document.getElementById('featured-wrap').innerHTML = featuredCardHTML(picked);
+        } else {
+          document.getElementById('featured-wrap').innerHTML =
+            '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">No featured character available.</p>';
+        }
       })
-      .catch(function () {
-        document.getElementById('panel').innerHTML =
-          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+      .catch(function(err){
+        console.error(err);
+        document.getElementById('landing-stats').textContent = 'Could not load character data.';
+        document.getElementById('collections-grid').innerHTML =
+          '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load character data.</p>';
       });
+  })();
   </script>
+
+  <!-- ────────────────────────────────────────────────────────
+       Existing search + hamburger scripts (unchanged)
+       ──────────────────────────────────────────────────────── -->
   <script>
   (function(){
     var ROOT=(function(){var s=document.querySelector('link[rel="stylesheet"]');if(!s)return'';return s.getAttribute('href').replace('assets/styles.css','');})();
@@ -188,7 +434,7 @@
     function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
     var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
     function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
-    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for “'+esc(q)+'”</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for &ldquo;'+esc(q)+'&rdquo;</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
     function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
     function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
     var deb;
@@ -201,13 +447,11 @@
   })();
   </script>
 
-
   <script>
   (function(){
     var btn = document.getElementById('hamburger');
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
-    // Mark current page as active
     var here = location.pathname.split('/').pop() || 'index.html';
     drop.querySelectorAll('a').forEach(function(a){
       if (a.getAttribute('href') === here) a.classList.add('active');
@@ -223,7 +467,6 @@
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
     });
-    // nav search mirrors topbar search
     var navSearch = document.getElementById('nav-search-input');
     var topSearch = document.getElementById('search-input');
     if (navSearch) {
