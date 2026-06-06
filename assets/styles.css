@@ -550,20 +550,48 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   border-bottom: 1px solid var(--parch-frame);
 }
 .creator-sidebar-title:hover { color: var(--evil); }
+.creator-details {
+  width: 100%;
+}
+.creator-details summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.creator-details summary::-webkit-details-marker { display: none; }
+.creator-details summary:hover { background: var(--parch-frame); }
+.creator-details summary:hover .creator-details-label,
+.creator-details summary:hover .creator-details-arrow { color: #fff; }
+.creator-details[open] summary { border-bottom: none; }
+.creator-details-label {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-weight: 400; letter-spacing: .08em;
+  font-size: 1rem; color: var(--maroon);
+}
+.creator-details-arrow {
+  font-size: .85em; color: var(--maroon);
+  transition: transform .2s ease;
+}
+.creator-details[open] .creator-details-arrow {
+  transform: rotate(180deg);
+}
 .creator-grid {
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 6px;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  border-top: none;
 }
-.creator-grid::-webkit-scrollbar { height: 4px; }
-.creator-grid::-webkit-scrollbar-track { background: rgba(180,160,120,.15); }
-.creator-grid::-webkit-scrollbar-thumb { background: var(--parch-frame); border-radius: 2px; }
 .creator-pill {
   display: flex;
   align-items: center;
@@ -575,7 +603,6 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   border: 2px solid var(--parch-frame);
   white-space: nowrap;
   flex-shrink: 0;
-  scroll-snap-align: start;
   transition: background .15s, transform .15s;
   font-size: .85rem;
   line-height: 1.2;
@@ -905,7 +932,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-align: center;
 }
 .landing-hero h1 {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 400;
   font-size: clamp(1.7rem, 4.2vw, 2.8rem);
   color: var(--parch); letter-spacing: .04em; line-height: 1.15;
   margin: 0 0 .55em;
@@ -986,7 +1013,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   border: 1px solid rgba(183,156,111,.35);
 }
 .collection-name {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 400;
   font-size: 1.15rem; color: var(--maroon);
   margin: 0 0 6px; line-height: 1.15;
 }
@@ -1032,7 +1059,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-shadow: 0 2px 4px rgba(91,31,33,.18);
 }
 .browse-card-title {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 400;
   font-size: 1.05rem; letter-spacing: .04em;
   color: var(--maroon); margin: 0 0 8px;
 }
@@ -1073,7 +1100,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin-bottom: 8px;
 }
 .recent-name {
-  font-family: 'Cinzel', serif; font-weight: 600;
+  font-family: 'Dumbledor2', serif; font-weight: 400;
   font-size: .92rem; line-height: 1.15;
   color: var(--maroon);
   margin-bottom: 4px;
@@ -1118,7 +1145,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .featured-type.good { color: var(--good-name); }
 .featured-name {
-  font-family: 'Cinzel', serif; font-weight: 700;
+  font-family: 'Dumbledor2', serif; font-weight: 400;
   font-size: 1.55rem; color: var(--maroon);
   margin: 0 0 8px; line-height: 1.15;
 }
