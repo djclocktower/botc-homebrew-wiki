@@ -4256,9 +4256,7 @@
     "ability": "Each night, choose an alive good neighbor: you learn their character, and they are poisoned & register as evil Gu Diao until dusk.",
     "art": "art/gu-diao.png",
     "page": "character.html?c=gu-diao",
-    "image": [
-      "https://botchomebrew.wiki/assets/art/gu-diao.png"
-    ],
+    "image": "https://botchomebrew.wiki/assets/art/gu-diao.png",
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
@@ -4294,7 +4292,13 @@
     "reminders": [
       "Gu Diao"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "",
+    "bluffing": [],
+    "fighting": [],
+    "quote": "",
+    "remindersGlobal": [],
+    "jinxes": []
   },
   {
     "slug": "meng-po",
