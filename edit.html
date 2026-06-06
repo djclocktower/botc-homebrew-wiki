@@ -80,7 +80,7 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" id="crumb">
-      <a href="index.html">Characters</a><span class="sep">›</span>
+      <a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>
       <span class="here">Edit</span>
     </nav>
     <div class="search-wrap" id="search-wrap">
@@ -95,7 +95,8 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">All Characters</a>
+  <a href="index.html">Home</a>
+  <a href="all-characters.html">All Characters</a>
   <a href="tags.html">Tags</a>
   <a href="creators.html">Creators</a>
   <a href="script.html">Script Builder</a>
@@ -475,7 +476,7 @@
       });
 
       $('crumb').innerHTML =
-        '<a href="index.html">Characters</a><span class="sep">›</span>'+
+        '<a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>'+
         '<a href="'+(entry.page||'#')+'">'+(entry.name||originalSlug)+'</a>'+
         '<span class="sep">›</span><span class="here">Edit</span>';
       $('edit-sub').textContent = 'Editing: ' + entry.name;
