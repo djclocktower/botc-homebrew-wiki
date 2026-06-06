@@ -52,13 +52,7 @@ body {
   position: relative;
 }
 body::before { display: none; }
-body::after {
-  content: "";
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    radial-gradient(45% 35% at 18% 22%, rgba(0,0,0,.4), transparent 70%),
-    radial-gradient(50% 40% at 85% 78%, rgba(0,0,0,.35), transparent 70%);
-}
+body::after { display: none; }
 
 /* ─── Top Bar ────────────────────────────────────────────────── */
 .topbar {
