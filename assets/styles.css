@@ -713,7 +713,7 @@ body:has(.creator-sidebar) .foot {
   margin: 0 0 4px; padding-bottom: 3px; border-bottom: 1px solid var(--parch-frame);
 }
 .sb-add-item {
-  display: flex; align-items: center; gap: 8px; width: 100%;
+  display: flex; align-items: center; gap: 8px; 
   background: none; border: none; cursor: pointer;
   padding: 4px 6px; text-align: left;
   font-family: 'TradeGothicLT', sans-serif; color: var(--maroon);
@@ -723,7 +723,7 @@ body:has(.creator-sidebar) .foot {
 .sb-add-item.on { background: rgba(44,123,208,.12); }
 .sb-add-thumb { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
 .sb-add-name { flex: 1; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sb-add-plus { font-weight: 700; font-size: 1rem; color: var(--good-name); flex-shrink: 0; min-width: 18px; text-align: center; }
+/* .sb-add-plus removed — replaced by chevron button */
 .sb-add-item.on .sb-add-plus { color: var(--good-name); }
 .sb-loading { color: #8a7a63; font-size: .9rem; text-align: center; padding: 20px; }
 
