@@ -2501,130 +2501,6 @@
     ]
   },
   {
-    "slug": "actor",
-    "name": "Actor",
-    "team": "townsfolk",
-    "ability": "All Actors know each other and jointly reverse the victory conditions, even if dead. [All good characters are Actors]",
-    "art": "art/actor.png",
-    "page": "character.html?c=actor",
-    "image": [
-      "https://botchomebrew.wiki/assets/art/actor.png"
-    ],
-    "creator": "Gstone Games",
-    "appearsIn": "Festival of Lanterns — Temple Fair",
-    "tags": "Temple Fair",
-    "quote": "If we shadows have offended, think but this and all is mended, that you have but slumber’d here, while these visions did appear.",
-    "lede": "The Actors know each other as kindred players in the same grand fiction — and together they can rewrite the ending.",
-    "summaryBullets": [
-      "Every good character in the game is replaced by an Actor. All Actors know each other from the first night.",
-      "If the Actors jointly reverse the victory conditions, good wins when evil would normally win, and vice versa. This applies even to dead Actors.",
-      "The reversal is absolute — any win condition that would end the game for evil instead ends it for good, and any condition that would end it for good ends it for evil.",
-      "Setup: all good characters are Actors. [-no separate setup change — this replaces all good roles]"
-    ],
-    "howToRun": [
-      "On the first night, wake all Actors together. They see each other. Put them to sleep.",
-      "All Actors are aware of each other's identities. They work together to manipulate the game's win conditions.",
-      "Monitor whether the Actors have collectively agreed to reverse win conditions. If they have, flip all victory outcomes for the rest of the game.",
-      "The reversal is a collective decision — if Actors are split or uncertain, the default victory conditions apply."
-    ],
-    "examples": [
-      "The Actors decide early to reverse win conditions. The Demon kills the last Town player — normally evil wins, but under the reversal good wins.",
-      "An Actor dies before deciding. The remaining Actors reverse the conditions — the dead Actor's vote also counts since the ability works even if dead.",
-      "The Actors cannot agree on a reversal. The game proceeds with standard win conditions."
-    ],
-    "tips": [
-      "Coordinate secretly with your fellow Actors — you all know each other, so use that network to plan without evil knowing.",
-      "The reversal can be a powerful late-game trump card. Let evil think they've won, then flip the outcome.",
-      "Be careful: if evil figures out you're Actors working together, they may try to kill you before you can coordinate the reversal.",
-      "A Pit-Hag cannot create an Actor — use this as a safety against character-change shenanigans."
-    ],
-    "edition": "temple-fair",
-    "firstNight": 23.2,
-    "firstNightReminder": "Wake all Actors together.",
-    "otherNight": 0,
-    "otherNightReminder": "",
-    "reminders": [],
-    "setup": true,
-    "jinxes": [
-      {
-        "id": "spy",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "eviltwin",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "widow",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "summoner",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "godfather",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "wraith",
-        "reason": "Only 1 jinxed character can be in play."
-      },
-      {
-        "id": "legion",
-        "reason": "At any time, a Legion player can tell the Storyteller that they would like to die. Tonight, the Storyteller wakes all Legion players: if all agree, all die."
-      },
-      {
-        "id": "leviathan",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "lilmonsta",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "pukka",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "riot",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "zombuul",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "yaggababble",
-        "reason": "At any time, the Demon can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
-      },
-      {
-        "id": "pithag",
-        "reason": "A Pit-Hag cannot create an Actor."
-      },
-      {
-        "id": "atheist",
-        "reason": "The Actor cannot reverse the victory conditions on executing the Storyteller."
-      },
-      {
-        "id": "kazali",
-        "reason": "Both characters cannot be in play at the start of the game. If an ability turns a good player into the Actor on the first night, the Minions are selected before this happens."
-      },
-      {
-        "id": "lordoftyphon",
-        "reason": "Both characters cannot be in play at the start of the game. If an ability turns a good player into the Actor on the first night, the Minions are selected before this happens."
-      },
-      {
-        "id": "goblin",
-        "reason": "The Actor cannot reverse the victory conditions due to the Goblin’s ability."
-      },
-      {
-        "id": "fearmonger",
-        "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability."
-      }
-    ]
-  },
-  {
     "slug": "rascal",
     "name": "Rascal",
     "team": "townsfolk",
@@ -3466,6 +3342,1575 @@
     "reminders": [
       "Something good"
     ],
+    "setup": false
+  },
+  {
+    "slug": "guide",
+    "name": "Guide",
+    "team": "townsfolk",
+    "ability": "Each night, choose 1 to 3 players: you learn if any of them were chosen or affected by evil abilities tonight.",
+    "art": "art/guide.png",
+    "page": "character.html?c=guide",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/guide.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Guide keeps watch over the night, sensing when shadows reach for the town's own.",
+    "summaryBullets": [
+      "Each night, choose 1 to 3 players. You learn whether any of them were chosen or affected by an evil player's ability tonight.",
+      "You must choose at least one player — you cannot skip your action.",
+      "If multiple players are chosen and one is targeted by evil, you learn 'yes' but not which specific player was targeted.",
+      "Evil Townsfolk and Outsider abilities count — any ability used by an evil-aligned player triggers a 'yes' result.",
+      "'Affect' includes changing a player's state, interfering with their ability, or blocking their ability. It does not include abilities that merely reveal information or let others gain info."
+    ],
+    "howToRun": [
+      "Each night, wake the Guide. They point to 1, 2, or 3 players. If any of those players was chosen or affected by an evil player's ability tonight, nod yes. Otherwise, shake your head no. Put the Guide to sleep.",
+      "Note that the Guide checks at the end of all night actions — if evil acts after the Guide wakes, the Guide still captures it as a retroactive check.",
+      "The Chambermaid jinx: the Chambermaid learns if the Guide woke. The Mathematician jinx: the Guide learns if the Mathematician was affected, even if the Guide woke first."
+    ],
+    "examples": [
+      "The Guide chooses the Fortune Teller, Empath, and Baron. None were targeted by evil tonight — the Guide learns 'no'.",
+      "The Witch (evil) changed the Snake Charmer into an evil player, and that Snake Charmer chose the Soldier. The Guide chose the Soldier and themselves — the Guide learns 'yes'.",
+      "The Pukka chose the Klutz on the first night. The following night, the Monk protects the Klutz while the Pukka attacks the Tinker. The Guide chose the Klutz — the Guide learns 'yes' because the Pukka affected the Klutz."
+    ],
+    "tips": [
+      "Focus your choices on players you suspect are being targeted by evil — a 'yes' narrows down who evil is acting on.",
+      "Choosing yourself is valid. If you get 'yes' with yourself in the group, you know an evil ability targeted you that night.",
+      "Coordinate with information roles. If the Fortune Teller gets a 'yes' hit the same night you also get 'yes' on them, you can confirm evil was probing the same area.",
+      "A consistent 'no' on the same group of players across multiple nights can help establish who evil is avoiding — which can be as informative as a 'yes'."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 71.3,
+    "firstNightReminder": "The Guide chooses 1 to 3 players. Nod or shake your head.",
+    "otherNight": 92.6,
+    "otherNightReminder": "The Guide chooses 1 to 3 players. Nod or shake your head.",
+    "reminders": [],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "chambermaid",
+        "reason": "The Chambermaid can detect if the Guide will wake tonight."
+      },
+      {
+        "id": "mathematician",
+        "reason": "The Guide learns if the Mathematician is affected or not, even though the Guide wakes first."
+      }
+    ]
+  },
+  {
+    "slug": "geomancer",
+    "name": "Geomancer",
+    "team": "townsfolk",
+    "ability": "Each night, you learn the next new character type clockwise of the player you learned yesterday. (Travellers don’t count.)",
+    "art": "art/geomancer.png",
+    "page": "character.html?c=geomancer",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/geomancer.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Geomancer walks the circle of the town, reading its hidden shape one step at a time.",
+    "summaryBullets": [
+      "Each night you learn the character type of the next new character clockwise from the player you learned about yesterday.",
+      "On the first night you learn about a specific player chosen by the Storyteller — subsequent nights advance one step clockwise.",
+      "Travellers are skipped in the rotation.",
+      "Reminder tokens mark the four character types: Townsfolk, Outsider, Minion, Demon.",
+      "If a player changes character type (via Pit-Hag etc.), your future readings reflect the new type."
+    ],
+    "howToRun": [
+      "On the first night, wake the Geomancer. Choose a starting player and show the Geomancer their character type using the reminder tokens. Place a reminder on that player's token.",
+      "Each subsequent night, advance clockwise to the next non-Traveller player. Show the Geomancer that player's character type. Update the reminder token.",
+      "If the Geomancer is drunk or poisoned, show a false character type."
+    ],
+    "examples": [
+      "Night 1: the Geomancer learns the player to their left is Townsfolk. Night 2: the next clockwise player is Minion. Night 3: the next is Townsfolk again.",
+      "A Traveller sits between two players. The Geomancer skips them and learns the character type of the player after the Traveller.",
+      "The Pit-Hag changes a Townsfolk into a Demon mid-game. The Geomancer's next reading on that player correctly shows Demon."
+    ],
+    "tips": [
+      "Map out the circle as you go — after enough nights you'll have a rough picture of where evil is concentrated.",
+      "Share your readings with trusted players carefully. If evil knows your rotation, they can plan around it.",
+      "A Demon type reading is extremely powerful. Even without a name attached, knowing which seat range holds the Demon helps enormously.",
+      "Cross-reference with other info roles. If an Investigator places a Minion in a region and your Geomancer confirms a Minion type in the same area, you've triangulated."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 65.2,
+    "firstNightReminder": "Show a player’s character type. :reminder:",
+    "otherNight": 85.2,
+    "otherNightReminder": "Show the next player’s character type. :reminder:",
+    "reminders": [
+      "Townsfolk",
+      "Outsider",
+      "Minion",
+      "Demon"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "broker",
+    "name": "Broker",
+    "team": "townsfolk",
+    "ability": "Each night, choose 2 alive players: if they are the same alignment, abilities targeting one will instead target the other tonight.",
+    "art": "art/broker.png",
+    "page": "character.html?c=broker",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/broker.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Broker arranges transfers — tonight, anything aimed at one client lands on the other.",
+    "summaryBullets": [
+      "Each night, choose 2 alive players. If they are the same alignment, any ability that targets one of them tonight targets the other instead.",
+      "Both players must be the same alignment (both good or both evil) for the swap to activate.",
+      "The players being targeted don't learn the swap occurred, and neither does the player whose ability was redirected.",
+      "Travellers are valid targets for the Broker's choice.",
+      "The Lleech jinx: the Lleech's host choice or poisoning cannot be redirected."
+    ],
+    "howToRun": [
+      "Each night, wake the Broker. They point to 2 alive players. Place CLIENT reminders on both. If both are the same alignment, any ability targeting one instead targets the other.",
+      "Resolve all ability swaps silently. The redirected player and the original targeter do not learn of the change.",
+      "If the Broker is drunk or poisoned, the swap does not occur even if both players match alignment."
+    ],
+    "examples": [
+      "The Broker links the Empath (good) and the Fortune Teller (good). The Demon attacks the Empath — the Fortune Teller dies instead.",
+      "The Broker links the Empath (good) and the Poisoner (evil). They are different alignments — no swap occurs. The Demon attacks the Empath normally.",
+      "The Broker links two evil players. The Exorcist chooses one — they choose the other instead."
+    ],
+    "tips": [
+      "Link yourself to a powerful information role. If the Demon targets you, they accidentally kill the person you're linked to — and vice versa.",
+      "If you can identify two evil players, linking them wastes evil's ability on themselves.",
+      "Be careful about which pairs you announce publicly — evil will avoid targeting your linked pair if they know.",
+      "The Broker's ability works even for good players' abilities. Linking a key target for the Slayer redirects that shot."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 19.5,
+    "firstNightReminder": "The Broker chooses 2 living players. If they are the same alignment, mark both *CLIENT*. :reminder: :reminder:",
+    "otherNight": 13.9,
+    "otherNightReminder": "The Broker chooses 2 living players. If they are the same alignment, mark both *CLIENT*. :reminder: :reminder:",
+    "reminders": [
+      "Client",
+      "Client"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "lleech",
+        "reason": "The Broker cannot redirect the Lleech’s choice of host or the associated poisoning."
+      }
+    ]
+  },
+  {
+    "slug": "historian",
+    "name": "Historian",
+    "team": "townsfolk",
+    "ability": "Each night*, if a player died today, learn the number of alive Townsfolk.",
+    "art": "art/historian.png",
+    "page": "character.html?c=historian",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/historian.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Historian keeps the town's ledger — each death recorded tells them how many defenders remain.",
+    "summaryBullets": [
+      "Each night (not the first), if a player died today, you learn the number of alive Townsfolk.",
+      "If no player died today, your ability does not trigger tonight.",
+      "The count includes all living Townsfolk at the time of the reading.",
+      "Drunk or poisoned: your count may be inaccurate."
+    ],
+    "howToRun": [
+      "Each night (not the first), if a player died during the day, wake the Historian. Hold up the number of fingers corresponding to alive Townsfolk. Put them to sleep.",
+      "If no one died today, do not wake the Historian.",
+      "Count only living Townsfolk — do not include dead players, Outsiders, Minions, Demons, or Travellers."
+    ],
+    "examples": [
+      "The Baron dies by execution today. The Historian wakes and learns there are 4 alive Townsfolk.",
+      "No one was executed and no one died during the day. The Historian does not wake tonight.",
+      "The Historian is poisoned. A player died today — the Historian wakes but learns an incorrect Townsfolk count."
+    ],
+    "tips": [
+      "Track your numbers over time. If the count drops faster than executions explain, someone is being killed in ways you're not seeing.",
+      "A surprisingly low Townsfolk count may indicate a character-swap (like the Witch or Pit-Hag) converted a Townsfolk to another type.",
+      "Share your numbers openly with the town — it's pure information with no downside to revealing.",
+      "Compare your count with what the town thinks is true. Discrepancies are clues."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 78.2,
+    "otherNightReminder": "If a player died today, give a finger signal.",
+    "reminders": [
+      "Died Today"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "prefect",
+    "name": "Prefect",
+    "team": "townsfolk",
+    "ability": "Each night*, you learn if a non-Townsfolk (& non-Traveller) died since dawn.",
+    "art": "art/prefect.png",
+    "page": "character.html?c=prefect",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/prefect.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Prefect patrols the borders of good and evil — a death in the wrong category draws their immediate attention.",
+    "summaryBullets": [
+      "Each night (not the first), you learn whether a non-Townsfolk, non-Traveller player died since dawn.",
+      "This means you learn if an Outsider, Minion, or Demon died during the day.",
+      "You do not learn who died or what type they were — only that such a death occurred.",
+      "The STRANGER DIED reminder tracks this information."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Prefect. If an Outsider, Minion, or Demon died since the last dawn (by execution or ability), nod yes. Otherwise shake no. Put them to sleep.",
+      "Traveller deaths do not trigger a yes response.",
+      "If the Prefect is drunk or poisoned, the information may be false."
+    ],
+    "examples": [
+      "The Baron (Minion) was executed today. The Prefect wakes and learns 'yes'.",
+      "The Recluse was executed today. The Recluse is an Outsider — the Prefect learns 'yes'.",
+      "The Fortune Teller was executed. They are Townsfolk — the Prefect learns 'no'.",
+      "No one was executed, but the Godfather killed an Outsider at night. The Prefect still learns 'yes' — any death since dawn counts."
+    ],
+    "tips": [
+      "A 'yes' after an execution confirms your nominated player was not Townsfolk — useful for narrowing the pool.",
+      "A 'no' after executing a suspected Minion strongly suggests they were Townsfolk, protecting them from further suspicion.",
+      "Your ability fires even when night kills hit non-Townsfolk. Track both day and night deaths carefully.",
+      "Pair your information with the Undertaker if possible — the Undertaker names the character, you confirm the type category."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 81.4,
+    "otherNightReminder": "Either nod or shake your head.",
+    "reminders": [
+      "Stranger died"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "cleric",
+    "name": "Cleric",
+    "team": "townsfolk",
+    "ability": "Each night*, choose a player: if you choose the Demon, you die & they are drunk until dawn.",
+    "art": "art/cleric.png",
+    "page": "character.html?c=cleric",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/cleric.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Cleric walks toward the danger willingly — a righteous death that leaves the Demon staggering.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player. If you chose the Demon, you die and they become drunk until the next dawn.",
+      "If you chose a non-Demon player, nothing happens — you remain alive.",
+      "The Demon being drunk means their ability gives false results or no effect for that night and the following day.",
+      "You must continue choosing every night until you find the Demon."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Cleric. They point to a player. If that player is the Demon, kill the Cleric (DEAD reminder) and place the DRUNK reminder on the Demon. The Demon remains drunk until dawn.",
+      "If the chosen player is not the Demon, put the Cleric back to sleep — nothing happens.",
+      "The Demon's drunk state means any ability they use tonight and any information they receive is false or suppressed."
+    ],
+    "examples": [
+      "The Cleric chooses the Imp on night three. The Cleric dies, and the Imp is drunk — they cannot kill tonight.",
+      "The Cleric chooses the Empath. Nothing happens — the Empath is not the Demon.",
+      "The Cleric chooses the poisoned Recluse who registers as the Demon. The Cleric dies, but since the Recluse is not actually the Demon, no drunk effect applies."
+    ],
+    "tips": [
+      "You are a guided Demon-seeking missile. Use your information sources to narrow down likely Demon candidates before spending a night.",
+      "If you die and the Demon is drunk, announce it publicly — the town knows a Cleric was in play and the Demon is compromised tonight.",
+      "If you die and the Demon is still effective that night, it may suggest you hit a player who registers as a Demon but isn't one.",
+      "Don't be afraid to guess. A wrong guess costs nothing. A right guess cripples the Demon."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 36.1,
+    "otherNightReminder": "The Cleric chooses a player. If a Demon is chosen, the Cleric dies and the Demon becomes drunk. :reminder: :reminder:",
+    "reminders": [
+      "Drunk",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "tabby",
+    "name": "Tabby",
+    "team": "townsfolk",
+    "ability": "Each night*, choose a player: if they are a good character & die to an evil character tonight, you swap characters.",
+    "art": "art/tabby.png",
+    "page": "character.html?c=tabby",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/tabby.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Tabby watches over one chosen ward — and if that ward falls to evil, steps seamlessly into their shoes.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player. If they are a good character and die to an evil character's ability tonight, you and they swap characters.",
+      "After the swap, you become their character and they become the Tabby.",
+      "If your chosen player is not good, or does not die to evil tonight, nothing happens.",
+      "The PRINCE reminder marks your protected player."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Tabby. They point to a player. Place the PRINCE reminder on that player.",
+      "If that player is killed by an evil ability tonight and they are good, swap their character token with the Tabby's. Both players learn of the swap.",
+      "Multiple jinxes apply: Professor, Banshee, Boffin, Leviathan, and Riot all have specific interactions — check the script for details."
+    ],
+    "examples": [
+      "The Tabby chooses the Empath. The Demon kills the Empath. The Tabby becomes the Empath; the dead player becomes the Tabby.",
+      "The Tabby chooses the Spy (evil). The Demon kills the Spy. No swap occurs — the Spy was not a good character.",
+      "The Tabby chooses the Investigator. The Godfather kills the Investigator. The Tabby and Investigator swap — the Godfather's kill triggered the swap."
+    ],
+    "tips": [
+      "Choose players with abilities that would be devastating to lose — a Slayer who hasn't fired, or a vital information role in the late game.",
+      "You can chain-protect: if you swap into a powerful role, you can continue using that ability.",
+      "If the Demon figures out who you're protecting, they may avoid that player entirely — use this to create a 'safe zone' around key players.",
+      "Consider protecting yourself — if evil kills you, you swap out of being a less important role into whatever the Demon expected to neutralize."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 19.8,
+    "otherNightReminder": "The Tabby chooses a player. :reminder:",
+    "reminders": [
+      "Prince"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "professor",
+        "reason": "If the Professor has already used their ability when swapping characters with the Tabby, the new Professor has no ability."
+      },
+      {
+        "id": "banshee",
+        "reason": "If the Tabby swaps characters with the Banshee, the Storyteller does not announce that the Banshee died."
+      },
+      {
+        "id": "boffin",
+        "reason": "If the Demon has the Tabby ability and successfully activates it, the targeted player becomes the Tabby, and the Demon instead gains the ability of the targeted player's previous character."
+      },
+      {
+        "id": "leviathan",
+        "reason": "Each night*, the Leviathan chooses an alive player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die."
+      },
+      {
+        "id": "riot",
+        "reason": "Each night*, Riot chooses an alive good player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die."
+      }
+    ]
+  },
+  {
+    "slug": "patrol",
+    "name": "Patrol",
+    "team": "townsfolk",
+    "ability": "Each night*, choose 2 good characters (different to last night): if both are alive, they can’t die tonight.",
+    "art": "art/patrol.png",
+    "page": "character.html?c=patrol",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/patrol.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Patrol stands guard over two corners of the town each night — nothing evil passes while they watch.",
+    "summaryBullets": [
+      "Each night (not the first), choose 2 good characters (different from last night's choices). If both are alive, neither can die tonight.",
+      "You choose character types, not specific players — if the chosen character is not in play, the protection has no effect for that slot.",
+      "Both characters must be alive for either to be protected — if one is dead, neither is protected.",
+      "The Leviathan and Riot jinxes: players protected by the Patrol are safe from all evil abilities if those Demons are in play."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Patrol. They point to 2 good characters on the script sheet (different from last night). Place SAFE reminders on those players.",
+      "If both are alive, neither can die tonight — cancel any death effects on them.",
+      "If either is dead, remove both SAFE reminders and apply deaths normally.",
+      "At dawn, remove SAFE reminders regardless."
+    ],
+    "examples": [
+      "The Patrol protects the Fortune Teller and the Empath. Both are alive. The Demon attacks the Fortune Teller — they survive.",
+      "The Patrol protects the Slayer and the Monk. The Slayer was executed today and is dead. Neither player is protected — the Demon's kill proceeds normally.",
+      "The Patrol protects the same two characters as last night. The Storyteller reminds them they must choose differently — last night's choices are not permitted again."
+    ],
+    "tips": [
+      "Alternate your protection between high-value targets. Evil will notice patterns and route around predictable guards.",
+      "If you know roughly where the Demon is planning to kill, pre-empt them. Protecting the player they're most likely to target wastes their night.",
+      "Don't protect the same two players two nights in a row — the rule prevents it anyway, but even similar clusters tip off evil.",
+      "A player surviving after being targeted by the Demon is a very strong signal — combine with other info to triangulate."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 19.8,
+    "otherNightReminder": "The Patrol chooses 2 characters. :reminder: :reminder:",
+    "reminders": [
+      "Safe",
+      "Safe"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "leviathan",
+        "reason": "If the Leviathan is in play, the Patrol-protected player is safe from all evil abilities."
+      },
+      {
+        "id": "riot",
+        "reason": "If the Riot is in play, the Patrol-protected player is safe from all evil abilities."
+      }
+    ]
+  },
+  {
+    "slug": "courier",
+    "name": "Courier",
+    "team": "townsfolk",
+    "ability": "Each day, publicly name a character: tonight, you learn if they are in play. If you learn “no”, you then lose this ability.",
+    "art": "art/courier.png",
+    "page": "character.html?c=courier",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/courier.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Courier delivers one question per day — and when the answer is no, the route is closed forever.",
+    "summaryBullets": [
+      "Each day, publicly name a character. That night you learn if they are in play.",
+      "If you learn 'no', you lose this ability permanently — no more daily questions.",
+      "Your guesses are public — evil knows what you are trying to confirm.",
+      "The CORRECT reminder marks a confirmed hit; NO ABILITY marks when you've lost your ability."
+    ],
+    "howToRun": [
+      "When the Courier publicly names a character during the day, note it. That night, wake the Courier and nod yes (in play) or shake no (not in play).",
+      "If you shake no, place the NO ABILITY reminder on their token. They do not wake for further nights.",
+      "If the Courier is drunk or poisoned when they receive their answer, the answer may be false — they may also lose their ability falsely on a 'no'."
+    ],
+    "examples": [
+      "The Courier names 'Imp'. That night they learn 'yes' — the Imp is in play. They keep their ability.",
+      "The Courier names 'Baron'. That night they learn 'no'. They lose their ability — no more daily questions.",
+      "The Courier names 'Poisoner' while drunk. They learn 'yes', but it's false — the Poisoner may not be in play."
+    ],
+    "tips": [
+      "Start with characters you're confident are in play — confirming a known script character wastes nothing and keeps your ability active.",
+      "If you're trying to confirm a Demon type, be strategic. Naming the Imp when the Demon might be an Ojo is a wasted guess if you get 'no'.",
+      "Your public declarations tell evil exactly what you know and don't know — use that strategically. Sometimes naming a character you know is in play signals false confidence.",
+      "Once your ability is gone, consider bluffing that you still have it — evil may act differently if they think you can still identify characters."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 81.2,
+    "otherNightReminder": "Either nod or shake your head. :reminder:",
+    "reminders": [
+      "Correct",
+      "No Ability"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "zhen",
+    "name": "Zhen",
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, choose a Townsfolk character: if they are in play, they become poisoned and die.",
+    "art": "art/zhen.png",
+    "page": "character.html?c=zhen",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/zhen.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Zhen carries a deadly draught — one dose, one target, one chance to remove a Townsfolk from the board.",
+    "summaryBullets": [
+      "Once per game, at night (not the first), choose a Townsfolk character. If they are in play, they become poisoned and die.",
+      "This is a one-use ability — once used, it is gone whether or not it hit.",
+      "You choose the character type, not a specific player — if that Townsfolk is not in play, nothing happens.",
+      "Jinxes: Poppy Grower — the Zhen can't affect the Poppy Grower's players. Ban Xian jinx — if the Zhen targets the Ban Xian, the Ban Xian is poisoned and dies."
+    ],
+    "howToRun": [
+      "At night (not the first), when the Zhen uses their ability, wake them. They point to a Townsfolk character on the script. If that character is in play, poison them and kill them (POISONED + DEAD reminders). Place NO ABILITY on the Zhen.",
+      "If the chosen character is not in play, nothing happens — but the Zhen has still used their ability (place NO ABILITY).",
+      "The target's poisoning and death happen before any other ability can react."
+    ],
+    "examples": [
+      "The Zhen targets the Fortune Teller. The Fortune Teller is in play — they are poisoned and die.",
+      "The Zhen targets the Sailor. The Sailor is not on the script — nothing happens, and the Zhen loses their ability.",
+      "The Zhen targets the Monk. The Monk is in play and was protecting someone — they die, and their protection expires immediately."
+    ],
+    "tips": [
+      "Save your ability for a confirmed Townsfolk. Wasting it on a character that isn't in play is devastating.",
+      "If you're evil and the Zhen claims, know that they can kill a Townsfolk of their choice — neutralize them before they get to use it.",
+      "As the Zhen, consider targeting the most dangerous Townsfolk to evil's plan — a late-game Slayer or a confirmed Investigator.",
+      "Bluffing as the Zhen can deter nominations — the town may not want to execute someone who might kill a key Townsfolk."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 58.5,
+    "otherNightReminder": "The Zhen might choose a Townsfolk character. :reminder: :reminder:",
+    "reminders": [
+      "Poisoned",
+      "Dead",
+      "No ability"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "poppygrower",
+        "reason": "The Poppy Grower cannot be poisoned by the Zhen’s ability."
+      },
+      {
+        "id": "banxian_festival_of_lanterns",
+        "reason": "If the Zhen chooses the Ban Xian, the Ban Xian becomes poisoned and dies."
+      }
+    ]
+  },
+  {
+    "slug": "consort",
+    "name": "Consort",
+    "team": "townsfolk",
+    "ability": "Once per game, the Storyteller will break the rules for you. You privately learn what they did.",
+    "art": "art/consort.png",
+    "page": "character.html?c=consort",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/consort.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Consort has a favour with the Storyteller — one private act of rule-breaking, kept secret from all others.",
+    "summaryBullets": [
+      "Once per game, the Storyteller will break the rules on your behalf in some way. You privately learn what they did.",
+      "The rule-break is chosen by the Storyteller — it could be granting you information, protecting you from death, giving you an extra action, or any other creative benefit.",
+      "You are the only one who knows what happened. The rule-break is secret from all other players.",
+      "The Storyteller may choose the timing — it could happen on any night without notice."
+    ],
+    "howToRun": [
+      "At some point during the game, perform a rule-break on behalf of the Consort. This can be anything — giving false information to the Demon, protecting the Consort from a night kill, granting them a bonus ability use, etc.",
+      "Wake the Consort privately and explain (or gesture) what you did.",
+      "Use your judgment about when the rule-break will be most impactful or most interesting for the game."
+    ],
+    "examples": [
+      "The Storyteller decides to tell the Consort who the Demon is — this is the rule-break. The Consort learns the Demon's identity privately.",
+      "The Storyteller prevents the Demon from killing the Consort tonight — the Consort learns they were protected by a special rule-break.",
+      "The Storyteller gives the Consort the Slayer's ability for one use — the Consort privately learns this and may choose to use it."
+    ],
+    "tips": [
+      "Don't reveal what your rule-break was unless tactically necessary — its value lies in being secret.",
+      "You know something no one else does. Use that information to guide the town subtly without exposing your source.",
+      "If the rule-break gave you direct information (like knowing the Demon), be careful how you use it — revealing perfect information is suspicious.",
+      "As the Storyteller, aim for rule-breaks that are interesting and impactful without being game-winning on their own."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "setup": false
+  },
+  {
+    "slug": "thaumaturge",
+    "name": "Thaumaturge",
+    "team": "townsfolk",
+    "ability": "On your 1st night, choose a number. On the night of that number, learn that number of in-play characters.",
+    "art": "art/thaumaturge.png",
+    "page": "character.html?c=thaumaturge",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/thaumaturge.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Thaumaturge charts a distant star — and on the appointed night, the heavens reveal exactly what they promised.",
+    "summaryBullets": [
+      "On your first night, choose a number N. On night N, you learn N in-play characters.",
+      "The characters you learn on night N are actual characters currently in play.",
+      "If you are drunk or poisoned on night N, the characters you learn may be false.",
+      "Up to 6 LEARN reminder tokens mark how many characters you will receive."
+    ],
+    "howToRun": [
+      "On the first night, wake the Thaumaturge. They hold up a number of fingers (1–6). Note the number. Put them to sleep.",
+      "On night N, wake the Thaumaturge. Show them N character tokens, all of which are in play. Put them to sleep.",
+      "If the Thaumaturge is drunk or poisoned on night N, you may show false or non-in-play characters."
+    ],
+    "examples": [
+      "The Thaumaturge chooses night 4. On night 4, they learn 4 in-play characters: Empath, Poisoner, Imp, and Recluse.",
+      "The Thaumaturge chooses night 2. On night 2 they are poisoned — they learn 2 characters, but both may be false.",
+      "The Thaumaturge chooses night 6. The game ends on night 4. They never receive their information."
+    ],
+    "tips": [
+      "Choosing a later night gives you more characters but risks the game ending before you learn them. Night 3 or 4 is often a sweet spot.",
+      "You know N characters in play — cross-reference player claims against your list. Anyone claiming a character not on your list is lying or the game state changed.",
+      "Evil knows you'll receive information on a specific night. They may try to kill you before then — be cautious as that night approaches.",
+      "A high number like 5 or 6 characters gives you enormous information if you survive — potentially identifying both the good and evil sides of the board."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 53.4,
+    "firstNightReminder": "The Thaumaturge chooses a number. :reminder: If the number chosen is 1, show the Thaumaturge the token of 1 in-play character.",
+    "otherNight": 87.1,
+    "otherNightReminder": "If it is the night corresponding to the number of LEARN reminders in the Grimoire, wake the Thaumaturge and show them all character tokens marked LEARN.",
+    "reminders": [
+      "Learn",
+      "Learn",
+      "Learn",
+      "Learn",
+      "Learn",
+      "Learn"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "tomb-sculptor",
+    "name": "Tomb Sculptor",
+    "team": "townsfolk",
+    "ability": "On your 1st night, choose a player (not a Traveller): if they are good & no evil player is dead, you and they can only die by execution.",
+    "art": "art/tomb-sculptor.png",
+    "page": "character.html?c=tomb-sculptor",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/tomb-sculptor.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Tomb Sculptor carves a protection into stone — as long as evil has not bled, neither shall their chosen ward.",
+    "summaryBullets": [
+      "On your first night, choose a player (not a Traveller). If they are good and no evil player is currently dead, both you and they can only die by execution.",
+      "The protection lasts as long as no evil player has died. Once any evil player dies, the protection ends permanently.",
+      "Both you and your chosen player are protected — neither can die from night kills or ability deaths while the condition holds.",
+      "The SCULPTURE reminder marks your chosen player."
+    ],
+    "howToRun": [
+      "On the first night, wake the Tomb Sculptor. They point to a player (not a Traveller). Place the SCULPTURE reminder on that player.",
+      "Check alignment: if the chosen player is good and no evil player is dead, both the Tomb Sculptor and the chosen player cannot die except by execution.",
+      "Once any evil player dies (by any means), remove the protection — both can now die normally."
+    ],
+    "examples": [
+      "The Tomb Sculptor chooses the Empath. No evil player is dead. The Demon attacks the Empath — they survive.",
+      "The Tomb Sculptor chose the Empath. The Poisoner is executed today. Tonight, the protection ends — the Demon kills the Empath and they die.",
+      "The Tomb Sculptor chose the Spy (evil). The chosen player was not good — no protection applies."
+    ],
+    "tips": [
+      "Your protection creates a hard deadline for evil: they must get an evil player executed before they can kill effectively.",
+      "Don't reveal who you chose too early — if evil knows, they'll target an evil player deliberately to lift the protection.",
+      "Choose a high-value information role that evil desperately wants to kill. Force evil to sacrifice one of their own to remove your shield.",
+      "Remember: execution still kills both of you. Don't become so confident in your protection that you ignore nomination risk."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 28.9,
+    "firstNightReminder": "The Tomb Sculptor chooses a player. :reminder:",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Sculpture"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "puppeteer",
+    "name": "Puppeteer",
+    "team": "townsfolk",
+    "ability": "If you die at night, you swap characters with an alive Minion player.",
+    "art": "art/puppeteer.png",
+    "page": "character.html?c=puppeteer",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/puppeteer.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Puppeteer pulls the final strings — their death at night sets a Minion dancing to a new tune.",
+    "summaryBullets": [
+      "If you die at night, you swap characters with an alive Minion player.",
+      "Both you and the Minion learn of the swap.",
+      "You become the Minion character (with their alignment and knowledge); they become the Puppeteer (good).",
+      "If no Minion is alive when you die at night, nothing happens."
+    ],
+    "howToRun": [
+      "If the Puppeteer dies at night (by any means), check if any Minion is alive. If so, choose a Minion and swap their character token with the Puppeteer's. Both players learn of the swap.",
+      "The former Puppeteer is now the Minion and is evil. The former Minion is now the Puppeteer and is good.",
+      "If the Puppeteer dies during the day, no swap occurs."
+    ],
+    "examples": [
+      "The Demon kills the Puppeteer. The Storyteller swaps the Puppeteer with the Poisoner — the Puppeteer becomes the Poisoner (evil) and the Poisoner becomes the Puppeteer (good).",
+      "The Puppeteer dies at night when no Minion is alive. Nothing happens — there is no one to swap with.",
+      "The Assassin kills the Puppeteer. The Storyteller swaps the Puppeteer with the Baron — now the old Puppeteer is evil, the old Baron is good."
+    ],
+    "tips": [
+      "Your death at night is not a loss — it's a conversion. If you can get the Demon to kill you, you slip inside their team.",
+      "As the new Minion, you know who you are and that you were converted. Play carefully — revealing yourself as the Puppeteer-turned-Minion exposes you immediately.",
+      "Tell a trusted player about your ability before you die. If you convert and start acting oddly, they'll know why.",
+      "Evil will try to avoid killing you. Use this pressure to stay alive — or bait them into it when you know a Minion's identity."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 62.7,
+    "otherNightReminder": "If the Puppeteer died tonight, wake the Puppeteer and a living Minion one at a time. Show the *YOU ARE* token &amp; their new character token.",
+    "reminders": [],
+    "setup": false
+  },
+  {
+    "slug": "dyer",
+    "name": "Dyer",
+    "team": "townsfolk",
+    "ability": "If you die at night, the Demon’s ability becomes “Each night*, a player might die”.",
+    "art": "art/dyer.png",
+    "page": "character.html?c=dyer",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/dyer.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Dyer's death stains the Demon itself — their killing touch replaced by something uncertain and unpredictable.",
+    "summaryBullets": [
+      "If you die at night, the Demon's ability becomes 'Each night*, a player might die'.",
+      "The new ability is weaker and uncertain — the Demon may choose a player but the kill is not guaranteed.",
+      "This effect is permanent for the rest of the game.",
+      "If the Dyer dies during the day, no change occurs."
+    ],
+    "howToRun": [
+      "If the Dyer dies at night (by any means), place the STAINED reminder token on the Demon's token.",
+      "From now on, when the Demon acts, they point to a player but you decide whether that player actually dies. The Demon's kill is never certain.",
+      "The change is permanent. Even if the Demon changes character via Pit-Hag or similar, the stained effect persists."
+    ],
+    "examples": [
+      "The Demon kills the Dyer. From this night on, the Demon points to a player — the Storyteller decides if the kill lands. Often it does not.",
+      "The Dyer is executed. Nothing changes — the Dyer's ability only triggers on night death.",
+      "The Demon is stained. They point to the Fortune Teller — the Storyteller lets the kill stand. The next night they point to the Slayer — the Storyteller blocks it."
+    ],
+    "tips": [
+      "If you survive to the late game, your death becomes a powerful trade. Dying on a critical night weakens the Demon at the most important moment.",
+      "Evil will try hard not to kill you at night. Use this to stay alive — evil knows their killing power is contingent on your survival.",
+      "Announce your role early. It creates a deterrent that benefits the whole town and may cause the Demon to avoid certain plays.",
+      "A stained Demon is not powerless — the Storyteller can still allow kills. Don't assume no one dies after you die."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 62.9,
+    "otherNightReminder": "If the Dyer died tonight, mark the Demon *STAINED*. :reminder:",
+    "reminders": [
+      "Stained"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "brush-holder",
+    "name": "Brush Holder",
+    "team": "townsfolk",
+    "ability": "If you die during the day, you learn a good player tonight. If you die at night, you learn an evil player.",
+    "art": "art/brush-holder.png",
+    "page": "character.html?c=brush-holder",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/brush-holder.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Brush Holder writes the chronicle in their own blood — whether they fall by day or night, the truth finds a way out.",
+    "summaryBullets": [
+      "If you die during the day, you learn a good player that night.",
+      "If you die at night, you learn an evil player that night.",
+      "This ability only triggers once — the night you die.",
+      "You receive the information as a ghost — you're dead but still learn."
+    ],
+    "howToRun": [
+      "If the Brush Holder is executed during the day, wake them that night. Point to a good player.",
+      "If the Brush Holder dies at night (from any cause), before dawn, point to an evil player.",
+      "If the Brush Holder is drunk or poisoned when they die, the player revealed may be false."
+    ],
+    "examples": [
+      "The Brush Holder is executed on day three. That night they learn the Empath is good.",
+      "The Demon kills the Brush Holder. That same night, the Brush Holder learns the Poisoner is evil.",
+      "The Brush Holder is poisoned when the Demon kills them. They learn an evil player — but the information may be wrong."
+    ],
+    "tips": [
+      "Your death is your most powerful moment. Time it strategically — dying by execution near the end gives you a confirmed good player to shield.",
+      "If evil kills you at night, you learn an evil player. This is excellent intelligence — immediately communicate it (if possible before dawn) or ensure a trusted player knows to ask.",
+      "Don't reveal your ability too early. Evil will try to neutralize you before they need to kill, knowing your death gives you info.",
+      "The day vs night split is meaningful: choose how you'd rather die based on which information type the town needs more."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 75.6,
+    "otherNightReminder": "If the Brush Holder died today or tonight, point to a player.",
+    "reminders": [
+      "Died today"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "prosecutor",
+    "name": "Prosecutor",
+    "team": "townsfolk",
+    "ability": "After your first nomination, learn your nominee’s character that night. Demons register as good characters to you.",
+    "art": "art/prosecutor.png",
+    "page": "character.html?c=prosecutor",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/prosecutor.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Prosecutor cross-examines the accused — and learns exactly who they are when the gavel falls.",
+    "summaryBullets": [
+      "After your first nomination, you learn your nominee's character that night.",
+      "Demons register as good characters to you — your ability is blind to Demon types.",
+      "Once you learn a character, your ability is spent — you only ever learn one character.",
+      "The NOMINEE reminder tracks who you nominated; NO ABILITY marks when the ability is spent."
+    ],
+    "howToRun": [
+      "After the Prosecutor's first nomination during the day, note the nominated player. That night, wake the Prosecutor and show them the nominated player's character token — but if they are the Demon, show a good character token instead.",
+      "Place the NO ABILITY reminder on the Prosecutor's token. They do not receive further information.",
+      "If the Prosecutor is drunk or poisoned when they receive the information, the character shown may be false."
+    ],
+    "examples": [
+      "The Prosecutor nominates the Poisoner. That night they learn 'Poisoner' — a confirmed evil player.",
+      "The Prosecutor nominates the Imp. That night the Storyteller shows a good character — the Prosecutor doesn't know they found the Demon.",
+      "The Prosecutor nominates the Recluse. The Recluse might register as a Minion — the Prosecutor may see 'Poisoner' even though the Recluse is good."
+    ],
+    "tips": [
+      "Choose your first nomination very carefully — it's your only chance. Nominate someone you strongly suspect is a Minion.",
+      "You're blind to the Demon — if you nominate the Demon you'll get a false character. This is a known limitation to plan around.",
+      "Once you've learned a character, consider sharing it immediately — the information is one-time, so don't sit on it.",
+      "Nominating early means you get more time to use the information. Nominating late is riskier but may be more targeted."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 78.1,
+    "otherNightReminder": "If the Prosecutor made their first nomination today, show the character token marked *NOMINEE*. If a Demon is marked *NOMINEE*, show a good character token.",
+    "reminders": [
+      "Nominee",
+      "No Ability"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "actor",
+    "name": "Actor",
+    "team": "townsfolk",
+    "ability": "Good characters are good, drunk & know each other. Whoever wins, loses & whoever loses, wins. You cannot lose this ability.",
+    "art": "art/actor.png",
+    "page": "character.html?c=actor",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/actor.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "quote": "If we shadows have offended, think but this and all is mended, that you have but slumber’d here, while these visions did appear.",
+    "lede": "The Actors are a secret society of players behind the game — drunk, knowing, and rewriting the rules of victory.",
+    "summaryBullets": [
+      "All good characters are replaced by Actors. Good characters are drunk and know each other.",
+      "Victory conditions are reversed: whoever would normally win, loses — and whoever would lose, wins.",
+      "The Actors cannot lose this ability — it is permanent and cannot be removed or suppressed.",
+      "The GOOD ARE DRUNK reminder marks the ongoing state."
+    ],
+    "howToRun": [
+      "On the first night, wake all Actors together. They see each other. Put them to sleep. Place the GOOD ARE DRUNK reminder.",
+      "All good players are drunk for the entire game — treat their ability information as false.",
+      "Win conditions are reversed: if evil would win normally, good wins instead. If good would win normally, evil wins instead.",
+      "This ability is permanent — no drunk, poison, or character change removes it."
+    ],
+    "examples": [
+      "The Demon kills the last Townsfolk. Normally evil wins — but with the Actor, good wins instead.",
+      "An Actor is executed. All remaining Actors know each other and coordinate accordingly.",
+      "The Pit-Hag changes an Actor into a different character. The reversal still applies — it cannot be removed."
+    ],
+    "tips": [
+      "All Actors know each other from night one — use this network to coordinate strategy without evil intercepting.",
+      "Good players are all drunk — their information is unreliable. Focus on deduction from actions rather than ability results.",
+      "The victory reversal is a powerful trump card. Let evil overcommit to their normal win condition while you secretly set up the reverse.",
+      "Evil must adapt entirely — their usual strategy of killing key Townsfolk and controlling nominations needs to flip."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 23.3,
+    "firstNightReminder": "Wake all Townsfolk and Outsiders together.",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Good are drunk"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "spy",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "eviltwin",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "widow",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "summoner",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "riot",
+        "reason": "Only 1 jinxed character can be in play."
+      },
+      {
+        "id": "legion",
+        "reason": "At any time, a Legion player can tell the Storyteller that they would like to die. Tonight, the Storyteller wakes all Legion players: if all agree, all die."
+      },
+      {
+        "id": "leviathan",
+        "reason": "At any time, the Leviathan can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "lilmonsta",
+        "reason": "At any time, the player holding Lil’ Monsta can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "pukka",
+        "reason": "At any time, the Pukka can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+      },
+      {
+        "id": "pithag",
+        "reason": "A Pit-Hag cannot create an Actor."
+      },
+      {
+        "id": "boffin",
+        "reason": "The Demon cannot have the Actor ability."
+      },
+      {
+        "id": "king",
+        "reason": "The King does not become drunk due to the Actor’s ability."
+      },
+      {
+        "id": "damsel",
+        "reason": "The Damsel does not become drunk due to the Actor’s ability."
+      },
+      {
+        "id": "snitch",
+        "reason": "The Snitch does not become drunk due to the Actor’s ability."
+      },
+      {
+        "id": "lunatic",
+        "reason": "The Lunatic does not become drunk due to the Actor’s ability, and is not included when the good players learn each other."
+      },
+      {
+        "id": "pedant_festival_of_lanterns",
+        "reason": "The Pedant does not become drunk due to the Actor’s ability."
+      },
+      {
+        "id": "atheist",
+        "reason": "The Actor cannot reverse the victory conditions on executing the Storyteller."
+      },
+      {
+        "id": "goblin",
+        "reason": "The Actor cannot reverse the victory conditions due to the Goblin’s ability."
+      },
+      {
+        "id": "fearmonger",
+        "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability."
+      }
+    ]
+  },
+  {
+    "slug": "server",
+    "name": "Server",
+    "team": "outsider",
+    "ability": "One of your good neighbors (not a Traveller) is drunk, even if you die by execution.",
+    "art": "art/server.png",
+    "page": "character.html?c=server",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/server.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Server keeps one neighbor's cup perpetually full — whether they mean to or not.",
+    "summaryBullets": [
+      "One of your good neighbors (not a Traveller) is drunk for the entire game, even if you die by execution.",
+      "You do not choose which neighbor — the Storyteller decides.",
+      "The drunk neighbor's ability gives false information or has no effect.",
+      "Your drunk effect persists even after your death by execution."
+    ],
+    "howToRun": [
+      "At setup, choose one of the Server's good non-Traveller neighbors to be drunk. Place the DRUNK reminder on their token.",
+      "This player remains drunk for the entire game, even if the Server is executed. Remove the drunk only if the Server is dead by non-execution means — check your rules.",
+      "If both neighbors are evil or Travellers, the Server's ability has no effect."
+    ],
+    "examples": [
+      "The Server neighbors the Empath and the Monk. The Empath is made drunk — their count is always false.",
+      "The Server is executed on day two. Their neighbor (the Fortune Teller) remains drunk for the rest of the game.",
+      "The Server neighbors one evil player and one Traveller. Neither is a valid target — the drunk effect doesn't apply."
+    ],
+    "tips": [
+      "Try to sit next to players who aren't critical information roles — your drunk effect is fixed and you can't control which neighbor suffers.",
+      "If you suspect you're the drunk neighbor of a Server, your information is unreliable. Don't stake the town's strategy on your readings.",
+      "The Server's ability persists after execution — the town can't execute you to remove the drunk. This is important to understand when planning executions.",
+      "If you can identify who the Server is and who their drunk neighbor is, you can correctly discount that neighbor's information."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Drunk"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "embalmer",
+    "name": "Embalmer",
+    "team": "outsider",
+    "ability": "If 5 or more players live and you nominate, execute & kill the Demon, you become the evil Demon. (Travellers don’t count)",
+    "art": "art/embalmer.png",
+    "page": "character.html?c=embalmer",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/embalmer.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Embalmer prepares the dead for eternity — and when the Demon meets the blade, they step into the empty throne.",
+    "summaryBullets": [
+      "If 5 or more players are alive (not counting Travellers) and you nominate, execute, and kill the Demon, you become the evil Demon.",
+      "You gain the Demon's character, alignment, and ability.",
+      "Travellers don't count toward the 5-player threshold.",
+      "The IS THE DEMON reminder tracks your new state after the transformation.",
+      "Jinxes: Scarlet Woman, Al-Hadikhia, Lil' Monsta, Lleech — specific interactions with these characters."
+    ],
+    "howToRun": [
+      "If the Embalmer nominates the Demon, enough players vote to execute, and the Demon dies — check the player count. If 5 or more non-Traveller players are alive, transform the Embalmer into the Demon.",
+      "Place the IS THE DEMON reminder. The Embalmer is now evil, gains the Demon's character and ability, and the game continues with them as the new Demon.",
+      "If fewer than 5 players are alive, the Embalmer's ability does not trigger — the Demon simply dies and evil loses."
+    ],
+    "examples": [
+      "6 players are alive. The Embalmer nominates the Imp. The Imp is executed. The Embalmer becomes the Imp — evil continues.",
+      "4 players are alive (not counting the Traveller). The Embalmer nominates and kills the Demon. The threshold isn't met — evil loses.",
+      "The Embalmer nominates a Minion by mistake. The Minion dies. Nothing happens — only Demon kills trigger the transformation."
+    ],
+    "tips": [
+      "Your ability is a double-edged sword — you can win the game for evil by executing the Demon, but you also allow the town to identify you as the new Demon.",
+      "If you successfully transform, the town knows the previous Demon is dead — but may not immediately suspect you. Use the confusion.",
+      "As good players, be wary of executing the Demon with an Embalmer in play — you may not end the game, you may just change who the Demon is.",
+      "The 5-player threshold means this ability is mostly mid-game. Late game, the Embalmer's trigger rarely fires."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 34.8,
+    "otherNightReminder": "If the Embalmer became the Demon today, show them the *YOU ARE* &amp; Demon tokens. Give a thumbs down.",
+    "reminders": [
+      "Is the Demon"
+    ],
+    "setup": false,
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Embalmer executes and becomes the Demon, the Scarlet Woman does not become a Demon."
+      },
+      {
+        "id": "alhadikhia",
+        "reason": "If there are two living Al-Hadikhias, the Embalmer Al-Hadikhia becomes the Embalmer again, but does not turn good."
+      },
+      {
+        "id": "lilmonsta",
+        "reason": "If there are 5 or more players alive and the player holding Lil’ Monsta dies from the Embalmer’s nomination, the Embalmer turns evil and is given Lil’ Monsta tonight."
+      },
+      {
+        "id": "lleech",
+        "reason": "If there are 5 or more players alive and the Lleech host dies by the Embalmer’s nomination, the old Lleech dies tonight, and the Embalmer becomes the evil Lleech but does not kill tonight."
+      }
+    ]
+  },
+  {
+    "slug": "vintner",
+    "name": "Vintner",
+    "team": "minion",
+    "ability": "Each night, choose a Townsfolk character: their ability yields info of your choice next time.",
+    "art": "art/vintner.png",
+    "page": "character.html?c=vintner",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/vintner.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Vintner ages a vintage lie — the next time a Townsfolk reaches for information, they taste something other than truth.",
+    "summaryBullets": [
+      "Each night, choose a Townsfolk character. The next time that character's ability yields information, it yields the information you choose instead.",
+      "You choose the false information the Storyteller will deliver — it must be plausible within the ability's normal output.",
+      "The TIPSY reminder marks the affected Townsfolk.",
+      "The effect fires once then resets — you choose a new target each night."
+    ],
+    "howToRun": [
+      "Each night, wake the Vintner. They point to a Townsfolk character and whisper the false information they want that character to receive.",
+      "Place the TIPSY reminder on that character's token. The next time that character's ability would give information, give the Vintner's chosen information instead.",
+      "Remove the TIPSY reminder after it fires. The Vintner chooses again the following night."
+    ],
+    "examples": [
+      "The Vintner targets the Fortune Teller and chooses 'yes'. The Fortune Teller asks about two players — they receive 'yes' regardless of the actual answer.",
+      "The Vintner targets the Empath and chooses '0'. The Empath wakes to a count of 0 even if both neighbors are evil.",
+      "The Vintner targets the Investigator and selects 'Recluse / Spy'. The Investigator learns that false pairing."
+    ],
+    "tips": [
+      "Coordinate with your Demon — corrupt the information role most likely to expose the Demon this turn.",
+      "Your false information should be plausible. If the Empath would realistically get a '0', giving '0' is believable. Giving '3' when there are no evil neighbors is suspicious.",
+      "Vary your targets. If the same player gets wrong info every night, the town notices.",
+      "You can target a Townsfolk who isn't in play — the ability does nothing but you've spent your night. Choose wisely."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 32.15,
+    "firstNightReminder": "The Vintner chooses a Townsfolk character and a piece of info. :reminder:",
+    "otherNight": 17.8,
+    "otherNightReminder": "The Vintner chooses a Townsfolk character and a piece of info. :reminder:",
+    "reminders": [
+      "Tipsy"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "gu-diao",
+    "name": "Gu Diao",
+    "team": "minion",
+    "ability": "Each night, choose an alive good neighbor: you learn their character, and they are poisoned & register as evil Gu Diao until dusk.",
+    "art": "art/gu-diao.png",
+    "page": "character.html?c=gu-diao",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/gu-diao.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Gu Diao haunts a neighbor each night — learning their secret while making them appear monstrous to others.",
+    "summaryBullets": [
+      "Each night, choose an alive good neighbor (left or right). You learn their character, and they are poisoned and register as the evil Gu Diao to all other players until the next dusk.",
+      "The chosen neighbor appears to be the evil Gu Diao to any ability that would identify them.",
+      "The chosen neighbor is poisoned — their ability gives false results while they are marked.",
+      "The GU DIAO reminder marks the affected player."
+    ],
+    "howToRun": [
+      "Each night, wake the Gu Diao. They indicate left or right. Wake the next alive good neighbor in that direction. Show them the GU DIAO reminder — they now know they are marked.",
+      "Place the GU DIAO reminder on that player's token. They are poisoned and register as the evil Gu Diao to any ability checks.",
+      "At dusk, remove the GU DIAO reminder. The Gu Diao may choose again the following night.",
+      "Note: the Gu Diao's ability applies information interference only — non-information abilities are unaffected."
+    ],
+    "examples": [
+      "The Gu Diao chooses left. The Fortune Teller checks the Gu Diao's left neighbor and another player — they learn 'yes' (the marked player registers as Gu Diao, an evil character).",
+      "The Gu Diao marks the Empath. The Empath's neighbor count is false because they are poisoned.",
+      "The Investigator checks the marked player and someone else. They learn the pair contains a 'Gu Diao' — correct, since the marked player registers as such."
+    ],
+    "tips": [
+      "Choose the neighbor most likely to be questioned by information roles. Their corrupted registration misdirects the town's investigations.",
+      "The poisoned neighbor will give false info — but they know they're marked. Coordinate so you don't accidentally expose yourself.",
+      "Rotating between your two neighbors each night prevents the town from establishing a pattern in who gives bad info.",
+      "If the marked player realizes they're always giving wrong info, they may deduce a Gu Diao is nearby. Keep your distance social."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 33.2,
+    "firstNightReminder": "The Gu Diao chooses a living good neighbor. :reminder: Show the Gu Diao that player’s character token.",
+    "otherNight": 15.6,
+    "otherNightReminder": "The Gu Diao chooses a living good neighbor. :reminder: Show the Gu Diao that player’s character token.",
+    "reminders": [
+      "Gu Diao"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "meng-po",
+    "name": "Meng Po",
+    "team": "minion",
+    "ability": "Each night*, choose a player: if they are alive, they choose to 1) lose their ability, or 2) die & keep their ability until dusk.",
+    "art": "art/meng-po.png",
+    "page": "character.html?c=meng-po",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/meng-po.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "Meng Po offers her brew each night — forget your power, or keep it and lose yourself to the dark.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player. If they are alive, they must choose: lose their ability, or die and keep their ability until dusk.",
+      "The chosen player makes this choice privately with the Storyteller.",
+      "If they choose to lose their ability, it is gone permanently.",
+      "If they choose to die and keep their ability, their ability persists until the next dusk even though they are dead.",
+      "The CHOSEN reminder tracks who was offered the choice."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake Meng Po. They point to a player. If that player is alive, wake them. Show them two options: 1) lose ability, or 2) die but keep ability until dusk. They point to their choice.",
+      "If they choose to lose their ability, place NO ABILITY on their token. If they choose to die, mark them DEAD — their ability persists until dusk.",
+      "If the chosen player is already dead, nothing happens."
+    ],
+    "examples": [
+      "Meng Po chooses the Slayer. The Slayer chooses to die rather than give up their shot at the Demon — they die but can still use the Slayer ability until dusk.",
+      "Meng Po chooses the Fortune Teller. The Fortune Teller chooses to lose their ability — they survive but can no longer check players at night.",
+      "Meng Po chooses a dead player. Nothing happens — the offer requires the target to be alive."
+    ],
+    "tips": [
+      "Target the most powerful information role — making them choose between their life and their ability is devastating either way.",
+      "If a player dies choosing to keep their ability, use that knowledge. They sacrificed themselves to fire off one last ability — trust their final action.",
+      "Coordinate with the Demon. Killing a key protector on a night the Demon plans to strike removes two obstacles at once.",
+      "Be careful about targeting players near the end game — a forced death can accidentally trigger win conditions."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 57.55,
+    "otherNightReminder": "The Meng Po chooses a player. Wake that player and show them *THIS CHARACTER SELECTED YOU* and the Meng Po character token. They give a finger signal. :reminder:",
+    "reminders": [
+      "Chosen"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "huapi",
+    "name": "Huapi",
+    "team": "minion",
+    "ability": "On your 1st night, choose an alive player: they die but register as alive. If they die again, they live & you regain this ability.",
+    "art": "art/huapi.png",
+    "page": "character.html?c=huapi",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/huapi.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "Huapi wears a face that is not their own — their chosen quarry walks and speaks but is already gone.",
+    "summaryBullets": [
+      "On your first night, choose an alive player. They die but register as alive. When they would die again, they revive and you regain this ability.",
+      "The chosen player is dead but appears alive — abilities and counts treat them as living.",
+      "When they 'die again' (targeted by a kill), they revive fully and become genuinely alive.",
+      "After the revival, you regain the Huapi ability and may use it again.",
+      "LOOKS ALIVE marks the pseudo-dead player; ON THE PROWL marks your readiness to act again."
+    ],
+    "howToRun": [
+      "On the first night, wake Huapi. They point to a player. Kill that player secretly — place the LOOKS ALIVE reminder. They register as alive to all abilities.",
+      "When any kill ability targets the LOOKS ALIVE player, do not kill them — instead, they revive (become genuinely alive). Remove LOOKS ALIVE and place ON THE PROWL on Huapi.",
+      "That night or the next, Huapi may choose a new player to mark with LOOKS ALIVE. Repeat."
+    ],
+    "examples": [
+      "Huapi marks the Empath on night one. The Empath appears alive. The Demon attacks the Empath on night three — the Empath revives. Huapi may now mark a new player.",
+      "The Slayer shoots Huapi's marked player — the shot is wasted on the revival. Huapi gains the ability again.",
+      "Huapi's marked player is exorcised — the kill check triggers the revival even from the Exorcist's ability."
+    ],
+    "tips": [
+      "Mark a player who looks like a Demon target — when the Demon hits them, it wastes their kill and revives an ally.",
+      "Your marked player is secretly dead. If they're an information role, their ability still fires but they're actually dead — don't reveal this to the town.",
+      "Regaining your ability on revival means you can chain this protection across the game. Stay active and keep marking.",
+      "The revival is automatic — you don't get to choose. Pick targets who would benefit from being revived at the key moment."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 41.6,
+    "firstNightReminder": "The Huapi points to a player. :reminder:",
+    "otherNight": 57.9,
+    "otherNightReminder": "If the previously chosen player was revived by the Huapi, the Huapi points to a player. :reminder:",
+    "reminders": [
+      "Looks Alive",
+      "On the Prowl"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "warden",
+    "name": "Warden",
+    "team": "demon",
+    "ability": "Each night, choose up to 3 players. 1 player you chose last night dies: if any of them died today, all die tonight.",
+    "art": "art/warden.png",
+    "page": "character.html?c=warden",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/warden.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Warden keeps a list — and settles accounts the moment someone on that list faces justice.",
+    "summaryBullets": [
+      "Each night, choose up to 3 players. One player you chose last night dies — but if any of them died during the day, all 3 die tonight instead.",
+      "On the first night, you choose your initial 3 but no one dies yet — the list takes effect from night 2 onward.",
+      "The kill from your previous night's list is in addition to this night's choice.",
+      "CHOSEN reminders mark your list; DEAD reminders mark this night's kills."
+    ],
+    "howToRun": [
+      "Each night, wake the Warden. They point to up to 3 players. Update the CHOSEN reminders.",
+      "Check: did any player from last night's list die today (by execution)? If yes, all players from last night's list die tonight.",
+      "If no one from last night's list died today, only 1 of last night's 3 choices dies tonight (Storyteller's choice).",
+      "The new list is set for the following night."
+    ],
+    "examples": [
+      "Night 2: the Warden's night 1 list had players A, B, C. Player B was executed today — all three (A, B, C) die tonight.",
+      "Night 2: none of A, B, C were executed today. One of them (the Storyteller chooses) dies tonight.",
+      "The Warden lists A, B, C. All three survive the day. Only A dies tonight. The Warden updates their list for tomorrow."
+    ],
+    "tips": [
+      "Front-load your list with players you don't care about killing — if the town executes one, you get a triple kill for free.",
+      "Include yourself on the list occasionally — if you're executed, the triple kill fires. This creates a serious deterrent.",
+      "Pay attention to which players the town is likely to nominate. Listing them ensures maximum collateral damage on an execution.",
+      "If you can predict who gets executed, you can set up devastating night kills. Coordination with Minions who can influence nominations is valuable."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 46.1,
+    "firstNightReminder": "The Warden chooses up to 3 players. :reminder: :reminder: :reminder:",
+    "otherNight": 55.221,
+    "otherNightReminder": "1 or 2 chosen players die. :reminder: :reminder: The Warden chooses up to 3 players. :reminder: :reminder: :reminder:",
+    "reminders": [
+      "Chosen",
+      "Chosen",
+      "Chosen",
+      "Dead",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "conspirator",
+    "name": "Conspirator",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If you didn’t vote today, choose an additional player: they die.",
+    "art": "art/conspirator.png",
+    "page": "character.html?c=conspirator",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/conspirator.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Conspirator kills methodically — and when they hold their tongue all day, the night grows twice as deadly.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player: they die. If you did not vote today, choose an additional player: they also die.",
+      "Not voting grants you a bonus kill — up to 2 kills per night.",
+      "The DID NOT VOTE reminder tracks your voting status each day.",
+      "Two DEAD reminders track both potential kills."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Conspirator. They point to a player — that player dies. Check the DID NOT VOTE reminder: if the Conspirator abstained from all votes today, they may point to a second player who also dies.",
+      "Reset the DID NOT VOTE reminder each dawn.",
+      "If the Conspirator voted at least once today, only one kill occurs."
+    ],
+    "examples": [
+      "The Conspirator did not vote today. That night they kill both the Empath and the Slayer — two kills.",
+      "The Conspirator voted to execute the Monk. That night they can only kill one player.",
+      "The Conspirator abstained all day. The Demon is also killing tonight — three total deaths."
+    ],
+    "tips": [
+      "Abstaining from votes is suspicious. Find cover stories — claim you forgot, claim you were strategically saving your vote, or coordinate with Minions to make it seem ordinary.",
+      "Save your double kill for critical moments. Eliminating two powerful information roles in one night is devastating.",
+      "On nights you can't afford two kills, vote openly to stay under cover — single kills are still highly effective.",
+      "If the town notices you never vote, they may suspect a Conspirator. Mix your voting pattern to avoid the tell."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.223,
+    "otherNightReminder": "The Conspirator chooses a player. :reminder: If the Conspirator did not vote today, they choose an additional player. :reminder:",
+    "reminders": [
+      "Did Not Vote",
+      "Dead",
+      "Dead"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "tyrant",
+    "name": "Tyrant",
+    "team": "demon",
+    "ability": "Each night*, choose 0 to 2 players: they die. Your choices cannot equal the number of deaths last night (max 2).",
+    "art": "art/tyrant.png",
+    "page": "character.html?c=tyrant",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/tyrant.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Tyrant rules by pattern — the town thinks they know the death toll, but the Tyrant keeps them forever guessing.",
+    "summaryBullets": [
+      "Each night (not the first), choose 0 to 2 players: they die. Your choice cannot equal the number of players who died last night (capped at 2).",
+      "If 0 players died last night, you must kill at least 1 tonight.",
+      "If 1 player died last night, you must kill 0 or 2 tonight (not 1).",
+      "If 2 or more died last night, you must kill 0 or 1 tonight (not 2).",
+      "Reminder tokens track the previous night's death count: 0 DIED LAST NIGHT, 1 DIED LAST NIGHT, 2+ DIED LAST NIGHT."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Tyrant. They choose 0, 1, or 2 players to kill — but their choice cannot match the previous night's death count (max 2).",
+      "Update the death count reminder at dawn based on how many actually died that night (including other sources).",
+      "If the Tyrant chooses an invalid number, prompt them to choose again."
+    ],
+    "examples": [
+      "Night 2: 1 player died last night. The Tyrant must kill 0 or 2 tonight — they cannot kill exactly 1.",
+      "Night 3: 0 players died last night (the Tyrant killed 0 and no other deaths). The Tyrant must kill at least 1.",
+      "Night 4: The Tyrant killed 2 last night; the Monk also protected someone so effectively 2 died. The Tyrant can kill 0 or 1 tonight."
+    ],
+    "tips": [
+      "The pattern restriction creates a predictability paradox — the town thinks they can predict your kill count, but you're always varying it.",
+      "0-kill nights are powerful misdirection. If the town expects kills and nobody dies, confusion ensues.",
+      "Coordinate the death count with Minions. If a Minion kills someone that night, your restriction is based on total deaths — plan accordingly.",
+      "The Tyrant is strongest when the town thinks they understand the pattern. Disrupt their assumptions by breaking expected sequences."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.224,
+    "otherNightReminder": "The Tyrant chooses 0, 1 or 2 players. :reminder: :reminder:",
+    "reminders": [
+      "Dead",
+      "Dead",
+      "0 Died Last Night",
+      "1 Died Last Night",
+      "2+ Died Last Night"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "guhuo",
+    "name": "Guhuo",
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Once per game, when a Minion dies by execution, you might gain their ability.",
+    "art": "art/guhuo.png",
+    "page": "character.html?c=guhuo",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/guhuo.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Guhuo hunts each night — and when a Minion falls to justice, it may claim their power as a parting gift.",
+    "summaryBullets": [
+      "Each night (not the first), choose a player: they die.",
+      "Once per game, when a Minion dies by execution during the day, you might gain their ability.",
+      "The ability gain is a 'might' — the Storyteller decides whether it occurs.",
+      "DEAD marks your kill; HAS ABILITY marks your gained ability; ONCE marks when the ability gain has been used."
+    ],
+    "howToRun": [
+      "Each night (not the first), wake the Guhuo. They point to a player — that player dies.",
+      "If a Minion is executed during the day, decide whether the Guhuo gains their ability. If so, place HAS ABILITY on the Guhuo and ONCE to indicate the trigger is spent.",
+      "The Guhuo now has both their kill ability and the Minion's ability simultaneously, until the HAS ABILITY expires or the Guhuo dies."
+    ],
+    "examples": [
+      "The Poisoner is executed today. The Storyteller decides the Guhuo gains the Poisoner's ability — that night the Guhuo kills one player and poisons another.",
+      "The Baron is executed. The Storyteller decides not to grant the Baron's ability — the Guhuo kills normally.",
+      "The Guhuo already gained a Minion ability in a previous game. A second Minion is executed — the ONCE token is already spent, no second gain."
+    ],
+    "tips": [
+      "The prospect of gaining a Minion's ability incentivizes the town to not execute Minions — use this psychology.",
+      "If a Minion is about to be executed, signal to your team whether you want the ability. Some Minion abilities are worth gaining, others aren't.",
+      "A Guhuo with a Poisoner ability is extremely dangerous — double-poisoning plus kills each night.",
+      "The town should try to figure out if the Guhuo has gained an ability. Extra poisoning or unexpected effects may tip them off."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 55.225,
+    "otherNightReminder": "The Guhuo chooses a player. :reminder: The Guhuo might wake due to their Minion ability.",
+    "reminders": [
+      "Dead",
+      "Has Ability",
+      "Once"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "outlaw",
+    "name": "Outlaw",
+    "team": "traveller",
+    "ability": "Each night*, a player who interrupted you today becomes drunk until dawn, even if you are dead.",
+    "art": "art/outlaw.png",
+    "page": "character.html?c=outlaw",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/outlaw.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Outlaw has no patience for interruptions — anyone who dares cut them off wakes the next day foggy and unreliable.",
+    "summaryBullets": [
+      "Each night (not the first), a player who interrupted you today becomes drunk until dawn.",
+      "Up to 3 players can be made drunk this way if multiple players interrupted during the day.",
+      "This is a Traveller ability — the town may exile you.",
+      "The effect persists even if you are dead."
+    ],
+    "howToRun": [
+      "Track any players who publicly interrupt the Outlaw during the day (talking over them, cutting off their speech, etc.).",
+      "Each night (not the first), place DRUNK reminders on all players who interrupted. They are drunk until dawn.",
+      "At dawn, remove all DRUNK reminders.",
+      "If the Outlaw is exiled, the ability may or may not continue depending on your rules."
+    ],
+    "examples": [
+      "Two players talk over the Outlaw during their statement. Both are drunk that night — their abilities give false information.",
+      "No one interrupts the Outlaw today. No one is made drunk tonight.",
+      "The Outlaw is dead but was not exiled. A player interrupts their posthumous statement — they are still made drunk."
+    ],
+    "tips": [
+      "As the Outlaw, make important statements that require careful listening. Baiting interruptions can be tactically useful — or not, depending on who you want drunk.",
+      "As a good player, be careful interrupting the Outlaw. Getting drunk at a critical moment can cost your team pivotal information.",
+      "Evil players may deliberately interrupt the Outlaw to make key good roles drunk on important nights.",
+      "The Outlaw can be a powerful ally of good by making evil interrupting players drunk. Or an irritant, if they disrupt good strategy."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 6.11,
+    "otherNightReminder": "A player might become drunk. :reminder:",
+    "reminders": [
+      "Drunk",
+      "Drunk",
+      "Drunk"
+    ],
+    "setup": false
+  },
+  {
+    "slug": "messenger",
+    "name": "Messenger",
+    "team": "fabled",
+    "ability": "There are no restrictions on abilities that require players to make a choice.",
+    "art": "art/messenger.png",
+    "page": "character.html?c=messenger",
+    "image": [
+      "https://botchomebrew.wiki/assets/art/messenger.png"
+    ],
+    "creator": "Gstone Games",
+    "appearsIn": "Festival of Lanterns — The Storm Is Coming",
+    "tags": "The Storm Is Coming",
+    "lede": "The Messenger removes all barriers — every ability that needed perfect conditions now works without them.",
+    "summaryBullets": [
+      "All restrictions on abilities that require players to make a choice are removed.",
+      "This is a Fabled character — it is public information and affects all players.",
+      "Examples of lifted restrictions: the Snake Charmer can choose dead players, the Devil's Advocate can choose themselves, the Undertaker can check players not yet revealed."
+    ],
+    "howToRun": [
+      "Announce at the start of the game that the Messenger is in play.",
+      "Whenever any ability has a restriction on whom it can target or what choices can be made, ignore that restriction. All choices are unrestricted.",
+      "This applies to all characters — good and evil."
+    ],
+    "examples": [
+      "The Snake Charmer normally cannot choose dead players. With the Messenger in play, they can.",
+      "The Devil's Advocate normally cannot choose themselves. With the Messenger, they can.",
+      "The Investigator normally cannot choose the same pair two nights in a row (if such a restriction exists). With the Messenger, they can repeat."
+    ],
+    "tips": [
+      "The Messenger removes restrictions for everyone — this can benefit evil as much as good. Know what restrictions are lifted for the evil team too.",
+      "Coordinate around the lifted restrictions. Good abilities that were previously constrained may now be far more powerful.",
+      "As the Storyteller, announce the Messenger clearly at the start — players need to know their full options.",
+      "Some restrictions are there for balance reasons. Removing them changes the game dynamics significantly — prepare for unexpected interactions."
+    ],
+    "edition": "storm-is-coming",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
     "setup": false
   }
 ]
