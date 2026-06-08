@@ -89,7 +89,48 @@
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';
     }
-    function normalizeCollection(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    // Shared collection definitions — must match index.html exactly
+    var AC_COLLECTIONS = [
+      { slug: 'Fall of Rome', displayName: 'Fall of Rome',
+        match: ['fallofrome'] },
+      { slug: 'Festival of Lanterns — Temple Fair', displayName: 'Temple Fair',
+        match: ['festivaloflanternstemplefair','templefair'] },
+      { slug: 'Festival of Lanterns — The Storm Is Coming', displayName: 'The Storm Is Coming',
+        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
+      { slug: 'Ravenswood Chronicle', displayName: 'Ravenswood Chronicle',
+        match: ['ravenswoodchronicle','ravenswoodchronicles'] },
+      { slug: "A Midsummer Night's Dream", displayName: "A Midsummer Night's Dream",
+        match: ['amidsummernightsdream','midsummernightsdream','babybusamidsummernightsdream'] },
+      { slug: 'Travel by Starlight', displayName: 'Travel by Starlight',
+        match: ['travelbystarlight'] },
+      { slug: 'Standalone', displayName: 'Standalone Characters',
+        match: [] }  // special: chars with no known collection
+    ];
+    // Resolve a collection param to its definition using slug or match arrays
+    function findCollection(param) {
+      if (!param) return null;
+      var n = norm(param);
+      for (var i = 0; i < AC_COLLECTIONS.length; i++) {
+        var c = AC_COLLECTIONS[i];
+        if (norm(c.slug) === n || norm(c.displayName) === n) return c;
+        if (c.match.indexOf(n) !== -1) return c;
+      }
+      return null;
+    }
+    function charMatchesCollection(c, coll) {
+      if (!coll) return true;
+      if (coll.slug === 'Standalone') {
+        // standalone = no recognized collection
+        var a = norm(c.appearsIn);
+        if (!a) return true;
+        for (var i = 0; i < AC_COLLECTIONS.length - 1; i++) {  // skip Standalone itself
+          if (AC_COLLECTIONS[i].match.indexOf(a) !== -1) return false;
+        }
+        return true;
+      }
+      return coll.match.indexOf(norm(c.appearsIn)) !== -1;
+    }
     var COLLECTION_PARAM = (function(){
       try { var p = new URLSearchParams(location.search).get('collection'); return p ? decodeURIComponent(p) : null; }
       catch (e) { return null; }
@@ -227,16 +268,17 @@
     fetch('characters.json?_=' + Date.now())
       .then(function (r) { return r.json(); })
       .then(function (list) {
-        if (COLLECTION_PARAM) {
-          var target = normalizeCollection(COLLECTION_PARAM);
-          list = list.filter(function (c) { return normalizeCollection(c.appearsIn) === target; });
+                var activeCollection = findCollection(COLLECTION_PARAM);
+        if (activeCollection) {
+          list = list.filter(function (c) { return charMatchesCollection(c, activeCollection); });
+          var displayName = activeCollection.displayName;
           var t = document.getElementById('hero-title');
           var st = document.getElementById('hero-subtitle');
           var cr = document.getElementById('crumb-here');
-          if (t) t.textContent = COLLECTION_PARAM;
+          if (t) t.textContent = displayName;
           if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
-          if (cr) cr.textContent = COLLECTION_PARAM;
-          document.title = COLLECTION_PARAM + ' — BOTC HomeBrew Wiki';
+          if (cr) cr.textContent = displayName;
+          document.title = displayName + ' — BOTC HomeBrew Wiki';
         }
         FULL = list;
         buildFilterBar(list);
