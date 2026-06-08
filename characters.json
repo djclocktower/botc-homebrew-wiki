@@ -5,7 +5,7 @@
     "team": "minion",
     "ability": "2 Outsiders are Evil, learn each other, and may lose their abilities (they learn this). [+1 or +2 Outsiders, -1 Folie à Deux]",
     "art": "emblem.png",
-    "page": "character.html?c=folie-a-deux",
+    "page": "c/folie-a-deux.html",
     "image": "https://botchomebrew.wiki/assets/emblem.png",
     "creator": "dj_dj_dj",
     "appearsIn": "",
@@ -91,7 +91,7 @@
     "team": "townsfolk",
     "ability": "If evil wins, even if you are dead, all players make a hand signal. If most match & the Demon's doesn't, good wins instead.",
     "art": "larev_char_art.png",
-    "page": "character.html?c=la-revolution",
+    "page": "c/la-revolution.html",
     "image": "https://botchomebrew.wiki/assets/larev_char_art.png",
     "creator": "",
     "appearsIn": "",
@@ -140,7 +140,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. Chosen Minions swap characters with you if an Outsider lives, who then dies. [+1 Outsider]",
     "art": "hemo_char_art.png",
-    "page": "character.html?c=hemomagus",
+    "page": "c/hemomagus.html",
     "image": "https://botchomebrew.wiki/assets/hemo_char_art.png",
     "creator": "DJ_DJ_DJ",
     "appearsIn": "Ravenswood Chronicle",
@@ -223,7 +223,7 @@
     "team": "outsider",
     "ability": "When you die, if the next player to die is the Demon, your team loses. (Not on the last day.)",
     "art": "art/martyr.png",
-    "page": "character.html?c=martyr",
+    "page": "c/martyr.html",
     "creator": "DJ_DJ_DJ",
     "lede": "The Martyr’s sacrifice for their belief must be honored.",
     "summaryBullets": [
@@ -264,7 +264,7 @@
     "team": "outsider",
     "ability": "Evil players & the Storyteller may make wishes. Once per game (or if you die by execution), privately learn them & grant 1.",
     "art": "art/pozzo.png",
-    "page": "character.html?c=pozzo",
+    "page": "c/pozzo.html",
     "image": "https://botchomebrew.wiki/assets/art/pozzo.png",
     "creator": "Dj_Dj_Dj",
     "lede": "The Pozzo grants wishes",
@@ -309,7 +309,7 @@
     "team": "townsfolk",
     "ability": "Once per game, at night, you may choose to gain the ability of a non-listed character that will benefit the losing alignment. You learn which.",
     "art": "art/herbalist.png",
-    "page": "character.html?c=herbalist",
+    "page": "c/herbalist.html",
     "image": "https://botchomebrew.wiki/assets/art/herbalist.png",
     "creator": "Harry & Co. & Bendan",
     "lede": "The herbalist gets power from the earth",
@@ -352,7 +352,7 @@
     "team": "townsfolk",
     "ability": "Once per game, at night, choose a player or an evil character: they learn a Perfumer is in play.",
     "art": "art/perfumer.png",
-    "page": "character.html?c=perfumer",
+    "page": "c/perfumer.html",
     "image": "https://botchomebrew.wiki/assets/art/perfumer.png",
     "creator": "Taiyi",
     "appearsIn": "Babybus, A Midsummer Night's Dream",
@@ -410,7 +410,7 @@
     "team": "townsfolk",
     "ability": "Each day, you may publicly choose a player: they die tonight unless another player objects.",
     "art": "art/jackal.png",
-    "page": "character.html?c=jackal",
+    "page": "c/jackal.html",
     "image": "https://botchomebrew.wiki/assets/art/jackal.png",
     "creator": "DJ_DJ_DJ",
     "lede": "The Jackal picks off loners.",
@@ -449,7 +449,7 @@
     "team": "outsider",
     "ability": "Each day, privately ask a yes/no question. All but 1 Acolyte are drunk till dusk. [Acolytes might replace info characters]",
     "art": "art/acolyte.png",
-    "page": "character.html?c=acolyte",
+    "page": "c/acolyte.html",
     "image": "https://botchomebrew.wiki/assets/art/acolyte.png",
     "creator": "",
     "lede": "The Acolyte is still learning.",
@@ -513,7 +513,7 @@
     "team": "townsfolk",
     "ability": "You start knowing a player. Each night*, you learn the alignment of their most recent nomination.",
     "art": "art/sculptor-fall-of-rome.png",
-    "page": "character.html?c=sculptor-fall-of-rome",
+    "page": "c/sculptor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/sculptor-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Sculptor learns the alignment of players that their sculpture has nominated during the day.",
@@ -555,7 +555,7 @@
     "team": "townsfolk",
     "ability": "You start knowing 1 good & 1 evil character, 1 of which is in-play. When they die, that night you learn 1 good & 1 evil character, 1 of which is in-play.",
     "art": "art/vestal-virgin-fall-of-rome.png",
-    "page": "character.html?c=vestal-virgin-fall-of-rome",
+    "page": "c/vestal-virgin-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/vestal-virgin-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Vestal Virgin learns an in-play and out-of-play character. They learn more if the in-play character dies.",
@@ -596,7 +596,7 @@
     "team": "townsfolk",
     "ability": "Each night, choose two players (not yourself): they are sober, healthy & get true info tonight. The 1st time the Demon kills one, you learn the Demon type.",
     "art": "art/physician-fall-of-rome.png",
-    "page": "character.html?c=physician-fall-of-rome",
+    "page": "c/physician-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/physician-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Physician ensures their team gets correct information.",
@@ -637,7 +637,7 @@
     "team": "townsfolk",
     "ability": "Each night, you learn how many living evil players are sat clockwise between yourself and the next living Legionary. [+0 to +2 Legionary]",
     "art": "art/legionary-fall-of-rome.png",
-    "page": "character.html?c=legionary-fall-of-rome",
+    "page": "c/legionary-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/legionary-fall-of-rome.png",
     "creator": "Alex",
     "lede": "There may be up to three Legionaries in play. Each learns how many living evil players are sat between them.",
@@ -676,7 +676,7 @@
     "team": "townsfolk",
     "ability": "Each night*, you learn how many evil players publicly claimed to be Spartacus today.",
     "art": "art/trumpeter-fall-of-rome.png",
-    "page": "character.html?c=trumpeter-fall-of-rome",
+    "page": "c/trumpeter-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/trumpeter-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Trumpeter learns how many of the Spartacus claims are evil.",
@@ -717,7 +717,7 @@
     "team": "townsfolk",
     "ability": "Each night*, if a player died by execution today you learn if either of their living neighbours are evil.",
     "art": "art/mortician-fall-of-rome.png",
-    "page": "character.html?c=mortician-fall-of-rome",
+    "page": "c/mortician-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/mortician-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Mortician learns if a player's living neighbours are evil when the player dies by execution.",
@@ -758,7 +758,7 @@
     "team": "townsfolk",
     "ability": "When you are nominated, you may make a unique public statement about the nominator (not yourself). Tonight, you learn if the statement was true.",
     "art": "art/standard-bearer-fall-of-rome.png",
-    "page": "character.html?c=standard-bearer-fall-of-rome",
+    "page": "c/standard-bearer-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/standard-bearer-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Standard Bearer learns whether their public statement is true or false about the player that nominates them.",
@@ -804,7 +804,7 @@
     "team": "townsfolk",
     "ability": "If you nominate & execute a living player, their team loses. You are safe from the Demon. If you publicly claimed to be Spartacus today, you are drunk until dawn.",
     "art": "art/centurion-fall-of-rome.png",
-    "page": "character.html?c=centurion-fall-of-rome",
+    "page": "c/centurion-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/centurion-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Centurion can end the game at any point with their nomination.",
@@ -845,7 +845,7 @@
     "team": "townsfolk",
     "ability": "Once per game, at night*, choose to learn the characters of players that have nominated you.",
     "art": "art/merchant-fall-of-rome.png",
-    "page": "character.html?c=merchant-fall-of-rome",
+    "page": "c/merchant-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/merchant-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Merchant chooses when to learn all the characters that have nominated them — but only once.",
@@ -886,7 +886,7 @@
     "team": "townsfolk",
     "ability": "Once per game, during the day, publicly choose a living player. Tonight, you and they wake & silently play roshambo: whoever loses dies (someone must lose).",
     "art": "art/gladiator-fall-of-rome.png",
-    "page": "character.html?c=gladiator-fall-of-rome",
+    "page": "c/gladiator-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/gladiator-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Gladiator challenges players to a fight to the death.",
@@ -931,7 +931,7 @@
     "team": "townsfolk",
     "ability": "Once per game, during the day, publicly guess 3 players' character types (not yourself, 1 guess per type). That night, you learn how many you got correct.",
     "art": "art/actor-fall-of-rome.png",
-    "page": "character.html?c=actor-fall-of-rome",
+    "page": "c/actor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/actor-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Actor publicly guesses the character types of three people, learning how many they got right that night.",
@@ -974,7 +974,7 @@
     "team": "townsfolk",
     "ability": "The 1st time the Demon kills you, you live & gain a not-in-play Townsfolk ability.",
     "art": "art/blacksmith-fall-of-rome.png",
-    "page": "character.html?c=blacksmith-fall-of-rome",
+    "page": "c/blacksmith-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/blacksmith-fall-of-rome.png",
     "creator": "Alex",
     "lede": "If the Blacksmith is killed by the Demon they live and gain a new ability.",
@@ -1016,7 +1016,7 @@
     "team": "townsfolk",
     "ability": "The 1st time you nominate a living Outsider, they immediately become a not-in-play Townsfolk. [+1 Outsider]",
     "art": "art/scholar-fall-of-rome.png",
-    "page": "character.html?c=scholar-fall-of-rome",
+    "page": "c/scholar-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/scholar-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Scholar converts the first Outsider they nominate into a not-in-play Townsfolk.",
@@ -1059,7 +1059,7 @@
     "team": "outsider",
     "ability": "You start knowing a player: if either of you are executed, all Townsfolk are drunk until dusk tomorrow.",
     "art": "art/the-twins-fall-of-rome.png",
-    "page": "character.html?c=the-twins-fall-of-rome",
+    "page": "c/the-twins-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/the-twins-fall-of-rome.png",
     "creator": "Alex",
     "lede": "If either of Romulus or Remus are executed, all Townsfolk become drunk.",
@@ -1103,7 +1103,7 @@
     "team": "outsider",
     "ability": "Your Townsfolk neighbours are drunk, but every other night, you are drunk until dusk, even if you are dead.",
     "art": "art/winemaker-fall-of-rome.png",
-    "page": "character.html?c=winemaker-fall-of-rome",
+    "page": "c/winemaker-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/winemaker-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Every other day the Winemaker drunkens their closest Townsfolk neighbours — but they don't know which day it starts.",
@@ -1146,7 +1146,7 @@
     "team": "outsider",
     "ability": "If an evil player guesses you (once), your team loses. You might register as a Townsfolk; each day, if you did not publicly claim to be Spartacus, you don't.",
     "art": "art/spartacus-fall-of-rome.png",
-    "page": "character.html?c=spartacus-fall-of-rome",
+    "page": "c/spartacus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/spartacus-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Spartacus has to hide from the evil team, otherwise they risk losing the game for good.",
@@ -1189,7 +1189,7 @@
     "team": "outsider",
     "ability": "You do not know you are a Bad Omen. You think you are a Townsfolk, but you receive false information. You might register as evil, even if dead.",
     "art": "art/bad-omen-fall-of-rome.png",
-    "page": "character.html?c=bad-omen-fall-of-rome",
+    "page": "c/bad-omen-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/bad-omen-fall-of-rome.png",
     "creator": "Alex",
     "lede": "A Bad Omen thinks that they are a Townsfolk. They have no idea that they are actually a Bad Omen.",
@@ -1232,7 +1232,7 @@
     "team": "minion",
     "ability": "On your 1st night choose two players: they learn that they were chosen. The 1st time one of them dies by execution, the other becomes evil that night.",
     "art": "art/temptress-fall-of-rome.png",
-    "page": "character.html?c=temptress-fall-of-rome",
+    "page": "c/temptress-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/temptress-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Temptress seduces two players to join their team — however only one can become evil.",
@@ -1275,7 +1275,7 @@
     "team": "minion",
     "ability": "Each night, choose a player: you learn their character. The 1st player you choose twice in this way, dies. [+ Spartacus]",
     "art": "art/haruspex-fall-of-rome.png",
-    "page": "character.html?c=haruspex-fall-of-rome",
+    "page": "c/haruspex-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/haruspex-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Haruspex learns a player and their character one day at a time. On a single occasion the Haruspex gets to kill a player they have learnt.",
@@ -1319,7 +1319,7 @@
     "team": "minion",
     "ability": "You might register as good. Until dawn, players you nominate register as the opposing alignment & if a Townsfolk, are also poisoned.",
     "art": "art/glykon-fall-of-rome.png",
-    "page": "character.html?c=glykon-fall-of-rome",
+    "page": "c/glykon-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/glykon-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Glykon can misregister players and themselves, even poisoning good players in the process.",
@@ -1360,7 +1360,7 @@
     "team": "minion",
     "ability": "If a Townsfolk nominates you, they immediately become a Bad Omen.",
     "art": "art/augur-fall-of-rome.png",
-    "page": "character.html?c=augur-fall-of-rome",
+    "page": "c/augur-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/augur-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Augur turns Townsfolk into Outsiders — specifically the Bad Omen.",
@@ -1400,7 +1400,7 @@
     "team": "demon",
     "ability": "Each night, choose two players: if they nominate tomorrow, they die that night. Each day, if a good player (Travellers don't count) does not nominate, evil wins.",
     "art": "art/cleopatra-fall-of-rome.png",
-    "page": "character.html?c=cleopatra-fall-of-rome",
+    "page": "c/cleopatra-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/cleopatra-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Cleopatra selects two players: if they nominate tomorrow they die. If no good player nominates, evil wins.",
@@ -1444,7 +1444,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. If the 1st Crassus publicly claims to be Spartacus & dies with 5 or more players alive, an evil player becomes Crassus.",
     "art": "art/crassus-fall-of-rome.png",
-    "page": "character.html?c=crassus-fall-of-rome",
+    "page": "c/crassus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/crassus-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Crassus kills a player each night, and if caught is able to make a copy of themselves — albeit publicly.",
@@ -1487,7 +1487,7 @@
     "team": "demon",
     "ability": "You think you are a good character, but you are not. Minions learn 3 bluffs. Each night*, a player might die. The 1st Hannibal to die, becomes good. [+1 Hannibal]",
     "art": "art/hannibal-fall-of-rome.png",
-    "page": "character.html?c=hannibal-fall-of-rome",
+    "page": "c/hannibal-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/hannibal-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Hannibal believes that they are a good player but they are actually the Demon.",
@@ -1532,7 +1532,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. The 1st time an evil player dies by execution, that night, choose an additional player: they die.",
     "art": "art/caesar-fall-of-rome.png",
-    "page": "character.html?c=caesar-fall-of-rome",
+    "page": "c/caesar-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/caesar-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Caesar kills a player each night, and the first time an evil player died by execution today, they kill another.",
@@ -1575,7 +1575,7 @@
     "team": "traveller",
     "ability": "Each night*, gain the ability of a player who publicly claimed Spartacus today. If a Mercenary is exiled, you are exiled too. [+1 Mercenary of opposing alignment]",
     "art": "art/mercenary-fall-of-rome.png",
-    "page": "character.html?c=mercenary-fall-of-rome",
+    "page": "c/mercenary-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/mercenary-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Mercenaries gain abilities dependent on the town's claims — however if one is exiled the other is too.",
@@ -1618,7 +1618,7 @@
     "team": "traveller",
     "ability": "Each night*, choose a player: 1) they become a not-in-play character of the same type, or 2) they swap characters with a player of the same type.",
     "art": "art/architect-fall-of-rome.png",
-    "page": "character.html?c=architect-fall-of-rome",
+    "page": "c/architect-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/architect-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Architect swaps or replaces player tokens at night.",
@@ -1657,7 +1657,7 @@
     "team": "traveller",
     "ability": "Each day, after the 1st execution, you may publicly choose a dead player: they may nominate. If the majority of the dead and yourself agree, they are executed.",
     "art": "art/sibyl-fall-of-rome.png",
-    "page": "character.html?c=sibyl-fall-of-rome",
+    "page": "c/sibyl-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/sibyl-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Sibyl consults with the dead, letting them nominate and execute players.",
@@ -1695,7 +1695,7 @@
     "team": "traveller",
     "ability": "Each day, publicly choose a unique living player to bless: if a majority of players agree, something good happens to them.",
     "art": "art/high-priest-1-fall-of-rome.png",
-    "page": "character.html?c=high-priest-1-fall-of-rome",
+    "page": "c/high-priest-1-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/high-priest-1-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
@@ -1738,7 +1738,7 @@
     "team": "traveller",
     "ability": "Each day, publicly choose a unique living player to bless: if a majority of players agree, tomorrow they may learn a statement. Tonight, choose if it's true.",
     "art": "art/high-priest-2-fall-of-rome.png",
-    "page": "character.html?c=high-priest-2-fall-of-rome",
+    "page": "c/high-priest-2-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/high-priest-2-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
@@ -1779,7 +1779,7 @@
     "team": "traveller",
     "ability": "Each day, choose the 1st execution's outcome. If you choose to protect today's execution: they survive. Otherwise, tonight you learn their alignment.",
     "art": "art/emperor-fall-of-rome.png",
-    "page": "character.html?c=emperor-fall-of-rome",
+    "page": "c/emperor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/emperor-fall-of-rome.png",
     "creator": "Alex",
     "lede": "The Emperor decides the outcome of the executions — with a thumbs up or a thumbs down.",
@@ -1817,7 +1817,7 @@
     "team": "fabled",
     "ability": "Each day, up to half the living players (rounded up & Travellers don't count) may publicly claim to be Spartacus.",
     "art": "art/i-am-spartacus-fall-of-rome.png",
-    "page": "character.html?c=i-am-spartacus-fall-of-rome",
+    "page": "c/i-am-spartacus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/i-am-spartacus-fall-of-rome.png",
     "creator": "Alex",
     "lede": "Living players may publicly stake their claim as Spartacus each day.",
@@ -1861,7 +1861,7 @@
     "team": "townsfolk",
     "ability": "Each day, publicly choose any living players: recently chosen Townsfolk are drunk. Each night*, learn how many are drunk this way.",
     "art": "art/bard.png",
-    "page": "character.html?c=bard",
+    "page": "c/bard.html",
     "image": "https://botchomebrew.wiki/assets/art/bard.png",
     "creator": "Taiyi",
     "lede": "The Bard can get Townsfolk drunk to learn their numbers.",
@@ -1914,7 +1914,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. The 1st time you choose each dead player, they choose 2 players: chosen non-demons die.",
     "art": "art/archlich.png",
-    "page": "character.html?c=archlich",
+    "page": "c/archlich.html",
     "image": "https://botchomebrew.wiki/assets/art/archlich.png",
     "creator": "Taiyi",
     "lede": "The Archlich can infuse corpses with energy, granting them tremendous power. The Archlich may give up their own kill, allowing a corpse to act in their place — killing 2 players that night. However, the corpse controls who dies, and each corpse can only be used once.",
@@ -1968,7 +1968,7 @@
     "team": "townsfolk",
     "ability": "If you are chosen by a character’s ability at night, an evil player will be targeted instead.",
     "art": "art/ban-xian.png",
-    "page": "character.html?c=ban-xian",
+    "page": "c/ban-xian.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/ban-xian.png"
     ],
@@ -2032,7 +2032,7 @@
     "team": "townsfolk",
     "ability": "If you are mad that you are a good character: tonight, you might gain their ability until dusk (once per character).",
     "art": "art/face-changer.png",
-    "page": "character.html?c=face-changer",
+    "page": "c/face-changer.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/face-changer.png"
     ],
@@ -2085,7 +2085,7 @@
     "team": "townsfolk",
     "ability": "Each night*, guess your number of steps to the 1st to die tonight: if correct, you might die tonight, but no one else.",
     "art": "art/firewatcher.png",
-    "page": "character.html?c=firewatcher",
+    "page": "c/firewatcher.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/firewatcher.png"
     ],
@@ -2148,7 +2148,7 @@
     "team": "townsfolk",
     "ability": "You start knowing 2 good players: 1 is drunk, even if you are dead.",
     "art": "art/waiter.png",
-    "page": "character.html?c=waiter",
+    "page": "c/waiter.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/waiter.png"
     ],
@@ -2196,7 +2196,7 @@
     "team": "townsfolk",
     "ability": "Once per game, during the day, publicly choose any volunteers. If a Demon is chosen, you die tonight.",
     "art": "art/singer.png",
-    "page": "character.html?c=singer",
+    "page": "c/singer.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/singer.png"
     ],
@@ -2245,7 +2245,7 @@
     "team": "townsfolk",
     "ability": "Each night, the 1st time an evil ability begins affecting one of your alive neighbors, it fails: you learn when this happens.",
     "art": "art/abbot.png",
-    "page": "character.html?c=abbot",
+    "page": "c/abbot.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/abbot.png"
     ],
@@ -2306,7 +2306,7 @@
     "team": "townsfolk",
     "ability": "Each night*, choose a player: until dusk, if they die, you die instead.",
     "art": "art/brocadier.png",
-    "page": "character.html?c=brocadier",
+    "page": "c/brocadier.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/brocadier.png"
     ],
@@ -2355,7 +2355,7 @@
     "team": "townsfolk",
     "ability": "Each night, choose a player (not yourself): you learn a word related to their ability.",
     "art": "art/herb-doctor.png",
-    "page": "character.html?c=herb-doctor",
+    "page": "c/herb-doctor.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/herb-doctor.png"
     ],
@@ -2401,7 +2401,7 @@
     "team": "townsfolk",
     "ability": "You start knowing if your closest evil player is clockwise, anti-clockwise or equal. If they neighbor you, this info is false.",
     "art": "art/stargazer.png",
-    "page": "character.html?c=stargazer",
+    "page": "c/stargazer.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/stargazer.png"
     ],
@@ -2447,7 +2447,7 @@
     "team": "townsfolk",
     "ability": "You think you are an Outsider. If affected by an evil player’s ability, you first become a not-in-play Townsfolk.",
     "art": "art/enlightened-one.png",
-    "page": "character.html?c=enlightened-one",
+    "page": "c/enlightened-one.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/enlightened-one.png"
     ],
@@ -2506,7 +2506,7 @@
     "team": "townsfolk",
     "ability": "Each night, choose a Townsfolk character: their ability yields false info until dusk.",
     "art": "art/rascal.png",
-    "page": "character.html?c=rascal",
+    "page": "c/rascal.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/rascal.png"
     ],
@@ -2553,7 +2553,7 @@
     "team": "townsfolk",
     "ability": "You start knowing 2 good & 2 evil characters, exactly 2 of which are in play.",
     "art": "art/yinyang-diviner.png",
-    "page": "character.html?c=yinyang-diviner",
+    "page": "c/yinyang-diviner.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/yinyang-diviner.png"
     ],
@@ -2599,7 +2599,7 @@
     "team": "outsider",
     "ability": "On your 1st night, choose another player. The 1st time one of you dies by execution, the other turns evil that night.",
     "art": "art/turncoat.png",
-    "page": "character.html?c=turncoat",
+    "page": "c/turncoat.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/turncoat.png"
     ],
@@ -2647,7 +2647,7 @@
     "team": "outsider",
     "ability": "If you die, 1 alive neighbor might die tonight.",
     "art": "art/lummox.png",
-    "page": "character.html?c=lummox",
+    "page": "c/lummox.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/lummox.png"
     ],
@@ -2693,7 +2693,7 @@
     "team": "outsider",
     "ability": "When an evil player is chosen by an ability at night, you might be targeted instead (once per night), even if dead.",
     "art": "art/ambassador.png",
-    "page": "character.html?c=ambassador",
+    "page": "c/ambassador.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/ambassador.png"
     ],
@@ -2747,7 +2747,7 @@
     "team": "outsider",
     "ability": "The Demon knows you’re in play. If they privately guess you (once): tonight, they may choose a player to die (even if you die).",
     "art": "art/pedant.png",
-    "page": "character.html?c=pedant",
+    "page": "c/pedant.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/pedant.png"
     ],
@@ -2796,7 +2796,7 @@
     "team": "minion",
     "ability": "Each night*, if you were alive when nominated today, your nominator dies, even if you die first.",
     "art": "art/bug-keeper.png",
-    "page": "character.html?c=bug-keeper",
+    "page": "c/bug-keeper.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/bug-keeper.png"
     ],
@@ -2849,7 +2849,7 @@
     "team": "minion",
     "ability": "On your 1st night, choose a player: they learn the Vixen is in play. If you die by execution, they become evil tonight.",
     "art": "art/vixen.png",
-    "page": "character.html?c=vixen",
+    "page": "c/vixen.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/vixen.png"
     ],
@@ -2906,7 +2906,7 @@
     "team": "minion",
     "ability": "The 1st time each of your Townsfolk neighbors die, they register as alive. [-1 Outsider]",
     "art": "art/corpse-walker.png",
-    "page": "character.html?c=corpse-walker",
+    "page": "c/corpse-walker.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/corpse-walker.png"
     ],
@@ -2961,7 +2961,7 @@
     "team": "minion",
     "ability": "Players who are mad that they want to live or die (you start by choosing which) might be immediately executed.",
     "art": "art/imperialist.png",
-    "page": "character.html?c=imperialist",
+    "page": "c/imperialist.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/imperialist.png"
     ],
@@ -3009,7 +3009,7 @@
     "team": "demon",
     "ability": "Each night*, choose up to 4 players (or 1 Traveller): if all are different character types, they die. [+1 Outsider]",
     "art": "art/tao-tie.png",
-    "page": "character.html?c=tao-tie",
+    "page": "c/tao-tie.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/tao-tie.png"
     ],
@@ -3061,7 +3061,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. If you die, an alive Minion instead loses their ability. You learn no Demon info.",
     "art": "art/tao-wu.png",
-    "page": "character.html?c=tao-wu",
+    "page": "c/tao-wu.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/tao-wu.png"
     ],
@@ -3155,7 +3155,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. If a Townsfolk neighbor dies this way, good non-Travellers are poisoned until dusk.",
     "art": "art/hun-dun.png",
-    "page": "character.html?c=hun-dun",
+    "page": "c/hun-dun.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/hun-dun.png"
     ],
@@ -3204,7 +3204,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die and, if an Outsider died today, register as alive, and another player dies. [+1 Outsider]",
     "art": "art/qiong-qi.png",
-    "page": "character.html?c=qiong-qi",
+    "page": "c/qiong-qi.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/qiong-qi.png"
     ],
@@ -3254,7 +3254,7 @@
     "team": "traveller",
     "ability": "Each day, you may publicly choose a player (not yourself) to pick a non-Demon ability: you might gain it until dawn.",
     "art": "art/pauper.png",
-    "page": "character.html?c=pauper",
+    "page": "c/pauper.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/pauper.png"
     ],
@@ -3304,7 +3304,7 @@
     "team": "fabled",
     "ability": "On the final day, something good might happen to the most engaged player.",
     "art": "art/qilin.png",
-    "page": "character.html?c=qilin",
+    "page": "c/qilin.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/qilin.png"
     ],
@@ -3350,7 +3350,7 @@
     "team": "townsfolk",
     "ability": "Each night, choose 1 to 3 players: you learn if any of them were chosen or affected by evil abilities tonight.",
     "art": "art/guide.png",
-    "page": "character.html?c=guide",
+    "page": "c/guide.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/guide.png"
     ],
@@ -3405,7 +3405,7 @@
     "team": "townsfolk",
     "ability": "Each night, choose 2 alive players: if they are the same alignment, abilities targeting one will instead target the other tonight.",
     "art": "art/broker.png",
-    "page": "character.html?c=broker",
+    "page": "c/broker.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/broker.png"
     ],
@@ -3459,7 +3459,7 @@
     "team": "townsfolk",
     "ability": "Each night*, you learn if a non-Townsfolk (& non-Traveller) died since dawn.",
     "art": "art/prefect.png",
-    "page": "character.html?c=prefect",
+    "page": "c/prefect.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/prefect.png"
     ],
@@ -3506,7 +3506,7 @@
     "team": "townsfolk",
     "ability": "Each night*, choose a player: if you choose the Demon, you die & they are drunk until dawn.",
     "art": "art/cleric.png",
-    "page": "character.html?c=cleric",
+    "page": "c/cleric.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/cleric.png"
     ],
@@ -3553,7 +3553,7 @@
     "team": "townsfolk",
     "ability": "Each night*, choose a player: if they are a good character & die to an evil character tonight, you swap characters.",
     "art": "art/tabby.png",
-    "page": "character.html?c=tabby",
+    "page": "c/tabby.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/tabby.png"
     ],
@@ -3621,7 +3621,7 @@
     "team": "townsfolk",
     "ability": "Each night*, choose 2 good characters (different to last night): if both are alive, they can’t die tonight.",
     "art": "art/patrol.png",
-    "page": "character.html?c=patrol",
+    "page": "c/patrol.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/patrol.png"
     ],
@@ -3679,7 +3679,7 @@
     "team": "townsfolk",
     "ability": "Each day, publicly name a character: tonight, you learn if they are in play. If you learn “no”, you then lose this ability.",
     "art": "art/courier.png",
-    "page": "character.html?c=courier",
+    "page": "c/courier.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/courier.png"
     ],
@@ -3726,7 +3726,7 @@
     "team": "townsfolk",
     "ability": "Once per game, at night*, choose a Townsfolk character: if they are in play, they become poisoned and die.",
     "art": "art/zhen.png",
-    "page": "character.html?c=zhen",
+    "page": "c/zhen.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/zhen.png"
     ],
@@ -3784,7 +3784,7 @@
     "team": "townsfolk",
     "ability": "Once per game, the Storyteller will break the rules for you. You privately learn what they did.",
     "art": "art/consort.png",
-    "page": "character.html?c=consort",
+    "page": "c/consort.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/consort.png"
     ],
@@ -3828,7 +3828,7 @@
     "team": "townsfolk",
     "ability": "On your 1st night, choose a number. On the night of that number, learn that number of in-play characters.",
     "art": "art/thaumaturge.png",
-    "page": "character.html?c=thaumaturge",
+    "page": "c/thaumaturge.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/thaumaturge.png"
     ],
@@ -3879,7 +3879,7 @@
     "team": "townsfolk",
     "ability": "If you die during the day, you learn a good player tonight. If you die at night, you learn an evil player.",
     "art": "art/brush-holder.png",
-    "page": "character.html?c=brush-holder",
+    "page": "c/brush-holder.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/brush-holder.png"
     ],
@@ -3925,7 +3925,7 @@
     "team": "townsfolk",
     "ability": "After your first nomination, learn your nominee’s character that night. Demons register as good characters to you.",
     "art": "art/prosecutor.png",
-    "page": "character.html?c=prosecutor",
+    "page": "c/prosecutor.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/prosecutor.png"
     ],
@@ -3972,7 +3972,7 @@
     "team": "townsfolk",
     "ability": "Good characters are good, drunk & know each other. Whoever wins, loses & whoever loses, wins. You cannot lose this ability.",
     "art": "art/actor.png",
-    "page": "character.html?c=actor",
+    "page": "c/actor.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/actor.png"
     ],
@@ -4098,7 +4098,7 @@
     "team": "outsider",
     "ability": "One of your good neighbors (not a Traveller) is drunk, even if you die by execution.",
     "art": "art/server.png",
-    "page": "character.html?c=server",
+    "page": "c/server.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/server.png"
     ],
@@ -4144,7 +4144,7 @@
     "team": "outsider",
     "ability": "If 5 or more players live and you nominate, execute & kill the Demon, you become the evil Demon. (Travellers don’t count)",
     "art": "art/embalmer.png",
-    "page": "character.html?c=embalmer",
+    "page": "c/embalmer.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/embalmer.png"
     ],
@@ -4209,7 +4209,7 @@
     "team": "minion",
     "ability": "Each night, choose a Townsfolk character: their ability yields info of your choice next time.",
     "art": "art/vintner.png",
-    "page": "character.html?c=vintner",
+    "page": "c/vintner.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/vintner.png"
     ],
@@ -4255,7 +4255,7 @@
     "team": "minion",
     "ability": "Each night, choose an alive good neighbor: you learn their character, and they are poisoned & register as evil Gu Diao until dusk.",
     "art": "art/gu-diao.png",
-    "page": "character.html?c=gu-diao",
+    "page": "c/gu-diao.html",
     "image": "https://botchomebrew.wiki/assets/art/gu-diao.png",
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
@@ -4306,7 +4306,7 @@
     "team": "minion",
     "ability": "Each night*, choose a player: if they are alive, they choose to 1) lose their ability, or 2) die & keep their ability until dusk.",
     "art": "art/meng-po.png",
-    "page": "character.html?c=meng-po",
+    "page": "c/meng-po.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/meng-po.png"
     ],
@@ -4353,7 +4353,7 @@
     "team": "minion",
     "ability": "On your 1st night, choose an alive player: they die but register as alive. If they die again, they live & you regain this ability.",
     "art": "art/huapi.png",
-    "page": "character.html?c=huapi",
+    "page": "c/huapi.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/huapi.png"
     ],
@@ -4401,7 +4401,7 @@
     "team": "demon",
     "ability": "Each night, choose up to 3 players. 1 player you chose last night dies: if any of them died today, all die tonight.",
     "art": "art/warden.png",
-    "page": "character.html?c=warden",
+    "page": "c/warden.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/warden.png"
     ],
@@ -4452,7 +4452,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. If you didn’t vote today, choose an additional player: they die.",
     "art": "art/conspirator.png",
-    "page": "character.html?c=conspirator",
+    "page": "c/conspirator.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/conspirator.png"
     ],
@@ -4500,7 +4500,7 @@
     "team": "demon",
     "ability": "Each night*, choose 0 to 2 players: they die. Your choices cannot equal the number of deaths last night (max 2).",
     "art": "art/tyrant.png",
-    "page": "character.html?c=tyrant",
+    "page": "c/tyrant.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/tyrant.png"
     ],
@@ -4551,7 +4551,7 @@
     "team": "demon",
     "ability": "Each night*, choose a player: they die. Once per game, when a Minion dies by execution, you might gain their ability.",
     "art": "art/guhuo.png",
-    "page": "character.html?c=guhuo",
+    "page": "c/guhuo.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/guhuo.png"
     ],
@@ -4599,7 +4599,7 @@
     "team": "fabled",
     "ability": "There are no restrictions on abilities that require players to make a choice.",
     "art": "art/messenger.png",
-    "page": "character.html?c=messenger",
+    "page": "c/messenger.html",
     "image": [
       "https://botchomebrew.wiki/assets/art/messenger.png"
     ],
