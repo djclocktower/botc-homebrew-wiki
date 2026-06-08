@@ -1184,3 +1184,117 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   .cta-primary, .cta-secondary { text-align: center; }
   .recent-thumb { width: 60px; height: 60px; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   UX FEATURES — anchors, copy-link, badge, skeletons, filters
+   ════════════════════════════════════════════════════════════════ */
+
+/* ─── Title row + copy-link button ───────────────────────── */
+.title-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.copy-link-btn {
+  flex-shrink: 0;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-weight: 400; letter-spacing: .06em; font-size: .82rem;
+  cursor: pointer; border: 2px solid var(--parch-frame);
+  background: var(--parch); color: var(--maroon);
+  padding: 7px 14px; transition: background .15s, color .15s;
+}
+.copy-link-btn:hover { background: var(--parch-frame); color: #fff; }
+
+/* ─── Section anchor links ───────────────────────────────── */
+.sec-anchor {
+  color: inherit; text-decoration: none; position: relative;
+}
+.sec-anchor:hover { text-decoration: none; }
+.sec-anchor::after {
+  content: " #"; opacity: 0; font-size: .8em; color: var(--rule);
+  transition: opacity .15s;
+}
+.sec-anchor:hover::after { opacity: .7; }
+:target > .gen-sech, .gen-sech-wrap:target { scroll-margin-top: 80px; }
+[id^="sec-"] { scroll-margin-top: 84px; }
+
+/* ─── Script-count badge ─────────────────────────────────── */
+.script-badge {
+  display: inline-block; min-width: 18px; height: 18px; line-height: 18px;
+  padding: 0 5px; margin-left: 6px;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 700;
+  text-align: center; color: #f3ead4;
+  background: var(--maroon); border-radius: 9px;
+  vertical-align: middle;
+}
+
+/* ─── Search "matched field" tag ─────────────────────────── */
+.search-match {
+  display: inline-block; margin-left: 8px;
+  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--good-name); opacity: .8;
+  border: 1px solid rgba(47,111,184,.35); border-radius: 3px;
+  padding: 0 5px; vertical-align: middle;
+}
+
+/* ─── Skeleton loaders ───────────────────────────────────── */
+.skel {
+  background: linear-gradient(90deg, rgba(243,239,229,.10) 25%, rgba(243,239,229,.20) 37%, rgba(243,239,229,.10) 63%);
+  background-size: 400% 100%;
+  animation: skel-shimmer 1.3s ease-in-out infinite;
+  border-radius: 4px;
+}
+@keyframes skel-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.char-skeleton .skel-title { height: 46px; width: min(60%, 420px); margin: 6px 0 24px; }
+.char-skeleton .skel-block { height: 360px; }
+.char-skeleton .skel-card { height: 280px; }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+
+/* ─── All-characters filter bar ──────────────────────────── */
+.filter-bar {
+  display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: flex-end;
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  padding: 14px 18px; margin-bottom: 26px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.filter-group-label {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
+}
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  cursor: pointer; user-select: none;
+  background: #fffdf8; color: var(--maroon);
+  border: 1px solid var(--parch-frame); border-radius: 0;
+  padding: 4px 11px; transition: background .12s, color .12s;
+}
+.filter-chip:hover { background: rgba(91,31,33,.08); }
+.filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.filter-select {
+  font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
+  background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
+  padding: 6px 10px;
+}
+.filter-reset {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  cursor: pointer; background: none; border: none; color: var(--good-name);
+  text-decoration: underline; padding: 4px 0;
+}
+.filter-count {
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.7); margin: 0 0 18px;
+}
+@media (max-width: 640px) {
+  .filter-bar { gap: 12px 16px; padding: 12px 14px; }
+}
+
+/* ─── Sticky publish bar (create/edit on mobile) ─────────── */
+@media (max-width: 980px) {
+  .sticky-publish {
+    position: sticky; bottom: 0; z-index: 20;
+    background: linear-gradient(180deg, rgba(20,7,18,0), rgba(20,7,18,.92) 30%);
+    padding: 14px 0 10px; margin-top: 8px;
+  }
+}
