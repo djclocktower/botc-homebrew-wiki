@@ -220,6 +220,8 @@
     }
 
     // Collection definitions (with typo-tolerant matchers)
+    // Shared collection definitions — match arrays handle all spelling variants.
+    // slug is the canonical key used in URLs; displayName is the human label.
     var COLLECTIONS = [
       { slug: 'Fall of Rome',
         match: ['fallofrome'] },
@@ -232,7 +234,9 @@
       { slug: 'Ravenswood Chronicle',
         match: ['ravenswoodchronicle','ravenswoodchronicles'] },
       { slug: "A Midsummer Night's Dream",
-        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"] }
+        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"] },
+      { slug: 'Travel by Starlight',
+        match: ['travelbystarlight'] }
     ];
 
     function classifyCollection(appearsIn){
@@ -261,11 +265,11 @@
       return out;
     }
 
-    function collectionTileHTML(name, tagline, count, icons){
+    function collectionTileHTML(name, slug, count, icons){
       var iconsHTML = icons.map(function(c){
         return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
       }).join('');
-      var href = 'all-characters.html?collection=' + encodeURIComponent(name);
+      var href = 'all-characters.html?collection=' + encodeURIComponent(slug);
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         '<div class="collection-icons">' + iconsHTML + '</div>' +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -325,7 +329,8 @@
           var cr = c.creator || '';
           if (!cr) return;
           // split on common delimiters
-          cr.split(/[,&]| and /).forEach(function(n){
+          // Split only on commas, not & (& is part of creator names like "Harry & Co.")
+          cr.split(/,/).forEach(function(n){
             n = n.trim();
             if (n) creatorSet[n] = 1;
           });
@@ -345,13 +350,13 @@
           if (!chars.length) return; // skip empty collections
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
-          html += collectionTileHTML(displayName, coll.tagline, chars.length, icons);
+          html += collectionTileHTML(displayName, coll.slug, chars.length, icons);
         });
         // "Standalone" tile for unclassified characters
         var standalone = list.filter(function(c){ return classifyCollection(c.appearsIn) === -1 || !c.appearsIn; });
         if (standalone.length){
           var icons = pickIcons(standalone, 4);
-          html += '<a class="collection-tile" href="all-characters.html">' +
+          html += '<a class="collection-tile" href="all-characters.html?collection=Standalone">' +
             '<div class="collection-icons">' + icons.map(function(c){
               return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
             }).join('') + '</div>' +
