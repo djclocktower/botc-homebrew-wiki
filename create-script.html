@@ -61,13 +61,7 @@
       <h2 id="cs-title">Create a Script</h2>
       <p class="sub">Give it a name, optionally add a header graphic, then pick the characters.</p>
 
-      <div class="token-box">
-        <div class="fld" style="margin:0">
-          <label for="cs-token">GitHub token <span style="font-weight:400;text-transform:none;letter-spacing:0">(stored only in this browser)</span></label>
-          <input type="text" id="cs-token" placeholder="github_pat_…" autocomplete="off">
-        </div>
-        <p class="warn">⚠ This token can write to the repo — treat it like a password.</p>
-      </div>
+
 
       <div class="fld">
         <label for="cs-name">Script name *</label>
@@ -112,9 +106,7 @@
     var EDIT_SLUG = new URLSearchParams(location.search).get('s');
     var allChars = [], selected = [], headerDataURL = null, existingHeader = null, editEntry = null, scriptsList = [];
 
-    // token persistence
-    try { var t = localStorage.getItem('gh_token'); if (t) $('cs-token').value = t; } catch(e){}
-    $('cs-token').addEventListener('input', function(){ try { localStorage.setItem('gh_token', $('cs-token').value.trim()); } catch(e){} });
+
 
     // ── worker helpers ──
     function workerGet(path){ return fetch(WORKER_URL + '?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error); return j; }); }
@@ -182,9 +174,7 @@
 
     // ── publish ──
     $('cs-publish').addEventListener('click', function(){
-      var token = $('cs-token').value.trim();
       var name = $('cs-name').value.trim();
-      if (!token) return setStatus('err','Paste your GitHub token first.');
       if (!name) return setStatus('err','A script name is required.');
 
       var slug = EDIT_SLUG || slugify(name);
