@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripts — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="index.html">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">›</span><span class="here">Scripts</span>
+    </nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="index.html">Home</a>
+  <a href="all-characters.html">All Characters</a>
+  <a href="scripts.html">Scripts</a>
+  <a href="tags.html">Tags</a>
+  <a href="creators.html">Creators</a>
+  <a href="script.html">Script Builder</a>
+</nav>
+
+  <div class="home-hero">
+    <h1 id="hero-title">Homebrew Scripts</h1>
+    <p id="hero-subtitle">Complete custom scripts assembled from wiki characters.</p>
+    <a class="create-btn" href="create-script.html">+ Create a Script</a>
+  </div>
+
+  <main class="home-panel">
+    <section class="landing-section">
+      <div class="collections-grid" id="scripts-grid">
+        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading scripts…</p>
+      </div>
+    </section>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+  (function(){
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    var grid = document.getElementById('scripts-grid');
+    fetch('scripts.json?_=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(scripts){
+        if (!scripts.length){
+          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script.html" style="color:#7fb2e6">Create the first one →</a></p>';
+          return;
+        }
+        grid.innerHTML = scripts.map(function(sc){
+          var n = (sc.characters || []).length;
+          var href = 'script-view.html?s=' + encodeURIComponent(sc.slug);
+          var headerHTML = sc.header
+            ? '<div class="script-card-header"><img src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+            : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
+          return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
+            headerHTML +
+            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
+            (sc.description ? '<p class="script-tile-desc">' + esc(sc.description) + '</p>' : '') +
+            '<div class="collection-footer">' +
+              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
+              '<span class="collection-arrow">View →</span>' +
+            '</div></a>';
+        }).join('');
+      })
+      .catch(function(){
+        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load scripts.</p>';
+      });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
