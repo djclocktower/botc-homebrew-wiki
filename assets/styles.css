@@ -1298,3 +1298,74 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
     padding: 14px 0 10px; margin-top: 8px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   SCRIPTS — browse cards, view page
+   ════════════════════════════════════════════════════════════════ */
+
+/* Script card header graphic (on scripts.html grid) */
+.script-card-header {
+  width: 100%; aspect-ratio: 21 / 9; margin-bottom: 12px;
+  background: rgba(91,31,33,.04); border: 1px solid rgba(183,156,111,.35);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.script-card-header img { width: 100%; height: 100%; object-fit: contain; }
+.script-card-header-empty span {
+  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.2rem;
+  text-align: center; padding: 12px;
+}
+.script-tile-desc {
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: .95rem;
+  color: var(--ink); margin: 0 0 12px; line-height: 1.35; flex: 1;
+}
+
+/* Script view page */
+.script-header-wrap { text-align: center; margin: 6px 0 18px; }
+.script-header-img {
+  max-width: 100%; max-height: 260px; height: auto;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.45));
+}
+.script-desc {
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.1rem;
+  color: rgba(236,225,200,.85); text-align: center; max-width: 760px; margin: 0 auto 8px;
+}
+.script-meta-line {
+  font-family: 'Oswald', sans-serif; font-size: .85rem; letter-spacing: .05em;
+  text-transform: uppercase; color: rgba(236,225,200,.6); text-align: center; margin: 0 0 24px;
+}
+.script-view-layout {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
+  gap: clamp(16px, 2.4vw, 30px); align-items: start;
+}
+@media (max-width: 900px) { .script-view-layout { grid-template-columns: 1fr; } }
+.script-chars-panel {
+  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: 360px;
+  border: 2px solid var(--parch-frame); padding: 20px 24px;
+}
+.script-team-group { margin-bottom: 18px; }
+.script-team-group:last-child { margin-bottom: 0; }
+.script-team-head {
+  font-family: 'Dumbledor2', serif; font-weight: 400; font-size: 1.15rem;
+  color: var(--evil); letter-spacing: .04em; text-transform: uppercase;
+  margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(180,160,120,.45);
+}
+.script-team-head.good { color: var(--good-name); }
+.script-team-count { font-size: .8rem; opacity: .7; }
+.script-char-list { display: flex; flex-direction: column; }
+.script-char-row {
+  display: flex; align-items: center; gap: 12px; padding: 8px 6px;
+  text-decoration: none; color: var(--maroon); border-radius: 0;
+  transition: background .14s;
+}
+.script-char-row:hover { background: rgba(91,31,33,.06); }
+.script-char-row + .script-char-row { border-top: 1px solid rgba(180,160,120,.25); }
+.script-char-thumb { width: 42px; height: 42px; object-fit: contain; flex-shrink: 0; }
+.script-char-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.script-char-name { font-family: 'Cinzel', serif; font-weight: 700; font-size: 1rem; color: var(--maroon); }
+.script-char-ability { font-size: .86rem; color: var(--ink); line-height: 1.3; }
+.script-missing {
+  margin-top: 14px; padding: 10px 12px; font-size: .85rem;
+  background: rgba(154,13,18,.08); border: 1px solid rgba(154,13,18,.25); color: var(--evil);
+}
+.script-json-panel { position: sticky; top: 74px; }
+.script-json-panel .json-body { max-height: 60vh; }
