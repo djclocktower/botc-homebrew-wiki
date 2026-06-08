@@ -1,0 +1,61 @@
+/* Character page bootstrap — used by every /c/{slug}.html page.
+   Reads window.CHAR_SLUG, fetches ../characters.json, renders via render.js. */
+(function () {
+  var SLUG = window.CHAR_SLUG;
+  var content = document.getElementById('content');
+  if (!content || !SLUG) return;
+
+  var SCRIPT_KEY = 'botc_script';
+  function getScript() { try { return JSON.parse(localStorage.getItem(SCRIPT_KEY)) || []; } catch (e) { return []; } }
+  function setScript(a) { try { localStorage.setItem(SCRIPT_KEY, JSON.stringify(a)); } catch (e) {} }
+  function mountScriptButton(slug) {
+    var infocard = document.querySelector('.char-infocard');
+    if (!infocard) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'add-to-script-btn';
+    function sync() {
+      var on = getScript().indexOf(slug) !== -1;
+      btn.classList.toggle('on', on);
+      btn.textContent = on ? '✓ On Your Script' : '+ Add to Script';
+    }
+    btn.addEventListener('click', function () {
+      var s = getScript();
+      var i = s.indexOf(slug);
+      if (i === -1) s.push(slug); else s.splice(i, 1);
+      setScript(s);
+      sync();
+      if (window.updateScriptBadge) window.updateScriptBadge();
+    });
+    sync();
+    infocard.appendChild(btn);
+  }
+
+  fetch('../characters.json?_=' + Date.now())
+    .then(function (r) { return r.json(); })
+    .then(function (list) {
+      var d = list.filter(function (c) { return c.slug === SLUG; })[0];
+      if (!d) {
+        content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Character not found. <a href="../all-characters.html" style="color:#7fb2e6">Back to all characters</a>.</p>';
+        return;
+      }
+      document.title = d.name + ' — BOTC HomeBrew Wiki';
+      var label = (window.TEAM_LABEL[d.team] || d.team);
+      var crumb = document.getElementById('crumb');
+      if (crumb) crumb.innerHTML =
+        '<a href="../index.html">Home</a><span class="sep">›</span><a href="../all-characters.html">Characters</a><span class="sep">›</span>' +
+        '<a href="../team.html?t=' + d.team + '">' + label + '</a>' +
+        '<span class="sep">›</span><span class="here">' + d.name + '</span>';
+      var eb = document.getElementById('edit-btn');
+      if (eb) { eb.href = '../edit.html?c=' + SLUG; eb.style.display = ''; }
+      content.innerHTML = window.renderCharacter(d, '../assets/' + d.art);
+      mountScriptButton(d.slug);
+      if (location.hash) {
+        var t = document.getElementById(location.hash.slice(1));
+        if (t) t.scrollIntoView();
+      }
+    })
+    .catch(function () {
+      content.innerHTML = '<p style="color:#e6a">Could not load character data.</p>';
+    });
+})();
