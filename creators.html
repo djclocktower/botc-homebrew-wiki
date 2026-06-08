@@ -182,5 +182,22 @@
     });
   })();
   </script>
+  <script>
+  /* script-count badge on Script Builder nav links */
+  (function(){
+    var KEY='botc_script';
+    function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
+    function upd(){
+      var c=n();
+      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+        var b=a.querySelector('.script-badge');
+        if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
+        else if(b){b.remove();}
+      });
+    }
+    window.updateScriptBadge=upd; upd();
+    window.addEventListener('storage',function(e){if(e.key===KEY)upd();});
+  })();
+  </script>
 </body>
 </html>
