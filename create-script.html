@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create a Script — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .cs-wrap { position:relative; z-index:5; max-width:1440px; margin:0 auto; padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px; display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:26px; align-items:start; }
+  @media (max-width:980px){ .cs-wrap{ grid-template-columns:1fr; } }
+  .cs-form { background:var(--parch); border:2px solid var(--parch-frame); padding:20px 22px; color:#241a12; }
+  .cs-form h2 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 4px; font-size:1.5rem; font-weight:400; }
+  .cs-form .sub { font-size:.86rem; color:#6b5d49; margin:0 0 18px; }
+  .fld { margin-bottom:15px; }
+  .fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.82rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:5px; }
+  .fld input[type=text], .fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.95rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:9px 11px; }
+  .fld textarea { resize:vertical; min-height:60px; }
+  .cs-header-prev { margin-top:8px; max-width:100%; max-height:160px; border:1px solid #cdbfa0; background:#fffdf8; display:none; }
+  .token-box { background:#fbf2e2; border:1px solid #d8c08a; padding:13px 15px; margin-bottom:18px; }
+  .token-box .warn { font-size:.8rem; color:#8a5a1a; margin:6px 0 0; line-height:1.4; }
+  .cs-picker { background:var(--parch); border:2px solid var(--parch-frame); padding:16px 18px; }
+  .cs-picker h3 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 10px; font-size:1.15rem; }
+  .cs-filter { width:100%; padding:8px 11px; border:1px solid #cdbfa0; background:#fffdf8; margin-bottom:10px; font-size:.9rem; }
+  .cs-add-list { max-height:60vh; overflow-y:auto; border:1px solid #e0d5bf; background:#fffdf8; }
+  .cs-team-label { font-family:'Oswald',sans-serif; font-weight:600; font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--maroon); background:rgba(91,31,33,.06); padding:5px 10px; position:sticky; top:0; }
+  .cs-row { display:flex; align-items:center; gap:9px; padding:6px 10px; cursor:pointer; border-bottom:1px solid rgba(180,160,120,.2); }
+  .cs-row:hover { background:rgba(91,31,33,.06); }
+  .cs-row.on { background:rgba(91,31,33,.10); box-shadow:inset 3px 0 0 var(--maroon); }
+  .cs-row img { width:30px; height:30px; object-fit:contain; flex-shrink:0; }
+  .cs-row-name { font-size:.9rem; color:var(--maroon); flex:1; min-width:0; }
+  .cs-row.on .cs-row-name { font-weight:600; }
+  .cs-row-mark { font-family:'Oswald',sans-serif; font-weight:700; color:var(--good-name); }
+  .cs-selected-count { font-family:'Oswald',sans-serif; font-size:.82rem; color:#5b4632; margin:0 0 10px; }
+  .btn { font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer; border:none; padding:9px 16px; font-size:.9rem; }
+  .btn-pub { background:linear-gradient(180deg,#2f7d3e,#1c5429); color:#eafaee; font-size:1rem; padding:12px 22px; }
+  .btn-pub:hover { filter:brightness(1.08); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  #cs-status { margin-top:12px; padding:10px 13px; font-size:.9rem; display:none; }
+  #cs-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+  #cs-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+  #cs-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+  #cs-status a { color:inherit; font-weight:700; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="index.html">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb"><a href="index.html">Home</a><span class="sep">›</span><a href="scripts.html">Scripts</a><span class="sep">›</span><span class="here" id="crumb-mode">Create</span></nav>
+  </header>
+
+  <div class="cs-wrap">
+    <div class="cs-form">
+      <h2 id="cs-title">Create a Script</h2>
+      <p class="sub">Give it a name, optionally add a header graphic, then pick the characters.</p>
+
+      <div class="token-box">
+        <div class="fld" style="margin:0">
+          <label for="cs-token">GitHub token <span style="font-weight:400;text-transform:none;letter-spacing:0">(stored only in this browser)</span></label>
+          <input type="text" id="cs-token" placeholder="github_pat_…" autocomplete="off">
+        </div>
+        <p class="warn">⚠ This token can write to the repo — treat it like a password.</p>
+      </div>
+
+      <div class="fld">
+        <label for="cs-name">Script name *</label>
+        <input type="text" id="cs-name" placeholder="e.g. Phantasmal Flames">
+      </div>
+      <div class="fld">
+        <label for="cs-author">Author</label>
+        <input type="text" id="cs-author" placeholder="Your name">
+      </div>
+      <div class="fld">
+        <label for="cs-desc">Description</label>
+        <textarea id="cs-desc" placeholder="A short blurb about the script."></textarea>
+      </div>
+      <div class="fld">
+        <label for="cs-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional PNG, wide banner works best)</span></label>
+        <input type="file" id="cs-header" accept="image/*">
+        <img id="cs-header-prev" class="cs-header-prev" alt="header preview">
+        <div id="cs-header-note" class="sub" style="margin-top:6px"></div>
+      </div>
+
+      <button type="button" class="btn btn-pub" id="cs-publish">Publish Script</button>
+      <div id="cs-status"></div>
+    </div>
+
+    <div class="cs-picker">
+      <h3>Characters</h3>
+      <p class="cs-selected-count" id="cs-count">0 selected</p>
+      <input type="text" class="cs-filter" id="cs-filter" placeholder="Filter characters…">
+      <div class="cs-add-list" id="cs-add-list"><p style="padding:12px;color:#8a7a63">Loading…</p></div>
+    </div>
+  </div>
+
+  <script src="assets/render.js"></script>
+  <script>
+  (function(){
+    var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
+    var SITE_ROOT = new URL('.', location.href).href;
+    var $ = function(id){ return document.getElementById(id); };
+    var TEAMS = [['townsfolk','Townsfolk'],['outsider','Outsider'],['minion','Minion'],['demon','Demon'],['traveller','Traveller'],['fabled','Fabled']];
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    var EDIT_SLUG = new URLSearchParams(location.search).get('s');
+    var allChars = [], selected = [], headerDataURL = null, existingHeader = null, editEntry = null, scriptsList = [];
+
+    // token persistence
+    try { var t = localStorage.getItem('gh_token'); if (t) $('cs-token').value = t; } catch(e){}
+    $('cs-token').addEventListener('input', function(){ try { localStorage.setItem('gh_token', $('cs-token').value.trim()); } catch(e){} });
+
+    // ── worker helpers ──
+    function workerGet(path){ return fetch(WORKER_URL + '?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error); return j; }); }
+    function workerPut(path, b64, msg, sha){ return fetch(WORKER_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path:path, content:b64, message:msg, sha: sha||undefined }) }).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error); return j; }); }
+    function utf8b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    function b64utf8(b){ return decodeURIComponent(escape(atob(String(b).replace(/\n/g,'')))); }
+    function slugify(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function setStatus(cls, html){ var s = $('cs-status'); s.className = cls; s.innerHTML = html; }
+
+    // ── header image (resize to max 900px wide, PNG) ──
+    $('cs-header').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function(ev){
+        var img = new Image();
+        img.onload = function(){
+          var maxW = 900, w = img.width, h = img.height;
+          if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          headerDataURL = cv.toDataURL('image/png');
+          var pv = $('cs-header-prev'); pv.src = headerDataURL; pv.style.display = 'block';
+          existingHeader = null;
+          $('cs-header-note').textContent = '';
+        };
+        img.src = ev.target.result;
+      };
+      rd.readAsDataURL(f);
+    });
+
+    // ── render picker ──
+    function renderPicker(filter){
+      filter = (filter||'').trim().toLowerCase();
+      var list = $('cs-add-list'); var html = '';
+      TEAMS.forEach(function(t){
+        var grp = allChars.filter(function(c){
+          if (c.team !== t[0]) return false;
+          if (!filter) return true;
+          return (c.name||'').toLowerCase().indexOf(filter) !== -1 || (c.ability||'').toLowerCase().indexOf(filter) !== -1;
+        });
+        if (!grp.length) return;
+        html += '<div class="cs-team-label">' + t[1] + '</div>';
+        grp.forEach(function(c){
+          var on = selected.indexOf(c.slug) !== -1;
+          html += '<div class="cs-row' + (on?' on':'') + '" data-slug="' + esc(c.slug) + '">' +
+            '<img src="assets/' + esc(c.art) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<span class="cs-row-name">' + esc(c.name) + '</span>' +
+            '<span class="cs-row-mark">' + (on?'✓':'+') + '</span></div>';
+        });
+      });
+      list.innerHTML = html || '<p style="padding:12px;color:#8a7a63">No matches.</p>';
+    }
+    function updateCount(){ $('cs-count').textContent = selected.length + ' selected'; }
+
+    $('cs-add-list').addEventListener('click', function(e){
+      var row = e.target.closest('.cs-row'); if (!row) return;
+      var slug = row.getAttribute('data-slug');
+      var i = selected.indexOf(slug);
+      if (i === -1) selected.push(slug); else selected.splice(i,1);
+      row.classList.toggle('on');
+      row.querySelector('.cs-row-mark').textContent = (selected.indexOf(slug)!==-1)?'✓':'+';
+      updateCount();
+    });
+    $('cs-filter').addEventListener('input', function(){ renderPicker($('cs-filter').value); });
+
+    // ── publish ──
+    $('cs-publish').addEventListener('click', function(){
+      var token = $('cs-token').value.trim();
+      var name = $('cs-name').value.trim();
+      if (!token) return setStatus('err','Paste your GitHub token first.');
+      if (!name) return setStatus('err','A script name is required.');
+
+      var slug = EDIT_SLUG || slugify(name);
+      var headerPath = editEntry && editEntry.header ? editEntry.header : ('scripts/' + slug + '.png');
+      $('cs-publish').disabled = true;
+      setStatus('work','Publishing…');
+
+      var chain = Promise.resolve();
+      // 1. upload header if a new one was chosen
+      if (headerDataURL){
+        headerPath = 'scripts/' + slug + '.png';
+        var hb64 = headerDataURL.split(',')[1];
+        chain = chain.then(function(){ setStatus('work','Uploading header…'); return workerGet(headerPath); })
+          .then(function(ex){ return workerPut(headerPath, hb64, 'Add script header: ' + name, ex && ex.sha); });
+      }
+      // 2. upsert scripts.json
+      chain.then(function(){
+        setStatus('work','Updating script list…');
+        return workerGet('scripts.json');
+      }).then(function(file){
+        var list = [], sha = null;
+        if (file){ sha = file.sha; try { list = JSON.parse(b64utf8(file.content)); } catch(e){ list = []; } }
+        var entry = {
+          slug: slug, name: name,
+          header: (headerDataURL ? ('scripts/' + slug + '.png') : (editEntry && editEntry.header) || ''),
+          author: $('cs-author').value.trim(),
+          description: $('cs-desc').value.trim(),
+          characters: selected.slice()
+        };
+        var i = list.findIndex(function(s){ return s.slug === slug; });
+        if (i >= 0) list[i] = entry; else list.push(entry);
+        return workerPut('scripts.json', utf8b64(JSON.stringify(list, null, 2)), (EDIT_SLUG?'Edit':'Add') + ' script: ' + name, sha);
+      }).then(function(){
+        var url = SITE_ROOT + 'script-view.html?s=' + encodeURIComponent(slug);
+        setStatus('ok','✓ Published! Live in ~1 min at <a href="' + url + '" target="_blank">' + url + '</a>');
+        $('cs-publish').disabled = false;
+      }).catch(function(err){
+        setStatus('err','✗ ' + err.message);
+        $('cs-publish').disabled = false;
+      });
+    });
+
+    // ── load data ──
+    Promise.all([
+      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();}),
+      fetch('scripts.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return [];})
+    ]).then(function(res){
+      allChars = res[0]; scriptsList = res[1] || [];
+      if (EDIT_SLUG){
+        editEntry = scriptsList.filter(function(s){ return s.slug === EDIT_SLUG; })[0];
+        if (editEntry){
+          document.title = 'Edit ' + editEntry.name + ' — BOTC HomeBrew Wiki';
+          $('cs-title').textContent = 'Edit Script';
+          $('crumb-mode').textContent = 'Edit';
+          $('cs-name').value = editEntry.name || '';
+          $('cs-author').value = editEntry.author || '';
+          $('cs-desc').value = editEntry.description || '';
+          selected = (editEntry.characters || []).slice();
+          existingHeader = editEntry.header || null;
+          if (existingHeader){
+            var pv = $('cs-header-prev'); pv.src = 'assets/' + existingHeader; pv.style.display = 'block';
+            $('cs-header-note').textContent = 'Current header — upload a new file to replace it.';
+          }
+          $('cs-publish').textContent = 'Save Changes';
+        }
+      }
+      updateCount();
+      renderPicker('');
+    }).catch(function(){
+      $('cs-add-list').innerHTML = '<p style="padding:12px;color:#9A0D12">Could not load characters.</p>';
+    });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
