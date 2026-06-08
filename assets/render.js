@@ -14,6 +14,7 @@
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
+  function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -82,7 +83,7 @@
     var jinxes   = (d.jinxes || []).filter(function (j) { return j && (j.name || j.id); });
 
     var summaryCol =
-      '<div class="gen-sech-wrap"><h2 class="gen-sech">Summary</h2></div>' +
+      '<div class="gen-sech-wrap" id="sec-summary"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-summary">Summary</a></h2></div>' +
       (d.ability ? '<p class="ability">' + esc(d.ability) + '</p>' : '') +
       (d.lede ? '<p class="lede">' + esc(d.lede) + '</p>' : '') +
       (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' : '');
@@ -90,15 +91,15 @@
     var howColBody = paras.map(function (p) { return '<p>' + tok(p) + '</p>'; }).join('') +
       (d.callout && d.callout.trim() ? '<div class="callout">' + tok(d.callout) + '</div>' : '');
     var howCol = howColBody ?
-      '<div class="gen-sech-wrap"><h2 class="gen-sech">How to Run</h2></div>' + howColBody : '';
+      '<div class="gen-sech-wrap" id="sec-howtorun"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-howtorun">How to Run</a></h2></div>' + howColBody : '';
 
     var examplesBlock = examples.length ?
-      ('<div class="examples"><div class="gen-sech-wrap"><h2 class="gen-sech">Examples</h2></div>' +
+      ('<div class="examples"><div class="gen-sech-wrap" id="sec-examples"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-examples">Examples</a></h2></div>' +
         examples.map(function (e) { return '<div class="ex">' + esc(e) + '</div>'; }).join('') +
         '</div>') : '';
 
     var tipsBlock = tips.length ?
-      ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Tips &amp; Tricks</h2></div>' +
+      ('<div class="tips"><div class="gen-sech-wrap" id="sec-tips"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-tips">Tips &amp; Tricks</a></h2></div>' +
         '<ul>' + tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var charName = esc(d.name || 'Character');
@@ -109,13 +110,13 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
-      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
+    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + R() + 'team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
+      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + R() + 'author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
         var display = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); });
-        return '<a class="tag-link" href="tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
+        return '<a class="tag-link" href="' + R() + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       '</dl>';
 
@@ -127,8 +128,8 @@
 
     var jinxInner = '';
     if (jinxes.length) {
-      jinxInner = '<div class="card">' +
-        '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px">Jinxes</h2>' +
+      jinxInner = '<div class="card" id="sec-jinxes">' +
+        '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
           var nm = j.name || j.id;
@@ -153,7 +154,8 @@
     var infoCardFinal = infoCard.slice(0, -6) +
       '<div style="margin-top:14px">' + renderJsonBox(d) + '</div></div>';
 
-    return '<h1 class="gen-title">' + esc(d.name || 'Unnamed') + '</h1>' +
+    return '<div class="title-row"><h1 class="gen-title">' + esc(d.name || 'Unnamed') + '</h1>' +
+      '<button type="button" class="copy-link-btn" title="Copy link to this character" aria-label="Copy link">&#128279; Copy link</button></div>' +
       '<div class="char-layout">' +
       '<section class="char-parchment card">' +
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
@@ -167,6 +169,18 @@
   if (typeof document !== 'undefined' && !window.__jsonBoxBound) {
     window.__jsonBoxBound = true;
     document.addEventListener('click', function (e) {
+      // Copy-link button
+      var cl = e.target.closest && e.target.closest('.copy-link-btn');
+      if (cl) {
+        var url = location.href.split('#')[0];
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(function () {
+            cl.innerHTML = '\u2713 Copied!';
+            setTimeout(function () { cl.innerHTML = '\uD83D\uDD17 Copy link'; }, 1500);
+          });
+        }
+        return;
+      }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');
       if (tg) {
         var box = tg.closest('.json-box');
