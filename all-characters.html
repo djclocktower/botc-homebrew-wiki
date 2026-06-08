@@ -47,8 +47,17 @@
     <p id="hero-subtitle">Every fan-made character in the wiki, grouped by team.</p>
   </div>
 
+  <div class="home-panel" style="padding-bottom:0">
+    <div id="filter-bar" class="filter-bar" hidden></div>
+    <p id="filter-count" class="filter-count" hidden></p>
+  </div>
   <main class="home-panel" id="panel">
-    <p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Loading characters…</p>
+    <div class="char-grid">
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+    </div>
   </main>
 
 
@@ -61,6 +70,10 @@
       ['traveller', 'Traveller'], ['fabled', 'Fabled']
     ];
     var GOOD = { townsfolk: 1, outsider: 1 };
+    window.TEAM_LABEL = window.TEAM_LABEL || {
+      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+    };
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -68,66 +81,166 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art">' +
+        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc((window.TEAM_LABEL && window.TEAM_LABEL[c.team]) || c.team) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';
     }
-    // Optional collection filter via ?collection=X
+    function normalizeCollection(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
     var COLLECTION_PARAM = (function(){
-      try {
-        var p = new URLSearchParams(location.search).get('collection');
-        return p ? decodeURIComponent(p) : null;
-      } catch (e) { return null; }
+      try { var p = new URLSearchParams(location.search).get('collection'); return p ? decodeURIComponent(p) : null; }
+      catch (e) { return null; }
     })();
-    // Normalize a collection name for matching (handles typo variants)
-    function normalizeCollection(s) {
-      return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    }
-    fetch('characters.json?_=' + Date.now())
-      .then(function (r) { return r.json(); })
-      .then(function (list) {
-        // Apply collection filter if present
-        if (COLLECTION_PARAM) {
-          var target = normalizeCollection(COLLECTION_PARAM);
-          list = list.filter(function (c) {
-            return normalizeCollection(c.appearsIn) === target;
-          });
-          // Update hero title & crumb to reflect the filter
-          var sample = (function(){
-            // Use a "canonical" display name — prefer the param value with the original spelling style
-            return COLLECTION_PARAM;
-          })();
-          var t = document.getElementById('hero-title');
-          var st = document.getElementById('hero-subtitle');
-          var cr = document.getElementById('crumb-here');
-          if (t) t.textContent = sample;
-          if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
-          if (cr) cr.textContent = sample;
-          document.title = sample + ' — BOTC HomeBrew Wiki';
-        }
 
-        window.TEAM_LABEL = window.TEAM_LABEL || {
-          townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-          demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
-        };
-        var panel = document.getElementById('panel');
-        var html = '';
+    // Filter state
+    var STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
+    var FULL = [];   // collection-scoped full list
+
+    function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
+
+    function titleCase(s){ return s.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }); }
+
+    function buildFilterBar(list){
+      var bar = document.getElementById('filter-bar');
+      // Collect tags & creators
+      var tagSet = {}, creatorSet = {};
+      list.forEach(function(c){
+        splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
+        if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
+      });
+      var tags = Object.keys(tagSet).sort();
+      var creators = Object.keys(creatorSet).sort(function(a,b){ return a.toLowerCase()<b.toLowerCase()?-1:1; });
+
+      var html = '';
+      // Teams
+      html += '<div class="filter-group"><span class="filter-group-label">Team</span><div class="filter-chips" id="fc-teams">';
+      TEAMS.forEach(function(t){
+        if (!list.some(function(c){return c.team===t[0];})) return;
+        html += '<button type="button" class="filter-chip" data-team="'+t[0]+'">'+t[1]+'</button>';
+      });
+      html += '</div></div>';
+      // Tags
+      if (tags.length){
+        html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
+        tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
+        html += '</div></div>';
+      }
+      // Creator
+      if (creators.length > 1){
+        html += '<div class="filter-group"><span class="filter-group-label">Creator</span><select class="filter-select" id="fc-creator"><option value="">All creators</option>';
+        creators.forEach(function(c){ html += '<option value="'+esc(c)+'">'+esc(c)+'</option>'; });
+        html += '</select></div>';
+      }
+      // Sort
+      html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
+        '<option value="name-asc">Name (A–Z)</option>' +
+        '<option value="name-desc">Name (Z–A)</option>' +
+        '<option value="recent">Recently added</option>' +
+        '</select></div>';
+      // Reset
+      html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="fc-reset">Reset filters</button></div>';
+
+      bar.innerHTML = html;
+      bar.hidden = false;
+
+      // Wire events
+      bar.querySelectorAll('[data-team]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var v = btn.getAttribute('data-team');
+          var i = STATE.teams.indexOf(v);
+          if (i===-1) STATE.teams.push(v); else STATE.teams.splice(i,1);
+          btn.classList.toggle('active');
+          render();
+        });
+      });
+      bar.querySelectorAll('[data-tag]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var v = btn.getAttribute('data-tag');
+          var i = STATE.tags.indexOf(v);
+          if (i===-1) STATE.tags.push(v); else STATE.tags.splice(i,1);
+          btn.classList.toggle('active');
+          render();
+        });
+      });
+      var crSel = document.getElementById('fc-creator');
+      if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
+      document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
+      document.getElementById('fc-reset').addEventListener('click', function(){
+        STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
+        bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+        if (crSel) crSel.value = '';
+        document.getElementById('fc-sort').value = 'name-asc';
+        render();
+      });
+    }
+
+    function applyFilters(){
+      var out = FULL.slice();
+      if (STATE.teams.length) out = out.filter(function(c){ return STATE.teams.indexOf(c.team) !== -1; });
+      if (STATE.tags.length) out = out.filter(function(c){
+        var ct = splitTags(c).map(titleCase);
+        return STATE.tags.every(function(t){ return ct.indexOf(t) !== -1; });
+      });
+      if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
+      // sort
+      if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+      else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
+      else if (STATE.sort === 'recent') { /* keep array order reversed = most-recent first */
+        out = out.map(function(c,i){ return [c, FULL.indexOf(c)]; })
+                 .sort(function(a,b){ return b[1]-a[1]; })
+                 .map(function(p){ return p[0]; });
+      }
+      return out;
+    }
+
+    function render(){
+      var list = applyFilters();
+      var panel = document.getElementById('panel');
+      var count = document.getElementById('filter-count');
+      count.hidden = false;
+      count.textContent = list.length + ' character' + (list.length===1?'':'s') +
+        (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
+
+      if (!list.length){
+        panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
+        return;
+      }
+      var html = '';
+      var flat = STATE.sort !== 'name-asc';  // when custom sort, show flat grid; default = grouped by team
+      if (STATE.sort === 'recent' || STATE.sort === 'name-desc' || STATE.sort === 'name-asc') {
+        // group by team always, sorted within each group already
         TEAMS.forEach(function (t) {
           var key = t[0], label = t[1];
           var chars = list.filter(function (c) { return c.team === key; });
-          if (!chars.length && (key === 'traveller' || key === 'fabled')) return;
+          if (!chars.length) return;
           html += '<section class="type-section" id="' + key + '">' +
             '<h2 class="type-header"><a href="team.html?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
-            '<div class="char-grid">';
-          html += chars.map(card).join('');
-          html += '<a class="char-card empty-card" href="create.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">+ Add a ' + label + '</a>';
-          html += '</div></section>';
+            '<div class="char-grid">' + chars.map(card).join('') + '</div></section>';
         });
-        panel.innerHTML = html;
+      }
+      panel.innerHTML = html;
+    }
+
+    fetch('characters.json?_=' + Date.now())
+      .then(function (r) { return r.json(); })
+      .then(function (list) {
+        if (COLLECTION_PARAM) {
+          var target = normalizeCollection(COLLECTION_PARAM);
+          list = list.filter(function (c) { return normalizeCollection(c.appearsIn) === target; });
+          var t = document.getElementById('hero-title');
+          var st = document.getElementById('hero-subtitle');
+          var cr = document.getElementById('crumb-here');
+          if (t) t.textContent = COLLECTION_PARAM;
+          if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
+          if (cr) cr.textContent = COLLECTION_PARAM;
+          document.title = COLLECTION_PARAM + ' — BOTC HomeBrew Wiki';
+        }
+        FULL = list;
+        buildFilterBar(list);
+        render();
       })
       .catch(function () {
         document.getElementById('panel').innerHTML =
