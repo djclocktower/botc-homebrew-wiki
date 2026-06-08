@@ -120,7 +120,9 @@
         <div class="sb-toolbar-btns">
           <button class="sb-btn sb-btn-export" id="sb-export" type="button">⬇ Export JSON</button>
           <button class="sb-btn sb-btn-copy" id="sb-copy" type="button">⧉ Copy JSON</button>
+          <button class="sb-btn sb-btn-import" id="sb-import" type="button">⬆ Import</button>
           <button class="sb-btn sb-btn-clear" id="sb-clear" type="button">✕ Clear</button>
+          <input type="file" id="sb-import-file" accept=".json,application/json" hidden>
         </div>
       </div>
 
@@ -155,7 +157,7 @@
       var s = getScript();
       var i = s.indexOf(slug);
       if (i === -1) s.push(slug); else s.splice(i, 1);
-      setScript(s);
+      setScript(s); if (window.updateScriptBadge) window.updateScriptBadge();
       renderAll();
     }
     function removeSlug(slug) {
@@ -294,6 +296,54 @@
     document.getElementById('sb-clear').addEventListener('click', function () {
       if (!getScript().length) return;
       if (confirm('Clear the entire script?')) { setScript([]); renderAll(); }
+    });
+
+    // ── Import a script JSON (matches character ids back to slugs) ──
+    function idToSlug() {
+      var map = {};
+      allChars.forEach(function (c) {
+        var id = (window.slugId ? window.slugId(c.name) : (c.name||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+        map[id] = c.slug;
+        if (c.jsonId) map[String(c.jsonId).toLowerCase().replace(/[^a-z0-9]/g,'')] = c.slug;
+        map[(c.slug||'').replace(/-/g,'')] = c.slug;
+      });
+      return map;
+    }
+    function importScript(text) {
+      var data;
+      try { data = JSON.parse(text); } catch (e) { alert('That file is not valid JSON.'); return; }
+      if (!Array.isArray(data)) { alert('Expected a script array (the official script JSON format).'); return; }
+      var map = idToSlug();
+      var slugs = [], missing = [];
+      data.forEach(function (entry) {
+        var id = (typeof entry === 'string') ? entry : (entry && entry.id);
+        if (!id || id === '_meta') return;
+        var key = String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        var slug = map[key];
+        if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
+        else { missing.push((entry && entry.name) || id); }
+      });
+      if (!slugs.length) { alert('No characters from this script were found in the wiki.'); return; }
+      var addTo = getScript().length && !confirm('Replace your current script?\n\nOK = replace, Cancel = add to existing.');
+      var finalList = addTo ? getScript().slice() : [];
+      slugs.forEach(function (s) { if (finalList.indexOf(s) === -1) finalList.push(s); });
+      setScript(finalList);
+      renderAll();
+      if (window.updateScriptBadge) window.updateScriptBadge();
+      var msg = 'Imported ' + slugs.length + ' character' + (slugs.length===1?'':'s') + '.';
+      if (missing.length) msg += '\n\nNot found in the wiki (' + missing.length + '): ' + missing.slice(0,10).join(', ') + (missing.length>10?'…':'');
+      alert(msg);
+    }
+    document.getElementById('sb-import').addEventListener('click', function () {
+      document.getElementById('sb-import-file').click();
+    });
+    document.getElementById('sb-import-file').addEventListener('change', function (e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function (ev) { importScript(ev.target.result); };
+      fr.readAsText(f);
+      e.target.value = '';
     });
 
     // mobile sidebar toggle
