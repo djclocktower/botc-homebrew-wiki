@@ -18,7 +18,7 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <span class="here">Home</span><span class="sep">·</span><a href="all-characters.html">All Characters</a><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a>
+      <span class="here">Home</span><span class="sep">·</span><a href="all-characters.html">All Characters</a><span class="sep">·</span><a href="scripts.html">Scripts</a><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -34,6 +34,7 @@
   </div>
   <a href="index.html">Home</a>
   <a href="all-characters.html">All Characters</a>
+  <a href="scripts.html">Scripts</a>
   <a href="tags.html">Tags</a>
   <a href="creators.html">Creators</a>
   <a href="script.html">Script Builder</a>
@@ -60,6 +61,16 @@
       <div class="type-rule"></div>
       <div class="collections-grid" id="collections-grid">
         <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
+      </div>
+    </section>
+
+
+    <!-- ── SCRIPTS ──────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header"><a href="scripts.html" style="color:inherit;text-decoration:none">Scripts</a></h2>
+      <div class="type-rule"></div>
+      <div class="collections-grid" id="scripts-grid">
+        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading scripts…</p>
       </div>
     </section>
 
@@ -480,6 +491,41 @@
     });
   })();
   </script>
+
+  <script>
+  (function(){
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    var grid = document.getElementById('scripts-grid');
+    if (!grid) return;
+    fetch('scripts.json?_=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(scripts){
+        if (!scripts || !scripts.length){
+          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script.html" style="color:#7fb2e6">Create the first one →</a></p>';
+          return;
+        }
+        // show up to 6 on the homepage
+        grid.innerHTML = scripts.slice(0, 6).map(function(sc){
+          var n = (sc.characters || []).length;
+          var href = 'script-view.html?s=' + encodeURIComponent(sc.slug);
+          var headerHTML = sc.header
+            ? '<div class="script-card-header"><img src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+            : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
+          return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
+            headerHTML +
+            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
+            '<div class="collection-footer">' +
+              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
+              '<span class="collection-arrow">View →</span>' +
+            '</div></a>';
+        }).join('');
+      })
+      .catch(function(){
+        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.5);padding:24px">Could not load scripts.</p>';
+      });
+  })();
+  </script>
+
   <script>
   /* script-count badge on Script Builder nav links */
   (function(){
