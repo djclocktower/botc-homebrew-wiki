@@ -87,6 +87,7 @@
       // Build JSON (official script format with _meta)
       var meta = { id: '_meta', name: sc.name || 'Homebrew Script' };
       if (sc.author) meta.author = sc.author;
+      if (sc.header) meta.logo = 'https://botchomebrew.wiki/assets/' + sc.header;
       var arr = [meta];
       entries.forEach(function(c){ if (window.buildSchema) arr.push(window.buildSchema(c)); });
       var jsonText = JSON.stringify(arr, null, 2);
