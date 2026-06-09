@@ -43,7 +43,7 @@
   <div class="home-hero">
     <h1 id="hero-title">Homebrew Scripts</h1>
     <p id="hero-subtitle">Complete custom scripts assembled from wiki characters.</p>
-    <a class="create-btn" href="create-script.html">+ Create a Script</a>
+    <a class="create-btn" href="script.html">+ Create a Script</a>
   </div>
 
   <main class="home-panel">
@@ -64,7 +64,7 @@
       .then(function(r){ return r.json(); })
       .then(function(scripts){
         if (!scripts.length){
-          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script.html" style="color:#7fb2e6">Create the first one →</a></p>';
+          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script.html" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
         grid.innerHTML = scripts.map(function(sc){
