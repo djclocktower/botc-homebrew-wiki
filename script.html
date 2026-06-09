@@ -348,7 +348,8 @@
     });
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
-      download('homebrew-script.json', buildExport());
+      var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
+      download(fname + '.json', buildExport());
     });
     document.getElementById('sb-copy').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
