@@ -1018,10 +1018,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   box-shadow: 0 10px 24px rgba(40,12,30,.45);
 }
 .browse-card-sym {
-  font-size: 2.4rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
   color: var(--maroon);
   margin-bottom: 10px;
-  text-shadow: 0 2px 4px rgba(91,31,33,.18);
+}
+.browse-card-sym svg {
+  width: 46px; height: 46px;
+  filter: drop-shadow(0 2px 3px rgba(91,31,33,.20));
 }
 .browse-card-title {
   font-family: 'Dumbledor2', serif; font-weight: 400;
