@@ -737,7 +737,9 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sb-btn:hover { filter: brightness(1.1); }
 .sb-btn-export { background: linear-gradient(180deg,#2f7d3e,#1c5429); }
 .sb-btn-copy { background: linear-gradient(180deg,#2f6fb8,#1d4a80); }
-.sb-btn-clear { background: linear-gradient(180deg,#8a3526,#5B1F21); }
+.sb-btn-clear   { background: linear-gradient(180deg,#8a3526,#5B1F21); }
+
+.sb-btn-import  { background: linear-gradient(180deg,#4a4060,#2e2040); }
 .sb-script-group { margin-bottom: 26px; }
 .sb-script-grouphead {
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
