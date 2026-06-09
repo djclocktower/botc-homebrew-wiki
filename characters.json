@@ -4307,9 +4307,7 @@
     "ability": "Each night*, choose a player: if they are alive, they choose to 1) lose their ability, or 2) die & keep their ability until dusk.",
     "art": "art/meng-po.png",
     "page": "c/meng-po.html",
-    "image": [
-      "https://botchomebrew.wiki/assets/art/meng-po.png"
-    ],
+    "image": "https://botchomebrew.wiki/assets/art/meng-po.png",
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
@@ -4345,7 +4343,13 @@
     "reminders": [
       "Chosen"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "",
+    "bluffing": [],
+    "fighting": [],
+    "quote": "",
+    "remindersGlobal": [],
+    "jinxes": []
   },
   {
     "slug": "huapi",
