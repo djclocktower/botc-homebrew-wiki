@@ -955,7 +955,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: flex; flex-direction: column;
   background-color: var(--parch);
   background-image: url('parchment.jpg');
-  background-size: 360px;
+  background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 18px 18px 14px;
   text-decoration: none; color: var(--maroon);
@@ -1085,7 +1085,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   width: 100%; max-width: 100%;
   background-color: var(--parch);
   background-image: url('parchment.jpg');
-  background-size: 360px;
+  background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 22px 26px;
   text-decoration: none; color: var(--maroon);
@@ -1139,7 +1139,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .about-card {
   background-color: var(--parch);
   background-image: url('parchment.jpg');
-  background-size: 360px;
+  background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 22px 28px;
   color: var(--ink);
@@ -1339,7 +1339,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 @media (max-width: 900px) { .script-view-layout { grid-template-columns: 1fr; } }
 .script-chars-panel {
-  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: 360px;
+  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
   border: 2px solid var(--parch-frame); padding: 20px 24px;
 }
 .script-team-group { margin-bottom: 18px; }
