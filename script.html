@@ -197,6 +197,19 @@
     function setScript(arr) {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); } catch (e) {}
     }
+
+    // ── script metadata (name / author / description / header) ──
+    var META_KEY = 'botc_script_meta';
+    function getMeta() {
+      try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function setMeta(m) {
+      try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
+    }
+    var EDIT_SLUG = null;          // set when editing an existing published script
+    var headerDataURL = null;      // set when a new header file is chosen
+    var existingHeader = null;     // path of an already-published header
     function onScript(slug) { return getScript().indexOf(slug) !== -1; }
     function toggle(slug) {
       var s = getScript();
@@ -281,7 +294,16 @@
     function buildExport() {
       var s = getScript();
       var chars = s.map(function (slug) { return bySlug[slug]; }).filter(Boolean);
-      var meta = { id: '_meta', name: 'My Homebrew Script', author: '' };
+      var m = getMeta();
+      var meta = { id: '_meta', name: (m.name || '').trim() || 'My Homebrew Script' };
+      if ((m.author || '').trim()) meta.author = m.author.trim();
+      // logo: a freshly-chosen header (published on publish) or an existing one
+      var slugForLogo = EDIT_SLUG || (m.name ? slugify(m.name) : '');
+      if (headerDataURL && slugForLogo) {
+        meta.logo = 'https://botchomebrew.wiki/assets/scripts/' + slugForLogo + '.png';
+      } else if (existingHeader) {
+        meta.logo = 'https://botchomebrew.wiki/assets/' + existingHeader;
+      }
       var arr = [meta];
       chars.forEach(function (c) {
         if (window.buildSchema) arr.push(window.buildSchema(c));
@@ -399,13 +421,156 @@
       document.getElementById('sb-add-sidebar').classList.remove('open');
     });
 
+    // ════════════════════════════════════════════════════════════
+    //  Script details form + Publish to Wiki
+    // ════════════════════════════════════════════════════════════
+    var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
+    var SITE_ROOT = new URL('.', location.href).href;
+    function $(id){ return document.getElementById(id); }
+    function workerGet(path){ return fetch(WORKER_URL + '?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error); return j; }); }
+    function workerPut(path, b64, msg, sha){ return fetch(WORKER_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path:path, content:b64, message:msg, sha: sha||undefined }) }).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error); return j; }); }
+    function utf8b64(s){ return btoa(unescape(encodeURIComponent(s))); }
+    function b64utf8(b){ return decodeURIComponent(escape(atob(String(b).replace(/\n/g,'')))); }
+    function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
+
+    // Persist text fields into meta as the user types
+    ['sb-name','sb-author','sb-desc'].forEach(function(id){
+      var el = $(id); if (!el) return;
+      el.addEventListener('input', function(){
+        var m = getMeta();
+        if (id === 'sb-name')   m.name = el.value;
+        if (id === 'sb-author') m.author = el.value;
+        if (id === 'sb-desc')   m.description = el.value;
+        setMeta(m);
+      });
+    });
+
+    // Populate fields from saved meta on load
+    (function primeMetaFields(){
+      var m = getMeta();
+      if (m.name)        $('sb-name').value = m.name;
+      if (m.author)      $('sb-author').value = m.author;
+      if (m.description) $('sb-desc').value = m.description;
+      if (m.header) {
+        existingHeader = m.header;
+        var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
+        $('sb-header-note').textContent = 'Current header — choose a file to replace it.';
+      }
+    })();
+
+    // Header upload → resize to max 900px wide PNG → preview + remember
+    $('sb-header').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function(ev){
+        var img = new Image();
+        img.onload = function(){
+          var maxW = 900, w = img.width, h = img.height;
+          if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          headerDataURL = cv.toDataURL('image/png');
+          var pv = $('sb-header-prev'); pv.src = headerDataURL; pv.style.display = 'block';
+          $('sb-header-note').textContent = 'New header ready — will be uploaded when you publish.';
+        };
+        img.src = ev.target.result;
+      };
+      rd.readAsDataURL(f);
+    });
+
+    // Publish to Wiki
+    $('sb-publish').addEventListener('click', function(){
+      var name = $('sb-name').value.trim();
+      var author = $('sb-author').value.trim();
+      var desc = $('sb-desc').value.trim();
+      var chars = getScript();
+
+      // mandatory fields
+      var missing = [];
+      if (!name) missing.push('name');
+      if (!author) missing.push('author');
+      if (!desc) missing.push('description');
+      if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before publishing.'); return; }
+      if (!chars.length) { pubStatus('err', 'Add at least one character before publishing.'); return; }
+
+      var slug = EDIT_SLUG || slugify(name);
+      if (!slug) { pubStatus('err', 'Could not derive a script slug from that name.'); return; }
+
+      $('sb-publish').disabled = true;
+      pubStatus('work', 'Publishing…');
+
+      var chain = Promise.resolve();
+      // 1. upload header if a new one was chosen
+      if (headerDataURL){
+        var hpath = 'assets/scripts/' + slug + '.png';
+        var hb64 = headerDataURL.split(',')[1];
+        chain = chain.then(function(){ pubStatus('work','Uploading header…'); return workerGet(hpath); })
+          .then(function(ex){ return workerPut(hpath, hb64, 'Add script header: ' + name, ex && ex.sha); });
+      }
+      // 2. upsert scripts.json
+      chain.then(function(){
+        pubStatus('work', 'Updating the scripts list…');
+        return workerGet('scripts.json');
+      }).then(function(file){
+        var list = [], jsha = null;
+        if (file){ jsha = file.sha; try { list = JSON.parse(b64utf8(file.content)); } catch(e){ list = []; } }
+        var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
+        var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice() };
+        var i = list.findIndex(function(s){ return s.slug === slug; });
+        if (i >= 0) list[i] = entry; else list.push(entry);
+        return workerPut('scripts.json', utf8b64(JSON.stringify(list, null, 2)), (EDIT_SLUG?'Edit':'Add') + ' script: ' + name, jsha);
+      }).then(function(){
+        // remember the now-published header so the logo stays correct
+        if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
+        EDIT_SLUG = slug;
+        var m = getMeta(); m.header = existingHeader || m.header; setMeta(m);
+        var url = SITE_ROOT + 'script-view.html?s=' + encodeURIComponent(slug);
+        pubStatus('ok', '✓ Published! Live in ~1 min at <a href="' + url + '" target="_blank">your script page</a>.');
+        $('sb-publish').disabled = false;
+      }).catch(function(err){
+        pubStatus('err', '✗ ' + err.message);
+        $('sb-publish').disabled = false;
+      });
+    });
+
+    // Edit mode: ?s={slug} loads an existing published script into the builder
+    function loadForEdit(slug){
+      return workerGet('scripts.json').then(function(file){
+        if (!file) return;
+        var list; try { list = JSON.parse(b64utf8(file.content)); } catch(e){ return; }
+        var entry = list.filter(function(s){ return s.slug === slug; })[0];
+        if (!entry) return;
+        EDIT_SLUG = slug;
+        setScript((entry.characters || []).slice());
+        var m = { name: entry.name||'', author: entry.author||'', description: entry.description||'', header: entry.header||'' };
+        setMeta(m);
+        $('sb-name').value = m.name;
+        $('sb-author').value = m.author;
+        $('sb-desc').value = m.description;
+        if (m.header){
+          existingHeader = m.header;
+          var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
+          $('sb-header-note').textContent = 'Current header — choose a file to replace it.';
+        }
+        var t = $('sb-page-title'); if (t) t.textContent = 'Edit Script';
+        $('sb-publish').textContent = '★ Save to Wiki';
+        document.title = 'Edit ' + m.name + ' — BOTC HomeBrew Wiki';
+      }).catch(function(){ /* fall through to normal builder */ });
+    }
+
     // ── load data ──
     fetch('characters.json?_=' + Date.now())
       .then(function (r) { return r.json(); })
       .then(function (list) {
         allChars = list;
         list.forEach(function (c) { bySlug[c.slug] = c; });
-        renderAll();
+        var editSlug = new URLSearchParams(location.search).get('s');
+        if (editSlug) {
+          loadForEdit(editSlug).then(renderAll);
+        } else {
+          renderAll();
+        }
       })
       .catch(function () {
         document.getElementById('sb-add-list').innerHTML = '<p class="sb-loading">Could not load characters.</p>';
