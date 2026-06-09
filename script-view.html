@@ -78,7 +78,7 @@
       var cr = document.getElementById('crumb');
       if (cr) cr.innerHTML = '<a href="index.html">Home</a><span class="sep">›</span><a href="scripts.html">Scripts</a><span class="sep">›</span><span class="here">' + esc(sc.name) + '</span>';
       var eb = document.getElementById('edit-btn');
-      if (eb){ eb.href = 'edit-script.html?s=' + encodeURIComponent(sc.slug); eb.style.display = ''; }
+      if (eb){ eb.href = 'script.html?s=' + encodeURIComponent(sc.slug); eb.style.display = ''; }
 
       // Resolve characters
       var entries = (sc.characters || []).map(function(cs){ return bySlug[cs]; }).filter(Boolean);
