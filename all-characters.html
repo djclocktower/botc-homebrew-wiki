@@ -265,9 +265,17 @@
       panel.innerHTML = html;
     }
 
-    fetch('characters.json?_=' + Date.now())
-      .then(function (r) { return r.json(); })
-      .then(function (list) {
+    Promise.all([
+      fetch('collections.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();})
+    ]).then(function(res){
+      var collData = res[0]||[], list = res[1];
+      AC_COLLECTIONS = collData.map(function(c){
+        return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
+                match:c.match||[],description:c.description||'',header:c.header||''};
+      });
+      AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
+                           match:[],standalone:true,description:'',header:''});
                 var activeCollection = findCollection(COLLECTION_PARAM);
         if (activeCollection) {
           list = list.filter(function (c) { return charMatchesCollection(c, activeCollection); });
@@ -279,6 +287,436 @@
           if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
           if (cr) cr.textContent = displayName;
           document.title = displayName + ' — BOTC HomeBrew Wiki';
+          // Header image
+          if (activeCollection.header) {
+            var hw = document.createElement('div');
+            hw.className = 'collection-hero-header';
+            hw.innerHTML = '<img class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + displayName + '">';
+            var hero = document.querySelector('.home-hero');
+            if (hero) hero.insertBefore(hw, hero.firstChild);
+          }
+          // Description
+          if (activeCollection.description) {
+            var desc = document.createElement('p');
+            desc.className = 'collection-hero-desc';
+            desc.textContent = activeCollection.description;
+            var st2 = document.getElementById('hero-subtitle');
+            if (st2 && st2.parentNode) st2.parentNode.insertBefore(desc, st2);
+          }
+          // Edit link
+          if (activeCollection.id && !activeCollection.standalone) {
+            var eb = document.createElement('a');
+            eb.href = 'edit-collection.html?c=' + encodeURIComponent(activeCollection.id);
+            eb.className = 'edit-link'; eb.textContent = '✎ Edit Collection';
+            var bg = document.querySelector('.brand-group');
+            if (bg) bg.appendChild(eb);
+          }
+        }
+        FULL = list;
+        buildFilterBar(list);
+        render();
+      })
+      .catch(function () {
+        document.getElementById('panel').innerHTML =
+          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+      });
+  </script>
+  <script>
+  (function(){
+    var ROOT=(function(){var s=document.querySelector('link[rel="stylesheet"]');if(!s)return'';return s.getAttribute('href').replace('assets/styles.css','');})();
+    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
+    if(!input||!drop)return;
+    var allChars=null,fetchPromise=null;
+    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch(ROOT+'characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
+    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
+    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
+    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for “'+esc(q)+'”</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
+    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
+    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
+    var deb;
+    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
+    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
+    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
+    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
+    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
+    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
+  })();
+  </script>
+
+
+  <script>
+  (function(){
+    var btn = document.getElementById('hamburger');
+    var drop = document.getElementById('nav-dropdown');
+    if (!btn || !drop) return;
+    // Mark current page as active
+    var here = location.pathname.split('/').pop() || 'index.html';
+    drop.querySelectorAll('a').forEach(function(a){
+      if (a.getAttribute('href') === here) a.classList.add('active');
+    });
+    function positionDrop(){
+      var tb = document.querySelector('.topbar');
+      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
+    }
+    btn.addEventListener('click', function(){
+      positionDrop();
+      var open = drop.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
+    });
+    // nav search mirrors topbar search
+    var navSearch = document.getElementById('nav-search-input');
+    var topSearch = document.getElementById('search-input');
+    if (navSearch) {
+      navSearch.addEventListener('input', function(){
+        if (topSearch) { topSearch.value = navSearch.value; topSearch.dispatchEvent(new Event('input')); }
+      });
+      navSearch.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+      });
+    }
+    window.addEventListener('resize', positionDrop);
+    document.addEventListener('click', function(e){
+      if (!btn.contains(e.target) && !drop.contains(e.target)){
+        drop.classList.remove('open');
+        btn.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+      }
+    });
+  })();
+  </script>
+  <script>
+  /* script-count badge on Script Builder nav links */
+  (function(){
+    var KEY='botc_script';
+    function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
+    function upd(){
+      var c=n();
+      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+        var b=a.querySelector('.script-badge');
+        if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
+        else if(b){b.remove();}
+      });
+    }
+    window.updateScriptBadge=upd; upd();
+    window.addEventListener('storage',function(e){if(e.key===KEY)upd();});
+  })();
+  </script>
+</body>
+</html    }).catch(function(err){="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Characters — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">·</span><span class="here" id="crumb-here">All Characters</span><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a>
+    </nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="index.html">Home</a>
+  <a href="all-characters.html">All Characters</a>
+  <a href="tags.html">Tags</a>
+  <a href="creators.html">Creators</a>
+  <a href="script.html">Script Builder</a>
+  <a href="create.html">Create a Character</a>
+</nav>
+
+  <!-- Fixed left sidebar -->
+
+
+  <div class="home-hero">
+    <h1 id="hero-title">All Characters</h1>
+    <p id="hero-subtitle">Every fan-made character in the wiki, grouped by team.</p>
+  </div>
+
+  <div class="home-panel" style="padding-bottom:0">
+    <div id="filter-bar" class="filter-bar" hidden></div>
+    <p id="filter-count" class="filter-count" hidden></p>
+  </div>
+  <main class="home-panel" id="panel">
+    <div class="char-grid">
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+      <div class="skel skel-card" style="height:120px"></div>
+    </div>
+  </main>
+
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+    var TEAMS = [
+      ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
+      ['minion', 'Minion'], ['demon', 'Demon'],
+      ['traveller', 'Traveller'], ['fabled', 'Fabled']
+    ];
+    var GOOD = { townsfolk: 1, outsider: 1 };
+    window.TEAM_LABEL = window.TEAM_LABEL || {
+      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+    };
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function card(c) {
+      var typeClass = GOOD[c.team] ? ' good' : '';
+      return '<a class="char-card" href="' + esc(c.page) + '">' +
+        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        '<div class="char-card-info">' +
+        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
+        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
+        '<span class="char-card-link">View Character →</span>' +
+        '</div></a>';
+    }
+    function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    // Shared collection definitions — must match index.html exactly
+    var AC_COLLECTIONS = [
+      { slug: 'Fall of Rome', displayName: 'Fall of Rome',
+        match: ['fallofrome'] },
+      { slug: 'Festival of Lanterns — Temple Fair', displayName: 'Temple Fair',
+        match: ['festivaloflanternstemplefair','templefair'] },
+      { slug: 'Festival of Lanterns — The Storm Is Coming', displayName: 'The Storm Is Coming',
+        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
+      { slug: 'Ravenswood Chronicle', displayName: 'Ravenswood Chronicle',
+        match: ['ravenswoodchronicle','ravenswoodchronicles'] },
+      { slug: "A Midsummer Night's Dream", displayName: "A Midsummer Night's Dream",
+        match: ['amidsummernightsdream','midsummernightsdream','babybusamidsummernightsdream'] },
+      { slug: 'Travel by Starlight', displayName: 'Travel by Starlight',
+        match: ['travelbystarlight'] },
+      { slug: 'Standalone', displayName: 'Standalone Characters',
+        match: [] }  // special: chars with no known collection
+    ];
+    // Resolve a collection param to its definition using slug or match arrays
+    function findCollection(param) {
+      if (!param) return null;
+      var n = norm(param);
+      for (var i = 0; i < AC_COLLECTIONS.length; i++) {
+        var c = AC_COLLECTIONS[i];
+        if (norm(c.slug) === n || norm(c.displayName) === n) return c;
+        if (c.match.indexOf(n) !== -1) return c;
+      }
+      return null;
+    }
+    function charMatchesCollection(c, coll) {
+      if (!coll) return true;
+      if (coll.slug === 'Standalone') {
+        // standalone = no recognized collection
+        var a = norm(c.appearsIn);
+        if (!a) return true;
+        for (var i = 0; i < AC_COLLECTIONS.length - 1; i++) {  // skip Standalone itself
+          if (AC_COLLECTIONS[i].match.indexOf(a) !== -1) return false;
+        }
+        return true;
+      }
+      return coll.match.indexOf(norm(c.appearsIn)) !== -1;
+    }
+    var COLLECTION_PARAM = (function(){
+      try { var p = new URLSearchParams(location.search).get('collection'); return p ? decodeURIComponent(p) : null; }
+      catch (e) { return null; }
+    })();
+
+    // Filter state
+    var STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
+    var FULL = [];   // collection-scoped full list
+
+    function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
+
+    function titleCase(s){ return s.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }); }
+
+    function buildFilterBar(list){
+      var bar = document.getElementById('filter-bar');
+      // Collect tags & creators
+      var tagSet = {}, creatorSet = {};
+      list.forEach(function(c){
+        splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
+        if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
+      });
+      var tags = Object.keys(tagSet).sort();
+      var creators = Object.keys(creatorSet).sort(function(a,b){ return a.toLowerCase()<b.toLowerCase()?-1:1; });
+
+      var html = '';
+      // Teams
+      html += '<div class="filter-group"><span class="filter-group-label">Team</span><div class="filter-chips" id="fc-teams">';
+      TEAMS.forEach(function(t){
+        if (!list.some(function(c){return c.team===t[0];})) return;
+        html += '<button type="button" class="filter-chip" data-team="'+t[0]+'">'+t[1]+'</button>';
+      });
+      html += '</div></div>';
+      // Tags
+      if (tags.length){
+        html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
+        tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
+        html += '</div></div>';
+      }
+      // Creator
+      if (creators.length > 1){
+        html += '<div class="filter-group"><span class="filter-group-label">Creator</span><select class="filter-select" id="fc-creator"><option value="">All creators</option>';
+        creators.forEach(function(c){ html += '<option value="'+esc(c)+'">'+esc(c)+'</option>'; });
+        html += '</select></div>';
+      }
+      // Sort
+      html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
+        '<option value="name-asc">Name (A–Z)</option>' +
+        '<option value="name-desc">Name (Z–A)</option>' +
+        '<option value="recent">Recently added</option>' +
+        '</select></div>';
+      // Reset
+      html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="fc-reset">Reset filters</button></div>';
+
+      bar.innerHTML = html;
+      bar.hidden = false;
+
+      // Wire events
+      bar.querySelectorAll('[data-team]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var v = btn.getAttribute('data-team');
+          var i = STATE.teams.indexOf(v);
+          if (i===-1) STATE.teams.push(v); else STATE.teams.splice(i,1);
+          btn.classList.toggle('active');
+          render();
+        });
+      });
+      bar.querySelectorAll('[data-tag]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var v = btn.getAttribute('data-tag');
+          var i = STATE.tags.indexOf(v);
+          if (i===-1) STATE.tags.push(v); else STATE.tags.splice(i,1);
+          btn.classList.toggle('active');
+          render();
+        });
+      });
+      var crSel = document.getElementById('fc-creator');
+      if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
+      document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
+      document.getElementById('fc-reset').addEventListener('click', function(){
+        STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
+        bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+        if (crSel) crSel.value = '';
+        document.getElementById('fc-sort').value = 'name-asc';
+        render();
+      });
+    }
+
+    function applyFilters(){
+      var out = FULL.slice();
+      if (STATE.teams.length) out = out.filter(function(c){ return STATE.teams.indexOf(c.team) !== -1; });
+      if (STATE.tags.length) out = out.filter(function(c){
+        var ct = splitTags(c).map(titleCase);
+        return STATE.tags.every(function(t){ return ct.indexOf(t) !== -1; });
+      });
+      if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
+      // sort
+      if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+      else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
+      else if (STATE.sort === 'recent') { /* keep array order reversed = most-recent first */
+        out = out.map(function(c,i){ return [c, FULL.indexOf(c)]; })
+                 .sort(function(a,b){ return b[1]-a[1]; })
+                 .map(function(p){ return p[0]; });
+      }
+      return out;
+    }
+
+    function render(){
+      var list = applyFilters();
+      var panel = document.getElementById('panel');
+      var count = document.getElementById('filter-count');
+      count.hidden = false;
+      count.textContent = list.length + ' character' + (list.length===1?'':'s') +
+        (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
+
+      if (!list.length){
+        panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
+        return;
+      }
+      var html = '';
+      var flat = STATE.sort !== 'name-asc';  // when custom sort, show flat grid; default = grouped by team
+      if (STATE.sort === 'recent' || STATE.sort === 'name-desc' || STATE.sort === 'name-asc') {
+        // group by team always, sorted within each group already
+        TEAMS.forEach(function (t) {
+          var key = t[0], label = t[1];
+          var chars = list.filter(function (c) { return c.team === key; });
+          if (!chars.length) return;
+          html += '<section class="type-section" id="' + key + '">' +
+            '<h2 class="type-header"><a href="team.html?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
+            '<div class="char-grid">' + chars.map(card).join('') + '</div></section>';
+        });
+      }
+      panel.innerHTML = html;
+    }
+
+    Promise.all([
+      fetch('collections.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();})
+    ]).then(function(res){
+      var collData = res[0]||[], list = res[1];
+      AC_COLLECTIONS = collData.map(function(c){
+        return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
+                match:c.match||[],description:c.description||'',header:c.header||''};
+      });
+      AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
+                           match:[],standalone:true,description:'',header:''});
+                var activeCollection = findCollection(COLLECTION_PARAM);
+        if (activeCollection) {
+          list = list.filter(function (c) { return charMatchesCollection(c, activeCollection); });
+          var displayName = activeCollection.displayName;
+          var t = document.getElementById('hero-title');
+          var st = document.getElementById('hero-subtitle');
+          var cr = document.getElementById('crumb-here');
+          if (t) t.textContent = displayName;
+          if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
+          if (cr) cr.textContent = displayName;
+          document.title = displayName + ' — BOTC HomeBrew Wiki';
+          // Header image
+          if (activeCollection.header) {
+            var hw = document.createElement('div');
+            hw.className = 'collection-hero-header';
+            hw.innerHTML = '<img class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + displayName + '">';
+            var hero = document.querySelector('.home-hero');
+            if (hero) hero.insertBefore(hw, hero.firstChild);
+          }
+          // Description
+          if (activeCollection.description) {
+            var desc = document.createElement('p');
+            desc.className = 'collection-hero-desc';
+            desc.textContent = activeCollection.description;
+            var st2 = document.getElementById('hero-subtitle');
+            if (st2 && st2.parentNode) st2.parentNode.insertBefore(desc, st2);
+          }
+          // Edit link
+          if (activeCollection.id && !activeCollection.standalone) {
+            var eb = document.createElement('a');
+            eb.href = 'edit-collection.html?c=' + encodeURIComponent(activeCollection.id);
+            eb.className = 'edit-link'; eb.textContent = '✎ Edit Collection';
+            var bg = document.querySelector('.brand-group');
+            if (bg) bg.appendChild(eb);
+          }
         }
         FULL = list;
         buildFilterBar(list);
