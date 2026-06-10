@@ -19,6 +19,22 @@
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
   }
+  // Map known slugified IDs back to proper display names for jinx links
+  var JINX_ID_NAMES = {
+    'alhadikhia':'Al-Hadikhia','eviltwin':'Evil Twin','lilmonsta':"Lil' Monsta",
+    'organgrinder':'Organ Grinder','pithag':'Pit-Hag','plaguedoctor':'Plague Doctor',
+    'poppygrower':'Poppy Grower','scarletwoman':'Scarlet Woman',
+    'snakecharmer':'Snake Charmer','villageidiot':'Village Idiot',
+    'banxian_festival_of_lanterns':'Ban Xian','pedant_festival_of_lanterns':'Pedant'
+  };
+  function jinxDisplayName(j) {
+    if (j.name && j.name.trim()) return j.name.trim();
+    var id = j.id || '';
+    if (JINX_ID_NAMES[id]) return JINX_ID_NAMES[id];
+    // Fallback: capitalise first letter
+    return id ? id[0].toUpperCase() + id.slice(1) : id;
+  }
+
   function slugId(name) {
     return String(name || '').toLowerCase().normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').slice(0, 50);
@@ -132,7 +148,7 @@
         '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
-          var nm = j.name || j.id;
+          var nm = jinxDisplayName(j);
           var iconId = slugId(nm);
           var iconPrimary = 'https://release.botc.app/resources/characters/' + iconId + '.png';
           var iconFallback = 'https://botchomebrew.wiki/assets/jinx-icons/' + iconId + '.png';
