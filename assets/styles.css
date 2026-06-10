@@ -1402,6 +1402,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: 1.1rem; color: rgba(236,225,200,.85);
   max-width: 720px; margin: 0 auto 8px; text-align: center;
 }
+.collection-edit-btn { margin-top: 14px; display: inline-block; }
 
 /* Collection tile header image (replaces character-icon grid when set) */
 .collection-tile-header {
