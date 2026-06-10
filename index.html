@@ -277,13 +277,13 @@
       return out;
     }
 
-    function collectionTileHTML(name, slug, count, icons){
-      var iconsHTML = icons.map(function(c){
-        return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
-      }).join('');
+    function collectionTileHTML(name, slug, count, icons, header){
       var href = 'all-characters.html?collection=' + encodeURIComponent(slug);
+      var topHTML = header
+        ? '<div class="collection-tile-header"><img src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
-        '<div class="collection-icons">' + iconsHTML + '</div>' +
+        topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
@@ -325,9 +325,15 @@
       '</a>';
     }
 
-    fetch('characters.json?_=' + Date.now())
-      .then(function(r){ return r.json(); })
-      .then(function(list){
+    Promise.all([
+      fetch('collections.json?_='+Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); })
+    ]).then(function(mainRes){
+      var collData=mainRes[0]||[], list=mainRes[1];
+      COLLECTIONS = collData.map(function(c){
+        return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
+                match:c.match||[],tagline:c.description||'',description:c.description||'',header:c.header||''};
+      });
         // ── Stats ─────────────────────────────────────────────
         var collected = {};
         list.forEach(function(c){
@@ -362,7 +368,7 @@
           if (!chars.length) return; // skip empty collections
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
-          html += collectionTileHTML(displayName, coll.slug, chars.length, icons);
+          html += collectionTileHTML(displayName, coll.slug, chars.length, icons, coll.header||'');
         });
         // "Standalone" tile for unclassified characters
         var standalone = list.filter(function(c){ return classifyCollection(c.appearsIn) === -1 || !c.appearsIn; });
@@ -417,7 +423,7 @@
             '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">No featured character available.</p>';
         }
       })
-      .catch(function(err){
+    }).catch(function(err){
         console.error(err);
         document.getElementById('landing-stats').textContent = 'Could not load character data.';
         document.getElementById('collections-grid').innerHTML =
