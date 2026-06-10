@@ -1975,28 +1975,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "That man is always covered in grime or rambling incoherently. I can’t get a grip on him.",
-    "lede": "The Ban Xian channels misdirection, turning the evil team's own weapons back upon them.",
+    "quote": "That man is always covered in grime or rambling incoherently. I can't get a grip on him.",
+    "lede": "The Ban Xian redirects potential threats to evil players.",
     "summaryBullets": [
-      "Any player who uses an ability to choose the Ban Xian at night instead targets a randomly chosen evil player — the Ban Xian's choice is silently redirected before the ability resolves.",
-      "Neither the Ban Xian nor the choosing player learns that a redirect has occurred.",
-      "Only abilities that require an active choice can be redirected. Passive or non-targeting abilities are unaffected.",
-      "After a redirect, the ability resolves against the new target without re-checking selection restrictions — a Snake Charmer's target might be an already-dead evil player, a Devil's Advocate might end up protecting themselves.",
-      "If an ability targets multiple players and the Ban Xian is one of them, only the Ban Xian's slot is redirected — the other targets remain unchanged. The redirect won't create a duplicate target.",
-      "If there is no valid evil player to redirect to, the Ban Xian is targeted as normal.",
-      "A single target can only be redirected once per ability — a redirected target cannot be further redirected by the Ambassador.",
-      "The Ban Xian's ability only triggers at night. During the day it has no effect — the Psychopath can kill the Ban Xian without redirection."
+      "At night, if a player chooses the Ban Xian with their ability, the ability will instead resolve as if they chose an evil player of the Storyteller's choice.",
+      "Players will not be told that their ability did not affect the intended target, nor will the Ban Xian be told that their ability has activated.",
+      "The Ban Xian only redirects abilities that require the player to actively choose a target. Passive abilities still affect the Ban Xian as usual.",
+      "The Storyteller can choose to redirect the ability to an otherwise invalid target, such as a dead evil player for the Snake Charmer.",
+      "An ability redirected by the Ban Xian cannot be redirected further.",
+      "The Ban Xian ability can only be activated at night. If the Ban Xian is chosen by an ability during the day, that ability is not redirected."
     ],
     "howToRun": [
-      "Each night, if any player uses an ability that requires them to choose a player and they select the Ban Xian, secretly redirect that choice to any evil player before resolving the ability. Do not wake the Ban Xian or inform either player.",
-      "When resolving the ability, treat the evil player as the chosen target. Do not re-evaluate pre-colon conditions — apply only the post-colon effect to the new target.",
-      "The Assassin is an exception: if the Assassin targets the Ban Xian, the Ban Xian dies immediately without redirection.",
-      "If the Abbot neighbors the Ban Xian and an evil ability is about to be redirected, the redirect happens before the Abbot's protection triggers — the evil ability never technically targets the Ban Xian."
+      "Each time the Ban Xian player is chosen by a character's ability at night, choose an evil player to redirect the ability towards. Resolve the ability as if that player was chosen (and was a legitimate choice)."
     ],
     "examples": [
-      "The Investigator chooses the Ban Xian and a Recluse. The Ban Xian's ability redirects the Ban Xian's slot to the Imp. The Investigator learns that one of the Imp and the Recluse is a Minion.",
-      "The Devil's Advocate chose to protect themselves the previous night. On the second night they choose the Ban Xian — the Storyteller redirects to the Devil's Advocate themselves. The Devil's Advocate continues to be immune to execution. Next night they cannot choose the Ban Xian again (they tracked who they chose, not who they hit).",
-      "The Psychopath kills the Ban Xian during the day. The Ban Xian dies, since their ability is inactive during the day."
+      "The Fortune Teller chooses the Ban Xian and the Scarlet Woman and learns \"yes\", since the Imp is targeted instead.",
+      "On the first night, the Devil's Advocate protects themself. On the second night, the Devil's Advocate chooses the Ban Xian, and the Storyteller decides to redirect the protection to the Devil's Advocate, making the Devil's Advocate able to survive execution for the second consecutive day. On the third night, the Devil's Advocate chooses themself, as their previous choice was the Ban Xian.",
+      "The Psychopath chooses to attack the Ban Xian during the day. The Ban Xian dies, since their ability does not function during the day."
     ],
     "tips": [
       "Claim a role that evil players are likely to visit — if the evil team targets you, they only help you. Bluffing as a Fortune Teller or Undertaker can bait valuable night actions into backfiring.",
@@ -2024,7 +2019,8 @@
         "id": "lleech",
         "reason": "The Lleech’s poisoning or host choice cannot be redirected."
       }
-    ]
+    ],
+    "callout": "If the Assassin attacks the Ban Xian, the Ban Xian dies without redirecting the Assassin's choice to an evil player."
   },
   {
     "slug": "face-changer",
@@ -2040,24 +2036,20 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "One minute of glory on stage, ten years of hard work off stage.",
-    "lede": "The Face Changer is a master of theatrical deception, earning new powers by convincing the town they are someone else.",
+    "lede": "The Face Changer is adept at assuming many different roles.",
     "summaryBullets": [
-      "If the Face Changer is publicly mad (convincingly claims) that they are a specific good character during the day, the Storyteller may grant them that character's ability until the next dusk.",
-      "Each ability can only be gained once — the Face Changer cannot gain the same character's ability more than once in a game.",
-      "Being mad must be convincing and sustained. Simply naming a character is not enough; the Face Changer must genuinely act the part and give a believable reason for the claim.",
-      "The Storyteller decides whether the performance was convincing enough to grant the ability — a more compelling portrayal increases the chance of success.",
-      "Some abilities (like Singer or Seamstress) activate at specific times. If the Face Changer gains such an ability, they gain it at the moment they claim it, not necessarily at night.",
-      "Having gained an ability on a previous night does not prevent the Face Changer from claiming the same character again — it just won't grant the ability again."
+      "If the Face Changer is \"mad\" that they are a certain good character, they might be able to gain that character's ability that night.",
+      "If the Face Changer gains an ability, they keep it until dusk.",
+      "The Face Changer cannot gain the same character's ability more than once.",
+      "Only the Face Changer's madness from the previous day is taken into account when deciding whether they gain an ability.",
+      "Some characters' abilities may activate at night depending on the player's actions during the day. If the Face Changer is \"mad\" that they are such a character, they need to make the appropriate actions for the ability to have any effect."
     ],
     "howToRun": [
-      "During the day, observe whether the Face Changer is convincingly and publicly claiming to be a specific good character.",
-      "If you decide to grant the ability, that night swap the Face Changer's character token for the claimed character's token and place the IS THE FACE CHANGER reminder. The Face Changer wakes and acts as that character.",
-      "At dusk, remove the ability — return their token and reminder. The Face Changer loses the ability.",
-      "When judging 'convincing madness', consider whether the player gave a satisfying explanation for why they previously claimed differently. Typically 1–2 ability grants per game is appropriate, though you may reward an exceptional performance with more."
+      "At night, if you believe that the Face Changer has been \"mad\" that they are a good character whose ability they have not already gained, they gain that ability and wake when that character would normally wake. They have this ability until dusk."
     ],
     "examples": [
-      "On day one, the Face Changer claims to be the Fortune Teller. That night they gain the Fortune Teller's ability and learn that yes, one of their two chosen players is the Demon. On day two they claim to be the Seamstress — they immediately gain the ability and use it. On day three they claim to be the Sage, but their excuse for the previous claims is unconvincing. The Storyteller does not grant the ability, and that night the Demon kills them.",
-      "The Face Changer spends several days claiming to be the Chambermaid. They gain the Chambermaid's ability only on the first night — a character's ability can only be granted once. The next day they switch to claiming to be the Knight and receive the Knight's ability."
+      "On the first day, the Face Changer is \"mad\" that they are the Fortune Teller. That night, the Face Changer is woken to choose two players. They choose the Imp and the Preacher, and learn \"yes\". On the second day, the Face Changer convinces the town that they are actually the Seamstress. The following night, they wake to choose the Preacher and the Sage, and learn \"yes\". On the third day, the Face Changer claims to be the Dreamer, but does not provide sufficient explanation as to why they claimed a different character yesterday. The Storyteller decides not to give them the Dreamer ability. That night, the Face Changer does not wake.",
+      "On the first three days, the Face Changer is \"mad\" that they are the Steward. They gain the Steward's ability on the second night and learn a good player, but gain nothing on the third and fourth nights. On the fourth day, the Face Changer is \"mad\" that they are the Knight. The fifth night, the Face Changer is woken and shown two players that are not the Demon."
     ],
     "tips": [
       "Plan your character arc. Each claim is a one-time opportunity — pick characters with abilities that help your current situation most.",
@@ -2077,7 +2069,8 @@
     "remindersGlobal": [
       "Is the Face Changer"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "When the Face Changer is \"mad\" about being a new good character, they need to be able to explain why they claimed to be a different character on previous days. Generally, a Face Changer might succeed in gaining one or two new abilities during a game, but you as the Storyteller are the final judge."
   },
   {
     "slug": "firewatcher",
@@ -2093,26 +2086,24 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Have you not heard of the prohibition on candles? This could burn the village down in this weather!",
-    "lede": "The Firewatcher patrols the dark streets each night, turning their vigilance into a shield for the whole town.",
+    "lede": "The Firewatcher keeps an eye out on areas at risk at night.",
     "summaryBullets": [
-      "Each night (not the first), the Firewatcher guesses a number — the number of seats away they believe the first player to die tonight will be.",
-      "If the first death of the night is exactly that many seats from the Firewatcher, every other player is protected from dying tonight. The Firewatcher may then die instead.",
-      "Dead players still count toward seat distance. In the late game, a correct guess may protect only one or two living players.",
-      "The Firewatcher can guess 0, meaning they believe they themselves will die first. If correct, all other players are saved, and the Firewatcher dies after all other death effects resolve.",
-      "If no one dies at night, or if the first death is not at the guessed distance, the Firewatcher's ability does not trigger and they are safe.",
-      "If the Firewatcher is unable to save the player at the guessed distance (e.g. the Assassin kills them, bypassing protection), the ability does not trigger and deaths resolve normally."
+      "If the first player to die at night is exactly as many steps from the Firewatcher as the Firewatcher guessed, that player will not die tonight.",
+      "If the Firewatcher successfully prevents the death of a player, no other player except the Firewatcher can die that night.",
+      "The Firewatcher does not protect themself, and may in fact die to their own ability if they successfully protect somebody else.",
+      "The Firewatcher's number takes into account all players, not just all living players. If both neighbors are dead, a guess of \"1\" will have no effect.",
+      "The Firewatcher can guess \"0\", choosing themself. If the Firewatcher is then the first to die that night, they die as normal, but nobody else may die that night.",
+      "If the first player to die at night is not sitting the guessed number of steps away, or if nobody dies, the Firewatcher's ability does not activate."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Firewatcher. They hold up fingers to indicate their guess. Place PROTECTED reminder tokens on the players that distance away on both sides.",
-      "If any ability causes a death this night and the dying player has a PROTECTED token, move the token to the centre of the Grimoire. From this point on, no other player (except the Firewatcher) can die tonight.",
-      "Decide whether the Firewatcher dies. If so, mark them with the DEAD reminder. At dawn, remove all PROTECTED tokens and announce the night's deaths without explaining their cause.",
-      "If the first death of the night is not a PROTECTED player, remove all PROTECTED tokens immediately and resolve the death normally — the Firewatcher's ability does not trigger.",
-      "Note: The Brocadier cannot save the Firewatcher from their own ability's self-death, as the Firewatcher's protection prevents the Brocadier from dying."
+      "Each night except the first, wake the Firewatcher. They hold up a number of fingers (0, 1, 2 etc.) indicating the distance in players from themself to the players they want to protect. Mark both players that distance away with the [[PROTECTED]] reminder tokens. Put the Firewatcher to sleep.",
+      "If a player marked with a [[PROTECTED]] token would then be the first player to die that night, place the [[PROTECTED]] token in the center of the Grimoire. No player except for the Firewatcher can die tonight. If the Firewatcher survives the night, decide if they should die to their own ability or not: if yes, mark them with the [[DEAD]] reminder token. At dawn, remove all [[PROTECTED]] reminders and declare if any players died at night, without saying why or how they died or survived.",
+      "If a player not marked with a [[PROTECTED]] reminder token is the first to die at night, remove all [[PROTECTED]] reminder tokens and resolve the death and the rest of the night normally."
     ],
     "examples": [
-      "The Firewatcher guesses 2. The Demon attacks a player 2 seats away; the Godfather then attacks a player 3 seats away (the Demon acts first). Both players survive, and the Storyteller chooses to kill the Firewatcher.",
-      "The Firewatcher guesses 2. The Demon (Pukka) chooses not to attack, but the Assassin kills the player 2 seats away. That player dies — the Assassin's kill is not an ability that can be blocked — and the Firewatcher survives.",
-      "The Firewatcher guesses 2. The Demon attacks the player 3 seats away, then the Godfather attacks the player 2 seats away. The Demon acts first, so the first death is 3 seats away. Both players die, and the Firewatcher survives."
+      "The Firewatcher guesses \"2\". Tonight, the Demon attacks a player 2 steps away from the Firewatcher, and then the Godfather attacks a player 5 steps away. The Demon is the first character to cause a death tonight, so the Firewatcher's ability activates, and neither the Demon nor the Godfather succeed in killing their targets. Towards the end of the night, the Storyteller decides that the Firewatcher dies.",
+      "The Firewatcher guesses \"2\". Tonight, the Po chooses no-one. The Assassin chooses to kill a player 2 steps away from the Firewatcher. That player dies, and the Firewatcher stays alive, as they did not manage to protect anybody.",
+      "The Firewatcher guesses \"2\". Tonight, the Demon attacks a player 3 steps away, and the Godfather attacks a player 2 steps away. Since the Demon attacked before the Godfather, both targeted players die, and the Firewatcher stays alive."
     ],
     "tips": [
       "Pay attention to who is sitting near you. Strong info roles seated close make tempting Demon targets — guessing short distances is often wise.",
@@ -2140,7 +2131,8 @@
         "id": "riot",
         "reason": "If the Riot is in play, the Firewatcher-protected players are safe from all evil abilities."
       }
-    ]
+    ],
+    "callout": "The Brocadier cannot protect the Firewatcher from dying to its own ability, as the Firewatcher dying prevents the Brocadier from dying to their ability."
   },
   {
     "slug": "waiter",
@@ -2156,22 +2148,20 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Welcome back, sir! The usual, I assume?",
-    "lede": "The Waiter knows exactly who needs looking after — but one of them has had something slipped into their drink.",
+    "lede": "The Waiter knows their regulars and makes sure they have plenty to drink.",
     "summaryBullets": [
-      "At the start of the game you learn two good players. One of those two players is drunk for the entire game, even after you die.",
-      "You do not learn which of the two players is drunk.",
-      "The drunk player's ability functions as normal from their perspective — they receive information and take actions — but their ability gives false results or has no effect.",
-      "Your ability persists after death: as long as you were ever in play, one of those two players remains drunk."
+      "On their first night, the Waiter learns two players that are good at that point.",
+      "One of the players the Waiter learns is drunk the whole game, even if the Waiter dies.",
+      "If created mid-game, the Waiter learns their information that night, and one of the players they know is drunk from then on.",
+      "If a dead player becomes the Waiter, they do not learn two good players, but 1 good player is drunk from then on."
     ],
     "howToRun": [
-      "On the first night, wake the Waiter. Point to two good players. Put the DRUNK reminder on one of them and KNOWN on the other. Put the Waiter to sleep.",
-      "The DRUNK player remains drunk for the entire game, even if the Waiter dies. Treat their ability accordingly — give them plausible but false information.",
-      "Do not reveal which player is drunk to anyone, including the Waiter."
+      "While preparing the first night, put the Waiter's [[KNOWN]] token by any good player token, and put the Waiter's [[DRUNK]] token by any other good player token.",
+      "During the first night, wake the Waiter and point to the players marked [[KNOWN]] and [[DRUNK]]. Put the Waiter to sleep. The player marked [[DRUNK]] will remain drunk for as long as the Waiter is in play."
     ],
     "examples": [
-      "The Waiter is shown the Empath and the Fortune Teller. The Fortune Teller is drunk. Each night, the Fortune Teller chooses players and the Storyteller gives false readings — the Fortune Teller never correctly identifies the Demon.",
-      "The Waiter dies on night two. The drunk player remains drunk for the rest of the game.",
-      "The Waiter is shown two players. The Empath is drunk — their neighbor count is always false. The town trusts the Empath's numbers throughout, leading them astray."
+      "The Waiter learns the Snake Charmer and the Philosopher. The Philosopher is drunk. Later, the Snake Charmer chooses the Demon and becomes the evil Demon, but the Waiter still thinks that they are good.",
+      "The Pacifist is turned into the Waiter. They learn the Alchemist and the Lycanthrope, who is made drunk. Later, the Lycanthrope attempts to kill themself, but fails."
     ],
     "tips": [
       "You know two good players — share this information carefully. They are valuable allies, but one is unreliable.",
@@ -2188,7 +2178,8 @@
       "Known",
       "Drunk"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "If the Waiter learns false info due to drunkenness, poisoning or an ability such as the Vortox forcing false info, they may either learn 2 evil players or 1 good and 1 evil player. Either way, one of the players the Waiter learned becomes drunk when the Waiter becomes sober and healthy. It is not recommended to make an evil player drunk this way."
   },
   {
     "slug": "singer",
@@ -2203,24 +2194,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "A singsong girl, unaware of the sorrow of a conquered state, is singing Backyard Flowers on the river’s other shore.",
-    "lede": "The Singer serenades the crowd and invites them to step forward — but if the Demon accepts, the performance ends in tragedy.",
+    "quote": "A singsong girl, unaware of the sorrow of a conquered state, is singing Backyard Flowers on the river's other shore.",
+    "lede": "The Singer invites players to a performance, but risks exposing themself to the Demon.",
     "summaryBullets": [
-      "Once per game, during the day, the Singer publicly announces they are using their ability and invites any players to volunteer.",
-      "Volunteers publicly step forward. The Singer may choose any of them — or none.",
-      "If the Singer chooses a player who is the Demon, the Singer dies that night.",
-      "The Singer does not learn anything from the selection — they learn only through the consequence (dying) whether they chose the Demon.",
-      "This ability can only be used once. After use, the Singer has no ability for the rest of the game."
+      "The Singer can choose to use their ability at any time during the day, and must declare to everyone when they're using it.",
+      "When the Singer declares their ability, all players (alive or dead) are asked to raise their hands if they would like to attend. The Singer may choose any number of players who have their hands raised. All players know whom the Singer has chosen.",
+      "If the Demon had their hand raised and was chosen by the Singer, the Singer dies tonight.",
+      "If a non-Demon player chosen by the Singer becomes a Demon later, the Singer does not die due to their own ability tonight.",
+      "If the Singer was drunk or poisoned when they chose the Demon today, they still die if they are sober and healthy tonight.",
+      "A Singer that uses their ability while poisoned or drunk may not use it again."
     ],
     "howToRun": [
-      "If the Singer uses their ability during the day, announce that the Singer is performing and ask for volunteers. Any player may publicly volunteer.",
-      "The Singer then chooses a volunteer (or declines). Note their choice privately.",
-      "That night, if the chosen player is the Demon (and the Singer is not drunk or poisoned), kill the Singer with the DEAD reminder."
+      "Once per game, during the day, the Singer can declare that they wish to use their ability. If so, all players are told to raise their hands if they want to be chosen by the Singer. Count down from 3 to 1 to let players know how long they have to decide. When the time is out, ask the Singer to choose any players who have their hand raised.",
+      "If the Demon is chosen, mark the Singer with the [[DEAD]] reminder token. Mark the Singer with the [[NO ABILITY]] reminder token.",
+      "Tonight, if the Singer is marked with the [[DEAD]] reminder token, they die."
     ],
     "examples": [
-      "The Singer calls for volunteers. Three players step forward: the Fortune Teller, the Baron, and the Imp. The Singer chooses the Baron. Nothing happens that night.",
-      "The Singer calls for volunteers. The Imp steps forward, hoping to misdirect. The Singer picks them — and dies that night.",
-      "No one volunteers when the Singer calls. The Singer uses their ability choosing no one, and it is spent for the rest of the game."
+      "The Singer reveals themself and invites the group to a performance. 5 players raise their hands. The Singer selects the alive Tinker, the alive Pit-Hag and the dead Fang Gu. The Singer dies tonight."
     ],
     "tips": [
       "Watch who does NOT volunteer. The Demon may avoid stepping forward to dodge the risk — an absence can be as telling as a presence.",
@@ -2253,22 +2243,24 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Always polish the mirror of the mind, so that no dust can collect.",
-    "lede": "The Abbot's serenity forms a barrier — no evil may reach through to harm those resting in his shadow.",
+    "lede": "The Abbot shelters their neighbors indiscriminately.",
     "summaryBullets": [
-      "Each night, the first time an evil player's ability begins to affect one of your living neighbors, that ability fails and you learn it has been blocked.",
-      "You only block the very first evil ability affecting a neighbor each night — subsequent evil actions against your neighbors that same night resolve normally.",
-      "You do not learn which neighbor was targeted or which evil player tried to act — only that your ability triggered.",
-      "Dead neighbors are not protected.",
-      "Your ability blocks the effect before it resolves — your neighbor is safe from that action, not just healed afterward."
+      "The Abbot's ability works once per night.",
+      "If an evil player's ability would affect one of the Abbot's alive neighbours, it fails. If they act multiple times, only the time they target the Abbot's neighbor fails.",
+      "The Abbot only causes evil players' abilities to fail during the night. Abilities that take effect during the day still happen as normal.",
+      "The Abbot only protects from abilities that have not yet activated. If an Abbot's living neighbor dies, and the next living neighbor was previously poisoned, the Abbot cannot remove the poisoning.",
+      "When the Abbot's ability activates, the Storyteller wakes the Abbot. The Abbot does not learn which player's or character's ability they prevented, nor which neighbor they protected. They only learn that their ability activated.",
+      "If the Abbot cannot protect their neighbors from an evil player's ability, the Abbot's ability does not activate and they do not wake up."
     ],
     "howToRun": [
-      "Each night, monitor whether any evil abilities target the Abbot's living neighbors. If one does, do not resolve that ability. Wake the Abbot and signal that their ability has triggered (e.g., nod or show a reminder).",
-      "The Abbot's ability only blocks once per night. If a second evil ability targets a neighbor the same night, it resolves normally.",
-      "If the Leviathan or Riot executes a neighbor during the day, the Abbot's ability triggers: that neighbor does not die, the Abbot learns their ability activated, and the ability cannot activate again that night."
+      "At night, if an evil player uses their ability to target one of the Abbot's living neighbors, or if an evil player's ability would passively begin affecting one of the Abbot's living neighbors, it fails: treat the evil player as if they are drunk in this instance. Place the Abbot's [[PACIFIED]] reminder token next to the Abbot. Then, wake the Abbot and show them the Abbot character token. Put the Abbot to sleep.",
+      "If one of the Abbot's neighbors would be targeted or affected by an evil player's ability and the Abbot's [[PACIFIED]] token is placed, resolve the evil player's ability as normal.",
+      "At dawn, remove the Abbot's [[PACIFIED]] reminder token. If the pacified ability has a continuous effect, it takes effect again once the [[PACIFIED]] token is removed."
     ],
     "examples": [
-      "The Demon kills the Abbot's right neighbor. The Abbot's ability triggers — the neighbor does not die, and the Abbot learns their ability fired. Later that night, the Poisoner poisons the same neighbor — this resolves normally since the Abbot already blocked once.",
-      "The Kazali creates a Minion from the player neighboring the Abbot. The Abbot's ability would trigger, but the Kazali jinx states this is permitted — the Abbot cannot stop the Kazali."
+      "The Imp kills themself at night. The Baron is the closest living neighbor to the Abbot, and thus cannot be affected by the Imp's ability. As there is no living Demon, the Storyteller announces that the game ends and the good team wins.",
+      "The Assassin chooses to attack the Fool, who is neighboring the Abbot. The Fool dies, and the Abbot does not wake.",
+      "The Philosopher is sitting between the Abbot and the Snake Charmer, whose other neighbor is the Town Crier. The Snake Charmer chooses a player who is the No Dashii and becomes the evil No Dashii. The Philosopher and the Town Crier are about to be poisoned, but since the Philosopher is sitting next to the Abbot, the No Dashii's poisoning fails, and neither are poisoned. On the next day, the No Dashii poisons the Philosopher and the Town Crier, as the Abbot's ability is not active during the day."
     ],
     "tips": [
       "Sitting next to powerful information roles makes you extremely valuable. Evil will be reluctant to attack your neighbors — or will waste attempts trying.",
@@ -2298,7 +2290,8 @@
         "id": "riot",
         "reason": "If the Riot nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight."
       }
-    ]
+    ],
+    "callout": "If the No Dashii is poisoning a Townsfolk neighbor of the Abbot at the start of the game, the Abbot's ability does not activate. If the No Dashii begins poisoning a neighbor of the Abbot mid-game, the Abbot will prevent the No Dashii's poisoning until dawn. Abilities that poison all good players or Townsfolk, such as the Xaan or Hun Dun, also poison the Abbot."
   },
   {
     "slug": "brocadier",
@@ -2314,23 +2307,24 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Come hell or high water, I will protect you, my liege!",
-    "lede": "The Brocadier swears an oath of protection — standing between their chosen ward and death itself.",
+    "lede": "The Brocadier protects other players with their life.",
     "summaryBullets": [
-      "Each night (not the first), you choose a player. If that player dies before the next dusk, you die instead.",
-      "You can protect yourself.",
-      "If your chosen player would die, you die — regardless of the cause of death. The protected player is completely safe from dying that night.",
-      "If you are drunk or poisoned, your chosen player is not protected.",
-      "Your protection lasts until dusk of the following day — you protect against night kills and any ability-caused deaths during that period."
+      "Each night except the first, the Brocadier chooses a player. If the chosen player is about to die, they live and the Brocadier dies instead.",
+      "The dead Brocadier loses their ability and cannot protect the chosen player again the same night. The Brocadier can protect a player only once.",
+      "If the chosen player is about to die but is also protected by other abilities, the Brocadier's ability has no effect, and the Brocadier does not die.",
+      "If the Brocadier cannot die for some reason, they cannot protect the chosen player from dying.",
+      "The Brocadier's protection lasts during the day. The chosen player can survive execution, exile and anything else. The Brocadier will die instead.",
+      "If the Brocadier successfully protects a player, they die due to their own ability, not due to what would have killed the protected player.",
+      "The Brocadier can choose dead players, but since a dead player cannot die again, the Brocadier's ability will have no effect in this case."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Brocadier. They point to a player. Put the PROTECTED reminder on that player. Put the Brocadier to sleep.",
-      "If the protected player would die for any reason before the next dusk, kill the Brocadier instead — place DEAD on the Brocadier and remove DEAD from the protected player.",
-      "At dawn, remove the PROTECTED reminder."
+      "Each night except the first, wake the Brocadier. They point to a player. Mark that player with the [[PROTECTED]] reminder token. Put the Brocadier to sleep.",
+      "If the player marked with the Brocadier's [[PROTECTED]] reminder token is about to die, and the Brocadier can protect them from death, the marked player does not die. If this happens during the day, declare that the Brocadier dies, and remove the [[PROTECTED]] reminder token. If this happens at night, place the [[DEAD]] reminder token by the Brocadier's character token, and remove the [[PROTECTED]] reminder token. At dawn, declare that the Brocadier died in the night.",
+      "At dusk, remove the [[PROTECTED]] reminder token if it is still placed."
     ],
     "examples": [
-      "The Brocadier protects the Slayer. The Demon kills the Slayer — the Brocadier dies instead, and the Slayer survives.",
-      "The Brocadier protects themselves. The Demon attacks the Brocadier — the Brocadier dies (they protected themselves, so they die for themselves).",
-      "The Brocadier is poisoned. They choose the Empath. The Demon kills the Empath — the Empath dies normally, the Brocadier survives."
+      "The Brocadier chooses the Imp. The Imp chooses to kill themself, but survives, and no Minion becomes the Imp. The Brocadier dies.",
+      "The Brocadier chooses the Balloonist. The next day, the Psychopath chooses to attack the Balloonist. The Balloonist survives, and the Brocadier dies."
     ],
     "tips": [
       "Protect players whose abilities are still needed — a Fortune Teller in the late game or a Slayer who hasn't fired are prime candidates.",
@@ -2347,7 +2341,8 @@
       "Protected",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "If the Fang Gu is protected by the Brocadier the first time an Outsider dies to its ability, both the Outsider and the Brocadier die, and the Fang Gu survives."
   },
   {
     "slug": "herb-doctor",
@@ -2363,23 +2358,20 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Increased heart rate. Your qi is weak, dispersing.",
-    "lede": "The Herb Doctor reads the hidden afflictions of the town — one careful word at a time.",
+    "lede": "The Herb Doctor can infer things about players' capabilities.",
     "summaryBullets": [
-      "Each night, you choose a player (not yourself) and learn one word related to their character's ability.",
-      "The Storyteller chooses an appropriate word that relates to the chosen player's ability — it could describe a mechanic, a keyword, or a concept from that ability.",
-      "The word is chosen by the Storyteller and may be vague or precise depending on how much information the Storyteller wishes to give.",
-      "If your chosen player is drunk or poisoned, or if you are drunk or poisoned, the word you receive may be false.",
-      "The word relates to the player's current character ability, not their team alignment."
+      "Each night, the Herb Doctor chooses a player. They learn a word related to that player's ability. The Storyteller can write the word on a piece of paper or a phone or other device, and show it to the Herb Doctor.",
+      "The word could be a word that appears in the chosen player's ability text, such as \"mad\", \"night\" or \"die\". It can also be a word describing the ability, such as \"protect\", \"support\" or \"recurring\".",
+      "The Herb Doctor generally only learns one word at a time. The word should be meaningful, not a function word such as \"is\" or \"on\".",
+      "The Herb Doctor can choose the same player each night, and can choose dead players. The Herb Doctor cannot choose themself."
     ],
     "howToRun": [
-      "Each night, wake the Herb Doctor. They point to any player except themselves. Write one word on a piece of paper that meaningfully relates to that player's character ability. Show the word to the Herb Doctor. Put them to sleep.",
-      "Choose the word carefully — it should be genuinely useful but not give away everything immediately. For example, for a Fortune Teller you might write 'Demon'; for an Undertaker, 'execution'; for a Poisoner, 'drunk'.",
-      "If the Herb Doctor or the target is drunk or poisoned, the word may be false or misleading."
+      "Each night, wake the Herb Doctor. They point to any player. Write a word referring to that player's character ability and show it to the Herb Doctor. Put the Herb Doctor to sleep."
     ],
     "examples": [
-      "The Herb Doctor chooses the Mayor. The Storyteller writes 'bounce'. The Herb Doctor knows this player's ability involves some kind of redirection or passing.",
-      "The Herb Doctor chooses the Demon. The Storyteller writes 'kill'. The Herb Doctor gains a strong lead on the Demon's identity.",
-      "The Herb Doctor is poisoned. They choose the Empath — the Storyteller writes 'distance', which would normally be correct, but since the Herb Doctor is poisoned they could write any word."
+      "The Herb Doctor chooses the Damsel and learns the word \"public\". Next night, they choose the Juggler and learn the word \"public\".",
+      "The Herb Doctor chooses the Bounty Hunter and learns the word \"evil\", since the Bounty Hunter has the word \"evil\" in their name.",
+      "The Herb Doctor chooses the Lycanthrope and learns the word \"sacrifice\". Next night, they choose the Soldier and learn the word \"brave\"."
     ],
     "tips": [
       "Cross-reference the word you receive with the script. If the word narrows it down to two or three characters, you have powerful deduction material.",
@@ -2393,7 +2385,8 @@
     "otherNight": 79.1,
     "otherNightReminder": "The Herb Doctor points to a player. Write down a word relating to that player’s ability and show it to the Herb Doctor.",
     "reminders": [],
-    "setup": false
+    "setup": false,
+    "callout": "In the early game, you can give the Herb Doctor more ambiguous words so they don't immediately guess the character of the chosen player. If the good team is at a disadvantage, you can give the Herb Doctor more unambiguous words."
   },
   {
     "slug": "stargazer",
@@ -2409,23 +2402,20 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Strange phenomena in the heavens. Something wicked approaches.",
-    "lede": "The Stargazer reads celestial omens to divine where evil lurks — though those who stand too close may confound the stars.",
+    "lede": "The Stargazer can see evil in the stars, but is blinded if they're too close.",
     "summaryBullets": [
-      "At the start of the game you learn whether your closest evil player is clockwise, anti-clockwise, or equidistant from you.",
-      "If the closest evil player is your immediate neighbor, the information is false.",
-      "The information reflects the state at the start of the game and does not update as players die or change alignment.",
-      "If multiple evil players are equidistant from you, the Storyteller chooses one to be the reference for the directional information.",
-      "Dead players still count for seat distance."
+      "The closest evil player is the player the smallest number of steps from the Stargazer to the evil player.",
+      "If the evil players are equidistant, the Storyteller shows this by pointing down instead of to the side.",
+      "If either of the Stargazer's two neighbors is evil, the Stargazer learns false info. If one neighbor is evil, the Stargazer learns the opposite direction or equidistant. If both are evil, the Stargazer cannot learn that they are equidistant.",
+      "The Stargazer does not learn the number of steps from them to the closest evil player.",
+      "If the Stargazer is created mid-game, they learn their information that night. Dead players are included in the count."
     ],
     "howToRun": [
-      "On the first night, wake the Stargazer. Determine which evil player (alive or dead) is closest to the Stargazer by seat count.",
-      "If that player is the Stargazer's immediate neighbor, point in a false direction or down (for false equidistant). Otherwise, point clockwise, anti-clockwise, or down for equidistant.",
-      "Put the Stargazer to sleep. This ability provides no further information after the first night."
+      "On the first night, wake the Stargazer. Point your finger horizontally in the direction of the closest evil player to the Stargazer, or point your finger downwards if the evil players on both sides are equidistant to the Stargazer. If the Stargazer neighbors an evil player, give false info. Put the Stargazer to sleep."
     ],
     "examples": [
-      "The Stargazer has the Poisoner two seats clockwise and the Imp five seats anti-clockwise. The Storyteller points clockwise.",
-      "The Stargazer's immediate neighbor is the Baron. The Storyteller points anti-clockwise as false information.",
-      "The closest evil player is equidistant on both sides. The Storyteller points down."
+      "The Stargazer's clockwise neighbors are the Klutz, then the Psychopath. The Stargazer's anti-clockwise neighbors are the Juggler, then the good Judge, then the Po. The Stargazer learns \"clockwise\".",
+      "The Stargazer is created mid-game. The Stargazer's clockwise neighbor is the dead Marionette, and their anti-clockwise neighbor is the alive Fang Gu. The Stargazer can learn either \"clockwise\" or \"anti-clockwise\", but not \"equidistant\", since that is correct info."
     ],
     "tips": [
       "Your information tells you a direction, not a specific player — use it to narrow your suspicions to a half of the circle.",
@@ -2455,23 +2445,23 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The Six Paths are trees obscuring the forest; in truth, all beings are equal.",
-    "lede": "The Enlightened One wears the mask of an Outsider — and when evil tries to unmask them, they vanish into a new identity.",
+    "lede": "The Enlightened One realizes that they can't sit back when evil is upon them.",
     "summaryBullets": [
-      "You are a Townsfolk who thinks you are an Outsider. You are set up believing you have an Outsider character and ability.",
-      "If an evil player's ability affects you, before the ability resolves, you first become a not-in-play Townsfolk. The evil ability then may or may not affect your new character.",
-      "The Enlightened One is not removed from the bag during setup — they are placed as if they were an Outsider. [Setup ability: affects character distribution]",
-      "The transformation is permanent — once you become a new Townsfolk, you keep that character for the rest of the game."
+      "During setup, the Enlightened One's token does not go in the bag. Instead, an Outsider character token goes in the bag, and the player who draws that token is secretly the Enlightened One.",
+      "The Enlightened One does not have the Outsider ability they think they have.",
+      "If the Enlightened One is targeted or affected by an evil player's ability, they will change characters and become a not-in-play Townsfolk character before the evil player's ability takes effect.",
+      "If the Enlightened One changes characters during the day, they learn of their new character immediately at the start of the night.",
+      "When the Enlightened One is affected by an evil ability, they become the new character and are no longer the Enlightened One."
     ],
     "howToRun": [
-      "During setup, treat the Enlightened One token as an Outsider for bag-building purposes. Place the IS THE ENLIGHTENED ONE global reminder in the Grimoire.",
-      "Place a not-in-play Townsfolk token face-down under their Grimoire slot so you know what they will transform into.",
-      "If an evil ability targets the Enlightened One, first change their character to the prepared Townsfolk. Then resolve the evil ability against them as their new character.",
-      "Reveal the character change at an appropriate moment — typically when the transformation is discovered or when it affects game state."
+      "While setting up the game, before putting character tokens in the bag, remove the Enlightened One token and add an Outsider character token. Add the Enlightened One's [[IS THE ENLIGHTENED ONE]] reminder token to the Grimoire. Put the swapped Outsider character token in the bag, not the Enlightened One character token.",
+      "While preparing the first night, put the [[IS THE ENLIGHTENED ONE]] reminder token by any Outsider character token, changing that player's character to the Enlightened One. They are now a Townsfolk, and do not have the ability of the Outsider character they drew.",
+      "During the game, act as if the Enlightened One is actually the Outsider character.",
+      "If the Enlightened One is targeted or affected by an evil player's ability, remove the [[IS THE ENLIGHTENED ONE]] reminder token and replace their character token with a not-in-play Townsfolk character token. If it happens at night, immediately wake the Enlightened One, show them the YOU ARE info token, then the Enlightened One character token and the token of their new Townsfolk character. Put them to sleep. If it happens during the day, inform them of their character change at the beginning of the night."
     ],
     "examples": [
-      "The Enlightened One thinks they are a Recluse. The Poisoner poisons them — before the poison takes effect, they transform into an in-play Townsfolk character, say a Monk. The Monk ability now applies to them instead.",
-      "The Demon kills the Enlightened One. Before death resolves, they become a not-in-play Townsfolk. They then die as that character.",
-      "The Enlightened One is drunk — their evil-triggered transformation doesn't occur since they have no ability while drunk."
+      "The Enlightened One believes they are the Damsel, but no Minion learns that the Damsel is in play. At night, the Pit-Hag chooses the Enlightened One to become the Tinker. The Enlightened One learns that they are the Tinker now, and does not learn that they used to be the Enlightened One.",
+      "The Enlightened One believes they are the Heretic, and accidentally shares this with the Demon. That night, the Demon chooses to kill themself. The Storyteller announces that the game ends and that the good team won, since the Enlightened One does not have the Heretic's ability."
     ],
     "tips": [
       "You genuinely believe you are an Outsider — play your claimed role as if it's real. Your transformation is a surprise to you as much as anyone.",
@@ -2498,7 +2488,8 @@
         "id": "boffin",
         "reason": "The Demon cannot have the Enlightened One ability."
       }
-    ]
+    ],
+    "callout": "The Enlightened One believes themself to be an Outsider. For this reason, they cannot believe themself to be the Drunk or the Lunatic, since those characters don't know that they are Outsiders at the beginning of the game."
   },
   {
     "slug": "rascal",
@@ -2513,23 +2504,24 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "This one’s mine! This one, too!",
-    "lede": "The Rascal has sticky fingers and a mischievous streak — whatever they touch gets a little bit wrong.",
+    "quote": "This one's mine! This one, too!",
+    "lede": "The Rascal is mischievous and confuses other Townsfolk.",
     "summaryBullets": [
-      "Each night (including the first), you choose a Townsfolk character from the script. That character's ability gives false information until the next dusk.",
-      "You choose a character type, not a specific player — if no one in the game has that character, the ability has no effect.",
-      "The chosen Townsfolk player still receives information as normal, but their ability's results are false.",
-      "Your effect lasts until dusk — it persists through the following day and resets the next night when you choose again."
+      "Each night, the Rascal has to choose a Townsfolk character. If they are in play, the player with that character will learn false info until dusk, and will give false info to other players.",
+      "If the chosen player is drunk or poisoned, they have no ability and cannot give false info to other players, but they still learn false info from the ability they think they have.",
+      "The chosen player still learns correct info from other abilities and basic rules, such as what their alignment is and what character they are.",
+      "The Rascal only affects the player who is the chosen character. They do not affect players who have the chosen ability without being the character.",
+      "If the Rascal chooses an out-of-play character that then enters play, they are still affected by the Rascal's ability."
     ],
     "howToRun": [
-      "Each night, wake the Rascal. They point to any Townsfolk character on the script sheet. Place the FALSE INFO reminder on the matching player's token. Put the Rascal to sleep.",
-      "That night, give the chosen Townsfolk false information when their ability fires — a wrong answer, a wrong count, a misleading word.",
-      "At dusk, remove the FALSE INFO reminder. The Rascal chooses again the following night."
+      "Each night, wake the Rascal. They point to any Townsfolk character on their character sheet. Put the Rascal to sleep.",
+      "If the chosen character is in play, mark the player of the chosen character with the [[FALSE INFO]] reminder token.",
+      "If a player with the [[FALSE INFO]] reminder token uses their ability to yield info, provide false info.",
+      "At dusk, remove the [[FALSE INFO]] reminder token."
     ],
     "examples": [
-      "The Rascal chooses Fortune Teller. The Fortune Teller wakes and asks about two players — the Storyteller says 'yes' even though neither is the Demon.",
-      "The Rascal chooses Empath. The Empath wakes — the Storyteller gives a count of 0 even though both neighbors are evil.",
-      "The Rascal chooses a Townsfolk character not in play. Nothing happens — no one is affected."
+      "The Rascal chooses the Empath, who neighbors 2 evil players. Tonight, the Empath learns 0.",
+      "The Rascal chooses the Flowergirl. The Philosopher chooses to gain the Flowergirl's ability and learns correct info. The now drunk Flowergirl learns false info."
     ],
     "tips": [
       "Target the most trusted information role in play — if the town is building their case around a Fortune Teller's reads, corrupting those reads derails everything.",
@@ -2561,20 +2553,20 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The great Xuanwu is before us. Gods return to their temples, ghosts return to their graves, monsters return to the mountains and forests!",
-    "lede": "The Yinyang Diviner stands at the boundary of light and shadow, knowing exactly which forces walk the earth — though not quite where.",
+    "lede": "The Yinyang Diviner learns 4 characters, but not which of them are in play.",
     "summaryBullets": [
-      "At the start of the game you learn four characters: 2 good and 2 evil. Exactly 2 of these 4 are currently in play.",
-      "You know that one good and one evil character among your four are real — but you don't know which good one and which evil one.",
-      "The characters shown are actual characters in play, not bluffs — but the other two are not in the game.",
-      "This is a one-time piece of information received on the first night."
+      "The Storyteller decides which in-play characters should be shown to the Yinyang Diviner. It could be 1 good and 1 evil, 2 good or 2 evil characters.",
+      "Characters such as the Recluse or the Spy can register as a different character to disrupt the Yinyang Diviner's info.",
+      "If a Yinyang Diviner enters play mid-game, they learn their info that night instead."
     ],
     "howToRun": [
-      "On the first night, wake the Yinyang Diviner. Choose 2 good characters currently in play and 2 evil characters currently in play. Show all four character tokens to the Yinyang Diviner. Put them to sleep.",
-      "If the Yinyang Diviner is drunk or poisoned, you may show false characters — some or all may not be in play, or the good/evil split may be wrong."
+      "During setup, decide which characters to show to the Yinyang Diviner: two good characters and two evil characters, any two of which are in play. Mark the in-play character tokens with the Yinyang Diviner's [[LEARNED]] reminder tokens. Keep the two not-in-play character tokens available.",
+      "During the first night, wake the Yinyang Diviner and show them the four character tokens. Put the Yinyang Diviner to sleep."
     ],
     "examples": [
-      "In play: Investigator, Slayer, Poisoner, Imp. The Storyteller shows: Slayer (in play, good), Fortune Teller (not in play), Baron (not in play), Imp (in play, evil). The Yinyang Diviner knows exactly one of the good pair and one of the evil pair is real.",
-      "The Yinyang Diviner is poisoned. The Storyteller shows four characters, none of which are in play."
+      "The Yinyang Diviner learns the Fortune Teller, the Goon, the Cerenovus and the Lleech. Only the Goon and the Cerenovus are in play.",
+      "The Yinyang Diviner learns the Soldier, the Undertaker, the Witch and the Mezepheles. None of these characters are in play; the Recluse is registering as the Witch and the Spy is registering as the Undertaker using their abilities.",
+      "The Pit-Hag creates a Yinyang Diviner mid-game. The Fang Gu attacks the Mutant and dies, turning the Mutant into the new Fang Gu. The Yinyang Diviner learns the Clockmaker, the Mutant, the Pit-Hag and the Fang Gu. Since the Pit-Hag and the Fang Gu are in play, and there is no longer a Mutant in play, this info is correct."
     ],
     "tips": [
       "You know one evil character that exists in the game — this is powerful even if you can't pinpoint the player. Share your evil options with the town.",
@@ -2591,7 +2583,8 @@
       "Learned",
       "Learned"
     ],
-    "setup": false
+    "setup": false,
+    "callout": "If the Yinyang Diviner must learn false info, they still learn 2 good and 2 evil characters, but cannot learn exactly 2 in-play characters."
   },
   {
     "slug": "turncoat",
@@ -2607,23 +2600,23 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "I fear his hesitation will cost the general this unique opportunity. A pity.",
-    "lede": "The Turncoat binds their fate to a rival — and when one falls, the other is pulled across the line.",
+    "lede": "The Turncoat is at odds with another player.",
     "summaryBullets": [
-      "On your first night, you choose another player as your Rival.",
-      "The first time either you or your Rival dies by execution, the other turns evil that night.",
-      "If you die by execution, your Rival turns evil. If your Rival dies by execution, you turn evil.",
-      "Only death by execution triggers this — night kills, ability deaths, and other causes of death do not.",
-      "Once one of you has turned evil, the other's ability has no further effect."
+      "On the first night, the Turncoat chooses another player. When one of them dies by execution, the other turns evil that night.",
+      "If either player dies for any other reason than execution, the other player does not turn evil.",
+      "If the Turncoat dies from something other than execution, they lose their ability. If the chosen player later dies by execution, the Turncoat will not change alignment.",
+      "If the Turncoat chose an evil player, that player will not become good if the Turncoat dies by execution."
     ],
     "howToRun": [
-      "On the first night, wake the Turncoat. They point to another player. Place the RIVAL reminder on that player. Put the Turncoat to sleep.",
-      "Track executions during the day. The first time the Turncoat or their Rival is executed and dies, wake the other that night. Show them the YOU ARE token and thumbs down for evil. They are now evil.",
-      "On subsequent nights, if the remaining trigger condition hasn't fired yet, continue monitoring — the ability doesn't expire until it fires."
+      "The first night, wake the Turncoat. They point to another player. Mark the chosen player with the [[RIVAL]] reminder token. Put the Turncoat to sleep.",
+      "If the Turncoat is the first of the two to die by execution, the player marked with the [[RIVAL]] reminder token turns evil tonight.",
+      "If the [[RIVAL]] player is the first of the two to die by execution, the Turncoat turns evil tonight.",
+      "Once a player turns evil, wake them and show them the YOU ARE info token, followed by a thumbs down for evil. Put them to sleep. Turn their character token 180 degrees in the Grimoire and remove the [[RIVAL]] reminder token."
     ],
     "examples": [
-      "The Turncoat chooses the Investigator as Rival. On day three, the Investigator is executed. That night, the Turncoat turns evil and learns this.",
-      "The Turncoat is executed on day two. That night, their Rival (the Mayor) turns evil.",
-      "The Turncoat's Rival is killed by the Demon at night. Nothing happens — the ability only triggers on executions."
+      "The Turncoat chooses the Snake Charmer. On the first day, the Snake Charmer dies by execution. The Turncoat turns evil that night.",
+      "The Turncoat chooses the Pit-Hag. On the next day, the Turncoat dies by execution. Nothing happens, since the Pit-Hag is already evil.",
+      "The Turncoat chooses the Philosopher, who is then killed by the Demon at night. The next day, the Turncoat dies by execution. That night, the dead Philosopher turns evil."
     ],
     "tips": [
       "You have an incentive to avoid being executed — and to protect your Rival from execution too. This creates a genuine conflict of interest with the town.",
@@ -2654,22 +2647,19 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "Born under an unlucky star? Nonsense! I can’t be faulted for the misfortunes of people around me!",
-    "lede": "The Lummox is a walking catastrophe — their death sends a shockwave through the players nearest to them.",
+    "quote": "Born under an unlucky star? Nonsense! I can't be faulted for the misfortunes of people around me!",
+    "lede": "The Lummox brings bad luck to their neighbors.",
     "summaryBullets": [
-      "When you die, the Storyteller may kill one of your alive neighbors that night.",
-      "This is a 'might' effect — the Storyteller chooses whether to trigger it and which neighbor.",
-      "Only living neighbors are eligible. If both neighbors are dead, no additional death occurs.",
-      "This triggers regardless of how you die — by execution, night kill, or ability."
+      "When the Lummox dies, the Storyteller decides if their ability should activate.",
+      "If the Storyteller decides that the Lummox's ability activates, an alive neighbor of the Lummox dies that night.",
+      "If the Lummox is poisoned or drunk when they die, or a dead player becomes the Lummox, nothing happens."
     ],
     "howToRun": [
-      "When the Lummox dies (by any means), that night, decide whether to kill one of their living neighbors. If so, place a DEAD reminder on one neighbor.",
-      "Announce at dawn that an additional player has died. You may choose not to trigger the effect — use your judgment based on game balance."
+      "When the Lummox dies, decide whether to activate their ability. If you do, mark one of their alive neighbors with the Lummox's [[DEAD]] reminder token. At dawn, declare that the player marked [[DEAD]] died in the night."
     ],
     "examples": [
-      "The Lummox is executed on day two. That night, the Storyteller kills their right neighbor, who is the Empath.",
-      "The Lummox is killed by the Demon. The Storyteller opts not to kill either neighbor.",
-      "The Lummox dies. Both neighbors are already dead — no additional death is possible."
+      "The Demon attacks the Lummox, who dies. The Storyteller decides not to activate the Lummox's ability, and their alive neighbors do not die that night.",
+      "The Moonchild dies by execution and chooses the Lummox. Tonight, the Lummox dies, and so does the Baron, who is sitting next to the Lummox."
     ],
     "tips": [
       "Seat yourself next to players you suspect are evil. If they kill you, they might accidentally kill another evil player.",
@@ -2701,23 +2691,19 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The only thing worse than travelling alone in the wilderness is the company one might find there.",
-    "lede": "The Ambassador draws danger to themselves — taking hits meant for evil so that the town can see where threats are really aimed.",
+    "lede": "The Ambassador travels foreign lands and is often harassed by the locals.",
     "summaryBullets": [
-      "When an evil player is chosen by an ability at night, the Storyteller may redirect that ability to target you instead.",
-      "This can only happen once per night.",
-      "Your ability works even if you are dead — abilities targeting evil players may still redirect to your corpse.",
-      "You do not learn when your ability triggers."
+      "The Ambassador's ability can activate no more than once per night. It may activate each night, or only some nights. The Storyteller decides whether to activate their ability or not.",
+      "If a player uses their ability to actively choose another player, and if that player is evil, the ability may be redirected to the Ambassador.",
+      "Abilities that do not involve a choice cannot be redirected by the Ambassador's ability."
     ],
     "howToRun": [
-      "Each night, if any ability targets an evil player, you may redirect that ability to target the Ambassador instead. You may only redirect once per night.",
-      "The original evil player is untouched. The ability resolves as if it had originally chosen the Ambassador.",
-      "If the Ambassador is drunk or poisoned, their ability is suppressed — redirects don't occur while they have no ability.",
-      "The Lleech jinx: the Lleech's poisoning or host choice cannot be redirected to the Ambassador."
+      "Each night, if an evil player is targeted by an ability and the Ambassador's [[TARGETED TONIGHT]] reminder token is not placed, you can choose to activate the Ambassador's ability. If you do, resolve the ability as if the Ambassador was chosen instead of the evil player, and place the Ambassador's [[TARGETED TONIGHT]] token next to the Ambassador character token.",
+      "At dawn, remove the [[TARGETED TONIGHT]] reminder token if it is placed in the Grimoire."
     ],
     "examples": [
-      "The Fortune Teller chooses the Baron and another player. The Storyteller redirects the Baron's slot to the Ambassador — the Fortune Teller gets a reading based on the Ambassador instead.",
-      "The Undertaker checks last night's execution. The executed player was the Poisoner. The Storyteller redirects this check to the Ambassador — the Undertaker sees the Ambassador's character.",
-      "The Ambassador is dead. The Slayer shoots at the Demon. The Storyteller redirects — the Demon survives, and the Slayer's shot is wasted on the Ambassador."
+      "The Fortune Teller chooses the Seamstress and the Riot. The Storyteller decides that the Ambassador's ability activates, making the Fortune Teller instead target the Seamstress and the Ambassador. The Fortune Teller learns \"no\".",
+      "The Pit-Hag chooses to turn an evil Turncoat into the Vigormortis. The Storyteller decides that the Ambassador's ability does not activate. Later, the Cerenovus chooses themself and the Sage. The Storyteller decides to activate the Ambassador's ability, and the Ambassador learns that the Cerenovus has chosen them to be \"mad\" that they are the Sage, or risk execution. The Cerenovus learns nothing."
     ],
     "tips": [
       "Your ability means evil players have some protection from targeting abilities — but it also means information about evil gets muddied. This is double-edged.",
@@ -2755,23 +2741,23 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "I accept my fate, but first tell me: at whose hands am I dying?",
-    "lede": "The Pedant is a walking liability — the Demon knows they're out there, and one successful guess unlocks a free kill.",
+    "lede": "The Pedant must hide from the Demon, or bring their teammates down with them.",
     "summaryBullets": [
-      "From the start, the Demon knows the Pedant is in play (not who they are).",
-      "Once per game, the Demon may privately tell the Storyteller who they believe the Pedant is.",
-      "If the Demon's guess is correct, the Demon gains one bonus kill that night — they may choose any player to die, even if the Pedant also dies that night.",
-      "The Demon's guess is completely private and the town doesn't know if a guess was made.",
-      "If the Demon never guesses, or guesses wrong, the bonus kill never triggers."
+      "The Demon starts knowing that the Pedant is in play.",
+      "At any time during the day, the Demon may privately speak to the Storyteller to guess who the Pedant is. If the Demon guesses correctly, they are awoken to kill a player that night, even if the Pedant dies after the correct guess.",
+      "The chosen player dies due to the Pedant's ability, not the Demon's. Therefore, characters such as the Soldier are not safe from this death.",
+      "If there is more than one Demon player, the Demons share one chance to make a correct guess."
     ],
     "howToRun": [
-      "On the first night, wake the Demon. Show them the Pedant token to inform them that the Pedant is in play. Put the Demon to sleep.",
-      "On any subsequent night, the Demon may whisper to you who they think the Pedant is. If correct, that night wake the Demon again (or handle in order), show them the Pedant token, and let them point to any player — that player dies. Mark them with DEAD.",
-      "Place the GUESS USED reminder when the Demon has used their guess, whether or not it was correct."
+      "During the first night, wake the Demon and show them the Pedant character token. Put the Demon to sleep.",
+      "During the day, the Demon may visit you in private at any time to guess which player has the Pedant ability. If they guess correctly and no Demon has already made a guess, put the [[GUESS USED]] reminder token next to the Demon player's character token. If they guess wrong, put the [[GUESS USED]] reminder token next to the Pedant character token.",
+      "During the night, if the [[GUESS USED]] reminder token is placed next to a Demon player's character token, after the Demon has used their ability, show them the Pedant character token. They shake their head no or point to a player. If they point to a player, that player dies. Mark that player with the Pedant's [[DEAD]] reminder token. Move the Pedant's [[GUESS USED]] reminder token to the Pedant's character token.",
+      "At dawn, declare who died during the night."
     ],
     "examples": [
-      "The Demon guesses the correct Pedant on night three. That night the Demon kills their normal target and additionally kills the Mayor — two deaths.",
-      "The Demon guesses the wrong player. The Pedant is safe, and the Demon has no more guesses.",
-      "The Demon never guesses. The Pedant's ability never triggers."
+      "The No Dashii correctly guesses who the Pedant is. Tonight, the No Dashii chooses to kill the Poppy Grower, and then the Sage. The Sage does not wake to use their ability, as they didn't die to the No Dashii's ability.",
+      "The Demon correctly guesses who the Pedant is. Tonight, the Philosopher chooses to gain the Pedant ability, making the Pedant drunk. However, since the Pedant ability is in play and the Demon made a correct guess, the Demon can still choose to kill a player using the Pedant ability.",
+      "The Demon correctly guesses who the Pedant is. Tonight, the Courtier chooses the Pedant, who becomes drunk. The Demon does not get to use the Pedant ability, and thinks they guessed wrong."
     ],
     "tips": [
       "Don't reveal that you're the Pedant early — the Demon is trying to find you. Once they do, they get a free kill.",
@@ -2803,23 +2789,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "The venom of the centipede, who ate the spider, who ate the scorpion, who ate the snakeâ€¦ No, it’s not enough!",
-    "lede": "The Bug Keeper's venom doesn't kill outright — it waits, striking back at anyone bold enough to nominate them.",
+    "quote": "The venom of the centipede, who ate the spider, who ate the scorpion, who ate the snake… No, it's not enough!",
+    "lede": "The Bug Keeper retaliates against their enemies.",
     "summaryBullets": [
-      "Each night (not the first), if the Bug Keeper was alive and nominated today, their nominator dies tonight.",
-      "If the Bug Keeper was nominated multiple times, each nominator dies.",
-      "The Bug Keeper themselves may also die that night (from nomination or other causes) without canceling the effect — the nominator still dies.",
-      "If the Bug Keeper was not nominated today, nothing happens."
+      "If a living Bug Keeper is nominated during the day, the player who nominated them dies that night, even if the Bug Keeper died by execution.",
+      "If the living Bug Keeper was nominated by another evil player, that player still dies that night.",
+      "If the Bug Keeper is dead when nominated, the nominator does not die that night."
     ],
     "howToRun": [
-      "Track who nominated the Bug Keeper each day. If the Bug Keeper was alive when nominated, that night kill those nominators with DEAD reminders.",
-      "If the Bug Keeper dies during the day (by execution), still apply the effect that night — the ability says 'if you were alive when nominated', not 'if you are alive tonight'.",
-      "The Plague Doctor jinx: if the Storyteller would gain the Bug Keeper ability, a living Minion gains it in addition to their own ability."
+      "If the Bug Keeper is alive and a player nominates them during the day, mark that player with the [[DEAD]] reminder token.",
+      "Tonight, any players with the [[DEAD]] reminder token die, unless they are protected. Put a shroud on their character token and remove the [[DEAD]] reminder token."
     ],
     "examples": [
-      "The Bug Keeper is nominated by the Slayer and survives the vote. That night, the Slayer dies.",
-      "The Bug Keeper is nominated, then later executed that day. Both the nominator and the Bug Keeper die that night.",
-      "No one nominates the Bug Keeper today. Nothing happens that night."
+      "On the first day, the Juggler uses their ability and then nominates the Bug Keeper. Tonight, the Juggler dies without waking up or learning their info.",
+      "The Boomdandy nominates the Bug Keeper, who is executed and dies. That night, the Boomdandy dies.",
+      "On the second night, the Vigormortis kills the Bug Keeper. The third day, the dead Bug Keeper is nominated. The nominator does not die, as the Bug Keeper was not alive when nominated."
     ],
     "tips": [
       "Let it be known you're the Bug Keeper early — it will deter nominations. The town won't want to lose a player just for nominating you.",
@@ -2841,7 +2825,8 @@
         "id": "plaguedoctor",
         "reason": "If the Storyteller would gain the Bug Keeper ability, a living Minion gains the Bug Keeper ability in addition to their own ability, and learns this."
       }
-    ]
+    ],
+    "callout": "Abilities that cause the Bug Keeper to be nominated more than once, such as the Butcher, can cause more than one player to die by the Bug Keeper's ability in one night."
   },
   {
     "slug": "vixen",
@@ -2857,22 +2842,21 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Your Majesty, the concubine had two sisters. They send their condolences and have requested an audience.",
-    "lede": "The Vixen weaves a quiet enchantment on her first night — and if she falls, the enchanted one falls with her into darkness.",
+    "lede": "The Vixen charms a player to join the evil side if the Vixen dies.",
     "summaryBullets": [
-      "On your first night, you choose a player. They learn the Vixen is in play, but not who the Vixen is.",
-      "If you die by execution, the Charmed player turns evil that night.",
-      "If you die by any other means, the Charmed player does not turn evil.",
-      "The Charmed player knows the Vixen is in play from the start — they may deduce they are Charmed."
+      "During the first night, the Vixen chooses a player. They learn that the Vixen is in play.",
+      "If the Vixen is drunk or poisoned when they make their choice, the chosen player learns the Vixen is in play once the Vixen becomes sober and healthy.",
+      "If the Vixen dies by execution, the player they chose turns evil that night.",
+      "If the player the Vixen chose is already evil when the Vixen dies by execution, nothing happens."
     ],
     "howToRun": [
-      "On the first night, wake the Vixen. They point to a player. Place the CHARMED reminder on that player. Put the Vixen to sleep. Wake the Charmed player, show them the THIS CHARACTER SELECTED YOU token and the Vixen character token. Put them to sleep.",
-      "If the Vixen is executed and dies, that night flip the Charmed player's token evil-side up. Wake them, show YOU ARE and thumbs down for evil.",
-      "The Plague Doctor jinx: a living Minion may gain the Vixen's ability in addition to their own."
+      "During the first night, wake the Vixen. They point to any player. Mark that player with the [[CHARMED]] reminder token and put the Vixen to sleep. Wake the chosen player. Show them the THIS CHARACTER SELECTED YOU info token, followed by the Vixen character token. Put them to sleep.",
+      "When the Vixen dies by execution, turn the character token of the player marked [[CHARMED]] upside down. That night, wake the player marked [[CHARMED]] and show them the YOU ARE info token, followed by thumbs down for evil. If they were already evil, nothing happens."
     ],
     "examples": [
-      "The Vixen charms the Empath. The town executes the Vixen on day three. That night, the Empath turns evil.",
-      "The Demon kills the Vixen. The Charmed player remains good — only execution triggers the conversion.",
-      "The Charmed player tells the town they were charmed by the Vixen. The town is now reluctant to execute the Vixen."
+      "On the first night, the Vixen chooses the Philosopher. The Philosopher learns that the Vixen is in play. On the first day, the Vixen dies by execution. That night, the Philosopher turns evil, and learns this.",
+      "The Vixen was drunk the first night, when they chose the Alchemist. The Alchemist does not learn that the Vixen is in play until the second night, when the Vixen is sober.",
+      "The Minstrel is in play. When the Vixen dies by execution, everyone is drunk. As the Vixen is drunk that night, their chosen player does not turn evil."
     ],
     "tips": [
       "Charm a powerful information role — if they turn evil, that's devastating to the good team's information network.",
@@ -2914,23 +2898,22 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "Only journey under the cover of darkness, and never let them find out that your stomach is full of straw.",
-    "lede": "The Corpse Walker raises the dead — but only for long enough to confuse everyone about who's truly gone.",
+    "lede": "The Corpse Walker secretly turns their Townsfolk neighbors undead.",
     "summaryBullets": [
-      "The first time each of your living Townsfolk neighbors dies, they register as alive until the end of the game (or until your ability no longer applies).",
-      "Registering as alive means abilities that check living/dead status treat them as alive — but they are still dead and cannot speak or vote.",
-      "You have two Townsfolk neighbors (one on each side), so this effect can trigger at most twice.",
-      "Setup: [-1 Outsider] — one fewer Outsider in the game.",
-      "If you are drunk or poisoned, your neighbors do not register as alive when they die."
+      "The first time a Townsfolk player neighboring the Corpse Walker dies, they turn undead and appear to survive. Their character tokens are shrouded in the Grimoire, but their life tokens on the town square are not flipped.",
+      "Undead players register as alive to other players' abilities.",
+      "Undead players are dead and have no ability. They are treated as if they are drunk or poisoned, waking as normal during the night but learning arbitrary info.",
+      "Abilities that activate upon death do not activate upon undeath, since undead players register as alive.",
+      "If an undead player \"dies\" again, their death is announced. They cease to be undead and register as dead from then on."
     ],
     "howToRun": [
-      "When a Townsfolk neighbor of the Corpse Walker dies for the first time, place the UNDEAD reminder on their token. They now register as alive to abilities.",
-      "If that player's slot is targeted by an ability that checks for living status, treat them as alive. If directly targeted to die again, nothing happens.",
-      "If the Corpse Walker dies, their undead neighbors may return to registering as dead — or remain undead per the Storyteller's judgment."
+      "While setting up the game, before putting the character tokens in the bag, remove one Outsider character token and add one Townsfolk character token.",
+      "The first time each Townsfolk neighbor of the Corpse Walker dies, they turn undead. Place the Corpse Walker's [[UNDEAD]] reminder token next to the dead player's character token. Put a shroud on their character token in the Grimoire, but do not declare that they die and do not flip over their life token in the town square. If they died by execution, declare that they survived.",
+      "If an undead player dies again, declare that they died and flip over their life token in the town square."
     ],
     "examples": [
-      "The Corpse Walker's right neighbor (the Empath) is killed by the Demon. The Empath registers as alive. The Undertaker next night sees the Empath as if they hadn't been executed.",
-      "The Corpse Walker's left neighbor (the Slayer) is executed. The Slayer registers as alive — a player using an ability to check for dead players doesn't see the Slayer.",
-      "Both Townsfolk neighbors die. Both are undead. The town counts only 2 living players, but abilities count 4."
+      "The Sage, the Butler, the Corpse Walker and the Innkeeper are sitting in a line. Tonight, the Demon attacks the Sage. Since the Sage is a Townsfolk neighbor of the Corpse Walker, they turn undead and lose their ability. The Sage does not wake tonight, and their death is not announced. The next night, the Sage is attacked by the Demon again. They do not wake up, but their death is announced at dawn.",
+      "There are four players left alive: the Rascal, the Imp, the Corpse Walker and the Tea Lady. However, the Tea Lady is actually undead and only registers as alive because of the Corpse Walker's ability. The town decides not to execute anyone. That night, the Imp kills the Rascal. The evil team has won, as there are only two living players left."
     ],
     "tips": [
       "Your undead neighbors create confusion about who is alive and dead — use this to mislead evil about when the final day is approaching.",
@@ -2953,7 +2936,8 @@
         "id": "plaguedoctor",
         "reason": "If the Storyteller would gain the Corpse Walker ability, a living Minion gains the Corpse Walker ability in addition to their own ability, and learns this."
       }
-    ]
+    ],
+    "callout": "It is not recommended to have more than two undead players at a time, since this can make the game end unexpectedly early."
   },
   {
     "slug": "imperialist",
@@ -2969,22 +2953,22 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "He deserved to be beheaded! Yes, he broke curfew, my lord!",
-    "lede": "The Imperialist turns the town's survival instincts into a weapon — madness about life or death carries a swift and lethal penalty.",
+    "lede": "The Imperialist provides a little \"help\" to those who want to die… or to those who don't.",
     "summaryBullets": [
-      "On your first night, you choose whether your ability targets players who are 'mad they want to live' or 'mad they want to die'.",
-      "Players who publicly and sincerely claim (are mad) to want what you chose — to live or to die — might be immediately executed.",
-      "The Storyteller decides whether a player is genuinely mad about this and whether to execute them.",
-      "This is a passive ability — you don't take an action each night, only the initial choice."
+      "The first night, the Imperialist chooses whether to target players who want to die or players who want to live.",
+      "If a player says that they are okay with dying or living, they might be immediately executed in accordance with the Imperialist's choice.",
+      "It is up to the Storyteller to decide whether a player has been sufficiently \"mad\" that they want to live or die.",
+      "If a player is \"mad\" that they want to live or die during the night, the Storyteller may choose to execute them at night. This does not count towards the maximum of one execution per day.",
+      "The execution happens immediately."
     ],
     "howToRun": [
-      "On the first night, wake the Imperialist. Show them the LIVE and DIE reminder tokens and let them point to one. Place the chosen token in the Grimoire. Put the Imperialist to sleep.",
-      "During the day, if any player seems genuinely and publicly mad that they want to live (or die, per the choice), you may immediately execute them.",
-      "Use this sparingly and fairly — only trigger it when a player is clearly and publicly performing the targeted madness."
+      "During the first night, wake the Imperialist and show them the [[LIVE]] and [[DIE]] reminder tokens. They point to one. Place that reminder token next to the Imperialist character token in the Grimoire. Put the Imperialist to sleep.",
+      "During the game, if you believe that a player is \"mad\" that they want to live or die, depending on which the Imperialist chose, you can decide to execute them. Declare to the group that this player is executed (do not say why). If this happens during the day, the day ends."
     ],
     "examples": [
-      "The Imperialist chose 'DIE'. A player dramatically insists they want to be executed. The Storyteller executes them immediately.",
-      "The Imperialist chose 'LIVE'. A player begs not to be executed and loudly insists they want to stay alive. The Storyteller executes them mid-plea.",
-      "A player calmly says they'd rather not die today. The Storyteller decides this is not mad enough and takes no action."
+      "The Imperialist has chosen \"live\". Today, the town nominates the Recluse, who says that they do not mind dying. The Recluse does not gain enough votes, and is not executed.",
+      "The Imperialist has chosen \"die\". The good Gambler and the good Gossip are sitting next to the Tea Lady. Today, the Gossip asks to be nominated and executed. The Storyteller immediately declares that the Gossip is executed. The Gossip survives thanks to the Tea Lady, and the day ends.",
+      "The Imperialist has chosen \"die\". At night, the Soldier asks the Demon to attack them. The Storyteller declares that the Soldier is executed. The Soldier is declared dead at dawn."
     ],
     "tips": [
       "Your ability creates paranoia about expressing preferences publicly. Once the town knows an Imperialist might be in play, players become reluctant to advocate strongly for their own survival.",
@@ -3016,25 +3000,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "The beast looks like a ram with the face of a human, eyes under its armpits, tiger teeth and a baby’s voice. It devours people, and its name is Tao Tie.",
-    "lede": "The Tao Tie is a gluttonous horror that devours entire factions in a single night — if you spread the feast wide enough.",
+    "quote": "The beast looks like a ram with the face of a human, eyes under its armpits, tiger teeth and a baby's voice. It devours people, and its name is Tao Tie.",
+    "lede": "The Tao Tie sometimes gets so ravenous it kills several players.",
     "summaryBullets": [
-      "Each night (not the first), choose up to 4 players OR a single Traveller. If every chosen player is of a different character type (Townsfolk, Outsider, Minion, Demon, Traveller), all chosen players die.",
-      "If any two chosen players share the same character type, no one dies.",
-      "Choosing fewer than 4 players is valid — a single player or a Townsfolk/Outsider pair always works. The restriction is about type uniqueness.",
-      "Choosing a single Traveller always succeeds.",
-      "Setup: [+1 Outsider] — one additional Outsider in the game."
+      "Each night except the first, the Tao Tie can choose up to 4 non-Traveller players. If no two of them are the same character type, all chosen players die.",
+      "The Tao Tie can choose no one.",
+      "If the Tao Tie successfully kills more than one player, the chosen players die in the order they were chosen.",
+      "If the Tao Tie chooses a Traveller, they cannot choose any other player."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Tao Tie. They shake their head (no kill) or point to up to 4 players. Place DEAD reminders on each chosen player.",
-      "Check: are all chosen players of different character types? If yes, all die. If any two share a type, remove all DEAD reminders — no one dies.",
-      "Announce deaths at dawn without specifying cause.",
-      "If the Tao Tie chooses a single Traveller, that Traveller dies."
+      "While setting up the game, before putting character tokens in the bag, add one extra Outsider character token and remove one Townsfolk character token.",
+      "Each night except the first, wake the Tao Tie. They point at up to 4 players, or shake their head no. Put the Tao Tie to sleep. If no character type is represented more than once among the chosen players, all chosen players die in the order chosen—mark them with [[DEAD]] reminder tokens."
     ],
     "examples": [
-      "The Tao Tie chooses the Empath (Townsfolk), the Recluse (Outsider), and the Poisoner (Minion). All three are different types — all three die.",
-      "The Tao Tie chooses the Empath (Townsfolk) and the Slayer (Townsfolk). Both are Townsfolk — no one dies.",
-      "The Tao Tie chooses the Beggar (Traveller) alone. The Beggar dies."
+      "The Tao Tie chooses the Fortune Teller, the Drunk and the Assassin. All 3 chosen players die.",
+      "The Tao Tie chooses the Undertaker, the good Goon and the Baron, and is the first to choose the Goon tonight. Since all 3 chosen players have different character types, the Undertaker dies, but the Tao Tie then becomes drunk due to the Goon's ability. The Goon turns evil, and both the Goon and the Baron survive."
     ],
     "tips": [
       "Planning a 4-player kill requires knowing one of each type. Focus your information gathering on identifying which type each player is.",
@@ -3069,24 +3049,21 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The beast looks like a tiger with a human face, a mouth full of fangs and a tail of 18 foot. It destroys the land in its wake, and it is named Tao Wu.",
-    "lede": "The Tao Wu kills without learning — a blind predator who leaves a trail of powerless Minions in their wake.",
+    "lede": "The Tao Wu draws strength from its Minions to extend its own life.",
     "summaryBullets": [
-      "Each night (not the first), choose a player: they die.",
-      "You do not receive Demon information on the first night — you are not told who the Minions are.",
-      "If you die, one alive Minion permanently loses their ability instead of the normal Demon-death succession rules.",
-      "The Minion that loses their ability is chosen by the Storyteller.",
-      "The NO ABILITY reminder marks which Minion(s) have lost their abilities."
+      "If the Tao Wu is about to die, and a living Minion still has their ability, the Tao Wu does not die, and the Minion instead loses their ability. If no alive Minions have their ability, the Tao Wu dies.",
+      "If an alive Minion is drunk, poisoned, or has a No Ability reminder token, they have no ability to sacrifice for the Tao Wu.",
+      "The Tao Wu does not wake up for the Demon info step and does not learn who their Minions are or what characters are not in play."
     ],
     "howToRun": [
-      "On the first night, do not wake the Tao Wu to give Demon info. They wake with no information about their Minions.",
-      "Each subsequent night, wake the Tao Wu. They point to a player. That player dies.",
-      "If the Tao Wu is executed and dies, choose one alive Minion and place the NO ABILITY reminder on their token. That Minion permanently loses their ability.",
-      "Multiple Tao Wu deaths (via Pit-Hag changes, etc.) may disable multiple Minions."
+      "Do not wake the Tao Wu during the first night.",
+      "Each night except the first, wake the Tao Wu. They point to any player. That player dies—mark them with the [[DEAD]] reminder. Put the Tao Wu to sleep.",
+      "If the Tao Wu is about to die and there are alive Minions that are not marked with [[DRUNK]], [[POISONED]] or [[NO ABILITY]] reminder tokens, choose one of them and mark them with the Tao Wu's [[NO ABILITY]] reminder token. The Tao Wu does not die."
     ],
     "examples": [
-      "The Tao Wu is executed on day three. The Storyteller chooses the Poisoner to lose their ability — the Poisoner can no longer poison anyone.",
-      "The Tao Wu is killed by a Slayer. The Storyteller selects the Baron. The Baron's extra Outsiders remain in play, but the Baron can no longer add them.",
-      "The Tao Wu is changed to a different Demon via Pit-Hag. The prior Minion that lost their ability stays that way."
+      "The Psychopath is in play, and has already killed two players using their ability. Yesterday, the Tao Wu was executed but did not die, and the Psychopath instead lost their ability. On the next day, the Psychopath announces that they kill another player, but nothing happens. The town executes the Psychopath, who dies without playing roshambo.",
+      "The Tao Wu is executed. There are two Minions in play: the Assassin who used their ability to kill the Soldier, and the dead Cerenovus who kept their ability due to the Vigormortis' ability. Since there is no alive Minion with an ability, the Storyteller declares that the Tao Wu dies.",
+      "The Poppy Grower is in play, and the evil team do not know each other. At night, the Poppy Grower dies, and the Minions learn the Demon, who is the Tao Wu. The Tao Wu does not learn their Minions, due to their own ability."
     ],
     "tips": [
       "Not knowing your Minions is a serious handicap. Spend early days trying to identify your evil team through deduction and coded conversation.",
@@ -3147,7 +3124,8 @@
         "id": "barber",
         "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back."
       }
-    ]
+    ],
+    "callout": "If the Lunatic believes themself to be the Tao Wu, they also do not wake to learn any Demon info. If the Poppy Grower dies, the Tao Wu still does not wake to learn anything, due to their own ability."
   },
   {
     "slug": "hun-dun",
@@ -3163,23 +3141,21 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The beast is a four-winged bird, red as cinnabar fire and with six legs but no face. It can sing and dance, and it is known as Hun Dun.",
-    "lede": "The Hun Dun kills without discrimination — and when they strike too close to home, the whole town pays the price.",
+    "lede": "The Hun Dun waits for opportunities to poison the entire good team.",
     "summaryBullets": [
-      "Each night (not the first), choose a player: they die.",
-      "If the player who dies is a Townsfolk and is your immediate neighbor, all good non-Traveller players are poisoned until the next dusk.",
-      "The poisoning affects every good player except Travellers — their abilities give false info and have no effect.",
-      "The poisoning lasts until the following dusk — it affects the day's conversations and any day-abilities."
+      "If the Hun Dun kills a Townsfolk neighbor using its ability, all good players except Travellers are poisoned until dusk tomorrow.",
+      "The good team is made poisoned even if the Townsfolk neighbor killed by the Hun Dun is evil.",
+      "If the Hun Dun's Townsfolk neighbor has an ability that activates when they die, the ability is resolved before all good players become poisoned.",
+      "If the Hun Dun attacks a Townsfolk neighbor who does not die (due to being protected or already being dead), the Hun Dun does not make anybody poisoned.",
+      "The Hun Dun also poisons any good Minions and Demons."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Hun Dun. They point to a player. That player dies.",
-      "If the dead player is a Townsfolk and was the Hun Dun's immediate neighbor (by seat), place the GOOD ARE POISONED reminder token in the Grimoire. All good non-Traveller players are now poisoned.",
-      "At dusk, remove the GOOD ARE POISONED reminder. The poisoning ends.",
-      "During the poisoned period, give false information to all good players whose abilities fire — treat them as drunk."
+      "Each night except the first, wake the Hun Dun. They point at any player. Put the Hun Dun to sleep. The chosen player dies: mark them with a [[DEAD]] reminder.",
+      "If the chosen player is a Townsfolk neighbor of the Hun Dun, all good players except Travellers are also made poisoned. Place the [[GOOD ARE POISONED]] reminder in the middle of the Grimoire. Remove the reminder at dusk."
     ],
     "examples": [
-      "The Hun Dun kills their right neighbor, who is the Empath (Townsfolk). All good players are poisoned until dusk. The Investigator, Slayer, and others receive false results.",
-      "The Hun Dun kills the Baron (Minion) who is their neighbor. The Baron is not a Townsfolk — no poisoning occurs.",
-      "The Hun Dun kills a Townsfolk three seats away. No poisoning — they must be an immediate neighbor."
+      "The Hun Dun is neighboring the Snitch, who neighbors the Flowergirl. At night, the Hun Dun attacks the Flowergirl. The Flowergirl dies and all good players are poisoned until dusk. The next night, the Pit-Hag turns the Snitch into the Mathematician, and the Hun Dun attacks the Mathematician. The Mathematician dies, and all good players are poisoned until dusk.",
+      "All good players are poisoned due to the Hun Dun's ability. The evil Cult Leader turns good due to their own ability, and is immediately poisoned. The next day, all good players agree to join their cult, but nothing happens."
     ],
     "tips": [
       "Choose your seat carefully. Sitting next to powerful Townsfolk means you can poison the whole good team when you kill them.",
@@ -3212,22 +3188,24 @@
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
     "quote": "The beast resembles a winged ox, with spines like a hedgehog and bark like a hound. It eats humans, and it bears the name Qiong Qi.",
-    "lede": "The Qiong Qi turns the town's executioner instincts into its own advantage — Outsider deaths fuel its most terrifying nights.",
+    "lede": "The Qiong Qi secretly kills more players when Outsiders die.",
     "summaryBullets": [
-      "Each night (not the first), choose a player: they die.",
-      "If an Outsider died today (by execution or ability), your chosen player additionally registers as alive, and you immediately choose a second player who also dies.",
-      "The player registering as alive means abilities and the living count treat them as alive despite being dead.",
-      "Setup: [+1 Outsider] — one additional Outsider is in the game."
+      "If an Outsider dies during the day, the player that the Qiong Qi kills that night turns undead, registering as alive. The Storyteller chooses another player, who dies normally.",
+      "Undead players register as alive to other players' abilities.",
+      "Undead players are dead and have no ability. They are treated as if they are drunk or poisoned, waking as normal during the night but learning arbitrary info.",
+      "If an undead player \"dies\" again, their death is announced. They cease to be undead and register as dead from then on."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Qiong Qi. They point to a player. That player dies. Place the UNDEAD reminder if an Outsider died today — the first chosen player registers as alive. Let the Qiong Qi point to a second player; that player also dies.",
-      "If no Outsider died today, only the first chosen player dies. The Qiong Qi points once.",
-      "The UNDEAD player continues to register as alive until the Qiong Qi's ability no longer applies or the Storyteller removes the reminder."
+      "While setting up the game, before putting character tokens in the bag, add one extra Outsider character token and remove one Townsfolk character token.",
+      "If an Outsider dies during the day, place the Qiong Qi's [[OUTSIDER DIED]] reminder token next to that Outsider's character token in the Grimoire.",
+      "Each night except the first, wake the Qiong Qi. They point to any player, then go back to sleep.",
+      "If there is no [[OUTSIDER DIED]] reminder token placed, the chosen player dies—mark them with the [[DEAD]] reminder.",
+      "If the [[OUTSIDER DIED]] reminder token is placed, the chosen player dies and turns undead (unless they can't die for some reason). Place an [[UNDEAD]] reminder token next to the chosen player's character token, and a [[DEAD]] reminder token next to another player.",
+      "At dawn, place shrouds on any character token marked [[DEAD]] or [[UNDEAD]], and announce that any players marked [[DEAD]] died in the night. Do not announce that players marked [[UNDEAD]] died in the night."
     ],
     "examples": [
-      "An Outsider was executed today. The Qiong Qi kills the Fortune Teller — they register as alive (UNDEAD). The Qiong Qi also kills the Slayer. Two players die, one appears to still be living.",
-      "No Outsider died today. The Qiong Qi kills the Empath. Just one death.",
-      "The Qiong Qi kills a player who registers as alive. The following day, the Monk tries to protect them and can — they are still considered alive."
+      "The Mutant dies by execution due to their own ability. That night, the Qiong Qi chooses the Artist. The Storyteller decides that the Recluse dies. At dawn, the Storyteller announces that the Recluse died. Nobody learns that the Artist is also dead.",
+      "There are 3 alive players left and 2 undead players. The living Assassin is executed and dies. Since there are only 2 living players left, the game ends and the evil team wins."
     ],
     "tips": [
       "Encourage Outsider executions. Argue for executing Outsider-claiming players — each Outsider execution gives you a double kill at night.",
@@ -3246,7 +3224,8 @@
       "Dead",
       "Died today"
     ],
-    "setup": true
+    "setup": true,
+    "callout": "It is not very fun or interesting if the game ends early because there are a lot of undead players. When 2 or more players are undead, it is recommended to use the Qiong Qi's extra death to kill an undead player a second time, to make them register as dead."
   },
   {
     "slug": "pauper",
@@ -3261,23 +3240,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "I’ve had a rough spell, but I can still work. Give me the opportunity to prove myself, and you won’t be disappointed!",
-    "lede": "The Pauper has nothing — but their empty hands can hold another's gift, if only for the night.",
+    "quote": "I've had a rough spell, but I can still work. Give me the opportunity to prove myself, and you won't be disappointed!",
+    "lede": "The Pauper begs for abilities from other players.",
     "summaryBullets": [
-      "Each day, you may publicly choose a player (not yourself) to name a non-Demon character ability. You might gain that ability until the next dawn.",
-      "The ability must be from a non-Demon character — Townsfolk, Outsider, Minion, Traveller, and Fabled abilities are eligible.",
-      "The Storyteller decides whether you actually gain the named ability.",
-      "This is a Traveller ability — the town may exile you if they choose."
+      "The player chosen by the Pauper cannot refuse to choose a character.",
+      "The chosen player must publicly choose a non-Demon character available on the current script.",
+      "If the Storyteller thinks the chosen ability would be too powerful for the Pauper, the Pauper might not gain the ability. The Pauper is not told whether they gained the chosen ability or not.",
+      "The Pauper does not change characters when they gain the chosen ability, and they lose it again at the next dawn.",
+      "If the Pauper gains an ability that activates on the 1st night, it activates tonight after all deaths have occurred."
     ],
     "howToRun": [
-      "When the Pauper publicly chooses a player and names an ability, decide whether to grant that ability to the Pauper until dawn. If so, treat the Pauper as having that ability for the remainder of the day and that night.",
-      "Place the BEGGING reminder on the Pauper to track when they've used their daily action.",
-      "At dawn, the Pauper loses any gained ability. The IS THE PAUPER global reminder stays in the Grimoire throughout."
+      "Each day, the Pauper may publicly choose another player. If they do, the chosen player must choose a non-Demon character from the script. If you decide that the Pauper does not gain this ability, nothing happens. Otherwise, if the character is in play, mark that character token with the [[BEGGING]] reminder token, or if not in play, replace the Pauper character token with the chosen character token and mark them with the [[IS THE PAUPER]] reminder token.",
+      "At night, wake the Pauper if they should wake due to the gained ability. If the chosen character is in play, decide who wakes first.",
+      "At dawn, remove the [[BEGGING]] or [[IS THE PAUPER]] reminder token, and put the Pauper character token back if needed."
     ],
     "examples": [
-      "The Pauper asks the Slayer to give them the Slayer ability. The Storyteller grants it — that night the Pauper may shoot as a Slayer.",
-      "The Pauper asks for the Poisoner ability. The Storyteller grants it — that night the Pauper poisons a player of their choice.",
-      "The Pauper asks for the Demon's ability. This is a Demon ability — the Storyteller cannot grant it."
+      "The good Pauper selects a good player, who chooses the Assassin. The Storyteller deems the Assassin ability to be too powerful for the good team at this point in the game, and does not wake the Pauper to use the ability tonight.",
+      "It is the first day. The evil Pauper publicly selects an evil player, who chooses the Puzzlemaster. The Storyteller decides that the Pauper gains this ability, making the Fool drunk. Later that day, the Fool is executed and dies."
     ],
     "tips": [
       "As a Traveller, you're a wildcard. Choose abilities that give you information or protection — or abilities that the town desperately needs.",
@@ -3311,24 +3290,11 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
     "tags": "Temple Fair",
-    "quote": "麟之趾，振振公子，于嗟麟兮！ 麟之定，振振公姓，于嗟麟兮！ 麟之角，振振公族，于嗟麟兮！",
-    "lede": "The Qilin is an omen of prosperity — on the last day, virtue may find its reward.",
-    "summaryBullets": [
-      "On the final day, the Storyteller may choose to do something good for the most engaged player.",
-      "What 'something good' means is up to the Storyteller — it could be an ability, information, protection, or another benefit.",
-      "The most engaged player is determined by the Storyteller's judgment — participation, good faith play, and creativity are considered.",
-      "This is a Fabled ability — it is not secret and is announced at the start of the game."
-    ],
-    "howToRun": [
-      "Announce at the start of the game that the Qilin is in play. Observe player engagement throughout the game.",
-      "On the final day, identify the most engaged player and grant them something good — a piece of information, a one-use ability, or another meaningful benefit.",
-      "Use this to reward creative, invested, and good-faith play."
-    ],
-    "examples": [
-      "The most engaged player has been asking insightful questions all game. On the final day, the Storyteller privately tells them who the Demon is.",
-      "A player has been coordinating brilliantly for good. On the final day, they gain the Slayer ability for one use.",
-      "The Storyteller feels all players were equally engaged and does not use the reminder token."
-    ],
+    "quote": "麟之趾，振振公子，于嘘麟典！",
+    "lede": "Use the Qilin to encourage players to participate more actively and make the game more engaging for everybody.",
+    "summaryBullets": [],
+    "howToRun": [],
+    "examples": [],
     "tips": [
       "Play with full engagement from turn one — the Qilin rewards players who invest in the game, not just those who get lucky.",
       "As the Storyteller, use the Qilin's benefit to create a memorable dramatic moment on the final day.",
@@ -3357,23 +3323,20 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Guide keeps watch over the night, sensing when shadows reach for the town's own.",
+    "lede": "The Guide learns if their passengers are plagued by evil.",
     "summaryBullets": [
-      "Each night, choose 1 to 3 players. You learn whether any of them were chosen or affected by an evil player's ability tonight.",
-      "You must choose at least one player — you cannot skip your action.",
-      "If multiple players are chosen and one is targeted by evil, you learn 'yes' but not which specific player was targeted.",
-      "Evil Townsfolk and Outsider abilities count — any ability used by an evil-aligned player triggers a 'yes' result.",
-      "'Affect' includes changing a player's state, interfering with their ability, or blocking their ability. It does not include abilities that merely reveal information or let others gain info."
+      "Each night, the Guide chooses 1, 2 or 3 players.",
+      "If none of the players chosen have been chosen or affected by evil players' abilities, the Guide learns \"no\".",
+      "If at least one of the players chosen has been chosen or affected by evil players' abilities, the Guide learns \"yes\". If the Guide chose more than 1 player, they do not learn which of them are affected.",
+      "The abilities of evil Townsfolk and Outsiders also register to the Guide."
     ],
     "howToRun": [
-      "Each night, wake the Guide. They point to 1, 2, or 3 players. If any of those players was chosen or affected by an evil player's ability tonight, nod yes. Otherwise, shake your head no. Put the Guide to sleep.",
-      "Note that the Guide checks at the end of all night actions — if evil acts after the Guide wakes, the Guide still captures it as a retroactive check.",
-      "The Chambermaid jinx: the Chambermaid learns if the Guide woke. The Mathematician jinx: the Guide learns if the Mathematician was affected, even if the Guide woke first."
+      "Each night, wake the Guide, who picks between one and three players. If any of the chosen players were targeted or affected by an evil player's ability tonight, nod \"yes\" to the Guide. Otherwise, shake your head \"no\". Put the Guide to sleep."
     ],
     "examples": [
-      "The Guide chooses the Fortune Teller, Empath, and Baron. None were targeted by evil tonight — the Guide learns 'no'.",
-      "The Witch (evil) changed the Snake Charmer into an evil player, and that Snake Charmer chose the Soldier. The Guide chose the Soldier and themselves — the Guide learns 'yes'.",
-      "The Pukka chose the Klutz on the first night. The following night, the Monk protects the Klutz while the Pukka attacks the Tinker. The Guide chose the Klutz — the Guide learns 'yes' because the Pukka affected the Klutz."
+      "The Guide chooses the Fortune Teller, the Empath and the Baron, none of whom were targeted or affected by evil abilities tonight, and learns \"no\".",
+      "The Pit-Hag turns the Cerenovus into the evil Dreamer, who chooses the Soldier. The Guide chooses themself and the Soldier, and learns \"yes\".",
+      "On the first night, the Pukka chooses the Goon. The Guide chooses the Pukka, and learns \"yes\"."
     ],
     "tips": [
       "Focus your choices on players you suspect are being targeted by evil — a 'yes' narrows down who evil is acting on.",
@@ -3397,7 +3360,9 @@
         "id": "mathematician",
         "reason": "The Guide learns if the Mathematician is affected or not, even though the Guide wakes first."
       }
-    ]
+    ],
+    "quote": "The boat is slow and difficult to steer. It is weighted by the stench of evil.",
+    "callout": "The player killed by the Lil' Monsta only registers to the Guide if an evil player is babysitting Lil' Monsta."
   },
   {
     "slug": "broker",
@@ -3412,23 +3377,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Broker arranges transfers — tonight, anything aimed at one client lands on the other.",
+    "lede": "The Broker acts as an intermediary between teammates, forwarding other players' choices.",
     "summaryBullets": [
-      "Each night, choose 2 alive players. If they are the same alignment, any ability that targets one of them tonight targets the other instead.",
-      "Both players must be the same alignment (both good or both evil) for the swap to activate.",
-      "The players being targeted don't learn the swap occurred, and neither does the player whose ability was redirected.",
-      "Travellers are valid targets for the Broker's choice.",
-      "The Lleech jinx: the Lleech's host choice or poisoning cannot be redirected."
+      "If the Broker chooses two living players of the same alignment, any other ability used to choose one of them will instead resolve as if the other player was chosen.",
+      "If the Broker chooses two living players of different alignments, the Broker's ability will not change the target of other players' abilities.",
+      "Players do not learn when their abilities have been redirected, and the Broker does not learn if they have successfully redirected an ability.",
+      "Only abilities that involve making a choice can be redirected by the Broker. Passive abilities are not redirected.",
+      "The Broker's ability only applies at night, and has no effect during the day.",
+      "If the Broker has successfully chosen two living players of the same alignment, and one switches alignments later in the night, the Broker immediately loses the ability to redirect abilities that night."
     ],
     "howToRun": [
-      "Each night, wake the Broker. They point to 2 alive players. Place CLIENT reminders on both. If both are the same alignment, any ability targeting one instead targets the other.",
-      "Resolve all ability swaps silently. The redirected player and the original targeter do not learn of the change.",
-      "If the Broker is drunk or poisoned, the swap does not occur even if both players match alignment."
+      "Each night, wake the Broker. They point at two living players. Put the Broker to sleep. If the two chosen players are the same alignment, mark them with [[CLIENT]] reminders. When a player uses their ability to choose a player marked [[CLIENT]], that ability is resolved as if they had chosen the other player marked [[CLIENT]].",
+      "At dawn, remove any [[CLIENT]] reminders. [[CLIENT]] reminders are also removed if either player marked [[CLIENT]] changes alignment."
     ],
     "examples": [
-      "The Broker links the Empath (good) and the Fortune Teller (good). The Demon attacks the Empath — the Fortune Teller dies instead.",
-      "The Broker links the Empath (good) and the Poisoner (evil). They are different alignments — no swap occurs. The Demon attacks the Empath normally.",
-      "The Broker links two evil players. The Exorcist chooses one — they choose the other instead."
+      "The Broker chooses the Ravenkeeper and the Artist. The Demon attacks the Artist, and the Ravenkeeper dies and gets to use their ability.",
+      "The Devil's Advocate protects themself on the first night. The second night, the Broker chooses the Devil's Advocate and the Po. The Devil's Advocate chooses to protect the Po. The Devil's Advocate will survive executions tomorrow, and may choose to protect themself again on the third night, as their last choice was the Po.",
+      "The Broker chooses the Recluse and the Chef. The Imp attacks the Chef, and the Storyteller decides that the Recluse registers as evil, so the Chef dies."
     ],
     "tips": [
       "Link yourself to a powerful information role. If the Demon targets you, they accidentally kill the person you're linked to — and vice versa.",
@@ -3451,7 +3416,9 @@
         "id": "lleech",
         "reason": "The Broker cannot redirect the Lleech’s choice of host or the associated poisoning."
       }
-    ]
+    ],
+    "quote": "Deals may fail, but loyalty remains.",
+    "callout": "If the Assassin targets a player affected by the Broker, that player will die without triggering the Broker's ability."
   },
   {
     "slug": "prefect",
@@ -3466,23 +3433,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Prefect patrols the borders of good and evil — a death in the wrong category draws their immediate attention.",
+    "lede": "The Prefect knows if the dead were Townsfolk or not.",
     "summaryBullets": [
-      "Each night (not the first), you learn whether a non-Townsfolk, non-Traveller player died since dawn.",
-      "This means you learn if an Outsider, Minion, or Demon died during the day.",
-      "You do not learn who died or what type they were — only that such a death occurred.",
-      "The STRANGER DIED reminder tracks this information."
+      "The Prefect learns about all players who died today or tonight, regardless of how they died.",
+      "If any of the players who died today or tonight is an Outsider, Minion or Demon, the Prefect learns \"yes\".",
+      "If more than 1 player died today or tonight, the Prefect does not learn who among them are not Townsfolk.",
+      "The Prefect wakes even if nobody died today or tonight.",
+      "The Prefect is only concerned with what character type players were when they died, even if they change characters later."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Prefect. If an Outsider, Minion, or Demon died since the last dawn (by execution or ability), nod yes. Otherwise shake no. Put them to sleep.",
-      "Traveller deaths do not trigger a yes response.",
-      "If the Prefect is drunk or poisoned, the information may be false."
+      "Each night except the first, wake the Prefect. If a non-Townsfolk and non-Traveller died today or tonight, nod \"yes\"; otherwise, shake your head \"no\". Put the Prefect to sleep."
     ],
     "examples": [
-      "The Baron (Minion) was executed today. The Prefect wakes and learns 'yes'.",
-      "The Recluse was executed today. The Recluse is an Outsider — the Prefect learns 'yes'.",
-      "The Fortune Teller was executed. They are Townsfolk — the Prefect learns 'no'.",
-      "No one was executed, but the Godfather killed an Outsider at night. The Prefect still learns 'yes' — any death since dawn counts."
+      "On the first day, the Psychopath kills the Lycanthrope. That night, the Gambler dies to their own ability, and the Demon kills the Saint. The Prefect wakes and learns \"yes\".",
+      "During the day, the Gnome is exiled. That night, the Demon kills the Dreamer. The Prefect wakes and learns \"no\".",
+      "One day, nobody dies and nobody is executed. That night, the Demon kills the Barber, and makes the Barber swap characters with the living Artist. The Prefect wakes and learns \"yes\"."
     ],
     "tips": [
       "A 'yes' after an execution confirms your nominated player was not Townsfolk — useful for narrowing the pool.",
@@ -3498,7 +3463,8 @@
     "reminders": [
       "Stranger died"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "Let the proceedings begin!"
   },
   {
     "slug": "cleric",
@@ -3513,22 +3479,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Cleric walks toward the danger willingly — a righteous death that leaves the Demon staggering.",
+    "lede": "The Cleric sacrifices themself to incapacitate the Demon.",
     "summaryBullets": [
-      "Each night (not the first), choose a player. If you chose the Demon, you die and they become drunk until the next dawn.",
-      "If you chose a non-Demon player, nothing happens — you remain alive.",
-      "The Demon being drunk means their ability gives false results or no effect for that night and the following day.",
-      "You must continue choosing every night until you find the Demon."
+      "Each night except the first, the Cleric chooses a player. If that player is not a Demon, nothing happens. If the Cleric chooses a Demon, the Cleric dies, and the chosen Demon is drunk tonight.",
+      "Drunkenness lasts until dawn, after which the Demon is sober again.",
+      "If the Cleric cannot die for some reason, a chosen Demon does not become drunk."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Cleric. They point to a player. If that player is the Demon, kill the Cleric (DEAD reminder) and place the DRUNK reminder on the Demon. The Demon remains drunk until dawn.",
-      "If the chosen player is not the Demon, put the Cleric back to sleep — nothing happens.",
-      "The Demon's drunk state means any ability they use tonight and any information they receive is false or suppressed."
+      "Each night except the first, wake the Cleric, who points to any player. Put the Cleric back to sleep.",
+      "If the player the Cleric pointed to is not a Demon, nothing happens. If the Cleric pointed to a Demon, the Cleric dies—mark them with the [[DEAD]] reminder token, and mark the chosen Demon with the [[DRUNK]] reminder token.",
+      "At dawn, remove the [[DRUNK]] reminder."
     ],
     "examples": [
-      "The Cleric chooses the Imp on night three. The Cleric dies, and the Imp is drunk — they cannot kill tonight.",
-      "The Cleric chooses the Empath. Nothing happens — the Empath is not the Demon.",
-      "The Cleric chooses the poisoned Recluse who registers as the Demon. The Cleric dies, but since the Recluse is not actually the Demon, no drunk effect applies."
+      "The Cleric chooses themself, and lives. The next night, the Cleric chooses the Assassin, and lives.",
+      "The Cleric chooses the Shabaloth, and dies. The Shabaloth is drunk, and cannot regurgitate a player they chose yesterday. The Shabaloth chooses two players, but neither dies. The Shabaloth becomes sober again at dawn.",
+      "The Innkeeper protects the Cleric and the Mathematician, and the Storyteller decides to make the Mathematician drunk. The Cleric chooses the Imp, and lives. The Imp then chooses a player, who dies."
     ],
     "tips": [
       "You are a guided Demon-seeking missile. Use your information sources to narrow down likely Demon candidates before spending a night.",
@@ -3545,7 +3510,9 @@
       "Drunk",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "The way that can be spoken is not the true Way.",
+    "callout": "If the Cleric chooses the Minion holding Lil' Monsta, the Cleric dies and that Minion is drunk until dawn, but the Storyteller may still choose a player who dies to Lil' Monsta's ability."
   },
   {
     "slug": "tabby",
@@ -3560,22 +3527,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Tabby watches over one chosen ward — and if that ward falls to evil, steps seamlessly into their shoes.",
+    "lede": "The crown prince was replaced by a Tabby, allowing him to survive.",
     "summaryBullets": [
-      "Each night (not the first), choose a player. If they are a good character and die to an evil character's ability tonight, you and they swap characters.",
-      "After the swap, you become their character and they become the Tabby.",
-      "If your chosen player is not good, or does not die to evil tonight, nothing happens.",
-      "The PRINCE reminder marks your protected player."
+      "Each night except the first, the Tabby chooses a player to be its prince.",
+      "If the prince is killed by an evil character's ability the same night, the Tabby swaps characters with them.",
+      "If the player is not a Townsfolk or Outsider when chosen, they do not become the prince, even if they change characters that night.",
+      "If the prince becomes an evil character, they are no longer the prince.",
+      "If the prince has an ability that triggers upon dying (such as the Sage or the Ravenkeeper), they use their ability before swapping characters with the Tabby.",
+      "If the death of the prince is prevented for any reason, or if they die from anything other than a Minion's or Demon's ability, the Tabby will not swap characters with them."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Tabby. They point to a player. Place the PRINCE reminder on that player.",
-      "If that player is killed by an evil ability tonight and they are good, swap their character token with the Tabby's. Both players learn of the swap.",
-      "Multiple jinxes apply: Professor, Banshee, Boffin, Leviathan, and Riot all have specific interactions — check the script for details."
+      "Each night except the first, wake the Tabby. They point at any player. Put the Tabby to sleep. If the chosen player is a Townsfolk or an Outsider, mark them with the Tabby's [[PRINCE]] reminder.",
+      "If the player marked with the [[PRINCE]] reminder dies due to a Demon's or Minion's ability, wake the Tabby and show them the YOU ARE info token, followed by the character token of the player marked [[PRINCE]]. Then, wake the player marked [[PRINCE]] and show them the YOU ARE info token, then the Tabby token. Swap the character tokens of the Tabby and the player marked [[PRINCE]] in the Grimoire."
     ],
     "examples": [
-      "The Tabby chooses the Empath. The Demon kills the Empath. The Tabby becomes the Empath; the dead player becomes the Tabby.",
-      "The Tabby chooses the Spy (evil). The Demon kills the Spy. No swap occurs — the Spy was not a good character.",
-      "The Tabby chooses the Investigator. The Godfather kills the Investigator. The Tabby and Investigator swap — the Godfather's kill triggered the swap."
+      "The Tabby chooses the Fortune Teller. That night, the Ojo chooses Fortune Teller, who dies. The Tabby becomes the new Fortune Teller, and the old Fortune Teller becomes the dead Tabby. The new Fortune Teller wakes and acts as normal.",
+      "The Tabby chooses the Fang Gu. That night, the Fang Gu attacks the Plague Doctor and dies, turning the Plague Doctor into the new Fang Gu. The old Fang Gu does not swap roles with the Tabby.",
+      "The Tabby chooses the Tinker, who was made evil by the Mezepheles. That night, the Tinker dies to their own ability. Since the Tinker is not a good character, they do not swap characters with the Tabby."
     ],
     "tips": [
       "Choose players with abilities that would be devastating to lose — a Slayer who hasn't fired, or a vital information role in the late game.",
@@ -3613,7 +3581,8 @@
         "id": "riot",
         "reason": "Each night*, Riot chooses an alive good player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die."
       }
-    ]
+    ],
+    "quote": "How could my beloved consort give birth to such a freak!"
   },
   {
     "slug": "patrol",
@@ -3628,23 +3597,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Patrol stands guard over two corners of the town each night — nothing evil passes while they watch.",
+    "lede": "The Patrol protects two players at once.",
     "summaryBullets": [
-      "Each night (not the first), choose 2 good characters (different from last night's choices). If both are alive, neither can die tonight.",
-      "You choose character types, not specific players — if the chosen character is not in play, the protection has no effect for that slot.",
-      "Both characters must be alive for either to be protected — if one is dead, neither is protected.",
-      "The Leviathan and Riot jinxes: players protected by the Patrol are safe from all evil abilities if those Demons are in play."
+      "The Patrol, like the Innkeeper, protects two players from death.",
+      "The Patrol only protects players at night, not during the day.",
+      "The Patrol chooses two characters, not two players.",
+      "The Patrol can only choose from Townsfolk and Outsider characters, and cannot choose a character they chose last night.",
+      "If both chosen characters are in play and alive, the players with those characters cannot die tonight. If one is dead or not in play, the other is not safe tonight."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Patrol. They point to 2 good characters on the script sheet (different from last night). Place SAFE reminders on those players.",
-      "If both are alive, neither can die tonight — cancel any death effects on them.",
-      "If either is dead, remove both SAFE reminders and apply deaths normally.",
-      "At dawn, remove SAFE reminders regardless."
+      "Each night except the first, wake the Patrol. They point to any two good character icons (Townsfolk or Outsider) on their character sheet. Put the Patrol to sleep. If both of the selected characters are in play and alive, place the [[SAFE]] reminder token next to the tokens of the two chosen characters.",
+      "The [[SAFE]] reminder is placed (upside down) even if the Patrol is drunk or poisoned, or if they choose the character of a player who is dead or a character that is not in play, as they cannot choose the same character the following night.",
+      "At dawn, remove the [[SAFE]] reminder token."
     ],
     "examples": [
-      "The Patrol protects the Fortune Teller and the Empath. Both are alive. The Demon attacks the Fortune Teller — they survive.",
-      "The Patrol protects the Slayer and the Monk. The Slayer was executed today and is dead. Neither player is protected — the Demon's kill proceeds normally.",
-      "The Patrol protects the same two characters as last night. The Storyteller reminds them they must choose differently — last night's choices are not permitted again."
+      "The Patrol chooses the Poppy Grower and Chambermaid, both of whom are currently in-play and alive. The Imp attacks the Poppy Grower, who does not die. The next night, the Patrol chooses the Patrol and the Empath, both of whom are currently in-play and alive, and they will not die that night.",
+      "During the day, the Moonchild uses their ability to pick the Patrol. That night, the Patrol chooses the Hatter and the Patrol, both of whom are currently in-play and alive, and the Assassin attacks the Hatter, who dies. The Patrol survives.",
+      "At night, the Patrol chooses the Fortune Teller and the Empath. Both are in play, but the Fortune Teller died last night. The Imp attacks the Empath, who dies."
     ],
     "tips": [
       "Alternate your protection between high-value targets. Evil will notice patterns and route around predictable guards.",
@@ -3671,7 +3640,8 @@
         "id": "riot",
         "reason": "If the Riot is in play, the Patrol-protected player is safe from all evil abilities."
       }
-    ]
+    ],
+    "quote": "Lay the world's injustices to rest, and bring peace to uneasy hearts."
   },
   {
     "slug": "courier",
@@ -3733,22 +3703,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Zhen carries a deadly draught — one dose, one target, one chance to remove a Townsfolk from the board.",
+    "lede": "The Zhen risks the death of a Townsfolk to confirm whether they are in play or not.",
     "summaryBullets": [
-      "Once per game, at night (not the first), choose a Townsfolk character. If they are in play, they become poisoned and die.",
-      "This is a one-use ability — once used, it is gone whether or not it hit.",
-      "You choose the character type, not a specific player — if that Townsfolk is not in play, nothing happens.",
-      "Jinxes: Poppy Grower — the Zhen can't affect the Poppy Grower's players. Ban Xian jinx — if the Zhen targets the Ban Xian, the Ban Xian is poisoned and dies."
+      "Once per game, the Zhen chooses a Townsfolk character from their character sheet. If that character is in play, they are poisoned and die.",
+      "If the Zhen chooses a Townsfolk character that is not in play, nothing happens, even if that character was previously in play or enters play later.",
+      "If more than one player has the character chosen by the Zhen, only one player will be affected by the Zhen's ability.",
+      "If the Zhen chooses the Zhen, they do not die, as the poisoning happens first."
     ],
     "howToRun": [
-      "At night (not the first), when the Zhen uses their ability, wake them. They point to a Townsfolk character on the script. If that character is in play, poison them and kill them (POISONED + DEAD reminders). Place NO ABILITY on the Zhen.",
-      "If the chosen character is not in play, nothing happens — but the Zhen has still used their ability (place NO ABILITY).",
-      "The target's poisoning and death happen before any other ability can react."
+      "Each night except the first, wake the Zhen. They either shake their head no or point to a Townsfolk character on their character sheet. Put the Zhen back to sleep.",
+      "If the chosen character is in play, mark them with the [[POISONED]] and [[DEAD]] reminders. Announce their death at dawn, but not why they died. The [[POISONED]] reminder remains on that player for the rest of the game."
     ],
     "examples": [
-      "The Zhen targets the Fortune Teller. The Fortune Teller is in play — they are poisoned and die.",
-      "The Zhen targets the Sailor. The Sailor is not on the script — nothing happens, and the Zhen loses their ability.",
-      "The Zhen targets the Monk. The Monk is in play and was protecting someone — they die, and their protection expires immediately."
+      "The Zhen chooses the Clockmaker, fearing that it might be a Demon bluff. The Clockmaker is in play, and is poisoned and dies.",
+      "The Zhen chooses the Artist, which a Minion is bluffing. As the Artist is not in play, nothing happens, and the Zhen does not wake to use their ability in the future.",
+      "The Zhen chose the Village Idiot. Both Wang and Li are Village Idiots, and the Storyteller chooses that Wang is poisoned and dies from the Zhen's ability."
     ],
     "tips": [
       "Save your ability for a confirmed Townsfolk. Wasting it on a character that isn't in play is devastating.",
@@ -3776,7 +3745,8 @@
         "id": "banxian_festival_of_lanterns",
         "reason": "If the Zhen chooses the Ban Xian, the Ban Xian becomes poisoned and dies."
       }
-    ]
+    ],
+    "quote": "Sweet as wine, poisonous as arsenic."
   },
   {
     "slug": "consort",
@@ -3835,22 +3805,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Thaumaturge charts a distant star — and on the appointed night, the heavens reveal exactly what they promised.",
+    "lede": "The Thaumaturge learns a number of characters on a given night.",
     "summaryBullets": [
-      "On your first night, choose a number N. On night N, you learn N in-play characters.",
-      "The characters you learn on night N are actual characters currently in play.",
-      "If you are drunk or poisoned on night N, the characters you learn may be false.",
-      "Up to 6 LEARN reminder tokens mark how many characters you will receive."
+      "On the first night, the Thaumaturge chooses a number, and on the night of that number, they learn the corresponding number of in-play characters (living or dead).",
+      "If the Thaumaturge chooses \"1\", they immediately learn 1 in-play character. If they choose \"2\", they wake on night 2 to learn 2 in-play characters, and so on.",
+      "When the Thaumaturge wakes to learn characters, they learn characters who are currently in play.",
+      "If the Thaumaturge is created mid-game and chooses a number for a night that has passed, the Storyteller instructs them to choose again."
     ],
     "howToRun": [
-      "On the first night, wake the Thaumaturge. They hold up a number of fingers (1–6). Note the number. Put them to sleep.",
-      "On night N, wake the Thaumaturge. Show them N character tokens, all of which are in play. Put them to sleep.",
-      "If the Thaumaturge is drunk or poisoned on night N, you may show false or non-in-play characters."
+      "On the first night, wake the Thaumaturge, who gives a finger signal indicating a number. Place that number of [[LEARN]] reminders next to character tokens in the Grimoire.",
+      "On the night corresponding to the number of placed [[LEARN]] reminders in the Grimoire, wake the Thaumaturge and show each character marked [[LEARN]]. Put the Thaumaturge to sleep."
     ],
     "examples": [
-      "The Thaumaturge chooses night 4. On night 4, they learn 4 in-play characters: Empath, Poisoner, Imp, and Recluse.",
-      "The Thaumaturge chooses night 2. On night 2 they are poisoned — they learn 2 characters, but both may be false.",
-      "The Thaumaturge chooses night 6. The game ends on night 4. They never receive their information."
+      "On the first night, the Thaumaturge chooses \"1\", and learns that the Artist is in play.",
+      "The Vortox is in play. On the first night, the Thaumaturge chooses \"3\". On the third night, the Thaumaturge wakes to learn three not-in-play characters.",
+      "On the fourth night, the Pit-Hag transformed the Baron into an evil Thaumaturge. That night, the Thaumaturge chooses \"3\", and the Storyteller shakes their head and prompts the Thaumaturge to choose again. The Thaumaturge chooses \"4\", and learns that the No Dashii, the Pit-Hag, the Dreamer and the Sage are all in play."
     ],
     "tips": [
       "Choosing a later night gives you more characters but risks the game ending before you learn them. Night 3 or 4 is often a sweet spot.",
@@ -3871,7 +3840,8 @@
       "Learn",
       "Learn"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "We watch the stars to catch a glimpse of heaven."
   },
   {
     "slug": "brush-holder",
@@ -3886,22 +3856,20 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Brush Holder writes the chronicle in their own blood — whether they fall by day or night, the truth finds a way out.",
+    "lede": "The Brush Holder learns a player and their alignment, depending on when they die.",
     "summaryBullets": [
-      "If you die during the day, you learn a good player that night.",
-      "If you die at night, you learn an evil player that night.",
-      "This ability only triggers once — the night you die.",
-      "You receive the information as a ghost — you're dead but still learn."
+      "The Brush Holder only learns a player, not their character.",
+      "If the Brush Holder dies during the day, they learn a good player that night. If they die during the night, they learn an evil player.",
+      "If the Brush Holder is drunk or poisoned when they die during the day, but sober and healthy during the night, they still learn correct info."
     ],
     "howToRun": [
-      "If the Brush Holder is executed during the day, wake them that night. Point to a good player.",
-      "If the Brush Holder dies at night (from any cause), before dawn, point to an evil player.",
-      "If the Brush Holder is drunk or poisoned when they die, the player revealed may be false."
+      "If the Brush Holder dies during the day, mark them with the [[DIED TODAY]] reminder. At night, if the Brush Holder is marked [[DIED TODAY]], wake them and point to a good player. Put the Brush Holder to sleep and remove the [[DIED TODAY]] reminder.",
+      "If the Brush Holder dies during the night, wake them and point to an evil player. Put the Brush Holder to sleep."
     ],
     "examples": [
-      "The Brush Holder is executed on day three. That night they learn the Empath is good.",
-      "The Demon kills the Brush Holder. That same night, the Brush Holder learns the Poisoner is evil.",
-      "The Brush Holder is poisoned when the Demon kills them. They learn an evil player — but the information may be wrong."
+      "The Witch curses the Brush Holder, who dies when nominating today. That night, the Brush Holder wakes to learn a good player.",
+      "The Brush Holder is killed by the Assassin. They wake and learn an evil player.",
+      "The Brush Holder is killed by the Pukka. As the Brush Holder was poisoned when their ability activated, the Storyteller decides to incorrectly show them a good player that night."
     ],
     "tips": [
       "Your death is your most powerful moment. Time it strategically — dying by execution near the end gives you a confirmed good player to shield.",
@@ -3917,7 +3885,8 @@
     "reminders": [
       "Died today"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "The red review is done. Double-check everything."
   },
   {
     "slug": "prosecutor",
@@ -3932,22 +3901,21 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Prosecutor cross-examines the accused — and learns exactly who they are when the gavel falls.",
+    "lede": "The Prosecutor learns about the accused, but overlooks the Demon.",
     "summaryBullets": [
-      "After your first nomination, you learn your nominee's character that night.",
-      "Demons register as good characters to you — your ability is blind to Demon types.",
-      "Once you learn a character, your ability is spent — you only ever learn one character.",
-      "The NOMINEE reminder tracks who you nominated; NO ABILITY marks when the ability is spent."
+      "The night after the Prosecutor has made their first nomination of the game, they will learn the character of their nominee, regardless of whether the nominee was executed or not.",
+      "Demon players will be shown as Townsfolk or Outsiders to the Prosecutor.",
+      "The Prosecutor learns what character their nominee was at the time of nomination. If the nominee changes characters before the Prosecutor wakes, the Prosecutor still learns info as if the nominee had not changed characters.",
+      "After the Prosecutor has learned their first nominee's character, they lose their ability and will not wake up to learn the character of any future nominees."
     ],
     "howToRun": [
-      "After the Prosecutor's first nomination during the day, note the nominated player. That night, wake the Prosecutor and show them the nominated player's character token — but if they are the Demon, show a good character token instead.",
-      "Place the NO ABILITY reminder on the Prosecutor's token. They do not receive further information.",
-      "If the Prosecutor is drunk or poisoned when they receive the information, the character shown may be false."
+      "The first time the Prosecutor makes a nomination, place the [[NOMINEE]] reminder next to the nominee's character token. Run the nomination as normal.",
+      "That night, wake the Prosecutor and show them the character token marked [[NOMINEE]]. If the player marked [[NOMINEE]] is a Demon, show the Prosecutor a Townsfolk or Outsider character token. Put the Prosecutor to sleep. Remove the [[NOMINEE]] reminder and put the [[NO ABILITY]] reminder next to the Prosecutor."
     ],
     "examples": [
-      "The Prosecutor nominates the Poisoner. That night they learn 'Poisoner' — a confirmed evil player.",
-      "The Prosecutor nominates the Imp. That night the Storyteller shows a good character — the Prosecutor doesn't know they found the Demon.",
-      "The Prosecutor nominates the Recluse. The Recluse might register as a Minion — the Prosecutor may see 'Poisoner' even though the Recluse is good."
+      "On the first day, the Prosecutor nominates the Widow. That night, the Prosecutor is shown the Widow's token.",
+      "The Prosecutor's first nomination is the Fang Gu. That night, the Prosecutor is shown the Drunk's token.",
+      "The Prosecutor does not nominate on the first day. That night, they do not wake up."
     ],
     "tips": [
       "Choose your first nomination very carefully — it's your only chance. Nominate someone you strongly suspect is a Minion.",
@@ -3964,7 +3932,8 @@
       "Nominee",
       "No Ability"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "With a clear vision, one can see ten thousand miles, illuminating even the most hidden of wickedness."
   },
   {
     "slug": "actor",
@@ -3979,24 +3948,25 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "quote": "If we shadows have offended, think but this and all is mended, that you have but slumber’d here, while these visions did appear.",
-    "lede": "The Actors are a secret society of players behind the game — drunk, knowing, and rewriting the rules of victory.",
+    "quote": "If we shadows have offended, think but this and all is mended, that you have but slumber'd here, while these visions did appear.",
+    "lede": "The Actor conspires with the town to turn the tables on the evil team.",
     "summaryBullets": [
-      "All good characters are replaced by Actors. Good characters are drunk and know each other.",
-      "Victory conditions are reversed: whoever would normally win, loses — and whoever would lose, wins.",
-      "The Actors cannot lose this ability — it is permanent and cannot be removed or suppressed.",
-      "The GOOD ARE DRUNK reminder marks the ongoing state."
+      "During the first night, wake all good players together and show them the Actor character token. All good players learn who is on the good team and, consequently, who is on the evil team, but they do not learn who is the Demon and who are Minions.",
+      "If the game ends due to the good team winning, the evil team wins, and vice versa.",
+      "Except for the Actor, all players with good characters are drunk. They all know an Actor is in play.",
+      "Good characters cannot change alignment when the Actor is in play.",
+      "The Actor keeps their ability even if they are poisoned, drunk or dead. The Actor player cannot change characters.",
+      "Good Travellers do not wake to learn the good team, are not drunk and may still change alignment mid-game."
     ],
     "howToRun": [
-      "On the first night, wake all Actors together. They see each other. Put them to sleep. Place the GOOD ARE DRUNK reminder.",
-      "All good players are drunk for the entire game — treat their ability information as false.",
-      "Win conditions are reversed: if evil would win normally, good wins instead. If good would win normally, evil wins instead.",
-      "This ability is permanent — no drunk, poison, or character change removes it."
+      "After the Minion and Demon info steps during the first night, wake all players who are good characters (good-aligned Travellers are not woken) together. Show them the Actor character token if you want.",
+      "When the game ends, reverse the victory and announce this to the group."
     ],
     "examples": [
-      "The Demon kills the last Townsfolk. Normally evil wins — but with the Actor, good wins instead.",
-      "An Actor is executed. All remaining Actors know each other and coordinate accordingly.",
-      "The Pit-Hag changes an Actor into a different character. The reversal still applies — it cannot be removed."
+      "The Actor is in play. The game continues until only the Shabaloth and the Devil's Advocate are left alive. The game ends and the good team wins.",
+      "The Actor is in play. At night, the Vigormortis decides to kill themself. The game ends and the evil team wins.",
+      "The Actor is not in play. One night, the Philosopher chooses to gain the Actor's ability. All good players wake up together and learn each other.",
+      "The Actor learns the Mezepheles word and says it. That night, the Actor does not wake or turn evil. The next morning, the Actor pretends to have been turned evil to deceive the Mezepheles."
     ],
     "tips": [
       "All Actors know each other from night one — use this network to coordinate strategy without evil intercepting.",
@@ -4105,22 +4075,23 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Server keeps one neighbor's cup perpetually full — whether they mean to or not.",
+    "lede": "The Server keeps a neighbor drunk.",
     "summaryBullets": [
-      "One of your good neighbors (not a Traveller) is drunk for the entire game, even if you die by execution.",
-      "You do not choose which neighbor — the Storyteller decides.",
-      "The drunk neighbor's ability gives false information or has no effect.",
-      "Your drunk effect persists even after your death by execution."
+      "The Storyteller chooses which good neighbor is drunk, regardless of whether they are alive or dead.",
+      "The Server's neighboring evil players are skipped. If both of the Server's neighbors are good Travellers, nothing happens.",
+      "If the Server dies by execution, the drunk player is still drunk. If the Server dies by any other means, they no longer cause drunkenness.",
+      "If a new player becomes the Server, or a drunk good player turns evil, the player who is drunk may change immediately."
     ],
     "howToRun": [
-      "At setup, choose one of the Server's good non-Traveller neighbors to be drunk. Place the DRUNK reminder on their token.",
-      "This player remains drunk for the entire game, even if the Server is executed. Remove the drunk only if the Server is dead by non-execution means — check your rules.",
-      "If both neighbors are evil or Travellers, the Server's ability has no effect."
+      "While preparing the first night, mark a good neighbor of the Server (not a Traveller) with the Server's [[DRUNK]] reminder. This player is drunk.",
+      "If the Server dies by execution, the [[DRUNK]] reminder is not removed. If the Server dies for any other reason, the [[DRUNK]] reminder is removed immediately.",
+      "If a good player made drunk by the Server turns evil, or the Server turns into a different character, or if a new player becomes the Server, a new good neighbor of the Server becomes drunk, and the old neighbor becomes healthy—move the Server's [[DRUNK]] reminder immediately if needed."
     ],
     "examples": [
-      "The Server neighbors the Empath and the Monk. The Empath is made drunk — their count is always false.",
-      "The Server is executed on day two. Their neighbor (the Fortune Teller) remains drunk for the rest of the game.",
-      "The Server neighbors one evil player and one Traveller. Neither is a valid target — the drunk effect doesn't apply."
+      "The Server's neighbors are the Fortune Teller and the Sage. The Storyteller chooses to make the Fortune Teller drunk.",
+      "The Server died by execution today. The Undertaker sitting next to the Server is still drunk, and learns the Poisoner tonight.",
+      "The Empath is made drunk by the neighboring Server. The Demon kills the Server tonight. The Empath immediately becomes sober and learns correct info tonight.",
+      "The Mayor is sitting between the Chambermaid and the Server, and is made drunk by the Server. During the day, the Mayor uttered the Mezepheles' word. Tonight, the Mayor turns evil and becomes sober, and the Chambermaid becomes drunk instead."
     ],
     "tips": [
       "Try to sit next to players who aren't critical information roles — your drunk effect is fixed and you can't control which neighbor suffers.",
@@ -4136,7 +4107,8 @@
     "reminders": [
       "Drunk"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "Care for another drink, sir?"
   },
   {
     "slug": "embalmer",
@@ -4151,23 +4123,22 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Embalmer prepares the dead for eternity — and when the Demon meets the blade, they step into the empty throne.",
+    "lede": "The Embalmer sends Demons to rest, but turns into a Demon themself.",
     "summaryBullets": [
-      "If 5 or more players are alive (not counting Travellers) and you nominate, execute, and kill the Demon, you become the evil Demon.",
-      "You gain the Demon's character, alignment, and ability.",
-      "Travellers don't count toward the 5-player threshold.",
-      "The IS THE DEMON reminder tracks your new state after the transformation.",
-      "Jinxes: Scarlet Woman, Al-Hadikhia, Lil' Monsta, Lleech — specific interactions with these characters."
+      "If there are five or more players just before the Demon is nominated by the Embalmer and then executed, the Embalmer immediately becomes the Demon, and the game continues.",
+      "Travellers do not count as players when seeing if the Embalmer's ability triggers.",
+      "If fewer than 5 players are alive, and the Embalmer nominates and successfully executes the Demon, the Demon dies and good wins.",
+      "If the Demon is nominated by the Embalmer but is not executed, is executed but survives, or is nominated by another player, the Embalmer does not change character or alignment.",
+      "The Embalmer turns evil when they become the Demon, even if the Demon they nominated and executed was good."
     ],
     "howToRun": [
-      "If the Embalmer nominates the Demon, enough players vote to execute, and the Demon dies — check the player count. If 5 or more non-Traveller players are alive, transform the Embalmer into the Demon.",
-      "Place the IS THE DEMON reminder. The Embalmer is now evil, gains the Demon's character and ability, and the game continues with them as the new Demon.",
-      "If fewer than 5 players are alive, the Embalmer's ability does not trigger — the Demon simply dies and evil loses."
+      "If there are five or more players alive and the Embalmer nominates the Demon, who is executed and dies as a result, place the [[IS THE DEMON]] reminder by the Embalmer, changing that player's character from the Embalmer to the Demon. They are now the evil Demon and have the Demon's ability.",
+      "That night, wake the new Demon, show them the YOU ARE info token, then show them the Demon's character token, followed by thumbs down for evil."
     ],
     "examples": [
-      "6 players are alive. The Embalmer nominates the Imp. The Imp is executed. The Embalmer becomes the Imp — evil continues.",
-      "4 players are alive (not counting the Traveller). The Embalmer nominates and kills the Demon. The threshold isn't met — evil loses.",
-      "The Embalmer nominates a Minion by mistake. The Minion dies. Nothing happens — only Demon kills trigger the transformation."
+      "Seven players are alive: the Imp, the Embalmer, two Townsfolk and three Travellers. The Embalmer nominates the Imp, who is executed and dies. The game ends and good wins, because Travellers do not add to the player count for the Embalmer's ability.",
+      "Five players are alive: the Imp, the Baron, the Embalmer and two Townsfolk. The Embalmer nominates the Imp, who is executed and dies. The Embalmer becomes the evil Imp, and the game continues.",
+      "Lan is the Embalmer. The Fortune Teller chooses Lan and Mei and learns \"no\". Later, Lan nominates and executes the Demon, and becomes the new Demon. That night, the Fortune Teller chooses Lan and Mei again, and learns \"yes\"."
     ],
     "tips": [
       "Your ability is a double-edged sword — you can win the game for evil by executing the Demon, but you also allow the town to identify you as the new Demon.",
@@ -4201,7 +4172,8 @@
         "id": "lleech",
         "reason": "If there are 5 or more players alive and the Lleech host dies by the Embalmer’s nomination, the old Lleech dies tonight, and the Embalmer becomes the evil Lleech but does not kill tonight."
       }
-    ]
+    ],
+    "quote": "Unable to quell the hatred in my heart, I have lost the one I held so dear."
   },
   {
     "slug": "vintner",
@@ -4216,22 +4188,22 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Vintner ages a vintage lie — the next time a Townsfolk reaches for information, they taste something other than truth.",
+    "lede": "The Vintner decides what misinformation to spread.",
     "summaryBullets": [
-      "Each night, choose a Townsfolk character. The next time that character's ability yields information, it yields the information you choose instead.",
-      "You choose the false information the Storyteller will deliver — it must be plausible within the ability's normal output.",
-      "The TIPSY reminder marks the affected Townsfolk.",
-      "The effect fires once then resets — you choose a new target each night."
+      "Each night, the Vintner chooses a Townsfolk character, and then tells the Storyteller what info that character's ability will yield next time.",
+      "The Vintner does not affect information gained by other means.",
+      "When a player affected by the Vintner obtains information due to their own ability, even if drunk or poisoned, they must learn the info the Vintner gave.",
+      "If the Vintner gives info to a character that could not normally learn this info, the Vintner's ability has no effect.",
+      "The Vintner chooses a character, not a player. If the Vintner chooses a character that is not in play, no one is given that piece of info."
     ],
     "howToRun": [
-      "Each night, wake the Vintner. They point to a Townsfolk character and whisper the false information they want that character to receive.",
-      "Place the TIPSY reminder on that character's token. The next time that character's ability would give information, give the Vintner's chosen information instead.",
-      "Remove the TIPSY reminder after it fires. The Vintner chooses again the following night."
+      "Each night, wake the Vintner and have them choose a Townsfolk character on the character sheet, as well as a piece of info (nod, gesture a number, point to a player etc.). Put the Vintner back to sleep.",
+      "If the chosen character is in-play and the information matches what they might normally learn, place the [[TIPSY]] reminder next to their character token.",
+      "Whenever an ability marked [[TIPSY]] would yield information, you must provide the information given by the Vintner. Then, remove the [[TIPSY]] reminder."
     ],
     "examples": [
-      "The Vintner targets the Fortune Teller and chooses 'yes'. The Fortune Teller asks about two players — they receive 'yes' regardless of the actual answer.",
-      "The Vintner targets the Empath and chooses '0'. The Empath wakes to a count of 0 even if both neighbors are evil.",
-      "The Vintner targets the Investigator and selects 'Recluse / Spy'. The Investigator learns that false pairing."
+      "The Vintner chose the Fortune Teller and gave the Storyteller a \"yes\". That night, regardless of which two players the Fortune Teller chose, they learn \"yes\".",
+      "On the first night, the Philosopher chose to gain the Town Crier's ability, making the Town Crier drunk. That night, the Vintner chose the Town Crier and gave the Storyteller a \"no\". On the first day, a nomination was made by a Minion. On the second night, the Philosopher learns \"yes\" and the Town Crier learns \"no\"."
     ],
     "tips": [
       "Coordinate with your Demon — corrupt the information role most likely to expose the Demon this turn.",
@@ -4247,7 +4219,9 @@
     "reminders": [
       "Tipsy"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "It's just drunken ramblings; nothing to take seriously.",
+    "callout": "As the Vintner's info is yielded by the Vintner's ability, it is unaffected by the Vortox."
   },
   {
     "slug": "gu-diao",
@@ -4364,23 +4338,22 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "Huapi wears a face that is not their own — their chosen quarry walks and speaks but is already gone.",
+    "lede": "The Huapi possesses its target, moving to a different one when threatened.",
     "summaryBullets": [
-      "On your first night, choose an alive player. They die but register as alive. When they would die again, they revive and you regain this ability.",
-      "The chosen player is dead but appears alive — abilities and counts treat them as living.",
-      "When they 'die again' (targeted by a kill), they revive fully and become genuinely alive.",
-      "After the revival, you regain the Huapi ability and may use it again.",
-      "LOOKS ALIVE marks the pseudo-dead player; ON THE PROWL marks your readiness to act again."
+      "The Huapi kills a player on the first night, but is the only one who knows that they are dead.",
+      "The Huapi's victim is put in the \"undead\" state, registering as alive to all abilities.",
+      "If the undead player would die again, they are instead revived, and the Huapi selects a new target that night.",
+      "If the player chosen by the Huapi cannot die for some reason, they do not become undead. If they would later die, the Huapi still protects them from death and chooses again tonight."
     ],
     "howToRun": [
-      "On the first night, wake Huapi. They point to a player. Kill that player secretly — place the LOOKS ALIVE reminder. They register as alive to all abilities.",
-      "When any kill ability targets the LOOKS ALIVE player, do not kill them — instead, they revive (become genuinely alive). Remove LOOKS ALIVE and place ON THE PROWL on Huapi.",
-      "That night or the next, Huapi may choose a new player to mark with LOOKS ALIVE. Repeat."
+      "On the first night, wake the Huapi. The Huapi points to a player. Put the Huapi to sleep. The player chosen by the Huapi dies—put a shroud on their token, and mark them with the [[UNDEAD]] reminder. Do not announce their death to the town.",
+      "If the player marked with the [[UNDEAD]] reminder would die for any reason, they do not, but are revived—remove their shroud and the [[UNDEAD]] reminder and place the [[ON THE PROWL]] reminder by the Huapi.",
+      "If the [[ON THE PROWL]] reminder is placed, wake the Huapi that night and prompt the Huapi to choose a victim. Remove the [[ON THE PROWL]] reminder."
     ],
     "examples": [
-      "Huapi marks the Empath on night one. The Empath appears alive. The Demon attacks the Empath on night three — the Empath revives. Huapi may now mark a new player.",
-      "The Slayer shoots Huapi's marked player — the shot is wasted on the revival. Huapi gains the ability again.",
-      "Huapi's marked player is exorcised — the kill check triggers the revival even from the Exorcist's ability."
+      "On the first night, the Huapi chooses the Chambermaid, who becomes undead. The Chambermaid then chooses the Huapi and the Fearmonger, and incorrectly learns \"0\".",
+      "On the first night, the Huapi chooses the Soldier, who becomes undead. The Soldier is later attacked by the Imp and comes back to life, and the Huapi chooses another player.",
+      "On the second night, the Pit-Hag transforms the Baron into the Huapi, who then chooses the Monk. The next day, the Monk is executed and does not die, but is revived. The Huapi chooses a new victim the following night."
     ],
     "tips": [
       "Mark a player who looks like a Demon target — when the Demon hits them, it wastes their kill and revives an ally.",
@@ -4397,7 +4370,9 @@
       "Looks Alive",
       "On the Prowl"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "How foolish are the people! Clearly demonic, yet regarded as beautiful. How deluded are the fools! Clearly loyal, yet regarded as false.",
+    "callout": "If the Huapi chooses a Demon, the game ends immediately as the Demon does not register as alive for the purposes of ending the game. This applies even if there is a Scarlet Woman in play."
   },
   {
     "slug": "warden",
@@ -4511,23 +4486,22 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Tyrant rules by pattern — the town thinks they know the death toll, but the Tyrant keeps them forever guessing.",
+    "lede": "The Tyrant kills a different number of players each night.",
     "summaryBullets": [
-      "Each night (not the first), choose 0 to 2 players: they die. Your choice cannot equal the number of players who died last night (capped at 2).",
-      "If 0 players died last night, you must kill at least 1 tonight.",
-      "If 1 player died last night, you must kill 0 or 2 tonight (not 1).",
-      "If 2 or more died last night, you must kill 0 or 1 tonight (not 2).",
-      "Reminder tokens track the previous night's death count: 0 DIED LAST NIGHT, 1 DIED LAST NIGHT, 2+ DIED LAST NIGHT."
+      "The Tyrant can choose to attack up to 2 players each night, but cannot attack as many players as died last night.",
+      "The Tyrant's ability takes all deaths last night into account, not only those caused by its own ability.",
+      "The Tyrant cannot attack more than 1 player if 2 or more players died last night.",
+      "The Tyrant can choose not to attack if at least 1 player died last night.",
+      "The Tyrant must attack at least 1 player if no one died last night.",
+      "The Tyrant can choose to attack dead players."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Tyrant. They choose 0, 1, or 2 players to kill — but their choice cannot match the previous night's death count (max 2).",
-      "Update the death count reminder at dawn based on how many actually died that night (including other sources).",
-      "If the Tyrant chooses an invalid number, prompt them to choose again."
+      "Each night except the first, wake the Tyrant. They either shake their head no or point at one or two players. The chosen players die in the order selected—mark them with [[DEAD]] reminder tokens.",
+      "If 2 or more players died last night, the Tyrant cannot choose two players tonight. If 1 player died last night, the Tyrant must choose 2 players or shake their head no. If no players died last night, the Tyrant must choose at least 1 player."
     ],
     "examples": [
-      "Night 2: 1 player died last night. The Tyrant must kill 0 or 2 tonight — they cannot kill exactly 1.",
-      "Night 3: 0 players died last night (the Tyrant killed 0 and no other deaths). The Tyrant must kill at least 1.",
-      "Night 4: The Tyrant killed 2 last night; the Monk also protected someone so effectively 2 died. The Tyrant can kill 0 or 1 tonight."
+      "The Tyrant chooses the Gossip and the Gambler, who are both protected by the Innkeeper. Nobody dies that night. The next night, the Tyrant must choose 1 or 2 players.",
+      "1 player died last night. Tonight, the Tyrant chooses the living Courtier and the dead Exorcist. The Courtier dies, and is the only one who dies tonight. The following night, the Tyrant must choose 0 or 2 players."
     ],
     "tips": [
       "The pattern restriction creates a predictability paradox — the town thinks they can predict your kill count, but you're always varying it.",
@@ -4547,7 +4521,8 @@
       "1 Died Last Night",
       "2+ Died Last Night"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "What is the peasant's wrath to the Emperor's, which may kill hundreds upon thousands and bathe the land in blood."
   },
   {
     "slug": "guhuo",
@@ -4562,22 +4537,22 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Guhuo hunts each night — and when a Minion falls to justice, it may claim their power as a parting gift.",
+    "lede": "The Guhuo gains Minion abilities.",
     "summaryBullets": [
-      "Each night (not the first), choose a player: they die.",
-      "Once per game, when a Minion dies by execution during the day, you might gain their ability.",
-      "The ability gain is a 'might' — the Storyteller decides whether it occurs.",
-      "DEAD marks your kill; HAS ABILITY marks your gained ability; ONCE marks when the ability gain has been used."
+      "When a Minion dies by execution, the Storyteller may decide to give the Guhuo that Minion's ability.",
+      "Executing a dead Minion won't grant the Guhuo an ability. Executing a living Minion who doesn't die won't grant the Guhuo an ability.",
+      "The Guhuo is not told when they have gained a Minion ability.",
+      "The Guhuo gains the ability that the Minion had when executed, even if that Minion later changes characters.",
+      "A Guhuo can only gain a Minion ability once per game."
     ],
     "howToRun": [
-      "Each night (not the first), wake the Guhuo. They point to a player — that player dies.",
-      "If a Minion is executed during the day, decide whether the Guhuo gains their ability. If so, place HAS ABILITY on the Guhuo and ONCE to indicate the trigger is spent.",
-      "The Guhuo now has both their kill ability and the Minion's ability simultaneously, until the HAS ABILITY expires or the Guhuo dies."
+      "Each night except the first, wake the Guhuo. They point at any player. The chosen player dies—mark them with the [[DEAD]] reminder.",
+      "If a Minion died by execution today and the [[ONCE]] reminder is not in the center of the Grimoire, the Guhuo might gain that Minion's ability. If so, place the Guhuo's [[HAS ABILITY]] reminder next to that Minion's character token: the Guhuo now has that Minion's ability, and will be awakened at night when that Minion would wake. Place the [[ONCE]] reminder in the center of the Grimoire."
     ],
     "examples": [
-      "The Poisoner is executed today. The Storyteller decides the Guhuo gains the Poisoner's ability — that night the Guhuo kills one player and poisons another.",
-      "The Baron is executed. The Storyteller decides not to grant the Baron's ability — the Guhuo kills normally.",
-      "The Guhuo already gained a Minion ability in a previous game. A second Minion is executed — the ONCE token is already spent, no second gain."
+      "The Poisoner was executed and died. That night, the Guhuo wakes up to choose a player to poison, and later wakes up again to choose a player to kill.",
+      "The Devil's Advocate was executed and died. That night, the Pit-Hag transforms the Imp into the Guhuo. The Guhuo cannot gain the Devil's Advocate ability, as they were not in play when the Devil's Advocate died.",
+      "The Assassin was executed and died, and the Guhuo gained the Assassin ability. That night, the Guhuo killed the Barber and swapped characters with the Godfather. The next day, the Godfather was executed and died, and the new Guhuo cannot gain the Godfather ability."
     ],
     "tips": [
       "The prospect of gaining a Minion's ability incentivizes the town to not execute Minions — use this psychology.",
@@ -4595,7 +4570,8 @@
       "Has Ability",
       "Once"
     ],
-    "setup": false
+    "setup": false,
+    "quote": "At night, they feast on the souls of the dead, and steal the children to raise as their own."
   },
   {
     "slug": "messenger",
@@ -4610,22 +4586,12 @@
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — The Storm Is Coming",
     "tags": "The Storm Is Coming",
-    "lede": "The Messenger removes all barriers — every ability that needed perfect conditions now works without them.",
+    "lede": "Use the Messenger when there are new players who may be overwhelmed by the restrictions on some characters' abilities.",
     "summaryBullets": [
-      "All restrictions on abilities that require players to make a choice are removed.",
-      "This is a Fabled character — it is public information and affects all players.",
-      "Examples of lifted restrictions: the Snake Charmer can choose dead players, the Devil's Advocate can choose themselves, the Undertaker can check players not yet revealed."
+      "The Messenger removes restrictions on abilities that require players to make a choice. Some characters may be too powerful without restrictions, so think carefully before deciding to use this Fabled."
     ],
-    "howToRun": [
-      "Announce at the start of the game that the Messenger is in play.",
-      "Whenever any ability has a restriction on whom it can target or what choices can be made, ignore that restriction. All choices are unrestricted.",
-      "This applies to all characters — good and evil."
-    ],
-    "examples": [
-      "The Snake Charmer normally cannot choose dead players. With the Messenger in play, they can.",
-      "The Devil's Advocate normally cannot choose themselves. With the Messenger, they can.",
-      "The Investigator normally cannot choose the same pair two nights in a row (if such a restriction exists). With the Messenger, they can repeat."
-    ],
+    "howToRun": [],
+    "examples": [],
     "tips": [
       "The Messenger removes restrictions for everyone — this can benefit evil as much as good. Know what restrictions are lifted for the evil team too.",
       "Coordinate around the lifted restrictions. Good abilities that were previously constrained may now be far more powerful.",
@@ -4638,6 +4604,7 @@
     "otherNight": 0,
     "otherNightReminder": "",
     "reminders": [],
-    "setup": false
+    "setup": false,
+    "quote": "By the grace of heaven, the Emperor decrees: A general amnesty is granted throughout the land."
   }
 ]
