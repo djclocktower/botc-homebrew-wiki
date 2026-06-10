@@ -303,13 +303,14 @@
             var st2 = document.getElementById('hero-subtitle');
             if (st2 && st2.parentNode) st2.parentNode.insertBefore(desc, st2);
           }
-          // Edit link
+          // Edit button — placed in hero below subtitle
           if (activeCollection.id && !activeCollection.standalone) {
             var eb = document.createElement('a');
             eb.href = 'edit-collection.html?c=' + encodeURIComponent(activeCollection.id);
-            eb.className = 'edit-link'; eb.textContent = '✎ Edit Collection';
-            var bg = document.querySelector('.brand-group');
-            if (bg) bg.appendChild(eb);
+            eb.className = 'cta-secondary collection-edit-btn';
+            eb.textContent = '✎ Edit Collection';
+            var hero = document.querySelector('.home-hero');
+            if (hero) hero.appendChild(eb);
           }
         }
         FULL = list;
