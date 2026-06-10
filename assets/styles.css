@@ -1382,3 +1382,33 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .script-json-panel { position: sticky; top: 74px; }
 .script-json-panel .json-body { max-height: 60vh; }
+
+/* ════════════════════════════════════════════════════════════════
+   COLLECTION PAGES — header image + description
+   ════════════════════════════════════════════════════════════════ */
+
+/* Header image shown at top of filtered collection page */
+.collection-hero-header {
+  text-align: center;
+  margin: 0 0 18px;
+}
+.collection-hero-img {
+  max-width: 100%; max-height: 260px; height: auto;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.45));
+}
+/* Description blurb below the title */
+.collection-hero-desc {
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: 1.1rem; color: rgba(236,225,200,.85);
+  max-width: 720px; margin: 0 auto 8px; text-align: center;
+}
+
+/* Collection tile header image (replaces character-icon grid when set) */
+.collection-tile-header {
+  width: 100%; aspect-ratio: 21 / 9; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background: rgba(91,31,33,.04); border: 1px solid rgba(183,156,111,.35);
+}
+.collection-tile-header img {
+  width: 100%; height: 100%; object-fit: contain;
+}
