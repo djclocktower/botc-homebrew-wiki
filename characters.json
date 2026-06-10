@@ -2009,15 +2009,18 @@
     "jinxes": [
       {
         "id": "riot",
-        "reason": "If a Riot player nominates the Ban Xian on day 3, another evil player dies instead of the Ban Xian, and nominates next. If the nominator is the only living evil player, the Ban Xian dies as normal."
+        "reason": "If a Riot player nominates the Ban Xian on day 3, another evil player dies instead of the Ban Xian, and nominates next. If the nominator is the only living evil player, the Ban Xian dies as normal.",
+        "name": "Riot"
       },
       {
         "id": "kazali",
-        "reason": "The Kazali can choose that the Ban Xian player is one of their evil Minions."
+        "reason": "The Kazali can choose that the Ban Xian player is one of their evil Minions.",
+        "name": "Kazali"
       },
       {
         "id": "lleech",
-        "reason": "The Lleech’s poisoning or host choice cannot be redirected."
+        "reason": "The Lleech’s poisoning or host choice cannot be redirected.",
+        "name": "Lleech"
       }
     ],
     "callout": "If the Assassin attacks the Ban Xian, the Ban Xian dies without redirecting the Assassin's choice to an evil player."
@@ -2125,11 +2128,13 @@
     "jinxes": [
       {
         "id": "leviathan",
-        "reason": "If the Leviathan is in play, the Firewatcher-protected players are safe from all evil abilities."
+        "reason": "If the Leviathan is in play, the Firewatcher-protected players are safe from all evil abilities.",
+        "name": "Leviathan"
       },
       {
         "id": "riot",
-        "reason": "If the Riot is in play, the Firewatcher-protected players are safe from all evil abilities."
+        "reason": "If the Riot is in play, the Firewatcher-protected players are safe from all evil abilities.",
+        "name": "Riot"
       }
     ],
     "callout": "The Brocadier cannot protect the Firewatcher from dying to its own ability, as the Firewatcher dying prevents the Brocadier from dying to their ability."
@@ -2280,15 +2285,18 @@
     "jinxes": [
       {
         "id": "leviathan",
-        "reason": "If the Leviathan nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight."
+        "reason": "If the Leviathan nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight.",
+        "name": "Leviathan"
       },
       {
         "id": "kazali",
-        "reason": "The Kazali can choose that a player neighboring the Abbot is one of their evil Minions."
+        "reason": "The Kazali can choose that a player neighboring the Abbot is one of their evil Minions.",
+        "name": "Kazali"
       },
       {
         "id": "riot",
-        "reason": "If the Riot nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight."
+        "reason": "If the Riot nominates and executes one of the Abbot’s alive neighbors, that player does not die. That night, the Abbot learns that their ability has activated, and their ability cannot activate again tonight.",
+        "name": "Riot"
       }
     ],
     "callout": "If the No Dashii is poisoning a Townsfolk neighbor of the Abbot at the start of the game, the Abbot's ability does not activate. If the No Dashii begins poisoning a neighbor of the Abbot mid-game, the Abbot will prevent the No Dashii's poisoning until dawn. Abilities that poison all good players or Townsfolk, such as the Xaan or Hun Dun, also poison the Abbot."
@@ -2482,11 +2490,13 @@
     "jinxes": [
       {
         "id": "villageidiot",
-        "reason": "If there is a spare token, the Enlightened One can become an extra Village Idiot. If so, the drunk Village Idiot might change."
+        "reason": "If there is a spare token, the Enlightened One can become an extra Village Idiot. If so, the drunk Village Idiot might change.",
+        "name": "Village Idiot"
       },
       {
         "id": "boffin",
-        "reason": "The Demon cannot have the Enlightened One ability."
+        "reason": "The Demon cannot have the Enlightened One ability.",
+        "name": "Boffin"
       }
     ],
     "callout": "The Enlightened One believes themself to be an Outsider. For this reason, they cannot believe themself to be the Drunk or the Lunatic, since those characters don't know that they are Outsiders at the beginning of the game."
@@ -2723,7 +2733,8 @@
     "jinxes": [
       {
         "id": "lleech",
-        "reason": "The Lleech’s poisoning or host choice cannot be redirected."
+        "reason": "The Lleech’s poisoning or host choice cannot be redirected.",
+        "name": "Lleech"
       }
     ]
   },
@@ -2823,7 +2834,8 @@
     "jinxes": [
       {
         "id": "plaguedoctor",
-        "reason": "If the Storyteller would gain the Bug Keeper ability, a living Minion gains the Bug Keeper ability in addition to their own ability, and learns this."
+        "reason": "If the Storyteller would gain the Bug Keeper ability, a living Minion gains the Bug Keeper ability in addition to their own ability, and learns this.",
+        "name": "Plague Doctor"
       }
     ],
     "callout": "Abilities that cause the Bug Keeper to be nominated more than once, such as the Butcher, can cause more than one player to die by the Bug Keeper's ability in one night."
@@ -2876,11 +2888,13 @@
     "jinxes": [
       {
         "id": "heretic",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Heretic"
       },
       {
         "id": "plaguedoctor",
-        "reason": "If the Storyteller would gain the Vixen ability, a living Minion gains the Vixen ability in addition to their own ability, and learns this."
+        "reason": "If the Storyteller would gain the Vixen ability, a living Minion gains the Vixen ability in addition to their own ability, and learns this.",
+        "name": "Plague Doctor"
       }
     ]
   },
@@ -2934,7 +2948,8 @@
     "jinxes": [
       {
         "id": "plaguedoctor",
-        "reason": "If the Storyteller would gain the Corpse Walker ability, a living Minion gains the Corpse Walker ability in addition to their own ability, and learns this."
+        "reason": "If the Storyteller would gain the Corpse Walker ability, a living Minion gains the Corpse Walker ability in addition to their own ability, and learns this.",
+        "name": "Plague Doctor"
       }
     ],
     "callout": "It is not recommended to have more than two undead players at a time, since this can make the game end unexpectedly early."
@@ -3086,43 +3101,53 @@
     "jinxes": [
       {
         "id": "scarletwoman",
-        "reason": "The Scarlet Woman registers as having no ability to the Tao Wu."
+        "reason": "The Scarlet Woman registers as having no ability to the Tao Wu.",
+        "name": "Scarlet Woman"
       },
       {
         "id": "eviltwin",
-        "reason": "The Evil Twin registers as having no ability to the Tao Wu."
+        "reason": "The Evil Twin registers as having no ability to the Tao Wu.",
+        "name": "Evil Twin"
       },
       {
         "id": "mastermind",
-        "reason": "The Mastermind registers as having no ability to the Tao Wu."
+        "reason": "The Mastermind registers as having no ability to the Tao Wu.",
+        "name": "Mastermind"
       },
       {
         "id": "organgrinder",
-        "reason": "If the Tao Wu is about to be executed and the alive Organ Grinder has their ability, the Storyteller announces that no one is executed."
+        "reason": "If the Tao Wu is about to be executed and the alive Organ Grinder has their ability, the Storyteller announces that no one is executed.",
+        "name": "Organ Grinder"
       },
       {
         "id": "marionette",
-        "reason": "The Tao Wu does not learn who the Marionette is. If the Marionette has no ability due to the Tao Wu’s ability, the Tao Wu learns who the Marionette is, but the Marionette learns nothing."
+        "reason": "The Tao Wu does not learn who the Marionette is. If the Marionette has no ability due to the Tao Wu’s ability, the Tao Wu learns who the Marionette is, but the Marionette learns nothing.",
+        "name": "Marionette"
       },
       {
         "id": "hatter",
-        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately.",
+        "name": "Hatter"
       },
       {
         "id": "pithag",
-        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately.",
+        "name": "Pit-Hag"
       },
       {
         "id": "engineer",
-        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately."
+        "reason": "If the Tao Wu player changes character, any Minion that lost their ability due to the Tao Wu ability dies immediately.",
+        "name": "Engineer"
       },
       {
         "id": "snakecharmer",
-        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back."
+        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back.",
+        "name": "Snake Charmer"
       },
       {
         "id": "barber",
-        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back."
+        "reason": "If the Tao Wu swaps characters with another player, Minions that lost their ability due to the Tao Wu ability do not get their abilities back.",
+        "name": "Barber"
       }
     ],
     "callout": "If the Lunatic believes themself to be the Tao Wu, they also do not wake to learn any Demon info. If the Poppy Grower dies, the Tao Wu still does not wake to learn anything, due to their own ability."
@@ -3354,11 +3379,13 @@
     "jinxes": [
       {
         "id": "chambermaid",
-        "reason": "The Chambermaid can detect if the Guide will wake tonight."
+        "reason": "The Chambermaid can detect if the Guide will wake tonight.",
+        "name": "Chambermaid"
       },
       {
         "id": "mathematician",
-        "reason": "The Guide learns if the Mathematician is affected or not, even though the Guide wakes first."
+        "reason": "The Guide learns if the Mathematician is affected or not, even though the Guide wakes first.",
+        "name": "Mathematician"
       }
     ],
     "quote": "The boat is slow and difficult to steer. It is weighted by the stench of evil.",
@@ -3414,7 +3441,8 @@
     "jinxes": [
       {
         "id": "lleech",
-        "reason": "The Broker cannot redirect the Lleech’s choice of host or the associated poisoning."
+        "reason": "The Broker cannot redirect the Lleech’s choice of host or the associated poisoning.",
+        "name": "Lleech"
       }
     ],
     "quote": "Deals may fail, but loyalty remains.",
@@ -3563,23 +3591,28 @@
     "jinxes": [
       {
         "id": "professor",
-        "reason": "If the Professor has already used their ability when swapping characters with the Tabby, the new Professor has no ability."
+        "reason": "If the Professor has already used their ability when swapping characters with the Tabby, the new Professor has no ability.",
+        "name": "Professor"
       },
       {
         "id": "banshee",
-        "reason": "If the Tabby swaps characters with the Banshee, the Storyteller does not announce that the Banshee died."
+        "reason": "If the Tabby swaps characters with the Banshee, the Storyteller does not announce that the Banshee died.",
+        "name": "Banshee"
       },
       {
         "id": "boffin",
-        "reason": "If the Demon has the Tabby ability and successfully activates it, the targeted player becomes the Tabby, and the Demon instead gains the ability of the targeted player's previous character."
+        "reason": "If the Demon has the Tabby ability and successfully activates it, the targeted player becomes the Tabby, and the Demon instead gains the ability of the targeted player's previous character.",
+        "name": "Boffin"
       },
       {
         "id": "leviathan",
-        "reason": "Each night*, the Leviathan chooses an alive player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die."
+        "reason": "Each night*, the Leviathan chooses an alive player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die.",
+        "name": "Leviathan"
       },
       {
         "id": "riot",
-        "reason": "Each night*, Riot chooses an alive good player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die."
+        "reason": "Each night*, Riot chooses an alive good player (different to previous nights): if they choose the same player as the Tabby, the Tabby’s ability activates, but the chosen player does not die.",
+        "name": "Riot"
       }
     ],
     "quote": "How could my beloved consort give birth to such a freak!"
@@ -3634,11 +3667,13 @@
     "jinxes": [
       {
         "id": "leviathan",
-        "reason": "If the Leviathan is in play, the Patrol-protected player is safe from all evil abilities."
+        "reason": "If the Leviathan is in play, the Patrol-protected player is safe from all evil abilities.",
+        "name": "Leviathan"
       },
       {
         "id": "riot",
-        "reason": "If the Riot is in play, the Patrol-protected player is safe from all evil abilities."
+        "reason": "If the Riot is in play, the Patrol-protected player is safe from all evil abilities.",
+        "name": "Riot"
       }
     ],
     "quote": "Lay the world's injustices to rest, and bring peace to uneasy hearts."
@@ -3739,11 +3774,13 @@
     "jinxes": [
       {
         "id": "poppygrower",
-        "reason": "The Poppy Grower cannot be poisoned by the Zhen’s ability."
+        "reason": "The Poppy Grower cannot be poisoned by the Zhen’s ability.",
+        "name": "Poppy Grower"
       },
       {
         "id": "banxian_festival_of_lanterns",
-        "reason": "If the Zhen chooses the Ban Xian, the Ban Xian becomes poisoned and dies."
+        "reason": "If the Zhen chooses the Ban Xian, the Ban Xian becomes poisoned and dies.",
+        "name": "Ban Xian"
       }
     ],
     "quote": "Sweet as wine, poisonous as arsenic."
@@ -3986,79 +4023,98 @@
     "jinxes": [
       {
         "id": "spy",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Spy"
       },
       {
         "id": "eviltwin",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Evil Twin"
       },
       {
         "id": "widow",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Widow"
       },
       {
         "id": "summoner",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Summoner"
       },
       {
         "id": "riot",
-        "reason": "Only 1 jinxed character can be in play."
+        "reason": "Only 1 jinxed character can be in play.",
+        "name": "Riot"
       },
       {
         "id": "legion",
-        "reason": "At any time, a Legion player can tell the Storyteller that they would like to die. Tonight, the Storyteller wakes all Legion players: if all agree, all die."
+        "reason": "At any time, a Legion player can tell the Storyteller that they would like to die. Tonight, the Storyteller wakes all Legion players: if all agree, all die.",
+        "name": "Legion"
       },
       {
         "id": "leviathan",
-        "reason": "At any time, the Leviathan can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+        "reason": "At any time, the Leviathan can tell the Storyteller that they would like to die. The Storyteller kills that player tonight.",
+        "name": "Leviathan"
       },
       {
         "id": "lilmonsta",
-        "reason": "At any time, the player holding Lil’ Monsta can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+        "reason": "At any time, the player holding Lil’ Monsta can tell the Storyteller that they would like to die. The Storyteller kills that player tonight.",
+        "name": "Lil' Monsta"
       },
       {
         "id": "pukka",
-        "reason": "At any time, the Pukka can tell the Storyteller that they would like to die. The Storyteller kills that player tonight."
+        "reason": "At any time, the Pukka can tell the Storyteller that they would like to die. The Storyteller kills that player tonight.",
+        "name": "Pukka"
       },
       {
         "id": "pithag",
-        "reason": "A Pit-Hag cannot create an Actor."
+        "reason": "A Pit-Hag cannot create an Actor.",
+        "name": "Pit-Hag"
       },
       {
         "id": "boffin",
-        "reason": "The Demon cannot have the Actor ability."
+        "reason": "The Demon cannot have the Actor ability.",
+        "name": "Boffin"
       },
       {
         "id": "king",
-        "reason": "The King does not become drunk due to the Actor’s ability."
+        "reason": "The King does not become drunk due to the Actor’s ability.",
+        "name": "King"
       },
       {
         "id": "damsel",
-        "reason": "The Damsel does not become drunk due to the Actor’s ability."
+        "reason": "The Damsel does not become drunk due to the Actor’s ability.",
+        "name": "Damsel"
       },
       {
         "id": "snitch",
-        "reason": "The Snitch does not become drunk due to the Actor’s ability."
+        "reason": "The Snitch does not become drunk due to the Actor’s ability.",
+        "name": "Snitch"
       },
       {
         "id": "lunatic",
-        "reason": "The Lunatic does not become drunk due to the Actor’s ability, and is not included when the good players learn each other."
+        "reason": "The Lunatic does not become drunk due to the Actor’s ability, and is not included when the good players learn each other.",
+        "name": "Lunatic"
       },
       {
         "id": "pedant_festival_of_lanterns",
-        "reason": "The Pedant does not become drunk due to the Actor’s ability."
+        "reason": "The Pedant does not become drunk due to the Actor’s ability.",
+        "name": "Pedant"
       },
       {
         "id": "atheist",
-        "reason": "The Actor cannot reverse the victory conditions on executing the Storyteller."
+        "reason": "The Actor cannot reverse the victory conditions on executing the Storyteller.",
+        "name": "Atheist"
       },
       {
         "id": "goblin",
-        "reason": "The Actor cannot reverse the victory conditions due to the Goblin’s ability."
+        "reason": "The Actor cannot reverse the victory conditions due to the Goblin’s ability.",
+        "name": "Goblin"
       },
       {
         "id": "fearmonger",
-        "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability."
+        "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability.",
+        "name": "Fearmonger"
       }
     ]
   },
@@ -4158,19 +4214,23 @@
     "jinxes": [
       {
         "id": "scarletwoman",
-        "reason": "If the Embalmer executes and becomes the Demon, the Scarlet Woman does not become a Demon."
+        "reason": "If the Embalmer executes and becomes the Demon, the Scarlet Woman does not become a Demon.",
+        "name": "Scarlet Woman"
       },
       {
         "id": "alhadikhia",
-        "reason": "If there are two living Al-Hadikhias, the Embalmer Al-Hadikhia becomes the Embalmer again, but does not turn good."
+        "reason": "If there are two living Al-Hadikhias, the Embalmer Al-Hadikhia becomes the Embalmer again, but does not turn good.",
+        "name": "Al-Hadikhia"
       },
       {
         "id": "lilmonsta",
-        "reason": "If there are 5 or more players alive and the player holding Lil’ Monsta dies from the Embalmer’s nomination, the Embalmer turns evil and is given Lil’ Monsta tonight."
+        "reason": "If there are 5 or more players alive and the player holding Lil’ Monsta dies from the Embalmer’s nomination, the Embalmer turns evil and is given Lil’ Monsta tonight.",
+        "name": "Lil' Monsta"
       },
       {
         "id": "lleech",
-        "reason": "If there are 5 or more players alive and the Lleech host dies by the Embalmer’s nomination, the old Lleech dies tonight, and the Embalmer becomes the evil Lleech but does not kill tonight."
+        "reason": "If there are 5 or more players alive and the Lleech host dies by the Embalmer’s nomination, the old Lleech dies tonight, and the Embalmer becomes the evil Lleech but does not kill tonight.",
+        "name": "Lleech"
       }
     ],
     "quote": "Unable to quell the hatred in my heart, I have lost the one I held so dear."
