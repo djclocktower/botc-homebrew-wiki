@@ -423,7 +423,7 @@
             '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">No featured character available.</p>';
         }
       })
-    }).catch(function(err){
+      .catch(function(err){
         console.error(err);
         document.getElementById('landing-stats').textContent = 'Could not load character data.';
         document.getElementById('collections-grid').innerHTML =
