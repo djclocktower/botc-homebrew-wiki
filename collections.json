@@ -1,0 +1,68 @@
+[
+  {
+    "id": "fall-of-rome",
+    "slug": "Fall of Rome",
+    "displayName": "Fall of Rome",
+    "match": [
+      "fallofrome"
+    ],
+    "description": "",
+    "header": ""
+  },
+  {
+    "id": "temple-fair",
+    "slug": "Festival of Lanterns — Temple Fair",
+    "displayName": "Temple Fair",
+    "match": [
+      "festivaloflanternstemplefair",
+      "templefair"
+    ],
+    "description": "",
+    "header": ""
+  },
+  {
+    "id": "storm-is-coming",
+    "slug": "Festival of Lanterns — The Storm Is Coming",
+    "displayName": "The Storm Is Coming",
+    "match": [
+      "festivaloflanternsthestormiscoming",
+      "thestormiscoming",
+      "stormiscoming"
+    ],
+    "description": "",
+    "header": ""
+  },
+  {
+    "id": "ravenswood-chronicle",
+    "slug": "Ravenswood Chronicle",
+    "displayName": "Ravenswood Chronicle",
+    "match": [
+      "ravenswoodchronicle",
+      "ravenswoodchronicles"
+    ],
+    "description": "",
+    "header": ""
+  },
+  {
+    "id": "midsummer-nights-dream",
+    "slug": "A Midsummer Night's Dream",
+    "displayName": "A Midsummer Night's Dream",
+    "match": [
+      "amidsummernightsdream",
+      "midsummernightsdream",
+      "babybusamidsummernightsdream"
+    ],
+    "description": "",
+    "header": ""
+  },
+  {
+    "id": "travel-by-starlight",
+    "slug": "Travel by Starlight",
+    "displayName": "Travel by Starlight",
+    "match": [
+      "travelbystarlight"
+    ],
+    "description": "",
+    "header": ""
+  }
+]
