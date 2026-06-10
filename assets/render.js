@@ -149,13 +149,12 @@
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
           var nm = jinxDisplayName(j);
-          var iconId = slugId(nm);
-          var iconPrimary = 'https://release.botc.app/resources/characters/' + iconId + '.png';
-          var iconFallback = 'https://botchomebrew.wiki/assets/jinx-icons/' + iconId + '.png';
-          var onerr = 'if(!this.dataset.fb){this.dataset.fb=1;this.src=\'' + iconFallback + '\';}else{this.style.display=\'none\';this.parentNode.classList.add(\'noicon\');}';
-          return '<div class="jinx">' +
-            '<img class="jico" src="' + iconPrimary + '" alt="' + esc(nm) + ' token"' +
-            ' onerror="' + onerr + '">' +
+          var iconId = (j.id || '').replace(/_festival_of_lanterns$/, '');
+          var iconSrc = (window.LINK_ROOT || '') + 'assets/icons/' + iconId + '.png';
+          return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
+            (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
+            ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
+            : '') +
             '<div class="jbody">' +
             '<a class="jname ' + al + '" href="' + jinxURL(nm) +
             '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
