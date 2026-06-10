@@ -177,7 +177,7 @@
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
       examplesBlock + tipsBlock + bluffingBlock + fightingBlock +
       '</section>' +
-      infoCardFinal + sideBar +
+      '<div class="char-col2">' + infoCardFinal + sideBar + '</div>' +
       '</div>';
   }
 
