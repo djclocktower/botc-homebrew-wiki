@@ -1388,21 +1388,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    ════════════════════════════════════════════════════════════════ */
 
 /* Header image shown at top of filtered collection page */
-.collection-hero-header {
-  text-align: center;
-  margin: 0 0 18px;
-}
-.collection-hero-img {
-  max-width: 100%; max-height: 260px; height: auto;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,.45));
-}
+
+
 /* Description blurb below the title */
-.home-hero .collection-hero-desc {
-  font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: 1.08rem; line-height: 1.5; color: rgba(236,225,200,.85);
-  width: 100%; max-width: 760px; margin: 14px auto 8px; text-align: left;
-}
-.collection-edit-btn { margin-top: 14px; display: inline-block; }
+
+
 
 /* Collection tile header image (replaces character-icon grid when set) */
 .collection-tile-header {
@@ -1413,3 +1403,24 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .collection-tile-header img {
   width: 100%; height: 100%; object-fit: contain;
 }
+
+/* ── Collection hero (centered stack: image, blurb, count, edit) ── */
+.collection-hero {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 16px; margin-top: 18px;
+}
+.collection-hero-header { text-align: center; margin: 0; }
+.collection-hero-img {
+  max-width: 100%; max-height: 240px; height: auto;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,.45));
+}
+.collection-hero .collection-hero-desc {
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: 1.08rem; line-height: 1.55; color: rgba(236,225,200,.85);
+  width: 100%; max-width: 760px; margin: 0 auto; text-align: left;
+}
+.collection-hero-count {
+  font-family: 'Oswald', sans-serif; font-size: .92rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.6); margin: 0;
+}
+.collection-edit-btn { display: inline-block; margin: 0; }
