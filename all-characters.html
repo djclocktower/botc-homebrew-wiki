@@ -137,7 +137,7 @@
     })();
 
     // Filter state
-    var STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
+    var STATE = { teams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
     var FULL = [];   // collection-scoped full list
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
@@ -165,8 +165,8 @@
       html += '</div></div>';
       // Tags
       if (tags.length){
-        html += '<div class="filter-group"><span class="filter-group-label">Exclude Tag</span><div class="filter-chips" id="fc-tags">';
-        tags.forEach(function(t){ html += '<button type="button" class="filter-chip filter-chip-exclude" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
+        html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
+        tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
         html += '</div></div>';
       }
       // Creator
@@ -200,9 +200,24 @@
       bar.querySelectorAll('[data-tag]').forEach(function(btn){
         btn.addEventListener('click', function(){
           var v = btn.getAttribute('data-tag');
-          var i = STATE.tags.indexOf(v);
-          if (i===-1) STATE.tags.push(v); else STATE.tags.splice(i,1);
-          btn.classList.toggle('active');
+          var ii = STATE.includeTags.indexOf(v);
+          var ei = STATE.excludeTags.indexOf(v);
+          if (ii === -1 && ei === -1) {
+            // unset → include
+            STATE.includeTags.push(v);
+            btn.classList.add('active');
+            btn.classList.remove('active-exclude');
+          } else if (ii !== -1) {
+            // include → exclude
+            STATE.includeTags.splice(ii, 1);
+            STATE.excludeTags.push(v);
+            btn.classList.remove('active');
+            btn.classList.add('active-exclude');
+          } else {
+            // exclude → unset
+            STATE.excludeTags.splice(ei, 1);
+            btn.classList.remove('active-exclude');
+          }
           render();
         });
       });
@@ -210,8 +225,8 @@
       if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
       document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
       document.getElementById('fc-reset').addEventListener('click', function(){
-        STATE = { teams: [], tags: [], creator: '', sort: 'name-asc' };
-        bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active'); });
+        STATE = { teams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
+        bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
         if (crSel) crSel.value = '';
         document.getElementById('fc-sort').value = 'name-asc';
         render();
@@ -221,9 +236,13 @@
     function applyFilters(){
       var out = FULL.slice();
       if (STATE.teams.length) out = out.filter(function(c){ return STATE.teams.indexOf(c.team) !== -1; });
-      if (STATE.tags.length) out = out.filter(function(c){
+      if (STATE.includeTags.length) out = out.filter(function(c){
         var ct = splitTags(c).map(titleCase);
-        return STATE.tags.every(function(t){ return ct.indexOf(t) === -1; });
+        return STATE.includeTags.every(function(t){ return ct.indexOf(t) !== -1; });
+      });
+      if (STATE.excludeTags.length) out = out.filter(function(c){
+        var ct = splitTags(c).map(titleCase);
+        return STATE.excludeTags.every(function(t){ return ct.indexOf(t) === -1; });
       });
       if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
       // sort
