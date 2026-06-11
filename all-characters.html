@@ -287,30 +287,31 @@
           if (st) st.textContent = list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection';
           if (cr) cr.textContent = displayName;
           document.title = displayName + ' — BOTC HomeBrew Wiki';
-          // Header image
-          if (activeCollection.header) {
-            var hw = document.createElement('div');
-            hw.className = 'collection-hero-header';
-            hw.innerHTML = '<img class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + displayName + '">';
-            var hero = document.querySelector('.home-hero');
-            if (hero) hero.insertBefore(hw, hero.firstChild);
-          }
-          // Description
-          if (activeCollection.description) {
-            var desc = document.createElement('p');
-            desc.className = 'collection-hero-desc';
-            desc.textContent = activeCollection.description;
-            var st2 = document.getElementById('hero-subtitle');
-            if (st2 && st2.parentNode) st2.parentNode.insertBefore(desc, st2);
-          }
-          // Edit button — placed in hero below subtitle
-          if (activeCollection.id && !activeCollection.standalone) {
-            var eb = document.createElement('a');
-            eb.href = 'edit-collection.html?c=' + encodeURIComponent(activeCollection.id);
-            eb.className = 'cta-secondary collection-edit-btn';
-            eb.textContent = '✎ Edit Collection';
-            var hero = document.querySelector('.home-hero');
-            if (hero) hero.appendChild(eb);
+          // Build a dedicated, centered collection hero block
+          var hero = document.querySelector('.home-hero');
+          if (hero) {
+            var heroTitle = document.getElementById('hero-title');
+            var heroSub = document.getElementById('hero-subtitle');
+            if (heroSub) heroSub.style.display = 'none';
+            var stack = document.createElement('div');
+            stack.className = 'collection-hero';
+            var inner = '';
+            if (activeCollection.header) {
+              inner += '<div class="collection-hero-header"><img class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
+            }
+            if (activeCollection.description) {
+              inner += '<p class="collection-hero-desc">' + esc(activeCollection.description) + '</p>';
+            }
+            inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
+            if (activeCollection.id && !activeCollection.standalone) {
+              inner += '<a class="cta-secondary collection-edit-btn" href="edit-collection.html?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+            }
+            stack.innerHTML = inner;
+            // place the stack right after the title
+            if (heroTitle && heroTitle.nextSibling) hero.insertBefore(stack, heroTitle.nextSibling);
+            else hero.appendChild(stack);
+            // we replaced the subtitle's character-count text, so clear it
+            if (heroSub) heroSub.textContent = '';
           }
         }
         FULL = list;
