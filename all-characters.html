@@ -137,7 +137,7 @@
     })();
 
     // Filter state
-    var STATE = { teams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
+    var STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
     var FULL = [];   // collection-scoped full list
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
@@ -191,9 +191,21 @@
       bar.querySelectorAll('[data-team]').forEach(function(btn){
         btn.addEventListener('click', function(){
           var v = btn.getAttribute('data-team');
-          var i = STATE.teams.indexOf(v);
-          if (i===-1) STATE.teams.push(v); else STATE.teams.splice(i,1);
-          btn.classList.toggle('active');
+          var ii = STATE.includeTeams.indexOf(v);
+          var ei = STATE.excludeTeams.indexOf(v);
+          if (ii === -1 && ei === -1) {
+            STATE.includeTeams.push(v);
+            btn.classList.add('active');
+            btn.classList.remove('active-exclude');
+          } else if (ii !== -1) {
+            STATE.includeTeams.splice(ii, 1);
+            STATE.excludeTeams.push(v);
+            btn.classList.remove('active');
+            btn.classList.add('active-exclude');
+          } else {
+            STATE.excludeTeams.splice(ei, 1);
+            btn.classList.remove('active-exclude');
+          }
           render();
         });
       });
@@ -225,7 +237,7 @@
       if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
       document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
       document.getElementById('fc-reset').addEventListener('click', function(){
-        STATE = { teams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
+        STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
         bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
         if (crSel) crSel.value = '';
         document.getElementById('fc-sort').value = 'name-asc';
@@ -235,7 +247,8 @@
 
     function applyFilters(){
       var out = FULL.slice();
-      if (STATE.teams.length) out = out.filter(function(c){ return STATE.teams.indexOf(c.team) !== -1; });
+      if (STATE.includeTeams.length) out = out.filter(function(c){ return STATE.includeTeams.indexOf(c.team) !== -1; });
+      if (STATE.excludeTeams.length) out = out.filter(function(c){ return STATE.excludeTeams.indexOf(c.team) === -1; });
       if (STATE.includeTags.length) out = out.filter(function(c){
         var ct = splitTags(c).map(titleCase);
         return STATE.includeTags.every(function(t){ return ct.indexOf(t) !== -1; });
