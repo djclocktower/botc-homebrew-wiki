@@ -147,7 +147,9 @@
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');
       // Collect tags & creators
+      var KNOWN_TAGS = ["Alignment Change", "Character Change", "Consult", "Death", "Death Modification", "Drunkenness", "Duplication", "Even If Dead", "Execution", "Execution Survival", "Hidden", "Information", "Loss Condition", "Loud", "Madness", "Misregistration", "Multi-Kill", "Neighbor", "Nominations", "On Death", "Once Per Game", "Outsider Modification", "Passive", "Ping", "Poison", "Protection", "Public", "Quiet", "Resurrection", "Reverse", "Safe", "Safety Net", "Setup", "Single-Kill", "Social", "Timer", "Votes", "Win Condition"];
       var tagSet = {}, creatorSet = {};
+      KNOWN_TAGS.forEach(function(t){ tagSet[t] = 1; });
       list.forEach(function(c){
         splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
         if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
