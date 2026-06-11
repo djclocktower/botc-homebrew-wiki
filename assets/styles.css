@@ -1285,8 +1285,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .filter-chip:hover { background: rgba(91,31,33,.08); }
 .filter-chip.active { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
-.filter-chip-exclude { position: relative; }
-.filter-chip-exclude.active { background: var(--evil); color: var(--parch); border-color: var(--evil); text-decoration: line-through; opacity: 0.85; }
+.filter-chip.active-exclude { background: var(--evil); color: var(--parch); border-color: var(--evil); text-decoration: line-through; opacity: 0.85; }
 .filter-select {
   font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: var(--maroon);
   background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
