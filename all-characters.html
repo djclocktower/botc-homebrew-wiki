@@ -165,8 +165,8 @@
       html += '</div></div>';
       // Tags
       if (tags.length){
-        html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
-        tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
+        html += '<div class="filter-group"><span class="filter-group-label">Exclude Tag</span><div class="filter-chips" id="fc-tags">';
+        tags.forEach(function(t){ html += '<button type="button" class="filter-chip filter-chip-exclude" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
         html += '</div></div>';
       }
       // Creator
@@ -223,7 +223,7 @@
       if (STATE.teams.length) out = out.filter(function(c){ return STATE.teams.indexOf(c.team) !== -1; });
       if (STATE.tags.length) out = out.filter(function(c){
         var ct = splitTags(c).map(titleCase);
-        return STATE.tags.every(function(t){ return ct.indexOf(t) !== -1; });
+        return STATE.tags.every(function(t){ return ct.indexOf(t) === -1; });
       });
       if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
       // sort
