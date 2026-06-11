@@ -2986,7 +2986,7 @@
     ],
     "creator": "Gstone Games",
     "appearsIn": "Festival of Lanterns — Temple Fair",
-    "tags": "Madness, Execution, Loud",
+    "tags": "Execution, Loud, Madness, Social",
     "quote": "He deserved to be beheaded! Yes, he broke curfew, my lord!",
     "lede": "The Imperialist provides a little \"help\" to those who want to die… or to those who don't.",
     "summaryBullets": [
@@ -3021,7 +3021,12 @@
       "Die"
     ],
     "setup": false,
-    "translatedBy": "Eliderad"
+    "translatedBy": "",
+    "callout": "",
+    "bluffing": [],
+    "fighting": [],
+    "remindersGlobal": [],
+    "jinxes": []
   },
   {
     "slug": "tao-tie",
