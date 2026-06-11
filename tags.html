@@ -62,11 +62,14 @@
         .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    var KNOWN_TAGS = ["Alignment Change", "Character Change", "Consult", "Death", "Death Modification", "Drunkenness", "Duplication", "Even If Dead", "Execution", "Execution Survival", "Hidden", "Information", "Loss Condition", "Loud", "Madness", "Misregistration", "Multi-Kill", "Neighbor", "Nominations", "On Death", "Once Per Game", "Outsider Modification", "Passive", "Ping", "Poison", "Protection", "Public", "Quiet", "Resurrection", "Reverse", "Safe", "Safety Net", "Setup", "Single-Kill", "Social", "Timer", "Votes", "Win Condition"];
+
     fetch('characters.json?_=' + Date.now())
       .then(function(r) { return r.json(); })
       .then(function(list) {
-        // Build tag → count map (case-insensitive, Title Case keys)
+        // Seed tagMap from KNOWN_TAGS, then overlay real counts
         var tagMap = {};
+        KNOWN_TAGS.forEach(function(t) { tagMap[t] = 0; });
         list.forEach(function(c) {
           (c.tags || '').split(',').forEach(function(t) {
             t = t.trim();
@@ -78,11 +81,6 @@
 
         var panel = document.getElementById('panel');
         var tags = Object.keys(tagMap).sort();
-
-        if (!tags.length) {
-          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No tags found yet.</p>';
-          return;
-        }
 
         panel.innerHTML =
           '<div class="tags-index">' +
