@@ -370,15 +370,26 @@
 
     // ── Randomize: shuffle all chars and pick same count (or 5-14 if script empty) ──
     $('sb-randomize').addEventListener('click', function () {
-      var current = getScript();
       if (!allChars.length) return;
-      var count = current.length || (Math.floor(Math.random() * 10) + 5);
-      var pool = allChars.slice();
-      for (var i = pool.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+      // Standard Trouble Brewing-sized script: 13 TF, 4 Outsider, 4 Minion, 4 Demon
+      var COUNTS = { townsfolk: 13, outsider: 4, minion: 4, demon: 4 };
+      function shuffle(arr) {
+        for (var i = arr.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        return arr;
       }
-      var picked = pool.slice(0, Math.min(count, pool.length)).map(function (c) { return c.slug; });
+      var byTeam = {};
+      allChars.forEach(function (c) {
+        if (!byTeam[c.team]) byTeam[c.team] = [];
+        byTeam[c.team].push(c);
+      });
+      var picked = [];
+      Object.keys(COUNTS).forEach(function (team) {
+        var pool = shuffle((byTeam[team] || []).slice());
+        picked = picked.concat(pool.slice(0, Math.min(COUNTS[team], pool.length)).map(function (c) { return c.slug; }));
+      });
       setScript(picked);
       renderAll();
     });
