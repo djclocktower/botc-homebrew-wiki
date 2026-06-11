@@ -4712,12 +4712,24 @@
     "art": "art/cadenza.png",
     "page": "c/cadenza.html",
     "image": "https://botchomebrew.wiki/assets/art/cadenza.png",
-    "creator": "",
-    "lede": "",
-    "summaryBullets": [],
-    "howToRun": [],
-    "callout": "",
-    "examples": [],
+    "creator": "Hystrex",
+    "lede": "The game becomes the Cadenza's improvised solo.",
+    "summaryBullets": [
+      "Once the Cadenza is executed, they can command the Storyteller to do anything. If the Storyteller agrees, they will do whatever the Cadenza told them.",
+      "Cadenza commands must be made in public. Private commands cannot be followed. A command is considered public if all players have the opportunity to hear it.",
+      "The Cadenza may make as many or as few commands as they wish. The Storyteller may follow as many or as few commands as they feel is fun for the players. The Cadenza may even make commands at night.",
+      "If the Cadenza is revived after being executed, they may still command the Storyteller. If the Cadenza was drunk or poisoned when they were executed, but is currently sober & healthy, they may still command the Storyteller."
+    ],
+    "howToRun": [
+      "If the Cadenza is executed, mark them with the SOLO reminder. While this reminder is on the Cadenza, if they publicly command you to do something, you may follow their command. Make any mechanical adjustments to the game to match what the Cadenza wants. Use the various ? reminders as needed.",
+      "If you wish, you may say \"Music to my ears\" or something similar to indicate that a command has been followed. However, this is not required."
+    ],
+    "callout": "Running the Cadenza can be tricky. Don't be afraid to take your time to consider whether or not to follow a command. If in doubt, you can always not follow a command, and the Cadenza can repeat the command later or make a weaker version of the command, if they want. However, keep in mind that Cadenza games are most fun then as many commands are followed as possible while maintaining some balance.",
+    "examples": [
+      "Stick is the Cadenza who has been executed. Every day from then on, she publicly chooses a player and tells the Storyteller to poison them until dawn if they are a Townsfolk. The Storyteller poisons those players accordingly.",
+      "The Cadenza is executed on day 3. They command the Storyteller to make some true things that the Demon is mad about become false, from now on. The Barrkoad tells players that they think a Barrkoad is in play, and turns into the No Dashii tonight.",
+      "Bhamber, the Cadenza, is executed on day 1. For the majority of the game, he makes no commands, continuing to bluff as a good player. During nominations, when just 4 players live, he points to Foxx and says \"mods, kill this man\". Foxx dies."
+    ],
     "tips": [],
     "bluffing": [],
     "fighting": [],
@@ -4739,7 +4751,7 @@
     "setup": false,
     "jinxes": [
       {
-        "name": "plaguedoctor",
+        "name": "Plague Doctor",
         "align": "good",
         "text": "If the Plague Doctor is executed & Storyteller gains the Cadenza ability, a Minion gains it instead & learns this."
       }
