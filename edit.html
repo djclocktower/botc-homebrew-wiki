@@ -69,6 +69,14 @@
   #status.err,#importmsg.err{display:block;background:#f6dede;color:#9A0D12;border:1px solid #d99}
   #status.work,#importmsg.work{display:block;background:#e9eefb;color:#234f74;border:1px solid #aac0e6}
   #status a{color:inherit;font-weight:700}
+
+  .tag-picker { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+  .tag-pick-btn { font-family:'Oswald',sans-serif; font-weight:600; font-size:.76rem;
+    letter-spacing:.03em; cursor:pointer; border:1px solid #cdbfa0; border-radius:5px;
+    padding:4px 10px; background:#fffdf8; color:#5b4632;
+    transition:background .15s, color .15s, border-color .15s; }
+  .tag-pick-btn:hover { background:#ece3d2; border-color:#b09070; }
+  .tag-pick-btn.selected { background:var(--maroon); color:#f3ead4; border-color:var(--maroon); }
 </style>
 </head>
 <body>
@@ -190,8 +198,48 @@
         </div>
       </div>
       <div class="fld">
-        <label for="tags">Tags</label>
-        <input type="text" id="tags">
+        <label>Tags <span class="hint">(click to select)</span></label>
+        <div class="tag-picker" id="tag-picker">
+          <button type="button" class="tag-pick-btn" data-tag="Alignment Change">Alignment Change</button>
+          <button type="button" class="tag-pick-btn" data-tag="Character Change">Character Change</button>
+          <button type="button" class="tag-pick-btn" data-tag="Consult">Consult</button>
+          <button type="button" class="tag-pick-btn" data-tag="Death">Death</button>
+          <button type="button" class="tag-pick-btn" data-tag="Death Modification">Death Modification</button>
+          <button type="button" class="tag-pick-btn" data-tag="Drunkenness">Drunkenness</button>
+          <button type="button" class="tag-pick-btn" data-tag="Duplication">Duplication</button>
+          <button type="button" class="tag-pick-btn" data-tag="Even If Dead">Even If Dead</button>
+          <button type="button" class="tag-pick-btn" data-tag="Execution">Execution</button>
+          <button type="button" class="tag-pick-btn" data-tag="Execution Survival">Execution Survival</button>
+          <button type="button" class="tag-pick-btn" data-tag="Hidden">Hidden</button>
+          <button type="button" class="tag-pick-btn" data-tag="Information">Information</button>
+          <button type="button" class="tag-pick-btn" data-tag="Loss Condition">Loss Condition</button>
+          <button type="button" class="tag-pick-btn" data-tag="Loud">Loud</button>
+          <button type="button" class="tag-pick-btn" data-tag="Madness">Madness</button>
+          <button type="button" class="tag-pick-btn" data-tag="Misregistration">Misregistration</button>
+          <button type="button" class="tag-pick-btn" data-tag="Multi-Kill">Multi-Kill</button>
+          <button type="button" class="tag-pick-btn" data-tag="Neighbor">Neighbor</button>
+          <button type="button" class="tag-pick-btn" data-tag="Nominations">Nominations</button>
+          <button type="button" class="tag-pick-btn" data-tag="On Death">On Death</button>
+          <button type="button" class="tag-pick-btn" data-tag="Once Per Game">Once Per Game</button>
+          <button type="button" class="tag-pick-btn" data-tag="Outsider Modification">Outsider Modification</button>
+          <button type="button" class="tag-pick-btn" data-tag="Passive">Passive</button>
+          <button type="button" class="tag-pick-btn" data-tag="Ping">Ping</button>
+          <button type="button" class="tag-pick-btn" data-tag="Poison">Poison</button>
+          <button type="button" class="tag-pick-btn" data-tag="Protection">Protection</button>
+          <button type="button" class="tag-pick-btn" data-tag="Public">Public</button>
+          <button type="button" class="tag-pick-btn" data-tag="Quiet">Quiet</button>
+          <button type="button" class="tag-pick-btn" data-tag="Resurrection">Resurrection</button>
+          <button type="button" class="tag-pick-btn" data-tag="Reverse">Reverse</button>
+          <button type="button" class="tag-pick-btn" data-tag="Safe">Safe</button>
+          <button type="button" class="tag-pick-btn" data-tag="Safety Net">Safety Net</button>
+          <button type="button" class="tag-pick-btn" data-tag="Setup">Setup</button>
+          <button type="button" class="tag-pick-btn" data-tag="Single-Kill">Single-Kill</button>
+          <button type="button" class="tag-pick-btn" data-tag="Social">Social</button>
+          <button type="button" class="tag-pick-btn" data-tag="Timer">Timer</button>
+          <button type="button" class="tag-pick-btn" data-tag="Votes">Votes</button>
+          <button type="button" class="tag-pick-btn" data-tag="Win Condition">Win Condition</button>
+        </div>
+        <input type="hidden" id="tags">
       </div>
       <div class="fld">
         <label for="translatedBy">Translated by <span class="hint">(optional)</span></label>
@@ -346,6 +394,31 @@
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
+    // ── Tag picker ──
+    (function() {
+      var picker = document.getElementById('tag-picker');
+      var hidden = document.getElementById('tags');
+      function syncHidden() {
+        var sel = Array.from(picker.querySelectorAll('.tag-pick-btn.selected'))
+                       .map(function(b){ return b.getAttribute('data-tag'); });
+        hidden.value = sel.join(', ');
+      }
+      picker.addEventListener('click', function(e) {
+        var btn = e.target.closest('.tag-pick-btn');
+        if (!btn) return;
+        btn.classList.toggle('selected');
+        syncHidden();
+        schedule();
+      });
+      window.setTagPickerValue = function(csv) {
+        var vals = (csv || '').split(',').map(function(s){ return s.trim().toLowerCase(); });
+        picker.querySelectorAll('.tag-pick-btn').forEach(function(b){
+          b.classList.toggle('selected', vals.indexOf(b.getAttribute('data-tag').toLowerCase()) !== -1);
+        });
+        syncHidden();
+      };
+    })();
+
     // ── art upload ──
     function loadImageToCanvas(src, crossOrigin){
       return new Promise(function(resolve, reject){
@@ -451,7 +524,7 @@
       $('fighting').value        = (entry.fighting || []).join('\n');
       $('quote').value           = entry.quote || entry.flavor || '';
       $('appears').value         = entry.appearsIn || '';
-      $('tags').value            = entry.tags || '';
+      if (window.setTagPickerValue) window.setTagPickerValue(entry.tags || ''); else $('tags').value = entry.tags || '';
       $('edition').value         = entry.edition || '';
       $('firstNight').value      = entry.firstNight || 0;
       $('otherNight').value      = entry.otherNight || 0;
