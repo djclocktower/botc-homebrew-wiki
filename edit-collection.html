@@ -151,13 +151,14 @@
         setStatus('work','Saving…');
 
         var chain = Promise.resolve();
-        var headerPath = coll.header || ('collections/'+coll.id+'.png');
+        // Worker write path needs the assets/ prefix; manifest stores the display path (no prefix)
+        var workerImgPath = 'assets/collections/' + coll.id + '.png';
+        var displayHeader = 'collections/' + coll.id + '.png';
 
         if (headerDataURL) {
           var hb64 = headerDataURL.split(',')[1];
-          chain = chain.then(function(){ setStatus('work','Uploading header…'); return workerGet(headerPath); })
-            .then(function(ex){ return workerPut(headerPath, hb64, 'Update header for collection: '+coll.displayName, ex&&ex.sha); });
-          headerPath = 'collections/'+coll.id+'.png';
+          chain = chain.then(function(){ setStatus('work','Uploading header…'); return workerGet(workerImgPath); })
+            .then(function(ex){ return workerPut(workerImgPath, hb64, 'Update header for collection: '+coll.displayName, ex&&ex.sha); });
         }
 
         chain.then(function(){
@@ -169,12 +170,12 @@
           var i=list.findIndex(function(c){return c.id===coll.id;});
           var entry = Object.assign({}, i>=0?list[i]:coll, {
             description: desc,
-            header: headerDataURL ? headerPath : (coll.header||'')
+            header: headerDataURL ? displayHeader : (coll.header||'')
           });
           if(i>=0)list[i]=entry;else list.push(entry);
           return workerPut('collections.json', utf8b64(JSON.stringify(list,null,2)), 'Edit collection: '+coll.displayName, jsha);
         }).then(function(){
-          if(headerDataURL){coll.header=headerPath;headerDataURL=null;}
+          if(headerDataURL){coll.header=displayHeader;headerDataURL=null;}
           coll.description=desc;
           var url=SITE_ROOT+'all-characters.html?collection='+encodeURIComponent(coll.slug);
           setStatus('ok','✓ Saved! View at <a href="'+url+'" target="_blank">'+esc(coll.displayName)+' collection</a>. (Allow ~1 min for rebuild.)');
