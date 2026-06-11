@@ -67,6 +67,7 @@
 .sb-fld textarea { resize:vertical; min-height:54px; }
 .sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
 .sb-publish-blurb { font-size:.82rem; color:rgba(236,225,200,.72); margin:10px 0 0; line-height:1.5; max-width:680px; }
+.sb-btn-randomize { background: linear-gradient(180deg,#2a7d7d,#1a5252); }
 .sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); }
 #sb-publish-status { margin-top:10px; padding:9px 12px; font-size:.88rem; display:none; max-width:680px; }
 #sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
@@ -165,6 +166,7 @@
           <button class="sb-btn sb-btn-import" id="sb-import" type="button">⬆ Import</button>
           <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
           <button class="sb-btn sb-btn-clear" id="sb-clear" type="button">✕ Clear</button>
+          <button class="sb-btn sb-btn-randomize" id="sb-randomize" type="button">⚄ Randomize</button>
           <input type="file" id="sb-import-file" accept=".json,application/json" hidden>
         </div>
       </div>
@@ -364,6 +366,21 @@
     document.getElementById('sb-clear').addEventListener('click', function () {
       if (!getScript().length) return;
       if (confirm('Clear the entire script?')) { setScript([]); renderAll(); }
+    });
+
+    // ── Randomize: shuffle all chars and pick same count (or 5-14 if script empty) ──
+    $('sb-randomize').addEventListener('click', function () {
+      var current = getScript();
+      if (!allChars.length) return;
+      var count = current.length || (Math.floor(Math.random() * 10) + 5);
+      var pool = allChars.slice();
+      for (var i = pool.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+      }
+      var picked = pool.slice(0, Math.min(count, pool.length)).map(function (c) { return c.slug; });
+      setScript(picked);
+      renderAll();
     });
 
     // ── Import a script JSON (matches character ids back to slugs) ──
