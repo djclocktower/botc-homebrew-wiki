@@ -324,7 +324,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* ════════════════════════════════════════════════════════════════
    JSON BOX (official-schema export, collapsible, on every char page)
    ════════════════════════════════════════════════════════════════ */
-.json-box { margin: 0; }
+.json-box { margin: 0; min-width: 0; }
 .json-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: var(--parch);
@@ -357,7 +357,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: .82rem; line-height: 1.5;
 }
-.json-body code { white-space: pre; }
+.json-body code { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* edit link in breadcrumb */
 .edit-link {
