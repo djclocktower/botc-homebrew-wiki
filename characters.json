@@ -1296,7 +1296,7 @@
     ],
     "quote": "\"...it is in and by means of piety and religion, and this especial wisdom of perceiving that all things are governed and managed by the divine power of the immortal gods, that we have been and are superior to all other countries and nations.\" — Cicero 106 B.C.",
     "appearsIn": "Fall of Rome",
-    "tags": "Information, Single-Kill, Duplication",
+    "tags": "Information, Outsider Modification, Single-Kill",
     "edition": "",
     "firstNight": 14,
     "firstNightReminder": "The Haruspex points to a player. Show that player's character token. Place a FORETOLD token next that player.",
@@ -1311,7 +1311,8 @@
     "setup": true,
     "jinxes": [],
     "bluffing": [],
-    "fighting": []
+    "fighting": [],
+    "translatedBy": ""
   },
   {
     "slug": "glykon-fall-of-rome",
