@@ -60,8 +60,8 @@
     var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
     var SITE_ROOT = new URL('.', location.href).href;
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function workerGet(path){ return fetch(WORKER_URL+'?path='+encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){if(j&&j.error)throw new Error(j.error);return j;}); }
-    function workerPut(path,b64,msg,sha){ return fetch(WORKER_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,content:b64,message:msg,sha:sha||undefined})}).then(function(r){return r.json();}).then(function(j){if(j&&j.error)throw new Error(j.error);return j;}); }
+    function workerGet(path){ return fetch(WORKER_URL+'?path='+encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){if(j&&j.error)throw new Error(j.error+' (path: '+path+')');return j;}); }
+    function workerPut(path,b64,msg,sha){ return fetch(WORKER_URL,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:path,content:b64,message:msg,sha:sha||undefined})}).then(function(r){return r.json();}).then(function(j){if(j&&j.error)throw new Error(j.error+' (path: '+path+')');return j;}); }
     function utf8b64(s){ return btoa(unescape(encodeURIComponent(s))); }
     function b64utf8(b){ return decodeURIComponent(escape(atob(String(b).replace(/\n/g,'')))); }
     function setStatus(cls,html){ var s=document.getElementById('ec-status'); if(s){s.className=cls;s.innerHTML=html;} }
