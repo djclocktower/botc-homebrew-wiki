@@ -515,7 +515,7 @@
     "art": "art/sculptor-fall-of-rome.png",
     "page": "c/sculptor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/sculptor-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Sculptor learns the alignment of players that their sculpture has nominated during the day.",
     "summaryBullets": [],
     "howToRun": [
@@ -557,7 +557,7 @@
     "art": "art/vestal-virgin-fall-of-rome.png",
     "page": "c/vestal-virgin-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/vestal-virgin-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Vestal Virgin learns an in-play and out-of-play character. They learn more if the in-play character dies.",
     "summaryBullets": [],
     "howToRun": [
@@ -598,7 +598,7 @@
     "art": "art/physician-fall-of-rome.png",
     "page": "c/physician-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/physician-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Physician ensures their team gets correct information.",
     "summaryBullets": [],
     "howToRun": [
@@ -639,7 +639,7 @@
     "art": "art/legionary-fall-of-rome.png",
     "page": "c/legionary-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/legionary-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "There may be up to three Legionaries in play. Each learns how many living evil players are sat between them.",
     "summaryBullets": [],
     "howToRun": [
@@ -678,7 +678,7 @@
     "art": "art/trumpeter-fall-of-rome.png",
     "page": "c/trumpeter-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/trumpeter-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Trumpeter learns how many of the Spartacus claims are evil.",
     "summaryBullets": [],
     "howToRun": [
@@ -719,7 +719,7 @@
     "art": "art/mortician-fall-of-rome.png",
     "page": "c/mortician-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/mortician-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Mortician learns if a player's living neighbours are evil when the player dies by execution.",
     "summaryBullets": [],
     "howToRun": [
@@ -760,7 +760,7 @@
     "art": "art/standard-bearer-fall-of-rome.png",
     "page": "c/standard-bearer-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/standard-bearer-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Standard Bearer learns whether their public statement is true or false about the player that nominates them.",
     "summaryBullets": [],
     "howToRun": [
@@ -806,7 +806,7 @@
     "art": "art/centurion-fall-of-rome.png",
     "page": "c/centurion-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/centurion-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Centurion can end the game at any point with their nomination.",
     "summaryBullets": [],
     "howToRun": [
@@ -847,7 +847,7 @@
     "art": "art/merchant-fall-of-rome.png",
     "page": "c/merchant-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/merchant-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Merchant chooses when to learn all the characters that have nominated them — but only once.",
     "summaryBullets": [],
     "howToRun": [
@@ -888,7 +888,7 @@
     "art": "art/gladiator-fall-of-rome.png",
     "page": "c/gladiator-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/gladiator-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Gladiator challenges players to a fight to the death.",
     "summaryBullets": [],
     "howToRun": [
@@ -933,7 +933,7 @@
     "art": "art/actor-fall-of-rome.png",
     "page": "c/actor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/actor-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Actor publicly guesses the character types of three people, learning how many they got right that night.",
     "summaryBullets": [],
     "howToRun": [
@@ -976,7 +976,7 @@
     "art": "art/blacksmith-fall-of-rome.png",
     "page": "c/blacksmith-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/blacksmith-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "If the Blacksmith is killed by the Demon they live and gain a new ability.",
     "summaryBullets": [],
     "howToRun": [
@@ -1018,7 +1018,7 @@
     "art": "art/scholar-fall-of-rome.png",
     "page": "c/scholar-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/scholar-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Scholar converts the first Outsider they nominate into a not-in-play Townsfolk.",
     "summaryBullets": [],
     "howToRun": [
@@ -1061,7 +1061,7 @@
     "art": "art/the-twins-fall-of-rome.png",
     "page": "c/the-twins-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/the-twins-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "If either of Romulus or Remus are executed, all Townsfolk become drunk.",
     "summaryBullets": [],
     "howToRun": [
@@ -1105,7 +1105,7 @@
     "art": "art/winemaker-fall-of-rome.png",
     "page": "c/winemaker-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/winemaker-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Every other day the Winemaker drunkens their closest Townsfolk neighbours — but they don't know which day it starts.",
     "summaryBullets": [],
     "howToRun": [
@@ -1148,7 +1148,7 @@
     "art": "art/spartacus-fall-of-rome.png",
     "page": "c/spartacus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/spartacus-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Spartacus has to hide from the evil team, otherwise they risk losing the game for good.",
     "summaryBullets": [],
     "howToRun": [
@@ -1191,7 +1191,7 @@
     "art": "art/bad-omen-fall-of-rome.png",
     "page": "c/bad-omen-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/bad-omen-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "A Bad Omen thinks that they are a Townsfolk. They have no idea that they are actually a Bad Omen.",
     "summaryBullets": [],
     "howToRun": [
@@ -1234,7 +1234,7 @@
     "art": "art/temptress-fall-of-rome.png",
     "page": "c/temptress-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/temptress-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Temptress seduces two players to join their team — however only one can become evil.",
     "summaryBullets": [],
     "howToRun": [
@@ -1277,7 +1277,7 @@
     "art": "art/haruspex-fall-of-rome.png",
     "page": "c/haruspex-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/haruspex-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Haruspex learns a player and their character one day at a time. On a single occasion the Haruspex gets to kill a player they have learnt.",
     "summaryBullets": [],
     "howToRun": [
@@ -1321,7 +1321,7 @@
     "art": "art/glykon-fall-of-rome.png",
     "page": "c/glykon-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/glykon-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Glykon can misregister players and themselves, even poisoning good players in the process.",
     "summaryBullets": [],
     "howToRun": [
@@ -1362,7 +1362,7 @@
     "art": "art/augur-fall-of-rome.png",
     "page": "c/augur-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/augur-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Augur turns Townsfolk into Outsiders — specifically the Bad Omen.",
     "summaryBullets": [],
     "howToRun": [
@@ -1402,7 +1402,7 @@
     "art": "art/cleopatra-fall-of-rome.png",
     "page": "c/cleopatra-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/cleopatra-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Cleopatra selects two players: if they nominate tomorrow they die. If no good player nominates, evil wins.",
     "summaryBullets": [],
     "howToRun": [
@@ -1446,7 +1446,7 @@
     "art": "art/crassus-fall-of-rome.png",
     "page": "c/crassus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/crassus-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Crassus kills a player each night, and if caught is able to make a copy of themselves — albeit publicly.",
     "summaryBullets": [],
     "howToRun": [
@@ -1489,7 +1489,7 @@
     "art": "art/hannibal-fall-of-rome.png",
     "page": "c/hannibal-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/hannibal-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Hannibal believes that they are a good player but they are actually the Demon.",
     "summaryBullets": [],
     "howToRun": [
@@ -1534,7 +1534,7 @@
     "art": "art/caesar-fall-of-rome.png",
     "page": "c/caesar-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/caesar-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Caesar kills a player each night, and the first time an evil player died by execution today, they kill another.",
     "summaryBullets": [],
     "howToRun": [
@@ -1577,7 +1577,7 @@
     "art": "art/mercenary-fall-of-rome.png",
     "page": "c/mercenary-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/mercenary-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Mercenaries gain abilities dependent on the town's claims — however if one is exiled the other is too.",
     "summaryBullets": [],
     "howToRun": [
@@ -1620,7 +1620,7 @@
     "art": "art/architect-fall-of-rome.png",
     "page": "c/architect-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/architect-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Architect swaps or replaces player tokens at night.",
     "summaryBullets": [],
     "howToRun": [
@@ -1659,7 +1659,7 @@
     "art": "art/sibyl-fall-of-rome.png",
     "page": "c/sibyl-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/sibyl-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Sibyl consults with the dead, letting them nominate and execute players.",
     "summaryBullets": [],
     "howToRun": [
@@ -1697,7 +1697,7 @@
     "art": "art/high-priest-1-fall-of-rome.png",
     "page": "c/high-priest-1-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/high-priest-1-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
     "summaryBullets": [],
     "howToRun": [
@@ -1740,7 +1740,7 @@
     "art": "art/high-priest-2-fall-of-rome.png",
     "page": "c/high-priest-2-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/high-priest-2-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The High Priest can bless players, bringing good fortune to that player and their team.",
     "summaryBullets": [],
     "howToRun": [
@@ -1781,7 +1781,7 @@
     "art": "art/emperor-fall-of-rome.png",
     "page": "c/emperor-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/emperor-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "The Emperor decides the outcome of the executions — with a thumbs up or a thumbs down.",
     "summaryBullets": [],
     "howToRun": [
@@ -1819,7 +1819,7 @@
     "art": "art/i-am-spartacus-fall-of-rome.png",
     "page": "c/i-am-spartacus-fall-of-rome.html",
     "image": "https://botchomebrew.wiki/assets/art/i-am-spartacus-fall-of-rome.png",
-    "creator": "Alex",
+    "creator": "Alex S.",
     "lede": "Living players may publicly stake their claim as Spartacus each day.",
     "summaryBullets": [],
     "howToRun": [
