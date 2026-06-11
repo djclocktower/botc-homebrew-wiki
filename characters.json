@@ -2023,7 +2023,8 @@
         "name": "Lleech"
       }
     ],
-    "callout": "If the Assassin attacks the Ban Xian, the Ban Xian dies without redirecting the Assassin's choice to an evil player."
+    "callout": "If the Assassin attacks the Ban Xian, the Ban Xian dies without redirecting the Assassin's choice to an evil player.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "face-changer",
@@ -2073,7 +2074,8 @@
       "Is the Face Changer"
     ],
     "setup": false,
-    "callout": "When the Face Changer is \"mad\" about being a new good character, they need to be able to explain why they claimed to be a different character on previous days. Generally, a Face Changer might succeed in gaining one or two new abilities during a game, but you as the Storyteller are the final judge."
+    "callout": "When the Face Changer is \"mad\" about being a new good character, they need to be able to explain why they claimed to be a different character on previous days. Generally, a Face Changer might succeed in gaining one or two new abilities during a game, but you as the Storyteller are the final judge.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "firewatcher",
@@ -2137,7 +2139,8 @@
         "name": "Riot"
       }
     ],
-    "callout": "The Brocadier cannot protect the Firewatcher from dying to its own ability, as the Firewatcher dying prevents the Brocadier from dying to their ability."
+    "callout": "The Brocadier cannot protect the Firewatcher from dying to its own ability, as the Firewatcher dying prevents the Brocadier from dying to their ability.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "waiter",
@@ -2184,7 +2187,8 @@
       "Drunk"
     ],
     "setup": false,
-    "callout": "If the Waiter learns false info due to drunkenness, poisoning or an ability such as the Vortox forcing false info, they may either learn 2 evil players or 1 good and 1 evil player. Either way, one of the players the Waiter learned becomes drunk when the Waiter becomes sober and healthy. It is not recommended to make an evil player drunk this way."
+    "callout": "If the Waiter learns false info due to drunkenness, poisoning or an ability such as the Vortox forcing false info, they may either learn 2 evil players or 1 good and 1 evil player. Either way, one of the players the Waiter learned becomes drunk when the Waiter becomes sober and healthy. It is not recommended to make an evil player drunk this way.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "singer",
@@ -2232,7 +2236,8 @@
       "No ability",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "abbot",
@@ -2299,7 +2304,8 @@
         "name": "Riot"
       }
     ],
-    "callout": "If the No Dashii is poisoning a Townsfolk neighbor of the Abbot at the start of the game, the Abbot's ability does not activate. If the No Dashii begins poisoning a neighbor of the Abbot mid-game, the Abbot will prevent the No Dashii's poisoning until dawn. Abilities that poison all good players or Townsfolk, such as the Xaan or Hun Dun, also poison the Abbot."
+    "callout": "If the No Dashii is poisoning a Townsfolk neighbor of the Abbot at the start of the game, the Abbot's ability does not activate. If the No Dashii begins poisoning a neighbor of the Abbot mid-game, the Abbot will prevent the No Dashii's poisoning until dawn. Abilities that poison all good players or Townsfolk, such as the Xaan or Hun Dun, also poison the Abbot.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "brocadier",
@@ -2350,7 +2356,8 @@
       "Dead"
     ],
     "setup": false,
-    "callout": "If the Fang Gu is protected by the Brocadier the first time an Outsider dies to its ability, both the Outsider and the Brocadier die, and the Fang Gu survives."
+    "callout": "If the Fang Gu is protected by the Brocadier the first time an Outsider dies to its ability, both the Outsider and the Brocadier die, and the Fang Gu survives.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "herb-doctor",
@@ -2394,7 +2401,8 @@
     "otherNightReminder": "The Herb Doctor points to a player. Write down a word relating to that player’s ability and show it to the Herb Doctor.",
     "reminders": [],
     "setup": false,
-    "callout": "In the early game, you can give the Herb Doctor more ambiguous words so they don't immediately guess the character of the chosen player. If the good team is at a disadvantage, you can give the Herb Doctor more unambiguous words."
+    "callout": "In the early game, you can give the Herb Doctor more ambiguous words so they don't immediately guess the character of the chosen player. If the good team is at a disadvantage, you can give the Herb Doctor more unambiguous words.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "stargazer",
@@ -2437,7 +2445,8 @@
     "otherNight": 0,
     "otherNightReminder": "",
     "reminders": [],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "enlightened-one",
@@ -2499,7 +2508,8 @@
         "name": "Boffin"
       }
     ],
-    "callout": "The Enlightened One believes themself to be an Outsider. For this reason, they cannot believe themself to be the Drunk or the Lunatic, since those characters don't know that they are Outsiders at the beginning of the game."
+    "callout": "The Enlightened One believes themself to be an Outsider. For this reason, they cannot believe themself to be the Drunk or the Lunatic, since those characters don't know that they are Outsiders at the beginning of the game.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "rascal",
@@ -2547,7 +2557,8 @@
     "reminders": [
       "False info"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "yinyang-diviner",
@@ -2594,7 +2605,8 @@
       "Learned"
     ],
     "setup": false,
-    "callout": "If the Yinyang Diviner must learn false info, they still learn 2 good and 2 evil characters, but cannot learn exactly 2 in-play characters."
+    "callout": "If the Yinyang Diviner must learn false info, they still learn 2 good and 2 evil characters, but cannot learn exactly 2 in-play characters.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "turncoat",
@@ -2642,7 +2654,8 @@
     "reminders": [
       "Rival"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "lummox",
@@ -2685,7 +2698,8 @@
     "reminders": [
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "ambassador",
@@ -2736,7 +2750,8 @@
         "reason": "The Lleech’s poisoning or host choice cannot be redirected.",
         "name": "Lleech"
       }
-    ]
+    ],
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "pedant",
@@ -2785,7 +2800,8 @@
       "Guess used",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "bug-keeper",
@@ -2838,7 +2854,8 @@
         "name": "Plague Doctor"
       }
     ],
-    "callout": "Abilities that cause the Bug Keeper to be nominated more than once, such as the Butcher, can cause more than one player to die by the Bug Keeper's ability in one night."
+    "callout": "Abilities that cause the Bug Keeper to be nominated more than once, such as the Butcher, can cause more than one player to die by the Bug Keeper's ability in one night.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "vixen",
@@ -2896,7 +2913,8 @@
         "reason": "If the Storyteller would gain the Vixen ability, a living Minion gains the Vixen ability in addition to their own ability, and learns this.",
         "name": "Plague Doctor"
       }
-    ]
+    ],
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "corpse-walker",
@@ -2952,7 +2970,8 @@
         "name": "Plague Doctor"
       }
     ],
-    "callout": "It is not recommended to have more than two undead players at a time, since this can make the game end unexpectedly early."
+    "callout": "It is not recommended to have more than two undead players at a time, since this can make the game end unexpectedly early.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "imperialist",
@@ -3000,7 +3019,8 @@
       "Live",
       "Die"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "tao-tie",
@@ -3048,7 +3068,8 @@
       "Dead",
       "Dead"
     ],
-    "setup": true
+    "setup": true,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "tao-wu",
@@ -3150,7 +3171,8 @@
         "name": "Barber"
       }
     ],
-    "callout": "If the Lunatic believes themself to be the Tao Wu, they also do not wake to learn any Demon info. If the Poppy Grower dies, the Tao Wu still does not wake to learn anything, due to their own ability."
+    "callout": "If the Lunatic believes themself to be the Tao Wu, they also do not wake to learn any Demon info. If the Poppy Grower dies, the Tao Wu still does not wake to learn anything, due to their own ability.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "hun-dun",
@@ -3197,7 +3219,8 @@
       "Dead",
       "Good are poisoned"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "qiong-qi",
@@ -3250,7 +3273,8 @@
       "Died today"
     ],
     "setup": true,
-    "callout": "It is not very fun or interesting if the game ends early because there are a lot of undead players. When 2 or more players are undead, it is recommended to use the Qiong Qi's extra death to kill an undead player a second time, to make them register as dead."
+    "callout": "It is not very fun or interesting if the game ends early because there are a lot of undead players. When 2 or more players are undead, it is recommended to use the Qiong Qi's extra death to kill an undead player a second time, to make them register as dead.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "pauper",
@@ -3300,7 +3324,8 @@
     "remindersGlobal": [
       "Is the Pauper"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "qilin",
@@ -3333,7 +3358,8 @@
     "reminders": [
       "Something good"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "guide",
@@ -3389,7 +3415,8 @@
       }
     ],
     "quote": "The boat is slow and difficult to steer. It is weighted by the stench of evil.",
-    "callout": "The player killed by the Lil' Monsta only registers to the Guide if an evil player is babysitting Lil' Monsta."
+    "callout": "The player killed by the Lil' Monsta only registers to the Guide if an evil player is babysitting Lil' Monsta.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "broker",
@@ -3446,7 +3473,8 @@
       }
     ],
     "quote": "Deals may fail, but loyalty remains.",
-    "callout": "If the Assassin targets a player affected by the Broker, that player will die without triggering the Broker's ability."
+    "callout": "If the Assassin targets a player affected by the Broker, that player will die without triggering the Broker's ability.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "prefect",
@@ -3492,7 +3520,8 @@
       "Stranger died"
     ],
     "setup": false,
-    "quote": "Let the proceedings begin!"
+    "quote": "Let the proceedings begin!",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "cleric",
@@ -3540,7 +3569,8 @@
     ],
     "setup": false,
     "quote": "The way that can be spoken is not the true Way.",
-    "callout": "If the Cleric chooses the Minion holding Lil' Monsta, the Cleric dies and that Minion is drunk until dawn, but the Storyteller may still choose a player who dies to Lil' Monsta's ability."
+    "callout": "If the Cleric chooses the Minion holding Lil' Monsta, the Cleric dies and that Minion is drunk until dawn, but the Storyteller may still choose a player who dies to Lil' Monsta's ability.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "tabby",
@@ -3615,7 +3645,8 @@
         "name": "Riot"
       }
     ],
-    "quote": "How could my beloved consort give birth to such a freak!"
+    "quote": "How could my beloved consort give birth to such a freak!",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "patrol",
@@ -3676,7 +3707,8 @@
         "name": "Riot"
       }
     ],
-    "quote": "Lay the world's injustices to rest, and bring peace to uneasy hearts."
+    "quote": "Lay the world's injustices to rest, and bring peace to uneasy hearts.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "courier",
@@ -3723,7 +3755,8 @@
       "Correct",
       "No Ability"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "zhen",
@@ -3783,7 +3816,8 @@
         "name": "Ban Xian"
       }
     ],
-    "quote": "Sweet as wine, poisonous as arsenic."
+    "quote": "Sweet as wine, poisonous as arsenic.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "consort",
@@ -3827,7 +3861,8 @@
     "otherNight": 0,
     "otherNightReminder": "",
     "reminders": [],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "thaumaturge",
@@ -3878,7 +3913,8 @@
       "Learn"
     ],
     "setup": false,
-    "quote": "We watch the stars to catch a glimpse of heaven."
+    "quote": "We watch the stars to catch a glimpse of heaven.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "brush-holder",
@@ -3923,7 +3959,8 @@
       "Died today"
     ],
     "setup": false,
-    "quote": "The red review is done. Double-check everything."
+    "quote": "The red review is done. Double-check everything.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "prosecutor",
@@ -3970,7 +4007,8 @@
       "No Ability"
     ],
     "setup": false,
-    "quote": "With a clear vision, one can see ten thousand miles, illuminating even the most hidden of wickedness."
+    "quote": "With a clear vision, one can see ten thousand miles, illuminating even the most hidden of wickedness.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "actor",
@@ -4116,7 +4154,8 @@
         "reason": "The Actor cannot reverse the victory conditions due to the Fearmonger’s ability.",
         "name": "Fearmonger"
       }
-    ]
+    ],
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "server",
@@ -4164,7 +4203,8 @@
       "Drunk"
     ],
     "setup": false,
-    "quote": "Care for another drink, sir?"
+    "quote": "Care for another drink, sir?",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "embalmer",
@@ -4233,7 +4273,8 @@
         "name": "Lleech"
       }
     ],
-    "quote": "Unable to quell the hatred in my heart, I have lost the one I held so dear."
+    "quote": "Unable to quell the hatred in my heart, I have lost the one I held so dear.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "vintner",
@@ -4281,7 +4322,8 @@
     ],
     "setup": false,
     "quote": "It's just drunken ramblings; nothing to take seriously.",
-    "callout": "As the Vintner's info is yielded by the Vintner's ability, it is unaffected by the Vortox."
+    "callout": "As the Vintner's info is yielded by the Vintner's ability, it is unaffected by the Vortox.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "gu-diao",
@@ -4332,7 +4374,8 @@
     "fighting": [],
     "quote": "",
     "remindersGlobal": [],
-    "jinxes": []
+    "jinxes": [],
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "meng-po",
@@ -4383,7 +4426,8 @@
     "fighting": [],
     "quote": "",
     "remindersGlobal": [],
-    "jinxes": []
+    "jinxes": [],
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "huapi",
@@ -4432,7 +4476,8 @@
     ],
     "setup": false,
     "quote": "How foolish are the people! Clearly demonic, yet regarded as beautiful. How deluded are the fools! Clearly loyal, yet regarded as false.",
-    "callout": "If the Huapi chooses a Demon, the game ends immediately as the Demon does not register as alive for the purposes of ending the game. This applies even if there is a Scarlet Woman in play."
+    "callout": "If the Huapi chooses a Demon, the game ends immediately as the Demon does not register as alive for the purposes of ending the game. This applies even if there is a Scarlet Woman in play.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "warden",
@@ -4483,7 +4528,8 @@
       "Dead",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "conspirator",
@@ -4531,7 +4577,8 @@
       "Dead",
       "Dead"
     ],
-    "setup": false
+    "setup": false,
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "tyrant",
@@ -4582,7 +4629,8 @@
       "2+ Died Last Night"
     ],
     "setup": false,
-    "quote": "What is the peasant's wrath to the Emperor's, which may kill hundreds upon thousands and bathe the land in blood."
+    "quote": "What is the peasant's wrath to the Emperor's, which may kill hundreds upon thousands and bathe the land in blood.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "guhuo",
@@ -4631,7 +4679,8 @@
       "Once"
     ],
     "setup": false,
-    "quote": "At night, they feast on the souls of the dead, and steal the children to raise as their own."
+    "quote": "At night, they feast on the souls of the dead, and steal the children to raise as their own.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "messenger",
@@ -4665,7 +4714,8 @@
     "otherNightReminder": "",
     "reminders": [],
     "setup": false,
-    "quote": "By the grace of heaven, the Emperor decrees: A general amnesty is granted throughout the land."
+    "quote": "By the grace of heaven, the Emperor decrees: A general amnesty is granted throughout the land.",
+    "translatedBy": "Eliderad"
   },
   {
     "slug": "don-quixote",
