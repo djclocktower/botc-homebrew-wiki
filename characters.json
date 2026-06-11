@@ -4703,5 +4703,46 @@
     "remindersGlobal": [],
     "setup": false,
     "jinxes": []
+  },
+  {
+    "slug": "cadenza",
+    "name": "Cadenza",
+    "team": "minion",
+    "ability": "If you have been executed, the Storyteller might follow your public commands from now on.",
+    "art": "art/cadenza.png",
+    "page": "c/cadenza.html",
+    "image": "https://botchomebrew.wiki/assets/art/cadenza.png",
+    "creator": "",
+    "lede": "",
+    "summaryBullets": [],
+    "howToRun": [],
+    "callout": "",
+    "examples": [],
+    "tips": [],
+    "bluffing": [],
+    "fighting": [],
+    "quote": "Nemmeno Dio può resistere alla melodia della mia musica! Also, you're flat.",
+    "appearsIn": "",
+    "tags": "",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [
+      "Solo",
+      "?",
+      "??",
+      "???"
+    ],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": [
+      {
+        "name": "plaguedoctor",
+        "align": "good",
+        "text": "If the Plague Doctor is executed & Storyteller gains the Cadenza ability, a Minion gains it instead & learns this."
+      }
+    ]
   }
 ]
