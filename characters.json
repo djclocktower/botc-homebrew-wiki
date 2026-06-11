@@ -4666,5 +4666,42 @@
     "reminders": [],
     "setup": false,
     "quote": "By the grace of heaven, the Emperor decrees: A general amnesty is granted throughout the land."
+  },
+  {
+    "slug": "don-quixote",
+    "name": "Don Quixote",
+    "team": "outsider",
+    "ability": "1 player registers as a Demon to Townsfolk abilities, even if you are dead. You may privately learn who, then another player will.",
+    "art": "art/don-quixote.png",
+    "page": "c/don-quixote.html",
+    "image": "https://botchomebrew.wiki/assets/art/don-quixote.png",
+    "creator": "Taiyi",
+    "lede": "Don Quixote has spent his whole life chasing the wrong targets, but he has never once given up.",
+    "summaryBullets": [
+      "One player is marked as \"him.\" Whenever a Townsfolk ability would determine that player's character or character type, that player registers as the Demon, and as a Demon character of the Storyteller's choice.",
+      "This applies even if the Don Quixote is dead. Dying does not end the false registration.",
+      "At any time while alive, the Don Quixote may privately visit the Storyteller to learn who \"he\" currently is. As soon as the Storyteller answers, \"he\" immediately moves to a different player.",
+      "The Don Quixote's ability only affects the abilities of Townsfolk characters. It does not affect the abilities of other characters (Outsiders, Minions, or Demons), and it does not affect the rules of the game.",
+      "Abilities that detect alignment, or that detect whether a player is a Minion, are not affected. \"He\" registers as the Demon character and the Demon character type — not as the evil alignment.",
+      "Any player can be \"him\": alive or dead, the Don Quixote himself, a Townsfolk, an Outsider, a Minion — even the actual Demon."
+    ],
+    "howToRun": [],
+    "callout": "",
+    "examples": [],
+    "tips": [],
+    "bluffing": [],
+    "fighting": [],
+    "quote": "\"Shh... keep your voice down! What windmill? That is a giant! What goat? That is the Demon! ...Sancho! Charge with me!\"",
+    "appearsIn": "Midsummer nights dream",
+    "tags": "Interaction Disruption, Ability While Dead, Gain Information, On-Entry Ability",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
