@@ -134,6 +134,7 @@
         var display = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); });
         return '<a class="tag-link" href="' + R() + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
+      (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       '</dl>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
