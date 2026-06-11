@@ -455,6 +455,7 @@
     $('importjson').addEventListener('click', function () {
       var raw = $('jsonpaste').value.trim();
       var go = function (text) {
+          text = text.trim().replace(/^```[\w]*\n?/, '').replace(/```\s*$/, '').trim();
         try {
           var data = JSON.parse(text);
           var obj = data;
