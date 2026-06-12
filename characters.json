@@ -451,7 +451,7 @@
     "art": "art/acolyte.png",
     "page": "c/acolyte.html",
     "image": "https://botchomebrew.wiki/assets/art/acolyte.png",
-    "creator": "",
+    "creator": "DJ_DJ_DJ",
     "lede": "The Acolyte is still learning.",
     "summaryBullets": [
       "Each day, the Acolyte can learn an answer to any yes or no question... but most of the time they'll be drunk.",
@@ -482,8 +482,8 @@
     "bluffing": [],
     "fighting": [],
     "quote": "Another day another bender! No retreat and no surrender!",
-    "appearsIn": "",
-    "tags": "Information, Drunkenness, Consult",
+    "appearsIn": "Ravenswood Chronicle",
+    "tags": "Consult, Drunkenness, Information",
     "edition": "Ravenswood Chronicle",
     "firstNight": 0,
     "firstNightReminder": "",
@@ -505,7 +505,8 @@
         "align": "evil",
         "text": "If there is a spare token, the Boffin can give the Demon the Village Idiot ability."
       }
-    ]
+    ],
+    "translatedBy": ""
   },
   {
     "slug": "sculptor-fall-of-rome",
