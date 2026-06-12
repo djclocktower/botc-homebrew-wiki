@@ -212,31 +212,33 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin: 0; letter-spacing: .03em;
 }
 .home-layout {
-  position: relative; z-index: 5;
-  max-width: 100%; margin: 0 auto;
-  padding: 0 clamp(14px,4vw,48px) 64px;
-  display: flex;
-  align-items: flex-start;
-  gap: clamp(40px,6vw,120px);
+  position: static;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 clamp(12px,3vw,40px) 64px;
 }
 .home-layout > .home-panel {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 1180px;
+  max-width: none;
   margin: 0;
-  padding: 0;
+  padding: 0 360px 0 0;
+  min-width: 0;
 }
 .home-sidebar {
-  flex: 0 0 320px;
+  position: absolute;
+  top: 0;
+  right: clamp(16px,3vw,48px);
+  width: 320px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-width: 0;
 }
-@media (max-width: 900px) {
-  .home-layout { flex-direction: column; }
-  .home-layout > .home-panel { width: 100%; }
-  .home-sidebar { flex: 1 1 auto; width: 100%; order: 2; }
+@media (max-width: 1100px) {
+  .home-layout > .home-panel { padding-right: 0; }
+  .home-sidebar {
+    position: static;
+    width: 100%;
+    margin-top: 32px;
+  }
 }
 .sidebar-card {
   background-color: var(--parch);
