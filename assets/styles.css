@@ -263,6 +263,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: 1.5rem;
   color: var(--maroon);
   letter-spacing: .06em;
+  text-transform: uppercase;
   margin: 0 0 16px;
   padding-bottom: 12px;
   text-align: center;
