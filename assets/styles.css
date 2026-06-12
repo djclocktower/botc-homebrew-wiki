@@ -219,6 +219,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   padding: 0 clamp(16px,3vw,48px) 64px;
 }
 .home-layout > .home-panel {
+  position: relative; z-index: 5;
+  max-width: 1440px; margin: 0 auto;
+  padding: 0 clamp(12px,3vw,40px) 64px;
+}
+.home-layout > .home-panel {
   max-width: 1180px;
   margin: 0 auto;
   padding: 0;
