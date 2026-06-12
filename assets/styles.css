@@ -216,8 +216,8 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   max-width: 1440px; margin: 0 auto;
   padding: 0 clamp(12px,3vw,40px) 64px;
   display: grid;
-  grid-template-columns: minmax(0,1fr) 300px;
-  column-gap: clamp(28px,4vw,56px);
+  grid-template-columns: minmax(0,1fr) 380px;
+  column-gap: clamp(16px,2vw,28px);
   align-items: start;
 }
 @media (max-width: 900px) {
@@ -253,7 +253,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .sidebar-card-title {
   font-family: 'Dumbledor2', serif;
-  font-size: 1.32rem;
+  font-size: 1.65rem;
   color: var(--maroon);
   letter-spacing: .06em;
   margin: 0 0 14px;
