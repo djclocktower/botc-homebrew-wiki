@@ -212,13 +212,14 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin: 0; letter-spacing: .03em;
 }
 .home-layout {
-  position: static;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 clamp(12px,3vw,40px) 64px;
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 clamp(16px,3vw,48px) 64px;
 }
 .home-layout > .home-panel {
-  max-width: none;
+  max-width: 1180px;
   margin: 0;
   padding: 0 360px 0 0;
   min-width: 0;
@@ -233,7 +234,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   gap: 16px;
 }
 @media (max-width: 1100px) {
-  .home-layout > .home-panel { padding-right: 0; }
+  .home-layout > .home-panel { padding-right: 0; max-width: none; }
   .home-sidebar {
     position: static;
     width: 100%;
