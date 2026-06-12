@@ -222,7 +222,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 @media (max-width: 900px) {
   .home-layout { grid-template-columns: 1fr; }
-  .home-sidebar { order: -1; }
+  .home-sidebar {
+    order: 2;
+    position: static;
+  }
 }
 .home-panel {
   position: relative; z-index: 5;
