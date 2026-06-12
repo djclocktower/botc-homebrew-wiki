@@ -215,29 +215,28 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   position: relative; z-index: 5;
   max-width: 1440px; margin: 0 auto;
   padding: 0 clamp(12px,3vw,40px) 64px;
-  display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(380px, 1fr);
-  column-gap: clamp(24px,3vw,48px);
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(20px,2.5vw,36px);
 }
-@media (max-width: 900px) {
-  .home-layout { grid-template-columns: 1fr; }
-  .home-sidebar {
-    order: 2;
-    position: static;
-  }
-}
-.home-panel {
-  position: relative; z-index: 5;
-  padding: 0 0 64px;
+.home-layout > .home-panel {
+  flex: 1 1 auto;
   min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
 }
 .home-sidebar {
-  position: static;
+  flex: 0 0 320px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+@media (max-width: 900px) {
+  .home-layout { flex-direction: column; }
+  .home-layout > .home-panel { width: 100%; }
+  .home-sidebar { flex: 1 1 auto; width: 100%; order: 2; }
 }
 .sidebar-card {
   background-color: var(--parch);
@@ -245,7 +244,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   background-size: cover;
   border: 2px solid var(--parch-frame);
   border-radius: 0;
-  padding: 32px 28px;
+  padding: 24px 26px;
   box-shadow: 0 12px 32px -8px rgba(40,12,30,.45),
               inset 0 0 0 3px rgba(255,255,255,.3),
               inset 0 0 0 4px var(--parch-frame);
@@ -253,11 +252,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .sidebar-card-title {
   font-family: 'Dumbledor2', serif;
-  font-size: 2rem;
+  font-size: 1.5rem;
   color: var(--maroon);
   letter-spacing: .06em;
-  margin: 0 0 18px;
-  padding-bottom: 14px;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
   text-align: center;
   border-bottom: 1px solid var(--parch-frame);
 }
@@ -274,13 +273,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sidebar-link-list li::before { display: none; }
 .sidebar-link-list a {
   font-family: 'Libre Franklin', sans-serif;
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: var(--good-name);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 11px 8px;
+  padding: 10px 8px;
   border-radius: 4px;
   transition: background .15s, color .15s;
 }
@@ -293,6 +292,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   flex-shrink: 0;
 }
 .sidebar-link-list a:hover::before { opacity: .9; }
+
 .type-section { margin-bottom: 48px; }
 .type-header {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
