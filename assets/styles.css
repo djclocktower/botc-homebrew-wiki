@@ -214,10 +214,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .home-layout {
   position: relative; z-index: 5;
   max-width: 1440px; margin: 0 auto;
-  padding: 0 0 64px;
+  padding: 0 clamp(12px,3vw,40px) 64px;
   display: grid;
-  grid-template-columns: minmax(0,1fr) minmax(0,420px);
-  column-gap: 0;
+  grid-template-columns: minmax(0,1fr) 380px;
+  column-gap: clamp(24px,3vw,48px);
   align-items: start;
 }
 @media (max-width: 900px) {
@@ -229,11 +229,9 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .home-panel {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
   padding: 0 0 64px;
   min-width: 0;
 }
-.home-layout > .home-panel { padding-left: clamp(12px,3vw,40px); padding-right: 0; }
 .home-sidebar {
   position: static;
   display: flex;
@@ -247,7 +245,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   background-size: cover;
   border: 2px solid var(--parch-frame);
   border-radius: 0;
-  padding: 32px clamp(20px,3vw,40px) 32px 30px;
+  padding: 32px 28px;
   box-shadow: 0 12px 32px -8px rgba(40,12,30,.45),
               inset 0 0 0 3px rgba(255,255,255,.3),
               inset 0 0 0 4px var(--parch-frame);
