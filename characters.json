@@ -4814,5 +4814,36 @@
       }
     ],
     "translatedBy": ""
+  },
+  {
+    "slug": "jack",
+    "name": "Jack",
+    "team": "minion",
+    "ability": "Each night*, you may choose a player: they die. If a player you chose this way dies, all players learn a clue to your identity at dawn.",
+    "art": "art/jack.png",
+    "page": "c/jack.html",
+    "image": "https://botchomebrew.wiki/assets/art/jack.png",
+    "creator": "DJ_DJ_DJ",
+    "lede": "Jack can wreak as much havoc as they like, but can't stop themselves from leaving clues.",
+    "summaryBullets": [],
+    "howToRun": [],
+    "callout": "",
+    "examples": [],
+    "tips": [],
+    "bluffing": [],
+    "fighting": [],
+    "quote": "",
+    "appearsIn": "",
+    "tags": "",
+    "translatedBy": "",
+    "edition": "",
+    "firstNight": 0,
+    "firstNightReminder": "",
+    "otherNight": 0,
+    "otherNightReminder": "",
+    "reminders": [],
+    "remindersGlobal": [],
+    "setup": false,
+    "jinxes": []
   }
 ]
