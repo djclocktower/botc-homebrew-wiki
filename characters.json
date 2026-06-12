@@ -4825,13 +4825,24 @@
     "image": "https://botchomebrew.wiki/assets/art/jack.png",
     "creator": "DJ_DJ_DJ",
     "lede": "Jack can wreak as much havoc as they like, but can't stop themselves from leaving clues.",
-    "summaryBullets": [],
+    "summaryBullets": [
+      "Like a demon, Jack can kill a player each night. However, if they keep killing they will almost certainly be caught.",
+      "Clues are spoken publicly to all players, so it's obvious when a Jack is killing.",
+      "The Jack may choose to not kill at all, thus concealing their identity.",
+      "Clues may be any statement at all that the Storyteller thinks will help town find the Jack.",
+      "In certain situations clues may be more precise, or more broad, depending on what the Storyteller deems balanced.",
+      "Clues may be game related, or not."
+    ],
     "howToRun": [
       "Each night except the first, wake the Jack. They either shake their head no or point at any player. Put the Jack to sleep.",
       "If the Jack chose a player, that player dies— mark them with the [[RIP]] reminder. If the Jack chose a player & they died, announce a clue to the group that dawn."
     ],
-    "callout": "A good rule of thumb is for the first clue to narrow half of town as Jack, the second 1 of 3 people & the third reveal the Jack outright.",
-    "examples": [],
+    "callout": "A good rule of thumb is for the first clue to narrow half of town as Jack, the second 1 of 3 people & the third reveal or almost reveal the Jack outright.",
+    "examples": [
+      "Steve the Jack kills a player on the second night. At dawn, the Storyteller announces \"The Jack voted yesterday\". Around half of the players voted yesterday.",
+      "Steve the Jack kills another player on the third night. At dawn, the Storyteller announces \"The Jack is wearing a hat\". 3 players, including Steve are wearing hats.",
+      "Steve the Jack kills yet another player on the fourth night. At dawn, the Storyteller announces \"The Jacks name starts with ST and ends with EVE. Steve is executed."
+    ],
     "tips": [],
     "bluffing": [],
     "fighting": [],
