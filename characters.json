@@ -4828,7 +4828,7 @@
     "summaryBullets": [],
     "howToRun": [
       "Each night except the first, wake the Jack. They either shake their head no or point at any player. Put the Jack to sleep.",
-      "If the Jack chose a player, that player dies— mark them with the [[RIP]] reminder. That player dies. If the Jack chose a player & they died, announce a clue to the group that dawn."
+      "If the Jack chose a player, that player dies— mark them with the [[RIP]] reminder. If the Jack chose a player & they died, announce a clue to the group that dawn."
     ],
     "callout": "A good rule of thumb is for the first clue to narrow half of town as Jack, the second 1 of 3 people & the third reveal the Jack outright.",
     "examples": [],
