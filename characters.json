@@ -4843,7 +4843,14 @@
       "Steve the Jack kills another player on the third night. At dawn, the Storyteller announces \"The Jack is wearing a hat\". 3 players, including Steve are wearing hats.",
       "Steve the Jack kills yet another player on the fourth night. At dawn, the Storyteller announces \"The Jacks name starts with ST and ends with EVE. Steve is executed."
     ],
-    "tips": [],
+    "tips": [
+      "You can kill all you like! Go wild! It's ok if you are found & executed, at least its not your demon!",
+      "Stay silent. Sneak around. You are much more valuable late game, when your clues matter less.",
+      "Your clues are a distraction. They interrupt the good teams solving and flow. When they are looking for you, they aren't looking for the demon.",
+      "Try to misdirect your clues. If the clue is \"Jack claimed to be an outsider yesterday \" after you were loudly claiming one, insist it couldn't possibly be you, because it's so obvious!",
+      "Don't bother planning for the long term. You'll probably be outed evil later in the game, so lie like crazy in the short term to waste time and executions!",
+      "Talk as much as possible. The better targets you find the more valuable you are, and you don't want the good team noticing you only talking to your evil team if they find you out later."
+    ],
     "bluffing": [],
     "fighting": [],
     "quote": "Dear Boss,",
