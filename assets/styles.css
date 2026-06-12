@@ -213,16 +213,16 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .home-layout {
   position: relative; z-index: 5;
-  max-width: 1440px; margin: 0 auto;
-  padding: 0 clamp(12px,3vw,40px) 64px;
+  max-width: 100%; margin: 0 auto;
+  padding: 0 clamp(14px,4vw,48px) 64px;
   display: flex;
   align-items: flex-start;
-  gap: clamp(20px,2.5vw,36px);
+  gap: clamp(40px,6vw,120px);
 }
 .home-layout > .home-panel {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: none;
+  max-width: 1180px;
   margin: 0;
   padding: 0;
 }
