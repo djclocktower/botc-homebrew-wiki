@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Steven Approved Order — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .sao-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 clamp(12px,3vw,40px) 64px;
+    position: relative;
+    z-index: 5;
+  }
+  .sao-card {
+    background-color: var(--parch);
+    background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 2px solid var(--parch-frame);
+    padding: clamp(20px,4vw,40px) clamp(20px,4vw,48px);
+    color: var(--ink);
+    box-shadow: 0 20px 48px -16px rgba(0,0,0,.6),
+                inset 0 0 0 3px rgba(255,255,255,.3),
+                inset 0 0 0 4px var(--parch-frame);
+  }
+  .sao-card h2 {
+    font-family: 'Dumbledor2', serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: var(--maroon);
+    letter-spacing: .06em;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+  .sao-rule {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    margin: 10px 0 24px;
+    border: none;
+  }
+  .sao-list {
+    list-style: none;
+    margin: 0 0 24px;
+    padding: 0;
+  }
+  .sao-list li {
+    display: flex;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(182,163,126,.25);
+    font-family: 'Libre Franklin', sans-serif;
+    font-size: 1rem;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+  .sao-list li::before { display: none; }
+  .sao-list li:last-child { border-bottom: none; }
+  .sao-num {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: .82rem;
+    color: var(--maroon);
+    opacity: .6;
+    min-width: 28px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+  .sao-notes {
+    border-top: 1px solid var(--parch-frame);
+    padding-top: 18px;
+    font-size: .92rem;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .sao-notes p { margin: 0 0 .6em; }
+  .sao-notes p:last-child { margin: 0; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">›</span>
+      <span class="here">Steven Approved Order</span>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="index.html">Home</a>
+    <a href="all-characters.html">All Characters</a>
+    <a href="scripts.html">Scripts</a>
+    <a href="tags.html">Tags</a>
+    <a href="creators.html">Creators</a>
+    <a href="script.html">Script Builder</a>
+    <a href="create.html">Create a Character</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Steven Approved Order</h1>
+    <p>The canonical ordering for homebrew character abilities</p>
+  </div>
+
+  <main class="sao-wrap">
+    <div class="sao-card">
+      <h2>Steven Approved Order</h2>
+      <hr class="sao-rule">
+      <ol class="sao-list">
+        <li><span class="sao-num">1.</span> Hermit</li>
+        <li><span class="sao-num">2.</span> You start knowing</li>
+        <li><span class="sao-num">3.</span> At night</li>
+        <li><span class="sao-num">4.</span> Each dusk*</li>
+        <li><span class="sao-num">5.</span> Each night</li>
+        <li><span class="sao-num">6.</span> Each night*</li>
+        <li><span class="sao-num">7.</span> Each day</li>
+        <li><span class="sao-num">8.</span> Once per game, at night</li>
+        <li><span class="sao-num">9.</span> Once per game, at night*</li>
+        <li><span class="sao-num">10.</span> Once per game, during the day</li>
+        <li><span class="sao-num">11.</span> Once per game</li>
+        <li><span class="sao-num">12.</span> On your 1st night</li>
+        <li><span class="sao-num">13.</span> On your 1st day</li>
+        <li><span class="sao-num">14.</span> On</li>
+        <li><span class="sao-num">15.</span> You think</li>
+        <li><span class="sao-num">16.</span> You are</li>
+        <li><span class="sao-num">17.</span> You have</li>
+        <li><span class="sao-num">18.</span> You do not know</li>
+        <li><span class="sao-num">19.</span> You might</li>
+        <li><span class="sao-num">20.</span> You</li>
+        <li><span class="sao-num">21.</span> When you die</li>
+        <li><span class="sao-num">22.</span> When you learn that you died</li>
+        <li><span class="sao-num">23.</span> When</li>
+        <li><span class="sao-num">24.</span> If you die</li>
+        <li><span class="sao-num">25.</span> If you died</li>
+        <li><span class="sao-num">26.</span> If you are "mad"</li>
+        <li><span class="sao-num">27.</span> If you</li>
+        <li><span class="sao-num">28.</span> If the Demon dies</li>
+        <li><span class="sao-num">29.</span> If the Demon kills</li>
+        <li><span class="sao-num">30.</span> If the Demon</li>
+        <li><span class="sao-num">31.</span> If both</li>
+        <li><span class="sao-num">32.</span> If there are 5 or more players alive</li>
+        <li><span class="sao-num">33.</span> If</li>
+        <li><span class="sao-num">34.</span> All players</li>
+        <li><span class="sao-num">35.</span> All</li>
+        <li><span class="sao-num">36.</span> The 1st time</li>
+        <li><span class="sao-num">37.</span> The</li>
+        <li><span class="sao-num">38.</span> Good</li>
+        <li><span class="sao-num">39.</span> Evil</li>
+        <li><span class="sao-num">40.</span> Players</li>
+        <li><span class="sao-num">41.</span> Minions</li>
+        <li><span class="sao-num">42.</span> &lt;Anything else&gt;</li>
+        <li><span class="sao-num">43.</span> Atheist</li>
+      </ol>
+      <div class="sao-notes">
+        <p>Within any group (e.g. "If you die"), abilities are sorted by ability text length from least to greatest number of characters.</p>
+        <p>If there is a tie, they are then sorted by character name from least to greatest number of characters.</p>
+        <p>If, miraculously, there is a tie again, they are sorted alphabetically.</p>
+      </div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>
