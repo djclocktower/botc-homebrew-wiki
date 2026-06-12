@@ -211,10 +211,79 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: clamp(.95rem, 2vw, 1.2rem); color: rgba(236,225,200,.7);
   margin: 0; letter-spacing: .03em;
 }
+.home-layout {
+  position: relative; z-index: 5;
+  max-width: 1440px; margin: 0 auto;
+  padding: 0 clamp(12px,3vw,40px) 64px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 240px;
+  column-gap: clamp(16px,2.4vw,32px);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .home-layout { grid-template-columns: 1fr; }
+  .home-sidebar { order: -1; }
+}
 .home-panel {
   position: relative; z-index: 5;
   max-width: 1440px; margin: 0 auto;
   padding: 0 clamp(12px,3vw,40px) 64px;
+  min-width: 0;
+}
+.home-sidebar {
+  position: sticky;
+  top: 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.sidebar-card {
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  border-radius: 0;
+  padding: 16px 18px;
+  box-shadow: 0 8px 24px rgba(40,12,30,.35),
+              inset 0 0 0 3px rgba(255,255,255,.3),
+              inset 0 0 0 4px var(--parch-frame);
+  color: var(--ink);
+}
+.sidebar-card-title {
+  font-family: 'Dumbledor2', serif;
+  font-size: 1.1rem;
+  color: var(--maroon);
+  letter-spacing: .05em;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--parch-frame);
+}
+.sidebar-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar-link-list li {
+  padding: 0;
+  margin: 0 0 6px;
+}
+.sidebar-link-list li::before { display: none; }
+.sidebar-link-list a {
+  font-family: 'Libre Franklin', sans-serif;
+  font-size: .92rem;
+  color: var(--good-name);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-link-list a:hover { text-decoration: underline; color: var(--good); }
+.sidebar-link-list a::before {
+  content: "→";
+  font-size: .78rem;
+  opacity: .6;
+  flex-shrink: 0;
 }
 .type-section { margin-bottom: 48px; }
 .type-header {
