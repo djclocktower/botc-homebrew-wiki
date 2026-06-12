@@ -150,7 +150,8 @@
         jinxes.map(function (j) {
           var al = (j.align === 'evil') ? 'evil' : 'good';
           var nm = jinxDisplayName(j);
-          var iconId = (j.id || '').replace(/_festival_of_lanterns$/, '');
+          var rawId = j.id || slugId(j.name || '');
+          var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
           var iconSrc = (window.LINK_ROOT || '') + 'assets/icons/' + iconId + '.png';
           return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
             (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
