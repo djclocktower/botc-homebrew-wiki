@@ -4819,7 +4819,7 @@
     "slug": "jack",
     "name": "Jack",
     "team": "minion",
-    "ability": "Each night*, you may choose a player: they die. If a player you chose this way dies, all players learn a clue to your identity at dawn.",
+    "ability": "Each night*, you may choose a player: they die. If they do, all players learn a clue to your identity at dawn.",
     "art": "art/jack.png",
     "page": "c/jack.html",
     "image": "https://botchomebrew.wiki/assets/art/jack.png",
