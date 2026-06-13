@@ -330,6 +330,11 @@
       if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
       row.querySelectorAll('input,select,textarea').forEach(function (el) { el.addEventListener('input', update); });
+      row.querySelectorAll('textarea').forEach(function(ta) {
+        ta.style.overflowY = 'hidden';
+        ta.addEventListener('input', function() { autoExpand(ta); });
+        autoExpand(ta);
+      });
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
@@ -708,7 +713,7 @@
       el.style.height = 'auto';
       el.style.height = el.scrollHeight + 'px';
     }
-    document.querySelectorAll('.fld textarea').forEach(function(ta) {
+    document.querySelectorAll('textarea').forEach(function(ta) {
       ta.style.overflowY = 'hidden';
       ta.addEventListener('input', function() { autoExpand(ta); });
       autoExpand(ta);
