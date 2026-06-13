@@ -333,6 +333,11 @@
       if(text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function(){ row.remove(); update(); });
       row.querySelectorAll('input,select,textarea').forEach(function(el){ el.addEventListener('input', update); });
+      row.querySelectorAll('textarea').forEach(function(ta) {
+        ta.style.overflowY = 'hidden';
+        ta.addEventListener('input', function() { autoExpand(ta); });
+        autoExpand(ta);
+      });
     }
     $('addjinx').addEventListener('click', function(){ addJinx(); });
 
@@ -535,7 +540,7 @@
       $('setup').checked         = !!entry.setup;
       $('slug-display').textContent = originalSlug;
       // expand textareas to fit loaded content
-      document.querySelectorAll('.fld textarea').forEach(function(ta) { autoExpand(ta); });
+      document.querySelectorAll('textarea').forEach(function(ta) { ta.style.overflowY='hidden'; autoExpand(ta); });
 
       document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
       (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
@@ -590,7 +595,7 @@
       el.style.height = 'auto';
       el.style.height = el.scrollHeight + 'px';
     }
-    document.querySelectorAll('.fld textarea').forEach(function(ta) {
+    document.querySelectorAll('textarea').forEach(function(ta) {
       ta.style.overflowY = 'hidden';
       ta.addEventListener('input', function() { autoExpand(ta); });
       autoExpand(ta);
