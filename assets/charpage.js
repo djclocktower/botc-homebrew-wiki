@@ -43,7 +43,7 @@
       var label = (window.TEAM_LABEL[d.team] || d.team);
       var crumb = document.getElementById('crumb');
       if (crumb) crumb.innerHTML =
-        '<a href="../index.html">Home</a><span class="sep">›</span><a href="../all-characters.html">Characters</a><span class="sep">›</span>' +
+        '<a href="../index.html">Home</a><span class="sep">›</span><a href="../all-characters.html">Characters</a><span class="sep">·</span><a href="../script.html">Script Builder</a><span class="sep">›</span>' +
         '<a href="../team.html?t=' + d.team + '">' + label + '</a>' +
         '<span class="sep">›</span><span class="here">' + d.name + '</span>';
       var eb = document.getElementById('edit-btn');
