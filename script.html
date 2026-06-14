@@ -272,8 +272,7 @@
       var html = '';
       TEAMS.forEach(function (t) {
         var key = t[0], label = t[1];
-        var group = chars.filter(function (c) { return c.team === key; })
-                         .sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
+        var group = chars.filter(function (c) { return c.team === key; });
         if (!group.length) return;
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
         group.forEach(function (c) {
