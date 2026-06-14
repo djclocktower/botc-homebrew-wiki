@@ -397,11 +397,11 @@
         var standalone = list.filter(function(c){ return classifyCollection(c.appearsIn) === -1 || !c.appearsIn; });
         if (standalone.length){
           var icons = pickIcons(standalone, 4);
-          html += '<a class="collection-tile" href="all-characters.html?collection=Standalone">' +
+          html += '<a class="collection-tile" href="all-characters.html">' +
             '<div class="collection-icons">' + icons.map(function(c){
               return '<img class="collection-icon" src="assets/' + esc(c.art) + '" alt="">';
             }).join('') + '</div>' +
-            '<h3 class="collection-name">Standalone Characters</h3>' +
+            '<h3 class="collection-name">All Characters</h3>' +
             
             '<div class="collection-footer">' +
               '<span class="collection-count">' + standalone.length + ' character' + (standalone.length===1?'':'s') + '</span>' +
