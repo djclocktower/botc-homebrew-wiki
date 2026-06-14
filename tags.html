@@ -62,7 +62,7 @@
         .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    var KNOWN_TAGS = ["Alignment Change", "Character Change", "Consult", "Death", "Death Modification", "Drunkenness", "Duplication", "Even If Dead", "Execution", "Execution Survival", "Hidden", "Information", "Loss Condition", "Loud", "Madness", "Misregistration", "Multi-Kill", "Neighbor", "Nominations", "On Death", "Once Per Game", "Outsider Modification", "Passive", "Ping", "Poison", "Protection", "Public", "Quiet", "Resurrection", "Reverse", "Safe", "Safety Net", "Setup", "Single-Kill", "Social", "Timer", "Votes", "Win Condition"];
+    var KNOWN_TAGS = ["Alignment Change", "Character Change", "Consult", "Death", "Death Modification", "Drunkenness", "Duplication", "Even If Dead", "Execution", "Execution Survival", "Hidden", "Information", "Loss Condition", "Loud", "Madness", "Misregistration", "Multi-Kill", "Neighbor", "Nominations", "Nonconformist", "On Death", "Once Per Game", "Outsider Modification", "Passive", "Ping", "Poison", "Protection", "Public", "Quiet", "Resurrection", "Reverse", "Safe", "Safety Net", "Setup", "Single-Kill", "Social", "Think", "Timer", "Votes", "Win Condition"];
 
     fetch('characters.json?_=' + Date.now())
       .then(function(r) { return r.json(); })
