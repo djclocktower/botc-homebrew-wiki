@@ -68,6 +68,7 @@
 .sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
 .sb-publish-blurb { font-size:.82rem; color:rgba(236,225,200,.72); margin:10px 0 0; line-height:1.5; max-width:680px; }
 .sb-btn-randomize { background: linear-gradient(180deg,#2a7d7d,#1a5252); }
+.sb-btn-sort { background: linear-gradient(180deg,#5a3a7d,#3a1f5a); }
 .sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); }
 #sb-publish-status { margin-top:10px; padding:9px 12px; font-size:.88rem; display:none; max-width:680px; }
 #sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
@@ -167,6 +168,7 @@
           <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
           <button class="sb-btn sb-btn-clear" id="sb-clear" type="button">✕ Clear</button>
           <button class="sb-btn sb-btn-randomize" id="sb-randomize" type="button">⚄ Randomize</button>
+          <button class="sb-btn sb-btn-sort" id="sb-sort" type="button">⇅ SAO Sort</button>
           <input type="file" id="sb-import-file" accept=".json,application/json" hidden>
         </div>
       </div>
@@ -391,6 +393,101 @@
         picked = picked.concat(pool.slice(0, Math.min(COUNTS[team], pool.length)).map(function (c) { return c.slug; }));
       });
       setScript(picked);
+      renderAll();
+    });
+
+    // ── SAO Sort ──
+    // Steven Approved Order: sort within each team group by ability prefix bucket,
+    // then ability text length, then name length, then alphabetically.
+    var SAO_PREFIXES = [
+      'Hermit',
+      'You start knowing',
+      'At night',
+      'Each dusk*',
+      'Each night',
+      'Each night*',
+      'Each day',
+      'Once per game, at night',
+      'Once per game, at night*',
+      'Once per game, during the day',
+      'Once per game',
+      'On your 1st night',
+      'On your 1st day',
+      'On',
+      'You think',
+      'You are',
+      'You have',
+      'You do not know',
+      'You might',
+      'You',
+      'When you die',
+      'When you learn that you died',
+      'When',
+      'If you die',
+      'If you died',
+      'If you are "mad"',
+      'If you',
+      'If the Demon dies',
+      'If the Demon kills',
+      'If the Demon',
+      'If both',
+      'If there are 5 or more players alive',
+      'If',
+      'All players',
+      'All',
+      'The 1st time',
+      'The',
+      'Good',
+      'Evil',
+      'Players',
+      'Minions',
+      'Atheist'
+    ];
+    var SAO_ANYTHING_ELSE_IDX = SAO_PREFIXES.indexOf('Atheist'); // slot just before Atheist
+
+    function saoRank(ability) {
+      var a = (ability || '').trim();
+      for (var i = 0; i < SAO_PREFIXES.length; i++) {
+        if (i === SAO_ANYTHING_ELSE_IDX) continue; // skip Atheist in prefix scan
+        if (a.indexOf(SAO_PREFIXES[i]) === 0) return i;
+      }
+      // <Anything else> gets the index just before Atheist
+      return SAO_ANYTHING_ELSE_IDX;
+    }
+
+    function saoCompare(a, b) {
+      var ra = saoRank(a.ability), rb = saoRank(b.ability);
+      if (ra !== rb) return ra - rb;
+      var la = (a.ability || '').length, lb = (b.ability || '').length;
+      if (la !== lb) return la - lb;
+      var na = (a.name || '').length, nb = (b.name || '').length;
+      if (na !== nb) return na - nb;
+      return (a.name || '').localeCompare(b.name || '');
+    }
+
+    $('sb-sort').addEventListener('click', function () {
+      var current = getScript();
+      if (!current.length) return;
+      var TEAM_ORDER = ['townsfolk','outsider','minion','demon','traveller','fabled'];
+      var byTeam = {};
+      TEAM_ORDER.forEach(function (t) { byTeam[t] = []; });
+      // Also bucket unknowns
+      var unknowns = [];
+      current.forEach(function (slug) {
+        var c = bySlug[slug];
+        if (!c) return;
+        if (byTeam[c.team]) byTeam[c.team].push(c);
+        else unknowns.push(c);
+      });
+      // Sort each team group by SAO then flatten
+      var sorted = [];
+      TEAM_ORDER.forEach(function (t) {
+        byTeam[t].sort(saoCompare);
+        sorted = sorted.concat(byTeam[t].map(function (c) { return c.slug; }));
+      });
+      unknowns.sort(saoCompare);
+      sorted = sorted.concat(unknowns.map(function (c) { return c.slug; }));
+      setScript(sorted);
       renderAll();
     });
 
