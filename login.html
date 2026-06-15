@@ -115,7 +115,9 @@
 
       <div id="logged-in-view" style="display:none">
         <p class="login-status">You are logged in as admin.</p>
-        <button class="login-btn" id="logout-btn" type="button">Log Out</button>
+        <button class="login-btn" id="seed-btn" type="button" style="margin-bottom:12px">Seed Database (first-time setup)</button>
+        <button class="login-btn" id="logout-btn" type="button" style="background:linear-gradient(180deg,#555,#333);border-color:#222">Log Out</button>
+        <p class="login-status" id="seed-result" style="margin-top:14px;font-size:.9rem"></p>
       </div>
 
       <div id="login-view">
@@ -195,6 +197,31 @@
 
     $('password').addEventListener('keydown', function(e){
       if (e.key === 'Enter') $('login-btn').click();
+    });
+
+    $('seed-btn').addEventListener('click', function () {
+      var btn = this, out = $('seed-result');
+      out.textContent = '';
+      if (!confirm('Load all characters, collections, and scripts into the database? This is a one-time setup step.')) return;
+      btn.disabled = true; btn.textContent = 'Seeding…';
+      fetch('/api/seed', { method: 'POST', credentials: 'same-origin' })
+        .then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          if (res.status === 200 && res.body.ok) {
+            out.style.color = '#2a6e2a';
+            out.textContent = 'Loaded ' + res.body.characters + ' characters, ' + res.body.collections + ' collections, ' + res.body.scripts + ' scripts.';
+            btn.textContent = 'Seed complete ✓';
+          } else {
+            out.style.color = '#9a2c2c';
+            out.textContent = res.body.error || 'Seed failed.';
+            btn.disabled = false; btn.textContent = 'Seed Database (first-time setup)';
+          }
+        })
+        .catch(function(){
+          out.style.color = '#9a2c2c';
+          out.textContent = 'Network error during seed.';
+          btn.disabled = false; btn.textContent = 'Seed Database (first-time setup)';
+        });
     });
 
     $('logout-btn').addEventListener('click', function () {
