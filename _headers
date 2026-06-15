@@ -1,0 +1,20 @@
+# Cache rules for Cloudflare static assets
+# CSS/JS: always revalidate so edits show on a normal refresh (no hard-refresh)
+/assets/*.css
+  Cache-Control: no-cache, must-revalidate
+/assets/*.js
+  Cache-Control: no-cache, must-revalidate
+
+# HTML: always revalidate
+/*.html
+  Cache-Control: no-cache, must-revalidate
+
+# Images and fonts can cache (they rarely change; rename to bust if needed)
+/assets/*.png
+  Cache-Control: public, max-age=86400
+/assets/*.jpg
+  Cache-Control: public, max-age=86400
+/assets/*.ttf
+  Cache-Control: public, max-age=604800
+/assets/*.woff2
+  Cache-Control: public, max-age=604800

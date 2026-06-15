@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Login — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .login-wrap {
+    max-width: 440px;
+    margin: 0 auto;
+    padding: clamp(24px,5vw,64px) clamp(12px,3vw,40px) 64px;
+    position: relative;
+    z-index: 5;
+  }
+  .login-card {
+    background-color: var(--parch);
+    background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 2px solid var(--parch-frame);
+    padding: clamp(24px,4vw,40px);
+    color: var(--ink);
+    box-shadow: 0 20px 48px -16px rgba(0,0,0,.6),
+                inset 0 0 0 3px rgba(255,255,255,.3),
+                inset 0 0 0 4px var(--parch-frame);
+  }
+  .login-card h2 {
+    font-family: 'Dumbledor2', serif;
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    color: var(--maroon);
+    letter-spacing: .06em;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+  .login-rule {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    margin: 10px 0 24px;
+    border: none;
+  }
+  .login-field { margin-bottom: 16px; }
+  .login-field label {
+    display: block;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .8rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--maroon);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .login-field input {
+    width: 100%;
+    box-sizing: border-box;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: 1rem;
+    color: #241a12;
+    background: #fffdf8;
+    border: 1px solid #cdbfa0;
+    border-radius: 6px;
+    padding: 11px 13px;
+  }
+  .login-field input:focus { outline: 2px solid #b98; border-color: #b98; }
+  .login-btn {
+    width: 100%;
+    font-family: 'Dumbledor2', serif;
+    font-size: 1.15rem;
+    letter-spacing: .05em;
+    color: #f4ead2;
+    background: linear-gradient(180deg, #7a2d2f, #5b1f21);
+    border: 1px solid #4a1719;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .login-btn:hover { background: linear-gradient(180deg, #8a3537, #6b2527); }
+  .login-btn:disabled { opacity: .6; cursor: default; }
+  .login-msg {
+    margin-top: 16px;
+    text-align: center;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .95rem;
+    min-height: 1.2em;
+  }
+  .login-msg.error { color: var(--evil, #9a2c2c); }
+  .login-msg.success { color: #2a6e2a; }
+  .login-status {
+    text-align: center;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    margin-bottom: 18px;
+    color: var(--ink);
+  }
+  .login-status a { color: var(--good-name); }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">·</span><span class="here">Admin Login</span>
+    </nav>
+  </header>
+
+  <main class="login-wrap">
+    <div class="login-card">
+      <h2>Admin Login</h2>
+      <hr class="login-rule">
+
+      <div id="logged-in-view" style="display:none">
+        <p class="login-status">You are logged in as admin.</p>
+        <button class="login-btn" id="logout-btn" type="button">Log Out</button>
+      </div>
+
+      <div id="login-view">
+        <div class="login-field">
+          <label for="username">Username</label>
+          <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+        </div>
+        <div class="login-field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password">
+        </div>
+        <button class="login-btn" id="login-btn" type="button">Log In</button>
+      </div>
+
+      <p class="login-msg" id="login-msg"></p>
+    </div>
+  </main>
+
+  <script>
+    function $(id){ return document.getElementById(id); }
+
+    function showLoggedIn(isAdmin) {
+      $('login-view').style.display = 'none';
+      $('logged-in-view').style.display = 'block';
+    }
+    function showLoggedOut() {
+      $('login-view').style.display = 'block';
+      $('logged-in-view').style.display = 'none';
+    }
+
+    // Check current state on load
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.loggedIn && d.isAdmin) showLoggedIn(true); else showLoggedOut(); })
+      .catch(function(){ showLoggedOut(); });
+
+    $('login-btn').addEventListener('click', function () {
+      var btn = this;
+      var msg = $('login-msg');
+      msg.className = 'login-msg';
+      msg.textContent = '';
+      var username = $('username').value.trim();
+      var password = $('password').value;
+      if (!username || !password) {
+        msg.className = 'login-msg error';
+        msg.textContent = 'Enter username and password.';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Logging in…';
+      fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ username: username, password: password })
+      })
+        .then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          if (res.status === 200 && res.body.ok) {
+            msg.className = 'login-msg success';
+            msg.textContent = 'Logged in! Redirecting…';
+            setTimeout(function(){ location.href = 'index.html'; }, 900);
+          } else {
+            msg.className = 'login-msg error';
+            msg.textContent = res.body.error || 'Login failed.';
+            btn.disabled = false;
+            btn.textContent = 'Log In';
+          }
+        })
+        .catch(function(){
+          msg.className = 'login-msg error';
+          msg.textContent = 'Network error. Try again.';
+          btn.disabled = false;
+          btn.textContent = 'Log In';
+        });
+    });
+
+    $('password').addEventListener('keydown', function(e){
+      if (e.key === 'Enter') $('login-btn').click();
+    });
+
+    $('logout-btn').addEventListener('click', function () {
+      fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
+        .then(function(){ showLoggedOut(); $('login-msg').textContent = ''; });
+    });
+  </script>
+</body>
+</html>
