@@ -687,17 +687,9 @@
       }
 
       p = p.then(function(){
-        setStatus('work','Saving&hellip; updating character list');
-        return workerGet('characters.json');
-      }).then(function(file){
-        var list=[], sha=null;
-        if(file){
-          sha = file.sha;
-          try{ list = JSON.parse(decodeURIComponent(escape(atob(file.content.replace(/\n/g,''))))); }
-          catch(e){ list=[]; }
-        }
-        var i = list.findIndex(function(c){ return c.slug===originalSlug; });
-        var base = (i>=0) ? list[i] : (originalEntry||{});
+        setStatus('work','Saving&hellip; updating database');
+        // Build the full character entry, preserving any fields from the original
+        var base = originalEntry || {};
         var entry = Object.assign({}, base, {
           slug: originalSlug,
           name: d.name, team: d.team, ability: d.ability,
@@ -714,10 +706,21 @@
           entry.art   = 'art/'+originalSlug+'.png';
           entry.image = ART_BASE+originalSlug+'.png';
         }
-        if(i>=0) list[i]=entry; else list.push(entry);
-        var jsonB64 = btoa(unescape(encodeURIComponent(JSON.stringify(list,null,2))));
-        return workerPut('characters.json', jsonB64, 'Edit character: '+d.name, sha);
+        // Write to D1 via the new Worker (instant; gated behind admin login)
+        return fetch('/api/character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(entry)
+        }).then(function(r){
+          return r.json().then(function(j){
+            if(r.status === 403) throw new Error('Not logged in as admin. Please log in at /login.html first.');
+            if(!r.ok) throw new Error(j.error || 'Save failed.');
+            return j;
+          });
+        });
       }).then(function(){
+        // Ensure the character page file exists (needed for the URL; data is read live from D1)
         var pageSlug = originalSlug;
         var pageArt = (artChanged ? 'art/'+originalSlug+'.png' : (originalEntry&&originalEntry.art) || ('art/'+originalSlug+'.png'));
         var pagePath = 'c/' + pageSlug + '.html';
@@ -725,10 +728,10 @@
         var pageB64 = btoa(unescape(encodeURIComponent(pageHtml)));
         return workerGet(pagePath).then(function(ex){
           return workerPut(pagePath, pageB64, 'Update character page: '+d.name, ex && ex.sha);
-        });
+        }).catch(function(){ /* page push is best-effort; D1 data is already saved */ });
       }).then(function(){
         var url = SITE_ROOT + 'c/' + originalSlug + '.html';
-        setStatus('ok','&#10003; Saved! Live in ~1 minute. <a href="'+url+'" target="_blank">View character &rarr;</a>');
+        setStatus('ok','&#10003; Saved! Live now. <a href="'+url+'" target="_blank">View character &rarr;</a>');
         $('save').disabled = false;
       }).catch(function(err){
         setStatus('err','&#10007; '+err.message);
