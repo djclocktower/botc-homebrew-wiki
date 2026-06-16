@@ -314,10 +314,12 @@
     "creator": "Harry & Co. & Bendan",
     "lede": "The herbalist gets power from the earth",
     "summaryBullets": [
-      "tes test test"
+      "edit"
     ],
-    "howToRun": [],
-    "callout": "",
+    "howToRun": [
+      "test"
+    ],
+    "callout": "test",
     "examples": [],
     "tips": [],
     "quote": "Don’t worry, a pinch of salt mixed with the mushrooms from the hills down south will do the trick. You’ll be fine in no time! I just need to remember if this is salt or sugar…",
