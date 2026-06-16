@@ -1,0 +1,20 @@
+# Files/folders that should NOT be served as website assets.
+# Same format as .gitignore. Lives in repo root (assets directory = ".").
+
+# Git internals — this caused the "Asset too large" error (40.6 MiB pack file)
+.git
+.git/**
+
+# Worker source + config — runs as code, must not be a public file
+worker
+worker/**
+wrangler.toml
+
+# Migration + dev files — not part of the live site
+migration
+migration/**
+README.md
+wiki_handoff.md
+
+# Editor/OS junk
+.DS_Store
