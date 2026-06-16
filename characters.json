@@ -313,7 +313,9 @@
     "image": "https://botchomebrew.wiki/assets/art/herbalist.png",
     "creator": "Harry & Co. & Bendan",
     "lede": "The herbalist gets power from the earth",
-    "summaryBullets": [],
+    "summaryBullets": [
+      "tes test test"
+    ],
     "howToRun": [],
     "callout": "",
     "examples": [],
@@ -344,7 +346,8 @@
       }
     ],
     "bluffing": [],
-    "fighting": []
+    "fighting": [],
+    "translatedBy": ""
   },
   {
     "slug": "perfumer",
