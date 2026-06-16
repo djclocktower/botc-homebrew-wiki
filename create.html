@@ -630,39 +630,33 @@
         .then(function (ex) {
           return workerPut(artPath, artB64, 'Add art for ' + d.name, ex && ex.sha);
         })
-        // Step 2: update characters.json
+        // Step 2: write character to the database (D1) via the new Worker
         .then(function () {
-          setStatus('work', 'Publishing&hellip; updating character list');
-          return workerGet('characters.json');
-        })
-        .then(function (file) {
-          var list = [], sha = null;
-          if (file) {
-            sha = file.sha;
-            try {
-              var raw = atob(file.content.replace(/\n/g, ''));
-              list = JSON.parse(decodeURIComponent(escape(raw)));
-            } catch (e) { list = []; }
-          }
+          setStatus('work', 'Publishing&hellip; saving to database');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, page: d.page, image: d.image, creator: d.creator,
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
-          translatedBy: d.translatedBy, edition: d.edition,
+            translatedBy: d.translatedBy, edition: d.edition,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
             setup: d.setup, jinxes: d.jinxes
           };
-          var i = list.findIndex(function (c) { return c.slug === slug; });
-          if (i >= 0) list[i] = entry; else list.push(entry);
-
-          // UTF-8 safe base64 encode
-          var jsonStr  = JSON.stringify(list, null, 2);
-          var jsonB64  = btoa(unescape(encodeURIComponent(jsonStr)));
-          return workerPut('characters.json', jsonB64, 'Add/update character: ' + d.name, sha);
+          return fetch('/api/character', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(entry)
+          }).then(function(r){
+            return r.json().then(function(j){
+              if(r.status === 403) throw new Error('Not logged in as admin. Please log in at /login.html first.');
+              if(!r.ok) throw new Error(j.error || 'Save failed.');
+              return j;
+            });
+          });
         })
         .then(function () {
           // Step 3: create the static c/{slug}.html page
@@ -676,7 +670,7 @@
         })
         .then(function () {
           var url = SITE_ROOT + 'c/' + slug + '.html';
-          setStatus('ok', '&#10003; Published! Live in ~1 minute at <a href="' + url + '" target="_blank">' + url + '</a><br>(GitHub Pages needs ~60 seconds to rebuild &mdash; refresh if it 404s at first.)');
+          setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           $('publish').disabled = false;
         })
         .catch(function (err) {
