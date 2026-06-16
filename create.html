@@ -608,6 +608,16 @@
       return h;
     }
 
+    // ── admin login check: warn + disable publish if not logged in ──
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.loggedIn || !d.isAdmin){
+          setStatus('err','You are not logged in as admin. <a href="login.html">Log in</a> to publish.');
+          var pb = document.getElementById('publish'); if(pb) pb.disabled = true;
+        }
+      }).catch(function(){});
+
     $('publish').addEventListener('click', function () {
       var d = gather();
       if (!d.name)    return setStatus('err', 'A character name is required.');
