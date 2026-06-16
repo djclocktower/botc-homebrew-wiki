@@ -739,6 +739,16 @@
       });
     });
 
+    // ── admin login check: warn + disable save if not logged in ──
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.loggedIn || !d.isAdmin){
+          setStatus('err','You are not logged in as admin. <a href="login.html">Log in</a> to save changes.');
+          var sv = $('save'); if(sv) sv.disabled = true;
+        }
+      }).catch(function(){});
+
     // ── on load: fetch character data ──
     if(!originalSlug){
       $('loading').textContent = 'No character specified. Add ?c=slug to the URL.';
