@@ -9,11 +9,19 @@
 /*.html
   Cache-Control: no-cache, must-revalidate
 
-# Images and fonts can cache (they rarely change; rename to bust if needed)
+# Art images: revalidate so updated art shows immediately (no stale cache)
+/assets/art/*.png
+  Cache-Control: no-cache, must-revalidate
+/assets/art/*.jpg
+  Cache-Control: no-cache, must-revalidate
+
+# Other images: revalidate too (covers character art at any path)
 /assets/*.png
-  Cache-Control: public, max-age=86400
+  Cache-Control: no-cache, must-revalidate
 /assets/*.jpg
-  Cache-Control: public, max-age=86400
+  Cache-Control: no-cache, must-revalidate
+
+# Fonts rarely change and are large — keep cached
 /assets/*.ttf
   Cache-Control: public, max-age=604800
 /assets/*.woff2
