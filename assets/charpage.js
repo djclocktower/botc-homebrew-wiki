@@ -31,6 +31,29 @@
     infocard.appendChild(btn);
   }
 
+  var TOKEN_KEY = 'botc_token_set';
+  function getTokenSet() { try { return JSON.parse(localStorage.getItem(TOKEN_KEY)) || []; } catch (e) { return []; } }
+  function setTokenSet(a) { try { localStorage.setItem(TOKEN_KEY, JSON.stringify(a)); } catch (e) {} }
+  function mountTokenButton(slug) {
+    var infocard = document.querySelector('.char-infocard');
+    if (!infocard) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'add-to-script-btn add-to-token-btn';
+    function sync() {
+      var on = getTokenSet().indexOf(slug) !== -1;
+      btn.classList.toggle('on', on);
+      btn.textContent = on ? '\u2713 In Token Tool' : '+ Add to Token Tool';
+    }
+    btn.addEventListener('click', function () {
+      var s = getTokenSet(); var i = s.indexOf(slug);
+      if (i === -1) s.push(slug); else s.splice(i, 1);
+      setTokenSet(s); sync();
+    });
+    sync();
+    infocard.appendChild(btn);
+  }
+
   fetch('../characters.json?_=' + Date.now())
     .then(function (r) { return r.json(); })
     .then(function (list) {
@@ -50,6 +73,7 @@
       if (eb) { eb.href = '../edit.html?c=' + SLUG; eb.style.display = ''; }
       content.innerHTML = window.renderCharacter(d, '../assets/' + d.art);
       mountScriptButton(d.slug);
+      mountTokenButton(d.slug);
       if (location.hash) {
         var t = document.getElementById(location.hash.slice(1));
         if (t) t.scrollIntoView();
