@@ -48,26 +48,52 @@
     });
   }
 
-  // resolve any URL entry points: ?chars=a,b  ?script=slug  ?collection=id
+  // ---- collection resolution (ported from all-characters.html) ----
+  function norm(x){ return String(x||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
+  var AC_COLLECTIONS = [
+    { slug:'Fall of Rome', match:['fallofrome'] },
+    { slug:'Festival of Lanterns \u2014 Temple Fair', displayName:'Temple Fair', match:['festivaloflanternstemplefair','templefair'] },
+    { slug:'Festival of Lanterns \u2014 The Storm Is Coming', displayName:'The Storm Is Coming', match:['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
+    { slug:'Ravenswood Chronicle', match:['ravenswoodchronicle','ravenswoodchronicles'] },
+    { slug:"A Midsummer Night's Dream", match:['amidsummernightsdream','midsummernightsdream','babybusamidsummernightsdream'] },
+    { slug:'Travel by Starlight', match:['travelbystarlight'] },
+    { slug:'Standalone', match:[] }
+  ];
+  function findCollection(param){
+    if(!param) return null; var n=norm(param);
+    for(var i=0;i<AC_COLLECTIONS.length;i++){ var c=AC_COLLECTIONS[i];
+      if(norm(c.slug)===n || norm(c.displayName||'')===n || c.match.indexOf(n)!==-1) return c; }
+    return null;
+  }
+  function charInCollection(c, coll){
+    if(!coll) return false;
+    if(coll.slug==='Standalone'){ var a=norm(c.appearsIn); if(!a) return true;
+      for(var i=0;i<AC_COLLECTIONS.length-1;i++){ if(AC_COLLECTIONS[i].match.indexOf(a)!==-1) return false; } return true; }
+    return coll.match.indexOf(norm(c.appearsIn))!==-1;
+  }
+
+  // resolve URL entry points. ?script / ?collection -> REPLACE the set (you're opening it);
+  // ?chars -> ADD to the existing persisted set (accumulate while browsing).
   function ingestUrl() {
     var q = new URLSearchParams(location.search);
-    var add = [];
-    if (q.get('chars')) add = add.concat(q.get('chars').split(',').map(function (s) { return s.trim(); }).filter(Boolean));
+    var hasScript = !!q.get('script'), hasColl = !!q.get('collection');
+    var incoming = [];
+    if (q.get('chars')) incoming = incoming.concat(q.get('chars').split(',').map(function(x){return x.trim();}).filter(Boolean));
+    if (hasColl) {
+      var coll = findCollection(q.get('collection'));
+      if (coll) allChars.forEach(function(c){ if (charInCollection(c, coll)) incoming.push(c.slug); });
+    }
     var jobs = [];
-    if (q.get('script')) {
-      jobs.push(fetch('scripts.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (scripts) {
-        var sc = scripts.filter(function (s) { return s.slug === q.get('script'); })[0];
-        if (sc && sc.characters) add = add.concat(sc.characters);
-      }).catch(function () {}));
+    if (hasScript) {
+      jobs.push(fetch('scripts.json?_=' + Date.now()).then(function(r){return r.json();}).then(function(scripts){
+        var sc = scripts.filter(function(x){ return x.slug === q.get('script'); })[0];
+        if (sc && sc.characters) incoming = incoming.concat(sc.characters);
+      }).catch(function(){}));
     }
-    if (q.get('collection')) {
-      jobs.push(fetch('collections.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (cols) {
-        var col = cols.filter(function (c) { return (c.id || c.slug) === q.get('collection'); })[0];
-        if (col && col.characters) add = add.concat(col.characters);
-      }).catch(function () {}));
-    }
-    return Promise.all(jobs).then(function () {
-      add.forEach(function (sl) { if (charBySlug[sl] && setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
+    return Promise.all(jobs).then(function(){
+      var valid = incoming.filter(function(sl){ return charBySlug[sl]; });
+      if (hasScript || hasColl) setSlugs = [];        // opening a defined set -> replace
+      valid.forEach(function(sl){ if (setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
     });
   }
 
