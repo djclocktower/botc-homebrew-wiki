@@ -141,6 +141,14 @@
     var btn = document.getElementById('hamburger');
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
+    // Inject the Token Tool link into the nav once, on every page (root-aware).
+    if (!drop.querySelector('a[href$="tokens.html"]')) {
+      var ttLink = document.createElement('a');
+      ttLink.href = ROOT + 'tokens.html';
+      ttLink.textContent = 'Token Tool';
+      var sb = drop.querySelector('a[href$="script.html"]');
+      if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
+    }
     var here = location.pathname.split('/').pop() || 'index.html';
     drop.querySelectorAll('a').forEach(function (a) {
       if (a.getAttribute('href') === here) a.classList.add('active');
