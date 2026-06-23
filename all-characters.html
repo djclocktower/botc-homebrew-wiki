@@ -337,6 +337,7 @@
               inner += '<p class="collection-hero-desc">' + esc(activeCollection.description) + '</p>';
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
+            inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens.html?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
               inner += '<a class="cta-secondary collection-edit-btn" href="edit-collection.html?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
             }
