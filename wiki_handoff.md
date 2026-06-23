@@ -270,12 +270,7 @@ Hybrid client-rendered site. Pages fetch `characters.json` / `collections.json` 
 
 ---
 
-## 12. THREE HAND-BUILT STATIC CHARACTER PAGES (special, in `characters/`)
-Folie à Deux (Minion), La Révolution (Townsfolk), Hemomagus (Demon) — pixel-exact Dumbledor2 PNG headings, real art, hardcoded HTML layout. They do NOT use `renderCharacter()`. Their jinx DISPLAY is hardcoded HTML; the jinxes in the data are only used for the JSON box. Intentional typos preserved verbatim: "Plauge Doctor", "Saftey Net", "accours", "singnals".
-
----
-
-## 13. BUGS & GOTCHAS ENCOUNTERED (hard-won — DO NOT REPEAT)
+## 12. BUGS & GOTCHAS ENCOUNTERED (hard-won — DO NOT REPEAT)
 
 ### Migration / Cloudflare bugs
 1. **"Asset too large" deploy failure** — Cloudflare tried to upload the `.git` folder (40.6 MiB pack file > 25 MiB limit). FIX: `.assetsignore` excluding `.git` and other non-asset files. This is the #1 deploy gotcha.
