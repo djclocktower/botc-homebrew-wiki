@@ -47,6 +47,19 @@
   updateScriptBadge();
   window.addEventListener('storage', function (e) { if (e.key === SCRIPT_KEY) updateScriptBadge(); });
 
+  /* ── Token Tool link in the crumb nav, mirroring Script Builder (desktop top bar) ── */
+  (function () {
+    document.querySelectorAll('.crumb').forEach(function (crumb) {
+      if (crumb.querySelector('a[href$="tokens.html"]')) return;
+      var sb = crumb.querySelector('a[href$="script.html"]');
+      if (!sb) return;
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u00b7';
+      var link = document.createElement('a'); link.href = ROOT + 'tokens.html'; link.textContent = 'Token Tool';
+      crumb.insertBefore(sep, sb.nextSibling);
+      crumb.insertBefore(link, sep.nextSibling);
+    });
+  })();
+
   /* ── Search ── */
   (function () {
     var input = document.getElementById('search-input');
