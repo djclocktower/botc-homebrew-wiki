@@ -44,14 +44,19 @@ body {
   font-size: 16px; line-height: 1.4;
   color: var(--maroon);
   background-color: var(--purple-deep);
-  background-image: url('bg.jpg');
-  background-size: cover;
-  background-attachment: fixed;
-  background-position: center top;
   min-height: 100vh;
   position: relative;
 }
-body::before { display: none; }
+/* Background as a fixed, composited layer — avoids the background-attachment:fixed
+   jitter on mobile when the address bar shows/hides. Same pinned look on desktop. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: url('bg.jpg') center top / cover no-repeat var(--purple-deep);
+  pointer-events: none;
+}
 body::after { display: none; }
 
 /* ─── Top Bar ────────────────────────────────────────────────── */
