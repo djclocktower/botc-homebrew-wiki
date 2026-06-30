@@ -8,6 +8,18 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<style>
+  /* Homepage nav: use the hamburger menu on desktop too, so the wide nav
+     doesn't wrap onto two lines. The top-bar search stays put; the in-menu
+     search is hidden on desktop to avoid a duplicate search box. */
+  @media (min-width: 881px) {
+    .crumb { display: none !important; }
+    .hamburger { display: flex !important; }
+    .nav-dropdown { position: fixed; left: 0; right: 0; }
+    .nav-dropdown.open { display: flex !important; }
+    .nav-dropdown-search { display: none; }
+  }
+</style>
 </head>
 <body>
 
