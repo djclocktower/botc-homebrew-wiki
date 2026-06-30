@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register Collection — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .rc-wrap { max-width: 620px; }
+  .rc-card { background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px; padding: 20px; }
+  .rc-card h1 { font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.4rem; margin: 0 0 4px; }
+  .rc-sub { color: var(--ink); opacity: .8; margin: 0 0 18px; font-size: .92rem; }
+  .rc-fld { margin: 0 0 14px; }
+  .rc-fld label { display: block; font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; color: var(--maroon); margin: 0 0 5px; }
+  .rc-fld input, .rc-fld textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; font: inherit; background: #fff; }
+  .rc-fld textarea { min-height: 90px; resize: vertical; }
+  .rc-btn { font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; background: var(--good); color: #fff; border: 0; border-radius: 10px; padding: 13px 24px; font-size: 1rem; cursor: pointer; }
+  .rc-btn:disabled { background: #9bb6cf; cursor: not-allowed; }
+  .rc-status { margin: 16px 0 0; font-family: 'Oswald', sans-serif; font-size: .9rem; padding: 10px 14px; border-radius: 8px; display: none; }
+  .rc-status.show { display: block; }
+  .rc-status.ok { background: rgba(44,123,208,.12); color: #1f5fa0; }
+  .rc-status.err { background: rgba(154,13,18,.12); color: var(--evil); }
+  .rc-status.work { background: rgba(201,162,39,.14); color: #8a6d12; }
+  .rc-status a { color: inherit; font-weight: 700; }
+  .rc-gate { color: var(--maroon); }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="index.html"><img class="brand-skull" src="assets/logo_skull.png" alt=""><img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki"></a>
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span class="sep">›</span><span class="here">Register Collection</span></nav>
+  </header>
+
+  <main class="wrap rc-wrap">
+    <div class="rc-card" id="card">
+      <h1>Register / Update Collection</h1>
+      <p class="rc-sub">Writes a collection into the live database. Characters whose <em>appears in</em> matches one of the match terms will show up automatically.</p>
+      <div id="gate" class="rc-gate" style="display:none"></div>
+      <div id="form" style="display:none">
+        <div class="rc-fld"><label>Display name</label><input id="f-name" value="The Academy"></div>
+        <div class="rc-fld"><label>Slug (URL key — keep as-is unless you know better)</label><input id="f-slug" value="The Academy"></div>
+        <div class="rc-fld"><label>Match terms (comma-separated, lowercase no spaces)</label><input id="f-match" value="theacademy"></div>
+        <div class="rc-fld"><label>Header image path</label><input id="f-header" value="collections/the-academy.png"></div>
+        <div class="rc-fld"><label>Description / blurb (optional)</label><textarea id="f-desc" placeholder="Shown at the top of the collection page."></textarea></div>
+        <button class="rc-btn" id="go">Register collection</button>
+        <div class="rc-status" id="status"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var id = 'the-academy';
+    function setStatus(cls, html) { var s = $('status'); s.className = 'rc-status show ' + cls; s.innerHTML = html; }
+
+    // gate on admin session
+    fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (me) {
+      if (me && me.isAdmin) {
+        $('form').style.display = 'block';
+      } else {
+        $('gate').style.display = 'block';
+        $('gate').innerHTML = 'You need to be logged in as an admin to register a collection. <a href="login.html">Log in</a>, then return to this page.';
+      }
+    }).catch(function () {
+      $('gate').style.display = 'block';
+      $('gate').textContent = 'Could not reach the server. Try again in a moment.';
+    });
+
+    $('go').addEventListener('click', function () {
+      var slug = $('f-slug').value.trim();
+      if (!slug) { setStatus('err', 'Slug is required.'); return; }
+      var payload = {
+        id: id,
+        slug: slug,
+        displayName: $('f-name').value.trim() || slug,
+        match: $('f-match').value.split(',').map(function (s) { return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, ''); }).filter(Boolean),
+        description: $('f-desc').value.trim(),
+        header: $('f-header').value.trim()
+      };
+      $('go').disabled = true;
+      setStatus('work', 'Saving to the database…');
+      fetch('/api/collection', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function (r) { return r.json(); }).then(function (res) {
+        $('go').disabled = false;
+        if (res && res.ok) {
+          var url = 'all-characters.html?collection=' + encodeURIComponent(slug);
+          setStatus('ok', '\u2713 Registered! View it at <a href="' + url + '">the ' + (payload.displayName) + ' collection</a>. (Allow up to a minute.)');
+        } else {
+          setStatus('err', '\u2717 ' + ((res && res.error) || 'Unknown error') + '. Make sure you are logged in as admin.');
+        }
+      }).catch(function (e) {
+        $('go').disabled = false;
+        setStatus('err', '\u2717 ' + e.message);
+      });
+    });
+  })();
+  </script>
+</body>
+</html>
