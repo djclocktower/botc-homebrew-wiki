@@ -54,5 +54,15 @@
     ],
     "description": "",
     "header": ""
+  },
+  {
+    "id": "the-academy",
+    "slug": "The Academy",
+    "displayName": "The Academy",
+    "match": [
+      "theacademy"
+    ],
+    "description": "",
+    "header": "collections/the-academy.png"
   }
 ]
