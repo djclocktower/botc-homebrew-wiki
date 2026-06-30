@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS characters (
   tags        TEXT,
   appears_in  TEXT,
   data        TEXT NOT NULL,                  -- full character object as JSON
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_characters_team    ON characters(team);
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS collections (
   display_name TEXT NOT NULL,
   owner_id     INTEGER REFERENCES users(id),
   data         TEXT NOT NULL,                 -- full collection object as JSON
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -46,5 +48,26 @@ CREATE TABLE IF NOT EXISTS scripts (
   author      TEXT,
   owner_id    INTEGER REFERENCES users(id),
   data        TEXT NOT NULL,                  -- full script object as JSON
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ---- ACTIVITY LOG (admin dashboard feed) ------------------
+CREATE TABLE IF NOT EXISTS activity_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts          TEXT NOT NULL DEFAULT (datetime('now')),
+  user_id     INTEGER REFERENCES users(id),
+  username    TEXT,                            -- denormalized for easy display
+  action      TEXT NOT NULL,                   -- create | update | delete | lock | unlock
+  entity_type TEXT,                            -- character | collection | script | wiki
+  entity_slug TEXT,
+  entity_name TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_log(ts DESC);
+
+-- ---- SETTINGS (global key/value flags, e.g. wiki lock) ----
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);
+INSERT OR IGNORE INTO settings (key, value) VALUES ('wiki_locked', '0');

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .dash-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(18px,4vw,40px) clamp(12px,3vw,32px) 72px;
+    position: relative;
+    z-index: 5;
+  }
+  .dash-h2 {
+    font-family: 'Dumbledor2', serif;
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+    color: var(--maroon);
+    letter-spacing: .05em;
+    margin: 0 0 4px;
+  }
+  .dash-sub {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    color: var(--ink);
+    opacity: .8;
+    margin: 0 0 22px;
+    font-size: .95rem;
+  }
+  .dash-rule {
+    height: 2px; border: none;
+    background: linear-gradient(90deg, transparent, var(--rule), transparent);
+    margin: 14px 0 22px;
+  }
+
+  /* ---- generic parchment panel ---- */
+  .panel {
+    background-color: var(--parch);
+    background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 2px solid var(--parch-frame);
+    padding: clamp(16px,3vw,24px);
+    color: var(--ink);
+    box-shadow: 0 16px 36px -18px rgba(0,0,0,.55),
+                inset 0 0 0 3px rgba(255,255,255,.28),
+                inset 0 0 0 4px var(--parch-frame);
+    margin-bottom: 20px;
+  }
+  .panel h3 {
+    font-family: 'Dumbledor2', serif;
+    font-size: 1.15rem;
+    color: var(--maroon);
+    letter-spacing: .05em;
+    margin: 0 0 12px;
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  .panel h3 .count-pill {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .72rem; font-weight: 700;
+    background: rgba(122,45,47,.12);
+    color: var(--maroon);
+    border: 1px solid rgba(122,45,47,.3);
+    border-radius: 999px;
+    padding: 1px 9px;
+    letter-spacing: .04em;
+  }
+
+  /* ---- lock control ---- */
+  .lock-panel { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .lock-state {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    flex: 1 1 220px; min-width: 200px;
+  }
+  .lock-state .lbl { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--maroon); font-weight: 700; }
+  .lock-state .val { font-family: 'Dumbledor2', serif; font-size: 1.4rem; margin-top: 2px; }
+  .lock-state .val.open   { color: #2a6e2a; }
+  .lock-state .val.locked { color: #9a2c2c; }
+  .lock-state .desc { font-size: .85rem; opacity: .8; margin-top: 4px; }
+  .btn {
+    font-family: 'Dumbledor2', serif;
+    font-size: 1.02rem; letter-spacing: .04em;
+    color: #f4ead2;
+    border-radius: 6px; padding: 11px 20px;
+    cursor: pointer; border: 1px solid #4a1719;
+  }
+  .btn-lock   { background: linear-gradient(180deg,#7a2d2f,#5b1f21); }
+  .btn-lock:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
+  .btn-unlock { background: linear-gradient(180deg,#2f6e3a,#1f5128); border-color:#163d1d; }
+  .btn-unlock:hover { background: linear-gradient(180deg,#37823f,#27632f); }
+  .btn:disabled { opacity: .6; cursor: default; }
+
+  /* ---- stat cards ---- */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+  }
+  .stat {
+    text-align: center;
+    background: rgba(255,253,248,.45);
+    border: 1px solid var(--parch-frame);
+    border-radius: 8px;
+    padding: 14px 8px;
+  }
+  .stat .num { font-family: 'Dumbledor2', serif; font-size: 2rem; color: var(--maroon); line-height: 1; }
+  .stat .lbl { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; margin-top: 6px; opacity: .85; }
+
+  .team-bars { margin-top: 16px; }
+  .team-bar { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .85rem; }
+  .team-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+  .team-name { flex: 0 0 96px; text-transform: capitalize; }
+  .team-track { flex: 1 1 auto; height: 9px; background: rgba(0,0,0,.10); border-radius: 999px; overflow: hidden; }
+  .team-fill { height: 100%; border-radius: 999px; }
+  .team-n { flex: 0 0 auto; width: 34px; text-align: right; font-weight: 700; color: var(--maroon); }
+
+  /* ---- two-column grid for the feed panels ---- */
+  .panel-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+  @media (min-width: 760px) { .panel-grid { grid-template-columns: 1fr 1fr; gap: 20px; } .panel-grid .panel { margin-bottom: 0; } .panel-grid { margin-bottom: 20px; } }
+
+  /* ---- lists ---- */
+  .feed { list-style: none; margin: 0; padding: 0; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; }
+  .feed li { padding: 9px 0; border-bottom: 1px solid rgba(74,23,25,.14); font-size: .9rem; line-height: 1.35; }
+  .feed li:last-child { border-bottom: none; }
+  .feed a { color: var(--good-name, #2c5b9a); text-decoration: none; font-weight: 600; }
+  .feed a:hover { text-decoration: underline; }
+  .feed .when { display: block; font-size: .76rem; opacity: .65; margin-top: 1px; }
+  .row-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    padding: 1px 7px; border-radius: 999px; flex: 0 0 auto;
+  }
+  .tag-create { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-update { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
+  .tag-delete,.tag-lock { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
+  .tag-unlock { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-type { background: rgba(0,0,0,.06); color: var(--ink); border: 1px solid rgba(0,0,0,.18); opacity: .85; }
+  .empty { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
+  .note { font-size: .8rem; opacity: .7; margin-top: 10px; font-style: italic; }
+
+  /* ---- gate / loading ---- */
+  .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: var(--ink); }
+  .gate a { color: var(--good-name, #2c5b9a); }
+  .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .7; }
+  .toast { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
+  .toast.ok  { color: #2a6e2a; }
+  .toast.err { color: #9a2c2c; }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="index.html">Home</a><span class="sep">·</span><span class="here">Admin Dashboard</span>
+    </nav>
+  </header>
+
+  <main class="dash-wrap">
+    <!-- shown while we check auth -->
+    <div id="loading" class="loading">Checking credentials…</div>
+
+    <!-- shown if not an admin -->
+    <div id="gate" class="gate" style="display:none">
+      <p>This page is for administrators only.</p>
+      <p><a href="login.html">Log in as admin</a> to continue.</p>
+    </div>
+
+    <!-- the dashboard itself -->
+    <div id="dash" style="display:none">
+      <h2 class="dash-h2">Admin Dashboard</h2>
+      <p class="dash-sub" id="dash-greeting">Overview of recent activity across the wiki.</p>
+
+      <!-- LOCK CONTROL -->
+      <section class="panel lock-panel" aria-label="Wiki lock">
+        <div class="lock-state">
+          <div class="lbl">Wiki status</div>
+          <div class="val" id="lock-val">—</div>
+          <div class="desc" id="lock-desc"></div>
+        </div>
+        <button class="btn" id="lock-btn" type="button" style="display:none">—</button>
+        <div class="toast" id="lock-toast" style="flex-basis:100%"></div>
+      </section>
+
+      <!-- STATS -->
+      <section class="panel">
+        <h3>At a glance</h3>
+        <div class="stat-row">
+          <div class="stat"><div class="num" id="c-characters">–</div><div class="lbl">Characters</div></div>
+          <div class="stat"><div class="num" id="c-collections">–</div><div class="lbl">Collections</div></div>
+          <div class="stat"><div class="num" id="c-scripts">–</div><div class="lbl">Scripts</div></div>
+          <div class="stat"><div class="num" id="c-users">–</div><div class="lbl">Users</div></div>
+        </div>
+        <div class="team-bars" id="team-bars"></div>
+      </section>
+
+      <!-- ACTIVITY -->
+      <section class="panel">
+        <h3>Recent activity <span class="count-pill" id="act-count"></span></h3>
+        <ul class="feed" id="feed-activity"></ul>
+        <p class="note">Activity is recorded from now on. Past edits made before this dashboard existed won't appear here.</p>
+      </section>
+
+      <div class="panel-grid">
+        <!-- RECENTLY EDITED -->
+        <section class="panel">
+          <h3>Recently edited</h3>
+          <ul class="feed" id="feed-edits"></ul>
+        </section>
+
+        <!-- RECENTLY CREATED -->
+        <section class="panel">
+          <h3>Recently created</h3>
+          <ul class="feed" id="feed-creations"></ul>
+        </section>
+      </div>
+
+      <!-- SIGN-UPS -->
+      <section class="panel">
+        <h3>Recent sign-ups <span class="count-pill" id="signup-count"></span></h3>
+        <ul class="feed" id="feed-signups"></ul>
+        <p class="note">Public registration isn't enabled yet, so this currently lists existing accounts. It's ready for when creator accounts launch.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
+    }); }
+
+    var TEAM_COLORS = {
+      townsfolk: '#2c5b9a', outsider: '#2c8a8a', minion: '#b8852a',
+      demon: '#9a2c2c', traveler: '#6a4a8a', traveller: '#6a4a8a', fabled: '#b89a2a'
+    };
+
+    // SQLite datetime is "YYYY-MM-DD HH:MM:SS" in UTC
+    function parseTs(s){
+      if (!s) return null;
+      var d = new Date(String(s).replace(' ', 'T') + 'Z');
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function relTime(s){
+      var d = parseTs(s); if (!d) return '';
+      var secs = Math.round((Date.now() - d.getTime()) / 1000);
+      if (secs < 45) return 'just now';
+      var mins = Math.round(secs/60); if (mins < 60) return mins + (mins===1?' min ago':' mins ago');
+      var hrs = Math.round(mins/60);  if (hrs < 24) return hrs + (hrs===1?' hr ago':' hrs ago');
+      var days = Math.round(hrs/24);  if (days < 30) return days + (days===1?' day ago':' days ago');
+      return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+    }
+    function absTime(s){
+      var d = parseTs(s); if (!d) return '';
+      return d.toLocaleString();
+    }
+
+    function editorUrl(type, slug){
+      var sl = encodeURIComponent(slug || '');
+      if (type === 'character')  return 'edit.html?c=' + sl;
+      if (type === 'collection') return 'edit-collection.html?c=' + sl;
+      if (type === 'script')     return 'edit-script.html?s=' + sl;
+      return '#';
+    }
+    function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }
+
+    function renderContentRow(item, tsField){
+      var ts = item[tsField];
+      return '<li><div class="row-line">' +
+        '<span class="tag tag-type">' + esc(typeLabel(item.type)) + '</span>' +
+        '<a href="' + editorUrl(item.type, item.slug) + '">' + esc(item.name || item.slug) + '</a>' +
+        '</div><span class="when" title="' + esc(absTime(ts)) + '">' + esc(relTime(ts)) + '</span></li>';
+    }
+
+    function renderActivityRow(a){
+      var actionTag = '<span class="tag tag-' + esc(a.action) + '">' + esc(a.action) + '</span>';
+      var who = a.username ? esc(a.username) : 'someone';
+      var subject;
+      if (a.entity_type === 'wiki') {
+        subject = 'the wiki';
+      } else if (a.entity_slug) {
+        subject = '<a href="' + editorUrl(a.entity_type, a.entity_slug) + '">' +
+                  esc(a.entity_name || a.entity_slug) + '</a>' +
+                  ' <span class="tag tag-type">' + esc(typeLabel(a.entity_type)) + '</span>';
+      } else {
+        subject = esc(a.entity_name || a.entity_type || '');
+      }
+      return '<li><div class="row-line">' + actionTag +
+        '<span>' + who + ' &middot; ' + subject + '</span></div>' +
+        '<span class="when" title="' + esc(absTime(a.ts)) + '">' + esc(relTime(a.ts)) + '</span></li>';
+    }
+
+    function fillList(elId, rows, renderer, emptyMsg){
+      var el = $(elId);
+      if (!rows || !rows.length) { el.innerHTML = '<div class="empty">' + esc(emptyMsg) + '</div>'; return; }
+      el.innerHTML = rows.map(renderer).join('');
+    }
+
+    function renderTeams(rows){
+      var box = $('team-bars');
+      if (!rows || !rows.length) { box.innerHTML = ''; return; }
+      var max = rows.reduce(function(m, r){ return Math.max(m, r.n); }, 0) || 1;
+      box.innerHTML = rows.map(function(r){
+        var key = (r.team || '').toLowerCase();
+        var color = TEAM_COLORS[key] || '#7a6a55';
+        var pct = Math.round((r.n / max) * 100);
+        return '<div class="team-bar">' +
+          '<span class="team-dot" style="background:' + color + '"></span>' +
+          '<span class="team-name">' + esc(r.team || '—') + '</span>' +
+          '<span class="team-track"><span class="team-fill" style="width:' + pct + '%;background:' + color + '"></span></span>' +
+          '<span class="team-n">' + r.n + '</span></div>';
+      }).join('');
+    }
+
+    var currentLocked = false;
+
+    function renderLock(locked){
+      currentLocked = !!locked;
+      var val = $('lock-val'), desc = $('lock-desc'), btn = $('lock-btn');
+      if (locked) {
+        val.textContent = 'Locked'; val.className = 'val locked';
+        desc.textContent = 'All edits and new pages are blocked — including yours.';
+        btn.textContent = 'Unlock the wiki'; btn.className = 'btn btn-unlock'; btn.style.display = '';
+      } else {
+        val.textContent = 'Open'; val.className = 'val open';
+        desc.textContent = 'Editing and page creation are working normally.';
+        btn.textContent = 'Lock the wiki'; btn.className = 'btn btn-lock'; btn.style.display = '';
+      }
+    }
+
+    function wireLockButton(){
+      $('lock-btn').addEventListener('click', function(){
+        var goingToLock = !currentLocked;
+        var msg = goingToLock
+          ? 'Lock the wiki? This blocks ALL edits and new pages — including your own — until you unlock it.'
+          : 'Unlock the wiki and allow editing again?';
+        if (!confirm(msg)) return;
+        var btn = this, toast = $('lock-toast');
+        toast.className = 'toast'; toast.textContent = '';
+        btn.disabled = true; btn.textContent = goingToLock ? 'Locking…' : 'Unlocking…';
+        fetch('/api/lock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ locked: goingToLock })
+        })
+        .then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          btn.disabled = false;
+          if (res.status === 200 && res.body.ok) {
+            renderLock(res.body.locked);
+            toast.className = 'toast ok';
+            toast.textContent = res.body.locked ? 'Wiki locked.' : 'Wiki unlocked.';
+          } else {
+            renderLock(currentLocked);
+            toast.className = 'toast err';
+            toast.textContent = (res.body && res.body.error) || 'Could not change lock state.';
+          }
+        })
+        .catch(function(){
+          btn.disabled = false;
+          renderLock(currentLocked);
+          toast.className = 'toast err';
+          toast.textContent = 'Network error.';
+        });
+      });
+    }
+
+    function loadDashboard(){
+      fetch('/api/admin/dashboard', { credentials: 'same-origin' })
+        .then(function(r){
+          if (r.status === 403) { showGate(); throw new Error('forbidden'); }
+          return r.json();
+        })
+        .then(function(d){
+          $('loading').style.display = 'none';
+          $('dash').style.display = 'block';
+
+          var c = d.counts || {};
+          $('c-characters').textContent  = c.characters  != null ? c.characters  : 0;
+          $('c-collections').textContent = c.collections != null ? c.collections : 0;
+          $('c-scripts').textContent     = c.scripts     != null ? c.scripts     : 0;
+          $('c-users').textContent       = c.users       != null ? c.users       : 0;
+
+          renderTeams(d.charactersByTeam);
+          renderLock(d.locked);
+
+          $('act-count').textContent = (d.recentActivity || []).length || '';
+          fillList('feed-activity', d.recentActivity, renderActivityRow, 'No activity recorded yet.');
+          fillList('feed-edits', d.recentEdits, function(it){ return renderContentRow(it, 'updated_at'); }, 'Nothing yet.');
+          fillList('feed-creations', d.recentCreations, function(it){ return renderContentRow(it, 'created_at'); }, 'Nothing yet.');
+
+          $('signup-count').textContent = (d.recentSignups || []).length || '';
+          fillList('feed-signups', d.recentSignups, function(u){
+            return '<li><div class="row-line"><span class="tag tag-type">' +
+              (u.is_admin ? 'Admin' : 'User') + '</span><strong>' + esc(u.username) + '</strong>' +
+              (u.email ? ' <span style="opacity:.7">' + esc(u.email) + '</span>' : '') +
+              '</div><span class="when" title="' + esc(absTime(u.created_at)) + '">joined ' + esc(relTime(u.created_at)) + '</span></li>';
+          }, 'No accounts yet.');
+        })
+        .catch(function(e){
+          if (e && e.message === 'forbidden') return;
+          $('loading').textContent = 'Could not load the dashboard. Try refreshing.';
+        });
+    }
+
+    function showGate(){
+      $('loading').style.display = 'none';
+      $('dash').style.display = 'none';
+      $('gate').style.display = 'block';
+    }
+
+    // Auth check, then load.
+    wireLockButton();
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d.loggedIn && d.isAdmin) loadDashboard(); else showGate(); })
+      .catch(function(){ showGate(); });
+  </script>
+</body>
+</html>
