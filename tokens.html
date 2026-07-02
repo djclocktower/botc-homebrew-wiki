@@ -5,97 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Token Tool — BOTC HomeBrew Wiki</title>
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <style>
-  /* ── Token Tool — scoped UI, reuses site theme variables ── */
-  .tt-wrap { max-width: 980px; }
-  .tt-lead { color: var(--ink); opacity: .85; margin: 2px 0 18px; max-width: 60ch; }
-  .tt-status {
-    font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .03em;
-    background: rgba(91,31,33,.08); border: 1px solid var(--rule); border-radius: 8px;
-    padding: 8px 12px; margin: 0 0 18px; color: var(--maroon); display: flex; align-items: center; gap: 10px;
-  }
-  .tt-status .dot { width: 9px; height: 9px; border-radius: 50%; background: #c9a227; flex: none; box-shadow: 0 0 0 3px rgba(201,162,39,.18); }
-  .tt-status.ready .dot { background: var(--good); box-shadow: 0 0 0 3px rgba(44,123,208,.18); }
-  .tt-status.busy  .dot { background: #c9a227; animation: tt-pulse 1s infinite; }
-  .tt-status.err   .dot { background: var(--evil); box-shadow: 0 0 0 3px rgba(154,13,18,.18); }
-  @keyframes tt-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+/* ─── Sidebar rows (mirrors Script Builder) ───────────────── */
+.sb-add-row {
+  display: flex; flex-wrap: wrap; align-items: stretch;
+  border-bottom: 1px solid rgba(180,160,120,.25);
+}
+.sb-add-row:last-child { border-bottom: none; }
+.sb-add-item {
+  flex: 1; display: flex; align-items: center;
+  gap: 10px; padding: 7px 8px 7px 10px;
+  background: none; border: none; cursor: pointer;
+  text-align: left; color: var(--ink); min-width: 0;
+  transition: background .14s;
+}
+.sb-add-item:hover { background: rgba(91,31,33,.06); }
+.sb-add-item.on { background: rgba(91,31,33,.10); box-shadow: inset 3px 0 0 var(--maroon); }
+.sb-add-item.on .sb-add-name { color: var(--maroon); font-weight: 600; }
+.sb-add-chevron {
+  flex-shrink: 0; width: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; border-left: 1px solid rgba(180,160,120,.25);
+  cursor: pointer; color: rgba(91,31,33,.5);
+  font-size: .85rem; line-height: 1;
+  transition: background .14s, color .14s, transform .18s;
+}
+.sb-add-chevron:hover { background: rgba(91,31,33,.07); color: var(--maroon); }
+.sb-add-chevron.open { color: var(--maroon); transform: rotate(180deg); }
+.sb-add-ability {
+  flex-basis: 100%; width: 100%;
+  padding: 8px 12px 10px 44px;
+  font-size: .84rem; line-height: 1.45;
+  color: var(--ink);
+  background: rgba(243,239,229,.55);
+  border-top: 1px solid rgba(180,160,120,.2);
+  font-style: italic;
+}
 
-  .tt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
-  @media (max-width: 760px) { .tt-grid { grid-template-columns: 1fr; } }
+/* ─── Token Tool ──────────────────────────────────────────── */
+/* Loading bar — one word, no narration */
+.tt-load {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 18px;
+  color: rgba(236,225,200,.85);
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  letter-spacing: .08em; font-size: .95rem;
+}
+.tt-load.done { display: none; }
+.tt-load-bar { position: relative; flex: 0 0 170px; height: 4px; background: rgba(240,232,213,.18); overflow: hidden; }
+.tt-load-bar::after {
+  content: ''; position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
+  background: var(--parch); animation: tt-slide 1.1s linear infinite;
+}
+@keyframes tt-slide { to { left: 100%; } }
 
-  .tt-card {
-    background: var(--card); border: 1px solid var(--card-edge); border-radius: 12px;
-    padding: 16px 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
-  }
-  .tt-card h2 {
-    font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--maroon); font-size: 1.05rem; margin: 0 0 12px; font-weight: 700;
-  }
+/* Message box (result / errors) */
+.tt-msg { display: none; margin: 0 0 18px; padding: 10px 13px; font-size: .9rem; border-radius: 0; }
+.tt-msg.ok  { display: block; background: #dff0e2; color: #1c5429; border: 1px solid #9bcfa9; }
+.tt-msg.err { display: block; background: #f6dede; color: #9A0D12; border: 1px solid #d99; }
 
-  .tt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
-  .tt-row label { font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
-  .tt-seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
-  .tt-seg button {
-    font-family: 'Oswald', sans-serif; font-size: .82rem; padding: 7px 13px; border: 0;
-    background: transparent; color: var(--ink); cursor: pointer; min-width: 56px;
-  }
-  .tt-seg button[aria-pressed="true"] { background: var(--good); color: #fff; }
-  .tt-range { display: flex; align-items: center; gap: 10px; }
-  .tt-range input[type=range] { width: 150px; accent-color: var(--good); }
-  .tt-range output { font-family: ui-monospace, Menlo, monospace; font-size: .82rem; min-width: 44px; text-align: right; color: var(--maroon); }
-  .tt-check { display: flex; align-items: center; gap: 8px; font-family: 'Oswald', sans-serif; font-size: .88rem; }
-  .tt-check input { width: 17px; height: 17px; accent-color: var(--good); }
+/* Parchment cards — sharp edges, matches the site's panels */
+.tt-card {
+  background-color: var(--card);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame); border-radius: 0;
+  padding: 16px 18px; margin: 0 0 22px;
+}
+.tt-card > h2 {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
+  margin: 0 0 12px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--parch-frame);
+}
 
-  .tt-search { position: relative; margin: 0 0 12px; }
-  .tt-search input {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--rule);
-    border-radius: 8px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .95rem; background: #fff;
-  }
-  .tt-drop {
-    position: absolute; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid var(--rule);
-    border-radius: 8px; max-height: 260px; overflow: auto; z-index: 30; box-shadow: 0 8px 24px rgba(0,0,0,.18);
-  }
-  .tt-drop[hidden] { display: none; }
-  .tt-drop button {
-    display: flex; width: 100%; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-bottom: 1px solid #eee;
-    background: #fff; cursor: pointer; text-align: left;
-  }
-  .tt-drop button:hover { background: #f3eee2; }
-  .tt-drop img { width: 30px; height: 30px; object-fit: contain; flex: none; }
-  .tt-drop .nm { font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
-  .tt-drop .ab { font-size: .78rem; color: #666; }
+/* Option rows — ink text ONLY on parchment, never on the dark background */
+.tt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+.tt-row > label { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.tt-seg { display: inline-flex; border: 2px solid var(--parch-frame); border-radius: 0; overflow: hidden; }
+.tt-seg button {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .85rem;
+  border: none; padding: 6px 14px; min-width: 56px;
+  background: #fffdf8; color: var(--ink); cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.tt-seg button + button { border-left: 2px solid var(--parch-frame); }
+.tt-seg button[aria-pressed="true"] { background: var(--maroon); color: var(--parch); }
+.tt-range { display: inline-flex; align-items: center; gap: 10px; }
+.tt-range input[type=range] { width: 150px; accent-color: var(--maroon); }
+.tt-range output { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .82rem; min-width: 48px; text-align: right; color: var(--maroon); }
+.tt-check { display: inline-flex; align-items: center; gap: 8px; font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
+.tt-check input { width: 17px; height: 17px; accent-color: var(--maroon); }
 
-  .tt-set { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 0; }
-  .tt-chip {
-    display: inline-flex; align-items: center; gap: 6px; background: var(--parch); border: 1px solid var(--parch-edge);
-    border-radius: 999px; padding: 4px 6px 4px 4px; font-family: 'Oswald', sans-serif; font-size: .82rem; color: var(--ink);
-  }
-  .tt-chip img { width: 24px; height: 24px; object-fit: contain; border-radius: 50%; }
-  .tt-chip.evil { border-color: rgba(154,13,18,.45); }
-  .tt-chip .x { cursor: pointer; border: 0; background: transparent; color: var(--evil); font-size: 1rem; line-height: 1; padding: 0 3px; }
-  .tt-setbar { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 0; }
-  .tt-count { font-family: 'Oswald', sans-serif; font-size: .82rem; color: var(--maroon); }
-  .tt-link { background: none; border: 0; color: var(--good); font-family: 'Oswald', sans-serif; font-size: .8rem; cursor: pointer; }
+/* Preview — dark inset panel, light placeholder text */
+.tt-preview {
+  min-height: 220px; display: flex; align-items: center; justify-content: center;
+  background: #1d0a1a; border: 2px solid var(--parch-frame); border-radius: 0;
+  padding: 14px; margin-top: 6px;
+}
+.tt-preview img { max-width: 100%; max-height: 340px; display: block; }
+.tt-preview .ph { color: rgba(236,225,200,.55); font-family: 'Oswald', sans-serif; font-size: .88rem; text-align: center; }
 
-  .tt-preview { text-align: center; min-height: 150px; display: flex; align-items: center; justify-content: center; }
-  .tt-preview img { max-width: 240px; image-rendering: auto; }
-  .tt-preview .ph { color: #999; font-family: 'Oswald', sans-serif; font-size: .85rem; }
+/* Two-column card grid on wide screens */
+.tt-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; align-items: start; }
+@media (max-width: 1100px) { .tt-grid { grid-template-columns: 1fr; } }
 
-  .tt-actions { display: flex; gap: 12px; margin: 22px 0 8px; flex-wrap: wrap; }
-  .tt-btn {
-    font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em; font-weight: 700;
-    padding: 12px 22px; border-radius: 10px; border: 0; cursor: pointer; font-size: 1rem;
-  }
-  .tt-btn.primary { background: var(--good); color: #fff; }
-  .tt-btn.primary:disabled { background: #9bb6cf; cursor: not-allowed; }
-  .tt-out { margin: 18px 0 0; }
-  .tt-out a {
-    display: inline-flex; align-items: center; gap: 8px; background: var(--maroon); color: #fff; text-decoration: none;
-    font-family: 'Oswald', sans-serif; font-size: .9rem; padding: 10px 16px; border-radius: 9px; margin: 0 10px 10px 0;
-  }
-  .tt-thumbs { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0 0; }
-  .tt-thumbs img { width: 160px; border: 1px solid var(--card-edge); border-radius: 6px; background: #fff; }
+/* Generate + output */
+.tt-actions { margin: 4px 0 18px; }
+.tt-btn-generate {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-size: 1.05rem; cursor: pointer; border: none; border-radius: 0;
+  padding: 13px 30px; color: #f3ead4;
+  background: linear-gradient(180deg,#2f6fb8,#1d4a80);
+  transition: filter .15s;
+}
+.tt-btn-generate:hover { filter: brightness(1.1); }
+.tt-btn-generate:disabled { filter: grayscale(.5); opacity: .55; cursor: not-allowed; }
+.tt-out { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.tt-out a {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  background: var(--maroon); color: #f3ead4; text-decoration: none;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem;
+  padding: 9px 16px; border-radius: 0; transition: filter .15s;
+}
+.tt-out a:hover { filter: brightness(1.15); }
+.tt-thumbs { display: flex; flex-wrap: wrap; gap: 12px; }
+.tt-thumbs img { width: 190px; max-width: 44vw; border: 2px solid var(--parch-frame); border-radius: 0; background: #fff; }
+
+/* Clear button in the set toolbar */
+.tt-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 </style>
 </head>
 <body>
@@ -129,76 +168,96 @@
     <a href="tags.html">Tags</a>
     <a href="creators.html">Creators</a>
     <a href="script.html">Script Builder</a>
-  <a href="tokens.html">Token Tool</a>
+    <a href="tokens.html">Token Tool</a>
   </nav>
 
-  <main class="wrap tt-wrap" id="content">
-    <h1 class="gen-title">Token Tool <span style="font-size:.55em;opacity:.6;letter-spacing:.04em">(beta)</span></h1>
-    <p class="tt-lead">Build a set of wiki characters and render print-ready token sheets — the same renderer used for the official homebrew sets, running right in your browser.</p>
+  <!-- Mobile toggle for the add-sidebar -->
+  <button class="sb-mobile-toggle" id="sb-mobile-toggle" type="button">+ Add Characters</button>
 
-    <div class="tt-status" id="status"><span class="dot"></span><span id="status-text">Starting up…</span></div>
+  <div class="sb-layout">
 
-    <div class="tt-grid">
-      <!-- LEFT: character set -->
-      <section class="tt-card">
-        <h2>Characters</h2>
-        <div class="tt-search">
-          <input type="text" id="picker" placeholder="Add a character by name…" autocomplete="off" aria-label="Add character">
-          <div class="tt-drop" id="picker-drop" hidden></div>
+    <!-- ── Left sidebar: all wiki characters to add ── -->
+    <aside class="sb-add-sidebar" id="sb-add-sidebar">
+      <div class="sb-add-inner">
+        <div class="sb-add-head">
+          <h2 class="sb-add-title">All Characters</h2>
+          <button class="sb-close-mobile" id="sb-close-mobile" type="button" aria-label="Close">✕</button>
         </div>
-        <div class="tt-set" id="set"></div>
-        <div class="tt-setbar">
-          <span class="tt-count" id="set-count">0 characters</span>
-          <button class="tt-link" id="clear-set">Clear all</button>
+        <input class="sb-filter" id="sb-filter" type="search" placeholder="Filter…" autocomplete="off">
+        <div id="sb-add-list" class="sb-add-list">
+          <p class="sb-loading">Loading…</p>
         </div>
-      </section>
+      </div>
+    </aside>
 
-      <!-- RIGHT: options -->
-      <section class="tt-card">
-        <h2>Options</h2>
-        <div class="tt-row"><label>Paper</label>
-          <div class="tt-seg" id="opt-paper" role="group" aria-label="Paper size">
-            <button data-v="A4" aria-pressed="true">A4</button><button data-v="Letter" aria-pressed="false">Letter</button>
-          </div></div>
-        <div class="tt-row"><label>Format</label>
-          <div class="tt-seg" id="opt-format" role="group" aria-label="Format">
-            <button data-v="png" aria-pressed="true">PNG</button><button data-v="pdf" aria-pressed="false">PDF</button>
-          </div></div>
-        <div class="tt-row"><label>Layout</label>
-          <div class="tt-seg" id="opt-layout" role="group" aria-label="Layout">
-            <button data-v="grid" aria-pressed="true">Grid</button><button data-v="alternating" aria-pressed="false">Offset</button>
-          </div></div>
-        <div class="tt-row"><label>Character margin</label>
-          <div class="tt-range"><input type="range" id="opt-cmargin" min="0" max="25" step="1" value="5"><output id="out-cmargin">5%</output></div></div>
-        <div class="tt-row"><label>Reminder margin</label>
-          <div class="tt-range"><input type="range" id="opt-rmargin" min="0" max="25" step="1" value="10"><output id="out-rmargin">10%</output></div></div>
-        <div class="tt-row"><label>Token padding</label>
-          <div class="tt-range"><input type="range" id="opt-pad" min="0" max="8" step="0.5" value="2"><output id="out-pad">2&nbsp;mm</output></div></div>
-        <div class="tt-row"><label>Resolution</label>
-          <div class="tt-seg" id="opt-dpi" role="group" aria-label="DPI">
-            <button data-v="400" aria-pressed="true">400</button><button data-v="300" aria-pressed="false">300</button></div></div>
-        <div class="tt-row" style="justify-content:flex-start;gap:18px;flex-wrap:wrap">
-          <label class="tt-check"><input type="checkbox" id="opt-char" checked> Character sheet</label>
-          <label class="tt-check"><input type="checkbox" id="opt-rem" checked> Reminder sheet</label>
-        </div>
-        <div class="tt-row" style="justify-content:flex-start">
-          <label class="tt-check"><input type="checkbox" id="opt-global" checked> Include global reminders</label>
-        </div>
-        <h2 style="margin-top:18px">Preview</h2>
-        <div class="tt-preview" id="preview"><span class="ph">Add a character to preview a token</span></div>
-      </section>
-    </div>
+    <!-- ── Main ── -->
+    <main class="sb-main" id="content">
+      <div class="home-hero" style="padding-bottom:14px">
+        <h1>Token Tool</h1>
+        <p>Build a set of characters and render print-ready token sheets — the same renderer used for the official homebrew sets, running right in your browser.</p>
+      </div>
 
-    <div class="tt-actions">
-      <button class="tt-btn primary" id="generate" disabled>Generate sheets</button>
-    </div>
-    <div class="tt-out" id="output"></div>
-    <div class="tt-thumbs" id="thumbs"></div>
-  </main>
+      <div class="tt-load" id="tt-load"><span class="tt-load-bar"></span><span id="tt-load-text">Loading…</span></div>
+      <div class="tt-msg" id="tt-msg"></div>
 
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+      <div class="tt-toolbar">
+        <span class="sb-count" id="tt-count">0 characters</span>
+        <button type="button" class="sb-btn sb-btn-clear" id="tt-clear">✕ Clear All</button>
+      </div>
 
-  <script>window.TT_PYODIDE_INDEX = 'assets/pyodide/';</script>
+      <div id="tt-set">
+        <p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>
+      </div>
+
+      <div class="tt-grid">
+        <section class="tt-card">
+          <h2>Options</h2>
+          <div class="tt-row"><label>Paper</label>
+            <div class="tt-seg" id="opt-paper" role="group" aria-label="Paper size">
+              <button data-v="A4" aria-pressed="true">A4</button><button data-v="Letter" aria-pressed="false">Letter</button>
+            </div></div>
+          <div class="tt-row"><label>Format</label>
+            <div class="tt-seg" id="opt-format" role="group" aria-label="Format">
+              <button data-v="png" aria-pressed="true">PNG</button><button data-v="pdf" aria-pressed="false">PDF</button>
+            </div></div>
+          <div class="tt-row"><label>Layout</label>
+            <div class="tt-seg" id="opt-layout" role="group" aria-label="Layout">
+              <button data-v="grid" aria-pressed="true">Grid</button><button data-v="alternating" aria-pressed="false">Offset</button>
+            </div></div>
+          <div class="tt-row"><label>Character margin</label>
+            <div class="tt-range"><input type="range" id="opt-cmargin" min="0" max="25" step="1" value="5"><output id="out-cmargin">5%</output></div></div>
+          <div class="tt-row"><label>Reminder margin</label>
+            <div class="tt-range"><input type="range" id="opt-rmargin" min="0" max="25" step="1" value="10"><output id="out-rmargin">10%</output></div></div>
+          <div class="tt-row"><label>Token padding</label>
+            <div class="tt-range"><input type="range" id="opt-pad" min="0" max="8" step="0.5" value="2"><output id="out-pad">2&nbsp;mm</output></div></div>
+          <div class="tt-row"><label>Resolution</label>
+            <div class="tt-seg" id="opt-dpi" role="group" aria-label="DPI">
+              <button data-v="400" aria-pressed="true">400</button><button data-v="300" aria-pressed="false">300</button></div></div>
+          <div class="tt-row" style="justify-content:flex-start;gap:18px;flex-wrap:wrap">
+            <label class="tt-check"><input type="checkbox" id="opt-char" checked> Character sheet</label>
+            <label class="tt-check"><input type="checkbox" id="opt-rem" checked> Reminder sheet</label>
+          </div>
+          <div class="tt-row" style="justify-content:flex-start">
+            <label class="tt-check"><input type="checkbox" id="opt-global" checked> Include global reminders</label>
+          </div>
+        </section>
+
+        <section class="tt-card">
+          <h2>Preview</h2>
+          <div class="tt-preview" id="preview"><span class="ph">Add a character to preview a token</span></div>
+        </section>
+      </div>
+
+      <div class="tt-actions">
+        <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
+      </div>
+      <div class="tt-out" id="output"></div>
+      <div class="tt-thumbs" id="thumbs"></div>
+
+      <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+    </main>
+  </div>
+
   <script src="assets/token-tool.js"></script>
   <script src="assets/site.js"></script>
 </body>

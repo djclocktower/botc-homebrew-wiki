@@ -1,24 +1,25 @@
 {
-"files": [
-"botc_app/botc.app/assets/firstnight-741QXSRJ.png",
-"botc_app/botc.app/assets/leaf-top3-C9BTCwAz.png",
-"botc_app/botc.app/assets/leaf-top5-BEXNsf9Y.png",
-"botc_app/botc.app/assets/leaf-top6-rjk2XTrD.png",
-"botc_app/botc.app/assets/othernight-D0NIKU2A.png",
-"deco.py",
-"fonts/OpenSans-Regular.ttf",
-"fonts/OpenSans-SemiBold.ttf",
-"fonts/dumbledor2.ttf",
-"fonts/trade-gothic-lt-std.otf",
-"frame_bare.png",
-"gen.py",
-"leaf_left.png",
-"leaf_new/1leaf.png",
-"leaf_new/2leaf.png",
-"leaf_new/4leaf.png",
-"raw_Layer_2.png",
-"reminder.py",
-"reminder_blank.png",
-"web_render.py"
-]
+ "files": [
+  "botc_app/botc.app/assets/firstnight-741QXSRJ.png",
+  "botc_app/botc.app/assets/leaf-top3-C9BTCwAz.png",
+  "botc_app/botc.app/assets/leaf-top5-BEXNsf9Y.png",
+  "botc_app/botc.app/assets/leaf-top6-rjk2XTrD.png",
+  "botc_app/botc.app/assets/othernight-D0NIKU2A.png",
+  "deco.py",
+  "fonts/OpenSans-Regular.ttf",
+  "fonts/OpenSans-SemiBold.ttf",
+  "fonts/dumbledor2.ttf",
+  "fonts/trade-gothic-lt-std.otf",
+  "frame_bare.png",
+  "gen.py",
+  "leaf_left.png",
+  "leaf_new/1leaf.png",
+  "leaf_new/2leaf.png",
+  "leaf_new/4leaf.png",
+  "raw_Layer_2.png",
+  "reminder.py",
+  "reminder_blank.png",
+  "web_render.py"
+ ],
+ "v": "2026-07-02a"
 }
