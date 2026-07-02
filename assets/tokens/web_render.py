@@ -130,6 +130,8 @@ def pack_sheets(tokens, kind, opts=None):
 
     pages = []
     i, n = 0, len(toks)
+    full_row_w = cols * disk_t + (cols - 1) * PAD
+    base_start_x = M + (usable_w - full_row_w) / 2.0
     while i < n:
         page = Image.new('RGBA', (PW, PH), o['bg'])
         for r in range(rows_per_page):
@@ -140,9 +142,9 @@ def pack_sheets(tokens, kind, opts=None):
             if alt and (r % 2 == 1):
                 row_cols = cols - 1            # offset row holds one fewer, nestled in the gaps
                 x_off = pitch_x / 2.0
-            # centre this row horizontally
-            row_w = row_cols * disk_t + (row_cols - 1) * PAD
-            start_x = M + (usable_w - row_w) / 2.0 + x_off
+            # centre against the FULL row width (not this row's own, narrower width) so an
+            # offset row's tokens land in the gaps of the row above instead of stacking on it
+            start_x = base_start_x + x_off
             cy = M + r * pitch_y + disk_t / 2.0
             for c in range(row_cols):
                 if i >= n:
