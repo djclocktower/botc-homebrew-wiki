@@ -25,6 +25,25 @@ You will NOT need to install anything or type any commands. This is all dashboar
 
 ---
 
+## STEP 1B — Create the R2 bucket (for instant image uploads)
+1. Left sidebar → **R2 Object Storage** (enable R2 for the account if prompted —
+   it has a free tier; no public bucket access is needed)
+2. Click **Create bucket**
+3. Name it exactly: **botc-wiki-art**
+4. Click **Create bucket**
+
+The Worker binds this bucket as `ART` via `wrangler.toml` (`[[r2_buckets]]`).
+If the Worker was created through the dashboard instead, add the binding
+manually: **Worker → Settings → Bindings → R2 bucket → Add**, variable name
+`ART`, bucket `botc-wiki-art`.
+
+✅ Art, collection headers, and script headers now upload straight to R2 via
+`POST /api/upload` — no git commit, no rebuild. Character pages are
+server-side rendered from D1 by the Worker (`GET /c/{slug}.html`), so new and
+edited characters are live instantly.
+
+---
+
 ## STEP 2 — Create the Worker from your GitHub repo
 1. Left sidebar → **Workers & Pages**
 2. Click **Create application** (or **Create**)

@@ -54,6 +54,18 @@
     infocard.appendChild(btn);
   }
 
+  if (window.SSR) {
+    var eb0 = document.getElementById('edit-btn');
+    if (eb0) { eb0.href = (window.LINK_ROOT || '') + 'edit.html?c=' + SLUG; eb0.style.display = ''; }
+    mountScriptButton(SLUG);
+    mountTokenButton(SLUG);
+    if (location.hash) {
+      var t0 = document.getElementById(location.hash.slice(1));
+      if (t0) t0.scrollIntoView();
+    }
+    return;
+  }
+
   fetch('../characters.json?_=' + Date.now())
     .then(function (r) { return r.json(); })
     .then(function (list) {

@@ -87,7 +87,9 @@
   }
 
   /* ── Full character page body ── */
-  function renderCharacter(d, artSrc) {
+  function renderCharacter(d, artSrc, linkRoot) {
+    var root = (linkRoot != null) ? linkRoot
+      : ((typeof window !== 'undefined' && window.LINK_ROOT) || '');
     var team = d.team || 'townsfolk';
     var label = TEAM_LABEL[team] || team;
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
@@ -126,13 +128,13 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + R() + 'team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
-      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + R() + 'author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
+    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
+      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
         var display = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); });
-        return '<a class="tag-link" href="' + R() + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
+        return '<a class="tag-link" href="' + root + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
@@ -153,7 +155,7 @@
           var nm = jinxDisplayName(j);
           var rawId = j.id || slugId(j.name || '');
           var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-          var iconSrc = (window.LINK_ROOT || '') + 'assets/icons/' + iconId + '.png';
+          var iconSrc = root + 'assets/icons/' + iconId + '.png';
           return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
             (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
             ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
@@ -222,12 +224,21 @@
     });
   }
 
-  window.renderCharacter = renderCharacter;
-  window.renderJsonBox = renderJsonBox;
-  window.buildSchema = buildSchema;
-  window.schemaJSON = schemaJSON;
-  window.slugId = slugId;
-  window.TEAM_LABEL = TEAM_LABEL;
+  if (typeof window !== 'undefined') {
+    window.renderCharacter = renderCharacter;
+    window.renderJsonBox = renderJsonBox;
+    window.buildSchema = buildSchema;
+    window.schemaJSON = schemaJSON;
+    window.slugId = slugId;
+    window.TEAM_LABEL = TEAM_LABEL;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
+      buildSchema: buildSchema, schemaJSON: schemaJSON,
+      slugId: slugId, TEAM_LABEL: TEAM_LABEL
+    };
+  }
 })();
 
 // nudge redeploy

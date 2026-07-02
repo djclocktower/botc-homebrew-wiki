@@ -17,7 +17,11 @@ compatibility_date = "2026-06-15"
 [assets]
 directory = "."
 binding = "ASSETS"
-run_worker_first = ["/characters.json", "/collections.json", "/scripts.json", "/api/*"]
+run_worker_first = [
+  "/characters.json", "/collections.json", "/scripts.json", "/api/*",
+  "/c/*",
+  "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*"
+]
 
 # ---- D1 database (the source of truth) ----
 [[d1_databases]]
@@ -31,3 +35,8 @@ database_id = "1f49bdfc-cb4a-4a24-acbf-361a16612816"
 binding = "SESSIONS"
 # id is filled in during deploy
 id = "1216080cee4546068ebe742c95315e0b"
+
+# ---- R2 bucket (art & header image uploads) ----
+[[r2_buckets]]
+binding = "ART"
+bucket_name = "botc-wiki-art"

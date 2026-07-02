@@ -22,7 +22,16 @@
  * ----------------------------------------------------------------
  */
 
+// esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
+import Render from '../assets/render.js';
+
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+
+const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/'];
+const EXT_CONTENT_TYPE = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
+};
 
 // ---- password hashing (PBKDF2, matches the seeded admin hash) ----
 async function verifyPassword(password, stored) {
@@ -121,6 +130,94 @@ function jsonResponse(obj, extraHeaders = {}) {
   });
 }
 
+function attr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function renderCharacterPage(d, origin) {
+  const team = d.team || 'townsfolk';
+  const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
+  const name = d.name || 'Character';
+  const desc = (d.ability || d.lede || '').trim();
+  const pageUrl = origin + '/c/' + d.slug + '.html';
+  const img = d.image || (origin + '/assets/' + (d.art || ''));
+  const body = Render.renderCharacter(d, '../assets/' + (d.art || ''), '../');
+  const crumb =
+    '<a href="../index.html">Home</a><span class="sep">›</span>' +
+    '<a href="../all-characters.html">Characters</a><span class="sep">·</span>' +
+    '<a href="../script.html">Script Builder</a><span class="sep">·</span>' +
+    '<a href="../tokens.html">Token Tool</a><span class="sep">›</span>' +
+    '<a href="../team.html?t=' + attr(team) + '">' + attr(label) + '</a>' +
+    '<span class="sep">›</span><span class="here">' + attr(name) + '</span>';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${attr(name)} — BOTC HomeBrew Wiki</title>
+<meta name="description" content="${attr(desc)}">
+<link rel="canonical" href="${attr(pageUrl)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="${attr(name)}">
+<meta property="og:description" content="${attr(desc)}">
+<meta property="og:image" content="${attr(img)}">
+<meta property="og:url" content="${attr(pageUrl)}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="${attr(name)}">
+<meta name="twitter:description" content="${attr(desc)}">
+<meta name="twitter:image" content="${attr(img)}">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="../index.html">
+        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
+      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${crumb}</nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="../index.html">Home</a>
+  <a href="../all-characters.html">All Characters</a>
+  <a href="../tags.html">Tags</a>
+  <a href="../creators.html">Creators</a>
+  <a href="../script.html">Script Builder</a>
+  <a href="../create.html">Create a Character</a>
+</nav>
+
+  <main class="wrap" id="content">${body}</main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};</script>
+  <script src="../assets/render.js"></script>
+  <script src="../assets/charpage.js"></script>
+  <script src="../assets/site.js"></script>
+</body>
+</html>`;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -136,6 +233,45 @@ export default {
     }
     if (method === 'GET' && path === '/scripts.json') {
       return jsonResponse(await buildScriptsJSON(env));
+    }
+
+    // ---------- CHARACTER PAGES (server-side rendered from D1) ----------
+    if (method === 'GET' && path.startsWith('/c/')) {
+      let slug = decodeURIComponent(path.slice(3));
+      if (slug.endsWith('.html')) slug = slug.slice(0, -5);
+      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
+        const row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
+          .bind(slug).first();
+        if (row && row.data) {
+          const d = JSON.parse(row.data);
+          if (!d.slug) d.slug = slug;
+          return new Response(renderCharacterPage(d, url.origin), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+          });
+        }
+      }
+      // Unknown slug -> fall back to a committed static page (if any), else 404.
+      return env.ASSETS.fetch(request);
+    }
+
+    // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
+    if (method === 'GET' && path.startsWith('/assets/')) {
+      const key = path.slice('/assets/'.length);
+      if (env.ART && R2_PREFIXES.some(p => key.startsWith(p))) {
+        const obj = await env.ART.get(key);
+        if (obj) {
+          const headers = new Headers();
+          obj.writeHttpMetadata(headers);
+          const ext = key.split('.').pop().toLowerCase();
+          if (!headers.has('Content-Type') && EXT_CONTENT_TYPE[ext]) {
+            headers.set('Content-Type', EXT_CONTENT_TYPE[ext]);
+          }
+          headers.set('Cache-Control', 'no-cache, must-revalidate');
+          if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
+          return new Response(obj.body, { headers });
+        }
+      }
+      return env.ASSETS.fetch(request); // not in R2 -> committed static file
     }
 
     // ---------- AUTH ----------
@@ -218,6 +354,35 @@ export default {
       const isContentWrite = (path === '/api/character' || path === '/api/collection' || path === '/api/script');
       if (isContentWrite && await isWikiLocked(env)) {
         return jsonResponse({ error: 'The wiki is locked. Editing and page creation are temporarily disabled.' }, { status: 423 });
+      }
+
+      if (path === '/api/upload') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        const ct = request.headers.get('Content-Type') || '';
+        let key, bytes, contentType;
+        if (ct.includes('application/json')) {
+          const b = await request.json().catch(() => ({}));
+          key = b.key;
+          if (!key || !b.data) return jsonResponse({ error: 'Missing key or data' }, { status: 400 });
+          let data = String(b.data);
+          if (data.startsWith('data:')) {
+            contentType = data.slice(5, data.indexOf(';'));
+            data = data.slice(data.indexOf(',') + 1);
+          }
+          bytes = base64ToBytes(data);
+        } else {
+          key = url.searchParams.get('key');
+          bytes = new Uint8Array(await request.arrayBuffer());
+          contentType = ct || undefined;
+        }
+        key = String(key || '').replace(/^\/+/, '').replace(/^assets\//, '');
+        if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
+          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+        }
+        const ext = key.split('.').pop().toLowerCase();
+        if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
+        await env.ART.put(key, bytes, { httpMetadata: { contentType } });
+        return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
       if (path === '/api/character') {

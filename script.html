@@ -550,13 +550,10 @@
     // ════════════════════════════════════════════════════════════
     //  Script details form + Publish to Wiki
     // ════════════════════════════════════════════════════════════
-    var WORKER_URL = 'https://botc-wiki-proxy.djclocktower.workers.dev/gh';
     var SITE_ROOT = new URL('.', location.href).href;
     function $(id){ return document.getElementById(id); }
-    function workerGet(path){ return fetch(WORKER_URL + '?path=' + encodeURIComponent(path)).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error + ' (path: ' + path + ')'); return j; }); }
-    function workerPut(path, b64, msg, sha){ return fetch(WORKER_URL, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path:path, content:b64, message:msg, sha: sha||undefined }) }).then(function(r){return r.json();}).then(function(j){ if (j && j.error) throw new Error(j.error + ' (path: ' + path + ')'); return j; }); }
-    function utf8b64(s){ return btoa(unescape(encodeURIComponent(s))); }
-    function b64utf8(b){ return decodeURIComponent(escape(atob(String(b).replace(/\n/g,'')))); }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in as admin?');return j;}); }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
 
@@ -627,32 +624,23 @@
       pubStatus('work', 'Publishing…');
 
       var chain = Promise.resolve();
-      // 1. upload header if a new one was chosen
+      // 1. upload header (to R2) if a new one was chosen
       if (headerDataURL){
-        var hpath = 'assets/scripts/' + slug + '.png';
-        var hb64 = headerDataURL.split(',')[1];
-        chain = chain.then(function(){ pubStatus('work','Uploading header…'); return workerGet(hpath); })
-          .then(function(ex){ return workerPut(hpath, hb64, 'Add script header: ' + name, ex && ex.sha); });
+        chain = chain.then(function(){ pubStatus('work','Uploading header…'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
       }
-      // 2. upsert scripts.json
+      // 2. save the script to D1
       chain.then(function(){
-        pubStatus('work', 'Updating the scripts list…');
-        return workerGet('scripts.json');
-      }).then(function(file){
-        var list = [], jsha = null;
-        if (file){ jsha = file.sha; try { list = JSON.parse(b64utf8(file.content)); } catch(e){ list = []; } }
+        pubStatus('work', 'Saving script…');
         var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
         var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice() };
-        var i = list.findIndex(function(s){ return s.slug === slug; });
-        if (i >= 0) list[i] = entry; else list.push(entry);
-        return workerPut('scripts.json', utf8b64(JSON.stringify(list, null, 2)), (EDIT_SLUG?'Edit':'Add') + ' script: ' + name, jsha);
+        return apiSaveScript(entry);
       }).then(function(){
         // remember the now-published header so the logo stays correct
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
         EDIT_SLUG = slug;
         var m = getMeta(); m.header = existingHeader || m.header; setMeta(m);
         var url = SITE_ROOT + 'script-view.html?s=' + encodeURIComponent(slug);
-        pubStatus('ok', '✓ Published! Live in ~1 min at <a href="' + url + '" target="_blank">your script page</a>.');
+        pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
         $('sb-publish').disabled = false;
       }).catch(function(err){
         pubStatus('err', '✗ ' + err.message);
@@ -662,9 +650,8 @@
 
     // Edit mode: ?s={slug} loads an existing published script into the builder
     function loadForEdit(slug){
-      return workerGet('scripts.json').then(function(file){
-        if (!file) return;
-        var list; try { list = JSON.parse(b64utf8(file.content)); } catch(e){ return; }
+      return fetch('scripts.json?_=' + Date.now()).then(function(r){ return r.json(); }).then(function(list){
+        if (!Array.isArray(list)) return;
         var entry = list.filter(function(s){ return s.slug === slug; })[0];
         if (!entry) return;
         EDIT_SLUG = slug;
