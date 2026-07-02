@@ -92,7 +92,7 @@ def build_token_set(data, art_resolver, char_margin=1.05, rem_margin=1.10,
 # ----------------------------------------------------------------------------
 DEFAULTS = dict(
     paper='A4', dpi=400, layout='grid',
-    page_margin_mm=8.0, pad_mm=2.0,
+    page_margin_mm=5.0, pad_mm=2.0,
     char_disk_mm=46.0,   # -> 4 across on A4
     rem_disk_mm=30.0,    # -> 6 across on A4
     bg=(255, 255, 255, 255),

@@ -62,7 +62,7 @@
   var opts = {
     paper: 'A4', format: 'png', layout: 'grid',
     char_margin: 1.05, rem_margin: 1.10, pad_mm: 2,
-    dpi: 400, want_char: true, want_rem: true, include_global: true,
+    dpi: 400, want_char: true, want_rem: true,
     preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.32 : 0.42
   };
 
@@ -255,7 +255,6 @@
 
     $('opt-char').onchange = function () { opts.want_char = this.checked; refreshGenerate(); };
     $('opt-rem').onchange = function () { opts.want_rem = this.checked; refreshGenerate(); };
-    $('opt-global').onchange = function () { opts.include_global = this.checked; };
   }
 
   /* ---- payloads ---- */
