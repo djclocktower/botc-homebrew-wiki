@@ -245,6 +245,10 @@
         <input type="text" id="translatedBy" placeholder="e.g. Eliderad">
       </div>
       <div class="fld">
+        <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
+        <input type="text" id="iconBy" placeholder="e.g. Luo Tianlei">
+      </div>
+      <div class="fld">
         <label for="art">Character art *</label>
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="art preview">
@@ -369,6 +373,7 @@
         appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
         translatedBy: $('translatedBy').value.trim(),
+        iconBy: $('iconBy').value.trim(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value) || 0,
         firstNightReminder: $('fnReminder').value.trim(),
@@ -650,7 +655,7 @@
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
-            translatedBy: d.translatedBy, edition: d.edition,
+            translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,

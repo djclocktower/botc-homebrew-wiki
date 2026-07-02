@@ -249,6 +249,10 @@
         <input type="text" id="translatedBy" placeholder="e.g. Eliderad">
       </div>
       <div class="fld">
+        <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
+        <input type="text" id="iconBy" placeholder="e.g. Luo Tianlei">
+      </div>
+      <div class="fld">
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
@@ -362,7 +366,8 @@
         bluffing: lines('bluffing'), fighting: lines('fighting'),
         quote: $('quote').value.trim(), appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
-        translatedBy: $('translatedBy').value.trim(), edition: $('edition').value.trim(),
+        translatedBy: $('translatedBy').value.trim(), iconBy: $('iconBy').value.trim(),
+        edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value)||0,
         firstNightReminder: $('fnReminder').value.trim(),
         otherNight: Number($('otherNight').value)||0,
@@ -533,6 +538,8 @@
       $('quote').value           = entry.quote || entry.flavor || '';
       $('appears').value         = entry.appearsIn || '';
       if (window.setTagPickerValue) window.setTagPickerValue(entry.tags || ''); else $('tags').value = entry.tags || '';
+      $('translatedBy').value    = entry.translatedBy || '';
+      $('iconBy').value          = entry.iconBy || '';
       $('edition').value         = entry.edition || '';
       $('firstNight').value      = entry.firstNight || 0;
       $('otherNight').value      = entry.otherNight || 0;
@@ -697,7 +704,7 @@
           creator: d.creator, lede: d.lede, summaryBullets: d.summaryBullets,
           howToRun: d.howToRun, callout: d.callout, examples: d.examples,
           tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
-          translatedBy: d.translatedBy,
+          translatedBy: d.translatedBy, iconBy: d.iconBy,
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
           otherNightReminder: d.otherNightReminder, reminders: d.reminders,

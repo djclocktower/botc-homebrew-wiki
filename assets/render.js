@@ -135,6 +135,7 @@
         return '<a class="tag-link" href="' + R() + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
+      (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
