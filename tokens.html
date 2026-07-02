@@ -135,6 +135,96 @@
 
 /* Clear button in the set toolbar */
 .tt-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+
+/* ─── v3: steppers, adjust panels, per-token editor ───────────── */
+.tt-step {
+  display: inline-flex; align-items: center; flex-shrink: 0;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+}
+.tt-step button {
+  width: 28px; height: 28px; border: none; background: none; cursor: pointer;
+  font-size: 1rem; line-height: 1; color: var(--maroon); font-weight: 700;
+  transition: background .12s;
+}
+.tt-step button:hover { background: rgba(91,31,33,.08); }
+.tt-step-val {
+  min-width: 26px; text-align: center; font-family: 'Oswald', sans-serif;
+  font-weight: 600; font-size: .88rem; color: var(--ink);
+  border-left: 1px solid rgba(180,160,120,.4); border-right: 1px solid rgba(180,160,120,.4);
+  padding: 0 4px;
+}
+.tt-edit-btn {
+  flex-shrink: 0; width: 32px; height: 32px; margin-left: 6px;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--maroon); font-size: .95rem; cursor: pointer; transition: background .12s;
+}
+.tt-edit-btn:hover { background: rgba(91,31,33,.08); }
+.tt-edited-dot { color: var(--maroon); font-size: .55rem; vertical-align: middle; }
+
+.tt-adj-head {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+}
+.tt-adj-head h2 { margin-bottom: 0 !important; border-bottom: none !important; flex: 1; }
+.tt-adj-sect {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: .92rem;
+  letter-spacing: .05em; color: var(--maroon); margin: 16px 0 4px;
+  padding-bottom: 3px; border-bottom: 1px solid rgba(180,160,120,.45);
+}
+.tt-adj-sect:first-child { margin-top: 4px; }
+.tt-seg-sm button { padding: 4px 12px; min-width: 48px; font-size: .8rem; }
+.tt-adj-actions { margin-top: 14px; }
+.tt-btn-sm {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--maroon); padding: 6px 14px; cursor: pointer; transition: background .12s;
+}
+.tt-btn-sm:hover { background: rgba(91,31,33,.08); }
+.tt-adj-caret { font-size: 1rem; color: var(--maroon); padding-left: 10px; }
+
+/* editor modal */
+.tt-modal {
+  position: fixed; inset: 0; z-index: 400; display: none;
+  background: rgba(20,6,18,.78);
+  align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 20px 10px 40px;
+}
+.tt-modal.open { display: flex; }
+.tt-modal-card {
+  background-color: var(--card);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame); border-radius: 0;
+  padding: 16px 18px; width: min(680px, 100%);
+}
+.tte-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--parch-frame); }
+.tte-head h2 {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.15rem; letter-spacing: .05em; color: var(--maroon); margin: 0;
+}
+.tte-close {
+  width: 32px; height: 32px; border: 2px solid var(--parch-frame); border-radius: 0;
+  background: #fffdf8; color: var(--maroon); font-size: 1rem; cursor: pointer;
+}
+.tte-close:hover { background: rgba(91,31,33,.08); }
+.tte-preview {
+  min-height: 180px; display: flex; align-items: center; justify-content: center;
+  background: #1d0a1a; border: 2px solid var(--parch-frame); border-radius: 0;
+  padding: 10px; margin-bottom: 12px;
+}
+.tte-preview img { max-width: 100%; max-height: 280px; display: block; }
+.tte-preview .ph { color: rgba(236,225,200,.55); font-family: 'Oswald', sans-serif; font-size: .85rem; }
+.tte-rem-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 2px; border-bottom: 1px solid rgba(180,160,120,.3);
+}
+.tte-rem-row:last-child { border-bottom: none; }
+.tte-rem-text { font-family: 'Oswald', sans-serif; font-size: .88rem; color: var(--ink); }
+.tte-none { font-size: .86rem; color: var(--ink); opacity: .75; font-style: italic; }
+@media (max-width: 640px) {
+  .sb-script-item { flex-wrap: wrap; }
+  .tt-step, .tt-edit-btn { margin-top: 4px; }
+}
 </style>
 </head>
 <body>
@@ -245,6 +335,17 @@
         </section>
       </div>
 
+      <section class="tt-card">
+        <div class="tt-adj-head" id="tt-adj-toggle">
+          <h2>Adjust All Tokens</h2>
+          <span class="tt-adj-caret" id="tt-adj-caret">&#9662;</span>
+        </div>
+        <div id="tt-adj-body" style="display:none">
+          <div id="tt-adj-panel"></div>
+          <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tt-adj-reset">Reset All Adjustments</button></div>
+        </div>
+      </section>
+
       <div class="tt-actions">
         <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
       </div>
@@ -253,6 +354,22 @@
 
       <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>
+  </div>
+
+  <!-- per-token editor modal -->
+  <div class="tt-modal" id="tt-editor">
+    <div class="tt-modal-card">
+      <div class="tte-head">
+        <h2 id="tte-title">Edit Token</h2>
+        <button type="button" class="tte-close" id="tte-close" aria-label="Close">✕</button>
+      </div>
+      <div class="tte-preview" id="tte-preview"></div>
+      <div class="tt-row" id="tte-count"><label>Copies of this token</label><span class="tt-step"><button type="button" class="tt-step-dn" aria-label="Fewer">&minus;</button><span class="tt-step-val" id="tte-count-val">1</span><button type="button" class="tt-step-up" aria-label="More">+</button></span></div>
+      <div id="tte-adj-panel"></div>
+      <h3 class="tt-adj-sect">Reminder Copies</h3>
+      <div id="tte-rems"></div>
+      <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tte-reset">Reset This Token</button></div>
+    </div>
   </div>
 
   <script src="assets/token-tool.js"></script>

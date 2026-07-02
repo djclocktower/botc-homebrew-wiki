@@ -29,20 +29,39 @@ def slug(n):
     return re.sub(r'[^a-z0-9]+', '-', n.lower()).strip('-')
 
 # ----------------------------------------------------------------------------
-# PER-TOKEN RENDER  (margin parameterized; everything else is the toolkit verbatim)
+# PER-TOKEN RENDER  (margin + adjustments parameterized; toolkit defaults = pixel-identical)
 # ----------------------------------------------------------------------------
-def render_character_token(entry, art_path, char_margin=1.05):
+ADJ_DEFAULTS = dict(
+    icon_dx=0, icon_dy=0, icon_scale=1.0,
+    leaves='auto', leaf_scale=1.0, leaf_dy=0,
+    flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0,
+    name_size=1.0, name_dy=0,
+    abil_size=1.0, abil_dy=0,
+    rem_icon_scale=1.0, rem_text_size=1.0,
+)
+
+def _adj(a):
+    d = dict(ADJ_DEFAULTS)
+    for k, v in (a or {}).items():
+        if k in d and v is not None:
+            d[k] = v
+    return d
+
+def render_character_token(entry, art_path, char_margin=1.05, adj=None):
+    a = _adj(adj)
     fn = float(entry.get('firstNight', 0) or 0) > 0
     on = float(entry.get('otherNight', 0) or 0) > 0
+    nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']))
+    nm = np.array(nl)[:, :, 3] > 40
     frame = deco.frame_for(first_night=fn, other_night=on,
                            setup=bool(entry.get('setup')),
                            reminders=len(entry.get('reminders', []) or []),
-                           name=entry['name'])
+                           name=entry['name'], adj=a, name_mask=nm)
     content = Image.new('RGBA', frame.size, (0, 0, 0, 0))
-    nl = gen.render_name(entry['name'])
-    nm = np.array(nl)[:, :, 3] > 40
-    gen.place_art(content, art_path, nm)
-    content.alpha_composite(gen.render_ability(entry['ability']))
+    gen.place_art(content, art_path, nm,
+                  int(a['icon_dx']), int(a['icon_dy']), float(a['icon_scale']))
+    content.alpha_composite(gen.render_ability(entry['ability'],
+                                               float(a['abil_size']), int(a['abil_dy'])))
     content.alpha_composite(nl)
     nw, nh = round(frame.width * char_margin), round(frame.height * char_margin)
     big = frame.resize((nw, nh), Image.LANCZOS)
@@ -50,11 +69,12 @@ def render_character_token(entry, art_path, char_margin=1.05):
                                   round(gen.DCY * (char_margin - 1))))
     return big
 
-def render_reminder_token(art_path, text, rem_margin=1.10):
+def render_reminder_token(art_path, text, rem_margin=1.10, adj=None):
+    a = _adj(adj)
     base = reminder.BLANK
     content = Image.new('RGBA', base.size, (0, 0, 0, 0))
-    reminder.place_icon(content, art_path)
-    reminder._draw_curved(content, text, reminder.REM_SIZE_MAX)
+    reminder.place_icon(content, art_path, 0, 0, float(a['rem_icon_scale']))
+    reminder._draw_curved(content, text, reminder.REM_SIZE_MAX, float(a['rem_text_size']))
     nw, nh = round(base.width * rem_margin), round(base.height * rem_margin)
     big = base.resize((nw, nh), Image.LANCZOS)
     big.alpha_composite(content, (round(reminder.DCX * (rem_margin - 1)),
@@ -190,13 +210,26 @@ def _build(characters, o):
         art = e.get('_art')
         if not art or not os.path.exists(art):
             continue
-        chars.append(render_character_token(e, art, cm))
-        seq = list(e.get('reminders', []) or [])
-        if inc:
-            seq += list(e.get('remindersGlobal', []) or [])
-        seen = [r for i, r in enumerate(seq) if r not in seq[:i]]
-        for r in seen:
-            rems.append(render_reminder_token(art, r, rm))
+        a = e.get('_adj') or {}
+        _c = e.get('_count', 1)
+        cnt = max(0, min(50, int(1 if _c is None else _c)))
+        if cnt > 0:
+            img = render_character_token(e, art, cm, a)
+            chars.extend([img] * cnt)
+        rem_list = e.get('_rem')
+        if rem_list is None:                      # legacy payload: derive from reminder arrays
+            seq = list(e.get('reminders', []) or [])
+            if inc:
+                seq += list(e.get('remindersGlobal', []) or [])
+            seen = [r for i, r in enumerate(seq) if r not in seq[:i]]
+            rem_list = [{'text': r, 'count': 1} for r in seen]
+        for r in rem_list:
+            _rc = r.get('count', 1)
+            rc = max(0, min(50, int(1 if _rc is None else _rc)))
+            if rc == 0 or not r.get('text'):
+                continue
+            rimg = render_reminder_token(art, r['text'], rm, a)
+            rems.extend([rimg] * rc)
     return chars, rems
 
 def web_preview(entry_json, opts_json):
@@ -204,7 +237,11 @@ def web_preview(entry_json, opts_json):
     art = e.get('_art')
     if not art or not os.path.exists(art):
         return json.dumps({'error': 'art-missing'})
-    img = render_character_token(e, art, float(o.get('char_margin', 1.05)))
+    a = e.get('_adj') or {}
+    if o.get('kind') == 'reminder' and e.get('_remText'):
+        img = render_reminder_token(art, e['_remText'], float(o.get('rem_margin', 1.10)), a)
+    else:
+        img = render_character_token(e, art, float(o.get('char_margin', 1.05)), a)
     sc = float(o.get('preview_scale', 0.42))
     img = img.resize((max(1, round(img.width*sc)), max(1, round(img.height*sc))), Image.LANCZOS)
     b = io.BytesIO(); img.convert('RGBA').save(b, 'PNG')

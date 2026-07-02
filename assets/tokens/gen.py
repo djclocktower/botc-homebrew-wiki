@@ -49,15 +49,18 @@ def wrap(draw, text, font, maxw):
     if cur: out.append(cur)
     return out
 
-def render_ability(text):
+def render_ability(text, size_mul=1.0, dy=0):
     img = Image.new('RGBA', (W, H), (0,0,0,0))
     d = ImageDraw.Draw(img)
     words = text.split()
-    for size in range(ABIL_SIZE, 37, -1):
+    top, bot = ABIL_TOP + int(dy), ABIL_BOT + int(dy)
+    start = max(12, int(round(ABIL_SIZE * size_mul)))
+    stop = min(start - 1, max(8, int(round(37 * size_mul))))
+    for size in range(start, stop, -1):
         f = ImageFont.truetype(TG, size)
         lh = int(size * 1.12)
         # circle-aware wrap: each line limited by the chord at its own height, minus padding
-        lines, i, y = [], 0, ABIL_TOP
+        lines, i, y = [], 0, top
         while i < len(words):
             avail = chord_halfwidth(y)*2 - 2*ABIL_PAD
             line, j = words[i], i+1
@@ -69,10 +72,10 @@ def render_ability(text):
                     break
             lines.append(line); i = j; y += lh
         total = len(lines)*lh
-        if total <= (ABIL_BOT - ABIL_TOP):
+        if total <= (bot - top):
             break
     # centre the block in the band so it sits lower (moved down) yet clears the art
-    y = ABIL_TOP + max(0, (ABIL_BOT - ABIL_TOP - total)//2)
+    y = top + max(0, (bot - top - total)//2)
     for ln in lines:
         lw = d.textlength(ln, font=f)
         d.text((DCX - lw/2, y), ln, font=f, fill=FILL)
@@ -135,9 +138,12 @@ def _pair_kern(f, c0, c1, size, track):
             + KERN_K_TIGHT * max(0.0, KERN_TIGHT_MEAN - mean))
     return max(KERN_CLAMP[0], min(KERN_CLAMP[1], corr))
 
-def render_name(name):
+def render_name(name, size_mul=1.0, dy=0):
     name = name.upper()
-    for size in range(NAME_SIZE_MAX, 58, -1):
+    start = max(24, int(round(NAME_SIZE_MAX * size_mul)))
+    stop = min(start - 1, max(20, int(round(58 * size_mul))))
+    bottom_y = NAME_BOTTOM_Y + int(dy)
+    for size in range(start, stop, -1):
         f = ImageFont.truetype(DUM, size)
         track = NAME_TRACK * size
         advs = [f.getlength(c) + track for c in name]
@@ -155,7 +161,7 @@ def render_name(name):
     centers = [starts[i] + advs[i]/2.0 for i in range(len(name))]
     total = starts[-1] + advs[-1]
     mid = total/2.0
-    arc_cy = NAME_BOTTOM_Y - R             # keep bottom-centre fixed at NAME_BOTTOM_Y
+    arc_cy = bottom_y - R                  # keep bottom-centre fixed at bottom_y
     canvas = Image.new('RGBA', (W, H), (0,0,0,0))
     for ch, c in zip(name, centers):
         ang = math.pi/2 - (c - mid)/R
@@ -176,17 +182,19 @@ def render_name(name):
 ART_NAME_MARGIN = 4    # desired clear gap between icon bottom and name top
 ART_MIN_TOP     = 340  # never let an icon rise into the ability-text band
 
-def place_art(canvas, art_path, name_mask=None):
+def place_art(canvas, art_path, name_mask=None, dx=0, dy=0, scale=1.0):
     art = autocrop(Image.open(art_path).convert('RGBA'))
     w, h = art.size
     import math as _m
     s = _m.sqrt(ART_AREA / float(w*h))   # equal visual area for every icon
     if h*s > ART_H_MAX: s = ART_H_MAX/float(h)
     if w*s > ART_W_MAX: s = ART_W_MAX/float(w)
+    s *= float(scale)                    # user scale applied on top of the caps
     art = art.resize((max(1,int(w*s)), max(1,int(h*s))), Image.LANCZOS)
-    left = ART_CX - art.width//2
-    top  = ART_CY - art.height//2
-    if name_mask is not None:                       # nudge up only if it overlaps the name
+    left = ART_CX - art.width//2 + int(dx)
+    top  = ART_CY - art.height//2 + int(dy)
+    manual = (int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0)
+    if name_mask is not None and not manual:            # nudge up only if it overlaps the name
         am = _np.array(art)[:,:,3] > 40
         shift = 0
         for cx in range(am.shape[1]):

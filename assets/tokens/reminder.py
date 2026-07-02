@@ -29,14 +29,16 @@ def autocrop(im):
     bb = im.split()[-1].getbbox()
     return im.crop(bb) if bb else im
 
-def place_icon(canvas, art_path):
+def place_icon(canvas, art_path, dx=0, dy=0, scale=1.0):
     art = autocrop(Image.open(art_path).convert('RGBA'))
     w, h = art.size
     s = math.sqrt(REM_ART_AREA / float(w*h))
     if h*s > REM_ART_H_MAX: s = REM_ART_H_MAX/float(h)
     if w*s > REM_ART_W_MAX: s = REM_ART_W_MAX/float(w)
+    s *= float(scale)
     art = art.resize((max(1,int(w*s)), max(1,int(h*s))), Image.LANCZOS)
-    canvas.alpha_composite(art, (int(DCX - art.width/2), int(REM_ICON_CY - art.height/2)))
+    canvas.alpha_composite(art, (int(DCX - art.width/2 + int(dx)),
+                                 int(REM_ICON_CY - art.height/2 + int(dy))))
 
 def _glyph_cream(ch, f, asc, desc, pad=STROKE+4):
     adv = f.getlength(ch)
@@ -46,9 +48,11 @@ def _glyph_cream(ch, f, asc, desc, pad=STROKE+4):
                               stroke_width=STROKE, stroke_fill=OUTLINE)
     return tile, (pad + adv/2.0, pad + asc), adv
 
-def _draw_curved(canvas, text, size):
+def _draw_curved(canvas, text, size, size_mul=1.0):
     R = REM_TEXT_R
-    for sz in range(size, 40, -2):
+    start = max(24, int(round(size * float(size_mul))))
+    stop = min(start - 1, max(16, int(round(40 * float(size_mul)))))
+    for sz in range(start, stop, -2):
         f = ImageFont.truetype(FONT, sz)
         track = REM_TRACK * sz
         advs = [f.getlength(c) + track for c in text]   # advance + letter-spacing
