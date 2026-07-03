@@ -44,13 +44,15 @@ _DCX, _DCY, _R = 467, 464, 437
 _DISK = (_np.array(BARE)[:,:,3] > 0)            # token shape, for clipping
 TOP_ANCHOR = -24                                # lifted slightly off the ability text
 
-def _place_top(canvas, asset, scale, dy=0):
+def _place_top(canvas, asset, scale, dy=0, dx=0, rot=0):
     big = asset.resize((int(asset.width*scale), int(asset.height*scale)), Image.LANCZOS)
+    if float(rot) != 0:
+        big = big.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
     a = _np.array(big)[:,:,3] > 20
     ys, xs = _np.where(a)
     if len(xs)==0: return
     cx = (xs.min()+xs.max())/2.0
-    ox = int(round(_DCX - cx))                  # centre on disk centre
+    ox = int(round(_DCX + int(dx) - cx))               # centre on disk centre (+ user offset)
     oy = int(round(TOP_ANCHOR + int(dy) - ys.min()))   # keep leaves high (dy = user offset)
     # render onto a transparent layer at full canvas size
     layer = Image.new('RGBA', (BARE.width, BARE.height), (0,0,0,0))
@@ -70,12 +72,17 @@ def paste_at(canvas, img, left, top):
     sub = img.crop((x0-left, y0-top, img.width, img.height))
     canvas.alpha_composite(sub, (x0, y0))
 
-def _flower_layer(left, top, scale=1.0):
+def _flower_layer(left, top, scale=1.0, rot=0):
     """A full-canvas layer with the flower at (left, top), clipped to the disk."""
     import numpy as _np
     fl = FLOWER
     if float(scale) != 1.0:
         fl = FLOWER.resize((max(1, int(FLOWER.width*scale)), max(1, int(FLOWER.height*scale))), Image.LANCZOS)
+    if float(rot) != 0:
+        w0, h0 = fl.size
+        fl = fl.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
+        left -= (fl.width - w0) // 2       # keep the visual centre where it was
+        top  -= (fl.height - h0) // 2
     layer = Image.new('RGBA', (BARE.width, BARE.height), (0,0,0,0))
     x0, y0 = max(0, left), max(0, top)
     sub = fl.crop((x0-left, y0-top, fl.width, fl.height))
@@ -106,23 +113,27 @@ def _flower_pos_for(name_mask):
             kc = k; break
     return bx + FLOWER_DODGE_RIGHT, by - (kc + FLOWER_GAP)
 
-def _place_flower(canvas, name_mask=None, dx=0, dy=0, scale=1.0):
-    if int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0:
+def _place_flower(canvas, name_mask=None, dx=0, dy=0, scale=1.0, rot=0):
+    if int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0 or float(rot) != 0:
         left, top = POS_FLOWER[0] + int(dx), POS_FLOWER[1] + int(dy)   # manual: no auto-dodge
     else:
         left, top = _flower_pos_for(name_mask)
-    canvas.alpha_composite(_flower_layer(left, top, scale))
+    canvas.alpha_composite(_flower_layer(left, top, scale, rot))
 
 S_NIGHT = 0.95
 FN_CENTER = (78, 470)      # first-night sprig (left)
 ON_CENTER = (845, 430)     # other-night leaves (right)
-def _place_night(canvas, asset, center):
+def _place_night(canvas, asset, center, scale_mul=1.0, dx=0, dy=0, rot=0):
     import numpy as _np
-    big = asset.resize((int(asset.width*S_NIGHT), int(asset.height*S_NIGHT)), Image.LANCZOS)
-    ox = int(round(center[0]-big.width/2)); oy = int(round(center[1]-big.height/2))
+    s = S_NIGHT * float(scale_mul)
+    big = asset.resize((max(1, int(asset.width*s)), max(1, int(asset.height*s))), Image.LANCZOS)
+    if float(rot) != 0:
+        big = big.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
+    cx, cy = center[0] + int(dx), center[1] + int(dy)
+    ox = int(round(cx-big.width/2)); oy = int(round(cy-big.height/2))
     layer = Image.new('RGBA', (canvas.width, canvas.height), (0,0,0,0))
     x0,y0=max(0,ox),max(0,oy); sub=big.crop((x0-ox,y0-oy,big.width,big.height)); layer.alpha_composite(sub,(x0,y0))
-    la=_np.array(layer); import deco as _self
+    la=_np.array(layer)
     la[:,:,3]=_np.where(_DISK, la[:,:,3], 0)
     canvas.alpha_composite(Image.fromarray(la))
 
@@ -134,12 +145,12 @@ def _leaf(canvas, angle_deg):
     sq = sq.rotate(-angle_deg, resample=Image.BICUBIC, center=(D/2,D/2))
     canvas.alpha_composite(sq, (int(PIVOT[0]-D/2), int(PIVOT[1]-D/2)))
 
-def _reminders(canvas, n, scale_mul=1.0, dy=0):
+def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     if n <= 0: return
     if n in REAL_TOP:                      # official asset
-        _place_top(canvas, REAL_TOP[n], 1.0*float(scale_mul), dy); return
+        _place_top(canvas, REAL_TOP[n], 1.0*float(scale_mul), dy, dx, rot); return
     if n in NEW_TOP:                       # user-provided leaf (matched scale)
-        _place_top(canvas, NEW_TOP[n], S_NEW*float(scale_mul), dy); return
+        _place_top(canvas, NEW_TOP[n], S_NEW*float(scale_mul), dy, dx, rot); return
     # last-resort fan (no asset for this count)
     if n == 1: angles=[0]
     else: angles=[(-SPREAD + 2*SPREAD*i/(n-1)) for i in range(n)]
@@ -148,10 +159,13 @@ def _reminders(canvas, n, scale_mul=1.0, dy=0):
 def frame_for(first_night=False, other_night=False, setup=False, reminders=0, name=None,
               adj=None, name_mask=None):
     a = adj or {}
+    def g(k, d): v = a.get(k, d); return d if v is None else v
     f = BARE.copy()
-    if first_night: _place_night(f, L_FIRST, FN_CENTER)
-    if other_night: _place_night(f, L_OTHER, ON_CENTER)
-    flower_mode = a.get('flower', 'auto')            # 'auto' | 'on' | 'off'
+    if first_night:
+        _place_night(f, L_FIRST, FN_CENTER, g('fn_scale', 1.0), g('fn_dx', 0), g('fn_dy', 0), g('fn_rot', 0))
+    if other_night:
+        _place_night(f, L_OTHER, ON_CENTER, g('on_scale', 1.0), g('on_dx', 0), g('on_dy', 0), g('on_rot', 0))
+    flower_mode = g('flower', 'auto')                # 'auto' | 'on' | 'off'
     show_flower = setup if flower_mode == 'auto' else (flower_mode == 'on')
     if show_flower:
         nm = name_mask
@@ -159,9 +173,8 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
             import numpy as _np, gen          # lazy import avoids a circular dependency
             nm = _np.array(gen.render_name(name))[:, :, 3] > 40
         _place_flower(f, nm,
-                      a.get('flower_dx', 0) or 0,
-                      a.get('flower_dy', 0) or 0,
-                      a.get('flower_scale', 1.0) or 1.0)
-    n = 0 if a.get('leaves', 'auto') == 'off' else reminders
-    _reminders(f, n, a.get('leaf_scale', 1.0) or 1.0, a.get('leaf_dy', 0) or 0)
+                      g('flower_dx', 0), g('flower_dy', 0),
+                      g('flower_scale', 1.0), g('flower_rot', 0))
+    n = 0 if g('leaves', 'auto') == 'off' else reminders
+    _reminders(f, n, g('leaf_scale', 1.0), g('leaf_dy', 0), g('leaf_dx', 0), g('leaf_rot', 0))
     return f

@@ -71,11 +71,13 @@
 
   /* ---- adjustments: defaults -> global -> per-token overrides ---- */
   var ADJ_DEF = {
-    icon_scale: 1, icon_dx: 0, icon_dy: 0,
-    name_size: 1, name_dy: 0,
+    icon_scale: 1, icon_dx: 0, icon_dy: 0, icon_rot: 0,
+    name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1,
     abil_size: 1, abil_dy: 0,
-    leaves: 'auto', leaf_scale: 1, leaf_dy: 0,
-    flower: 'auto', flower_scale: 1, flower_dx: 0, flower_dy: 0,
+    leaves: 'auto', leaf_scale: 1, leaf_dy: 0, leaf_dx: 0, leaf_rot: 0,
+    flower: 'auto', flower_scale: 1, flower_dx: 0, flower_dy: 0, flower_rot: 0,
+    fn_scale: 1, fn_dx: 0, fn_dy: 0, fn_rot: 0,
+    on_scale: 1, on_dx: 0, on_dy: 0, on_rot: 0,
     rem_icon_scale: 1, rem_text_size: 1
   };
   var adjState = { global: {}, per: {} };   // per[slug] = {adj:{}, count:1, rems:{text:count}}
@@ -98,10 +100,10 @@
     return out;
   }
   function charCount(sl) { var p = adjState.per[sl]; return Math.max(0, Math.min(50, (p && p.count != null) ? p.count : 1)); }
-  function remCount(sl, text) {
+  function remCount(sl, text, def) {
     var p = adjState.per[sl];
     var v = p && p.rems ? p.rems[text] : null;
-    return Math.max(0, Math.min(50, v == null ? 1 : v));
+    return Math.max(0, Math.min(50, v == null ? (def == null ? 1 : def) : v));
   }
 
   function loadSet() { try { return JSON.parse(localStorage.getItem(SET_KEY)) || []; } catch (e) { return []; } }
@@ -283,27 +285,44 @@
     { k: 'icon_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'icon_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
     { k: 'icon_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'icon_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Name' },
     { k: 'name_size', label: 'Size', min: 0.6, max: 1.3, step: 0.02, fmt: pctFmt },
+    { k: 'name_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'name_dy', label: 'Position &#8597;', min: -80, max: 80, step: 2, fmt: pxFmt },
+    { k: 'name_arc', label: 'Arc', min: 0.4, max: 2.2, step: 0.02, fmt: pctFmt },
     { section: 'Ability Text' },
     { k: 'abil_size', label: 'Size', min: 0.7, max: 1.3, step: 0.02, fmt: pctFmt },
     { k: 'abil_dy', label: 'Position &#8597;', min: -60, max: 60, step: 2, fmt: pxFmt },
     { section: 'Leaves' },
     { k: 'leaves', label: 'Show', seg: [['auto', 'Auto'], ['off', 'Off']] },
     { k: 'leaf_scale', label: 'Size', min: 0.5, max: 1.6, step: 0.02, fmt: pctFmt },
+    { k: 'leaf_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
     { k: 'leaf_dy', label: 'Position &#8597;', min: -60, max: 120, step: 2, fmt: pxFmt },
+    { k: 'leaf_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
+    { section: 'First-Night Leaf' },
+    { k: 'fn_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
+    { k: 'fn_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'fn_dy', label: 'Position &#8597;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'fn_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
+    { section: 'Other-Nights Leaf' },
+    { k: 'on_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
+    { k: 'on_dx', label: 'Position &#8596;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'on_dy', label: 'Position &#8597;', min: -150, max: 150, step: 2, fmt: pxFmt },
+    { k: 'on_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Flower' },
     { k: 'flower', label: 'Show', seg: [['auto', 'Auto'], ['on', 'On'], ['off', 'Off']] },
     { k: 'flower_scale', label: 'Size', min: 0.5, max: 1.6, step: 0.02, fmt: pctFmt },
     { k: 'flower_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
     { k: 'flower_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'flower_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Reminder Tokens' },
     { k: 'rem_icon_scale', label: 'Icon size', min: 0.5, max: 1.5, step: 0.02, fmt: pctFmt },
     { k: 'rem_text_size', label: 'Text size', min: 0.6, max: 1.2, step: 0.02, fmt: pctFmt }
   ];
   function pctFmt(v) { return Math.round(v * 100) + '%'; }
   function pxFmt(v) { return (v > 0 ? '+' : '') + v + 'px'; }
+  function degFmt(v) { return (v > 0 ? '+' : '') + v + '&deg;'; }
 
   function buildAdjPanel(container, prefix, getVal, setVal) {
     var html = '';
@@ -400,21 +419,21 @@
     renderSet();          // refresh count values + edited dots
     schedulePreview();
   }
-  function dedupeRems(c) {
+  function remEntries(c) {
     var seq = (c.reminders || []).concat(c.remindersGlobal || []);
-    var seen = [];
-    seq.forEach(function (r) { if (r && seen.indexOf(r) < 0) seen.push(r); });
-    return seen;
+    var map = {}, order = [];
+    seq.forEach(function (r) { if (!r) return; if (map[r] == null) { map[r] = 0; order.push(r); } map[r]++; });
+    return order.map(function (t) { return { text: t, def: map[t] }; });   // duplicates in the JSON = default count
   }
   function renderEditorRems(sl) {
     var c = charBySlug[sl];
-    var rems = dedupeRems(c);
+    var rems = remEntries(c);
     var box = $('tte-rems');
     if (!rems.length) { box.innerHTML = '<p class="tte-none">No reminder tokens for this character.</p>'; return; }
     var html = '';
-    rems.forEach(function (r, i) {
-      html += '<div class="tte-rem-row"><span class="tte-rem-text">' + esc(r) + '</span>' +
-        stepperHTML('tt-step-rem', sl, remCount(sl, r), ' data-rem="' + esc(r) + '"') + '</div>';
+    rems.forEach(function (r) {
+      html += '<div class="tte-rem-row"><span class="tte-rem-text">' + esc(r.text) + '</span>' +
+        stepperHTML('tt-step-rem', sl, remCount(sl, r.text, r.def), ' data-rem="' + esc(r.text) + '" data-def="' + r.def + '"') + '</div>';
     });
     box.innerHTML = html;
   }
@@ -432,9 +451,11 @@
       var up = e.target.closest('.tt-step-up'), dn = e.target.closest('.tt-step-dn');
       if (!up && !dn) return;
       var step = e.target.closest('.tt-step'); var r = step.dataset.rem;
+      var def = Number(step.dataset.def || 1);
       var p = perOf(editorSlug);
-      p.rems[r] = Math.max(0, Math.min(50, remCount(editorSlug, r) + (up ? 1 : -1)));
-      saveAdj(); step.querySelector('.tt-step-val').textContent = p.rems[r];
+      var next = Math.max(0, Math.min(50, remCount(editorSlug, r, def) + (up ? 1 : -1)));
+      if (next === def) delete p.rems[r]; else p.rems[r] = next;
+      saveAdj(); step.querySelector('.tt-step-val').textContent = next;
     });
     $('tte-reset').onclick = function () {
       if (!editorSlug) return;
@@ -510,7 +531,7 @@
       _art: 'art/' + sl + '.png',
       _adj: mergedAdj(sl),
       _count: charCount(sl),
-      _rem: dedupeRems(c).map(function (r) { return { text: r, count: remCount(sl, r) }; })
+      _rem: remEntries(c).map(function (r) { return { text: r.text, count: remCount(sl, r.text, r.def) }; })
     };
   }
   function artList(slugs) {
@@ -564,9 +585,11 @@
       var a = document.createElement('a'); a.href = url; a.download = f.name;
       a.innerHTML = '&#11015; ' + esc(f.name);
       out.appendChild(a);
-      if (f.mime === 'image/png') {
-        var img = document.createElement('img'); img.src = url; img.alt = f.name; thumbs.appendChild(img);
-      }
+    });
+    (res.thumbs || []).forEach(function (t) {
+      var img = document.createElement('img');
+      img.src = 'data:image/png;base64,' + t.b64; img.alt = t.name;
+      thumbs.appendChild(img);
     });
   }
 

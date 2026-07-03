@@ -223,7 +223,11 @@
 .tte-none { font-size: .86rem; color: var(--ink); opacity: .75; font-style: italic; }
 @media (max-width: 640px) {
   .sb-script-item { flex-wrap: wrap; }
-  .tt-step, .tt-edit-btn { margin-top: 4px; }
+  /* thumb + text fill the first line so the ability text keeps its full width;
+     stepper/edit/remove drop to their own line underneath */
+  .sb-script-info { flex: 1 1 auto; min-width: calc(100% - 64px); }
+  .tt-step, .tt-edit-btn, .sb-script-remove { margin-top: 6px; }
+  .tt-step { margin-right: auto; }
 }
 </style>
 </head>

@@ -32,11 +32,13 @@ def slug(n):
 # PER-TOKEN RENDER  (margin + adjustments parameterized; toolkit defaults = pixel-identical)
 # ----------------------------------------------------------------------------
 ADJ_DEFAULTS = dict(
-    icon_dx=0, icon_dy=0, icon_scale=1.0,
-    leaves='auto', leaf_scale=1.0, leaf_dy=0,
-    flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0,
-    name_size=1.0, name_dy=0,
+    icon_dx=0, icon_dy=0, icon_scale=1.0, icon_rot=0,
+    leaves='auto', leaf_scale=1.0, leaf_dy=0, leaf_dx=0, leaf_rot=0,
+    flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0, flower_rot=0,
+    name_size=1.0, name_dy=0, name_dx=0, name_arc=1.0,
     abil_size=1.0, abil_dy=0,
+    fn_scale=1.0, fn_dx=0, fn_dy=0, fn_rot=0,
+    on_scale=1.0, on_dx=0, on_dy=0, on_rot=0,
     rem_icon_scale=1.0, rem_text_size=1.0,
 )
 
@@ -51,7 +53,8 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     a = _adj(adj)
     fn = float(entry.get('firstNight', 0) or 0) > 0
     on = float(entry.get('otherNight', 0) or 0) > 0
-    nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']))
+    nl = gen.render_name(entry['name'], float(a['name_size']), int(a['name_dy']),
+                         int(a['name_dx']), float(a['name_arc']))
     nm = np.array(nl)[:, :, 3] > 40
     frame = deco.frame_for(first_night=fn, other_night=on,
                            setup=bool(entry.get('setup')),
@@ -59,7 +62,8 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
                            name=entry['name'], adj=a, name_mask=nm)
     content = Image.new('RGBA', frame.size, (0, 0, 0, 0))
     gen.place_art(content, art_path, nm,
-                  int(a['icon_dx']), int(a['icon_dy']), float(a['icon_scale']))
+                  int(a['icon_dx']), int(a['icon_dy']), float(a['icon_scale']),
+                  float(a['icon_rot']))
     content.alpha_composite(gen.render_ability(entry['ability'],
                                                float(a['abil_size']), int(a['abil_dy'])))
     content.alpha_composite(nl)
@@ -263,5 +267,14 @@ def web_sheets(chars_json, opts_json):
             b = io.BytesIO(); p.convert('RGBA').save(b, 'PNG'); add(f'character_tokens_{i+1}.png', 'image/png', b.getvalue())
         for i, p in enumerate(rpages):
             b = io.BytesIO(); p.convert('RGBA').save(b, 'PNG'); add(f'reminder_tokens_{i+1}.png', 'image/png', b.getvalue())
-    return json.dumps({'files': files, 'counts': {'char': len(chars), 'rem': len(rems),
+    # small page previews for the thumbnail strip — ALWAYS, so PDF output previews too
+    thumbs = []
+    for label, pages in (('character', cpages), ('reminder', rpages)):
+        for i, p in enumerate(pages):
+            tw = 560
+            t = p.convert('RGB').resize((tw, max(1, round(p.height * tw / p.width))), Image.LANCZOS)
+            b = io.BytesIO(); t.save(b, 'PNG')
+            thumbs.append({'name': f'{label}_{i+1}', 'b64': _b64.b64encode(b.getvalue()).decode()})
+    return json.dumps({'files': files, 'thumbs': thumbs,
+                       'counts': {'char': len(chars), 'rem': len(rems),
                        'char_pages': len(cpages), 'rem_pages': len(rpages)}})

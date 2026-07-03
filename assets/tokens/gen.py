@@ -138,8 +138,10 @@ def _pair_kern(f, c0, c1, size, track):
             + KERN_K_TIGHT * max(0.0, KERN_TIGHT_MEAN - mean))
     return max(KERN_CLAMP[0], min(KERN_CLAMP[1], corr))
 
-def render_name(name, size_mul=1.0, dy=0):
+def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
     name = name.upper()
+    arc = max(0.2, float(arc))
+    arc_cx = NAME_ARC_CX + int(dx)
     start = max(24, int(round(NAME_SIZE_MAX * size_mul)))
     stop = min(start - 1, max(20, int(round(58 * size_mul))))
     bottom_y = NAME_BOTTOM_Y + int(dy)
@@ -148,8 +150,8 @@ def render_name(name, size_mul=1.0, dy=0):
         track = NAME_TRACK * size
         advs = [f.getlength(c) + track for c in name]
         total_adv = sum(advs)
-        R = _name_radius(total_adv)        # curvature uses uncorrected width (unchanged)
-        if total_adv / R <= NAME_SPAN_MAX:
+        R = _name_radius(total_adv) / arc     # arc>1 curves more, arc<1 flattens
+        if total_adv / R <= NAME_SPAN_MAX * max(1.0, arc):
             break
     asc, desc = f.getmetrics()
     # per-pair optical corrections inserted between glyphs (0 for typical pairs)
@@ -167,7 +169,7 @@ def render_name(name, size_mul=1.0, dy=0):
         ang = math.pi/2 - (c - mid)/R
         if ch == ' ':
             continue
-        Px = NAME_ARC_CX + R*math.cos(ang)
+        Px = arc_cx + R*math.cos(ang)
         Py = arc_cy + R*math.sin(ang)
         tile, anchor, _ = glyph_tile(ch, f, asc, desc)
         ax, ay = anchor
@@ -182,7 +184,7 @@ def render_name(name, size_mul=1.0, dy=0):
 ART_NAME_MARGIN = 4    # desired clear gap between icon bottom and name top
 ART_MIN_TOP     = 340  # never let an icon rise into the ability-text band
 
-def place_art(canvas, art_path, name_mask=None, dx=0, dy=0, scale=1.0):
+def place_art(canvas, art_path, name_mask=None, dx=0, dy=0, scale=1.0, rot=0):
     art = autocrop(Image.open(art_path).convert('RGBA'))
     w, h = art.size
     import math as _m
@@ -191,9 +193,11 @@ def place_art(canvas, art_path, name_mask=None, dx=0, dy=0, scale=1.0):
     if w*s > ART_W_MAX: s = ART_W_MAX/float(w)
     s *= float(scale)                    # user scale applied on top of the caps
     art = art.resize((max(1,int(w*s)), max(1,int(h*s))), Image.LANCZOS)
+    if float(rot) != 0:
+        art = art.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
     left = ART_CX - art.width//2 + int(dx)
     top  = ART_CY - art.height//2 + int(dy)
-    manual = (int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0)
+    manual = (int(dx) != 0 or int(dy) != 0 or float(scale) != 1.0 or float(rot) != 0)
     if name_mask is not None and not manual:            # nudge up only if it overlaps the name
         am = _np.array(art)[:,:,3] > 40
         shift = 0
