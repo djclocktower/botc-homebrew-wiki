@@ -60,6 +60,44 @@
     });
   })();
 
+  /* ── Account link (crumb bar + mobile nav), based on login state ── */
+  (function () {
+    var ME_KEY = 'botc_me';
+    function cachedMe() {
+      try {
+        var raw = JSON.parse(sessionStorage.getItem(ME_KEY));
+        if (raw && (Date.now() - raw.ts) < 5 * 60 * 1000) return Promise.resolve(raw.me);
+      } catch (e) {}
+      return fetch('/api/me', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (me) {
+          try { sessionStorage.setItem(ME_KEY, JSON.stringify({ ts: Date.now(), me: me })); } catch (e) {}
+          return me;
+        });
+    }
+    cachedMe().then(function (me) {
+      var label = me && me.loggedIn ? 'My Account' : 'Log In';
+      var href = ROOT + (me && me.loggedIn ? 'account.html' : 'login.html');
+      // mobile nav dropdown
+      var drop = document.getElementById('nav-dropdown');
+      if (drop && !drop.querySelector('a[href$="account.html"], a[href$="login.html"]')) {
+        var a = document.createElement('a');
+        a.href = href; a.textContent = label;
+        drop.appendChild(a);
+      }
+      // desktop crumb bar (after Token Tool, like the Token Tool injection)
+      document.querySelectorAll('.crumb').forEach(function (crumb) {
+        if (crumb.querySelector('a[href$="account.html"], a[href$="login.html"]')) return;
+        var anchor = crumb.querySelector('a[href$="tokens.html"]') || crumb.querySelector('a[href$="script.html"]');
+        if (!anchor) return;
+        var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
+        var link = document.createElement('a'); link.href = href; link.textContent = label;
+        crumb.insertBefore(sep, anchor.nextSibling);
+        crumb.insertBefore(link, sep.nextSibling);
+      });
+    }).catch(function () {});
+  })();
+
   /* ── Search ── */
   (function () {
     var input = document.getElementById('search-input');

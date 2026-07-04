@@ -3,29 +3,61 @@
  * ----------------------------------------------------------------
  * Option B architecture: the frontend stays static and renders in the
  * browser. This Worker only changes WHERE the data comes from and adds
- * admin authentication for writes.
+ * authentication + ownership for writes.
  *
  * Routes it handles:
- *   GET  /characters.json     -> built from D1 (replaces static file)
+ *   GET  /characters.json     -> built from D1 (published pages only)
  *   GET  /collections.json    -> built from D1
  *   GET  /scripts.json        -> built from D1
- *   POST /api/login           -> admin login, sets session cookie
+ *
+ *   -- auth --
+ *   POST /api/signup          -> create an account (username/email/password)
+ *   POST /api/login           -> log in (username OR email + password)
  *   POST /api/logout          -> clears session
- *   GET  /api/me              -> who am I (is the viewer an admin?)
- *   GET  /api/admin/dashboard -> dashboard data (admin only)
- *   POST /api/character       -> create/update a character (admin only)
- *   POST /api/collection      -> create/update a collection (admin only)
- *   POST /api/script          -> create/update a script (admin only)
- *   POST /api/lock            -> lock/unlock the wiki (admin only)
- *   POST /api/seed            -> one-time data load from repo JSON (admin only)
- *   everything else           -> served from static assets (GitHub Pages-style)
+ *   GET  /api/me              -> who am I
+ *   POST /api/forgot-password -> email a password-reset link
+ *   POST /api/reset-password  -> set new password from a reset token
+ *   GET  /api/verify-email    -> confirm email from the emailed link
+ *   POST /api/resend-verification
+ *   GET  /api/auth/discord    -> start Discord OAuth (sign in / sign up / link)
+ *   GET  /api/auth/discord/callback
+ *
+ *   -- account --
+ *   GET  /api/account         -> profile + your pages + drafts + recent edits
+ *   POST /api/account/profile -> update display name / bio
+ *   POST /api/account/password-> change (or set) password
+ *   POST /api/account/email   -> change email (re-verifies)
+ *   POST /api/account/unlink-discord
+ *
+ *   -- content (any logged-in user; edits restricted to owner/admin) --
+ *   GET  /api/page            -> fetch one page for editing (drafts incl.)
+ *   POST /api/character       -> create/update a character
+ *   POST /api/collection      -> create/update a collection
+ *   POST /api/script          -> create/update a script
+ *   POST /api/publish         -> flip a page between draft and published
+ *   POST /api/delete          -> delete a page you own
+ *   POST /api/upload          -> image upload to R2 (ownership-checked)
+ *
+ *   -- admin --
+ *   GET  /api/admin/dashboard -> dashboard data
+ *   POST /api/lock            -> lock/unlock the wiki
+ *   POST /api/seed            -> one-time data load from repo JSON
+ *
+ *   everything else           -> served from static assets
  * ----------------------------------------------------------------
+ * Secrets / vars this Worker uses (set via `wrangler secret put` or the
+ * Cloudflare dashboard — all optional, features degrade gracefully):
+ *   RESEND_API_KEY        -> enables outgoing email (password reset, verify)
+ *   MAIL_FROM             -> e.g. 'BOTC Homebrew Wiki <no-reply@yourdomain>'
+ *   DISCORD_CLIENT_ID     -> enables "Sign in with Discord"
+ *   DISCORD_CLIENT_SECRET
  */
 
 // esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
 import Render from '../assets/render.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
+const APP_NAME = 'BOTC Homebrew Wiki';
 
 const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/'];
 const EXT_CONTENT_TYPE = {
@@ -33,14 +65,17 @@ const EXT_CONTENT_TYPE = {
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
 };
 
+// Content-type registry: maps API "type" to its table + display columns.
+const CONTENT = {
+  character:  { table: 'characters',  nameCol: 'name' },
+  collection: { table: 'collections', nameCol: 'display_name' },
+  script:     { table: 'scripts',     nameCol: 'name' }
+};
+
 // ---- password hashing (PBKDF2, matches the seeded admin hash) ----
-async function verifyPassword(password, stored) {
-  // stored format: pbkdf2_sha256$iterations$salt_b64$hash_b64
-  const parts = stored.split('$');
-  if (parts.length !== 4 || parts[0] !== 'pbkdf2_sha256') return false;
-  const iterations = parseInt(parts[1], 10);
-  const salt = base64ToBytes(parts[2]);
-  const expected = parts[3];
+const PBKDF2_ITERATIONS = 100000;
+
+async function pbkdf2(password, salt, iterations) {
   const key = await crypto.subtle.importKey(
     'raw', new TextEncoder().encode(password),
     { name: 'PBKDF2' }, false, ['deriveBits']
@@ -49,7 +84,23 @@ async function verifyPassword(password, stored) {
     { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
     key, 256
   );
-  return bytesToBase64(new Uint8Array(bits)) === expected;
+  return bytesToBase64(new Uint8Array(bits));
+}
+
+async function verifyPassword(password, stored) {
+  // stored format: pbkdf2_sha256$iterations$salt_b64$hash_b64
+  if (!stored) return false; // Discord-only accounts have no password
+  const parts = stored.split('$');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2_sha256') return false;
+  const iterations = parseInt(parts[1], 10);
+  const salt = base64ToBytes(parts[2]);
+  return (await pbkdf2(password, salt, iterations)) === parts[3];
+}
+
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2_sha256$${PBKDF2_ITERATIONS}$${bytesToBase64(salt)}$${hash}`;
 }
 
 function base64ToBytes(b64) {
@@ -62,6 +113,9 @@ function bytesToBase64(bytes) {
   let bin = '';
   for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
   return btoa(bin);
+}
+function randomToken() {
+  return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 }
 
 // ---- sessions (stored in KV) ----
@@ -87,6 +141,90 @@ function clearCookie() {
   return 'botc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 }
 
+// ---- basic per-IP rate limiting (KV counter; best-effort) ----
+async function rateLimited(env, request, bucket, limit, windowSec) {
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const key = `rl:${bucket}:${ip}`;
+  const cur = parseInt((await env.SESSIONS.get(key)) || '0', 10);
+  if (cur >= limit) return true;
+  await env.SESSIONS.put(key, String(cur + 1), { expirationTtl: windowSec });
+  return false;
+}
+
+// ---- outgoing email (Resend; optional) ----
+function emailShell(title, bodyHtml) {
+  return `<div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;padding:24px;color:#241a12;background:#f7f0e0;border:1px solid #cdbfa0">
+  <h2 style="color:#5b1f21;margin:0 0 12px">${title}</h2>
+  ${bodyHtml}
+  <p style="font-size:12px;color:#8a7a5e;margin-top:28px">${APP_NAME} — fan-made content for Blood on the Clocktower.<br>
+  If you didn't request this email you can safely ignore it.</p>
+</div>`;
+}
+
+async function sendEmail(env, to, subject, html) {
+  if (!env.RESEND_API_KEY) {
+    return { ok: false, error: 'Email is not configured on this server yet.' };
+  }
+  const from = env.MAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`;
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + env.RESEND_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ from, to: [to], subject, html })
+    });
+    if (!res.ok) return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'Email delivery failed.' };
+  }
+}
+
+async function sendVerificationEmail(env, origin, user) {
+  if (!user.email) return { ok: false, error: 'No email on this account.' };
+  const token = randomToken();
+  await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
+  const link = origin + '/api/verify-email?token=' + token;
+  return sendEmail(env, user.email, 'Verify your email — ' + APP_NAME, emailShell(
+    'Verify your email',
+    `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
+     <p>Click the link below to verify the email address on your ${APP_NAME} account:</p>
+     <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Verify my email</a></p>
+     <p>This link expires in 24 hours.</p>`
+  ));
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ---- validation ----
+const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validSignup(username, email, password) {
+  if (!USERNAME_RE.test(username || '')) {
+    return 'Username must be 3–20 characters: letters, numbers, hyphens or underscores.';
+  }
+  if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
+    return 'Please enter a valid email address.';
+  }
+  if (!password || password.length < 8 || password.length > 200) {
+    return 'Password must be at least 8 characters.';
+  }
+  return null;
+}
+
+async function findUserByLogin(env, identifier) {
+  return env.DB.prepare(
+    `SELECT * FROM users WHERE lower(username) = lower(?1) OR (email IS NOT NULL AND lower(email) = lower(?1))`
+  ).bind(identifier).first();
+}
+
 // ---- wiki lock (global freeze flag, stored in D1 settings) ----
 async function isWikiLocked(env) {
   try {
@@ -110,24 +248,47 @@ async function logActivity(env, sess, action, entityType, slug, name) {
   } catch { /* never let logging break a write */ }
 }
 
-// ---- build the three JSON files from D1 ----
-async function buildCharactersJSON(env) {
-  const { results } = await env.DB.prepare('SELECT data FROM characters').all();
-  return results.map(r => JSON.parse(r.data));
+// ---- ownership: may this session edit this row? ----
+function canEditRow(sess, row) {
+  if (!sess) return false;
+  if (sess.isAdmin) return true;
+  return !!row.owner_id && row.owner_id === sess.userId;
 }
-async function buildCollectionsJSON(env) {
-  const { results } = await env.DB.prepare('SELECT data FROM collections').all();
-  return results.map(r => JSON.parse(r.data));
+
+async function getEntityRow(env, type, slug) {
+  const t = CONTENT[type];
+  if (!t || !slug) return null;
+  return env.DB.prepare(
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data FROM ${t.table} WHERE slug=?`
+  ).bind(slug).first().catch(() => null);
 }
-async function buildScriptsJSON(env) {
-  const { results } = await env.DB.prepare('SELECT data FROM scripts').all();
+
+// ---- build the three JSON files from D1 (published pages only) ----
+async function buildPublicJSON(env, table) {
+  let results;
+  try {
+    ({ results } = await env.DB.prepare(`SELECT data FROM ${table} WHERE status='published'`).all());
+  } catch {
+    // status column not migrated yet -> serve everything (legacy behaviour)
+    ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
+  }
   return results.map(r => JSON.parse(r.data));
 }
 
 function jsonResponse(obj, extraHeaders = {}) {
+  // `status` in the second argument sets the HTTP status; everything else
+  // is a response header.
+  const { status = 200, ...headers } = extraHeaders;
   return new Response(JSON.stringify(obj), {
-    headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store', ...extraHeaders }
+    status,
+    headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store', ...headers }
   });
+}
+
+function redirectResponse(location, cookie) {
+  const headers = new Headers({ Location: location });
+  if (cookie) headers.append('Set-Cookie', cookie);
+  return new Response(null, { status: 302, headers });
 }
 
 function attr(s) {
@@ -136,7 +297,7 @@ function attr(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function renderCharacterPage(d, origin) {
+function renderCharacterPage(d, origin, isDraft) {
   const team = d.team || 'townsfolk';
   const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
   const name = d.name || 'Character';
@@ -151,6 +312,9 @@ function renderCharacterPage(d, origin) {
     '<a href="../tokens.html">Token Tool</a><span class="sep">›</span>' +
     '<a href="../team.html?t=' + attr(team) + '">' + attr(label) + '</a>' +
     '<span class="sep">›</span><span class="here">' + attr(name) + '</span>';
+  const draftBanner = isDraft
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account.html" style="color:#ffe9ad">account page</a> or the editor.</div>'
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -175,7 +339,7 @@ function renderCharacterPage(d, origin) {
 <link rel="stylesheet" href="../assets/styles.css">
 </head>
 <body>
-
+${draftBanner}
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="../index.html">
@@ -218,6 +382,32 @@ function renderCharacterPage(d, origin) {
 </html>`;
 }
 
+// ---- Discord OAuth helpers ----
+function discordConfigured(env) {
+  return !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
+}
+function discordRedirectUri(origin) {
+  return origin + '/api/auth/discord/callback';
+}
+
+// Pick a free username derived from the Discord name.
+async function uniqueUsername(env, base) {
+  let stem = String(base || 'user').toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, '').slice(0, 16);
+  if (stem.length < 3) stem = ('user-' + (stem || '')).slice(0, 16).replace(/[-_]+$/, '');
+  for (let i = 0; i < 50; i++) {
+    const candidate = i === 0 ? stem : stem + '-' + (i + 1);
+    const hit = await env.DB.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)')
+      .bind(candidate).first();
+    if (!hit) return candidate;
+  }
+  return stem + '-' + Date.now();
+}
+
+function loginErrorRedirect(origin, msg) {
+  return redirectResponse(origin + '/login.html?error=' + encodeURIComponent(msg));
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -226,13 +416,13 @@ export default {
 
     // ---------- DATA ENDPOINTS (replace static JSON files) ----------
     if (method === 'GET' && path === '/characters.json') {
-      return jsonResponse(await buildCharactersJSON(env));
+      return jsonResponse(await buildPublicJSON(env, 'characters'));
     }
     if (method === 'GET' && path === '/collections.json') {
-      return jsonResponse(await buildCollectionsJSON(env));
+      return jsonResponse(await buildPublicJSON(env, 'collections'));
     }
     if (method === 'GET' && path === '/scripts.json') {
-      return jsonResponse(await buildScriptsJSON(env));
+      return jsonResponse(await buildPublicJSON(env, 'scripts'));
     }
 
     // ---------- CHARACTER PAGES (server-side rendered from D1) ----------
@@ -240,12 +430,23 @@ export default {
       let slug = decodeURIComponent(path.slice(3));
       if (slug.endsWith('.html')) slug = slug.slice(0, -5);
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-        const row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
-          .bind(slug).first();
+        let row = null;
+        try {
+          row = await env.DB.prepare('SELECT data, status, owner_id FROM characters WHERE slug = ?')
+            .bind(slug).first();
+        } catch {
+          row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
+            .bind(slug).first();
+        }
         if (row && row.data) {
+          const isDraft = row.status === 'draft';
+          if (isDraft) {
+            const sess = await getSession(env, request);
+            if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
+          }
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
-          return new Response(renderCharacterPage(d, url.origin), {
+          return new Response(renderCharacterPage(d, url.origin, isDraft), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }
@@ -274,18 +475,60 @@ export default {
       return env.ASSETS.fetch(request); // not in R2 -> committed static file
     }
 
-    // ---------- AUTH ----------
-    if (method === 'POST' && path === '/api/login') {
+    // ---------- AUTH: SIGN UP ----------
+    if (method === 'POST' && path === '/api/signup') {
+      if (await rateLimited(env, request, 'signup', 5, 3600)) {
+        return jsonResponse({ error: 'Too many signups from this connection. Try again later.' }, { status: 429 });
+      }
       const body = await request.json().catch(() => ({}));
-      const { username, password } = body;
-      if (!username || !password) return jsonResponse({ error: 'Missing credentials' }, { status: 400 });
-      const user = await env.DB.prepare('SELECT id, password_hash, is_admin FROM users WHERE username = ?')
+      const username = String(body.username || '').trim();
+      const email = String(body.email || '').trim();
+      const password = String(body.password || '');
+      const bad = validSignup(username, email, password);
+      if (bad) return jsonResponse({ error: bad }, { status: 400 });
+
+      const nameTaken = await env.DB.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)')
         .bind(username).first();
+      if (nameTaken) return jsonResponse({ error: 'That username is already taken.' }, { status: 409 });
+      const emailTaken = await env.DB.prepare('SELECT 1 FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)')
+        .bind(email).first();
+      if (emailTaken) return jsonResponse({ error: 'An account with that email already exists. Try logging in or resetting your password.' }, { status: 409 });
+
+      const hash = await hashPassword(password);
+      const res = await env.DB.prepare(
+        `INSERT INTO users (username, password_hash, email, is_admin, last_login)
+         VALUES (?,?,?,0,datetime('now'))`
+      ).bind(username, hash, email).run();
+      const userId = res.meta.last_row_id;
+
+      const token = await createSession(env, userId, false);
+      await logActivity(env, { userId }, 'signup', 'user', null, username);
+      // Best-effort verification email; signup succeeds either way.
+      ctx.waitUntil(sendVerificationEmail(env, url.origin, { id: userId, username, email }));
+      return jsonResponse({ ok: true, username }, { 'Set-Cookie': sessionCookie(token) });
+    }
+
+    // ---------- AUTH: LOG IN ----------
+    if (method === 'POST' && path === '/api/login') {
+      if (await rateLimited(env, request, 'login', 10, 600)) {
+        return jsonResponse({ error: 'Too many login attempts. Wait a few minutes and try again.' }, { status: 429 });
+      }
+      const body = await request.json().catch(() => ({}));
+      const identifier = String(body.username || body.email || '').trim();
+      const password = String(body.password || '');
+      if (!identifier || !password) return jsonResponse({ error: 'Missing credentials' }, { status: 400 });
+      const user = await findUserByLogin(env, identifier);
       if (!user) return jsonResponse({ error: 'Invalid login' }, { status: 401 });
       const ok = await verifyPassword(password, user.password_hash);
-      if (!ok) return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+      if (!ok) {
+        if (!user.password_hash && user.discord_id) {
+          return jsonResponse({ error: 'This account signs in with Discord. Use the Discord button (you can set a password afterwards on your account page).' }, { status: 401 });
+        }
+        return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+      }
       const token = await createSession(env, user.id, !!user.is_admin);
-      return jsonResponse({ ok: true, isAdmin: !!user.is_admin }, { 'Set-Cookie': sessionCookie(token) });
+      ctx.waitUntil(env.DB.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").bind(user.id).run());
+      return jsonResponse({ ok: true, isAdmin: !!user.is_admin, username: user.username }, { 'Set-Cookie': sessionCookie(token) });
     }
 
     if (method === 'POST' && path === '/api/logout') {
@@ -296,7 +539,250 @@ export default {
 
     if (method === 'GET' && path === '/api/me') {
       const sess = await getSession(env, request);
-      return jsonResponse({ loggedIn: !!sess, isAdmin: sess ? !!sess.isAdmin : false });
+      if (!sess) return jsonResponse({ loggedIn: false, isAdmin: false });
+      const u = await env.DB.prepare(
+        `SELECT username, email, is_admin, display_name, avatar_url, email_verified, discord_id, password_hash
+         FROM users WHERE id=?`
+      ).bind(sess.userId).first().catch(() => null);
+      if (!u) return jsonResponse({ loggedIn: false, isAdmin: false }, { 'Set-Cookie': clearCookie() });
+      return jsonResponse({
+        loggedIn: true,
+        isAdmin: !!u.is_admin,
+        username: u.username,
+        displayName: u.display_name || u.username,
+        avatarUrl: u.avatar_url || null,
+        email: u.email || null,
+        emailVerified: !!u.email_verified,
+        discordLinked: !!u.discord_id,
+        hasPassword: !!u.password_hash
+      });
+    }
+
+    // ---------- AUTH: FORGOT / RESET PASSWORD ----------
+    if (method === 'POST' && path === '/api/forgot-password') {
+      if (await rateLimited(env, request, 'forgot', 5, 3600)) {
+        return jsonResponse({ error: 'Too many reset requests. Try again later.' }, { status: 429 });
+      }
+      const body = await request.json().catch(() => ({}));
+      const identifier = String(body.email || body.username || '').trim();
+      if (!identifier) return jsonResponse({ error: 'Enter your email or username.' }, { status: 400 });
+      if (!env.RESEND_API_KEY) {
+        return jsonResponse({ error: 'Password reset email is not configured on this server yet. Contact an admin.' }, { status: 501 });
+      }
+      const user = await findUserByLogin(env, identifier);
+      // Always report success so account existence can't be probed.
+      if (user && user.email) {
+        const token = randomToken();
+        await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
+        const link = url.origin + '/reset-password.html?token=' + token;
+        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
+          'Reset your password',
+          `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
+           <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
+           <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
+           <p>This link expires in 1 hour and can be used once.</p>`
+        )));
+      }
+      return jsonResponse({ ok: true, message: 'If that account exists, a reset link is on its way to its email address.' });
+    }
+
+    if (method === 'POST' && path === '/api/reset-password') {
+      const body = await request.json().catch(() => ({}));
+      const token = String(body.token || '');
+      const password = String(body.password || '');
+      if (!token) return jsonResponse({ error: 'Missing reset token.' }, { status: 400 });
+      if (!password || password.length < 8) return jsonResponse({ error: 'Password must be at least 8 characters.' }, { status: 400 });
+      const userId = await env.SESSIONS.get('pwreset:' + token);
+      if (!userId) return jsonResponse({ error: 'That reset link is invalid or has expired. Request a new one.' }, { status: 400 });
+      const hash = await hashPassword(password);
+      await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?').bind(hash, userId).run();
+      await env.SESSIONS.delete('pwreset:' + token);
+      // Log them straight in for convenience.
+      const u = await env.DB.prepare('SELECT id, is_admin FROM users WHERE id=?').bind(userId).first();
+      const sessTok = await createSession(env, u.id, !!u.is_admin);
+      return jsonResponse({ ok: true }, { 'Set-Cookie': sessionCookie(sessTok) });
+    }
+
+    // ---------- AUTH: EMAIL VERIFICATION ----------
+    if (method === 'GET' && path === '/api/verify-email') {
+      const token = url.searchParams.get('token') || '';
+      const userId = token && await env.SESSIONS.get('verify:' + token);
+      if (!userId) return redirectResponse(url.origin + '/account.html?verified=0');
+      await env.DB.prepare('UPDATE users SET email_verified=1 WHERE id=?').bind(userId).run();
+      await env.SESSIONS.delete('verify:' + token);
+      return redirectResponse(url.origin + '/account.html?verified=1');
+    }
+
+    if (method === 'POST' && path === '/api/resend-verification') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      if (await rateLimited(env, request, 'verify', 3, 3600)) {
+        return jsonResponse({ error: 'Too many verification emails requested. Try again later.' }, { status: 429 });
+      }
+      const u = await env.DB.prepare('SELECT id, username, display_name, email, email_verified FROM users WHERE id=?')
+        .bind(sess.userId).first();
+      if (!u || !u.email) return jsonResponse({ error: 'No email on this account.' }, { status: 400 });
+      if (u.email_verified) return jsonResponse({ ok: true, message: 'Email is already verified.' });
+      const sent = await sendVerificationEmail(env, url.origin, u);
+      if (!sent.ok) return jsonResponse({ error: sent.error }, { status: 502 });
+      return jsonResponse({ ok: true, message: 'Verification email sent.' });
+    }
+
+    // ---------- AUTH: DISCORD OAUTH ----------
+    if (method === 'GET' && path === '/api/auth/discord') {
+      if (!discordConfigured(env)) return loginErrorRedirect(url.origin, 'Discord sign-in is not configured on this server yet.');
+      const state = randomToken();
+      let linkUserId = 0;
+      if (url.searchParams.get('link') === '1') {
+        const sess = await getSession(env, request);
+        if (!sess) return loginErrorRedirect(url.origin, 'Log in first, then link Discord from your account page.');
+        linkUserId = sess.userId;
+      }
+      await env.SESSIONS.put('oauth:' + state, JSON.stringify({ link: linkUserId }), { expirationTtl: 600 });
+      const auth = new URL('https://discord.com/oauth2/authorize');
+      auth.searchParams.set('client_id', env.DISCORD_CLIENT_ID);
+      auth.searchParams.set('response_type', 'code');
+      auth.searchParams.set('redirect_uri', discordRedirectUri(url.origin));
+      auth.searchParams.set('scope', 'identify email');
+      auth.searchParams.set('state', state);
+      auth.searchParams.set('prompt', 'none');
+      return redirectResponse(auth.toString());
+    }
+
+    if (method === 'GET' && path === '/api/auth/discord/callback') {
+      if (!discordConfigured(env)) return loginErrorRedirect(url.origin, 'Discord sign-in is not configured.');
+      const code = url.searchParams.get('code');
+      const state = url.searchParams.get('state') || '';
+      const stateRaw = state && await env.SESSIONS.get('oauth:' + state);
+      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in failed (state mismatch). Please try again.');
+      await env.SESSIONS.delete('oauth:' + state);
+      let linkUserId = 0;
+      try { linkUserId = (JSON.parse(stateRaw).link | 0); } catch {}
+
+      // Exchange the code for a token.
+      const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: env.DISCORD_CLIENT_ID,
+          client_secret: env.DISCORD_CLIENT_SECRET,
+          grant_type: 'authorization_code',
+          code,
+          redirect_uri: discordRedirectUri(url.origin)
+        })
+      });
+      if (!tokenRes.ok) return loginErrorRedirect(url.origin, 'Discord sign-in failed (token exchange). Please try again.');
+      const tok = await tokenRes.json();
+
+      const userRes = await fetch('https://discord.com/api/users/@me', {
+        headers: { Authorization: 'Bearer ' + tok.access_token }
+      });
+      if (!userRes.ok) return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch). Please try again.');
+      const du = await userRes.json();
+      const discordId = String(du.id);
+      const discordName = du.global_name || du.username || 'user';
+      const avatarUrl = du.avatar
+        ? `https://cdn.discordapp.com/avatars/${discordId}/${du.avatar}.png?size=128`
+        : null;
+      const discordEmail = (du.email && du.verified) ? String(du.email) : null;
+
+      const byDiscord = await env.DB.prepare('SELECT * FROM users WHERE discord_id=?').bind(discordId).first();
+
+      // Link mode: attach this Discord identity to the logged-in account.
+      if (linkUserId) {
+        if (byDiscord && byDiscord.id !== linkUserId) {
+          return redirectResponse(url.origin + '/account.html?error=' + encodeURIComponent('That Discord account is already linked to a different wiki account.'));
+        }
+        await env.DB.prepare(
+          `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?) WHERE id=?`
+        ).bind(discordId, du.username || discordName, avatarUrl, linkUserId).run();
+        return redirectResponse(url.origin + '/account.html?linked=1');
+      }
+
+      // Existing Discord-linked account -> log in.
+      if (byDiscord) {
+        await env.DB.prepare(
+          `UPDATE users SET discord_username=?, avatar_url=COALESCE(?, avatar_url), last_login=datetime('now') WHERE id=?`
+        ).bind(du.username || discordName, avatarUrl, byDiscord.id).run();
+        const t = await createSession(env, byDiscord.id, !!byDiscord.is_admin);
+        return redirectResponse(url.origin + '/account.html', sessionCookie(t));
+      }
+
+      // Same verified email already on a verified account -> link + log in.
+      if (discordEmail) {
+        const byEmail = await env.DB.prepare(
+          'SELECT * FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)'
+        ).bind(discordEmail).first();
+        if (byEmail) {
+          if (!byEmail.email_verified) {
+            return loginErrorRedirect(url.origin, 'An account with your Discord email already exists but its email is unverified. Log in with your password, verify your email, then link Discord from your account page.');
+          }
+          await env.DB.prepare(
+            `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
+          ).bind(discordId, du.username || discordName, avatarUrl, byEmail.id).run();
+          const t = await createSession(env, byEmail.id, !!byEmail.is_admin);
+          return redirectResponse(url.origin + '/account.html?linked=1', sessionCookie(t));
+        }
+      }
+
+      // Brand-new account from Discord. No password yet ('' = Discord-only).
+      const username = await uniqueUsername(env, discordName);
+      const ins = await env.DB.prepare(
+        `INSERT INTO users (username, password_hash, email, is_admin, display_name, discord_id, discord_username, avatar_url, email_verified, last_login)
+         VALUES (?, '', ?, 0, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(username, discordEmail, discordName, discordId, du.username || discordName, avatarUrl, discordEmail ? 1 : 0).run();
+      const newId = ins.meta.last_row_id;
+      await logActivity(env, { userId: newId }, 'signup', 'user', null, username);
+      const t = await createSession(env, newId, false);
+      return redirectResponse(url.origin + '/account.html?welcome=1', sessionCookie(t));
+    }
+
+    // ---------- ACCOUNT PAGE DATA ----------
+    if (method === 'GET' && path === '/api/account') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const batch = await env.DB.batch([
+        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT ts, action, entity_type, entity_slug, entity_name FROM activity_log WHERE user_id=? ORDER BY ts DESC, id DESC LIMIT 50`).bind(sess.userId)
+      ]);
+      const u = batch[0].results[0];
+      if (!u) return jsonResponse({ error: 'Not logged in' }, { status: 401, 'Set-Cookie': clearCookie() });
+      return jsonResponse({
+        profile: {
+          username: u.username,
+          displayName: u.display_name || u.username,
+          bio: u.bio || '',
+          email: u.email || null,
+          emailVerified: !!u.email_verified,
+          isAdmin: !!u.is_admin,
+          discordLinked: !!u.discord_id,
+          discordUsername: u.discord_username || null,
+          avatarUrl: u.avatar_url || null,
+          hasPassword: !!u.password_hash,
+          createdAt: u.created_at,
+          lastLogin: u.last_login
+        },
+        characters: batch[1].results,
+        collections: batch[2].results,
+        scripts: batch[3].results,
+        recentEdits: batch[4].results
+      });
+    }
+
+    // ---------- FETCH A PAGE FOR EDITING (drafts included for owner) ----------
+    if (method === 'GET' && path === '/api/page') {
+      const type = url.searchParams.get('type') || 'character';
+      const slug = url.searchParams.get('slug') || '';
+      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      const row = await getEntityRow(env, type, slug);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const editable = canEditRow(sess, row);
+      if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      return jsonResponse({ data: JSON.parse(row.data), status: row.status || 'published', canEdit: editable });
     }
 
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
@@ -344,18 +830,70 @@ export default {
       });
     }
 
-    // ---------- WRITES (admin only) ----------
+    // ---------- WRITES (logged-in users; ownership enforced) ----------
     if (method === 'POST' && path.startsWith('/api/')) {
       const sess = await getSession(env, request);
-      if (!sess || !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
+
+      // Admin-only endpoints keep their old guard.
+      const adminOnly = (path === '/api/lock' || path === '/api/seed');
+      if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
       // applies to admins too). Lock toggle + seed are intentionally exempt.
-      const isContentWrite = (path === '/api/character' || path === '/api/collection' || path === '/api/script');
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload'].includes(path);
       if (isContentWrite && await isWikiLocked(env)) {
         return jsonResponse({ error: 'The wiki is locked. Editing and page creation are temporarily disabled.' }, { status: 423 });
       }
 
+      // ---- account settings ----
+      if (path === '/api/account/profile') {
+        const b = await request.json().catch(() => ({}));
+        const displayName = String(b.displayName || '').trim().slice(0, 40) || null;
+        const bio = String(b.bio || '').trim().slice(0, 500) || null;
+        await env.DB.prepare('UPDATE users SET display_name=?, bio=? WHERE id=?')
+          .bind(displayName, bio, sess.userId).run();
+        return jsonResponse({ ok: true });
+      }
+
+      if (path === '/api/account/password') {
+        const b = await request.json().catch(() => ({}));
+        const newPassword = String(b.newPassword || '');
+        if (newPassword.length < 8) return jsonResponse({ error: 'New password must be at least 8 characters.' }, { status: 400 });
+        const u = await env.DB.prepare('SELECT password_hash FROM users WHERE id=?').bind(sess.userId).first();
+        if (u.password_hash) {
+          const ok = await verifyPassword(String(b.currentPassword || ''), u.password_hash);
+          if (!ok) return jsonResponse({ error: 'Current password is incorrect.' }, { status: 403 });
+        }
+        // (no current password on Discord-only accounts: they may set one freely)
+        await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?')
+          .bind(await hashPassword(newPassword), sess.userId).run();
+        return jsonResponse({ ok: true });
+      }
+
+      if (path === '/api/account/email') {
+        const b = await request.json().catch(() => ({}));
+        const email = String(b.email || '').trim();
+        if (!EMAIL_RE.test(email) || email.length > 254) return jsonResponse({ error: 'Please enter a valid email address.' }, { status: 400 });
+        const taken = await env.DB.prepare('SELECT 1 FROM users WHERE id<>? AND email IS NOT NULL AND lower(email)=lower(?)')
+          .bind(sess.userId, email).first();
+        if (taken) return jsonResponse({ error: 'That email is already in use by another account.' }, { status: 409 });
+        await env.DB.prepare('UPDATE users SET email=?, email_verified=0 WHERE id=?')
+          .bind(email, sess.userId).run();
+        const u = await env.DB.prepare('SELECT id, username, display_name, email FROM users WHERE id=?').bind(sess.userId).first();
+        ctx.waitUntil(sendVerificationEmail(env, url.origin, u));
+        return jsonResponse({ ok: true, message: 'Email updated. Check your inbox for a verification link.' });
+      }
+
+      if (path === '/api/account/unlink-discord') {
+        const u = await env.DB.prepare('SELECT password_hash, discord_id FROM users WHERE id=?').bind(sess.userId).first();
+        if (!u.discord_id) return jsonResponse({ error: 'No Discord account is linked.' }, { status: 400 });
+        if (!u.password_hash) return jsonResponse({ error: 'Set a password first so you can still log in after unlinking Discord.' }, { status: 400 });
+        await env.DB.prepare('UPDATE users SET discord_id=NULL, discord_username=NULL WHERE id=?').bind(sess.userId).run();
+        return jsonResponse({ ok: true });
+      }
+
+      // ---- image upload (ownership-checked) ----
       if (path === '/api/upload') {
         if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
@@ -379,58 +917,134 @@ export default {
         if (key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
           return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
         }
+        if (bytes.length > 8 * 1024 * 1024) {
+          return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
+        }
+
+        if (!sess.isAdmin) {
+          // tokens/ is reserved for admin tooling.
+          if (key.startsWith('tokens/')) return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+          // Character art follows art/{slug}.png — if that character exists,
+          // only its owner may replace the art.
+          if (key.startsWith('art/')) {
+            const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
+            const row = await getEntityRow(env, 'character', slug);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That art slot belongs to a character owned by another account.' }, { status: 403 });
+            }
+          }
+          // Never allow silently replacing someone else's uploaded file.
+          const existing = await env.ART.head(key).catch(() => null);
+          if (existing) {
+            const owner = existing.customMetadata && existing.customMetadata.owner;
+            if (owner !== String(sess.userId)) {
+              return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
+            }
+          }
+        }
+
         const ext = key.split('.').pop().toLowerCase();
         if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
-        await env.ART.put(key, bytes, { httpMetadata: { contentType } });
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType },
+          customMetadata: { owner: String(sess.userId) }
+        });
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
+      // ---- content create / update ----
       if (path === '/api/character') {
         const c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
-        const existed = await env.DB.prepare('SELECT 1 FROM characters WHERE slug=?').bind(c.slug).first();
+        const existing = await getEntityRow(env, 'character', c.slug);
+        if (existing && !canEditRow(sess, existing)) {
+          return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
+        }
+        const status = c.status === 'draft' ? 'draft' : 'published';
+        delete c.status;
         await env.DB.prepare(
-          `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,created_at,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+          `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
            ON CONFLICT(slug) DO UPDATE SET
              name=excluded.name, team=excluded.team, creator=excluded.creator,
              tags=excluded.tags, appears_in=excluded.appears_in,
-             data=excluded.data, updated_at=datetime('now')`
+             data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
-               c.tags || null, c.appearsIn || null, JSON.stringify(c)).run();
-        await logActivity(env, sess, existed ? 'update' : 'create', 'character', c.slug, c.name);
-        return jsonResponse({ ok: true, slug: c.slug });
+               c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        return jsonResponse({ ok: true, slug: c.slug, status });
       }
 
       if (path === '/api/collection') {
         const c = await request.json();
         if (!c || !c.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
-        const existed = await env.DB.prepare('SELECT 1 FROM collections WHERE slug=?').bind(c.slug).first();
+        const existing = await getEntityRow(env, 'collection', c.slug);
+        if (existing && !canEditRow(sess, existing)) {
+          return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
+        }
+        const status = c.status === 'draft' ? 'draft' : 'published';
+        delete c.status;
         await env.DB.prepare(
-          `INSERT INTO collections (slug,display_name,owner_id,data,created_at,updated_at)
-           VALUES (?,?,?,?,datetime('now'),datetime('now'))
+          `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
+           VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
            ON CONFLICT(slug) DO UPDATE SET
-             display_name=excluded.display_name, data=excluded.data, updated_at=datetime('now')`
-        ).bind(c.slug, c.displayName || c.slug, sess.userId, JSON.stringify(c)).run();
-        await logActivity(env, sess, existed ? 'update' : 'create', 'collection', c.slug, c.displayName || c.slug);
-        return jsonResponse({ ok: true, slug: c.slug });
+             display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+        ).bind(c.slug, c.displayName || c.slug, sess.userId, JSON.stringify(c), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', c.slug, c.displayName || c.slug);
+        return jsonResponse({ ok: true, slug: c.slug, status });
       }
 
       if (path === '/api/script') {
         const s = await request.json();
         if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
-        const existed = await env.DB.prepare('SELECT 1 FROM scripts WHERE slug=?').bind(s.slug).first();
+        const existing = await getEntityRow(env, 'script', s.slug);
+        if (existing && !canEditRow(sess, existing)) {
+          return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
+        }
+        const status = s.status === 'draft' ? 'draft' : 'published';
+        delete s.status;
         await env.DB.prepare(
-          `INSERT INTO scripts (slug,name,author,owner_id,data,created_at,updated_at)
-           VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
+          `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
+           VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))
            ON CONFLICT(slug) DO UPDATE SET
-             name=excluded.name, author=excluded.author, data=excluded.data, updated_at=datetime('now')`
-        ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s)).run();
-        await logActivity(env, sess, existed ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
-        return jsonResponse({ ok: true, slug: s.slug });
+             name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+        ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
+        return jsonResponse({ ok: true, slug: s.slug, status });
       }
 
+      // ---- publish / unpublish a page ----
+      if (path === '/api/publish') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || 'character');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        const status = b.status === 'draft' ? 'draft' : 'published';
+        await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(status, row.slug).run();
+        await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, status });
+      }
+
+      // ---- delete a page ----
+      if (path === '/api/delete') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || 'character');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
+        await logActivity(env, sess, 'delete', type, row.slug, row.name);
+        return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: wiki lock ----
       if (path === '/api/lock') {
         const body = await request.json().catch(() => ({}));
         const locked = body.locked ? '1' : '0';
@@ -442,6 +1056,7 @@ export default {
         return jsonResponse({ ok: true, locked: locked === '1' });
       }
 
+      // ---- admin: one-time seed ----
       if (path === '/api/seed') {
         // Safety: refuse if data already exists (prevents accidental overwrite)
         const existing = await env.DB.prepare('SELECT COUNT(*) AS n FROM characters').first();

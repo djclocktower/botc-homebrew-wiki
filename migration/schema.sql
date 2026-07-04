@@ -4,15 +4,26 @@
 -- indexed/queryable fields are columns; everything else is JSON.
 -- ============================================================
 
--- ---- USERS (admin now, full creator accounts later) -------
+-- ---- USERS (full creator accounts) -------------------------
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  username      TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  email         TEXT,
-  is_admin      INTEGER NOT NULL DEFAULT 0,   -- 0/1
-  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  username         TEXT NOT NULL UNIQUE,
+  password_hash    TEXT NOT NULL,               -- '' for Discord-only accounts
+  email            TEXT,
+  is_admin         INTEGER NOT NULL DEFAULT 0,  -- 0/1
+  display_name     TEXT,
+  bio              TEXT,
+  discord_id       TEXT,
+  discord_username TEXT,
+  avatar_url       TEXT,
+  email_verified   INTEGER NOT NULL DEFAULT 0,
+  last_login       TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email
+  ON users(lower(email)) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_discord
+  ON users(discord_id) WHERE discord_id IS NOT NULL;
 
 -- ---- CHARACTERS -------------------------------------------
 CREATE TABLE IF NOT EXISTS characters (
@@ -24,12 +35,14 @@ CREATE TABLE IF NOT EXISTS characters (
   tags        TEXT,
   appears_in  TEXT,
   data        TEXT NOT NULL,                  -- full character object as JSON
+  status      TEXT NOT NULL DEFAULT 'published',  -- 'published' | 'draft'
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_characters_team    ON characters(team);
 CREATE INDEX IF NOT EXISTS idx_characters_creator ON characters(creator);
 CREATE INDEX IF NOT EXISTS idx_characters_owner   ON characters(owner_id);
+CREATE INDEX IF NOT EXISTS idx_characters_status  ON characters(status);
 
 -- ---- COLLECTIONS ------------------------------------------
 CREATE TABLE IF NOT EXISTS collections (
@@ -37,9 +50,11 @@ CREATE TABLE IF NOT EXISTS collections (
   display_name TEXT NOT NULL,
   owner_id     INTEGER REFERENCES users(id),
   data         TEXT NOT NULL,                 -- full collection object as JSON
+  status       TEXT NOT NULL DEFAULT 'published',
   created_at   TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_collections_owner ON collections(owner_id);
 
 -- ---- SCRIPTS ----------------------------------------------
 CREATE TABLE IF NOT EXISTS scripts (
@@ -48,9 +63,11 @@ CREATE TABLE IF NOT EXISTS scripts (
   author      TEXT,
   owner_id    INTEGER REFERENCES users(id),
   data        TEXT NOT NULL,                  -- full script object as JSON
+  status      TEXT NOT NULL DEFAULT 'published',
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_scripts_owner ON scripts(owner_id);
 
 -- ---- ACTIVITY LOG (admin dashboard feed) ------------------
 CREATE TABLE IF NOT EXISTS activity_log (
@@ -63,7 +80,8 @@ CREATE TABLE IF NOT EXISTS activity_log (
   entity_slug TEXT,
   entity_name TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_log(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_ts   ON activity_log(ts DESC);
+CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id, ts DESC);
 
 -- ---- SETTINGS (global key/value flags, e.g. wiki lock) ----
 CREATE TABLE IF NOT EXISTS settings (
