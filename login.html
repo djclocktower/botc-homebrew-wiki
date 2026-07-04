@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin Login — BOTC HomeBrew Wiki</title>
+<title>Log In — BOTC HomeBrew Wiki</title>
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <style>
   .login-wrap {
-    max-width: 440px;
+    max-width: 460px;
     margin: 0 auto;
     padding: clamp(24px,5vw,64px) clamp(12px,3vw,40px) 64px;
     position: relative;
@@ -37,8 +37,26 @@
   .login-rule {
     height: 2px;
     background: linear-gradient(90deg, transparent, var(--rule), transparent);
-    margin: 10px 0 24px;
+    margin: 10px 0 20px;
     border: none;
+  }
+  .login-tabs { display: flex; gap: 0; margin-bottom: 20px; border: 1px solid var(--parch-frame); border-radius: 6px; overflow: hidden; }
+  .login-tab {
+    flex: 1;
+    font-family: 'Dumbledor2', serif;
+    font-size: 1.05rem;
+    letter-spacing: .04em;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--maroon);
+    cursor: pointer;
+    opacity: .65;
+  }
+  .login-tab.active {
+    background: linear-gradient(180deg, #7a2d2f, #5b1f21);
+    color: #f4ead2;
+    opacity: 1;
   }
   .login-field { margin-bottom: 16px; }
   .login-field label {
@@ -63,6 +81,12 @@
     padding: 11px 13px;
   }
   .login-field input:focus { outline: 2px solid #b98; border-color: #b98; }
+  .login-hint {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .78rem;
+    color: #6d5b40;
+    margin-top: 4px;
+  }
   .login-btn {
     width: 100%;
     font-family: 'Dumbledor2', serif;
@@ -78,6 +102,34 @@
   }
   .login-btn:hover { background: linear-gradient(180deg, #8a3537, #6b2527); }
   .login-btn:disabled { opacity: .6; cursor: default; }
+  .discord-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    background: #5865F2;
+    border: 1px solid #4752c4;
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    margin-top: 14px;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  .discord-btn:hover { background: #4752c4; }
+  .login-or {
+    display: flex; align-items: center; gap: 12px;
+    margin: 18px 0 4px;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .1em;
+    color: #6d5b40;
+  }
+  .login-or::before, .login-or::after { content: ''; flex: 1; height: 1px; background: var(--rule); }
   .login-msg {
     margin-top: 16px;
     text-align: center;
@@ -87,6 +139,13 @@
   }
   .login-msg.error { color: var(--evil, #9a2c2c); }
   .login-msg.success { color: #2a6e2a; }
+  .login-links {
+    margin-top: 14px;
+    text-align: center;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .9rem;
+  }
+  .login-links a { color: var(--good-name); cursor: pointer; }
   .login-status {
     text-align: center;
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
@@ -104,33 +163,82 @@
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">·</span><span class="here">Admin Login</span>
+      <a href="index.html">Home</a><span class="sep">·</span><span class="here">Log In</span>
     </nav>
   </header>
 
   <main class="login-wrap">
     <div class="login-card">
-      <h2>Admin Login</h2>
+      <h2 id="card-title">Log In</h2>
       <hr class="login-rule">
 
+      <!-- Logged-in view -->
       <div id="logged-in-view" style="display:none">
-        <p class="login-status">You are logged in as admin.</p>
-        <a class="login-btn" id="dashboard-link" href="dashboard.html" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px">Go to Admin Dashboard</a>
-        <button class="login-btn" id="seed-btn" type="button" style="margin-bottom:12px">Seed Database (first-time setup)</button>
+        <p class="login-status" id="logged-in-as">You are logged in.</p>
+        <a class="login-btn" href="account.html" style="display:block;text-align:center;text-decoration:none;margin-bottom:12px">My Account</a>
+        <a class="login-btn" id="dashboard-link" href="dashboard.html" style="display:none;text-align:center;text-decoration:none;margin-bottom:12px">Admin Dashboard</a>
+        <button class="login-btn" id="seed-btn" type="button" style="display:none;margin-bottom:12px">Seed Database (first-time setup)</button>
         <button class="login-btn" id="logout-btn" type="button" style="background:linear-gradient(180deg,#555,#333);border-color:#222">Log Out</button>
         <p class="login-status" id="seed-result" style="margin-top:14px;font-size:.9rem"></p>
       </div>
 
-      <div id="login-view">
-        <div class="login-field">
-          <label for="username">Username</label>
-          <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <!-- Login / signup view -->
+      <div id="auth-view">
+        <div class="login-tabs" role="tablist">
+          <button class="login-tab active" id="tab-login" type="button">Log In</button>
+          <button class="login-tab" id="tab-signup" type="button">Sign Up</button>
         </div>
-        <div class="login-field">
-          <label for="password">Password</label>
-          <input type="password" id="password" autocomplete="current-password">
+
+        <!-- LOG IN -->
+        <div id="login-form">
+          <div class="login-field">
+            <label for="username">Username or Email</label>
+            <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false">
+          </div>
+          <div class="login-field">
+            <label for="password">Password</label>
+            <input type="password" id="password" autocomplete="current-password">
+          </div>
+          <button class="login-btn" id="login-btn" type="button">Log In</button>
+          <div class="login-links"><a id="forgot-link">Forgot your password?</a></div>
         </div>
-        <button class="login-btn" id="login-btn" type="button">Log In</button>
+
+        <!-- SIGN UP -->
+        <div id="signup-form" style="display:none">
+          <div class="login-field">
+            <label for="su-username">Username</label>
+            <input type="text" id="su-username" autocomplete="username" autocapitalize="none" spellcheck="false">
+            <div class="login-hint">3–20 characters: letters, numbers, hyphens, underscores. Shown on pages you create.</div>
+          </div>
+          <div class="login-field">
+            <label for="su-email">Email</label>
+            <input type="email" id="su-email" autocomplete="email" spellcheck="false">
+            <div class="login-hint">Used for password resets and verification — never shown publicly.</div>
+          </div>
+          <div class="login-field">
+            <label for="su-password">Password</label>
+            <input type="password" id="su-password" autocomplete="new-password">
+            <div class="login-hint">At least 8 characters.</div>
+          </div>
+          <button class="login-btn" id="signup-btn" type="button">Create Account</button>
+        </div>
+
+        <!-- FORGOT PASSWORD -->
+        <div id="forgot-form" style="display:none">
+          <p class="login-status">Enter the email (or username) on your account and we'll send a reset link.</p>
+          <div class="login-field">
+            <label for="fp-email">Email or Username</label>
+            <input type="text" id="fp-email" autocomplete="email" autocapitalize="none" spellcheck="false">
+          </div>
+          <button class="login-btn" id="forgot-btn" type="button">Send Reset Link</button>
+          <div class="login-links"><a id="back-to-login">&larr; Back to log in</a></div>
+        </div>
+
+        <div class="login-or">or</div>
+        <a class="discord-btn" href="/api/auth/discord">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.291a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+          Continue with Discord
+        </a>
       </div>
 
       <p class="login-msg" id="login-msg"></p>
@@ -139,76 +247,144 @@
 
   <script>
     function $(id){ return document.getElementById(id); }
+    var msg = $('login-msg');
+    function setMsg(cls, text){ msg.className = 'login-msg' + (cls ? ' ' + cls : ''); msg.textContent = text || ''; }
 
-    function showLoggedIn(isAdmin) {
-      $('login-view').style.display = 'none';
+    // Error passed back from OAuth redirects (?error=...)
+    (function(){
+      var p = new URLSearchParams(location.search);
+      if (p.get('error')) setMsg('error', p.get('error'));
+    })();
+
+    function showLoggedIn(me) {
+      $('auth-view').style.display = 'none';
       $('logged-in-view').style.display = 'block';
+      $('card-title').textContent = 'Your Account';
+      $('logged-in-as').textContent = 'Logged in as ' + (me.displayName || me.username || 'user') + (me.isAdmin ? ' (admin)' : '') + '.';
+      if (me.isAdmin) {
+        $('dashboard-link').style.display = 'block';
+        $('seed-btn').style.display = 'block';
+      }
     }
     function showLoggedOut() {
-      $('login-view').style.display = 'block';
+      $('auth-view').style.display = 'block';
       $('logged-in-view').style.display = 'none';
     }
 
-    // Check current state on load
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
-      .then(function(d){ if (d.loggedIn && d.isAdmin) showLoggedIn(true); else showLoggedOut(); })
+      .then(function(d){ if (d.loggedIn) showLoggedIn(d); else showLoggedOut(); })
       .catch(function(){ showLoggedOut(); });
 
-    $('login-btn').addEventListener('click', function () {
-      var btn = this;
-      var msg = $('login-msg');
-      msg.className = 'login-msg';
-      msg.textContent = '';
-      var username = $('username').value.trim();
-      var password = $('password').value;
-      if (!username || !password) {
-        msg.className = 'login-msg error';
-        msg.textContent = 'Enter username and password.';
-        return;
-      }
-      btn.disabled = true;
-      btn.textContent = 'Logging in…';
-      fetch('/api/login', {
+    // ── tabs / panel switching ──
+    function showPanel(which) {
+      $('login-form').style.display  = which === 'login'  ? 'block' : 'none';
+      $('signup-form').style.display = which === 'signup' ? 'block' : 'none';
+      $('forgot-form').style.display = which === 'forgot' ? 'block' : 'none';
+      $('tab-login').classList.toggle('active', which !== 'signup');
+      $('tab-signup').classList.toggle('active', which === 'signup');
+      $('card-title').textContent = which === 'signup' ? 'Create an Account'
+        : which === 'forgot' ? 'Reset Password' : 'Log In';
+      setMsg('', '');
+    }
+    $('tab-login').addEventListener('click', function(){ showPanel('login'); });
+    $('tab-signup').addEventListener('click', function(){ showPanel('signup'); });
+    $('forgot-link').addEventListener('click', function(){ showPanel('forgot'); });
+    $('back-to-login').addEventListener('click', function(){ showPanel('login'); });
+
+    function postJSON(path, body) {
+      return fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ username: username, password: password })
-      })
-        .then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        body: JSON.stringify(body)
+      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, ok: r.ok, body: d }; }); });
+    }
+
+    // ── log in ──
+    $('login-btn').addEventListener('click', function () {
+      var btn = this;
+      var username = $('username').value.trim();
+      var password = $('password').value;
+      if (!username || !password) { setMsg('error', 'Enter your username/email and password.'); return; }
+      btn.disabled = true; btn.textContent = 'Logging in…';
+      postJSON('/api/login', { username: username, password: password })
         .then(function(res){
-          if (res.status === 200 && res.body.ok) {
-            msg.className = 'login-msg success';
-            msg.textContent = 'Logged in! Redirecting…';
-            setTimeout(function(){ location.href = 'index.html'; }, 900);
+          if (res.ok && res.body.ok) {
+            try { sessionStorage.removeItem('botc_me'); } catch(e){}
+            setMsg('success', 'Logged in! Redirecting…');
+            var dest = new URLSearchParams(location.search).get('next') || 'account.html';
+            setTimeout(function(){ location.href = dest; }, 700);
           } else {
-            msg.className = 'login-msg error';
-            msg.textContent = res.body.error || 'Login failed.';
-            btn.disabled = false;
-            btn.textContent = 'Log In';
+            setMsg('error', res.body.error || 'Login failed.');
+            btn.disabled = false; btn.textContent = 'Log In';
           }
         })
         .catch(function(){
-          msg.className = 'login-msg error';
-          msg.textContent = 'Network error. Try again.';
-          btn.disabled = false;
-          btn.textContent = 'Log In';
+          setMsg('error', 'Network error. Try again.');
+          btn.disabled = false; btn.textContent = 'Log In';
+        });
+    });
+    $('password').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('login-btn').click(); });
+
+    // ── sign up ──
+    $('signup-btn').addEventListener('click', function () {
+      var btn = this;
+      var username = $('su-username').value.trim();
+      var email = $('su-email').value.trim();
+      var password = $('su-password').value;
+      if (!username || !email || !password) { setMsg('error', 'Fill in username, email, and password.'); return; }
+      btn.disabled = true; btn.textContent = 'Creating account…';
+      postJSON('/api/signup', { username: username, email: email, password: password })
+        .then(function(res){
+          if (res.ok && res.body.ok) {
+            try { sessionStorage.removeItem('botc_me'); } catch(e){}
+            setMsg('success', 'Account created! Redirecting…');
+            setTimeout(function(){ location.href = 'account.html?welcome=1'; }, 700);
+          } else {
+            setMsg('error', res.body.error || 'Signup failed.');
+            btn.disabled = false; btn.textContent = 'Create Account';
+          }
+        })
+        .catch(function(){
+          setMsg('error', 'Network error. Try again.');
+          btn.disabled = false; btn.textContent = 'Create Account';
+        });
+    });
+    $('su-password').addEventListener('keydown', function(e){ if (e.key === 'Enter') $('signup-btn').click(); });
+
+    // ── forgot password ──
+    $('forgot-btn').addEventListener('click', function () {
+      var btn = this;
+      var email = $('fp-email').value.trim();
+      if (!email) { setMsg('error', 'Enter your email or username.'); return; }
+      btn.disabled = true; btn.textContent = 'Sending…';
+      postJSON('/api/forgot-password', { email: email })
+        .then(function(res){
+          if (res.ok && res.body.ok) {
+            setMsg('success', res.body.message || 'Reset link sent — check your email.');
+            btn.textContent = 'Sent ✓';
+          } else {
+            setMsg('error', res.body.error || 'Could not send reset email.');
+            btn.disabled = false; btn.textContent = 'Send Reset Link';
+          }
+        })
+        .catch(function(){
+          setMsg('error', 'Network error. Try again.');
+          btn.disabled = false; btn.textContent = 'Send Reset Link';
         });
     });
 
-    $('password').addEventListener('keydown', function(e){
-      if (e.key === 'Enter') $('login-btn').click();
-    });
-
+    // ── admin: seed + logout ──
     $('seed-btn').addEventListener('click', function () {
       var btn = this, out = $('seed-result');
       out.textContent = '';
       if (!confirm('Load all characters, collections, and scripts into the database? This is a one-time setup step.')) return;
       btn.disabled = true; btn.textContent = 'Seeding…';
       fetch('/api/seed', { method: 'POST', credentials: 'same-origin' })
-        .then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(r){ return r.json().then(function(d){ return { status: r.status, ok: r.ok, body: d }; }); })
         .then(function(res){
-          if (res.status === 200 && res.body.ok) {
+          if (res.ok && res.body.ok) {
             out.style.color = '#2a6e2a';
             out.textContent = 'Loaded ' + res.body.characters + ' characters, ' + res.body.collections + ' collections, ' + res.body.scripts + ' scripts.';
             btn.textContent = 'Seed complete ✓';
@@ -227,7 +403,7 @@
 
     $('logout-btn').addEventListener('click', function () {
       fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
-        .then(function(){ showLoggedOut(); $('login-msg').textContent = ''; });
+        .then(function(){ try { sessionStorage.removeItem('botc_me'); } catch(e){} showLoggedOut(); setMsg('', ''); });
     });
   </script>
 </body>

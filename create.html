@@ -301,6 +301,7 @@
       </fieldset>
 
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
+      <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
       <div id="status"></div>
     </div>
 
@@ -553,17 +554,18 @@
     });
 
     // ── publish ────────────────────────────────────────────────────
-    // ── admin login check: warn + disable publish if not logged in ──
+    // ── login check: warn + disable publish if not logged in ──
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if(!d.loggedIn || !d.isAdmin){
-          setStatus('err','You are not logged in as admin. <a href="login.html">Log in</a> to publish.');
+        if(!d.loggedIn){
+          setStatus('err','You are not logged in. <a href="login.html?next=create.html">Log in or create an account</a> to publish your character.');
           var pb = document.getElementById('publish'); if(pb) pb.disabled = true;
+          var db = document.getElementById('save-draft'); if(db) db.disabled = true;
         }
       }).catch(function(){});
 
-    $('publish').addEventListener('click', function () {
+    function submitCharacter(saveStatus) {
       var d = gather();
       if (!d.name)    return setStatus('err', 'A character name is required.');
       if (!d.ability) return setStatus('err', 'An ability line is required.');
@@ -574,14 +576,17 @@
       d.page  = 'c/' + slug + '.html';
       d.image = ART_BASE + slug + '.png';
 
+      var isDraft = saveStatus === 'draft';
+      var verb = isDraft ? 'Saving draft' : 'Publishing';
       $('publish').disabled = true;
-      setStatus('work', 'Publishing&hellip; uploading art');
+      $('save-draft').disabled = true;
+      setStatus('work', verb + '&hellip; uploading art');
 
       // Step 1: upload art to R2 (instant, no rebuild)
       apiUpload('art/' + slug + '.png', artDataURL)
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
-          setStatus('work', 'Publishing&hellip; saving to database');
+          setStatus('work', verb + '&hellip; saving to database');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, page: d.page, image: d.image, creator: d.creator,
@@ -592,7 +597,8 @@
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
-            setup: d.setup, jinxes: d.jinxes
+            setup: d.setup, jinxes: d.jinxes,
+            status: saveStatus
           };
           return fetch('/api/character', {
             method: 'POST',
@@ -601,7 +607,7 @@
             body: JSON.stringify(entry)
           }).then(function(r){
             return r.json().then(function(j){
-              if(r.status === 403) throw new Error('Not logged in as admin. Please log in at /login.html first.');
+              if(r.status === 401) throw new Error('Not logged in. Please log in at /login.html first.');
               if(!r.ok) throw new Error(j.error || 'Save failed.');
               return j;
             });
@@ -609,14 +615,22 @@
         })
         .then(function () {
           var url = SITE_ROOT + 'c/' + slug + '.html';
-          setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
+          if (isDraft) {
+            setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account.html">your account page</a>.');
+          } else {
+            setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
+          }
           $('publish').disabled = false;
+          $('save-draft').disabled = false;
         })
         .catch(function (err) {
           setStatus('err', '&#10007; ' + err.message);
           $('publish').disabled = false;
+          $('save-draft').disabled = false;
         });
-    });
+    }
+    $('publish').addEventListener('click', function () { submitCharacter('published'); });
+    $('save-draft').addEventListener('click', function () { submitCharacter('draft'); });
 
     addJinx();
     update();

@@ -57,13 +57,13 @@
     var id = 'the-academy';
     function setStatus(cls, html) { var s = $('status'); s.className = 'rc-status show ' + cls; s.innerHTML = html; }
 
-    // gate on admin session
+    // gate on login session
     fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); }).then(function (me) {
-      if (me && me.isAdmin) {
+      if (me && me.loggedIn) {
         $('form').style.display = 'block';
       } else {
         $('gate').style.display = 'block';
-        $('gate').innerHTML = 'You need to be logged in as an admin to register a collection. <a href="login.html">Log in</a>, then return to this page.';
+        $('gate').innerHTML = 'You need to be logged in to register a collection. <a href="login.html?next=register-collection.html">Log in or sign up</a>, then return to this page.';
       }
     }).catch(function () {
       $('gate').style.display = 'block';
@@ -93,7 +93,7 @@
           var url = 'all-characters.html?collection=' + encodeURIComponent(slug);
           setStatus('ok', '\u2713 Registered! View it at <a href="' + url + '">the ' + (payload.displayName) + ' collection</a>. (Allow up to a minute.)');
         } else {
-          setStatus('err', '\u2717 ' + ((res && res.error) || 'Unknown error') + '. Make sure you are logged in as admin.');
+          setStatus('err', '\u2717 ' + ((res && res.error) || 'Unknown error') + '. Make sure you are logged in.');
         }
       }).catch(function (e) {
         $('go').disabled = false;

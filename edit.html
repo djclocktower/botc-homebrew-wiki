@@ -304,6 +304,7 @@
       </fieldset>
 
       <button type="button" class="btn btn-save" id="save">Save Changes</button>
+      <button type="button" class="btn btn-ghost" id="save-publish" style="display:none" title="Save your changes and make this page public">Save &amp; Publish</button>
       <div id="status"></div>
     </div>
 
@@ -623,12 +624,15 @@
     function setStatus(cls,html){ var s=$('status'); s.className=cls; s.innerHTML=html; }
 
     // ── save ──
-    $('save').addEventListener('click', function(){
+    var currentStatus = 'published';
+    function saveCharacter(newStatus){
       var d = gather();
       if(!d.name)    return setStatus('err','A character name is required.');
       if(!d.ability) return setStatus('err','An ability line is required.');
+      var saveStatus = newStatus || currentStatus;
 
       $('save').disabled = true;
+      $('save-publish').disabled = true;
       var p = Promise.resolve();
 
       if(artChanged && artDataURL){
@@ -652,13 +656,14 @@
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
           otherNightReminder: d.otherNightReminder, reminders: d.reminders,
-          remindersGlobal: d.remindersGlobal, setup: d.setup, jinxes: d.jinxes
+          remindersGlobal: d.remindersGlobal, setup: d.setup, jinxes: d.jinxes,
+          status: saveStatus
         });
         if(artChanged){
           entry.art   = 'art/'+originalSlug+'.png';
           entry.image = ART_BASE+originalSlug+'.png';
         }
-        // Write to D1 via the new Worker (instant; gated behind admin login)
+        // Write to D1 via the Worker (instant; requires login + ownership)
         return fetch('/api/character', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -666,49 +671,71 @@
           body: JSON.stringify(entry)
         }).then(function(r){
           return r.json().then(function(j){
-            if(r.status === 403) throw new Error('Not logged in as admin. Please log in at /login.html first.');
+            if(r.status === 401) throw new Error('Not logged in. Please log in at /login.html first.');
             if(!r.ok) throw new Error(j.error || 'Save failed.');
             return j;
           });
         });
       }).then(function(){
+        currentStatus = saveStatus;
+        updatePublishButton();
         var url = SITE_ROOT + 'c/' + originalSlug + '.html';
-        setStatus('ok','&#10003; Saved! Live now. <a href="'+url+'" target="_blank">View character &rarr;</a>');
+        if (saveStatus === 'draft') {
+          setStatus('ok','&#10003; Draft saved (not public). <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account.html">your account</a>.');
+        } else {
+          setStatus('ok','&#10003; Saved! Live now. <a href="'+url+'" target="_blank">View character &rarr;</a>');
+        }
         $('save').disabled = false;
+        $('save-publish').disabled = false;
       }).catch(function(err){
         setStatus('err','&#10007; '+err.message);
         $('save').disabled = false;
+        $('save-publish').disabled = false;
       });
-    });
+    }
+    function updatePublishButton(){
+      $('save-publish').style.display = currentStatus === 'draft' ? '' : 'none';
+      $('save').textContent = currentStatus === 'draft' ? 'Save Draft' : 'Save Changes';
+    }
+    $('save').addEventListener('click', function(){ saveCharacter(); });
+    $('save-publish').addEventListener('click', function(){ saveCharacter('published'); });
 
-    // ── admin login check: warn + disable save if not logged in ──
+    // ── login check: warn + disable save if not logged in ──
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
       .then(function(d){
-        if(!d.loggedIn || !d.isAdmin){
-          setStatus('err','You are not logged in as admin. <a href="login.html">Log in</a> to save changes.');
+        if(!d.loggedIn){
+          setStatus('err','You are not logged in. <a href="login.html?next='+encodeURIComponent('edit.html?c='+originalSlug)+'">Log in</a> to save changes.');
           var sv = $('save'); if(sv) sv.disabled = true;
+          var sp = $('save-publish'); if(sp) sp.disabled = true;
         }
       }).catch(function(){});
 
-    // ── on load: fetch character data ──
+    // ── on load: fetch character data (drafts included if you own them) ──
     if(!originalSlug){
       $('loading').textContent = 'No character specified. Add ?c=slug to the URL.';
     } else {
-      fetch('characters.json?_='+Date.now())
-        .then(function(r){ return r.json(); })
-        .then(function(list){
-          var entry = list.filter(function(c){ return c.slug===originalSlug; })[0];
-          if(!entry){
-            $('loading').textContent = 'Character "'+originalSlug+'" not found in characters.json.';
-            return;
+      fetch('/api/page?type=character&slug='+encodeURIComponent(originalSlug), { credentials: 'same-origin' })
+        .then(function(r){
+          if(r.status === 404) throw new Error('Character "'+originalSlug+'" not found.');
+          if(!r.ok) throw new Error('Could not load character data.');
+          return r.json();
+        })
+        .then(function(res){
+          var entry = res.data;
+          currentStatus = res.status || 'published';
+          updatePublishButton();
+          if(res.canEdit === false){
+            setStatus('err','This page belongs to another account, so you cannot save changes to it.');
+            $('save').disabled = true;
+            $('save-publish').disabled = true;
           }
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
           populateForm(entry);
         })
-        .catch(function(){
-          $('loading').textContent = 'Could not load characters.json.';
+        .catch(function(err){
+          $('loading').textContent = err.message || 'Could not load character data.';
         });
     }
   </script>
