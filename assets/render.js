@@ -174,31 +174,59 @@
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
-    var jinxInner = '';
-    if (jinxes.length) {
-      jinxInner = '<div class="card" id="sec-jinxes">' +
-        '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
-        jinxes.map(function (j) {
-          var al = (j.align === 'evil') ? 'evil' : 'good';
-          var nm = jinxDisplayName(j);
-          var rawId = j.id || slugId(j.name || '');
-          var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-          var iconSrc = root + 'assets/icons/' + iconId + '.png';
-          return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
-            (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
-            ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
-            : '') +
-            '<div class="jbody">' +
-            '<a class="jname ' + al + '" href="' + jinxURL(nm) +
-            '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
-            '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
-        }).join('') +
-        '</div>';
-    }
+    // Shared jinx item markup, used by both the sidebar box and the dropdown.
+    var jinxItems = jinxes.map(function (j) {
+      var al = (j.align === 'evil') ? 'evil' : 'good';
+      var nm = jinxDisplayName(j);
+      var rawId = j.id || slugId(j.name || '');
+      var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
+      var iconSrc = root + 'assets/icons/' + iconId + '.png';
+      return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
+        (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
+        ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
+        : '') +
+        '<div class="jbody">' +
+        '<a class="jname ' + al + '" href="' + jinxURL(nm) +
+        '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
+        '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
+    }).join('');
 
-    // JSON box always lives inside the infocard, below the info dl
-    // jinxes (if any) go in the sidebar on their own
-    var sideBar = jinxes.length ? '<aside class="char-side">' + jinxInner + '</aside>' : '';
+    // Two ways to show jinxes: a floating box in the sidebar (default) or a
+    // collapsible dropdown at the foot of the main column. Chosen per-character.
+    var jinxMode = (d.jinxDisplay === 'dropdown') ? 'dropdown' : 'sidebar';
+    var jinxCard = jinxes.length ?
+      '<div class="card" id="sec-jinxes">' +
+        '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
+        jinxItems +
+      '</div>' : '';
+    var jinxDrop = jinxes.length ?
+      '<div class="jinx-drop" id="sec-jinxes">' +
+        '<div class="jinx-drop-bar" role="button" tabindex="0" aria-expanded="false">' +
+          '<span class="jinx-drop-title">Jinxes</span>' +
+          '<span class="jinx-drop-arrow">&#9662;</span>' +
+        '</div>' +
+        '<div class="jinx-drop-body" hidden>' + jinxItems + '</div>' +
+      '</div>' : '';
+
+    // Custom user-defined sidebar boxes: any number of {title, content}.
+    var customBoxesHtml = (d.customBoxes || []).map(function (b) {
+      var title = String((b && b.title) || '').trim();
+      var content = String((b && b.content) || '');
+      if (!title && !content.trim()) return '';
+      var body = content.split(/\n{2,}/).map(function (p) {
+        p = p.replace(/\s+$/, '');
+        return p.trim() ? '<p>' + tok(p).replace(/\n/g, '<br>') + '</p>' : '';
+      }).join('');
+      return '<div class="card custom-box">' +
+        (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +
+        '<div class="custom-box-body">' + body + '</div>' +
+      '</div>';
+    }).join('');
+
+    // JSON box always lives inside the infocard, below the info dl.
+    // The sidebar carries the jinx box (unless dropdown mode) + custom boxes.
+    var sideItems = (jinxMode === 'sidebar' ? jinxCard : '') + customBoxesHtml;
+    var sideBar = sideItems ? '<aside class="char-side">' + sideItems + '</aside>' : '';
     var infoCardFinal = infoCard.slice(0, -6) +
       '<div style="margin-top:14px">' + renderJsonBox(d) + '</div></div>';
 
@@ -208,6 +236,7 @@
       '<section class="char-parchment card">' +
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
       examplesBlock + tipsBlock + bluffingBlock + fightingBlock +
+      (jinxMode === 'dropdown' ? jinxDrop : '') +
       '</section>' +
       '<div class="char-col2">' + infoCardFinal + sideBar + '</div>' +
       '</div>';
@@ -237,6 +266,14 @@
         box.querySelector('.json-body').hidden = !open;
         return;
       }
+      var jd = e.target.closest && e.target.closest('.jinx-drop-bar');
+      if (jd) {
+        var jbox = jd.closest('.jinx-drop');
+        var jopen = jbox.classList.toggle('open');
+        jd.setAttribute('aria-expanded', jopen ? 'true' : 'false');
+        jbox.querySelector('.jinx-drop-body').hidden = !jopen;
+        return;
+      }
       var cp = e.target.closest && e.target.closest('.json-copy');
       if (cp) {
         var b = cp.closest('.json-box');
@@ -249,6 +286,17 @@
           });
         }
       }
+    });
+    // Keyboard toggle for the collapsible jinx dropdown (Enter / Space).
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+      var jd = e.target.closest && e.target.closest('.jinx-drop-bar');
+      if (!jd) return;
+      e.preventDefault();
+      var jbox = jd.closest('.jinx-drop');
+      var jopen = jbox.classList.toggle('open');
+      jd.setAttribute('aria-expanded', jopen ? 'true' : 'false');
+      jbox.querySelector('.jinx-drop-body').hidden = !jopen;
     });
   }
 

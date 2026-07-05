@@ -197,6 +197,30 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .nrow img { height: 46px; width: auto; filter: drop-shadow(0 2px 3px rgba(0,0,0,.18)); }
 .ndiv { height: 1px; background: rgba(180,160,120,.5); margin: 12px 16%; }
 
+/* Collapsible jinx dropdown (alternative to the sidebar jinx box) */
+.jinx-drop { margin-top: 24px; }
+.jinx-drop-bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--parch);
+  border: 2px solid var(--parch-frame);
+  padding: 10px 16px; cursor: pointer; user-select: none;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--maroon); font-size: 1rem;
+}
+.jinx-drop.open .jinx-drop-bar { border-bottom: none; }
+.jinx-drop-arrow { transition: transform .2s ease; font-size: .85em; }
+.jinx-drop.open .jinx-drop-arrow { transform: rotate(180deg); }
+.jinx-drop-body {
+  border: 2px solid var(--parch-frame); border-top: none;
+  padding: 8px 16px 12px;
+}
+
+/* Custom user-defined sidebar boxes */
+.custom-box-h { border-top: none; padding-top: 0; }
+.custom-box-body { color: var(--ink); font-size: 1rem; line-height: 1.4; }
+.custom-box-body p { margin: 0 0 10px; }
+.custom-box-body p:last-child { margin-bottom: 0; }
+
 /* ════════════════════════════════════════════════════════════════
    HOMEPAGE STYLES
    ════════════════════════════════════════════════════════════════ */
