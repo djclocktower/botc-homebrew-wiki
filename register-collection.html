@@ -29,9 +29,9 @@
 <body>
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="index.html"><img class="brand-skull" src="assets/logo_skull.png" alt=""><img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki"></a>
+      <a class="brand" href="/"><img class="brand-skull" src="assets/logo_skull.png" alt=""><img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki"></a>
     </div>
-    <nav class="crumb" aria-label="Breadcrumb"><a href="index.html">Home</a><span class="sep">›</span><span class="here">Register Collection</span></nav>
+    <nav class="crumb" aria-label="Breadcrumb"><a href="/">Home</a><span class="sep">›</span><span class="here">Register Collection</span></nav>
   </header>
 
   <main class="wrap rc-wrap">
@@ -63,7 +63,7 @@
         $('form').style.display = 'block';
       } else {
         $('gate').style.display = 'block';
-        $('gate').innerHTML = 'You need to be logged in to register a collection. <a href="login.html?next=register-collection.html">Log in or sign up</a>, then return to this page.';
+        $('gate').innerHTML = 'You need to be logged in to register a collection. <a href="login?next=register-collection">Log in or sign up</a>, then return to this page.';
       }
     }).catch(function () {
       $('gate').style.display = 'block';
@@ -90,7 +90,7 @@
       }).then(function (r) { return r.json(); }).then(function (res) {
         $('go').disabled = false;
         if (res && res.ok) {
-          var url = 'all-characters.html?collection=' + encodeURIComponent(slug);
+          var url = 'all-characters?collection=' + encodeURIComponent(slug);
           setStatus('ok', '\u2713 Registered! View it at <a href="' + url + '">the ' + (payload.displayName) + ' collection</a>. (Allow up to a minute.)');
         } else {
           setStatus('err', '\u2717 ' + ((res && res.error) || 'Unknown error') + '. Make sure you are logged in.');

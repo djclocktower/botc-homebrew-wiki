@@ -150,13 +150,13 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">·</span><span class="here">Admin Dashboard</span>
+      <a href="/">Home</a><span class="sep">·</span><span class="here">Admin Dashboard</span>
     </nav>
   </header>
 
@@ -167,7 +167,7 @@
     <!-- shown if not an admin -->
     <div id="gate" class="gate" style="display:none">
       <p>This page is for administrators only.</p>
-      <p><a href="login.html">Log in as admin</a> to continue.</p>
+      <p><a href="login">Log in as admin</a> to continue.</p>
     </div>
 
     <!-- the dashboard itself -->
@@ -261,9 +261,9 @@
 
     function editorUrl(type, slug){
       var sl = encodeURIComponent(slug || '');
-      if (type === 'character')  return 'edit.html?c=' + sl;
-      if (type === 'collection') return 'edit-collection.html?c=' + sl;
-      if (type === 'script')     return 'edit-script.html?s=' + sl;
+      if (type === 'character')  return 'edit?c=' + sl;
+      if (type === 'collection') return 'edit-collection?c=' + sl;
+      if (type === 'script')     return 'edit-script?s=' + sl;
       return '#';
     }
     function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }

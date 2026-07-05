@@ -11,20 +11,20 @@
     var slug = new URLSearchParams(location.search).get('c');
     var hash = location.hash || '';
     if (slug) {
-      location.replace('c/' + slug + '.html' + hash);
+      location.replace('c/' + slug + hash);
     } else {
-      location.replace('all-characters.html');
+      location.replace('all-characters');
     }
   })();
 </script>
 </head>
 <body>
   <p style="font-family:sans-serif;text-align:center;padding:40px;color:#555">
-    Redirecting… if nothing happens, <a id="fallback" href="all-characters.html">click here</a>.
+    Redirecting… if nothing happens, <a id="fallback" href="all-characters">click here</a>.
   </p>
   <script>
     var slug = new URLSearchParams(location.search).get('c');
-    if (slug) document.getElementById('fallback').href = 'c/' + slug + '.html';
+    if (slug) document.getElementById('fallback').href = 'c/' + slug;
   </script>
 </body>
 </html>

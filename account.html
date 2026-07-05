@@ -170,13 +170,13 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">·</span><span class="here">My Account</span>
+      <a href="/">Home</a><span class="sep">·</span><span class="here">My Account</span>
     </nav>
   </header>
 
@@ -188,7 +188,7 @@
 
     <div id="gate" class="panel" style="display:none">
       <p class="acct-body">You need an account to see this page.
-      <a href="login.html?next=account.html" style="color:var(--maroon);font-weight:700">Log in or sign up</a>.</p>
+      <a href="login?next=account" style="color:var(--maroon);font-weight:700">Log in or sign up</a>.</p>
     </div>
 
     <div id="acct" style="display:none">
@@ -224,7 +224,7 @@
       <div class="panel">
         <h3>Your Pages <span class="count-pill" id="n-pages">0</span></h3>
         <table class="row-list" id="pages-table"></table>
-        <div class="empty-note" id="pages-empty" style="display:none">You haven't published any pages yet. <a href="create.html">Create a character</a> to get started.</div>
+        <div class="empty-note" id="pages-empty" style="display:none">You haven't published any pages yet. <a href="create">Create a character</a> to get started.</div>
       </div>
 
       <!-- recent edits -->
@@ -303,14 +303,14 @@
 
     var TYPE_LABEL = { character: 'Character', collection: 'Collection', script: 'Script' };
     function viewUrl(type, slug) {
-      if (type === 'character')  return 'c/' + encodeURIComponent(slug) + '.html';
-      if (type === 'collection') return 'all-characters.html?collection=' + encodeURIComponent(slug);
-      return 'script-view.html?s=' + encodeURIComponent(slug);
+      if (type === 'character')  return 'c/' + encodeURIComponent(slug);
+      if (type === 'collection') return 'all-characters?collection=' + encodeURIComponent(slug);
+      return 'script-view?s=' + encodeURIComponent(slug);
     }
     function editUrl(type, slug) {
-      if (type === 'character')  return 'edit.html?c=' + encodeURIComponent(slug);
-      if (type === 'collection') return 'edit-collection.html?c=' + encodeURIComponent(slug);
-      return 'script.html?s=' + encodeURIComponent(slug);
+      if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);
+      if (type === 'collection') return 'edit-collection?c=' + encodeURIComponent(slug);
+      return 'script?s=' + encodeURIComponent(slug);
     }
     function fmtDate(s) {
       if (!s) return '';
@@ -343,7 +343,7 @@
       if (note) {
         var el = $('top-note');
         el.textContent = note; el.className = 'top-note ' + cls; el.style.display = 'block';
-        history.replaceState(null, '', 'account.html');
+        history.replaceState(null, '', 'account');
       }
     })();
 
@@ -529,7 +529,7 @@
 
     $('logout-btn').addEventListener('click', function(){
       fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
-        .then(function(){ try { sessionStorage.removeItem('botc_me'); } catch(e){} location.href = 'index.html'; });
+        .then(function(){ try { sessionStorage.removeItem('botc_me'); } catch(e){} location.href = '/'; });
     });
 
     function load() {

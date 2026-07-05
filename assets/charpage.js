@@ -56,7 +56,7 @@
 
   if (window.SSR) {
     var eb0 = document.getElementById('edit-btn');
-    if (eb0) { eb0.href = (window.LINK_ROOT || '') + 'edit.html?c=' + SLUG; eb0.style.display = ''; }
+    if (eb0) { eb0.href = (window.LINK_ROOT || '') + 'edit?c=' + SLUG; eb0.style.display = ''; }
     mountScriptButton(SLUG);
     mountTokenButton(SLUG);
     if (location.hash) {
@@ -78,12 +78,14 @@
       var label = (window.TEAM_LABEL[d.team] || d.team);
       var crumb = document.getElementById('crumb');
       if (crumb) crumb.innerHTML =
-        '<a href="../index.html">Home</a><span class="sep">›</span><a href="../all-characters.html">Characters</a><span class="sep">·</span><a href="../script.html">Script Builder</a><span class="sep">·</span><a href="../tokens.html">Token Tool</a><span class="sep">›</span>' +
-        '<a href="../team.html?t=' + d.team + '">' + label + '</a>' +
+        '<a href="../">Home</a><span class="sep">›</span><a href="../all-characters">Characters</a><span class="sep">·</span><a href="../script">Script Builder</a><span class="sep">·</span><a href="../tokens">Token Tool</a><span class="sep">›</span>' +
+        '<a href="../team?t=' + d.team + '">' + label + '</a>' +
         '<span class="sep">›</span><span class="here">' + d.name + '</span>';
       var eb = document.getElementById('edit-btn');
-      if (eb) { eb.href = '../edit.html?c=' + SLUG; eb.style.display = ''; }
-      content.innerHTML = window.renderCharacter(d, '../assets/' + d.art);
+      if (eb) { eb.href = '../edit?c=' + SLUG; eb.style.display = ''; }
+      var artSrc = d.art ? '../assets/' + d.art
+        : (Array.isArray(d.image) ? d.image[0] : d.image) || '';
+      content.innerHTML = window.renderCharacter(d, artSrc);
       mountScriptButton(d.slug);
       mountTokenButton(d.slug);
       if (location.hash) {
