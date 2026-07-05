@@ -38,11 +38,20 @@
  *   POST /api/delete          -> delete a page you own
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
  *
+ *   -- public pages & discovery --
+ *   GET  /api/user            -> public profile + published pages (?u=username)
+ *   GET  /u/{username}        -> public profile page (serves profile.html)
+ *   GET  /random              -> 302 to a random published character page
+ *   GET  /sitemap.xml         -> built live from D1
+ *   GET  /script-view.html    -> static page with OG/meta tags injected (?s=slug)
+ *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data
  *   POST /api/lock            -> lock/unlock the wiki
+ *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
  *
+ *   scheduled (cron)          -> nightly D1 -> R2 JSON backup (backups/{date}/)
  *   everything else           -> served from static assets
  * ----------------------------------------------------------------
  * Secrets / vars this Worker uses (set via `wrangler secret put` or the
@@ -275,6 +284,37 @@ async function buildPublicJSON(env, table) {
   return results.map(r => JSON.parse(r.data));
 }
 
+// ---- D1 -> R2 backup (nightly cron + POST /api/backup) ----
+// Dumps every content table to backups/{YYYY-MM-DD}/{table}.json in the ART
+// bucket. backups/ is not in R2_PREFIXES, so the files are never publicly
+// servable through /assets/. Keeps 30 days of snapshots.
+async function runBackup(env) {
+  if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
+  const stamp = new Date().toISOString().slice(0, 10);
+  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings'];
+  const saved = {};
+  for (const t of tables) {
+    try {
+      const { results } = await env.DB.prepare(`SELECT * FROM ${t}`).all();
+      await env.ART.put(`backups/${stamp}/${t}.json`, JSON.stringify(results), {
+        httpMetadata: { contentType: 'application/json' }
+      });
+      saved[t] = results.length;
+    } catch (e) {
+      saved[t] = 'skipped (' + ((e && e.message) || 'error') + ')';
+    }
+  }
+  const cutoff = Date.now() - 30 * 86400000;
+  try {
+    const listed = await env.ART.list({ prefix: 'backups/', limit: 1000 });
+    for (const obj of listed.objects) {
+      const m = obj.key.match(/^backups\/(\d{4}-\d{2}-\d{2})\//);
+      if (m && Date.parse(m[1]) < cutoff) await env.ART.delete(obj.key);
+    }
+  } catch { /* pruning is best-effort */ }
+  return { date: stamp, saved };
+}
+
 function jsonResponse(obj, extraHeaders = {}) {
   // `status` in the second argument sets the HTTP status; everything else
   // is a response header.
@@ -473,6 +513,140 @@ export default {
         }
       }
       return env.ASSETS.fetch(request); // not in R2 -> committed static file
+    }
+
+    // ---------- RANDOM CHARACTER (302 to a random published page) ----------
+    if (method === 'GET' && path === '/random') {
+      let row;
+      try {
+        row = await env.DB.prepare(
+          "SELECT slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
+        ).first();
+      } catch {
+        row = await env.DB.prepare(
+          'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
+        ).first();
+      }
+      const dest = row ? '/c/' + row.slug + '.html' : '/all-characters.html';
+      return new Response(null, {
+        status: 302,
+        headers: { Location: url.origin + dest, 'Cache-Control': 'no-store' }
+      });
+    }
+
+    // ---------- PUBLIC PROFILE PAGE (/u/{username} serves profile.html) ----------
+    if (method === 'GET' && path.startsWith('/u/')) {
+      const res = await env.ASSETS.fetch(new Request(url.origin + '/profile.html'));
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' }
+      });
+    }
+
+    // ---------- PUBLIC PROFILE DATA ----------
+    if (method === 'GET' && path === '/api/user') {
+      const uname = (url.searchParams.get('u') || '').trim();
+      if (!uname) return jsonResponse({ error: 'Missing username' }, { status: 400 });
+      const u = await env.DB.prepare(
+        'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
+      ).bind(uname).first();
+      if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
+      async function ownedPublished(table) {
+        let results;
+        try {
+          ({ results } = await env.DB.prepare(
+            `SELECT data FROM ${table} WHERE owner_id=? AND status='published' ORDER BY updated_at DESC`
+          ).bind(u.id).all());
+        } catch {
+          ({ results } = await env.DB.prepare(
+            `SELECT data FROM ${table} WHERE owner_id=?`
+          ).bind(u.id).all());
+        }
+        return results.map(r => JSON.parse(r.data));
+      }
+      const [characters, collections, scripts] = await Promise.all([
+        ownedPublished('characters'), ownedPublished('collections'), ownedPublished('scripts')
+      ]);
+      return jsonResponse({
+        profile: {
+          username: u.username,
+          displayName: u.display_name || u.username,
+          bio: u.bio || '',
+          avatarUrl: u.avatar_url || null,
+          joined: u.created_at
+        },
+        characters, collections, scripts
+      });
+    }
+
+    // ---------- SITEMAP (built live from D1) ----------
+    if (method === 'GET' && path === '/sitemap.xml') {
+      const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      async function pub(table) {
+        try {
+          return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table} WHERE status='published'`).all()).results;
+        } catch {
+          return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
+        }
+      }
+      const [chars, scripts] = await Promise.all([pub('characters'), pub('scripts')]);
+      const staticPages = ['', 'all-characters.html', 'scripts.html', 'tags.html', 'creators.html',
+        'authors.html', 'script.html', 'tokens.html', 'steven-approved-order.html'];
+      const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
+      const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
+      for (const r of chars) {
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug + '.html') + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of scripts) {
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/script-view.html?s=' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        urls.join('\n') + '\n</urlset>';
+      return new Response(body, {
+        headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }
+      });
+    }
+
+    // ---------- SCRIPT VIEW (inject OG/meta tags so shared links unfurl) ----------
+    if (method === 'GET' && path === '/script-view.html') {
+      const slug = url.searchParams.get('s');
+      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
+        try {
+          let row;
+          try {
+            row = await env.DB.prepare('SELECT data, status FROM scripts WHERE slug=?').bind(slug).first();
+          } catch {
+            row = await env.DB.prepare('SELECT data FROM scripts WHERE slug=?').bind(slug).first();
+          }
+          if (row && row.data && row.status !== 'draft') {
+            const s = JSON.parse(row.data);
+            const assetRes = await env.ASSETS.fetch(new Request(url.origin + '/script-view.html'));
+            let html = await assetRes.text();
+            const name = s.name || 'Script';
+            const nChars = (s.characters || []).length;
+            const desc = (s.description || '').trim() ||
+              (nChars + '-character homebrew script for Blood on the Clocktower' + (s.author ? ', by ' + s.author : '') + '.');
+            const pageUrl = url.origin + '/script-view.html?s=' + encodeURIComponent(slug);
+            const img = url.origin + '/assets/' + (s.header || 'logo_skull.png');
+            const metaBlock = '<title>' + attr(name) + ' — BOTC HomeBrew Wiki</title>\n' +
+              '<meta name="description" content="' + attr(desc) + '">\n' +
+              '<link rel="canonical" href="' + attr(pageUrl) + '">\n' +
+              '<meta property="og:type" content="article">\n' +
+              '<meta property="og:site_name" content="BOTC HomeBrew Wiki">\n' +
+              '<meta property="og:title" content="' + attr(name) + '">\n' +
+              '<meta property="og:description" content="' + attr(desc) + '">\n' +
+              '<meta property="og:image" content="' + attr(img) + '">\n' +
+              '<meta property="og:url" content="' + attr(pageUrl) + '">\n' +
+              '<meta name="twitter:card" content="' + (s.header ? 'summary_large_image' : 'summary') + '">';
+            html = html.replace('<title>Script — BOTC HomeBrew Wiki</title>', metaBlock);
+            return new Response(html, {
+              headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+            });
+          }
+        } catch { /* fall through to the plain static page */ }
+      }
+      return env.ASSETS.fetch(request);
     }
 
     // ---------- AUTH: SIGN UP ----------
@@ -836,7 +1010,7 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
 
       // Admin-only endpoints keep their old guard.
-      const adminOnly = (path === '/api/lock' || path === '/api/seed');
+      const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup');
       if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
@@ -1056,6 +1230,17 @@ export default {
         return jsonResponse({ ok: true, locked: locked === '1' });
       }
 
+      // ---- admin: run a D1 -> R2 backup right now ----
+      if (path === '/api/backup') {
+        try {
+          const result = await runBackup(env);
+          await logActivity(env, sess, 'backup', 'wiki', null, result.date);
+          return jsonResponse({ ok: true, ...result });
+        } catch (e) {
+          return jsonResponse({ error: (e && e.message) || 'Backup failed.' }, { status: 500 });
+        }
+      }
+
       // ---- admin: one-time seed ----
       if (path === '/api/seed') {
         // Safety: refuse if data already exists (prevents accidental overwrite)
@@ -1102,5 +1287,10 @@ export default {
     // ---------- STATIC ASSETS (pass through to Pages) ----------
     // env.ASSETS is the static site binding (Cloudflare Pages / Workers Assets)
     return env.ASSETS.fetch(request);
+  },
+
+  // Nightly cron (see [triggers] in wrangler.toml): back up D1 to R2.
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runBackup(env));
   }
 };

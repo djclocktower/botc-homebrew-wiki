@@ -117,6 +117,19 @@
           listHTML += '</div></div>';
         });
       }
+      // Jinxes active between characters on this script
+      var jinxes = window.findScriptJinxes ? window.findScriptJinxes(entries) : [];
+      if (jinxes.length){
+        listHTML += '<div class="script-team-group"><h3 class="script-team-head">Jinxes <span class="script-team-count">(' + jinxes.length + ')</span></h3>';
+        listHTML += '<div class="script-char-list">';
+        jinxes.forEach(function(j){
+          listHTML += '<div class="script-char-row"><div class="script-char-text">' +
+            '<span class="script-char-name">' + esc(j.a.name) + ' ↔ ' + esc(j.b.name) + '</span>' +
+            '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
+        });
+        listHTML += '</div></div>';
+      }
+
       if (missing.length){
         listHTML += '<p class="script-missing">⚠ ' + missing.length + ' character' + (missing.length===1?'':'s') + ' on this script ' + (missing.length===1?'is':'are') + " not in the wiki: " + missing.map(esc).join(', ') + '</p>';
       }
@@ -138,10 +151,24 @@
               '</div>' +
               '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
             '</div>' +
-            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="script.html">Open in Script Builder</a>' +
+            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="#" id="json-download">⬇ Download JSON</a>' +
+            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="script.html">Open in Script Builder</a>' +
             '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="tokens.html?script=' + encodeURIComponent(sc.slug) + '">Print Tokens</a>' +
           '</aside>' +
         '</div>';
+
+      // Download the official-schema JSON as {slug}.json (drop straight into
+      // clocktower.online / the official script tool)
+      var dl = document.getElementById('json-download');
+      if (dl) dl.addEventListener('click', function(e){
+        e.preventDefault();
+        var blob = new Blob([jsonText], { type: 'application/json' });
+        var u = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = u; a.download = (sc.slug || 'script') + '.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
+      });
     }).catch(function(err){
       console.error(err);
       content.innerHTML = '<p style="color:#e6a">Could not load script data.</p>';

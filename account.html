@@ -201,6 +201,7 @@
             <div class="disp"><span id="p-display"></span><span id="p-badges"></span></div>
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
+            <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
           </div>
         </div>
         <div class="profile-meta">
@@ -355,6 +356,8 @@
       else av.textContent = (p.displayName || p.username || '?').charAt(0).toUpperCase();
       $('p-display').textContent = p.displayName || p.username;
       $('p-username').textContent = p.username;
+      var pl = $('p-public-link');
+      if (pl) { pl.href = '/u/' + encodeURIComponent(p.username); pl.style.display = 'inline-block'; }
       $('p-bio').textContent = p.bio || '';
       var badges = '';
       if (p.isAdmin) badges += '<span class="badge admin">Admin</span>';

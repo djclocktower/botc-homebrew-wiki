@@ -200,6 +200,14 @@
       var sb = drop.querySelector('a[href$="script.html"]');
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
     }
+    // Random Character link (/random is a Worker route, so the path is absolute).
+    if (!drop.querySelector('a[href="/random"]')) {
+      var rcLink = document.createElement('a');
+      rcLink.href = '/random';
+      rcLink.textContent = '🎲 Random Character';
+      var tt = drop.querySelector('a[href$="tokens.html"]');
+      if (tt) drop.insertBefore(rcLink, tt.nextSibling); else drop.appendChild(rcLink);
+    }
     var here = location.pathname.split('/').pop() || 'index.html';
     drop.querySelectorAll('a').forEach(function (a) {
       if (a.getAttribute('href') === here) a.classList.add('active');
