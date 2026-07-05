@@ -110,6 +110,43 @@
   function saveSet() { try { localStorage.setItem(SET_KEY, JSON.stringify(setSlugs)); } catch (e) {} }
   function artRel(c) { return 'assets/' + (c.art || ('art/' + c.slug + '.png')); }
   function artAbs(c) { return ROOT + artRel(c); }
+  function thumbSrc(c) { return c.ext ? (c.image || 'assets/favicon.png') : artRel(c); }
+
+  /* ---- external (imported-JSON) characters ---- */
+  var EXT_KEY = 'botc_token_ext_v1';
+  var extArtStatus = {};   // slug -> 'ok' | 'failed'
+  var TRANSPARENT_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  function loadExt() {
+    try {
+      var list = JSON.parse(localStorage.getItem(EXT_KEY)) || [];
+      list.forEach(function (c) { if (c && c.slug) { c.ext = true; charBySlug[c.slug] = c; } });
+      return list;
+    } catch (e) { return []; }
+  }
+  function saveExt() {
+    var list = Object.keys(charBySlug).map(function (k) { return charBySlug[k]; }).filter(function (c) { return c.ext; });
+    try { localStorage.setItem(EXT_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
+  /* ---- custom asset slots ---- */
+  var ASSET_KEY = 'botc_token_assets_v1';
+  var ASSET_SLOTS = [
+    ['token_bg', 'Token Background'], ['rem_bg', 'Reminder Background'],
+    ['flower', 'Setup Flower'], ['leaves', 'Reminder Leaves'],
+    ['fn_leaf', 'First-Night Leaf'], ['on_leaf', 'Other-Nights Leaf']
+  ];
+  var customAssets = {};   // kind -> b64 (session; persisted when small enough)
+  function loadAssets() { try { customAssets = JSON.parse(localStorage.getItem(ASSET_KEY)) || {}; } catch (e) { customAssets = {}; } }
+  function saveAssets() {
+    try {
+      var small = {}, total = 0;
+      Object.keys(customAssets).forEach(function (k) {
+        var n = customAssets[k].length;
+        if (n < 550000 && total + n < 2200000) { small[k] = customAssets[k]; total += n; }
+      });
+      localStorage.setItem(ASSET_KEY, JSON.stringify(small));
+    } catch (e) {}
+  }
 
   /* ---- data load (in parallel with the engine boot above) ---- */
   function loadData() {
@@ -240,15 +277,17 @@
     var chars = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(Boolean);
     if (!chars.length) { box.innerHTML = '<p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>'; return; }
     var html = '';
-    TEAMS.forEach(function (t) {
+    var known = TEAMS.map(function (t) { return t[0]; });
+    var groups = TEAMS.concat([[null, 'Other']]);
+    groups.forEach(function (t) {
       var key = t[0], label = t[1];
-      var group = chars.filter(function (c) { return c.team === key; });
+      var group = chars.filter(function (c) { return key ? c.team === key : known.indexOf(c.team) < 0; });
       if (!group.length) return;
       html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
       group.forEach(function (c) {
         var edited = adjState.per[c.slug] && Object.keys(adjState.per[c.slug].adj || {}).length > 0;
         html += '<div class="sb-script-item">' +
-          '<img class="sb-script-thumb" src="' + esc(artRel(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<img class="sb-script-thumb" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
           '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
           '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
           stepperHTML('tt-step-char', c.slug, charCount(c.slug)) +
@@ -487,6 +526,196 @@
       .catch(function (e) { if (mySeq === edPrevSeq) box.innerHTML = '<span class="ph">Preview error</span>'; console.error(e); });
   }
 
+  /* ---- custom assets card ---- */
+  function fileToB64(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result).split(',', 2)[1]); };
+      r.onerror = function () { rej(new Error('read failed')); };
+      r.readAsDataURL(file);
+    });
+  }
+  function assetStatusHTML(kind) {
+    return customAssets[kind]
+      ? '<span class="tt-asset-on">Custom &#10003;</span>'
+      : '<span class="tt-asset-off">Default</span>';
+  }
+  function renderAssets() {
+    var html = '';
+    ASSET_SLOTS.forEach(function (s) {
+      html += '<div class="tt-asset-row" data-kind="' + s[0] + '">' +
+        '<label>' + s[1] + '</label>' +
+        '<span class="tt-asset-status" id="as-' + s[0] + '">' + assetStatusHTML(s[0]) + '</span>' +
+        '<input type="file" accept="image/png,image/jpeg,image/webp" id="af-' + s[0] + '" hidden>' +
+        '<button type="button" class="tt-btn-sm tt-asset-up" data-kind="' + s[0] + '">Upload</button>' +
+        '<button type="button" class="tt-btn-sm tt-asset-rm" data-kind="' + s[0] + '">Reset</button>' +
+        '</div>';
+    });
+    $('tt-assets-panel').innerHTML = html;
+  }
+  function applyAsset(kind, b64) {
+    return callWorker('asset', { kind: kind, b64: b64 }).then(function () {
+      customAssets[kind] = b64; saveAssets();
+      $('as-' + kind).innerHTML = assetStatusHTML(kind);
+      schedulePreview(); scheduleEditorPreview();
+    });
+  }
+  function wireAssets() {
+    $('tt-assets-toggle').addEventListener('click', function () {
+      var body = $('tt-assets-body');
+      var open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : '';
+      $('tt-assets-caret').innerHTML = open ? '&#9662;' : '&#9652;';
+    });
+    renderAssets();
+    $('tt-assets-panel').addEventListener('click', function (e) {
+      var up = e.target.closest('.tt-asset-up');
+      if (up) { $('af-' + up.dataset.kind).click(); return; }
+      var rm = e.target.closest('.tt-asset-rm');
+      if (rm) {
+        var kind = rm.dataset.kind;
+        delete customAssets[kind]; saveAssets();
+        callWorker('assetClear', { kind: kind }).then(function () {
+          $('as-' + kind).innerHTML = assetStatusHTML(kind);
+          schedulePreview(); scheduleEditorPreview();
+        }).catch(function () {});
+      }
+    });
+    ASSET_SLOTS.forEach(function (s) {
+      $('af-' + s[0]).addEventListener('change', function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        if (f.size > 4 * 1024 * 1024) { showMsg('err', 'That image is over 4&nbsp;MB — please use a smaller file.'); this.value = ''; return; }
+        var kind = s[0], input = this;
+        fileToB64(f).then(function (b64) { return applyAsset(kind, b64); })
+          .catch(function (e) { showMsg('err', 'Could not apply that image: ' + esc(e.message)); })
+          .then(function () { input.value = ''; });
+      });
+    });
+    // re-apply persisted custom assets (queued until the engine is ready)
+    Object.keys(customAssets).forEach(function (kind) {
+      callWorker('asset', { kind: kind, b64: customAssets[kind] }).catch(function () {});
+    });
+  }
+
+  /* ---- import script JSON ---- */
+  function normTeam(t) {
+    t = String(t || '').toLowerCase();
+    if (t === 'traveler') return 'traveller';
+    return t;
+  }
+  function parseScriptJson(text) {
+    var data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('Expected a JSON array (official script format).');
+    var meta = null, wiki = [], ext = [], unknown = [];
+    var byNorm = {};
+    allChars.forEach(function (c) { byNorm[norm(c.slug)] = c.slug; byNorm[norm(c.name)] = c.slug; });
+    data.forEach(function (item) {
+      if (item && typeof item === 'object' && item.id === '_meta') { meta = item; return; }
+      if (typeof item === 'string') {
+        if (byNorm[norm(item)]) wiki.push(byNorm[norm(item)]); else unknown.push(item);
+        return;
+      }
+      if (!item || typeof item !== 'object') return;
+      var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
+      if (hit) { wiki.push(hit); return; }
+      if (!item.name || !item.ability) { unknown.push(item.id || item.name || '?'); return; }
+      var img = item.image;
+      if (Array.isArray(img)) img = img[0];
+      var base = 'ext-' + (norm(item.id || item.name) || 'char'), slug = base, n = 2;
+      while (charBySlug[slug] && !charBySlug[slug].ext) { slug = base + '-' + (n++); }
+      ext.push({
+        slug: slug, ext: true,
+        name: String(item.name), ability: String(item.ability),
+        team: normTeam(item.team), setup: !!item.setup,
+        firstNight: Number(item.firstNight) || 0, otherNight: Number(item.otherNight) || 0,
+        reminders: Array.isArray(item.reminders) ? item.reminders : [],
+        remindersGlobal: Array.isArray(item.remindersGlobal) ? item.remindersGlobal : [],
+        image: (typeof img === 'string' && /^https?:\/\//.test(img)) ? img : null
+      });
+    });
+    return { meta: meta, wiki: wiki, ext: ext, unknown: unknown };
+  }
+  function fetchExtArt(extList) {
+    var withUrl = extList.filter(function (c) { return c.image; });
+    var noUrl = extList.filter(function (c) { return !c.image; });
+    var placeholderJobs = noUrl.map(function (c) {
+      extArtStatus[c.slug] = 'failed';
+      return callWorker('artBytes', { slug: c.slug, b64: TRANSPARENT_PNG });
+    });
+    var fetchJob = withUrl.length
+      ? callWorker('fetchArt', { list: withUrl.map(function (c) { return { slug: c.slug, url: c.image }; }) })
+      : Promise.resolve({ ok: [], failed: [] });
+    return Promise.all([fetchJob, Promise.all(placeholderJobs)]).then(function (r) {
+      var res = r[0];
+      (res.ok || []).forEach(function (sl) { extArtStatus[sl] = 'ok'; });
+      var failJobs = (res.failed || []).map(function (sl) {
+        extArtStatus[sl] = 'failed';
+        return callWorker('artBytes', { slug: sl, b64: TRANSPARENT_PNG });
+      });
+      return Promise.all(failJobs);
+    }).then(renderArtWarnings);
+  }
+  function renderArtWarnings() {
+    var failed = setSlugs.filter(function (sl) { return charBySlug[sl] && charBySlug[sl].ext && extArtStatus[sl] === 'failed'; });
+    var box = $('tt-art-warn');
+    if (!failed.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    var html = '<p><strong>Art couldn\u2019t be fetched for ' + failed.length + ' character' + (failed.length === 1 ? '' : 's') + '.</strong> ' +
+      'Those tokens will render with a blank centre unless you upload art manually:</p>';
+    failed.forEach(function (sl) {
+      html += '<div class="tt-warn-row"><span>' + esc(charBySlug[sl].name) + '</span>' +
+        '<input type="file" accept="image/png,image/jpeg,image/webp" id="wf-' + esc(sl) + '" hidden>' +
+        '<button type="button" class="tt-btn-sm tt-warn-up" data-slug="' + esc(sl) + '">Upload art</button></div>';
+    });
+    box.innerHTML = html;
+    box.style.display = '';
+    failed.forEach(function (sl) {
+      $('wf-' + sl).addEventListener('change', function () {
+        var f = this.files && this.files[0]; if (!f) return;
+        fileToB64(f).then(function (b64) {
+          return callWorker('artBytes', { slug: sl, b64: b64 });
+        }).then(function () {
+          extArtStatus[sl] = 'ok';
+          renderArtWarnings(); schedulePreview(); scheduleEditorPreview();
+        }).catch(function (e) { showMsg('err', 'Upload failed: ' + esc(e.message)); });
+      });
+    });
+    box.addEventListener('click', function (e) {
+      var b = e.target.closest('.tt-warn-up');
+      if (b) $('wf-' + b.dataset.slug).click();
+    });
+  }
+  function wireImport() {
+    $('tt-import-open').onclick = function () { $('tt-import').classList.add('open'); document.body.style.overflow = 'hidden'; $('tt-import-text').value = ''; $('tt-import-file').value = ''; };
+    function closeImport() { $('tt-import').classList.remove('open'); document.body.style.overflow = ''; }
+    $('tt-import-close').onclick = closeImport;
+    $('tt-import').addEventListener('click', function (e) { if (e.target === $('tt-import')) closeImport(); });
+    $('tt-import-file').addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      var r = new FileReader();
+      r.onload = function () { $('tt-import-text').value = String(r.result); };
+      r.readAsText(f);
+    });
+    $('tt-import-go').onclick = function () {
+      var text = $('tt-import-text').value.trim();
+      if (!text) { showMsg('err', 'Paste script JSON or choose a file first.'); closeImport(); return; }
+      var parsed;
+      try { parsed = parseScriptJson(text); }
+      catch (e) { showMsg('err', 'Could not read that JSON: ' + esc(e.message)); closeImport(); return; }
+      parsed.ext.forEach(function (c) { charBySlug[c.slug] = c; });
+      setSlugs = parsed.wiki.slice();
+      parsed.ext.forEach(function (c) { if (setSlugs.indexOf(c.slug) < 0) setSlugs.push(c.slug); });
+      saveExt(); saveSet(); renderAll(); refreshGenerate(); closeImport();
+      var bits = [];
+      if (parsed.wiki.length) bits.push(parsed.wiki.length + ' from this wiki');
+      if (parsed.ext.length) bits.push(parsed.ext.length + ' external');
+      var title = parsed.meta && parsed.meta.name ? ' \u201C' + esc(parsed.meta.name) + '\u201D' : '';
+      var msg = 'Imported' + title + ' \u2014 ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
+      if (parsed.unknown.length) msg += ' Skipped ' + parsed.unknown.length + ' unrecognised (official/off-wiki) id' + (parsed.unknown.length === 1 ? '' : 's') + '.';
+      showMsg('ok', msg);
+      fetchExtArt(parsed.ext).then(function () { schedulePreview(); });
+    };
+  }
+
   /* ---- options ---- */
   function wireOptions() {
     function seg(id, key, cast) {
@@ -536,7 +765,7 @@
   }
   function artList(slugs) {
     return slugs.map(function (sl) {
-      var c = charBySlug[sl]; if (!c) return null;
+      var c = charBySlug[sl]; if (!c || c.ext) return null;   // ext art lives in the worker FS already
       return { slug: sl, url: artAbs(c) };
     }).filter(Boolean);
   }
@@ -595,14 +824,17 @@
 
   /* ---- init (character data loads in parallel with the engine boot) ---- */
   showLoad('Loading…');
-  loadAdj();
+  loadAdj(); loadAssets();
   loadData().then(function () {
+    loadExt();
     setSlugs = loadSet().filter(function (sl) { return charBySlug[sl]; });
     return ingestUrl();
   }).then(function () {
     saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
-    wireGlobalAdj(); wireEditor();
+    wireGlobalAdj(); wireEditor(); wireAssets(); wireImport();
     refreshGenerate(); schedulePreview();
+    var extInSet = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(function (c) { return c && c.ext; });
+    if (extInSet.length) fetchExtArt(extInSet).then(function () { schedulePreview(); });
   }).catch(function (err) {
     console.error(err); hideLoad();
     showMsg('err', 'Could not load character data: ' + esc(err.message));

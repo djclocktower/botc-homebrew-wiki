@@ -18,6 +18,22 @@ var queue = [];        // messages received before the engine is ready
 
 function post(msg) { self.postMessage(msg); }
 
+var PROXY_FETCH = 'https://botc-wiki-proxy.djclocktower.workers.dev/fetch?url=';
+
+function b64ToU8(b64) {
+  var bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8;
+}
+function looksLikeImage(u8) {
+  if (u8.length < 12) return false;
+  if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) return true;      // PNG
+  if (u8[0] === 0xFF && u8[1] === 0xD8 && u8[2] === 0xFF) return true;                        // JPEG
+  if (u8[0] === 0x52 && u8[1] === 0x49 && u8[8] === 0x57 && u8[9] === 0x45) return true;      // WEBP
+  if (u8[0] === 0x47 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x38) return true;      // GIF
+  return false;
+}
+
 function fetchBytes(url) {
   return fetch(url).then(function (r) {
     if (!r.ok) throw new Error(url + ' -> ' + r.status);
@@ -101,6 +117,23 @@ function pyCall(fn, argsJson, optsJson) {
   return JSON.parse(out);
 }
 
+/* try direct fetch, then the wiki proxy (if deployed); validate it's a real image */
+function fetchExternalArt(url) {
+  function attempt(u) {
+    return fetch(u).then(function (r) {
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (b) {
+      var u8 = new Uint8Array(b);
+      if (!looksLikeImage(u8)) throw new Error('not an image');
+      return u8;
+    });
+  }
+  return attempt(url).catch(function () {
+    return attempt(PROXY_FETCH + encodeURIComponent(url));
+  });
+}
+
 function handle(m) {
   if (m.type === 'preview') {
     ensureArt(m.art).then(function () {
@@ -115,6 +148,37 @@ function handle(m) {
         var res = pyCall('web_sheets', JSON.stringify(m.payloads), JSON.stringify(m.opts));
         post({ type: 'result', id: m.id, res: res });
       } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
+    });
+  } else if (m.type === 'asset') {
+    try {
+      var pth = FSDIR + '/custom/' + m.kind + '.png';
+      fsWrite(pth, b64ToU8(m.b64));
+      var mod = pyodide.globals.get('web_render');
+      var r = JSON.parse(mod.set_asset(m.kind, pth));
+      post({ type: 'result', id: m.id, res: r });
+    } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
+  } else if (m.type === 'assetClear') {
+    try {
+      var mod2 = pyodide.globals.get('web_render');
+      var r2 = JSON.parse(mod2.clear_asset(m.kind));
+      post({ type: 'result', id: m.id, res: r2 });
+    } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
+  } else if (m.type === 'artBytes') {
+    try {
+      fsWrite(FSDIR + '/art/' + m.slug + '.png', b64ToU8(m.b64));
+      artWritten[m.slug] = true;
+      post({ type: 'result', id: m.id, res: { ok: true } });
+    } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
+  } else if (m.type === 'fetchArt') {
+    var ok = [], failed = [];
+    Promise.all((m.list || []).map(function (a) {
+      return fetchExternalArt(a.url).then(function (u8) {
+        fsWrite(FSDIR + '/art/' + a.slug + '.png', u8);
+        artWritten[a.slug] = true;
+        ok.push(a.slug);
+      }).catch(function () { failed.push(a.slug); });
+    })).then(function () {
+      post({ type: 'result', id: m.id, res: { ok: ok, failed: failed } });
     });
   }
 }

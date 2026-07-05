@@ -221,6 +221,36 @@
 .tte-rem-row:last-child { border-bottom: none; }
 .tte-rem-text { font-family: 'Oswald', sans-serif; font-size: .88rem; color: var(--ink); }
 .tte-none { font-size: .86rem; color: var(--ink); opacity: .75; font-style: italic; }
+
+/* ─── v4: custom assets, JSON import, art warnings ───────────── */
+.tt-asset-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 2px; border-bottom: 1px solid rgba(180,160,120,.3);
+}
+.tt-asset-row:last-child { border-bottom: none; }
+.tt-asset-row > label { flex: 1; min-width: 140px; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.tt-asset-status { font-family: 'Oswald', sans-serif; font-size: .8rem; min-width: 72px; }
+.tt-asset-on { color: #1c5429; font-weight: 600; }
+.tt-asset-off { color: var(--ink); opacity: .6; }
+.tt-assets-hint { font-size: .85rem; color: var(--ink); opacity: .85; margin: 0 0 10px; }
+.tt-assets-hint code { font-size: .8rem; }
+.tt-import-text {
+  width: 100%; min-height: 150px; box-sizing: border-box; resize: vertical;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--ink); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem;
+  padding: 8px; margin-top: 8px;
+}
+.tt-art-warn {
+  margin: 0 0 18px; padding: 10px 13px; border-radius: 0;
+  background: #f9edd9; color: #7a4a12; border: 1px solid #d9b26a;
+  font-size: .9rem;
+}
+.tt-art-warn p { margin: 0 0 8px; }
+.tt-warn-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 6px 0; border-top: 1px solid rgba(180,140,80,.35);
+  font-family: 'Oswald', sans-serif; font-size: .88rem;
+}
 @media (max-width: 640px) {
   .sb-script-item { flex-wrap: wrap; }
   /* thumb + text fill the first line so the ability text keeps its full width;
@@ -296,8 +326,13 @@
 
       <div class="tt-toolbar">
         <span class="sb-count" id="tt-count">0 characters</span>
-        <button type="button" class="sb-btn sb-btn-clear" id="tt-clear">✕ Clear All</button>
+        <span style="display:inline-flex;gap:8px">
+          <button type="button" class="sb-btn" id="tt-import-open">&#8613; Import JSON</button>
+          <button type="button" class="sb-btn sb-btn-clear" id="tt-clear">✕ Clear All</button>
+        </span>
       </div>
+
+      <div class="tt-art-warn" id="tt-art-warn" style="display:none"></div>
 
       <div id="tt-set">
         <p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>
@@ -350,6 +385,17 @@
         </div>
       </section>
 
+      <section class="tt-card">
+        <div class="tt-adj-head" id="tt-assets-toggle">
+          <h2>Custom Assets</h2>
+          <span class="tt-adj-caret" id="tt-assets-caret">&#9662;</span>
+        </div>
+        <div id="tt-assets-body" style="display:none">
+          <p class="tt-assets-hint">Swap in your own art for parts of the token. PNG with transparency works best; images are session-based and small ones are remembered on this device.</p>
+          <div id="tt-assets-panel"></div>
+        </div>
+      </section>
+
       <div class="tt-actions">
         <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
       </div>
@@ -358,6 +404,22 @@
 
       <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>
+  </div>
+
+  <!-- import JSON modal -->
+  <div class="tt-modal" id="tt-import">
+    <div class="tt-modal-card">
+      <div class="tte-head">
+        <h2>Import Script JSON</h2>
+        <button type="button" class="tte-close" id="tt-import-close" aria-label="Close">✕</button>
+      </div>
+      <p class="tt-assets-hint">Official script-tool format. Characters matching this wiki use wiki art; external characters fetch art from their <code>image</code> URL — you'll be warned about any that can't be fetched. Importing replaces your current set.</p>
+      <div class="tt-row" style="justify-content:flex-start">
+        <input type="file" accept=".json,application/json" id="tt-import-file">
+      </div>
+      <textarea id="tt-import-text" class="tt-import-text" placeholder='…or paste the JSON here, e.g. [{"id":"_meta","name":"My Script"}, …]'></textarea>
+      <div class="tt-adj-actions"><button type="button" class="tt-btn-generate" style="font-size:.95rem;padding:10px 22px" id="tt-import-go">Import</button></div>
+    </div>
   </div>
 
   <!-- per-token editor modal -->

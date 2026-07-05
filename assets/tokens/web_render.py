@@ -49,6 +49,54 @@ def _adj(a):
             d[k] = v
     return d
 
+# ----------------------------------------------------------------------------
+# CUSTOM ASSETS (user-uploaded backgrounds / flower / leaves)
+# ----------------------------------------------------------------------------
+_ASSET_ORIG = {}
+
+def _fit_into(img, ref):
+    """Scale img to fit inside ref's box, preserving aspect ratio."""
+    s = min(ref.width / float(img.width), ref.height / float(img.height))
+    return img.resize((max(1, int(img.width*s)), max(1, int(img.height*s))), Image.LANCZOS)
+
+def set_asset(kind, path):
+    img = Image.open(path).convert('RGBA')
+    if kind == 'token_bg':
+        _ASSET_ORIG.setdefault('token_bg', deco.BARE)
+        deco.BARE = img.resize(_ASSET_ORIG['token_bg'].size, Image.LANCZOS)
+    elif kind == 'rem_bg':
+        _ASSET_ORIG.setdefault('rem_bg', reminder.BLANK)
+        reminder.BLANK = img.resize(_ASSET_ORIG['rem_bg'].size, Image.LANCZOS)
+    elif kind == 'flower':
+        _ASSET_ORIG.setdefault('flower', deco.FLOWER)
+        deco.FLOWER = _fit_into(img, _ASSET_ORIG['flower'])
+    elif kind == 'leaves':
+        deco.CUSTOM_TOP = img            # scale handled by _custom_top_scale
+    elif kind == 'fn_leaf':
+        _ASSET_ORIG.setdefault('fn_leaf', deco.L_FIRST)
+        deco.L_FIRST = _fit_into(img, _ASSET_ORIG['fn_leaf'])
+    elif kind == 'on_leaf':
+        _ASSET_ORIG.setdefault('on_leaf', deco.L_OTHER)
+        deco.L_OTHER = _fit_into(img, _ASSET_ORIG['on_leaf'])
+    else:
+        return json.dumps({'error': 'unknown asset kind'})
+    return json.dumps({'ok': True})
+
+def clear_asset(kind):
+    if kind == 'leaves':
+        deco.CUSTOM_TOP = None
+    elif kind == 'token_bg' and 'token_bg' in _ASSET_ORIG:
+        deco.BARE = _ASSET_ORIG['token_bg']
+    elif kind == 'rem_bg' and 'rem_bg' in _ASSET_ORIG:
+        reminder.BLANK = _ASSET_ORIG['rem_bg']
+    elif kind == 'flower' and 'flower' in _ASSET_ORIG:
+        deco.FLOWER = _ASSET_ORIG['flower']
+    elif kind == 'fn_leaf' and 'fn_leaf' in _ASSET_ORIG:
+        deco.L_FIRST = _ASSET_ORIG['fn_leaf']
+    elif kind == 'on_leaf' and 'on_leaf' in _ASSET_ORIG:
+        deco.L_OTHER = _ASSET_ORIG['on_leaf']
+    return json.dumps({'ok': True})
+
 def render_character_token(entry, art_path, char_margin=1.05, adj=None):
     a = _adj(adj)
     fn = float(entry.get('firstNight', 0) or 0) > 0
@@ -145,12 +193,26 @@ def pack_sheets(tokens, kind, opts=None):
     cols = max(1, int((usable_w + PAD) // pitch_x))
 
     alt = (o['layout'] == 'alternating')
-    pitch_y = disk_t * (0.87 if alt else 1.0) + PAD
 
     # rows that fit per page (token canvas can be taller than the disk via leaf overhang;
     # pitch is disk-based so neighbours nestle, matching the felt-backed look)
     usable_h = PH - 2 * M
-    rows_per_page = max(1, int((usable_h + PAD) // pitch_y))
+    if alt:
+        import math as _m
+        # hex-nested pitch: offset rows sit in the gaps, keeping the full pad diagonally
+        p_hex = _m.sqrt(max(1.0, (disk_t + PAD) ** 2 - (pitch_x / 2.0) ** 2))
+        rows_per_page = max(1, int((usable_h - disk_t) // p_hex) + 1)
+        pitch_y = p_hex
+        # squeeze in one extra row when tokens would still keep clear air diagonally
+        if rows_per_page >= 2:
+            p_try = (usable_h - disk_t) / rows_per_page
+            min_gap = max(2.0, PAD * 0.3)
+            if _m.sqrt(p_try ** 2 + (pitch_x / 2.0) ** 2) >= disk_t + min_gap:
+                rows_per_page += 1
+                pitch_y = p_try
+    else:
+        pitch_y = disk_t + PAD
+        rows_per_page = max(1, int((usable_h + PAD) // pitch_y))
 
     pages = []
     i, n = 0, len(toks)

@@ -6,6 +6,7 @@ import glob as _g
 L_FIRST = Image.open(_g.glob('botc_app/botc.app/assets/firstnight-*.png')[0]).convert('RGBA').transpose(Image.FLIP_LEFT_RIGHT)  # left -> first night (flipped)
 L_OTHER = Image.open(_g.glob('botc_app/botc.app/assets/othernight-*.png')[0]).convert('RGBA')  # right -> other nights
 FLOWER  = Image.open('raw_Layer_2.png').convert('RGBA')   # setup
+CUSTOM_TOP = None   # user-uploaded reminder-leaf art (replaces every count variant when set)
 LEAF    = Image.open('leaf_left.png').convert('RGBA')      # reminder unit (broad)
 
 POS_FIRST = (-14, 464)
@@ -145,8 +146,15 @@ def _leaf(canvas, angle_deg):
     sq = sq.rotate(-angle_deg, resample=Image.BICUBIC, center=(D/2,D/2))
     canvas.alpha_composite(sq, (int(PIVOT[0]-D/2), int(PIVOT[1]-D/2)))
 
+def _custom_top_scale():
+    ref = next(iter(REAL_TOP.values()), None)
+    if ref is None or CUSTOM_TOP is None: return 1.0
+    return ref.height / float(CUSTOM_TOP.height)
+
 def _reminders(canvas, n, scale_mul=1.0, dy=0, dx=0, rot=0):
     if n <= 0: return
+    if CUSTOM_TOP is not None:             # user-uploaded leaf art replaces all count variants
+        _place_top(canvas, CUSTOM_TOP, _custom_top_scale()*float(scale_mul), dy, dx, rot); return
     if n in REAL_TOP:                      # official asset
         _place_top(canvas, REAL_TOP[n], 1.0*float(scale_mul), dy, dx, rot); return
     if n in NEW_TOP:                       # user-provided leaf (matched scale)
