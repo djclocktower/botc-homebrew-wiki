@@ -1562,3 +1562,26 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: rgba(236,225,200,.6); margin: 0;
 }
 .collection-edit-btn { display: inline-block; margin: 0; }
+
+/* ── Tag hover tooltip (assets/tags.js) ── */
+.tag-tip {
+  position: fixed; z-index: 4000; max-width: 280px;
+  background: #f7f0e0; color: #241a12; border: 1px solid #b09070;
+  border-radius: 7px; padding: 8px 11px;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .84rem; line-height: 1.4; text-align: left;
+  box-shadow: 0 8px 22px rgba(20, 6, 16, .45);
+  pointer-events: none;
+}
+
+/* ── Alternate character art: click the emblem to swap ── */
+.emblem.has-alt { cursor: pointer; }
+.alt-art-hint {
+  display: block; text-align: center; margin: -2px 0 6px;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .05em;
+  text-transform: uppercase; color: #8a7a63; opacity: .85;
+}
+
+/* ── Collection JSON box on collection pages ── */
+.collection-json { width: 100%; max-width: 760px; margin: 4px auto 0; text-align: left; }
+.collection-json .json-body { max-height: 50vh; }

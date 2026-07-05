@@ -48,8 +48,11 @@
       team: d.team || 'townsfolk',
       ability: d.ability || ''
     };
-    // image as array (required by official script tool)
-    if (d.image) o.image = Array.isArray(d.image) ? d.image : [d.image];
+    // image as array (required by official script tool); alternate art
+    // (e.g. an evil version) rides along as the second entry
+    var imgs = d.image ? (Array.isArray(d.image) ? d.image.slice() : [d.image]) : [];
+    if (d.imageAlt && imgs.indexOf(d.imageAlt) === -1) imgs.push(d.imageAlt);
+    if (imgs.length) o.image = imgs;
     if (d.edition) o.edition = d.edition;
     var fl = d.flavor || d.quote;
     if (fl) o.flavor = String(fl).replace(/^["']|["']$/g, '');
@@ -104,7 +107,15 @@
 
   /* ── Collapsible JSON box ── */
   function renderJsonBox(d) {
-    var json = schemaJSON(d);
+    // A user-supplied custom JSON replaces the auto-generated schema.
+    var json;
+    if (d.customJson && String(d.customJson).trim()) {
+      var raw = String(d.customJson).trim();
+      try { json = JSON.stringify(JSON.parse(raw), null, 2); }
+      catch (e) { json = raw; }
+    } else {
+      json = schemaJSON(d);
+    }
     return '<div class="json-box">' +
       '<div class="json-bar">' +
       '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="false">JSON <span class="json-arrow">&#9662;</span></span>' +
@@ -156,13 +167,13 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team.html?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
-      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author.html?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
+    var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
+      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
-        var display = t.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); });
-        return '<a class="tag-link" href="' + root + 'tag.html?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
+        var display = t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function(m){ return m.toUpperCase(); });
+        return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t='+encodeURIComponent(display)+'">'+esc(display)+'</a>';
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
@@ -173,9 +184,19 @@
     var copyBtn = '<button type="button" class="copy-link-btn" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link</button>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
+    // Alternate art (e.g. an evil version): click the emblem to swap.
+    var altSrc = d.artAlt ? (root + 'assets/' + d.artAlt) : (d.imageAlt || '');
+    var emblem = '';
+    if (artSrc) {
+      emblem = altSrc
+        ? '<img class="emblem has-alt" src="' + esc(artSrc) + '" data-main="' + esc(artSrc) +
+          '" data-alt="' + esc(altSrc) + '" alt="' + esc(d.name) + '" title="Click to see the alternate art">' +
+          '<span class="alt-art-hint">Click art to see alternate version</span>'
+        : '<img class="emblem" src="' + esc(artSrc) + '" alt="' + esc(d.name) + '">';
+    }
     var infoCard = '<div class="card char-infocard">' +
       '<div class="card-actions">' + copyBtn + '</div>' +
-      (artSrc ? '<img class="emblem" src="' + esc(artSrc) + '" alt="' + esc(d.name) + '">' : '') +
+      emblem +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
@@ -266,6 +287,13 @@
             setTimeout(function () { cl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link'; }, 1500);
           });
         }
+        return;
+      }
+      // Alternate-art emblem: click to swap between the two versions
+      var em = e.target.closest && e.target.closest('.emblem.has-alt');
+      if (em) {
+        var showingAlt = em.getAttribute('src') === em.getAttribute('data-alt');
+        em.setAttribute('src', showingAlt ? em.getAttribute('data-main') : em.getAttribute('data-alt'));
         return;
       }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');

@@ -13,6 +13,20 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+
+  // Does this <a> point at the given page? Matches clean URLs ("script",
+  // "../script", "/script") and the legacy .html form, but not other pages
+  // that merely end with the same word (e.g. "create-script").
+  function linkMatches(a, name) {
+    var h = (a.getAttribute('href') || '').split(/[?#]/)[0];
+    return new RegExp('(^|\\/)' + name + '(\\.html)?$').test(h);
+  }
+  function findLinks(name, scope) {
+    return Array.prototype.filter.call(
+      (scope || document).querySelectorAll('a[href]'),
+      function (a) { return linkMatches(a, name); }
+    );
+  }
   var GOOD = { townsfolk: 1, outsider: 1 };
   var TEAM_LABEL = {
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
@@ -27,8 +41,8 @@
   }
   function updateScriptBadge() {
     var n = scriptCount();
-    // Find every link to script.html (root or ../)
-    var links = document.querySelectorAll('a[href$="script.html"], a[href*="script.html"]');
+    // Find every link to the Script Builder (root or ../, clean or .html)
+    var links = findLinks('script');
     links.forEach(function (a) {
       var badge = a.querySelector('.script-badge');
       if (n > 0) {
@@ -50,11 +64,11 @@
   /* ── Token Tool link in the crumb nav, mirroring Script Builder (desktop top bar) ── */
   (function () {
     document.querySelectorAll('.crumb').forEach(function (crumb) {
-      if (crumb.querySelector('a[href$="tokens.html"]')) return;
-      var sb = crumb.querySelector('a[href$="script.html"]');
+      if (findLinks('tokens', crumb).length) return;
+      var sb = findLinks('script', crumb)[0];
       if (!sb) return;
       var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u00b7';
-      var link = document.createElement('a'); link.href = ROOT + 'tokens.html'; link.textContent = 'Token Tool';
+      var link = document.createElement('a'); link.href = ROOT + 'tokens'; link.textContent = 'Token Tool';
       crumb.insertBefore(sep, sb.nextSibling);
       crumb.insertBefore(link, sep.nextSibling);
     });
@@ -77,18 +91,18 @@
     }
     cachedMe().then(function (me) {
       var label = me && me.loggedIn ? 'My Account' : 'Log In';
-      var href = ROOT + (me && me.loggedIn ? 'account.html' : 'login.html');
+      var href = ROOT + (me && me.loggedIn ? 'account' : 'login');
       // mobile nav dropdown
       var drop = document.getElementById('nav-dropdown');
-      if (drop && !drop.querySelector('a[href$="account.html"], a[href$="login.html"]')) {
+      if (drop && !findLinks('account', drop).length && !findLinks('login', drop).length) {
         var a = document.createElement('a');
         a.href = href; a.textContent = label;
         drop.appendChild(a);
       }
       // desktop crumb bar (after Token Tool, like the Token Tool injection)
       document.querySelectorAll('.crumb').forEach(function (crumb) {
-        if (crumb.querySelector('a[href$="account.html"], a[href$="login.html"]')) return;
-        var anchor = crumb.querySelector('a[href$="tokens.html"]') || crumb.querySelector('a[href$="script.html"]');
+        if (findLinks('account', crumb).length || findLinks('login', crumb).length) return;
+        var anchor = findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
         if (!anchor) return;
         var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
         var link = document.createElement('a'); link.href = href; link.textContent = label;
@@ -193,11 +207,11 @@
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
     // Inject the Token Tool link into the nav once, on every page (root-aware).
-    if (!drop.querySelector('a[href$="tokens.html"]')) {
+    if (!findLinks('tokens', drop).length) {
       var ttLink = document.createElement('a');
-      ttLink.href = ROOT + 'tokens.html';
+      ttLink.href = ROOT + 'tokens';
       ttLink.textContent = 'Token Tool';
-      var sb = drop.querySelector('a[href$="script.html"]');
+      var sb = findLinks('script', drop)[0];
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
     }
     // Random Character link (/random is a Worker route, so the path is absolute).
@@ -205,12 +219,13 @@
       var rcLink = document.createElement('a');
       rcLink.href = '/random';
       rcLink.textContent = '🎲 Random Character';
-      var tt = drop.querySelector('a[href$="tokens.html"]');
+      var tt = findLinks('tokens', drop)[0];
       if (tt) drop.insertBefore(rcLink, tt.nextSibling); else drop.appendChild(rcLink);
     }
-    var here = location.pathname.split('/').pop() || 'index.html';
+    var here = (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '');
     drop.querySelectorAll('a').forEach(function (a) {
-      if (a.getAttribute('href') === here) a.classList.add('active');
+      var h = (a.getAttribute('href') || '').replace(/\.html$/, '');
+      if (h === here || (here === 'index' && (h === '/' || h === '../' || h === './'))) a.classList.add('active');
     });
     function positionDrop() {
       var tb = document.querySelector('.topbar');

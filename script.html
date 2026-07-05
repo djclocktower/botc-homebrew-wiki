@@ -92,13 +92,13 @@
 <body>
 
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>
+      <a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>
       <span class="here">Script Builder</span>
     </nav>
     <div class="search-wrap" id="search-wrap">
@@ -113,13 +113,13 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">Home</a>
-  <a href="all-characters.html">All Characters</a>
-  <a href="tags.html">Tags</a>
-  <a href="creators.html">Creators</a>
-  <a href="script.html">Script Builder</a>
-  <a href="tokens.html">Token Tool</a>
-  <a href="create.html">Create a Character</a>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
 </nav>
 
   <!-- Mobile toggle for the add-sidebar -->
@@ -260,7 +260,7 @@
           var ability = c.ability || '';
           html += '<div class="sb-add-row">' +
             '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" src="assets/' + esc(c.art) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="sb-add-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) + '</span>' +
             '</button>' +
             (ability
@@ -291,7 +291,7 @@
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
-            '<img class="sb-script-thumb" src="assets/' + esc(c.art) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '">' + esc(c.name) + '</a>' +
             '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
             '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
@@ -408,7 +408,7 @@
     }
     document.getElementById('sb-share').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
-      var link = SITE_ROOT + 'script.html?share=' + encodeShare();
+      var link = SITE_ROOT + 'script?share=' + encodeShare();
       var btn = this;
       if (navigator.clipboard) {
         navigator.clipboard.writeText(link).then(function () {
@@ -689,7 +689,7 @@
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
         EDIT_SLUG = slug;
         var m = getMeta(); m.header = existingHeader || m.header; setMeta(m);
-        var url = SITE_ROOT + 'script-view.html?s=' + encodeURIComponent(slug);
+        var url = SITE_ROOT + 'script-view?s=' + encodeURIComponent(slug);
         pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
         $('sb-publish').disabled = false;
       }).catch(function(err){
@@ -786,7 +786,7 @@
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
     // Mark current page as active
-    var here = location.pathname.split('/').pop() || 'index.html';
+    var here = location.pathname.split('/').pop() || '/';
     drop.querySelectorAll('a').forEach(function(a){
       if (a.getAttribute('href') === here) a.classList.add('active');
     });
@@ -829,7 +829,7 @@
     function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
     function upd(){
       var c=n();
-      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
         var b=a.querySelector('.script-badge');
         if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
         else if(b){b.remove();}

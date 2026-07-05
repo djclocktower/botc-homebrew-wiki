@@ -11,14 +11,14 @@
 <body>
 
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb" id="crumb">
-      <a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a>
-    <span class="sep">·</span><a href="script.html">Script Builder</a><span class="sep">·</span><a href="tokens.html">Token Tool</a></nav>
+      <a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a>
+    <span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
     <div class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
@@ -57,7 +57,7 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art">' +
+        '<img class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -71,7 +71,7 @@
       .then(function(list) {
         var panel = document.getElementById('panel');
         if (!rawAuthor) {
-          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No author specified. <a href="authors.html" style="color:#7fb2e6">Browse all authors</a>.</p>';
+          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No author specified. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';
           return;
         }
 
@@ -86,12 +86,12 @@
         document.getElementById('hero-sub').textContent =
           count === 1 ? '1 character' : count + ' characters';
         document.getElementById('crumb').innerHTML =
-          '<a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>' +
-          '<a href="authors.html">Authors</a><span class="sep">›</span>' +
+          '<a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>' +
+          '<a href="authors">Authors</a><span class="sep">›</span>' +
           '<span class="here">' + esc(displayName) + '</span>';
 
         if (!chars.length) {
-          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found for <strong>' + esc(displayName) + '</strong>. <a href="authors.html" style="color:#7fb2e6">Browse all authors</a>.</p>';
+          panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found for <strong>' + esc(displayName) + '</strong>. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';
           return;
         }
 
@@ -133,7 +133,7 @@
     function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
     function upd(){
       var c=n();
-      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
         var b=a.querySelector('.script-badge');
         if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
         else if(b){b.remove();}

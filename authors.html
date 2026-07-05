@@ -11,15 +11,15 @@
 <body>
 
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">›</span>
+      <a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>
       <span class="here">Authors</span>
-    <span class="sep">·</span><a href="script.html">Script Builder</a><span class="sep">·</span><a href="tokens.html">Token Tool</a></nav>
+    <span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
     <div class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
@@ -32,13 +32,13 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">Home</a>
-  <a href="all-characters.html">All Characters</a>
-  <a href="tags.html">Tags</a>
-  <a href="creators.html">Creators</a>
-  <a href="script.html">Script Builder</a>
-  <a href="tokens.html">Token Tool</a>
-  <a href="create.html">Create a Character</a>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
 </nav>
 
   <div class="home-hero">
@@ -89,7 +89,7 @@
           '<div class="tags-index">' +
           keys.map(function(key) {
             var a = authorMap[key];
-            return '<a class="tag-pill" href="author.html?a=' + encodeURIComponent(a.display) + '">' +
+            return '<a class="tag-pill" href="author?a=' + encodeURIComponent(a.display) + '">' +
               esc(a.display) +
               '<span class="tag-count">' + a.count + '</span>' +
               '</a>';
@@ -129,7 +129,7 @@
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
     // Mark current page as active
-    var here = location.pathname.split('/').pop() || 'index.html';
+    var here = location.pathname.split('/').pop() || '/';
     drop.querySelectorAll('a').forEach(function(a){
       if (a.getAttribute('href') === here) a.classList.add('active');
     });
@@ -172,7 +172,7 @@
     function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
     function upd(){
       var c=n();
-      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
         var b=a.querySelector('.script-badge');
         if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
         else if(b){b.remove();}

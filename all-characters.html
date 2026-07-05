@@ -16,13 +16,13 @@
 <body>
 
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
     <nav class="crumb" aria-label="Breadcrumb">
-      <a href="index.html">Home</a><span class="sep">·</span><span class="here" id="crumb-here">All Characters</span><span class="sep">·</span><a href="tags.html">Tags</a><span class="sep">·</span><a href="creators.html">Creators</a><span class="sep">·</span><a href="script.html">Script Builder</a><span class="sep">·</span><a href="tokens.html">Token Tool</a>
+      <a href="/">Home</a><span class="sep">·</span><span class="here" id="crumb-here">All Characters</span><span class="sep">·</span><a href="tags">Tags</a><span class="sep">·</span><a href="creators">Creators</a><span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -36,13 +36,13 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">Home</a>
-  <a href="all-characters.html">All Characters</a>
-  <a href="tags.html">Tags</a>
-  <a href="creators.html">Creators</a>
-  <a href="script.html">Script Builder</a>
-  <a href="tokens.html">Token Tool</a>
-  <a href="create.html">Create a Character</a>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
 </nav>
 
   <!-- Fixed left sidebar -->
@@ -69,6 +69,8 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/render.js"></script>
+  <script src="assets/tags.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -87,7 +89,7 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        '<img class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -148,12 +150,12 @@
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
 
-    function titleCase(s){ return s.replace(/\w\S*/g, function(w){ return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase(); }); }
+    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s-])[a-z]/g, function(m){ return m.toUpperCase(); }); }
 
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');
-      // Collect tags & creators
-      var KNOWN_TAGS = ["Alignment Change", "Character Change", "Consult", "Death", "Death Modification", "Drunkenness", "Duplication", "Even If Dead", "Execution", "Execution Survival", "Hidden", "Information", "Loss Condition", "Loud", "Madness", "Misregistration", "Multi-Kill", "Neighbor", "Nominations", "Nonconformist", "On Death", "Once Per Game", "Outsider Modification", "Passive", "Ping", "Poison", "Protection", "Public", "Quiet", "Resurrection", "Reverse", "Safe", "Safety Net", "Setup", "Single-Kill", "Social", "Think", "Timer", "Votes", "Win Condition"];
+      // Collect tags & creators (canonical tag list lives in assets/tags.js)
+      var KNOWN_TAGS = window.KNOWN_TAGS || [];
       var tagSet = {}, creatorSet = {};
       KNOWN_TAGS.forEach(function(t){ tagSet[t] = 1; });
       list.forEach(function(c){
@@ -298,7 +300,7 @@
           var chars = list.filter(function (c) { return c.team === key; });
           if (!chars.length) return;
           html += '<section class="type-section" id="' + key + '">' +
-            '<h2 class="type-header"><a href="team.html?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
+            '<h2 class="type-header"><a href="team?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
             '<div class="char-grid">' + chars.map(card).join('') + '</div></section>';
         });
       }
@@ -343,11 +345,44 @@
               inner += '<p class="collection-hero-desc">' + esc(activeCollection.description) + '</p>';
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
-            inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens.html?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
+            inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary collection-edit-btn" href="edit-collection.html?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+              inner += '<a class="cta-secondary collection-edit-btn" href="edit-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+            }
+            // Full collection JSON (official script-tool schema, every character)
+            var collJsonText = '';
+            if (window.buildSchema && list.length) {
+              var meta = { id: '_meta', name: displayName };
+              var teamOrder = {}; TEAMS.forEach(function (t, i) { teamOrder[t[0]] = i; });
+              var ordered = list.slice().sort(function (a, b) {
+                var ta = teamOrder[a.team] != null ? teamOrder[a.team] : 99;
+                var tb = teamOrder[b.team] != null ? teamOrder[b.team] : 99;
+                return ta !== tb ? ta - tb : (a.name || '').localeCompare(b.name || '');
+              });
+              collJsonText = JSON.stringify([meta].concat(ordered.map(window.buildSchema)), null, 2);
+              inner += '<div class="collection-json">' +
+                '<div class="json-box">' +
+                  '<div class="json-bar">' +
+                    '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="false">Collection JSON (all ' + list.length + ' characters) <span class="json-arrow">&#9662;</span></span>' +
+                    '<button type="button" class="json-copy">Copy JSON</button>' +
+                  '</div>' +
+                  '<pre class="json-body" hidden><code>' + esc(collJsonText) + '</code></pre>' +
+                '</div>' +
+                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">⬇ Download JSON</a>' +
+              '</div>';
             }
             stack.innerHTML = inner;
+            var cdl = stack.querySelector('#coll-json-download');
+            if (cdl) cdl.addEventListener('click', function (e) {
+              e.preventDefault();
+              var blob = new Blob([collJsonText], { type: 'application/json' });
+              var u = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = u;
+              a.download = (activeCollection.id || norm(displayName) || 'collection') + '.json';
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              setTimeout(function () { URL.revokeObjectURL(u); }, 1000);
+            });
             // place the stack right after the title
             if (heroTitle && heroTitle.nextSibling) hero.insertBefore(stack, heroTitle.nextSibling);
             else hero.appendChild(stack);
@@ -394,7 +429,7 @@
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
     // Mark current page as active
-    var here = location.pathname.split('/').pop() || 'index.html';
+    var here = location.pathname.split('/').pop() || '/';
     drop.querySelectorAll('a').forEach(function(a){
       if (a.getAttribute('href') === here) a.classList.add('active');
     });
@@ -437,7 +472,7 @@
     function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
     function upd(){
       var c=n();
-      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
         var b=a.querySelector('.script-badge');
         if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
         else if(b){b.remove();}

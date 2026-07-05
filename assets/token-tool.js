@@ -751,10 +751,18 @@
   }
 
   /* ---- payloads ---- */
+  // Some characters carry a small credit mark in their name (e.g. the ∇ on
+  // Academy characters, ♊︎ on the Herbalist). Keep it on the wiki, but strip
+  // it from tokens so the name arc stays clean.
+  function stripCreditMarks(name) {
+    return String(name || '')
+      .replace(/[\p{Sm}\p{So}\p{Sk}\uFE00-\uFE0F]/gu, '')
+      .replace(/\s+/g, ' ').trim();
+  }
   function payloadFor(sl) {
     var c = charBySlug[sl];
     return {
-      name: c.name, ability: c.ability, team: c.team,
+      name: stripCreditMarks(c.name), ability: c.ability, team: c.team,
       firstNight: c.firstNight, otherNight: c.otherNight, setup: c.setup,
       reminders: c.reminders || [], remindersGlobal: c.remindersGlobal || [],
       _art: 'art/' + sl + '.png',

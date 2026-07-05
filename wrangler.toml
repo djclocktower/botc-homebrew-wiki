@@ -19,7 +19,7 @@ directory = "."
 binding = "ASSETS"
 run_worker_first = [
   "/characters.json", "/collections.json", "/scripts.json", "/api/*",
-  "/c/*", "/u/*", "/random", "/sitemap.xml", "/script-view.html",
+  "/c/*", "/u/*", "/random", "/sitemap.xml", "/script-view.html", "/script-view",
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*"
 ]
 

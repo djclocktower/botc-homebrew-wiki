@@ -281,7 +281,13 @@ async function buildPublicJSON(env, table) {
     // status column not migrated yet -> serve everything (legacy behaviour)
     ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
   }
-  return results.map(r => JSON.parse(r.data));
+  return results.map(r => {
+    const d = JSON.parse(r.data);
+    // clean URLs: stored page paths end in .html, but the site serves them
+    // extensionless now — strip it so every consumer links the clean form
+    if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
+    return d;
+  });
 }
 
 // ---- D1 -> R2 backup (nightly cron + POST /api/backup) ----
@@ -342,18 +348,21 @@ function renderCharacterPage(d, origin, isDraft) {
   const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
-  const pageUrl = origin + '/c/' + d.slug + '.html';
-  const img = d.image || (origin + '/assets/' + (d.art || ''));
-  const body = Render.renderCharacter(d, '../assets/' + (d.art || ''), '../');
+  const pageUrl = origin + '/c/' + d.slug;
+  const imgRaw = Array.isArray(d.image) ? d.image[0] : d.image;
+  const img = imgRaw || (origin + '/assets/' + (d.art || ''));
+  // bulk-imported characters may only have a remote image URL, no local art
+  const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
+  const body = Render.renderCharacter(d, artSrc, '../');
   const crumb =
-    '<a href="../index.html">Home</a><span class="sep">›</span>' +
-    '<a href="../all-characters.html">Characters</a><span class="sep">·</span>' +
-    '<a href="../script.html">Script Builder</a><span class="sep">·</span>' +
-    '<a href="../tokens.html">Token Tool</a><span class="sep">›</span>' +
-    '<a href="../team.html?t=' + attr(team) + '">' + attr(label) + '</a>' +
+    '<a href="../">Home</a><span class="sep">›</span>' +
+    '<a href="../all-characters">Characters</a><span class="sep">·</span>' +
+    '<a href="../script">Script Builder</a><span class="sep">·</span>' +
+    '<a href="../tokens">Token Tool</a><span class="sep">›</span>' +
+    '<a href="../team?t=' + attr(team) + '">' + attr(label) + '</a>' +
     '<span class="sep">›</span><span class="here">' + attr(name) + '</span>';
   const draftBanner = isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account.html" style="color:#ffe9ad">account page</a> or the editor.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
     : '';
 
   return `<!DOCTYPE html>
@@ -382,7 +391,7 @@ function renderCharacterPage(d, origin, isDraft) {
 ${draftBanner}
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="../index.html">
+      <a class="brand" href="../">
         <img class="brand-skull" src="../assets/logo_skull.png" alt="">
         <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
@@ -402,12 +411,12 @@ ${draftBanner}
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="../index.html">Home</a>
-  <a href="../all-characters.html">All Characters</a>
-  <a href="../tags.html">Tags</a>
-  <a href="../creators.html">Creators</a>
-  <a href="../script.html">Script Builder</a>
-  <a href="../create.html">Create a Character</a>
+  <a href="../">Home</a>
+  <a href="../all-characters">All Characters</a>
+  <a href="../tags">Tags</a>
+  <a href="../creators">Creators</a>
+  <a href="../script">Script Builder</a>
+  <a href="../create">Create a Character</a>
 </nav>
 
   <main class="wrap" id="content">${body}</main>
@@ -416,6 +425,7 @@ ${draftBanner}
 
   <script>window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};</script>
   <script src="../assets/render.js"></script>
+  <script src="../assets/tags.js"></script>
   <script src="../assets/charpage.js"></script>
   <script src="../assets/site.js"></script>
 </body>
@@ -445,7 +455,7 @@ async function uniqueUsername(env, base) {
 }
 
 function loginErrorRedirect(origin, msg) {
-  return redirectResponse(origin + '/login.html?error=' + encodeURIComponent(msg));
+  return redirectResponse(origin + '/login?error=' + encodeURIComponent(msg));
 }
 
 export default {
@@ -468,7 +478,14 @@ export default {
     // ---------- CHARACTER PAGES (server-side rendered from D1) ----------
     if (method === 'GET' && path.startsWith('/c/')) {
       let slug = decodeURIComponent(path.slice(3));
-      if (slug.endsWith('.html')) slug = slug.slice(0, -5);
+      // clean URLs: the .html form permanently redirects to the extensionless one
+      if (slug.endsWith('.html')) {
+        slug = slug.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/c/' + slug + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
         let row = null;
         try {
@@ -527,7 +544,7 @@ export default {
           'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
         ).first();
       }
-      const dest = row ? '/c/' + row.slug + '.html' : '/all-characters.html';
+      const dest = row ? '/c/' + row.slug : '/all-characters';
       return new Response(null, {
         status: 302,
         headers: { Location: url.origin + dest, 'Cache-Control': 'no-store' }
@@ -590,15 +607,15 @@ export default {
         }
       }
       const [chars, scripts] = await Promise.all([pub('characters'), pub('scripts')]);
-      const staticPages = ['', 'all-characters.html', 'scripts.html', 'tags.html', 'creators.html',
-        'authors.html', 'script.html', 'tokens.html', 'steven-approved-order.html'];
+      const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
+        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug + '.html') + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/script-view.html?s=' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/script-view?s=' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -609,7 +626,7 @@ export default {
     }
 
     // ---------- SCRIPT VIEW (inject OG/meta tags so shared links unfurl) ----------
-    if (method === 'GET' && path === '/script-view.html') {
+    if (method === 'GET' && (path === '/script-view.html' || path === '/script-view')) {
       const slug = url.searchParams.get('s');
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
         try {
@@ -627,7 +644,7 @@ export default {
             const nChars = (s.characters || []).length;
             const desc = (s.description || '').trim() ||
               (nChars + '-character homebrew script for Blood on the Clocktower' + (s.author ? ', by ' + s.author : '') + '.');
-            const pageUrl = url.origin + '/script-view.html?s=' + encodeURIComponent(slug);
+            const pageUrl = url.origin + '/script-view?s=' + encodeURIComponent(slug);
             const img = url.origin + '/assets/' + (s.header || 'logo_skull.png');
             const metaBlock = '<title>' + attr(name) + ' — BOTC HomeBrew Wiki</title>\n' +
               '<meta name="description" content="' + attr(desc) + '">\n' +
@@ -748,7 +765,7 @@ export default {
       if (user && user.email) {
         const token = randomToken();
         await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
-        const link = url.origin + '/reset-password.html?token=' + token;
+        const link = url.origin + '/reset-password?token=' + token;
         ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
           'Reset your password',
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
@@ -781,10 +798,10 @@ export default {
     if (method === 'GET' && path === '/api/verify-email') {
       const token = url.searchParams.get('token') || '';
       const userId = token && await env.SESSIONS.get('verify:' + token);
-      if (!userId) return redirectResponse(url.origin + '/account.html?verified=0');
+      if (!userId) return redirectResponse(url.origin + '/account?verified=0');
       await env.DB.prepare('UPDATE users SET email_verified=1 WHERE id=?').bind(userId).run();
       await env.SESSIONS.delete('verify:' + token);
-      return redirectResponse(url.origin + '/account.html?verified=1');
+      return redirectResponse(url.origin + '/account?verified=1');
     }
 
     if (method === 'POST' && path === '/api/resend-verification') {
@@ -865,12 +882,12 @@ export default {
       // Link mode: attach this Discord identity to the logged-in account.
       if (linkUserId) {
         if (byDiscord && byDiscord.id !== linkUserId) {
-          return redirectResponse(url.origin + '/account.html?error=' + encodeURIComponent('That Discord account is already linked to a different wiki account.'));
+          return redirectResponse(url.origin + '/account?error=' + encodeURIComponent('That Discord account is already linked to a different wiki account.'));
         }
         await env.DB.prepare(
           `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?) WHERE id=?`
         ).bind(discordId, du.username || discordName, avatarUrl, linkUserId).run();
-        return redirectResponse(url.origin + '/account.html?linked=1');
+        return redirectResponse(url.origin + '/account?linked=1');
       }
 
       // Existing Discord-linked account -> log in.
@@ -879,7 +896,7 @@ export default {
           `UPDATE users SET discord_username=?, avatar_url=COALESCE(?, avatar_url), last_login=datetime('now') WHERE id=?`
         ).bind(du.username || discordName, avatarUrl, byDiscord.id).run();
         const t = await createSession(env, byDiscord.id, !!byDiscord.is_admin);
-        return redirectResponse(url.origin + '/account.html', sessionCookie(t));
+        return redirectResponse(url.origin + '/account', sessionCookie(t));
       }
 
       // Same verified email already on a verified account -> link + log in.
@@ -895,7 +912,7 @@ export default {
             `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
           ).bind(discordId, du.username || discordName, avatarUrl, byEmail.id).run();
           const t = await createSession(env, byEmail.id, !!byEmail.is_admin);
-          return redirectResponse(url.origin + '/account.html?linked=1', sessionCookie(t));
+          return redirectResponse(url.origin + '/account?linked=1', sessionCookie(t));
         }
       }
 
@@ -908,7 +925,7 @@ export default {
       const newId = ins.meta.last_row_id;
       await logActivity(env, { userId: newId }, 'signup', 'user', null, username);
       const t = await createSession(env, newId, false);
-      return redirectResponse(url.origin + '/account.html?welcome=1', sessionCookie(t));
+      return redirectResponse(url.origin + '/account?welcome=1', sessionCookie(t));
     }
 
     // ---------- ACCOUNT PAGE DATA ----------

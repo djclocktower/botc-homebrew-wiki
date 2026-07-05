@@ -36,17 +36,17 @@
 
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="index.html">
+      <a class="brand" href="/">
         <img class="brand-skull" src="assets/logo_skull.png" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </div>
     <nav class="crumb">
-      <a href="index.html">Home</a><span class="sep">›</span>
-      <a href="all-characters.html">Characters</a><span class="sep">›</span>
+      <a href="/">Home</a><span class="sep">›</span>
+      <a href="all-characters">Characters</a><span class="sep">›</span>
       <span class="here" id="crumb-label">Edit Collection</span>
-    <span class="sep">·</span><a href="script.html">Script Builder</a><span class="sep">·</span><a href="tokens.html">Token Tool</a></nav>
+    <span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
   </header>
 
   <main class="ec-wrap" id="main-content">
@@ -87,7 +87,7 @@
                + '<p style="color:rgba(236,225,200,.7);margin:0 0 4px">Choose a collection to edit its description and header image.</p>'
                + '<div class="ec-pick-grid">';
       data.forEach(function(c){
-        html += '<div class="ec-pick-card" onclick="location.href=\'edit-collection.html?c='+encodeURIComponent(c.id)+'\'">'
+        html += '<div class="ec-pick-card" onclick="location.href=\'edit-collection?c='+encodeURIComponent(c.id)+'\'">'
               + '<p class="ec-pick-name">'+esc(c.displayName)+'</p>'
               + '<p class="ec-pick-desc">'+(c.description||'<em style="opacity:.6">No description yet</em>')+'</p>'
               + '</div>';
@@ -117,7 +117,7 @@
         + '<button type="button" class="btn-pub" id="ec-save">Save Changes</button>'
         + '<div id="ec-status"></div>'
         + '</div>'
-        + '<p style="margin-top:16px"><a href="all-characters.html?collection='+encodeURIComponent(coll.slug)+'" style="color:rgba(236,225,200,.7);font-size:.88rem">← View collection page</a></p>';
+        + '<p style="margin-top:16px"><a href="all-characters?collection='+encodeURIComponent(coll.slug)+'" style="color:rgba(236,225,200,.7);font-size:.88rem">← View collection page</a></p>';
 
       // Header upload
       document.getElementById('ec-header').addEventListener('change', function(e){
@@ -164,7 +164,7 @@
         }).then(function(){
           if(headerDataURL){coll.header=displayHeader;headerDataURL=null;}
           coll.description=desc;
-          var url=SITE_ROOT+'all-characters.html?collection='+encodeURIComponent(coll.slug);
+          var url=SITE_ROOT+'all-characters?collection='+encodeURIComponent(coll.slug);
           setStatus('ok','✓ Saved! Live now. <a href="'+url+'" target="_blank">'+esc(coll.displayName)+' collection</a>');
           btn.disabled=false;
         }).catch(function(err){

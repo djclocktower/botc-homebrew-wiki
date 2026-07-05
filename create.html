@@ -87,12 +87,12 @@
 <body>
 
   <header class="topbar">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <img class="brand-skull" src="assets/logo_skull.png" alt="">
       <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
     </a>
-    <nav class="crumb"><a href="index.html">Home</a><span class="sep">›</span><a href="all-characters.html">Characters</a><span class="sep">&rsaquo;</span><span class="here">Create</span><span class="sep">·</span><a href="script.html">Script Builder</a><span class="sep">·</span><a href="tokens.html">Token Tool</a></nav>
+    <nav class="crumb"><a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">&rsaquo;</span><span class="here">Create</span><span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
     <div class="search-wrap" id="search-wrap">
       <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
       <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
@@ -105,13 +105,13 @@
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="index.html">Home</a>
-  <a href="all-characters.html">All Characters</a>
-  <a href="tags.html">Tags</a>
-  <a href="creators.html">Creators</a>
-  <a href="script.html">Script Builder</a>
-  <a href="tokens.html">Token Tool</a>
-  <a href="create.html">Create a Character</a>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
 </nav>
 
   <div class="builder">
@@ -128,6 +128,7 @@
         <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
         <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
         <div id="importmsg"></div>
+        <p class="sub" style="margin:10px 0 0">Have a whole script or a master list of characters? <a href="mass-upload" style="color:#234f74;font-weight:700">Mass-upload them all at once &rarr;</a></p>
       </fieldset>
 
       <div class="fld">
@@ -200,48 +201,7 @@
       </div>
       <div class="fld">
         <label>Tags <span class="hint">(click to select)</span></label>
-        <div class="tag-picker" id="tag-picker">
-          <button type="button" class="tag-pick-btn" data-tag="Alignment Change">Alignment Change</button>
-          <button type="button" class="tag-pick-btn" data-tag="Character Change">Character Change</button>
-          <button type="button" class="tag-pick-btn" data-tag="Consult">Consult</button>
-          <button type="button" class="tag-pick-btn" data-tag="Death">Death</button>
-          <button type="button" class="tag-pick-btn" data-tag="Death Modification">Death Modification</button>
-          <button type="button" class="tag-pick-btn" data-tag="Drunkenness">Drunkenness</button>
-          <button type="button" class="tag-pick-btn" data-tag="Duplication">Duplication</button>
-          <button type="button" class="tag-pick-btn" data-tag="Even If Dead">Even If Dead</button>
-          <button type="button" class="tag-pick-btn" data-tag="Execution">Execution</button>
-          <button type="button" class="tag-pick-btn" data-tag="Execution Survival">Execution Survival</button>
-          <button type="button" class="tag-pick-btn" data-tag="Hidden">Hidden</button>
-          <button type="button" class="tag-pick-btn" data-tag="Information">Information</button>
-          <button type="button" class="tag-pick-btn" data-tag="Loss Condition">Loss Condition</button>
-          <button type="button" class="tag-pick-btn" data-tag="Loud">Loud</button>
-          <button type="button" class="tag-pick-btn" data-tag="Madness">Madness</button>
-          <button type="button" class="tag-pick-btn" data-tag="Misregistration">Misregistration</button>
-          <button type="button" class="tag-pick-btn" data-tag="Multi-Kill">Multi-Kill</button>
-          <button type="button" class="tag-pick-btn" data-tag="Neighbor">Neighbor</button>
-          <button type="button" class="tag-pick-btn" data-tag="Nominations">Nominations</button>
-          <button type="button" class="tag-pick-btn" data-tag="Nonconformist">Nonconformist</button>
-          <button type="button" class="tag-pick-btn" data-tag="On Death">On Death</button>
-          <button type="button" class="tag-pick-btn" data-tag="Once Per Game">Once Per Game</button>
-          <button type="button" class="tag-pick-btn" data-tag="Outsider Modification">Outsider Modification</button>
-          <button type="button" class="tag-pick-btn" data-tag="Passive">Passive</button>
-          <button type="button" class="tag-pick-btn" data-tag="Ping">Ping</button>
-          <button type="button" class="tag-pick-btn" data-tag="Poison">Poison</button>
-          <button type="button" class="tag-pick-btn" data-tag="Protection">Protection</button>
-          <button type="button" class="tag-pick-btn" data-tag="Public">Public</button>
-          <button type="button" class="tag-pick-btn" data-tag="Quiet">Quiet</button>
-          <button type="button" class="tag-pick-btn" data-tag="Resurrection">Resurrection</button>
-          <button type="button" class="tag-pick-btn" data-tag="Reverse">Reverse</button>
-          <button type="button" class="tag-pick-btn" data-tag="Safe">Safe</button>
-          <button type="button" class="tag-pick-btn" data-tag="Safety Net">Safety Net</button>
-          <button type="button" class="tag-pick-btn" data-tag="Setup">Setup</button>
-          <button type="button" class="tag-pick-btn" data-tag="Single-Kill">Single-Kill</button>
-          <button type="button" class="tag-pick-btn" data-tag="Social">Social</button>
-          <button type="button" class="tag-pick-btn" data-tag="Think">Think</button>
-          <button type="button" class="tag-pick-btn" data-tag="Timer">Timer</button>
-          <button type="button" class="tag-pick-btn" data-tag="Votes">Votes</button>
-          <button type="button" class="tag-pick-btn" data-tag="Win Condition">Win Condition</button>
-</div>
+        <div class="tag-picker" id="tag-picker"></div>
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
@@ -257,6 +217,12 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="arturl" class="sub" style="margin-top:6px"></div>
+      </div>
+      <div class="fld">
+        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON and shown on the page)</span></label>
+        <input type="file" id="artAlt" accept="image/*">
+        <img id="artAltThumb" class="artthumb" alt="alternate art preview">
+        <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
 
       <!-- night order & tokens for JSON -->
@@ -318,6 +284,12 @@
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
 
+      <fieldset>
+        <legend>Custom JSON (optional)</legend>
+        <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
+        <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
+      </fieldset>
+
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
       <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
       <div id="status"></div>
@@ -331,11 +303,13 @@
   </div>
 
   <script src="assets/render.js"></script>
+  <script src="assets/tags.js"></script>
   <script>
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
     var $         = function (id) { return document.getElementById(id); };
     var artDataURL   = null;
+    var artAltDataURL = null;
     var importedImage = null;
 
     // ── jinx rows ──────────────────────────────────────────────────
@@ -432,6 +406,7 @@
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value,
         customBoxes: gatherBoxes(),
+        customJson: $('customJson').value.trim(),
         image: importedImage || ''
       };
     }
@@ -454,6 +429,7 @@
 
     function update() {
       var d = gather();
+      if (artAltDataURL) d.imageAlt = artAltDataURL;
       var inner = window.renderCharacter(d, artDataURL || importedImage || '');
       var doc =
         '<!doctype html><html><head><meta charset="utf-8">' +
@@ -470,7 +446,7 @@
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
      'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay'].forEach(function (id) {
+     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -478,6 +454,7 @@
     (function() {
       var picker = document.getElementById('tag-picker');
       var hidden = document.getElementById('tags');
+      if (window.buildTagPicker) window.buildTagPicker(picker);
       function syncHidden() {
         var sel = Array.from(picker.querySelectorAll('.tag-pick-btn.selected'))
                        .map(function(b){ return b.getAttribute('data-tag'); });
@@ -531,6 +508,24 @@
         });
       };
       reader.readAsDataURL(file);
+    });
+
+    $('artAlt').addEventListener('change', function (e) {
+      var file = e.target.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        loadImageToCanvas(ev.target.result, false).then(function (url) {
+          artAltDataURL = url;
+          var th = $('artAltThumb'); th.src = url; th.style.display = 'block';
+          $('artAltClear').style.display = ''; update();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    $('artAltClear').addEventListener('click', function () {
+      artAltDataURL = null; $('artAlt').value = '';
+      $('artAltThumb').style.display = 'none';
+      $('artAltClear').style.display = 'none'; update();
     });
 
     // ── R2 image upload via the site Worker ────────────────────────
@@ -612,7 +607,7 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.loggedIn){
-          setStatus('err','You are not logged in. <a href="login.html?next=create.html">Log in or create an account</a> to publish your character.');
+          setStatus('err','You are not logged in. <a href="login?next=create">Log in or create an account</a> to publish your character.');
           var pb = document.getElementById('publish'); if(pb) pb.disabled = true;
           var db = document.getElementById('save-draft'); if(db) db.disabled = true;
         }
@@ -637,6 +632,11 @@
 
       // Step 1: upload art to R2 (instant, no rebuild)
       apiUpload('art/' + slug + '.png', artDataURL)
+        .then(function () {
+          if (!artAltDataURL) return;
+          setStatus('work', verb + '&hellip; uploading alternate art');
+          return apiUpload('art/' + slug + '-alt.png', artAltDataURL);
+        })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
           setStatus('work', verb + '&hellip; saving to database');
@@ -652,8 +652,13 @@
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
             setup: d.setup, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
+            customJson: d.customJson,
             status: saveStatus
           };
+          if (artAltDataURL) {
+            entry.artAlt   = 'art/' + slug + '-alt.png';
+            entry.imageAlt = ART_BASE + slug + '-alt.png';
+          }
           return fetch('/api/character', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -661,16 +666,16 @@
             body: JSON.stringify(entry)
           }).then(function(r){
             return r.json().then(function(j){
-              if(r.status === 401) throw new Error('Not logged in. Please log in at /login.html first.');
+              if(r.status === 401) throw new Error('Not logged in. Please log in at /login first.');
               if(!r.ok) throw new Error(j.error || 'Save failed.');
               return j;
             });
           });
         })
         .then(function () {
-          var url = SITE_ROOT + 'c/' + slug + '.html';
+          var url = SITE_ROOT + 'c/' + slug;
           if (isDraft) {
-            setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account.html">your account page</a>.');
+            setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
           } else {
             setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           }
@@ -748,7 +753,7 @@
     var btn=document.getElementById('hamburger');
     var drop=document.getElementById('nav-dropdown');
     if(!btn||!drop)return;
-    var here=location.pathname.split('/').pop()||'index.html';
+    var here=location.pathname.split('/').pop()||'/';
     drop.querySelectorAll('a').forEach(function(a){if(a.getAttribute('href')===here)a.classList.add('active');});
     function positionDrop(){var tb=document.querySelector('.topbar');if(tb)drop.style.top=tb.getBoundingClientRect().height+'px';}
     btn.addEventListener('click',function(){
@@ -767,7 +772,7 @@
         if(topSearch){topSearch.value=navSearch.value;topSearch.dispatchEvent(new Event('input'));}
         else{
           // no topbar search (create/edit pages) — navigate to homepage with query
-          if(navSearch.value.trim()) window.location.href='index.html';
+          if(navSearch.value.trim()) window.location.href='/';
         }
       });
       navSearch.addEventListener('keydown',function(e){
@@ -785,7 +790,7 @@
     function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
     function upd(){
       var c=n();
-      document.querySelectorAll('a[href$="script.html"]').forEach(function(a){
+      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
         var b=a.querySelector('.script-badge');
         if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
         else if(b){b.remove();}
