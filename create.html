@@ -41,6 +41,10 @@
   fieldset.import legend { color:#234f74; }
   .jinx-row { display:grid; grid-template-columns:1fr 86px auto; gap:8px; margin-bottom:8px; align-items:start; }
   .jinx-row textarea { grid-column:1 / -1; min-height:46px; }
+  .box-row { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:14px;
+    align-items:start; padding-bottom:12px; border-bottom:1px dashed #d8caa8; }
+  .box-row:last-of-type { border-bottom:none; }
+  .box-row textarea { grid-column:1 / -1; min-height:56px; }
   .btn { font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
     border:none; border-radius:7px; padding:9px 16px; font-size:.9rem; }
   .btn-sm { padding:6px 12px; font-size:.82rem; }
@@ -296,8 +300,22 @@
 
       <fieldset>
         <legend>Jinxes</legend>
+        <div class="fld">
+          <label for="jinxDisplay">Jinx display style</label>
+          <select id="jinxDisplay">
+            <option value="sidebar">Floating box on the sidebar</option>
+            <option value="dropdown">Collapsible dropdown</option>
+          </select>
+        </div>
         <div id="jinxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addjinx">+ Add jinx</button>
+      </fieldset>
+
+      <fieldset>
+        <legend>Custom Sidebar Boxes</legend>
+        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar &mdash; call them whatever you like and fill them with whatever you want. Blank a line for a paragraph break; wrap tokens like [[POISONED]].</p>
+        <div id="customboxes"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
 
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
@@ -343,6 +361,37 @@
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
+    // ── custom sidebar box rows ────────────────────────────────────
+    function addBox(title, content) {
+      var row = document.createElement('div');
+      row.className = 'box-row';
+      row.innerHTML =
+        '<input type="text" class="bx-title" placeholder="Box title (e.g. Lore)">' +
+        '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
+        '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
+      $('customboxes').appendChild(row);
+      if (title)   row.querySelector('.bx-title').value   = title;
+      if (content) row.querySelector('.bx-content').value = content;
+      row.querySelector('.bx-del').addEventListener('click', function () { row.remove(); update(); });
+      row.querySelectorAll('input,textarea').forEach(function (el) { el.addEventListener('input', update); });
+      row.querySelectorAll('textarea').forEach(function (ta) {
+        ta.style.overflowY = 'hidden';
+        ta.addEventListener('input', function () { autoExpand(ta); });
+        autoExpand(ta);
+      });
+    }
+    $('addbox').addEventListener('click', function () { addBox(); });
+
+    function gatherBoxes() {
+      var boxes = [];
+      document.querySelectorAll('.box-row').forEach(function (r) {
+        var t = r.querySelector('.bx-title').value.trim();
+        var c = r.querySelector('.bx-content').value.replace(/\s+$/, '');
+        if (t || c.trim()) boxes.push({ title: t, content: c });
+      });
+      return boxes;
+    }
+
     function lines(id) {
       return $(id).value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
     }
@@ -381,6 +430,8 @@
         remindersGlobal: lines('remindersGlobal'),
         setup: $('setup').checked,
         jinxes: jinxes,
+        jinxDisplay: $('jinxDisplay').value,
+        customBoxes: gatherBoxes(),
         image: importedImage || ''
       };
     }
@@ -395,6 +446,8 @@
       '<scr' + 'ipt>document.addEventListener("click",function(e){' +
       'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
       'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
+      'var j=e.target.closest&&e.target.closest(".jinx-drop-bar");' +
+      'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
       'var c=e.target.closest&&e.target.closest(".json-copy");' +
       'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
       '});</scr' + 'ipt>';
@@ -417,7 +470,7 @@
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
      'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
-     'reminders','remindersGlobal','setup','bluffing','fighting'].forEach(function (id) {
+     'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
 
@@ -598,6 +651,7 @@
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
             setup: d.setup, jinxes: d.jinxes,
+            jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
             status: saveStatus
           };
           return fetch('/api/character', {
