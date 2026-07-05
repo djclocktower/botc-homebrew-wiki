@@ -273,6 +273,34 @@
       '</div>';
   }
 
+  /* ── Fit the character title to its width ──
+     Glyph widths vary too much between names for a CSS char-count formula to be
+     safe (e.g. "MOON" is ~0.76/char, "ENLIGHTENED ONE" ~0.57), so measure the
+     rendered text and scale the font down until the single line fits. Never
+     wraps (white-space:nowrap in CSS); short names stay at the cap. */
+  function fitCharTitle() {
+    if (typeof document === 'undefined') return;
+    var els = document.querySelectorAll('.gen-title');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      el.style.whiteSpace = 'nowrap';
+      var vw = window.innerWidth || 1000;
+      var maxPx = vw <= 420 ? 66 : vw <= 640 ? 78 : 144;   // "large & in charge", bounded on mobile
+      el.style.fontSize = maxPx + 'px';
+      var avail = el.clientWidth;                            // block fills its container
+      if (avail && el.scrollWidth > avail) {                // single line overflows → shrink to fit
+        var size = maxPx * (avail * 0.99) / el.scrollWidth;
+        el.style.fontSize = Math.max(size, 14).toFixed(1) + 'px';
+      }
+    }
+    // The web font (Dumbledor2) changes glyph widths; re-fit once it loads so an
+    // early measurement against the fallback font doesn't leave the title wrong.
+    if (document.fonts && document.fonts.status !== 'loaded' && !fitCharTitle._waiting) {
+      fitCharTitle._waiting = true;
+      document.fonts.ready.then(function () { fitCharTitle._waiting = false; fitCharTitle(); });
+    }
+  }
+
   /* ── one-time delegated handlers for JSON box toggle + copy ── */
   if (typeof document !== 'undefined' && !window.__jsonBoxBound) {
     window.__jsonBoxBound = true;
@@ -336,10 +364,17 @@
       jd.setAttribute('aria-expanded', jopen ? 'true' : 'false');
       jbox.querySelector('.jinx-drop-body').hidden = !jopen;
     });
+    // Re-fit the title on viewport resize / orientation change (debounced).
+    var fitTimer;
+    window.addEventListener('resize', function () {
+      clearTimeout(fitTimer);
+      fitTimer = setTimeout(fitCharTitle, 120);
+    });
   }
 
   if (typeof window !== 'undefined') {
     window.renderCharacter = renderCharacter;
+    window.fitCharTitle = fitCharTitle;
     window.renderJsonBox = renderJsonBox;
     window.buildSchema = buildSchema;
     window.schemaJSON = schemaJSON;

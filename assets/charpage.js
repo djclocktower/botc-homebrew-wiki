@@ -59,6 +59,7 @@
     if (eb0) { eb0.href = (window.LINK_ROOT || '') + 'edit?c=' + SLUG; eb0.style.display = ''; }
     mountScriptButton(SLUG);
     mountTokenButton(SLUG);
+    if (window.fitCharTitle) window.fitCharTitle();
     if (location.hash) {
       var t0 = document.getElementById(location.hash.slice(1));
       if (t0) t0.scrollIntoView();
@@ -88,6 +89,7 @@
       content.innerHTML = window.renderCharacter(d, artSrc);
       mountScriptButton(d.slug);
       mountTokenButton(d.slug);
+      if (window.fitCharTitle) window.fitCharTitle();
       if (location.hash) {
         var t = document.getElementById(location.hash.slice(1));
         if (t) t.scrollIntoView();

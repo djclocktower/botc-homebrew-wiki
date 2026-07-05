@@ -407,11 +407,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    ════════════════════════════════════════════════════════════════ */
 .gen-title {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
-  /* Fit-to-width: 165cqi/--nch fills ~85% of the title row regardless of length,
-     so the name is as large as possible without overlapping. Capped for short
-     names; a floor keeps very long names legible (they may wrap). */
-  font-size: clamp(2.2rem, calc(165cqi / var(--nch, 8)), 9rem);
-  letter-spacing: .04em; line-height: .98; overflow-wrap: break-word;
+  /* Sizing is done in JS (fitCharTitle in render.js): the title is measured and
+     scaled so the single line always fits its width. white-space:nowrap
+     guarantees it never wraps. The font-size below is only a pre-JS fallback. */
+  white-space: nowrap;
+  font-size: clamp(2rem, calc(110cqi / var(--nch, 8)), 9rem);
+  letter-spacing: .04em; line-height: .98;
   margin: 2px 0 4px; text-shadow: 0 4px 18px rgba(0,0,0,.7), 0 2px 4px rgba(0,0,0,.5);
 }
 .gen-sech-wrap {
