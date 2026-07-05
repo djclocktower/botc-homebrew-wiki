@@ -74,6 +74,34 @@
     return JSON.stringify([meta, buildSchema(d)], null, 2);
   }
 
+  /* ── Find jinxes that are active between characters on the same script ──
+     Takes an array of character objects; returns [{a, b, text}] where `a`
+     carries the jinx and `b` is the matching character also in the list. */
+  function normJinxId(id) {
+    return String(id || '').replace(/_festival_of_lanterns$/, '')
+      .toLowerCase().replace(/[^a-z0-9]/g, '');
+  }
+  function findScriptJinxes(chars) {
+    var byId = {};
+    chars.forEach(function (c) {
+      [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
+        .forEach(function (id) { if (id) byId[id] = c; });
+    });
+    var out = [], seen = {};
+    chars.forEach(function (c) {
+      (c.jinxes || []).forEach(function (j) {
+        var target = byId[normJinxId(j.id || slugId(j.name || ''))];
+        if (!target || target === c) return;
+        var text = j.text || j.reason || '';
+        var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
+        if (seen[key]) return;
+        seen[key] = 1;
+        out.push({ a: c, b: target, text: text });
+      });
+    });
+    return out;
+  }
+
   /* ── Collapsible JSON box ── */
   function renderJsonBox(d) {
     var json = schemaJSON(d);
@@ -231,12 +259,14 @@
     window.schemaJSON = schemaJSON;
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
+    window.findScriptJinxes = findScriptJinxes;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
-      slugId: slugId, TEAM_LABEL: TEAM_LABEL
+      slugId: slugId, TEAM_LABEL: TEAM_LABEL,
+      findScriptJinxes: findScriptJinxes
     };
   }
 })();
