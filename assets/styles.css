@@ -1324,15 +1324,17 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* ─── Title row + copy-link button ───────────────────────── */
 /* title-row is a size container so .gen-title can fit-to-width via cqi units.
-   The copy-link button now sits on its own row below, giving the name the
-   full width at the top of the page. */
+   The name sits snug at the top; the copy-link button lives inside the info
+   card (see .card-actions) rather than floating between the two. */
 .title-row {
   container-type: inline-size;
   display: block;
+  margin-bottom: 8px;
 }
-.title-actions {
+/* Copy-link button, pinned to the top-right corner inside the info card. */
+.card-actions {
   display: flex; justify-content: flex-end;
-  margin: 0 0 12px;
+  margin: -2px 0 8px;
 }
 .copy-link-btn {
   flex-shrink: 0;
