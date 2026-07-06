@@ -111,6 +111,18 @@
   .mini-btn:disabled{ opacity: .5; cursor: default; }
   .empty-note { font-size: .9rem; opacity: .75; padding: 6px 0; }
   .empty-note a { color: var(--maroon); }
+  /* Long names must wrap instead of forcing the table wider than the screen */
+  .row-name a { overflow-wrap: anywhere; word-break: break-word; }
+  /* On phones the 4-column row overflows — stack each row into a card */
+  @media (max-width: 560px) {
+    .row-list, .row-list tbody, .row-list tr, .row-list td { display: block; width: 100%; box-sizing: border-box; }
+    .row-list tr { padding: 10px 0; border-top: 1px solid rgba(0,0,0,.09); }
+    .row-list tr:first-child { padding-top: 0; border-top: none; }
+    .row-list td { padding: 1px 0; border-top: none; }
+    .row-type, .row-date { white-space: normal; }
+    .row-actions { text-align: left; white-space: normal; margin-top: 8px; }
+    .mini-btn { margin: 0 8px 0 0; }
+  }
 
   /* ---- activity feed ---- */
   .feed { list-style: none; margin: 0; padding: 0; font-size: .88rem; }
@@ -310,7 +322,7 @@
     function editUrl(type, slug) {
       if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);
       if (type === 'collection') return 'edit-collection?c=' + encodeURIComponent(slug);
-      return 'script?s=' + encodeURIComponent(slug);
+      return 'publish-script?s=' + encodeURIComponent(slug);
     }
     function fmtDate(s) {
       if (!s) return '';
