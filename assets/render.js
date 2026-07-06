@@ -1,6 +1,9 @@
-/* Shared character renderer — used by character.html (live), the static
-   character pages (JSON box only), and create.html (preview).
-   Guarantees the preview/published output always match. */
+/* Shared character renderer.
+   Used in the browser by create.html / edit.html (live preview) and by the
+   collection JSON box on all-characters.html — and bundled into the Worker
+   (worker/worker.js imports this file) to server-side render /c/{slug} pages.
+   Because both sides share this code, the editor preview and the published
+   page are guaranteed to match. No DOM access outside the guarded blocks. */
 (function () {
   function esc(s) {
     return String(s == null ? '' : s)
@@ -208,7 +211,7 @@
       var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
       var iconSrc = root + 'assets/icons/' + iconId + '.png';
       return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
-        (iconId ? '<img class="jico" src="' + iconSrc + '" alt=""' +
+        (iconId ? '<img loading="lazy" decoding="async" class="jico" src="' + iconSrc + '" alt=""' +
         ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
         : '') +
         '<div class="jbody">' +
@@ -391,6 +394,3 @@
     };
   }
 })();
-
-// nudge redeploy
-// nudge build 2026-07-02

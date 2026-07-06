@@ -246,8 +246,15 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-size: clamp(.95rem, 2vw, 1.2rem); color: rgba(236,225,200,.7);
   margin: 0; letter-spacing: .03em;
 }
+/* Homepage layout: content column + Resources sidebar.
+   A real grid column (not absolute positioning) so the sidebar can never
+   overlap the content at in-between widths (the old absolute sidebar sat on
+   top of the collections grid between ~1100px and ~1560px). */
 .home-layout {
   position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  column-gap: clamp(16px, 2vw, 28px);
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -259,22 +266,24 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   padding: 0 clamp(12px,3vw,40px) 64px;
 }
 .home-layout > .home-panel {
+  grid-column: 1;
+  width: 100%;
   max-width: 1180px;
   margin: 0 auto;
   padding: 0;
   min-width: 0;
 }
 .home-sidebar {
-  position: absolute;
-  top: 0;
-  right: clamp(16px,3vw,48px);
-  width: 320px;
+  grid-column: 2;
+  align-self: start;
+  position: sticky;
+  top: 76px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 @media (max-width: 1100px) {
-  .home-layout > .home-panel { padding-right: 0; max-width: none; }
+  .home-layout { display: block; }
   .home-sidebar {
     position: static;
     width: 100%;
@@ -983,6 +992,14 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   background: rgba(255,253,248,.1); color: var(--parch);
 }
 .nav-dropdown-search input::placeholder { color: rgba(236,225,200,.5); }
+/* Search results inside the mobile nav (the topbar dropdown is display:none
+   on mobile, so site.js mirrors results into this in-flow box instead). */
+.nav-search-results {
+  max-height: 55vh; overflow-y: auto;
+  border-bottom: 1px solid rgba(189,168,154,.2);
+}
+.nav-search-results:empty { display: none; }
+.nav-search-results .search-result { padding: 10px clamp(14px,4vw,40px); }
 .nav-dropdown a {
   padding: 14px clamp(14px,4vw,40px);
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
@@ -1338,7 +1355,10 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: block;
   margin-bottom: 8px;
 }
-/* Copy-link button, anchored flush into the top-right corner of the info card. */
+/* Copy-link button: a corner tab flush against the info card's frame.
+   The card supplies the top/right strokes (its own 4px border); the button
+   only draws left/bottom edges in the same frame colour, so the tab reads
+   as part of the frame instead of a second, misaligned outline. */
 .char-infocard { position: relative; }
 .card-actions {
   position: absolute; top: 0; right: 0; z-index: 2;
@@ -1346,10 +1366,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .copy-link-btn {
   flex-shrink: 0;
   font-family: 'Dumbledor2', serif; text-transform: uppercase;
-  font-weight: 400; letter-spacing: .06em; font-size: .82rem;
-  cursor: pointer; border: 2px solid var(--parch-frame);
+  font-weight: 400; letter-spacing: .06em; font-size: .78rem;
+  cursor: pointer;
+  border: none;
+  border-left: 2px solid var(--parch-frame);
+  border-bottom: 2px solid var(--parch-frame);
   background: var(--parch); color: var(--maroon);
-  padding: 7px 14px; transition: background .15s, color .15s;
+  padding: 6px 12px 5px; transition: background .15s, color .15s;
 }
 .copy-link-btn:hover { background: var(--parch-frame); color: #fff; }
 
@@ -1444,8 +1467,28 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .04em;
   color: rgba(236,225,200,.7); margin: 0 0 18px;
 }
+/* Until the JS builds them, keep the bar and toggle fully hidden — the
+   display rules below would otherwise override the [hidden] attribute. */
+.filter-bar[hidden], .filter-toggle[hidden] { display: none !important; }
+
+/* Mobile: collapse the (very tall) filter bar behind a toggle button. */
+.filter-toggle { display: none; }
 @media (max-width: 640px) {
   .filter-bar { gap: 12px 16px; padding: 12px 14px; }
+  .filter-toggle {
+    display: block; width: 100%;
+    font-family: 'Dumbledor2', serif; text-transform: uppercase;
+    font-weight: 400; letter-spacing: .06em; font-size: .95rem;
+    cursor: pointer;
+    background: var(--parch); color: var(--maroon);
+    border: 2px solid var(--parch-frame);
+    padding: 11px 16px; margin-bottom: 10px;
+    text-align: left;
+  }
+  .filter-toggle-arrow { float: right; transition: transform .2s ease; }
+  .filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+  .filter-bar { display: none; }
+  .filter-bar.open { display: flex; }
 }
 
 /* ─── Sticky publish bar (create/edit on mobile) ─────────── */

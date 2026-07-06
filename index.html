@@ -276,25 +276,9 @@
       return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     }
 
-    // Collection definitions (with typo-tolerant matchers)
-    // Shared collection definitions — match arrays handle all spelling variants.
-    // slug is the canonical key used in URLs; displayName is the human label.
-    var COLLECTIONS = [
-      { slug: 'Fall of Rome',
-        match: ['fallofrome'] },
-      { slug: 'Festival of Lanterns — Temple Fair',
-        displayName: 'Temple Fair',
-        match: ['festivaloflanternstemplefair','templefair'] },
-      { slug: 'Festival of Lanterns — The Storm Is Coming',
-        displayName: 'The Storm Is Coming',
-        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
-      { slug: 'Ravenswood Chronicle',
-        match: ['ravenswoodchronicle','ravenswoodchronicles'] },
-      { slug: "A Midsummer Night's Dream",
-        match: ["amidsummernightsdream", "midsummernightsdream", "babybusamidsummernightsdream"] },
-      { slug: 'Travel by Starlight',
-        match: ['travelbystarlight'] }
-    ];
+    // Collection definitions are loaded from collections.json (built live
+    // from D1). Each entry's match[] lists normalized appearsIn spellings.
+    var COLLECTIONS = [];
 
     function classifyCollection(appearsIn){
       var n = norm(appearsIn);
@@ -325,8 +309,8 @@
     function collectionTileHTML(name, slug, count, icons, header){
       var href = 'all-characters?collection=' + encodeURIComponent(slug);
       var topHTML = header
-        ? '<div class="collection-tile-header"><img src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">'; }).join('') + '</div>';
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -341,7 +325,7 @@
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">' +
+        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
@@ -355,7 +339,7 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img class="featured-art" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + '">' +
+        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) + '</h3>' +
@@ -421,7 +405,7 @@
           var icons = pickIcons(standalone, 4);
           html += '<a class="collection-tile" href="all-characters">' +
             '<div class="collection-icons">' + icons.map(function(c){
-              return '<img class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">';
+              return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
             }).join('') + '</div>' +
             '<h3 class="collection-name">All Characters</h3>' +
             
@@ -444,7 +428,7 @@
           var t = c.tags || '';
           if (!t) return;
           t.split(',').forEach(function(x){
-            x = x.trim();
+            x = x.trim().toLowerCase();   // case-insensitive so "Multi-Kill" and "multi-kill" count once
             if (x) tagSet[x] = 1;
           });
         });
@@ -477,74 +461,7 @@
   })();
   </script>
 
-  <!-- ────────────────────────────────────────────────────────
-       Existing search + hamburger scripts (unchanged)
-       ──────────────────────────────────────────────────────── -->
-  <script>
-  (function(){
-    var ROOT=(function(){var s=document.querySelector('link[rel="stylesheet"]');if(!s)return'';return s.getAttribute('href').replace('assets/styles.css','');})();
-    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
-    if(!input||!drop)return;
-    var allChars=null,fetchPromise=null;
-    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch(ROOT+'characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
-    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
-    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
-    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for &ldquo;'+esc(q)+'&rdquo;</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
-    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
-    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
-    var deb;
-    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
-    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
-    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
-    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
-    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
-    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
-  })();
-  </script>
-
-  <script>
-  (function(){
-    var btn = document.getElementById('hamburger');
-    var drop = document.getElementById('nav-dropdown');
-    if (!btn || !drop) return;
-    var here = location.pathname.split('/').pop() || '/';
-    drop.querySelectorAll('a').forEach(function(a){
-      if (a.getAttribute('href') === here) a.classList.add('active');
-    });
-    function positionDrop(){
-      var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
-    }
-    btn.addEventListener('click', function(){
-      positionDrop();
-      var open = drop.classList.toggle('open');
-      btn.classList.toggle('open', open);
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
-    });
-    var navSearch = document.getElementById('nav-search-input');
-    var topSearch = document.getElementById('search-input');
-    if (navSearch) {
-      navSearch.addEventListener('input', function(){
-        if (topSearch) { topSearch.value = navSearch.value; topSearch.dispatchEvent(new Event('input')); }
-      });
-      navSearch.addEventListener('keydown', function(e){
-        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
-      });
-    }
-    window.addEventListener('resize', positionDrop);
-    document.addEventListener('click', function(e){
-      if (!btn.contains(e.target) && !drop.contains(e.target)){
-        drop.classList.remove('open');
-        btn.classList.remove('open');
-        btn.setAttribute('aria-expanded','false');
-      }
-    });
-  })();
-  </script>
-
-  <script>
+<script>
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     var grid = document.getElementById('scripts-grid');
@@ -561,7 +478,7 @@
           var n = (sc.characters || []).length;
           var href = 'script-view?s=' + encodeURIComponent(sc.slug);
           var headerHTML = sc.header
-            ? '<div class="script-card-header"><img src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
@@ -578,22 +495,7 @@
   })();
   </script>
 
-  <script>
-  /* script-count badge on Script Builder nav links */
-  (function(){
-    var KEY='botc_script';
-    function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
-    function upd(){
-      var c=n();
-      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
-        var b=a.querySelector('.script-badge');
-        if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
-        else if(b){b.remove();}
-      });
-    }
-    window.updateScriptBadge=upd; upd();
-    window.addEventListener('storage',function(e){if(e.key===KEY)upd();});
-  })();
-  </script>
+
+  <script src="assets/site.js"></script>
 </body>
 </html>

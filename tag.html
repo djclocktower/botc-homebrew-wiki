@@ -93,7 +93,7 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -126,94 +126,7 @@
           '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
       });
   </script>
-  <script>
-  (function () {
-    var ROOT = '';
-    var input = document.getElementById('search-input');
-    var drop  = document.getElementById('search-drop');
-    if (!input || !drop) return;
-    var allChars = null, fetchPromise = null;
-    function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();}).then(function(list){allChars=list;return list;});
-      return fetchPromise;
-    }
-    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-    var GOOD={townsfolk:1,outsider:1};
-    var TEAM_LABEL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
-    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return [c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
-    function render(results,q){if(!results.length){drop.innerHTML='<div class="search-empty">No characters found for \u201c'+esc(q)+'\u201d</div>';return;}drop.innerHTML=results.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'\u2026';return'<a class="search-result" href="'+esc(c.page)+'" role="option"><img class="search-result-thumb" src="'+esc('assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TEAM_LABEL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
-    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
-    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
-    var debTimer;
-    input.addEventListener('input',function(){clearTimeout(debTimer);var q=input.value.trim();if(!q){close();return;}debTimer=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
-    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
-    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
-    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
-    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
-    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
-  })();
-  </script>
 
-  <script>
-  (function(){
-    var btn = document.getElementById('hamburger');
-    var drop = document.getElementById('nav-dropdown');
-    if (!btn || !drop) return;
-    // Mark current page as active
-    var here = location.pathname.split('/').pop() || '/';
-    drop.querySelectorAll('a').forEach(function(a){
-      if (a.getAttribute('href') === here) a.classList.add('active');
-    });
-    function positionDrop(){
-      var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
-    }
-    btn.addEventListener('click', function(){
-      positionDrop();
-      var open = drop.classList.toggle('open');
-      btn.classList.toggle('open', open);
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
-    });
-    // nav search mirrors topbar search
-    var navSearch = document.getElementById('nav-search-input');
-    var topSearch = document.getElementById('search-input');
-    if (navSearch) {
-      navSearch.addEventListener('input', function(){
-        if (topSearch) { topSearch.value = navSearch.value; topSearch.dispatchEvent(new Event('input')); }
-      });
-      navSearch.addEventListener('keydown', function(e){
-        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
-      });
-    }
-    window.addEventListener('resize', positionDrop);
-    document.addEventListener('click', function(e){
-      if (!btn.contains(e.target) && !drop.contains(e.target)){
-        drop.classList.remove('open');
-        btn.classList.remove('open');
-        btn.setAttribute('aria-expanded','false');
-      }
-    });
-  })();
-  </script>
-  <script>
-  /* script-count badge on Script Builder nav links */
-  (function(){
-    var KEY='botc_script';
-    function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
-    function upd(){
-      var c=n();
-      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
-        var b=a.querySelector('.script-badge');
-        if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
-        else if(b){b.remove();}
-      });
-    }
-    window.updateScriptBadge=upd; upd();
-    window.addEventListener('storage',function(e){if(e.key===KEY)upd();});
-  })();
-  </script>
+  <script src="assets/site.js"></script>
 </body>
 </html>

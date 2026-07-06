@@ -1,32 +1,35 @@
 # BOTC HomeBrew Wiki
 
-A fan-made wiki for Blood on the Clocktower homebrew characters.
+A fan-made wiki for **Blood on the Clocktower** homebrew characters —
+live at **[botchomebrew.wiki](https://botchomebrew.wiki)**.
 
-## Structure
+Fan-made content. Not affiliated with The Pandemonium Institute.
 
-```
-botc-wiki/
-  index.html              ← Homepage (lists all characters)
-  assets/
-    styles.css            ← All shared CSS
-    bg.jpg, logo_skull.png, parchment.jpg ...  ← Shared images
-  characters/
-    folie-a-deux.html     ← Example character page
-    your-new-character.html
-```
+## How it works
 
-## Adding a new character
+The site runs entirely on **Cloudflare Workers**:
 
-1. Copy `characters/folie-a-deux.html` and rename it (e.g. `characters/zealot.html`)
-2. Edit the text content inside the new file
-3. Replace the image `src` paths in the `<img>` tags with your own assets in `assets/`
-4. Add a card for the new character in `index.html` (copy the existing `<a class="char-card">` block)
+- `worker/worker.js` serves every request. It builds `characters.json`,
+  `collections.json` and `scripts.json` live from a **D1 database**,
+  server-side renders character pages at `/c/{slug}`, handles accounts and
+  logins (KV sessions, optional Discord OAuth), stores uploaded art in **R2**,
+  and runs a nightly D1 → R2 backup cron.
+- Everything else in the repo (HTML pages, `assets/`) is uploaded as static
+  assets and served as-is. There is no build step and no framework.
 
-## Hosting on Netlify
+Content is created and edited on the site itself (`create.html`, `edit.html`,
+`mass-upload.html`, the Script Builder) and written straight to D1 — the repo
+holds the code, not the content.
 
-1. Zip the entire `botc-wiki/` folder
-2. Go to netlify.com → New site → Deploy manually
-3. Drag the ZIP onto the deploy area
-4. Done — your site is live!
+## Deploying
 
-To add a custom domain: Site settings → Domain management → Add custom domain.
+Pushing to `main` deploys automatically via Cloudflare's Git integration
+(takes ~30–60 seconds). `wrangler.toml` holds the Worker config and bindings;
+`_headers` holds the static-asset cache rules; `.assetsignore` keeps
+non-asset files (git internals, worker source, docs) out of the upload.
+
+## Working on the code
+
+Read **CLAUDE.md** first — it documents the architecture, file map, data
+model, and the gotchas that will break the deploy if ignored.
+`migration/schema.sql` describes the D1 schema.

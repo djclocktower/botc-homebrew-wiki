@@ -54,6 +54,7 @@
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
     <div id="filter-bar" class="filter-bar" hidden></div>
     <p id="filter-count" class="filter-count" hidden></p>
   </div>
@@ -89,7 +90,7 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -98,23 +99,9 @@
         '</div></a>';
     }
     function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
-    // Shared collection definitions — must match index.html exactly
-    var AC_COLLECTIONS = [
-      { slug: 'Fall of Rome', displayName: 'Fall of Rome',
-        match: ['fallofrome'] },
-      { slug: 'Festival of Lanterns — Temple Fair', displayName: 'Temple Fair',
-        match: ['festivaloflanternstemplefair','templefair'] },
-      { slug: 'Festival of Lanterns — The Storm Is Coming', displayName: 'The Storm Is Coming',
-        match: ['festivaloflanternsthestormiscoming','thestormiscoming','stormiscoming'] },
-      { slug: 'Ravenswood Chronicle', displayName: 'Ravenswood Chronicle',
-        match: ['ravenswoodchronicle','ravenswoodchronicles'] },
-      { slug: "A Midsummer Night's Dream", displayName: "A Midsummer Night's Dream",
-        match: ['amidsummernightsdream','midsummernightsdream','babybusamidsummernightsdream'] },
-      { slug: 'Travel by Starlight', displayName: 'Travel by Starlight',
-        match: ['travelbystarlight'] },
-      { slug: 'Standalone', displayName: 'Standalone Characters',
-        match: [] }  // special: chars with no known collection
-    ];
+    // Collection definitions are loaded from collections.json (built live
+    // from D1); a "Standalone" pseudo-collection is appended after the fetch.
+    var AC_COLLECTIONS = [];
     // Resolve a collection param to its definition using slug or match arrays
     function findCollection(param) {
       if (!param) return null;
@@ -155,9 +142,9 @@
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');
       // Collect tags & creators (canonical tag list lives in assets/tags.js)
-      var KNOWN_TAGS = window.KNOWN_TAGS || [];
+      // Only offer tag chips for tags that appear in the current list —
+      // on collection views this keeps the bar from being a wall of unused chips.
       var tagSet = {}, creatorSet = {};
-      KNOWN_TAGS.forEach(function(t){ tagSet[t] = 1; });
       list.forEach(function(c){
         splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
         if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
@@ -196,6 +183,19 @@
 
       bar.innerHTML = html;
       bar.hidden = false;
+
+      // Mobile: the bar starts collapsed behind a "Filters" toggle (CSS hides
+      // the bar below 640px unless .open is set; the button is display:none
+      // on desktop, so this changes nothing there).
+      var toggle = document.getElementById('filter-toggle');
+      if (toggle) {
+        toggle.hidden = false;
+        toggle.addEventListener('click', function(){
+          var open = bar.classList.toggle('open');
+          toggle.classList.toggle('open', open);
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
 
       // Wire events
       bar.querySelectorAll('[data-team]').forEach(function(btn){
@@ -283,6 +283,13 @@
       var list = applyFilters();
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
+      var toggle = document.getElementById('filter-toggle');
+      if (toggle) {
+        var nActive = STATE.includeTeams.length + STATE.excludeTeams.length +
+          STATE.includeTags.length + STATE.excludeTags.length + (STATE.creator ? 1 : 0);
+        toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
+          ' <span class="filter-toggle-arrow">&#9662;</span>';
+      }
       count.hidden = false;
       count.textContent = list.length + ' character' + (list.length===1?'':'s') +
         (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
@@ -292,18 +299,15 @@
         return;
       }
       var html = '';
-      var flat = STATE.sort !== 'name-asc';  // when custom sort, show flat grid; default = grouped by team
-      if (STATE.sort === 'recent' || STATE.sort === 'name-desc' || STATE.sort === 'name-asc') {
-        // group by team always, sorted within each group already
-        TEAMS.forEach(function (t) {
+      // Always group by team; applyFilters() already ordered each group.
+      TEAMS.forEach(function (t) {
           var key = t[0], label = t[1];
           var chars = list.filter(function (c) { return c.team === key; });
           if (!chars.length) return;
           html += '<section class="type-section" id="' + key + '">' +
             '<h2 class="type-header"><a href="team?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
             '<div class="char-grid">' + chars.map(card).join('') + '</div></section>';
-        });
-      }
+      });
       panel.innerHTML = html;
     }
 
@@ -339,7 +343,7 @@
             stack.className = 'collection-hero';
             var inner = '';
             if (activeCollection.header) {
-              inner += '<div class="collection-hero-header"><img class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
+              inner += '<div class="collection-hero-header"><img loading="lazy" decoding="async" class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
             }
             if (activeCollection.description) {
               inner += '<p class="collection-hero-desc">' + esc(activeCollection.description) + '</p>';
@@ -399,88 +403,7 @@
           '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
       });
   </script>
-  <script>
-  (function(){
-    var ROOT=(function(){var s=document.querySelector('link[rel="stylesheet"]');if(!s)return'';return s.getAttribute('href').replace('assets/styles.css','');})();
-    var input=document.getElementById('search-input'),drop=document.getElementById('search-drop');
-    if(!input||!drop)return;
-    var allChars=null,fetchPromise=null;
-    function ensureData(){if(allChars)return Promise.resolve(allChars);if(fetchPromise)return fetchPromise;fetchPromise=fetch(ROOT+'characters.json?_='+Date.now()).then(function(r){return r.json();}).then(function(l){allChars=l;return l;});return fetchPromise;}
-    function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-    var GOOD={townsfolk:1,outsider:1},TL={townsfolk:'Townsfolk',outsider:'Outsider',minion:'Minion',demon:'Demon',traveller:'Traveller',fabled:'Fabled'};
-    function search(q){q=q.trim().toLowerCase();if(!q||!allChars)return[];return allChars.filter(function(c){return[c.name||'',c.ability||'',c.tags||'',c.lede||'',c.team||''].join(' ').toLowerCase().indexOf(q)!==-1;}).slice(0,8);}
-    function render(rs,q){if(!rs.length){drop.innerHTML='<div class="search-empty">No characters found for “'+esc(q)+'”</div>';return;}drop.innerHTML=rs.map(function(c){var tc=GOOD[c.team]?' good':'';var ab=c.ability||'';if(ab.length>80)ab=ab.slice(0,80)+'…';return'<a class="search-result" href="'+esc(ROOT+c.page)+'" role="option"><img class="search-result-thumb" src="'+esc(ROOT+'assets/'+c.art)+'" alt=""><div class="search-result-info"><span class="search-result-name">'+esc(c.name)+'</span><span class="search-result-type'+tc+'">'+esc(TL[c.team]||c.team)+'</span><span class="search-result-ability">'+esc(ab)+'</span></div></a>';}).join('');}
-    function open(){drop.hidden=false;input.setAttribute('aria-expanded','true');}
-    function close(){drop.hidden=true;input.setAttribute('aria-expanded','false');}
-    var deb;
-    input.addEventListener('input',function(){clearTimeout(deb);var q=input.value.trim();if(!q){close();return;}deb=setTimeout(function(){ensureData().then(function(){render(search(q),q);open();});},150);});
-    input.addEventListener('focus',function(){if(input.value.trim()&&allChars)open();});
-    input.addEventListener('keydown',function(e){if(e.key==='Escape'){close();input.blur();return;}if(e.key==='ArrowDown'){var f=drop.querySelector('.search-result');if(f){e.preventDefault();f.focus();}return;}});
-    drop.addEventListener('keydown',function(e){var cur=document.activeElement;if(e.key==='ArrowDown'){e.preventDefault();var n=cur.nextElementSibling;if(n)n.focus();}else if(e.key==='ArrowUp'){e.preventDefault();var p=cur.previousElementSibling;if(p)p.focus();else input.focus();}else if(e.key==='Escape'){close();input.focus();}});
-    document.addEventListener('click',function(e){if(!document.getElementById('search-wrap').contains(e.target))close();});
-    document.getElementById('search-wrap').addEventListener('mouseenter',ensureData);
-  })();
-  </script>
 
-
-  <script>
-  (function(){
-    var btn = document.getElementById('hamburger');
-    var drop = document.getElementById('nav-dropdown');
-    if (!btn || !drop) return;
-    // Mark current page as active
-    var here = location.pathname.split('/').pop() || '/';
-    drop.querySelectorAll('a').forEach(function(a){
-      if (a.getAttribute('href') === here) a.classList.add('active');
-    });
-    function positionDrop(){
-      var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
-    }
-    btn.addEventListener('click', function(){
-      positionDrop();
-      var open = drop.classList.toggle('open');
-      btn.classList.toggle('open', open);
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function(){ ns.focus(); }, 80); }
-    });
-    // nav search mirrors topbar search
-    var navSearch = document.getElementById('nav-search-input');
-    var topSearch = document.getElementById('search-input');
-    if (navSearch) {
-      navSearch.addEventListener('input', function(){
-        if (topSearch) { topSearch.value = navSearch.value; topSearch.dispatchEvent(new Event('input')); }
-      });
-      navSearch.addEventListener('keydown', function(e){
-        if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
-      });
-    }
-    window.addEventListener('resize', positionDrop);
-    document.addEventListener('click', function(e){
-      if (!btn.contains(e.target) && !drop.contains(e.target)){
-        drop.classList.remove('open');
-        btn.classList.remove('open');
-        btn.setAttribute('aria-expanded','false');
-      }
-    });
-  })();
-  </script>
-  <script>
-  /* script-count badge on Script Builder nav links */
-  (function(){
-    var KEY='botc_script';
-    function n(){try{return (JSON.parse(localStorage.getItem(KEY))||[]).length;}catch(e){return 0;}}
-    function upd(){
-      var c=n();
-      document.querySelectorAll('a[href$="script.html"], a[href$="/script"], a[href="script"]').forEach(function(a){
-        var b=a.querySelector('.script-badge');
-        if(c>0){if(!b){b=document.createElement('span');b.className='script-badge';a.appendChild(b);}b.textContent=c;}
-        else if(b){b.remove();}
-      });
-    }
-    window.updateScriptBadge=upd; upd();
-    window.addEventListener('storage',function(e){if(e.key===KEY)upd();});
-  })();
-  </script>
+  <script src="assets/site.js"></script>
 </body>
 </html>

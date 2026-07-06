@@ -14,7 +14,7 @@ wrangler.toml
 migration
 migration/**
 README.md
-wiki_handoff.md
+CLAUDE.md
 
 # Editor/OS junk
 .DS_Store

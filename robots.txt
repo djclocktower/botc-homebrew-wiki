@@ -1,12 +1,20 @@
 User-agent: *
 Disallow: /api/
+Disallow: /edit
 Disallow: /edit.html
+Disallow: /edit-script
 Disallow: /edit-script.html
+Disallow: /edit-collection
 Disallow: /edit-collection.html
+Disallow: /account
 Disallow: /account.html
+Disallow: /login
 Disallow: /login.html
+Disallow: /dashboard
 Disallow: /dashboard.html
+Disallow: /reset-password
 Disallow: /reset-password.html
+Disallow: /register-collection
 Disallow: /register-collection.html
 
 Sitemap: https://botchomebrew.wiki/sitemap.xml
