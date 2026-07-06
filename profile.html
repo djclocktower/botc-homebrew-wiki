@@ -105,7 +105,7 @@
     function charCard(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="/' + esc(c.page || ('c/' + c.slug + '.html')) + '">' +
-        '<img class="char-card-thumb" src="/assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'/assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="/assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'/assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -118,7 +118,7 @@
       var n = (sc.characters || []).length;
       var href = '/script-view.html?s=' + encodeURIComponent(sc.slug);
       var headerHTML = sc.header
-        ? '<div class="script-card-header"><img src="/assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
@@ -133,7 +133,7 @@
       var name = coll.displayName || coll.slug;
       var href = '/all-characters.html?collection=' + encodeURIComponent(coll.slug);
       var topHTML = coll.header
-        ? '<div class="collection-tile-header"><img src="/assets/' + esc(coll.header) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(coll.header) + '" alt="' + esc(name) + '"></div>'
         : '';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
