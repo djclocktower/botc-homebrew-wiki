@@ -88,7 +88,9 @@
         });
 
         var panel = document.getElementById('panel');
-        var tags = Object.keys(tagMap).sort();
+        // Only show tags that at least one character actually has —
+        // zero-count pills would just link to empty pages.
+        var tags = Object.keys(tagMap).filter(function(t) { return tagMap[t] > 0; }).sort();
 
         panel.innerHTML =
           '<div class="tags-index">' +

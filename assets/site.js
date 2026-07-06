@@ -147,12 +147,36 @@
       return out;
     }
 
+    // On mobile the topbar dropdown (.search-wrap) is display:none, so the
+    // nav search would render results invisibly. Mirror them into an in-flow
+    // box inside the mobile nav instead.
+    var navResults = null;
+    function navResultsBox() {
+      if (navResults) return navResults;
+      var nav = document.getElementById('nav-dropdown');
+      if (!nav) return null;
+      navResults = document.createElement('div');
+      navResults.className = 'nav-search-results';
+      var ns = nav.querySelector('.nav-dropdown-search');
+      if (ns && ns.nextSibling) nav.insertBefore(navResults, ns.nextSibling);
+      else nav.appendChild(navResults);
+      return navResults;
+    }
+
     function render(results, q) {
+      var html;
       if (!results.length) {
-        drop.innerHTML = '<div class="search-empty">No characters found for \u201c' + esc(q) + '\u201d</div>';
-        return;
+        html = '<div class="search-empty">No characters found for \u201c' + esc(q) + '\u201d</div>';
+      } else {
+        html = resultsHTML(results);
       }
-      drop.innerHTML = results.map(function (r) {
+      drop.innerHTML = html;
+      var nb = navResultsBox();
+      if (nb) nb.innerHTML = html;
+    }
+
+    function resultsHTML(results) {
+      return results.map(function (r) {
         var c = r.c;
         var typeClass = GOOD[c.team] ? ' good' : '';
         var ability = c.ability || '';
@@ -171,7 +195,11 @@
     }
 
     function open() { drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
-    function close() { drop.hidden = true; input.setAttribute('aria-expanded', 'false'); }
+    function close() {
+      drop.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      if (navResults) navResults.innerHTML = '';
+    }
 
     var debTimer;
     input.addEventListener('input', function () {
@@ -195,6 +223,7 @@
     });
     document.addEventListener('click', function (e) {
       var w = document.getElementById('search-wrap');
+      if (navResults && navResults.contains(e.target)) return; // tapping a mobile result
       if (w && !w.contains(e.target)) close();
     });
     var sw = document.getElementById('search-wrap');

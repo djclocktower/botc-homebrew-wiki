@@ -310,7 +310,7 @@
       var href = 'all-characters?collection=' + encodeURIComponent(slug);
       var topHTML = header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">'; }).join('') + '</div>';
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -325,7 +325,7 @@
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">' +
+        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
@@ -405,7 +405,7 @@
           var icons = pickIcons(standalone, 4);
           html += '<a class="collection-tile" href="all-characters">' +
             '<div class="collection-icons">' + icons.map(function(c){
-              return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="">';
+              return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
             }).join('') + '</div>' +
             '<h3 class="collection-name">All Characters</h3>' +
             

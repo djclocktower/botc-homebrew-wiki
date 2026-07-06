@@ -54,6 +54,7 @@
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
     <div id="filter-bar" class="filter-bar" hidden></div>
     <p id="filter-count" class="filter-count" hidden></p>
   </div>
@@ -141,9 +142,9 @@
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');
       // Collect tags & creators (canonical tag list lives in assets/tags.js)
-      var KNOWN_TAGS = window.KNOWN_TAGS || [];
+      // Only offer tag chips for tags that appear in the current list —
+      // on collection views this keeps the bar from being a wall of unused chips.
       var tagSet = {}, creatorSet = {};
-      KNOWN_TAGS.forEach(function(t){ tagSet[t] = 1; });
       list.forEach(function(c){
         splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
         if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
@@ -182,6 +183,19 @@
 
       bar.innerHTML = html;
       bar.hidden = false;
+
+      // Mobile: the bar starts collapsed behind a "Filters" toggle (CSS hides
+      // the bar below 640px unless .open is set; the button is display:none
+      // on desktop, so this changes nothing there).
+      var toggle = document.getElementById('filter-toggle');
+      if (toggle) {
+        toggle.hidden = false;
+        toggle.addEventListener('click', function(){
+          var open = bar.classList.toggle('open');
+          toggle.classList.toggle('open', open);
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
 
       // Wire events
       bar.querySelectorAll('[data-team]').forEach(function(btn){
@@ -269,6 +283,13 @@
       var list = applyFilters();
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
+      var toggle = document.getElementById('filter-toggle');
+      if (toggle) {
+        var nActive = STATE.includeTeams.length + STATE.excludeTeams.length +
+          STATE.includeTags.length + STATE.excludeTags.length + (STATE.creator ? 1 : 0);
+        toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
+          ' <span class="filter-toggle-arrow">&#9662;</span>';
+      }
       count.hidden = false;
       count.textContent = list.length + ' character' + (list.length===1?'':'s') +
         (FULL.length !== list.length ? ' (of ' + FULL.length + ')' : '');
