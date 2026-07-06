@@ -424,6 +424,14 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   letter-spacing: .04em; line-height: .98;
   margin: 2px 0 4px; text-shadow: 0 4px 18px rgba(0,0,0,.7), 0 2px 4px rgba(0,0,0,.5);
 }
+/* Header-less script titles (script-view) don't run the JS title-fitter, so
+   they must wrap on their own instead of overflowing the screen on mobile. */
+.script-title-fallback {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700; color: var(--parch);
+  font-size: clamp(1.7rem, 7vw, 3.4rem); line-height: 1.03; letter-spacing: .04em;
+  text-align: center; margin: 2px 0 10px; overflow-wrap: anywhere; word-break: break-word;
+  text-shadow: 0 4px 18px rgba(0,0,0,.7), 0 2px 4px rgba(0,0,0,.5);
+}
 .gen-sech-wrap {
   text-align: center; margin-bottom: 10px;
   display: flex; align-items: center; gap: 12px;

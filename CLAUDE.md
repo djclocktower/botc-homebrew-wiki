@@ -69,7 +69,9 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        + publishing live on publish-script.html; links there.
 publish-script.html    Script publishing page: name/author/description/header
                        details form (localStorage botc_script_meta), Publish to
-                       Wiki (/api/script + /api/upload), and ?s={slug} edit mode.
+                       Wiki + Save as Draft (/api/script status=draft|published),
+                       and ?s={slug} edit mode (loads drafts via /api/page).
+                       script-view.html previews an owner's draft (DRAFT banner).
 scripts.html, script-view.html, create-script.html (→script), edit-script.html (→publish-script)
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)

@@ -71,11 +71,24 @@
       var scripts = res[0], chars = res[1];
       var bySlug = {}; chars.forEach(function(c){ bySlug[c.slug] = c; });
       var sc = scripts.filter(function(s){ return s.slug === slug; })[0];
-      if (!sc){
-        content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Script not found. <a href="scripts" style="color:#7fb2e6">Back to all scripts</a>.</p>';
-        return;
-      }
-      document.title = sc.name + ' — BOTC HomeBrew Wiki';
+      if (sc){ render(sc, bySlug, false); return; }
+      // Not in the published list — it may be a draft only the owner/admins can
+      // see. /api/page returns it (with credentials) or 404s for everyone else.
+      return fetch('/api/page?type=script&slug=' + encodeURIComponent(slug || ''), { credentials: 'same-origin' })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(page){
+          if (page && page.data){ render(page.data, bySlug, page.status === 'draft'); }
+          else {
+            content.innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Script not found. <a href="scripts" style="color:#7fb2e6">Back to all scripts</a>.</p>';
+          }
+        });
+    }).catch(function(err){
+      console.error(err);
+      content.innerHTML = '<p style="color:#e6a">Could not load script data.</p>';
+    });
+
+    function render(sc, bySlug, isDraft){
+      document.title = (isDraft ? 'Draft: ' : '') + sc.name + ' — BOTC HomeBrew Wiki';
       var cr = document.getElementById('crumb');
       if (cr) cr.innerHTML = '<a href="/">Home</a><span class="sep">›</span><a href="scripts">Scripts</a><span class="sep">›</span><span class="here">' + esc(sc.name) + '</span>';
       var eb = document.getElementById('edit-btn');
@@ -96,7 +109,7 @@
       // Header graphic
       var headerHTML = sc.header
         ? '<div class="script-header-wrap"><img class="script-header-img" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
-        : '<h1 class="gen-title">' + esc(sc.name) + '</h1>';
+        : '<h1 class="script-title-fallback">' + esc(sc.name) + '</h1>';
 
       // Character list grouped by team
       var listHTML = '';
@@ -137,7 +150,12 @@
       var countLine = entries.length + ' character' + (entries.length===1?'':'s');
       if (sc.author) countLine += ' · by ' + esc(sc.author);
 
+      var draftBanner = isDraft
+        ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;margin-bottom:16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em;overflow-wrap:anywhere">DRAFT — only you (and admins) can see this script. Publish it from <a href="publish-script?s=' + encodeURIComponent(sc.slug) + '" style="color:#ffe9ad">the publish page</a> or <a href="account" style="color:#ffe9ad">your account</a>.</div>'
+        : '';
+
       content.innerHTML =
+        draftBanner +
         headerHTML +
         (sc.description ? '<p class="script-desc">' + esc(sc.description) + '</p>' : '') +
         '<p class="script-meta-line">' + countLine + '</p>' +
@@ -169,10 +187,7 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(function(){ URL.revokeObjectURL(u); }, 1000);
       });
-    }).catch(function(err){
-      console.error(err);
-      content.innerHTML = '<p style="color:#e6a">Could not load script data.</p>';
-    });
+    }
   })();
   </script>
   <script src="assets/site.js"></script>

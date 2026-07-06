@@ -28,8 +28,12 @@
 .sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
 
 /* Publish button + blurb + status */
-.sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); }
+.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
+.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
 .sb-publish-blurb { font-size:.82rem; color:var(--ink); opacity:.82; margin:4px 0 0; line-height:1.5; }
 #sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
 #sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
@@ -132,9 +136,11 @@
 
     <div class="pub-actions">
       <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
+      <button class="sb-btn sb-btn-draft" id="sb-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <span class="pub-status-pill" id="pub-status-pill"></span>
       <a class="pub-back" href="script">← Back to Script Builder</a>
     </div>
-    <p class="sb-publish-blurb">Publishing creates a <strong>new public page</strong> on the Scripts list that anyone can view. Only publish once your script is finished and ready for other players to see. Name, author, and description are required, and you must be logged in.</p>
+    <p class="sb-publish-blurb">Publishing creates a <strong>new public page</strong> on the Scripts list that anyone can view. <strong>Save as Draft</strong> keeps it private to your account so you can finish it later — only you (and admins) can see a draft. Name, author, and description are required, and you must be logged in.</p>
     <div id="sb-publish-status"></div>
 
   </main>
@@ -148,7 +154,8 @@
     var META_KEY = 'botc_script_meta';
     var TEAMS = [['townsfolk','Townsfolk'],['outsider','Outsider'],['minion','Minion'],['demon','Demon'],['traveller','Traveller'],['fabled','Fabled']];
     var bySlug = {};
-    var EDIT_SLUG = null;          // set when editing an existing published script
+    var EDIT_SLUG = null;          // set when editing an existing (published or draft) script
+    var currentStatus = null;      // 'draft' | 'published' | null (brand-new, unsaved)
     var headerDataURL = null;      // set when a new header file is chosen
     var existingHeader = null;     // path of an already-published header
 
@@ -218,12 +225,22 @@
       }
     }
 
+    // Reflect the saved status on the buttons + pill (mirrors the character editor)
+    function updateButtons(){
+      var pub = $('sb-publish'), draft = $('sb-draft'), pill = $('pub-status-pill');
+      pub.textContent   = currentStatus === 'published' ? '★ Save Changes' : '★ Publish to Wiki';
+      draft.textContent = currentStatus === 'draft' ? 'Save Draft'
+                        : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
+      pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
+      pill.textContent = currentStatus === 'draft' ? 'Draft' : currentStatus === 'published' ? 'Published' : '';
+    }
+
     function setEditMode(slug){
       EDIT_SLUG = slug;
       var t = $('pub-page-title'); if (t) t.textContent = 'Edit Script';
-      $('sb-publish').textContent = '★ Save to Wiki';
       var m = getMeta();
       document.title = 'Edit ' + (m.name || 'Script') + ' — BOTC HomeBrew Wiki';
+      updateButtons();
     }
 
     // Header upload → resize to max 900px wide PNG → preview + remember
@@ -246,61 +263,82 @@
       rd.readAsDataURL(f);
     });
 
-    // ── Publish to Wiki ──
-    $('sb-publish').addEventListener('click', function(){
+    // ── Save the script (saveStatus = 'published' | 'draft') ──
+    function submitScript(saveStatus){
+      var isDraft = saveStatus === 'draft';
       var name = $('sb-name').value.trim();
       var author = $('sb-author').value.trim();
       var desc = $('sb-desc').value.trim();
       var chars = getScript();
 
+      // Same required fields for drafts and published pages so the draft can be
+      // published later without missing data.
       var missing = [];
       if (!name) missing.push('name');
       if (!author) missing.push('author');
       if (!desc) missing.push('description');
-      if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before publishing.'); return; }
+      if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before saving.'); return; }
       if (!chars.length) { pubStatus('err', 'Your script is empty. <a href="script">Add characters in the Script Builder →</a>'); return; }
 
       var slug = EDIT_SLUG || slugify(name);
       if (!slug) { pubStatus('err', 'Could not derive a script slug from that name.'); return; }
 
       $('sb-publish').disabled = true;
-      pubStatus('work', 'Publishing…');
+      $('sb-draft').disabled = true;
+      var verb = isDraft ? 'Saving draft' : 'Publishing';
 
       var chain = Promise.resolve();
       if (headerDataURL){
-        chain = chain.then(function(){ pubStatus('work','Uploading header…'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
+        chain = chain.then(function(){ pubStatus('work', verb + '… uploading header'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
       }
       chain.then(function(){
-        pubStatus('work', 'Saving script…');
+        pubStatus('work', verb + '… saving script');
         var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
-        var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice() };
+        var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice(), status:saveStatus };
         return apiSaveScript(entry);
       }).then(function(){
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
+        currentStatus = saveStatus;
         setEditMode(slug);
         var m = getMeta(); m.header = existingHeader || m.header; m.editSlug = slug; setMeta(m);
         var url = SITE_ROOT + 'script-view?s=' + encodeURIComponent(slug);
-        pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
+        if (isDraft) {
+          pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.');
+        } else {
+          pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
+        }
         $('sb-publish').disabled = false;
+        $('sb-draft').disabled = false;
       }).catch(function(err){
         pubStatus('err', '✗ ' + err.message);
         $('sb-publish').disabled = false;
+        $('sb-draft').disabled = false;
       });
-    });
+    }
+    $('sb-publish').addEventListener('click', function(){ submitScript('published'); });
+    $('sb-draft').addEventListener('click', function(){ submitScript('draft'); });
 
-    // ── Edit mode: ?s={slug} loads an existing published script ──
+    // ── Edit mode: ?s={slug} loads an existing script (drafts included for the
+    // owner) via /api/page — the same endpoint the character editor uses. ──
     function loadForEdit(slug){
-      return fetch('scripts.json?_=' + Date.now()).then(function(r){ return r.json(); }).then(function(list){
-        if (!Array.isArray(list)) return;
-        var entry = list.filter(function(s){ return s.slug === slug; })[0];
-        if (!entry) return;
-        setScript((entry.characters || []).slice());
-        var m = { name: entry.name||'', author: entry.author||'', description: entry.description||'', header: entry.header||'', editSlug: slug };
-        setMeta(m);
-        primeFields(m);
-        setEditMode(slug);
-        if (window.updateScriptBadge) window.updateScriptBadge();
-      }).catch(function(){ /* fall through to normal publish view */ });
+      return fetch('/api/page?type=script&slug=' + encodeURIComponent(slug), { credentials: 'same-origin' })
+        .then(function(r){ if (!r.ok) throw new Error('not found'); return r.json(); })
+        .then(function(res){
+          var entry = res.data; if (!entry) return;
+          currentStatus = res.status || 'published';
+          setScript((entry.characters || []).slice());
+          var m = { name: entry.name||'', author: entry.author||'', description: entry.description||'', header: entry.header||'', editSlug: slug };
+          setMeta(m);
+          primeFields(m);
+          setEditMode(slug);
+          if (res.canEdit === false){
+            pubStatus('err', 'This script belongs to another account, so you cannot save changes to it.');
+            $('sb-publish').disabled = true;
+            $('sb-draft').disabled = true;
+          }
+          if (window.updateScriptBadge) window.updateScriptBadge();
+        })
+        .catch(function(){ /* not found / not yours -> fall through to normal publish view */ });
     }
 
     // ── load characters, then wire up state ──
@@ -314,8 +352,18 @@
         } else {
           var m = getMeta();
           primeFields(m);
-          if (m.editSlug) setEditMode(m.editSlug);
           renderSummary();
+          if (m.editSlug){
+            setEditMode(m.editSlug);
+            // Sync the draft/published pill from the server without touching the
+            // roster/details the user may have edited locally since publishing.
+            fetch('/api/page?type=script&slug=' + encodeURIComponent(m.editSlug), { credentials: 'same-origin' })
+              .then(function(r){ return r.ok ? r.json() : null; })
+              .then(function(res){ if (res){ currentStatus = res.status || 'published'; updateButtons(); } })
+              .catch(function(){});
+          } else {
+            updateButtons();
+          }
         }
       })
       .catch(function(){
