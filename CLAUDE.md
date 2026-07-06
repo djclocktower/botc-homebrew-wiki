@@ -64,8 +64,13 @@ index.html             Homepage (collections grid, scripts, browse cards, sideba
 all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
 team/tag/tags/creators/author/authors.html   Browse pages
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
-script.html            Script Builder (localStorage key botc_script; SAO sort)
-scripts.html, script-view.html, create-script.html, edit-script.html
+script.html            Script Builder — roster only (localStorage botc_script;
+                       randomize/SAO sort/export/copy/share/import/clear). Naming
+                       + publishing live on publish-script.html; links there.
+publish-script.html    Script publishing page: name/author/description/header
+                       details form (localStorage botc_script_meta), Publish to
+                       Wiki (/api/script + /api/upload), and ?s={slug} edit mode.
+scripts.html, script-view.html, create-script.html (→script), edit-script.html (→publish-script)
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON

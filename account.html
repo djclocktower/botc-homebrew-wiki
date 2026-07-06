@@ -310,7 +310,7 @@
     function editUrl(type, slug) {
       if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);
       if (type === 'collection') return 'edit-collection?c=' + encodeURIComponent(slug);
-      return 'script?s=' + encodeURIComponent(slug);
+      return 'publish-script?s=' + encodeURIComponent(slug);
     }
     function fmtDate(s) {
       if (!s) return '';

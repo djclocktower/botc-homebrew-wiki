@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Publish Script — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Name your Blood on the Clocktower homebrew script, add a description and header graphic, and publish it to the wiki for other players to see.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Publish Script">
+<meta property="og:description" content="Name your Blood on the Clocktower homebrew script, add a description and header graphic, and publish it to the wiki for other players to see.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+/* ─── Publish page layout ─────────────────────────────────── */
+.pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 860px; margin: 0 auto; }
+
+/* Script details form */
+.sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
+.sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-fld { margin-bottom:12px; }
+.sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld .req { color:var(--evil); }
+.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld textarea { resize:vertical; min-height:54px; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
+
+/* Publish button + blurb + status */
+.sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); }
+.pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.sb-publish-blurb { font-size:.82rem; color:var(--ink); opacity:.82; margin:4px 0 0; line-height:1.5; }
+#sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
+#sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+#sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+#sb-publish-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#sb-publish-status a { color:inherit; font-weight:700; }
+
+/* Read-only roster summary */
+.pub-summary { background:var(--parch); border:2px solid var(--parch-frame); padding:16px 20px; margin-bottom:18px; }
+.pub-summary h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.2rem; }
+.pub-summary .sub { font-size:.84rem; color:#6b5d49; margin:0 0 12px; }
+.pub-teams { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.pub-team-chip { font-family:'Oswald',sans-serif; font-size:.8rem; letter-spacing:.03em; text-transform:uppercase; color:var(--maroon); background:rgba(91,31,33,.08); border:1px solid rgba(180,160,120,.4); padding:4px 10px; }
+.pub-empty { color:#6b5d49; font-size:.92rem; }
+.pub-empty a { color:var(--maroon); font-weight:600; }
+.pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+.pub-back:hover { color:#fff; text-decoration:underline; }
+
+/* Jinxes list (shared look with builder) */
+.sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
+.sb-jinx-row:last-child { border-bottom:none; }
+.sb-jinx-pair { font-weight:600; color:var(--maroon); font-size:.92rem; }
+.sb-jinx-text { font-size:.86rem; color:var(--ink); font-style:italic; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep">›</span><a href="scripts">Scripts</a><span class="sep">›</span><a href="script">Script Builder</a><span class="sep">›</span>
+      <span class="here">Publish</span>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="scripts">Scripts</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
+</nav>
+
+  <main class="pub-main">
+    <div class="home-hero" style="padding-bottom:14px">
+      <h1 id="pub-page-title">Publish Your Script</h1>
+      <p>Give your script a name, author, and description, then publish it to the wiki for everyone to see.</p>
+    </div>
+
+    <!-- Read-only summary of the script currently in the builder -->
+    <div class="pub-summary">
+      <h2>Your Script</h2>
+      <p class="sub">This is the script currently in your builder. <a class="sb-script-name" style="font-size:.84rem" href="script">Edit characters →</a></p>
+      <div id="pub-summary-body">
+        <p class="pub-empty">Loading…</p>
+      </div>
+    </div>
+
+    <!-- Script details (feed the JSON _meta + the published page) -->
+    <div class="sb-details">
+      <h2>Script Details</h2>
+      <p class="sub">Shown on the published wiki page and in the exported JSON.</p>
+      <div class="sb-fld">
+        <label for="sb-name">Script name <span class="req">*</span></label>
+        <input type="text" id="sb-name" placeholder="e.g. Phantasmal Flames">
+      </div>
+      <div class="sb-fld">
+        <label for="sb-author">Author <span class="req">*</span></label>
+        <input type="text" id="sb-author" placeholder="Your name">
+      </div>
+      <div class="sb-fld">
+        <label for="sb-desc">Description <span class="req">*</span></label>
+        <textarea id="sb-desc" placeholder="A short blurb about the script."></textarea>
+      </div>
+      <div class="sb-fld">
+        <label for="sb-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional PNG, wide banner works best)</span></label>
+        <input type="file" id="sb-header" accept="image/*">
+        <img id="sb-header-prev" class="sb-header-prev" alt="header preview">
+        <div id="sb-header-note" class="sub" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="pub-actions">
+      <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
+      <a class="pub-back" href="script">← Back to Script Builder</a>
+    </div>
+    <p class="sb-publish-blurb">Publishing creates a <strong>new public page</strong> on the Scripts list that anyone can view. Only publish once your script is finished and ready for other players to see. Name, author, and description are required, and you must be logged in.</p>
+    <div id="sb-publish-status"></div>
+
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render.js"></script>
+  <script>
+  (function () {
+    var STORAGE_KEY = 'botc_script';
+    var META_KEY = 'botc_script_meta';
+    var TEAMS = [['townsfolk','Townsfolk'],['outsider','Outsider'],['minion','Minion'],['demon','Demon'],['traveller','Traveller'],['fabled','Fabled']];
+    var bySlug = {};
+    var EDIT_SLUG = null;          // set when editing an existing published script
+    var headerDataURL = null;      // set when a new header file is chosen
+    var existingHeader = null;     // path of an already-published header
+
+    var SITE_ROOT = new URL('.', location.href).href;
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    function getScript(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e){ return []; } }
+    function setScript(a){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(a)); } catch(e){} }
+    function getMeta(){ try { return JSON.parse(localStorage.getItem(META_KEY)) || {}; } catch(e){ return {}; } }
+    function setMeta(m){ try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch(e){} }
+
+    function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+
+    // ── Read-only summary of the current script ──
+    function renderSummary(){
+      var s = getScript();
+      var chars = s.map(function(slug){ return bySlug[slug]; }).filter(Boolean);
+      var body = $('pub-summary-body');
+      if (!chars.length){
+        body.innerHTML = '<p class="pub-empty">Your script is empty. <a href="script">Add characters in the Script Builder →</a></p>';
+        return;
+      }
+      var html = '<div class="pub-teams">';
+      TEAMS.forEach(function(t){
+        var n = chars.filter(function(c){ return c.team === t[0]; }).length;
+        if (n) html += '<span class="pub-team-chip">' + esc(t[1]) + ' ' + n + '</span>';
+      });
+      html += '</div>';
+      html += '<p class="sub" style="margin:8px 0 0">' + chars.length + ' character' + (chars.length===1?'':'s') + ' total.</p>';
+      // Jinxes active between characters on this script
+      var jinxes = window.findScriptJinxes ? window.findScriptJinxes(chars) : [];
+      if (jinxes.length){
+        html += '<div style="margin-top:12px"><h2 style="font-size:1rem">Jinxes <span style="color:#6b5d49;font-size:.85rem">(' + jinxes.length + ')</span></h2>';
+        jinxes.forEach(function(j){
+          html += '<div class="sb-jinx-row"><span class="sb-jinx-pair">' + esc(j.a.name) + ' ↔ ' + esc(j.b.name) + '</span>' +
+            '<span class="sb-jinx-text">' + esc(j.text) + '</span></div>';
+        });
+        html += '</div>';
+      }
+      body.innerHTML = html;
+    }
+
+    // ── Details form: persist to meta as the user types ──
+    ['sb-name','sb-author','sb-desc'].forEach(function(id){
+      var el = $(id); if (!el) return;
+      el.addEventListener('input', function(){
+        var m = getMeta();
+        if (id === 'sb-name')   m.name = el.value;
+        if (id === 'sb-author') m.author = el.value;
+        if (id === 'sb-desc')   m.description = el.value;
+        setMeta(m);
+      });
+    });
+
+    function primeFields(m){
+      if (m.name)        $('sb-name').value = m.name;
+      if (m.author)      $('sb-author').value = m.author;
+      if (m.description) $('sb-desc').value = m.description;
+      if (m.header){
+        existingHeader = m.header;
+        var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
+        $('sb-header-note').textContent = 'Current header — choose a file to replace it.';
+      }
+    }
+
+    function setEditMode(slug){
+      EDIT_SLUG = slug;
+      var t = $('pub-page-title'); if (t) t.textContent = 'Edit Script';
+      $('sb-publish').textContent = '★ Save to Wiki';
+      var m = getMeta();
+      document.title = 'Edit ' + (m.name || 'Script') + ' — BOTC HomeBrew Wiki';
+    }
+
+    // Header upload → resize to max 900px wide PNG → preview + remember
+    $('sb-header').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function(ev){
+        var img = new Image();
+        img.onload = function(){
+          var maxW = 900, w = img.width, h = img.height;
+          if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          headerDataURL = cv.toDataURL('image/png');
+          var pv = $('sb-header-prev'); pv.src = headerDataURL; pv.style.display = 'block';
+          $('sb-header-note').textContent = 'New header ready — will be uploaded when you publish.';
+        };
+        img.src = ev.target.result;
+      };
+      rd.readAsDataURL(f);
+    });
+
+    // ── Publish to Wiki ──
+    $('sb-publish').addEventListener('click', function(){
+      var name = $('sb-name').value.trim();
+      var author = $('sb-author').value.trim();
+      var desc = $('sb-desc').value.trim();
+      var chars = getScript();
+
+      var missing = [];
+      if (!name) missing.push('name');
+      if (!author) missing.push('author');
+      if (!desc) missing.push('description');
+      if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before publishing.'); return; }
+      if (!chars.length) { pubStatus('err', 'Your script is empty. <a href="script">Add characters in the Script Builder →</a>'); return; }
+
+      var slug = EDIT_SLUG || slugify(name);
+      if (!slug) { pubStatus('err', 'Could not derive a script slug from that name.'); return; }
+
+      $('sb-publish').disabled = true;
+      pubStatus('work', 'Publishing…');
+
+      var chain = Promise.resolve();
+      if (headerDataURL){
+        chain = chain.then(function(){ pubStatus('work','Uploading header…'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
+      }
+      chain.then(function(){
+        pubStatus('work', 'Saving script…');
+        var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
+        var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice() };
+        return apiSaveScript(entry);
+      }).then(function(){
+        if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
+        setEditMode(slug);
+        var m = getMeta(); m.header = existingHeader || m.header; m.editSlug = slug; setMeta(m);
+        var url = SITE_ROOT + 'script-view?s=' + encodeURIComponent(slug);
+        pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
+        $('sb-publish').disabled = false;
+      }).catch(function(err){
+        pubStatus('err', '✗ ' + err.message);
+        $('sb-publish').disabled = false;
+      });
+    });
+
+    // ── Edit mode: ?s={slug} loads an existing published script ──
+    function loadForEdit(slug){
+      return fetch('scripts.json?_=' + Date.now()).then(function(r){ return r.json(); }).then(function(list){
+        if (!Array.isArray(list)) return;
+        var entry = list.filter(function(s){ return s.slug === slug; })[0];
+        if (!entry) return;
+        setScript((entry.characters || []).slice());
+        var m = { name: entry.name||'', author: entry.author||'', description: entry.description||'', header: entry.header||'', editSlug: slug };
+        setMeta(m);
+        primeFields(m);
+        setEditMode(slug);
+        if (window.updateScriptBadge) window.updateScriptBadge();
+      }).catch(function(){ /* fall through to normal publish view */ });
+    }
+
+    // ── load characters, then wire up state ──
+    fetch('characters.json?_=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(list){
+        (list || []).forEach(function(c){ bySlug[c.slug] = c; });
+        var slug = new URLSearchParams(location.search).get('s');
+        if (slug){
+          loadForEdit(slug).then(renderSummary);
+        } else {
+          var m = getMeta();
+          primeFields(m);
+          if (m.editSlug) setEditMode(m.editSlug);
+          renderSummary();
+        }
+      })
+      .catch(function(){
+        $('pub-summary-body').innerHTML = '<p class="pub-empty">Could not load characters. <a href="script">Back to the Script Builder →</a></p>';
+      });
+  })();
+  </script>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>
