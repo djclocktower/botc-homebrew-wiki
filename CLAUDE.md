@@ -1,7 +1,7 @@
 # BOTC Homebrew Wiki — Claude guide
 
 Fan-made wiki for **Blood on the Clocktower** homebrew characters, live at
-**https://botchomebrew.wiki**. Owner: djclocktower (David, Discord `dj_dj_dj`).
+**https://botchomebrew.wiki**. Owner: djclocktower (Discord `dj_dj_dj`).
 He can't code and mostly reviews on mobile via the live site — keep changes
 mobile-friendly, explain things plainly, and consult him before big
 architecture changes or removing features.
