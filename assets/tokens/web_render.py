@@ -299,6 +299,50 @@ def _build(characters, o):
             rems.extend([rimg] * rc)
     return chars, rems
 
+def _placed_box(deco, draw_fn, fallback):
+    """Draw an asset onto a blank token canvas with the real placement code (disk
+    clipping included) and return its visible bounding box: {cx,cy,w,h}. Exact, so
+    the transform box lands on the art no matter the art's own framing."""
+    try:
+        canvas = Image.new('RGBA', deco.BARE.size, (0, 0, 0, 0))
+        draw_fn(canvas)
+        a = np.array(canvas)[:, :, 3] > 30
+        ys, xs = np.where(a)
+        if len(xs):
+            x0, x1, y0, y1 = int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())
+            return {'cx': (x0 + x1) / 2.0, 'cy': (y0 + y1) / 2.0, 'w': float(x1 - x0), 'h': float(y1 - y0)}
+    except Exception:
+        pass
+    return fallback
+
+def geometry():
+    """Base geometry of every transformable asset, in token-canvas pixels, so the
+    interactive transform tool can place its box over the art. 'frame' assets are
+    drawn on the raw canvas; 'content' assets (icon) are composited with the
+    char-margin offset (contentRef)."""
+    import deco, gen
+    W, H = deco.BARE.size
+    icon_side = float(int(gen.ART_AREA ** 0.5))
+    flower = _placed_box(deco, lambda c: deco._place_flower(c, None, 0, 0, 1.0, 0),
+                         {'cx': deco.POS_FLOWER[0] + deco.FLOWER.width / 2.0, 'cy': deco.POS_FLOWER[1] + deco.FLOWER.height / 2.0,
+                          'w': float(deco.FLOWER.width), 'h': float(deco.FLOWER.height)})
+    fn = _placed_box(deco, lambda c: deco._place_night(c, deco.L_FIRST, deco.FN_CENTER, deco.S_NIGHT),
+                     {'cx': float(deco.FN_CENTER[0]), 'cy': float(deco.FN_CENTER[1]), 'w': 190.0, 'h': 140.0})
+    on = _placed_box(deco, lambda c: deco._place_night(c, deco.L_OTHER, deco.ON_CENTER, deco.S_NIGHT),
+                     {'cx': float(deco.ON_CENTER[0]), 'cy': float(deco.ON_CENTER[1]), 'w': 240.0, 'h': 240.0})
+    rep = sorted(deco.REAL_TOP.keys())[0] if deco.REAL_TOP else 3
+    leaves = _placed_box(deco, lambda c: deco._reminders(c, rep),
+                         {'cx': float(deco._DCX), 'cy': deco.TOP_ANCHOR + 95.0, 'w': W * 0.55, 'h': 190.0})
+    assets = {
+        'bg':     dict(space='frame',   cx=W / 2.0, cy=H / 2.0, w=float(W), h=float(H)),
+        'icon':   dict(space='content', cx=float(gen.ART_CX), cy=float(gen.ART_CY), w=icon_side, h=icon_side),
+        'flower': dict(space='frame',   **flower),
+        'leaves': dict(space='frame',   **leaves),
+        'fn':     dict(space='frame',   **fn),
+        'on':     dict(space='frame',   **on),
+    }
+    return json.dumps({'canvas': [W, H], 'contentRef': [float(gen.DCX), float(gen.DCY)], 'assets': assets})
+
 def web_preview(entry_json, opts_json):
     e = json.loads(entry_json); o = json.loads(opts_json)
     art = e.get('_art')

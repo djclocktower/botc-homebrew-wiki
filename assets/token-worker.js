@@ -157,6 +157,11 @@ function handle(m) {
       var r = JSON.parse(mod.set_asset(m.kind, pth));
       post({ type: 'result', id: m.id, res: r });
     } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
+  } else if (m.type === 'geometry') {
+    try {
+      var modg = pyodide.globals.get('web_render');
+      post({ type: 'result', id: m.id, res: JSON.parse(modg.geometry()) });
+    } catch (e) { post({ type: 'fail', id: m.id, message: String(e && e.message || e) }); }
   } else if (m.type === 'assetClear') {
     try {
       var mod2 = pyodide.globals.get('web_render');
