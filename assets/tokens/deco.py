@@ -73,6 +73,20 @@ def paste_at(canvas, img, left, top):
     sub = img.crop((x0-left, y0-top, img.width, img.height))
     canvas.alpha_composite(sub, (x0, y0))
 
+def _transform_bg(scale=1.0, dx=0, dy=0, rot=0):
+    """The token background (BARE), transformed by user size/position/rotation.
+    Kept on a canvas of the original BARE size so packing/margins are unaffected."""
+    img = BARE
+    if float(scale) != 1.0:
+        img = BARE.resize((max(1, int(BARE.width*scale)), max(1, int(BARE.height*scale))), Image.LANCZOS)
+    if float(rot) != 0:
+        img = img.rotate(-float(rot), expand=True, resample=Image.BICUBIC)
+    canvas = Image.new('RGBA', BARE.size, (0, 0, 0, 0))
+    left = int(round((BARE.width - img.width) / 2.0 + int(dx)))
+    top  = int(round((BARE.height - img.height) / 2.0 + int(dy)))
+    paste_at(canvas, img, left, top)
+    return canvas
+
 def _flower_layer(left, top, scale=1.0, rot=0):
     """A full-canvas layer with the flower at (left, top), clipped to the disk."""
     import numpy as _np
@@ -168,7 +182,12 @@ def frame_for(first_night=False, other_night=False, setup=False, reminders=0, na
               adj=None, name_mask=None):
     a = adj or {}
     def g(k, d): v = a.get(k, d); return d if v is None else v
-    f = BARE.copy()
+    bg_scale = float(g('bg_scale', 1.0)); bg_dx = int(g('bg_dx', 0))
+    bg_dy = int(g('bg_dy', 0)); bg_rot = float(g('bg_rot', 0))
+    if bg_scale != 1.0 or bg_dx or bg_dy or bg_rot:
+        f = _transform_bg(bg_scale, bg_dx, bg_dy, bg_rot)
+    else:
+        f = BARE.copy()
     if first_night:
         _place_night(f, L_FIRST, FN_CENTER, g('fn_scale', 1.0), g('fn_dx', 0), g('fn_dy', 0), g('fn_rot', 0))
     if other_night:

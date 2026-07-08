@@ -32,6 +32,7 @@ def slug(n):
 # PER-TOKEN RENDER  (margin + adjustments parameterized; toolkit defaults = pixel-identical)
 # ----------------------------------------------------------------------------
 ADJ_DEFAULTS = dict(
+    bg_dx=0, bg_dy=0, bg_scale=1.0, bg_rot=0,
     icon_dx=0, icon_dy=0, icon_scale=1.0, icon_rot=0,
     leaves='auto', leaf_scale=1.0, leaf_dy=0, leaf_dx=0, leaf_rot=0,
     flower='auto', flower_dx=0, flower_dy=0, flower_scale=1.0, flower_rot=0,

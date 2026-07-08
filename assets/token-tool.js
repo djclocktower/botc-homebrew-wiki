@@ -71,6 +71,7 @@
 
   /* ---- adjustments: defaults -> global -> per-token overrides ---- */
   var ADJ_DEF = {
+    bg_scale: 1, bg_dx: 0, bg_dy: 0, bg_rot: 0,
     icon_scale: 1, icon_dx: 0, icon_dy: 0, icon_rot: 0,
     name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1,
     abil_size: 1, abil_dy: 0,
@@ -320,6 +321,11 @@
 
   /* ---- adjustment slider panels (shared builder: global card + per-token editor) ---- */
   var ADJ_FIELDS = [
+    { section: 'Token Background' },
+    { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
+    { k: 'bg_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Icon' },
     { k: 'icon_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'icon_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
@@ -616,9 +622,17 @@
         return;
       }
       if (!item || typeof item !== 'object') return;
-      var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
-      if (hit) { wiki.push(hit); return; }
-      if (!item.name || !item.ability) { unknown.push(item.id || item.name || '?'); return; }
+      // A bare reference ({id:"…"} with no ability of its own) points at an existing
+      // wiki/official character, so resolve it to the wiki copy. A full object that
+      // carries its own ability is a complete definition — use it AS-IS as an external
+      // character, even when a wiki character shares its name, so imported characters
+      // aren't silently overwritten by a same-named (but different) wiki one.
+      if (!item.ability) {
+        var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
+        if (hit) { wiki.push(hit); return; }
+        unknown.push(item.id || item.name || '?'); return;
+      }
+      if (!item.name) { unknown.push(item.id || '?'); return; }
       var img = item.image;
       if (Array.isArray(img)) img = img[0];
       var base = 'ext-' + (norm(item.id || item.name) || 'char'), slug = base, n = 2;
