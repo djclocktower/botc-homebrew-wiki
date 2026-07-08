@@ -103,8 +103,40 @@
 .tt-check { display: inline-flex; align-items: center; gap: 8px; font-family: 'Oswald', sans-serif; font-size: .9rem; color: var(--ink); }
 .tt-check input { width: 17px; height: 17px; accent-color: var(--maroon); }
 
+/* ─── Interactive transform tool ──────────────────────────── */
+.tt-tf-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.tt-tf-label { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem; color: var(--ink); margin-right: 2px; }
+.tt-tf-chip {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--ink); padding: 4px 10px; cursor: pointer; transition: background .12s, color .12s;
+}
+.tt-tf-chip:hover:not([disabled]) { background: rgba(91,31,33,.08); }
+.tt-tf-chip.on { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.tt-tf-chip[disabled] { opacity: .4; cursor: not-allowed; }
+.tt-tf-hint { flex-basis: 100%; font-family: 'Oswald', sans-serif; font-size: .72rem; color: var(--ink); opacity: .72; }
+
+.tt-gz-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.tt-gz-box {
+  position: absolute; box-sizing: border-box;
+  border: 1.5px dashed #f3ead4; box-shadow: 0 0 0 1px rgba(30,10,26,.55);
+  background: rgba(243,234,212,.05); pointer-events: auto; cursor: move; touch-action: none;
+}
+.tt-gz-h {
+  position: absolute; width: 14px; height: 14px; margin: -8px 0 0 -8px; box-sizing: border-box;
+  background: #f3ead4; border: 1.5px solid var(--maroon); border-radius: 2px;
+  pointer-events: auto; touch-action: none;
+}
+.tt-gz-c[data-c="tl"] { left: 0;    top: 0;    cursor: nwse-resize; }
+.tt-gz-c[data-c="tr"] { left: 100%; top: 0;    cursor: nesw-resize; }
+.tt-gz-c[data-c="br"] { left: 100%; top: 100%; cursor: nwse-resize; }
+.tt-gz-c[data-c="bl"] { left: 0;    top: 100%; cursor: nesw-resize; }
+.tt-gz-rot { left: 50%; top: -26px; border-radius: 50%; cursor: grab; }
+.tt-gz-rotline { position: absolute; left: 50%; top: -26px; width: 1.5px; height: 26px; margin-left: -1px; background: #f3ead4; pointer-events: none; }
+
 /* Preview — dark inset panel, light placeholder text */
 .tt-preview {
+  position: relative;
   min-height: 220px; display: flex; align-items: center; justify-content: center;
   background: #1d0a1a; border: 2px solid var(--parch-frame); border-radius: 0;
   padding: 14px; margin-top: 6px;
@@ -375,6 +407,7 @@
 
         <section class="tt-card">
           <h2>Preview</h2>
+          <div class="tt-tf-bar" id="tt-tf-bar"></div>
           <div class="tt-preview" id="preview"><span class="ph">Add a character to preview a token</span></div>
         </section>
       </div>
@@ -418,7 +451,7 @@
         <h2>Import Script JSON</h2>
         <button type="button" class="tte-close" id="tt-import-close" aria-label="Close">✕</button>
       </div>
-      <p class="tt-assets-hint">Official script-tool format. Characters matching this wiki use wiki art; external characters fetch art from their <code>image</code> URL — you'll be warned about any that can't be fetched. Importing replaces your current set.</p>
+      <p class="tt-assets-hint">Official script-tool format. Characters referenced by id use this wiki's copy; full character definitions in the JSON are kept as-is (even if a wiki character shares the name) and fetch art from their <code>image</code> URL — you'll be warned about any that can't be fetched. Importing replaces your current set.</p>
       <div class="tt-row" style="justify-content:flex-start">
         <input type="file" accept=".json,application/json" id="tt-import-file">
       </div>
@@ -434,6 +467,7 @@
         <h2 id="tte-title">Edit Token</h2>
         <button type="button" class="tte-close" id="tte-close" aria-label="Close">✕</button>
       </div>
+      <div class="tt-tf-bar" id="tte-tf-bar"></div>
       <div class="tte-preview" id="tte-preview"></div>
       <div class="tt-row" id="tte-count"><label>Copies of this token</label><span class="tt-step"><button type="button" class="tt-step-dn" aria-label="Fewer">&minus;</button><span class="tt-step-val" id="tte-count-val">1</span><button type="button" class="tt-step-up" aria-label="More">+</button></span></div>
       <div id="tte-adj-panel"></div>

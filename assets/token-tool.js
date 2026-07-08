@@ -71,6 +71,7 @@
 
   /* ---- adjustments: defaults -> global -> per-token overrides ---- */
   var ADJ_DEF = {
+    bg_scale: 1, bg_dx: 0, bg_dy: 0, bg_rot: 0,
     icon_scale: 1, icon_dx: 0, icon_dy: 0, icon_rot: 0,
     name_size: 1, name_dy: 0, name_dx: 0, name_arc: 1,
     abil_size: 1, abil_dy: 0,
@@ -299,7 +300,7 @@
     });
     box.innerHTML = html;
   }
-  function renderAll() { renderSet(); renderSidebar($('sb-filter').value); }
+  function renderAll() { renderSet(); renderSidebar($('sb-filter').value); refreshMainTf(); }
   function wireSet() {
     $('tt-set').addEventListener('click', function (e) {
       var rm = e.target.closest('.sb-script-remove');
@@ -320,6 +321,11 @@
 
   /* ---- adjustment slider panels (shared builder: global card + per-token editor) ---- */
   var ADJ_FIELDS = [
+    { section: 'Token Background' },
+    { k: 'bg_scale', label: 'Size', min: 0.5, max: 1.8, step: 0.02, fmt: pctFmt },
+    { k: 'bg_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_dy', label: 'Position &#8597;', min: -200, max: 200, step: 2, fmt: pxFmt },
+    { k: 'bg_rot', label: 'Rotation', min: -180, max: 180, step: 2, fmt: degFmt },
     { section: 'Icon' },
     { k: 'icon_scale', label: 'Size', min: 0.4, max: 1.8, step: 0.02, fmt: pctFmt },
     { k: 'icon_dx', label: 'Position &#8596;', min: -200, max: 200, step: 2, fmt: pxFmt },
@@ -420,12 +426,12 @@
       function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
       function (k, v) {
         if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v;
-        saveAdj(); schedulePreview();
+        saveAdj(); schedulePreview(); if (mainGizmo) mainGizmo.sync();
       });
     $('tt-adj-reset').onclick = function () {
       adjState.global = {}; saveAdj();
       syncAdjPanel('ga-', function (k) { return ADJ_DEF[k]; });
-      schedulePreview();
+      schedulePreview(); if (mainGizmo) mainGizmo.sync();
     };
   }
 
@@ -442,16 +448,19 @@
         var p = perOf(sl);
         var base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
         if (v === base) delete p.adj[k]; else p.adj[k] = v;
-        saveAdj(); scheduleEditorPreview();
+        saveAdj(); scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
         if (setSlugs[0] === sl) schedulePreview();
       });
     renderEditorRems(sl);
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
     $('tte-preview').innerHTML = '<span class="ph">Rendering…</span>';
+    if (editorGizmo) editorGizmo.setAsset(null);
+    refreshEditorTf();
     scheduleEditorPreview();
   }
   function closeEditor() {
+    if (editorGizmo) editorGizmo.setAsset(null);
     editorSlug = null;
     $('tt-editor').classList.remove('open');
     document.body.style.overflow = '';
@@ -503,7 +512,7 @@
       $('tte-count-val').textContent = 1;
       syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; });
       renderEditorRems(editorSlug);
-      scheduleEditorPreview();
+      scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug) closeEditor(); });
   }
@@ -517,13 +526,214 @@
     var sl = editorSlug, mySeq = ++edPrevSeq;
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
     o.preview_scale = 0.34;
-    callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
+    return callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
       .then(function (res) {
         if (mySeq !== edPrevSeq || editorSlug !== sl) return;
-        if (res.error) { box.innerHTML = '<span class="ph">No art for this character</span>'; return; }
-        box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">';
+        if (res.error) { box.innerHTML = '<span class="ph">No art for this character</span>'; }
+        else { box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">'; }
+        if (editorGizmo) editorGizmo.sync();
       })
       .catch(function (e) { if (mySeq === edPrevSeq) box.innerHTML = '<span class="ph">Preview error</span>'; console.error(e); });
+  }
+
+  /* ---- interactive transform tool (drag/scale/rotate on the preview) ---- */
+  /* Drives the SAME adjustment values as the sliders — dragging the box moves the
+     asset (dx/dy), a corner resizes it (scale), the top handle rotates it (rot). */
+  var GEO = null, mainGizmo = null, editorGizmo = null;
+  var ADJ_RANGE = {};
+  ADJ_FIELDS.forEach(function (f) { if (f.k && f.min != null) ADJ_RANGE[f.k] = { min: f.min, max: f.max }; });
+  function clampAdj(k, v) { var r = ADJ_RANGE[k]; return r ? Math.max(r.min, Math.min(r.max, v)) : v; }
+  var GZ_ASSETS = {
+    bg:     { scale: 'bg_scale',     dx: 'bg_dx',     dy: 'bg_dy',     rot: 'bg_rot',     label: 'Background' },
+    icon:   { scale: 'icon_scale',   dx: 'icon_dx',   dy: 'icon_dy',   rot: 'icon_rot',   label: 'Icon' },
+    leaves: { scale: 'leaf_scale',   dx: 'leaf_dx',   dy: 'leaf_dy',   rot: 'leaf_rot',   label: 'Leaves' },
+    flower: { scale: 'flower_scale', dx: 'flower_dx', dy: 'flower_dy', rot: 'flower_rot', label: 'Flower' },
+    fn:     { scale: 'fn_scale',     dx: 'fn_dx',     dy: 'fn_dy',     rot: 'fn_rot',     label: '1st-Night Leaf' },
+    on:     { scale: 'on_scale',     dx: 'on_dx',     dy: 'on_dy',     rot: 'on_rot',     label: 'Other-Nights Leaf' }
+  };
+  var GZ_ORDER = ['bg', 'icon', 'leaves', 'flower', 'fn', 'on'];
+  function assetPresent(c, key) {
+    if (!c) return false;
+    if (key === 'bg' || key === 'icon') return true;
+    if (key === 'flower') return !!c.setup;
+    if (key === 'leaves') return ((c.reminders || []).length + (c.remindersGlobal || []).length) > 0;
+    if (key === 'fn') return (Number(c.firstNight) || 0) > 0;
+    if (key === 'on') return (Number(c.otherNight) || 0) > 0;
+    return false;
+  }
+  function gzNum(v) { v = Number(v); return isFinite(v) ? v : 0; }
+
+  function createGizmo(previewEl, ctx) {
+    var layer = document.createElement('div'); layer.className = 'tt-gz-layer';
+    var box = document.createElement('div'); box.className = 'tt-gz-box';
+    box.innerHTML =
+      '<span class="tt-gz-h tt-gz-c" data-role="scale" data-c="tl"></span>' +
+      '<span class="tt-gz-h tt-gz-c" data-role="scale" data-c="tr"></span>' +
+      '<span class="tt-gz-h tt-gz-c" data-role="scale" data-c="br"></span>' +
+      '<span class="tt-gz-h tt-gz-c" data-role="scale" data-c="bl"></span>' +
+      '<span class="tt-gz-rotline"></span>' +
+      '<span class="tt-gz-h tt-gz-rot" data-role="rot" title="Rotate"></span>';
+    layer.appendChild(box);
+    var asset = null, drag = null;
+
+    // token-pixel -> displayed-pixel mapping for the current asset + placement
+    function metrics() {
+      var img = previewEl.querySelector('img');
+      if (!GEO || !asset || !img || !img.width) return null;
+      var g = GEO.assets[asset]; if (!g) return null;
+      var A = GZ_ASSETS[asset];
+      var pr = previewEl.getBoundingClientRect(), ir = img.getBoundingClientRect();
+      var sx = ir.width / GEO.canvas[0];                 // frame-space token px -> display px
+      var cm = gzNum(opts.char_margin) || 1.05;
+      var m = (g.space === 'content') ? sx / cm : sx;    // this asset's plane
+      var dx = gzNum(ctx.get(A.dx)), dy = gzNum(ctx.get(A.dy));
+      var sc = gzNum(ctx.get(A.scale)), rot = gzNum(ctx.get(A.rot));
+      var bx = g.cx + dx, by = g.cy + dy;
+      if (g.space === 'content') { bx += GEO.contentRef[0] * (cm - 1); by += GEO.contentRef[1] * (cm - 1); }
+      return {
+        m: m, rot: rot, boxW: g.w * sc * m, boxH: g.h * sc * m,
+        left: (ir.left - pr.left) + bx * m, top: (ir.top - pr.top) + by * m
+      };
+    }
+    function position() {
+      var mt = metrics();
+      if (!mt) { box.style.display = 'none'; return; }
+      box.style.display = '';
+      box.style.width = Math.max(12, mt.boxW) + 'px';
+      box.style.height = Math.max(12, mt.boxH) + 'px';
+      box.style.left = mt.left + 'px';
+      box.style.top = mt.top + 'px';
+      box.style.transform = 'translate(-50%,-50%) rotate(' + mt.rot + 'deg)';
+    }
+    function sync() {
+      if (!asset) { if (layer.parentNode) layer.parentNode.removeChild(layer); return; }
+      if (getComputedStyle(previewEl).position === 'static') previewEl.style.position = 'relative';
+      if (layer.parentNode !== previewEl) previewEl.appendChild(layer);
+      var img = previewEl.querySelector('img');
+      if (img && !img.width) img.addEventListener('load', position, { once: true });
+      position();
+    }
+    function boxCenter() { var r = box.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+    function onDown(e) {
+      if (!asset) return;
+      var mt = metrics(); if (!mt) return;
+      e.preventDefault();
+      var A = GZ_ASSETS[asset], c = boxCenter();
+      drag = {
+        role: (e.target.getAttribute && e.target.getAttribute('data-role')) || 'move',
+        x0: e.clientX, y0: e.clientY, m: mt.m,
+        dx0: gzNum(ctx.get(A.dx)), dy0: gzNum(ctx.get(A.dy)),
+        sc0: gzNum(ctx.get(A.scale)), rot0: gzNum(ctx.get(A.rot)),
+        cx: c.x, cy: c.y,
+        d0: Math.max(8, Math.hypot(e.clientX - c.x, e.clientY - c.y)),
+        a0: Math.atan2(e.clientY - c.y, e.clientX - c.x)
+      };
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp);
+    }
+    function onMove(e) {
+      if (!drag) return;
+      var A = GZ_ASSETS[asset];
+      if (drag.role === 'scale') {
+        var d = Math.hypot(e.clientX - drag.cx, e.clientY - drag.cy);
+        ctx.set(A.scale, clampAdj(A.scale, Math.round(drag.sc0 * (d / drag.d0) * 100) / 100));
+      } else if (drag.role === 'rot') {
+        var a = Math.atan2(e.clientY - drag.cy, e.clientX - drag.cx);
+        var deg = drag.rot0 + (a - drag.a0) * 180 / Math.PI;
+        while (deg > 180) deg -= 360; while (deg < -180) deg += 360;
+        ctx.set(A.rot, clampAdj(A.rot, Math.round(deg)));
+      } else {
+        ctx.set(A.dx, clampAdj(A.dx, Math.round(drag.dx0 + (e.clientX - drag.x0) / drag.m)));
+        ctx.set(A.dy, clampAdj(A.dy, Math.round(drag.dy0 + (e.clientY - drag.y0) / drag.m)));
+      }
+      position(); ctx.syncPanel(); ctx.rerender();
+    }
+    function onUp() {
+      drag = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      ctx.rerender();
+    }
+    box.addEventListener('pointerdown', onDown);
+    return { setAsset: function (k) { asset = k; sync(); }, getAsset: function () { return asset; }, sync: sync };
+  }
+
+  // Live render while dragging: keep at most one render in flight plus one pending,
+  // so we update as fast as the worker sustains without ever backing up a queue.
+  function coalesced(run) {
+    var busy = false, pend = false;
+    function tick() {
+      if (busy) { pend = true; return; }
+      busy = true;
+      (run() || Promise.resolve()).then(function () {
+        busy = false; if (pend) { pend = false; tick(); }
+      });
+    }
+    return tick;
+  }
+  var liveMain = coalesced(doPreview);
+  var liveEditor = coalesced(doEditorPreview);
+
+  function globalCtx() {
+    return {
+      get: function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; },
+      set: function (k, v) { if (v === ADJ_DEF[k]) delete adjState.global[k]; else adjState.global[k] = v; saveAdj(); },
+      syncPanel: function () { syncAdjPanel('ga-', function (k) { return adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k]; }); },
+      rerender: liveMain
+    };
+  }
+  function editorCtx() {
+    return {
+      get: function (k) { return editorSlug ? mergedAdj(editorSlug)[k] : ADJ_DEF[k]; },
+      set: function (k, v) {
+        if (!editorSlug) return;
+        var p = perOf(editorSlug), base = adjState.global[k] != null ? adjState.global[k] : ADJ_DEF[k];
+        if (v === base) delete p.adj[k]; else p.adj[k] = v; saveAdj();
+      },
+      syncPanel: function () { if (editorSlug) syncAdjPanel('ta-', function (k) { return mergedAdj(editorSlug)[k]; }); },
+      rerender: liveEditor
+    };
+  }
+
+  function buildTfBar(barId, gizmo, charFor, note) {
+    var bar = $(barId); if (!bar) return;
+    var c = charFor();
+    var a = gizmo.getAsset();
+    if (a && !assetPresent(c, a)) { gizmo.setAsset(null); a = null; }
+    var chips = GZ_ORDER.map(function (k) {
+      var present = assetPresent(c, k);
+      return '<button type="button" class="tt-tf-chip' + (a === k ? ' on' : '') + '" data-asset="' + k + '"' +
+        (present ? '' : ' disabled') + '>' + esc(GZ_ASSETS[k].label) + '</button>';
+    }).join('');
+    bar.innerHTML = '<span class="tt-tf-label">Transform ' + note + ':</span>' + chips +
+      (a ? '<span class="tt-tf-hint">Drag to move &middot; corner to resize &middot; top handle to rotate</span>' : '');
+  }
+  function refreshMainTf() { if (mainGizmo) { buildTfBar('tt-tf-bar', mainGizmo, function () { return charBySlug[setSlugs[0]]; }, '(all tokens)'); mainGizmo.sync(); } }
+  function refreshEditorTf() { if (editorGizmo) { buildTfBar('tte-tf-bar', editorGizmo, function () { return editorSlug ? charBySlug[editorSlug] : null; }, '(this token)'); editorGizmo.sync(); } }
+
+  function wireTransform() {
+    mainGizmo = createGizmo($('preview'), globalCtx());
+    editorGizmo = createGizmo($('tte-preview'), editorCtx());
+    function wireBar(barId, gizmo, refresh) {
+      var bar = $(barId); if (!bar) return;
+      bar.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('.tt-tf-chip');
+        if (!b || b.disabled) return;
+        var k = b.getAttribute('data-asset');
+        gizmo.setAsset(gizmo.getAsset() === k ? null : k);
+        refresh();
+      });
+    }
+    wireBar('tt-tf-bar', mainGizmo, refreshMainTf);
+    wireBar('tte-tf-bar', editorGizmo, refreshEditorTf);
+    refreshMainTf();
+    window.addEventListener('resize', function () { if (mainGizmo) mainGizmo.sync(); if (editorGizmo) editorGizmo.sync(); });
+    loadGeometry();
+  }
+  function loadGeometry() {
+    return callWorker('geometry', {}).then(function (g) {
+      GEO = g; refreshMainTf(); if (editorSlug) refreshEditorTf();
+    }).catch(function () {});
   }
 
   /* ---- custom assets card ---- */
@@ -616,9 +826,17 @@
         return;
       }
       if (!item || typeof item !== 'object') return;
-      var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
-      if (hit) { wiki.push(hit); return; }
-      if (!item.name || !item.ability) { unknown.push(item.id || item.name || '?'); return; }
+      // A bare reference ({id:"…"} with no ability of its own) points at an existing
+      // wiki/official character, so resolve it to the wiki copy. A full object that
+      // carries its own ability is a complete definition — use it AS-IS as an external
+      // character, even when a wiki character shares its name, so imported characters
+      // aren't silently overwritten by a same-named (but different) wiki one.
+      if (!item.ability) {
+        var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
+        if (hit) { wiki.push(hit); return; }
+        unknown.push(item.id || item.name || '?'); return;
+      }
+      if (!item.name) { unknown.push(item.id || '?'); return; }
       var img = item.image;
       if (Array.isArray(img)) img = img[0];
       var base = 'ext-' + (norm(item.id || item.name) || 'char'), slug = base, n = 2;
@@ -783,14 +1001,15 @@
   function schedulePreview() { clearTimeout(previewTimer); previewTimer = setTimeout(doPreview, 280); }
   function doPreview() {
     var box = $('preview');
-    if (!setSlugs.length) { box.innerHTML = '<span class="ph">Add a character to preview a token</span>'; return; }
+    if (!setSlugs.length) { box.innerHTML = '<span class="ph">Add a character to preview a token</span>'; if (mainGizmo) mainGizmo.sync(); return; }
     if (!pyReady) { box.innerHTML = '<span class="ph">Preview will appear once loading finishes…</span>'; return; }
     var sl = setSlugs[0], mySeq = ++previewSeq;
-    callWorker('preview', { payload: payloadFor(sl), opts: opts, art: artList([sl]) })
+    return callWorker('preview', { payload: payloadFor(sl), opts: opts, art: artList([sl]) })
       .then(function (res) {
         if (mySeq !== previewSeq) return; // a newer preview superseded this one
-        if (res.error) { box.innerHTML = '<span class="ph">No art for ' + esc(charBySlug[sl].name) + '</span>'; return; }
-        box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">';
+        if (res.error) { box.innerHTML = '<span class="ph">No art for ' + esc(charBySlug[sl].name) + '</span>'; }
+        else { box.innerHTML = '<img alt="token preview" src="data:image/png;base64,' + res.png + '">'; }
+        if (mainGizmo) mainGizmo.sync();
       })
       .catch(function (e) { if (mySeq === previewSeq) box.innerHTML = '<span class="ph">Preview error (see console)</span>'; console.error(e); });
   }
@@ -839,7 +1058,7 @@
     return ingestUrl();
   }).then(function () {
     saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
-    wireGlobalAdj(); wireEditor(); wireAssets(); wireImport();
+    wireGlobalAdj(); wireEditor(); wireAssets(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
     var extInSet = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(function (c) { return c && c.ext; });
     if (extInSet.length) fetchExtArt(extInSet).then(function () { schedulePreview(); });

@@ -126,13 +126,33 @@
       }
       return coll.match.indexOf(norm(c.appearsIn)) !== -1;
     }
+    // Slugs that appear in at least one homebrew script (scripts.json), for the
+    // "Source" filter. Populated once the data loads.
+    var SCRIPT_SLUGS = {};
+    // A character's source category: a collection (Appears in matches a collection)
+    // takes precedence over a script (listed in a homebrew script). null = neither.
+    function sourceOf(c){
+      var a = norm(c.appearsIn);
+      if (a) {
+        for (var i = 0; i < AC_COLLECTIONS.length; i++) {
+          var coll = AC_COLLECTIONS[i];
+          if (coll.standalone) continue;
+          if (coll.match.indexOf(a) !== -1) return 'collection';
+        }
+      }
+      if (SCRIPT_SLUGS[norm(c.slug)]) return 'script';
+      return null;
+    }
+    var SOURCE_LABELS = [['collection','From Collection'],['script','From Script']];
+    function sourceLabel(v){ for (var i=0;i<SOURCE_LABELS.length;i++){ if (SOURCE_LABELS[i][0]===v) return SOURCE_LABELS[i][1]; } return v; }
+
     var COLLECTION_PARAM = (function(){
       try { var p = new URLSearchParams(location.search).get('collection'); return p ? decodeURIComponent(p) : null; }
       catch (e) { return null; }
     })();
 
     // Filter state
-    var STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
+    var STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], creator: '', sort: 'name-asc' };
     var FULL = [];   // collection-scoped full list
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
@@ -164,6 +184,16 @@
       if (tags.length){
         html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="fc-tags">';
         tags.forEach(function(t){ html += '<button type="button" class="filter-chip" data-tag="'+esc(t)+'">'+esc(t)+'</button>'; });
+        html += '</div></div>';
+      }
+      // Source (From Collection / From Script) — collection takes precedence.
+      // Only offer the chips whose source actually appears in the current list.
+      var srcSet = {};
+      list.forEach(function(c){ var s = sourceOf(c); if (s) srcSet[s] = 1; });
+      var srcPresent = SOURCE_LABELS.filter(function(s){ return srcSet[s[0]]; });
+      if (srcPresent.length){
+        html += '<div class="filter-group"><span class="filter-group-label">Source</span><div class="filter-chips" id="fc-sources">';
+        srcPresent.forEach(function(s){ html += '<button type="button" class="filter-chip" data-source="'+esc(s[0])+'">'+esc(s[1])+'</button>'; });
         html += '</div></div>';
       }
       // Creator
@@ -243,11 +273,32 @@
           render();
         });
       });
+      bar.querySelectorAll('[data-source]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var v = btn.getAttribute('data-source');
+          var ii = STATE.includeSources.indexOf(v);
+          var ei = STATE.excludeSources.indexOf(v);
+          if (ii === -1 && ei === -1) {          // unset → include
+            STATE.includeSources.push(v);
+            btn.classList.add('active');
+            btn.classList.remove('active-exclude');
+          } else if (ii !== -1) {                // include → exclude
+            STATE.includeSources.splice(ii, 1);
+            STATE.excludeSources.push(v);
+            btn.classList.remove('active');
+            btn.classList.add('active-exclude');
+          } else {                               // exclude → unset
+            STATE.excludeSources.splice(ei, 1);
+            btn.classList.remove('active-exclude');
+          }
+          render();
+        });
+      });
       var crSel = document.getElementById('fc-creator');
       if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
       document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
       document.getElementById('fc-reset').addEventListener('click', function(){
-        STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], creator: '', sort: 'name-asc' };
+        STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], creator: '', sort: 'name-asc' };
         bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
         if (crSel) crSel.value = '';
         document.getElementById('fc-sort').value = 'name-asc';
@@ -267,6 +318,8 @@
         var ct = splitTags(c).map(titleCase);
         return STATE.excludeTags.every(function(t){ return ct.indexOf(t) === -1; });
       });
+      if (STATE.includeSources.length) out = out.filter(function(c){ return STATE.includeSources.indexOf(sourceOf(c)) !== -1; });
+      if (STATE.excludeSources.length) out = out.filter(function(c){ return STATE.excludeSources.indexOf(sourceOf(c)) === -1; });
       if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
       // sort
       if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
@@ -286,7 +339,8 @@
       var toggle = document.getElementById('filter-toggle');
       if (toggle) {
         var nActive = STATE.includeTeams.length + STATE.excludeTeams.length +
-          STATE.includeTags.length + STATE.excludeTags.length + (STATE.creator ? 1 : 0);
+          STATE.includeTags.length + STATE.excludeTags.length +
+          STATE.includeSources.length + STATE.excludeSources.length + (STATE.creator ? 1 : 0);
         toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
           ' <span class="filter-toggle-arrow">&#9662;</span>';
       }
@@ -313,9 +367,11 @@
 
     Promise.all([
       fetch('collections.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();})
+      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();}),
+      fetch('scripts.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];})
     ]).then(function(res){
-      var collData = res[0]||[], list = res[1];
+      var collData = res[0]||[], list = res[1], scripts = res[2]||[];
+      (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],description:c.description||'',header:c.header||''};
