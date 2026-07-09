@@ -220,7 +220,7 @@
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
         <div id="artStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artStd">&#9635; Standardize icon size</button>
+          <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
           <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
@@ -230,7 +230,7 @@
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
-          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Standardize icon size</button>
+          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -530,13 +530,13 @@
     function standardizeArt(thumbId, btnId, onDone) {
       var th = $(thumbId); if (!th || !th.src || typeof normalizeArtDataURL !== 'function') return;
       var btn = $(btnId), label = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Standardizing…';
+      btn.disabled = true; btn.textContent = 'Resizing…';
       normalizeArtDataURL(th.src).then(function(out){
         th.src = out; onDone(out);
-        btn.textContent = '✓ Standardized'; update();
+        btn.textContent = '✓ Resized'; update();
         setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 1400);
       }).catch(function(){
-        btn.textContent = 'Could not standardize'; btn.disabled = false;
+        btn.textContent = 'Could not resize'; btn.disabled = false;
         setTimeout(function(){ btn.textContent = label; }, 2200);
       });
     }
