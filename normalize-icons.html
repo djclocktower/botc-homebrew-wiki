@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standardize Icons — BOTC HomeBrew Wiki</title>
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+  .norm-wrap { max-width: 900px; margin: 0 auto; padding: clamp(18px,4vw,40px) clamp(12px,3vw,32px) 72px; position: relative; z-index: 5; }
+  .norm-h2 { font-family: 'Dumbledor2', serif; font-size: clamp(1.5rem, 5vw, 2.2rem); color: var(--maroon); letter-spacing: .05em; margin: 0 0 4px; }
+  .norm-sub { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: var(--ink); opacity: .85; margin: 0 0 22px; font-size: .95rem; line-height: 1.5; }
+  .panel { background-color: var(--parch); background-image: url('assets/parchment.jpg'); background-size: cover;
+    border: 2px solid var(--parch-frame); padding: clamp(16px,3vw,24px); color: var(--ink);
+    box-shadow: 0 16px 36px -18px rgba(0,0,0,.55), inset 0 0 0 3px rgba(255,255,255,.28), inset 0 0 0 4px var(--parch-frame); margin-bottom: 20px; }
+  .panel h3 { font-family: 'Dumbledor2', serif; font-size: 1.15rem; color: var(--maroon); letter-spacing: .05em; margin: 0 0 12px; }
+  .btn { font-family: 'Dumbledor2', serif; font-size: 1.02rem; letter-spacing: .04em; color: #f4ead2; border-radius: 6px;
+    padding: 11px 20px; cursor: pointer; border: 1px solid #4a1719; background: linear-gradient(180deg,#7a2d2f,#5b1f21); }
+  .btn:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn-ghost { background: none; color: var(--maroon); border: 1px solid rgba(122,45,47,.5); }
+  .btn-ghost:hover { background: rgba(122,45,47,.08); }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .progress-track { height: 14px; background: rgba(0,0,0,.12); border-radius: 999px; overflow: hidden; margin: 18px 0 8px; }
+  .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg,#7a2d2f,#b8852a); border-radius: 999px; transition: width .2s ease; }
+  .counts { display: flex; gap: 18px; flex-wrap: wrap; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; margin-bottom: 6px; }
+  .counts b { color: var(--maroon); }
+  .log { list-style: none; margin: 12px 0 0; padding: 0; max-height: 320px; overflow-y: auto;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .82rem; border-top: 1px solid rgba(74,23,25,.14); }
+  .log li { padding: 5px 2px; border-bottom: 1px solid rgba(74,23,25,.1); display: flex; gap: 8px; }
+  .log .ok  { color: #2a6e2a; }
+  .log .skip{ color: #8a6310; }
+  .log .err { color: #9a2c2c; }
+  .gate, .loading { text-align: center; padding: 50px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: var(--ink); }
+  .gate a, .loading a { color: var(--good-name, #2c5b9a); }
+  .warn { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .85rem; background: rgba(176,128,30,.12);
+    border: 1px solid rgba(176,128,30,.4); border-radius: 6px; padding: 10px 12px; margin: 0 0 16px; line-height: 1.45; }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img class="brand-skull" src="assets/logo_skull.png" alt="">
+      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </a>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep">·</span><a href="dashboard">Admin</a><span class="sep">·</span><span class="here">Standardize Icons</span>
+    </nav>
+  </header>
+
+  <main class="norm-wrap">
+    <div id="loading" class="loading">Checking credentials…</div>
+
+    <div id="gate" class="gate" style="display:none">
+      <p>This tool is for administrators only.</p>
+      <p><a href="login">Log in as admin</a> to continue.</p>
+    </div>
+
+    <div id="tool" style="display:none">
+      <h2 class="norm-h2">Standardize character icons</h2>
+      <p class="norm-sub">
+        Re-fits every published character's art onto the standard <strong>591&times;591</strong> frame:
+        it trims the empty transparent space around each figure, then scales and centers it so every icon
+        appears at a consistent size — matching the official wiki. The original art is replaced with the
+        standardized version in storage; the site updates as soon as the run finishes.
+      </p>
+
+      <div class="warn">
+        <strong>Before you start:</strong> make sure the wiki is <em>unlocked</em> (a lock blocks uploads).
+        This changes art for every character at once. It's safe to re-run, and you can cancel at any time.
+        Nightly backups keep 30&nbsp;days of history if you ever need to compare.
+      </div>
+
+      <section class="panel">
+        <h3>Run</h3>
+        <div class="btn-row">
+          <button class="btn" id="start" type="button">Standardize all icons</button>
+          <button class="btn btn-ghost" id="cancel" type="button" style="display:none">Cancel</button>
+        </div>
+
+        <div id="progress-box" style="display:none">
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+          <div class="counts">
+            <span>Processed <b id="c-done">0</b> / <span id="c-total">0</span></span>
+            <span>Updated <b id="c-ok">0</b></span>
+            <span>Skipped <b id="c-skip">0</b></span>
+            <span>Failed <b id="c-err">0</b></span>
+          </div>
+          <ul class="log" id="log"></ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/art-normalize.js"></script>
+  <script>
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){
+      return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
+    }); }
+
+    var THROTTLE_MS = 150;   // brief pause between images to be gentle on storage
+    var cancelled = false;
+    var running = false;
+
+    function logRow(cls, name, note){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="' + cls + '">' + (cls === 'ok' ? '✓' : cls === 'skip' ? '–' : '✕') + '</span>' +
+        '<span><strong>' + esc(name) + '</strong>' + (note ? ' — ' + esc(note) : '') + '</span>';
+      $('log').appendChild(li);
+      $('log').scrollTop = $('log').scrollHeight;
+    }
+
+    function apiUpload(key, dataUrl){
+      return fetch('/api/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
+      }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); });
+    }
+
+    function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+    // Build the flat work list: one job per art / artAlt image under art/.
+    function buildJobs(chars){
+      var jobs = [];
+      chars.forEach(function(c){
+        if (!c || typeof c !== 'object') return;
+        var name = c.name || c.slug || 'character';
+        [['art', c.art], ['artAlt', c.artAlt]].forEach(function(pair){
+          var field = pair[0], val = pair[1];
+          if (!val) return;
+          var label = name + (field === 'artAlt' ? ' (alt art)' : '');
+          if (String(val).indexOf('art/') !== 0) {
+            jobs.push({ name: label, skip: 'legacy path "' + val + '" — re-save this character in the editor to standardize it' });
+          } else {
+            jobs.push({ name: label, key: val, url: 'assets/' + val });
+          }
+        });
+      });
+      return jobs;
+    }
+
+    function processOne(job){
+      if (job.skip) { logRow('skip', job.name, job.skip); return Promise.resolve('skip'); }
+      return normalizeArtDataURL(job.url)
+        .then(function(dataUrl){ return apiUpload(job.key, dataUrl); })
+        .then(function(res){
+          if (res.status === 200 && res.body && res.body.ok) { logRow('ok', job.name); return 'ok'; }
+          logRow('err', job.name, (res.body && res.body.error) || ('HTTP ' + res.status)); return 'err';
+        })
+        .catch(function(e){ logRow('err', job.name, (e && e.message) || 'could not process'); return 'err'; });
+    }
+
+    function runAll(){
+      running = true; cancelled = false;
+      $('start').disabled = true; $('start').textContent = 'Standardizing…';
+      $('cancel').style.display = '';
+      $('progress-box').style.display = '';
+      $('log').innerHTML = '';
+      var done = 0, ok = 0, skip = 0, err = 0;
+      $('c-done').textContent = '0'; $('c-ok').textContent = '0';
+      $('c-skip').textContent = '0'; $('c-err').textContent = '0';
+
+      fetch('/characters.json', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(chars){
+          if (!Array.isArray(chars)) chars = (chars && chars.characters) || [];
+          var jobs = buildJobs(chars);
+          $('c-total').textContent = jobs.length;
+          if (!jobs.length) { logRow('skip', 'Nothing to do', 'no character art found'); return null; }
+
+          return jobs.reduce(function(chain, job){
+            return chain.then(function(){
+              if (cancelled) return;
+              return processOne(job).then(function(result){
+                done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
+                $('c-done').textContent = done; $('c-ok').textContent = ok;
+                $('c-skip').textContent = skip; $('c-err').textContent = err;
+                $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
+                return sleep(THROTTLE_MS);
+              });
+            });
+          }, Promise.resolve()).then(function(){ return jobs.length; });
+        })
+        .then(function(){
+          running = false;
+          $('cancel').style.display = 'none';
+          $('start').disabled = false;
+          $('start').textContent = cancelled ? 'Resume / run again' : 'Run again';
+          if (cancelled) logRow('skip', 'Cancelled', done + ' processed before stopping');
+          else if (done) logRow('ok', 'Finished', ok + ' updated, ' + skip + ' skipped, ' + err + ' failed');
+        })
+        .catch(function(e){
+          running = false;
+          $('cancel').style.display = 'none';
+          $('start').disabled = false; $('start').textContent = 'Try again';
+          logRow('err', 'Run failed', (e && e.message) || 'could not load character list');
+        });
+    }
+
+    $('start').addEventListener('click', function(){ if (!running) runAll(); });
+    $('cancel').addEventListener('click', function(){ cancelled = true; $('cancel').disabled = true;
+      setTimeout(function(){ $('cancel').disabled = false; }, 500); });
+
+    function showGate(){ $('loading').style.display = 'none'; $('tool').style.display = 'none'; $('gate').style.display = 'block'; }
+
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.loggedIn && d.isAdmin) { $('loading').style.display = 'none'; $('tool').style.display = 'block'; }
+        else showGate();
+      })
+      .catch(function(){ showGate(); });
+  </script>
+</body>
+</html>
