@@ -219,12 +219,19 @@
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
+        <div id="artStdWrap" style="display:none;margin-top:6px">
+          <button type="button" class="btn btn-sm" id="artStd">&#9635; Standardize icon size</button>
+          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+        </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
       </div>
       <div class="fld">
         <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON and shown on the page)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
+        <div id="artAltStdWrap" style="display:none;margin-top:6px">
+          <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Standardize icon size</button>
+        </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
 
@@ -306,6 +313,7 @@
 
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/art-normalize.js"></script>
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
@@ -489,7 +497,7 @@
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
-          update();
+          $('artStdWrap').style.display=''; update();
         });
       };
       reader.readAsDataURL(file);
@@ -502,7 +510,7 @@
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artAltDataURL = url; artAltRemoved = false;
           var th=$('artAltThumb'); th.src=url; th.style.display='block';
-          $('artAltClear').style.display='';
+          $('artAltStdWrap').style.display=''; $('artAltClear').style.display='';
           update();
         });
       };
@@ -511,8 +519,32 @@
     $('artAltClear').addEventListener('click', function(){
       artAltDataURL = null; artAltRemoved = true; $('artAlt').value='';
       $('artAltThumb').style.display='none';
+      $('artAltStdWrap').style.display='none';
       $('artAltClear').style.display='none';
       update();
+    });
+
+    // ── opt-in: standardize icon to the 591x591 frame ──────────────
+    // Reads from the thumbnail's current src, so it works for freshly uploaded
+    // art AND art already on the character (loaded same-origin on edit).
+    function standardizeArt(thumbId, btnId, onDone) {
+      var th = $(thumbId); if (!th || !th.src || typeof normalizeArtDataURL !== 'function') return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Standardizing…';
+      normalizeArtDataURL(th.src).then(function(out){
+        th.src = out; onDone(out);
+        btn.textContent = '✓ Standardized'; update();
+        setTimeout(function(){ btn.textContent = label; btn.disabled = false; }, 1400);
+      }).catch(function(){
+        btn.textContent = 'Could not standardize'; btn.disabled = false;
+        setTimeout(function(){ btn.textContent = label; }, 2200);
+      });
+    }
+    $('artStd').addEventListener('click', function(){
+      standardizeArt('artthumb', 'artStd', function(out){ artDataURL = out; artChanged = true; });
+    });
+    $('artAltStd').addEventListener('click', function(){
+      standardizeArt('artAltThumb', 'artAltStd', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
     // ── JSON import ──
@@ -542,7 +574,7 @@
         msg.className='work'; msg.textContent='Trying to load icon from '+imgUrl+' …';
         loadImageToCanvas(imgUrl,true).then(function(url){
           artDataURL=url; artChanged=true;
-          var th=$('artthumb'); th.src=url; th.style.display='block';
+          var th=$('artthumb'); th.src=url; th.style.display='block'; $('artStdWrap').style.display='';
           $('arturl').textContent='';
           msg.className='ok'; msg.textContent='Imported (icon loaded).'; update();
         }).catch(function(){
@@ -608,6 +640,7 @@
         var altTh = $('artAltThumb');
         altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
         altTh.style.display = 'block';
+        $('artAltStdWrap').style.display = '';
         $('artAltClear').style.display = '';
       }
       $('slug-display').textContent = originalSlug;
@@ -628,7 +661,7 @@
       loadImageToCanvas(artURL, true).then(function(url){
         artDataURL = url; artChanged = false;
         var th=$('artthumb'); th.src=url; th.style.display='block';
-        $('arturl').textContent = '';
+        $('artStdWrap').style.display=''; $('arturl').textContent = '';
         update();
       }).catch(function(){
         artDataURL = null;
