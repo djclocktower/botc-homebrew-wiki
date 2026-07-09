@@ -18,7 +18,9 @@
   'use strict';
 
   var TARGET = 591;          // output canvas is TARGET x TARGET px (official size)
-  var FILL = 0.9;            // figure's longest side spans FILL * TARGET
+  var FILL = 0.70;          // figure's longest side spans FILL * TARGET
+                            // (matches official wiki icons, whose figures fill
+                            // ~62-74% of the 591px frame by their longest side)
   var ALPHA_THRESHOLD = 16;  // pixels with alpha above this count as "figure"
 
   // Find the bounding box of non-transparent pixels. Returns null if the image
