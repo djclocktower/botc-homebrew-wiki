@@ -41,3 +41,8 @@
 # The token manifest must always be fresh (it carries the version)
 /assets/tokens/manifest.json
   Cache-Control: no-cache, must-revalidate
+
+# Bundled official-character dataset (import resolution): revalidate so a
+# refreshed roles list shows without a long cache wait
+/assets/roles.json
+  Cache-Control: no-cache, must-revalidate

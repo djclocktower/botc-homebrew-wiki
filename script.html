@@ -178,6 +178,7 @@
     var TEAMS = [['townsfolk','Townsfolk'],['outsider','Outsider'],['minion','Minion'],['demon','Demon'],['traveller','Traveller'],['fabled','Fabled']];
     var allChars = [];
     var bySlug = {};
+    var officialChars = [];   // bundled official BotC roles (import-only; NOT in the Add sidebar)
 
     function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -301,6 +302,9 @@
       if (m.header) meta.logo = 'https://botchomebrew.wiki/assets/' + m.header;
       var arr = [meta];
       chars.forEach(function (c) {
+        // Official roles export as their bare id (official tools re-fetch the data);
+        // homebrew characters export as a full object.
+        if (c.official) { arr.push(c.slug.replace(/^off-/, '')); return; }
         if (window.buildSchema) arr.push(window.buildSchema(c));
       });
       return JSON.stringify(arr, null, 2);
@@ -523,6 +527,14 @@
         if (c.jsonId) map[String(c.jsonId).toLowerCase().replace(/[^a-z0-9]/g,'')] = c.slug;
         map[(c.slug||'').replace(/-/g,'')] = c.slug;
       });
+      // Official roles: match by their bare id and by name (homebrew wins — added
+      // first — so a homebrew char sharing an official name isn't shadowed).
+      officialChars.forEach(function (c) {
+        var id = c.slug.replace(/^off-/, '');
+        if (!(id in map)) map[id] = c.slug;
+        var byName = slugify(c.name);
+        if (!(byName in map)) map[byName] = c.slug;
+      });
       return map;
     }
     function importScript(text) {
@@ -546,8 +558,10 @@
       setScript(finalList);
       renderAll();
       if (window.updateScriptBadge) window.updateScriptBadge();
-      var msg = 'Imported ' + slugs.length + ' character' + (slugs.length===1?'':'s') + '.';
-      if (missing.length) msg += '\n\nNot found in the wiki (' + missing.length + '): ' + missing.slice(0,10).join(', ') + (missing.length>10?'…':'');
+      var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
+      var msg = 'Imported ' + slugs.length + ' character' + (slugs.length===1?'':'s') +
+        (offCount ? ' (' + offCount + ' official)' : '') + '.';
+      if (missing.length) msg += '\n\nNot recognised (' + missing.length + '): ' + missing.slice(0,10).join(', ') + (missing.length>10?'…':'');
       alert(msg);
     }
     document.getElementById('sb-import').addEventListener('click', function () {
@@ -572,8 +586,33 @@
 
     var SITE_ROOT = new URL('.', location.href).href;
 
+    // ── Official BotC roles (bundled): import-only so bare official ids in a
+    // script JSON resolve. Added to bySlug (for render/sort/share/export) but NOT
+    // to allChars, so the Add sidebar and Randomize stay homebrew-only. Non-fatal.
+    function slugify(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+    function loadOfficial() {
+      return fetch('assets/roles.json')
+        .then(function (r) { return r.json(); })
+        .then(function (roles) {
+          (roles || []).forEach(function (role) {
+            if (!role || !role.id) return;
+            var id = slugify(role.id);
+            var c = {
+              slug: 'off-' + id, official: true, id: role.id,
+              name: role.name || role.id, team: role.team || '',
+              ability: role.ability || '', art: 'icons/' + id + '.png',
+              page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(role.name || role.id).replace(/ /g, '_'))
+            };
+            officialChars.push(c);
+            bySlug[c.slug] = c;
+          });
+        })
+        .catch(function () { /* officials just won't resolve */ });
+    }
+
     // ── load data ──
-    fetch('characters.json?_=' + Date.now())
+    loadOfficial().then(function () {
+    return fetch('characters.json?_=' + Date.now())
       .then(function (r) { return r.json(); })
       .then(function (list) {
         allChars = list;
@@ -608,6 +647,7 @@
       .catch(function () {
         document.getElementById('sb-add-list').innerHTML = '<p class="sb-loading">Could not load characters.</p>';
       });
+    });
   })();
   </script>
 

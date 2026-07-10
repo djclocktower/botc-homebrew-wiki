@@ -58,6 +58,7 @@
 
   /* ---- state ---- */
   var charBySlug = {}, allChars = [], setSlugs = [];
+  var officialById = {};   // norm(id)/norm(name) -> official role object (from assets/roles.json)
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsiders'], ['minion', 'Minions'],
     ['demon', 'Demons'], ['traveller', 'Travellers'], ['fabled', 'Fabled'], ['loric', 'Loric']
@@ -151,10 +152,20 @@
 
   /* ---- data load (in parallel with the engine boot above) ---- */
   function loadData() {
-    return fetch('characters.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (list) {
+    var wiki = fetch('characters.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (list) {
       allChars = list.filter(function (c) { return c && c.slug && c.ability; });
       allChars.forEach(function (c) { charBySlug[c.slug] = c; });
     });
+    // Official BotC roles (bundled) so bare official ids in imported scripts resolve.
+    // Non-fatal: if it fails, official ids just stay unrecognised as before.
+    var official = fetch('assets/roles.json').then(function (r) { return r.json(); }).then(function (roles) {
+      (roles || []).forEach(function (role) {
+        if (!role || !role.id) return;
+        officialById[norm(role.id)] = role;
+        if (role.name) officialById[norm(role.name)] = role;
+      });
+    }).catch(function () {});
+    return Promise.all([wiki, official]);
   }
 
   /* ---- collection resolution (mirrors all-characters.html: always fetched live, never hardcoded) ---- */
@@ -813,27 +824,52 @@
     if (t === 'traveler') return 'traveller';
     return t;
   }
+  // Build an external-character record from a bundled official role, using the
+  // wiki's own local icon (assets/icons/{id}.png) for art. Returns null if the
+  // key doesn't match a known official role.
+  function officialExt(key, extSlugs) {
+    var role = officialById[norm(key)];
+    if (!role) return null;
+    var base = 'off-' + norm(role.id || role.name), slug = base, n = 2;
+    while (extSlugs[slug]) { slug = base + '-' + (n++); }
+    extSlugs[slug] = true;
+    return {
+      slug: slug, ext: true, official: true,
+      name: String(role.name), ability: String(role.ability || ''),
+      team: normTeam(role.team), setup: !!role.setup,
+      firstNight: Number(role.firstNight) || 0, otherNight: Number(role.otherNight) || 0,
+      reminders: Array.isArray(role.reminders) ? role.reminders : [],
+      remindersGlobal: [],
+      image: new URL('assets/icons/' + norm(role.id) + '.png', location.href).href
+    };
+  }
   function parseScriptJson(text) {
     var data = JSON.parse(text);
     if (!Array.isArray(data)) throw new Error('Expected a JSON array (official script format).');
-    var meta = null, wiki = [], ext = [], unknown = [];
-    var byNorm = {};
+    var meta = null, wiki = [], ext = [], official = [], unknown = [];
+    var byNorm = {}, extSlugs = {};
     allChars.forEach(function (c) { byNorm[norm(c.slug)] = c.slug; byNorm[norm(c.name)] = c.slug; });
     data.forEach(function (item) {
       if (item && typeof item === 'object' && item.id === '_meta') { meta = item; return; }
       if (typeof item === 'string') {
-        if (byNorm[norm(item)]) wiki.push(byNorm[norm(item)]); else unknown.push(item);
+        if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
+        var offS = officialExt(item, extSlugs);
+        if (offS) { official.push(offS); return; }
+        unknown.push(item);
         return;
       }
       if (!item || typeof item !== 'object') return;
       // A bare reference ({id:"…"} with no ability of its own) points at an existing
-      // wiki/official character, so resolve it to the wiki copy. A full object that
-      // carries its own ability is a complete definition — use it AS-IS as an external
-      // character, even when a wiki character shares its name, so imported characters
-      // aren't silently overwritten by a same-named (but different) wiki one.
+      // wiki/official character, so resolve it to the wiki copy — or, failing that,
+      // to a bundled official role. A full object that carries its own ability is a
+      // complete definition — use it AS-IS as an external character, even when a wiki
+      // character shares its name, so imported characters aren't silently overwritten
+      // by a same-named (but different) wiki one.
       if (!item.ability) {
         var hit = byNorm[norm(item.id)] || byNorm[norm(item.name)];
         if (hit) { wiki.push(hit); return; }
+        var offR = officialExt(item.id, extSlugs) || officialExt(item.name, extSlugs);
+        if (offR) { official.push(offR); return; }
         unknown.push(item.id || item.name || '?'); return;
       }
       if (!item.name) { unknown.push(item.id || '?'); return; }
@@ -851,7 +887,9 @@
         image: (typeof img === 'string' && /^https?:\/\//.test(img)) ? img : null
       });
     });
-    return { meta: meta, wiki: wiki, ext: ext, unknown: unknown };
+    // Official roles resolve through the same external pipeline (art fetched by
+    // slug), so merge them into ext for the caller; keep the count separate too.
+    return { meta: meta, wiki: wiki, ext: ext.concat(official), official: official, unknown: unknown };
   }
   function fetchExtArt(extList) {
     var withUrl = extList.filter(function (c) { return c.image; });
@@ -925,7 +963,9 @@
       saveExt(); saveSet(); renderAll(); refreshGenerate(); closeImport();
       var bits = [];
       if (parsed.wiki.length) bits.push(parsed.wiki.length + ' from this wiki');
-      if (parsed.ext.length) bits.push(parsed.ext.length + ' external');
+      if (parsed.official.length) bits.push(parsed.official.length + ' official');
+      var extCount = parsed.ext.length - parsed.official.length;
+      if (extCount > 0) bits.push(extCount + ' external');
       var title = parsed.meta && parsed.meta.name ? ' \u201C' + esc(parsed.meta.name) + '\u201D' : '';
       var msg = 'Imported' + title + ' \u2014 ' + setSlugs.length + ' characters (' + bits.join(', ') + ').';
       if (parsed.unknown.length) msg += ' Skipped ' + parsed.unknown.length + ' unrecognised (official/off-wiki) id' + (parsed.unknown.length === 1 ? '' : 's') + '.';
