@@ -825,8 +825,8 @@
     return t;
   }
   // Build an external-character record from a bundled official role, using the
-  // wiki's own local icon (assets/icons/{id}.png) for art. Returns null if the
-  // key doesn't match a known official role.
+  // official icon URL (role.image) for art. Returns null if the key doesn't
+  // match a known official role.
   function officialExt(key, extSlugs) {
     var role = officialById[norm(key)];
     if (!role) return null;
@@ -839,8 +839,8 @@
       team: normTeam(role.team), setup: !!role.setup,
       firstNight: Number(role.firstNight) || 0, otherNight: Number(role.otherNight) || 0,
       reminders: Array.isArray(role.reminders) ? role.reminders : [],
-      remindersGlobal: [],
-      image: new URL('assets/icons/' + norm(role.id) + '.png', location.href).href
+      remindersGlobal: Array.isArray(role.remindersGlobal) ? role.remindersGlobal : [],
+      image: (typeof role.image === 'string' && /^https?:\/\//.test(role.image)) ? role.image : null
     };
   }
   function parseScriptJson(text) {

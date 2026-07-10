@@ -600,7 +600,7 @@
             var c = {
               slug: 'off-' + id, official: true, id: role.id,
               name: role.name || role.id, team: role.team || '',
-              ability: role.ability || '', art: 'icons/' + id + '.png',
+              ability: role.ability || '', image: role.image || '',
               page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(role.name || role.id).replace(/ /g, '_'))
             };
             officialChars.push(c);

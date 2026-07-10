@@ -3,3530 +3,2849 @@
   "id": "acrobat",
   "name": "Acrobat",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night*, choose a player: if they are or become drunk or poisoned tonight, you die.",
-  "firstNight": 0,
+  "flavor": "Ladies and gentlemen, hold fast to your hats, for I shall defy the very laws of gravity and dance upon the air, a marvel of agility and daring, all for your delight and wonder!",
   "firstNightReminder": "",
-  "otherNight": 39,
-  "otherNightReminder": "The Acrobat chooses a player. If they are become drunk or poisoned tonight, the Acrobat player dies.",
+  "otherNightReminder": "The Acrobat chooses a player. :reminder:",
   "reminders": [
-   "Dead"
+   "Dead",
+   "Chosen"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/acrobat_g.webp"
  },
  {
   "id": "alchemist",
   "name": "Alchemist",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You have a Minion ability. When using this, the Storyteller may prompt you to choose differently.",
-  "firstNight": 3,
-  "firstNightReminder": "Show the Alchemist a not-in-play Minion token",
-  "otherNight": 0,
+  "flavor": "Visit the interior of the Earth. By rectification thou shalt find the hidden stone. Above the gold, lieth the red. Kether in Malkuth.",
+  "firstNightReminder": "Show the *YOU ARE* info token and a Minion token.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [
+   "Is The Alchemist"
+  ],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/alchemist_g.webp"
  },
  {
   "id": "alhadikhia",
   "name": "Al-Hadikhia",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, you may choose 3 players (all players learn who): each silently chooses to live or die, but if all live, all die.",
-  "firstNight": 0,
+  "flavor": "Alsukut min dhahab.",
   "firstNightReminder": "",
-  "otherNight": 33,
-  "otherNightReminder": "The Al-Hadikhia chooses 3 players. Announce the first player, wake them to nod yes to live or shake head no to die, kill or resurrect accordingly, then put to sleep and announce the next player. If all 3 are alive after this, all 3 die.",
+  "otherNightReminder": "The Al-Hadikhia chooses 3 players. :reminder: :reminder: :reminder: In order, wake each target. They nod or shake their head. Put them to sleep before waking the next target.",
   "reminders": [
    "1",
    "2",
-   "3",
-   "Chose death",
-   "Chose life"
+   "3"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/alhadikhia_g.webp"
  },
  {
   "id": "alsaahir",
   "name": "Alsaahir",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each day, if you publicly guess which players are Minion(s) and which are Demon(s), good wins.",
-  "firstNight": 0,
+  "flavor": "I am here because of you, and you are here because of me.",
   "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "Choose a player, that player dies.",
+  "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/alsaahir_g.webp"
  },
  {
   "id": "amnesiac",
   "name": "Amnesiac",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You do not know what your ability is. Each day, privately guess what it is: you learn how accurate you are.",
-  "firstNight": 12,
-  "firstNightReminder": "Decide the Amnesiac's entire ability. If the Amnesiac's ability causes them to wake tonight: Wake the Amnesiac and run their ability.",
-  "otherNight": 5,
-  "otherNightReminder": "If the Amnesiac's ability causes them to wake tonight: Wake the Amnesiac and run their ability.",
+  "flavor": "Wait. What. Who? Oh, ok. Wait. What?",
+  "firstNightReminder": "Do whatever needs to be done to satisfy the Amnesiac's ability.",
+  "otherNightReminder": "Do whatever needs to be done to satisfy the Amnesiac's ability.",
   "reminders": [
+   "?",
+   "?",
    "?"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/amnesiac_g.webp"
  },
  {
   "id": "angel",
   "name": "Angel",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Something bad might happen to whoever is most responsible for the death of a new player.",
-  "firstNightReminder": "",
+  "flavor": "Let those who are without sin dare to raise their hand to my chosen, for I shall strike such fools down with the fury and righteousness of a thousand storms.",
+  "firstNightReminder": "Announce which players are protected by the Angel. :reminder:",
   "otherNightReminder": "",
   "reminders": [
-   "Protect",
+   "Protected",
+   "Protected",
    "Something Bad"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/angel.webp"
  },
  {
   "id": "apprentice",
   "name": "Apprentice",
   "team": "traveller",
+  "edition": "bmr",
   "ability": "On your 1st night, you gain a Townsfolk ability (if good), or a Minion ability (if evil).",
-  "firstNight": 1,
-  "firstNightReminder": "Show the Apprentice the 'You are' card, then a Townsfolk or Minion token. In the Grimoire, replace the Apprentice token with that character token, and put the Apprentice's 'Is the Apprentice' reminder by that character token.",
-  "otherNight": 0,
+  "flavor": "For years have I traveled, studying the ways of The Craft. Which craft, you ask? Simply that of the simple folk. Nothing to worry about. Not yet.",
+  "firstNightReminder": "Show the *YOU ARE* info token, then a Townsfolk or Minion token. Swap the Apprentice & Townsfolk or Minion tokens. :reminder:",
   "otherNightReminder": "",
   "reminders": [
-   "Is the Apprentice"
+   "Is The Apprentice"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/apprentice_g.webp"
  },
  {
   "id": "artist",
   "name": "Artist",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Once per game, during the day, privately ask the Storyteller any yes/no question.",
-  "firstNight": 0,
+  "flavor": "Mon Dieu! C'est lumineux! My work, she is... how you say... Magnifique! Dieu est révélé! Oui.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/artist_g.webp"
  },
  {
   "id": "assassin",
   "name": "Assassin",
   "team": "minion",
+  "edition": "bmr",
   "ability": "Once per game, at night*, choose a player: they die, even if for some reason they could not.",
-  "firstNight": 0,
+  "flavor": "...",
   "firstNightReminder": "",
-  "otherNight": 37,
-  "otherNightReminder": "If the Assassin has not yet used their ability: The Assassin either shows the 'no' head signal, or points to a player. That player dies.",
+  "otherNightReminder": "The Assassin might choose a player. :reminder: :reminder:",
   "reminders": [
    "Dead",
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/assassin_g.webp"
  },
  {
   "id": "atheist",
   "name": "Atheist",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "The Storyteller can break the game rules, and if executed, good wins, even if you are dead. [No evil characters]",
-  "firstNight": 0,
+  "flavor": "Let us disperse with unnecessary conjecture and silly paranoia. There is a perfectly rational explanation for everything. Yes, a teacup may indeed be orbiting the planet, too small to see, but I shall drink my tea from the very real china in my very real hands.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/atheist_g.webp"
  },
  {
   "id": "balloonist",
   "name": "Balloonist",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, you learn a player of a different character type than last night. [+0 or +1 Outsider]",
-  "firstNight": 44,
-  "firstNightReminder": "Choose a character type. Point to a player whose character is of that type. Place the Balloonist's Seen reminder next to that character.",
-  "otherNight": 63,
-  "otherNightReminder": "Choose a character type that does not yet have a Seen reminder next to a character of that type. Point to a player whose character is of that type, if there are any. Place the Balloonist's Seen reminder next to that character.",
+  "flavor": "More heat! Higher! Higher! Più alto! Ahhh... it is so beautiful from up here, don't you agree? Can you see the children fishing by the river, under the willow? Can you see the  glint of the sun on the circus tent-poles? What's this? An old man, alone, passed out in the vineyard? Less heat! Lower! Lower! Vai più in basso!",
+  "firstNightReminder": "Point to any player. :reminder:",
+  "otherNightReminder": "Point to a player with a different character type to the previously shown player. :reminder:",
   "reminders": [
-   "Seen Townsfolk",
-   "Seen Outsider",
-   "Seen Minion",
-   "Seen Demon",
-   "Seen Traveller"
+   "Know"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/balloonist_g.webp"
  },
  {
   "id": "banshee",
   "name": "Banshee",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "If the Demon kills you, all players learn this. From now on, you may nominate twice per day and vote twice per nomination.",
-  "firstNight": 0,
+  "flavor": "Gorm do shúile, dearg do ghruaig, ní bheidh sé i bhfad, is a mbeidh tú san uaigh.",
   "firstNightReminder": "",
-  "otherNight": 42,
-  "otherNightReminder": "Announce that the Banshee has died.",
+  "otherNightReminder": "If the Banshee was killed by the Demon tonight, announce that the Banshee has died. :reminder:",
   "reminders": [
    "Has Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "banxian",
-  "name": "半仙",
-  "team": "townsfolk",
-  "ability": "任何在夜晚使用自身能力选择你的其他玩家，会改为选中另一名邪恶玩家作为替代。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "baojun",
-  "name": "暴君",
-  "team": "demon",
-  "ability": "每个夜晚*，你可以选择至多两名玩家：他们死亡。你选择的玩家数量不能与上个夜晚死亡的玩家数量相同（超过二人时算作二人）。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 8420,
-  "otherNightReminder": "唤醒典狱长，让其选择至多两名玩家。在这些玩家角色标记旁放置“死亡”提示标记。如果暴君选择的玩家数量与上个夜晚死亡的玩家数量相同，摇头示意其重新选择",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/carousel/banshee_g.webp"
  },
  {
   "id": "barber",
   "name": "Barber",
   "team": "outsider",
+  "edition": "snv",
   "ability": "If you died today or tonight, the Demon may choose 2 players (not another Demon) to swap characters.",
-  "firstNight": 0,
+  "flavor": "Did you know that barbery and surgery were once the same profession? No? Well, now you do.",
   "firstNightReminder": "",
-  "otherNight": 40,
-  "otherNightReminder": "If the Barber died today: Wake the Demon. Show the 'This character selected you' card, then Barber token. The Demon either shows a 'no' head signal, or points to 2 players. If they chose players: Swap the character tokens. Wake each player. Show 'You are', then their new character token.",
+  "otherNightReminder": "If the Barber died today or tonight, show the Demon the *THIS CHARACTER SELECTED YOU* & Barber tokens. If the Demon chose 2 players, wake one at a time. Show the *YOU ARE* token & their new character token.",
   "reminders": [
-   "Haircuts tonight"
+   "Haircuts Tonight"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/barber_g.webp"
  },
  {
   "id": "barista",
   "name": "Barista",
   "team": "traveller",
+  "edition": "snv",
   "ability": "Each night, until dusk, 1) a player becomes sober, healthy & gets true info, or 2) their ability works twice. They learn which.",
-  "firstNight": 1,
-  "firstNightReminder": "Choose a player, wake them and tell them which Barista power is affecting them. Treat them accordingly (sober/healthy/true info or activate their ability twice).",
-  "otherNight": 1,
-  "otherNightReminder": "Choose a player, wake them and tell them which Barista power is affecting them. Treat them accordingly (sober/healthy/true info or activate their ability twice).",
+  "flavor": "A cup of coffee with no cream, Monsieur? I’m terribly sorry, but we’re fresh out of cream — how about with no milk?",
+  "firstNightReminder": "Choose a player. Wake them, show the *THIS CHARACTER SELECTED YOU* & Barista tokens, then give a finger signal. :reminder:",
+  "otherNightReminder": "Choose a player. Wake them, show the *THIS CHARACTER SELECTED YOU* & Barista tokens, then give a finger signal. :reminder:",
   "reminders": [
    "Sober & Healthy",
-   "Ability twice"
+   "Acts Twice",
+   "?",
+   "?"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/barista_g.webp"
  },
  {
   "id": "baron",
   "name": "Baron",
   "team": "minion",
+  "edition": "tb",
   "ability": "There are extra Outsiders in play. [+2 Outsiders]",
-  "firstNight": 0,
+  "flavor": "This town has gone to the dogs, what? Cheap foreign labor... that's the ticket. Stuff them in the mine, I say. A bit of hard work never hurt anyone, and a clip'o'the ears to any brigand who says otherwise. It's all about the bottom line, what?",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/baron_g.webp"
  },
  {
   "id": "beggar",
   "name": "Beggar",
   "team": "traveller",
+  "edition": "tb",
   "ability": "You must use a vote token to vote. If a dead player gives you theirs, you learn their alignment. You are sober & healthy.",
-  "firstNight": 0,
+  "flavor": "Alms for the poor, good Sir? Spare a coin, Madam? Thank you. God bless! You're a right kind soul and no mistake! I'll have some swanky nosh tonight, I will!",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
- },
- {
-  "id": "bianlianshi",
-  "name": "变脸师",
-  "team": "townsfolk",
-  "ability": "每个白天，如果你“疯狂”地证明自己是一个善良角色（与之前不同），你会在当晚获得那个角色的能力，直到下个黄昏。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "疯狂"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/tb/beggar_g.webp"
  },
  {
   "id": "bigwig",
   "name": "Big Wig",
   "team": "fabled",
+  "edition": "loric",
   "ability": "Each nominee chooses a player: until voting, only they may speak & they are mad the nominee is good or they might die.",
+  "flavor": "Vanity asks ‘Is it popular?’ Cowardice asks ‘Is it safe?’ Conscience asks ‘Is it right?’ Who among us will ask: ‘Is it true?’",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "bingbi",
-  "name": "秉笔",
-  "team": "townsfolk",
-  "ability": "如果你在白天死亡，当晚你会得知一名善良玩家。如果你在夜晚死亡，当晚你会得知一名邪恶玩家。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 10310,
-  "otherNightReminder": "如果秉笔人在夜晚死去，唤醒他并指向一名邪恶玩家；如果秉笔在白天死去，唤醒他并指向一名善良玩家。随后让他重新入睡。",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/loric/bigwig.webp"
  },
  {
   "id": "bishop",
   "name": "Bishop",
   "team": "traveller",
+  "edition": "bmr",
   "ability": "Only the Storyteller can nominate. At least 1 opposing player must be nominated each day.",
-  "firstNight": 0,
+  "flavor": "In nomine Patris, et Filii, et Spiritus Sancti… Nos mos Dei. Deus vult de nobis.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "Nominate good",
-   "Nominate evil"
+   "Nominate Good",
+   "Nominate Evil"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/bishop_g.webp"
  },
  {
   "id": "boffin",
   "name": "Boffin",
   "team": "minion",
+  "edition": "carousel",
   "ability": "The Demon (even if drunk or poisoned) has a not-in-play good character’s ability. You both know which.",
-  "firstNight": 1,
-  "firstNightReminder": "Wake the Boffin and how them the token of the ability the Demon has. Put the Boffin back to sleep. Wake the Demon, show the Boffin token, then show the token of the good ability the Demon has.",
-  "otherNight": 0,
+  "flavor": "Stellar hydrogen, vast, inert; carbon, oxygen, neon gases, all ruined. Molecular chaos, entropy, yields new cosmic phenomena, rebirth from atomic chaos, dense matter collapsing. All in a teeny little bottle.",
+  "firstNightReminder": "Wake the Boffin and the Demon. Show the *THIS CHARACTER SELECTED YOU* & Boffin tokens, then the not-in-play good character token.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/boffin_g.webp"
  },
  {
   "id": "bonecollector",
   "name": "Bone Collector",
   "team": "traveller",
+  "edition": "snv",
   "ability": "Once per game, at night*, choose a dead player: they regain their ability until dusk.",
-  "firstNight": 0,
+  "flavor": "I collect many things. Hair. Teeth. Clothes. Fragments of poems. The dreams of lost lovers. My secret arts are not for you to know but my fee is a mere pittance. Bring me the blood of a noblewoman who died of heartbreak under a full moon, and you shall have your answers.",
   "firstNightReminder": "",
-  "otherNight": 1,
-  "otherNightReminder": "The Bone Collector either shakes their head no or points at any dead player. If they pointed at any dead player, put the Bone Collector's 'Has Ability' reminder by the chosen player's character token. (They may need to be woken tonight to use it.)",
+  "otherNightReminder": "The Bone Collector might choose a dead player. :reminder: If necessary, wake the chosen player to use their ability.",
   "reminders": [
-   "No ability",
-   "Has ability"
+   "No Ability",
+   "Has Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/bonecollector_g.webp"
  },
  {
   "id": "boomdandy",
   "name": "Boomdandy",
   "team": "minion",
+  "edition": "carousel",
   "ability": "If you are executed, all but 3 players die. After a 10 to 1 countdown, the player with the most players pointing at them, dies.",
-  "firstNight": 0,
+  "flavor": "Tick... Tick... Tick... TOCK.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/boomdandy_g.webp"
  },
  {
   "id": "bootlegger",
   "name": "Bootlegger",
   "team": "fabled",
+  "edition": "loric",
   "ability": "This script has homebrew characters or rules.",
+  "flavor": "When I was born, I was named ‘Homebrewy McHomebrewface’, like my father before me. A respectable name, for a dignified age.",
   "firstNightReminder": "",
   "otherNightReminder": "",
-  "reminders": [],
-  "setup": false
+  "reminders": [
+   "?",
+   "?"
+  ],
+  "remindersGlobal": [],
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/loric/bootlegger.webp"
  },
  {
   "id": "bountyhunter",
   "name": "Bounty Hunter",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing 1 evil player. If the player you know dies, you learn another evil player tonight. [1 Townsfolk is evil]",
-  "firstNight": 45,
-  "firstNightReminder": "Point to 1 evil player. Wake the townsfolk who is evil and show them the 'You are' card and the thumbs down evil sign.",
-  "otherNight": 65,
-  "otherNightReminder": "If the known evil player has died, point to another evil player. ",
+  "flavor": "Alone, I walk these streets, paved with the sick stench of corruption. Its thickness worms its way into my nostrils, unbidden, burning with revulsion. And anticipation. The illness of this wretched place grows each night. And I... I am the cure.",
+  "firstNightReminder": "Point to the player marked *KNOW*. ",
+  "otherNightReminder": "If the player marked *KNOW* died today or tonight, point to the new player marked *KNOW*.",
   "reminders": [
-   "Known"
+   "Know"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/bountyhunter_g.webp"
  },
  {
   "id": "buddhist",
   "name": "Buddhist",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "For the first 2 minutes of each day, veteran players may not talk.",
-  "firstNightReminder": "",
+  "flavor": "You throw thorns. Falling in my silence, they become flowers.",
+  "firstNightReminder": "Announce which players are affected by the Buddhist.",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/buddhist.webp"
  },
  {
   "id": "bureaucrat",
   "name": "Bureaucrat",
   "team": "traveller",
+  "edition": "tb",
   "ability": "Each night, choose a player (not yourself): their vote counts as 3 votes tomorrow.",
-  "firstNight": 1,
-  "firstNightReminder": "The Bureaucrat points to a player. Put the Bureaucrat's '3 votes' reminder by the chosen player's character token.",
-  "otherNight": 1,
-  "otherNightReminder": "The Bureaucrat points to a player. Put the Bureaucrat's '3 votes' reminder by the chosen player's character token.",
+  "flavor": "Sign here please. And here. And here. Aaaaaaaaand here. This should all be sorted and tallied by the end of the day, assuming everyone's signatures are legible. We haven't had a mix-up in the paperwork for ages. Yesterday noon, if memory serves...",
+  "firstNightReminder": "The Bureaucrat chooses a player. :reminder:",
+  "otherNightReminder": "The Bureaucrat chooses a player. :reminder:",
   "reminders": [
-   "3 votes"
+   "3 Votes"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/bureaucrat_g.webp"
  },
  {
   "id": "butcher",
   "name": "Butcher",
   "team": "traveller",
+  "edition": "snv",
   "ability": "Each day, after the 1st execution, you may nominate again.",
-  "firstNight": 0,
+  "flavor": "It tastes like chicken. More please.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/butcher_g.webp"
  },
  {
   "id": "butler",
   "name": "Butler",
   "team": "outsider",
+  "edition": "tb",
   "ability": "Each night, choose a player (not yourself): tomorrow, you may only vote if they are voting too.",
-  "firstNight": 38,
-  "firstNightReminder": "The Butler points to a player. Mark that player as 'Master'.",
-  "otherNight": 55,
-  "otherNightReminder": "The Butler points to a player. Mark that player as 'Master'.",
+  "flavor": "Yes, sir... No, sir... Certainly, sir.",
+  "firstNightReminder": "The Butler chooses a player. :reminder:",
+  "otherNightReminder": "The Butler chooses a player. :reminder:",
   "reminders": [
    "Master"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/butler_g.webp"
  },
  {
   "id": "cacklejack",
   "name": "Cacklejack",
   "team": "traveller",
-  "ability": "Each day, choose a player: a different player changes character tonight",
-  "firstNight": 0,
+  "edition": "carousel",
+  "ability": "Each day, choose a player: a different player changes character tonight.",
+  "flavor": "Wire α To wire β. LigHt oN. BuZZer off. GAzOinks! Arms STra1ght. FingER 2 nose. hOooLd stiLL. BoiNgo-banGo! Ha-ha-ha!",
   "firstNightReminder": "",
-  "otherNight": 2,
-  "otherNightReminder": "Replace the character token of any player (besides the player the Cacklejack chose today) with a different character token. Wake that player and show them the 'You are' card and their new character token.",
+  "otherNightReminder": "Before dawn, choose a player not marked *NOT ME*. Wake the target. Show the *YOU ARE* info token & their new character token.",
   "reminders": [
    "Not Me"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/cacklejack_g.webp"
  },
  {
   "id": "cannibal",
   "name": "Cannibal",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You have the ability of the recently killed executee. If they are evil, you are poisoned until a good player dies by execution.",
-  "firstNight": 0,
+  "flavor": "I don’t like clowns. They taste funny.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "Poisoned",
-   "Died today"
+   "Lunch"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/cannibal_g.webp"
  },
  {
   "id": "cerenovus",
   "name": "Cerenovus",
   "team": "minion",
+  "edition": "snv",
   "ability": "Each night, choose a player & a good character: they are “mad” they are this character tomorrow, or might be executed.",
-  "firstNight": 25,
-  "firstNightReminder": "The Cerenovus points to a player, then to a character on their sheet. Wake that player. Show the 'This character selected you' card, then the Cerenovus token. Show the selected character token. If the player is not mad about being that character tomorrow, they can be executed.",
-  "otherNight": 16,
-  "otherNightReminder": "The Cerenovus points to a player, then to a character on their sheet. Wake that player. Show the 'This character selected you' card, then the Cerenovus token. Show the selected character token. If the player is not mad about being that character tomorrow, they can be executed.",
+  "flavor": "Reality is merely an opinion. Specifically, my opinion.",
+  "firstNightReminder": "The Cerenovus chooses a player & a character. :reminder: Put the Cerenovus to sleep. Wake the target. Show the *THIS CHARACTER SELECTED YOU* token, the Cerenovus token, then the madness-character token.",
+  "otherNightReminder": "The Cerenovus chooses a player & a character. :reminder: Put the Cerenovus to sleep. Wake the target. Show the *THIS CHARACTER SELECTED YOU* token, the Cerenovus token, then the madness-character token.",
   "reminders": [
    "Mad"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/cerenovus_g.webp"
  },
  {
   "id": "chambermaid",
   "name": "Chambermaid",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.",
-  "firstNight": 49,
-  "firstNightReminder": "The Chambermaid points to two players. Show the number signal (0, 1, 2, …) for how many of those players wake tonight for their ability.",
-  "otherNight": 69,
-  "otherNightReminder": "The Chambermaid points to two players. Show the number signal (0, 1, 2, …) for how many of those players wake tonight for their ability.",
+  "flavor": "I aint seen nothin' untoward, Milady. Begging your pardon, but if I did see somethin', it certainly weren't the master o' the house sneaking into the professor's laboratory 'round eleven o'clock and mixing up fancy potions, just like you said, Miss.",
+  "firstNightReminder": "The Chambermaid chooses 2 living players. Give a finger signal.",
+  "otherNightReminder": "The Chambermaid chooses 2 living players. Give a finger signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/chambermaid_g.webp"
  },
  {
   "id": "chef",
   "name": "Chef",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "You start knowing how many pairs of evil players there are.",
-  "firstNight": 35,
-  "firstNightReminder": "Show the finger signal (0, 1, 2, …) for the number of pairs of neighbouring evil players.",
-  "otherNight": 0,
+  "flavor": "This evening's reservations seem odd. Never before has Mrs. Mayweather kept company with that scamp from Hudson Lane. Yet, tonight, they have a table for two. Strange.",
+  "firstNightReminder": "Give a finger signal.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
- },
- {
-  "id": "chimei",
-  "name": "魑魅",
-  "team": "minion",
-  "ability": "镇民可能会被当作外来者，外来者可能会被当作镇民。恶魔可能会被当作爪牙。你可能会被当作恶魔。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/tb/chef_g.webp"
  },
  {
   "id": "choirboy",
   "name": "Choirboy",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "If the Demon kills the King, you learn which player is the Demon. [+the King]",
-  "firstNight": 0,
+  "flavor": "I saw it, I did. I was in the pews, tidying the hymn books, when a dreadful tune started from the pipe organ. The organist had a long cloak, and long fingers on the keys. And a hat that looked… just like… yours.",
   "firstNightReminder": "",
-  "otherNight": 44,
-  "otherNightReminder": "If the King was killed by the Demon, wake the Choirboy and point to the Demon player.",
+  "otherNightReminder": "If the Demon killed the King, point to the Demon player.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
- },
- {
-  "id": "chongfei",
-  "name": "宠妃",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，说书人会在关于你的事情上打破规则。随后，你会秘密得知说书人为此做了什么。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/choirboy_g.webp"
  },
  {
   "id": "clockmaker",
   "name": "Clockmaker",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "You start knowing how many steps from the Demon to its nearest Minion.",
-  "firstNight": 40,
-  "firstNightReminder": "Show the hand signal for the number (1, 2, 3, etc.) of places from Demon to closest Minion.",
-  "otherNight": 0,
+  "flavor": "Do not disturb me. The tick must continue, for the circle is a symbol of life and contains all things - all answers - in its divine machinery. I must work.",
+  "firstNightReminder": "Give a finger signal.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/clockmaker_g.webp"
  },
  {
   "id": "courtier",
   "name": "Courtier",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Once per game, at night, choose a character: they are drunk for 3 nights & 3 days.",
-  "firstNight": 19,
-  "firstNightReminder": "The Courtier either shows a 'no' head signal, or points to a character on the sheet. If the Courtier used their ability: If that character is in play, that player is drunk.",
-  "otherNight": 10,
-  "otherNightReminder": "Reduce the remaining number of days the marked player is poisoned. If the Courtier has not yet used their ability: The Courtier either shows a 'no' head signal, or points to a character on the sheet. If the Courtier used their ability: If that character is in play, that player is drunk.",
+  "flavor": "I am more afraid of an army of one hundred sheep led by a lion than an army of one hundred lions led by a sheep.",
+  "firstNightReminder": "The Courtier might choose a character. :reminder: :reminder:",
+  "otherNightReminder": "The Courtier might choose a character. :reminder: :reminder:",
   "reminders": [
    "Drunk 3",
    "Drunk 2",
    "Drunk 1",
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/courtier_g.webp"
  },
  {
   "id": "cultleader",
   "name": "Cult Leader",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, you become the alignment of an alive neighbor. If all good players choose to join your cult, your team wins.",
-  "firstNight": 46,
-  "firstNightReminder": "If the cult leader changed alignment, show them the thumbs up good signal of the thumbs down evil signal accordingly.",
-  "otherNight": 66,
-  "otherNightReminder": "If the cult leader changed alignment, show them the thumbs up good signal of the thumbs down evil signal accordingly.",
+  "flavor": "Thinking themselves wise, they became fools.",
+  "firstNightReminder": "The Cult Leader might change alignment. If so, show the *YOU ARE* info token & give a thumb signal.",
+  "otherNightReminder": "The Cult Leader might change alignment. If so, show the *YOU ARE* info token & give a thumb signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "dagengren",
-  "name": "打更人",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你要猜测今晚第一个死亡的玩家与你的距离。如果你猜测正确，改为除你以外的所有玩家今晚不会死亡，但你可能会死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 13,
-  "otherNightReminder": "唤醒打更人，并让其猜测距离，以数字手势给出。在这两名玩家的角色标记旁放置“警惕”提示标记。在当晚首次有角色死亡时，如果是标记有“警惕”的玩家，那么当晚不会有除打更人外的任何人死亡。同时，如果说书人决定让打更人死亡，则在其角色标记旁放置“死亡”提示标记。在黎明时，移除所有“警惕”标记。",
-  "reminders": [
-   "警惕",
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/cultleader_g.webp"
  },
  {
   "id": "damsel",
   "name": "Damsel",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "All Minions know a Damsel is in play. If a Minion publicly guesses you (once), your team loses.",
-  "firstNight": 31,
-  "firstNightReminder": "Wake all the Minions, show them the 'This character selected you' card and the Damsel token.",
-  "otherNight": 52,
-  "otherNightReminder": "If selected by the Huntsman, wake the Damsel, show 'You are' card and a not-in-play Townsfolk token.",
+  "flavor": "Don't touch the hair, honey.",
+  "firstNightReminder": "During Minion Info, show the Minions the Damsel token. If you haven't done this yet, do so now. If the Damsel was chosen by the Huntsman, show the *YOU ARE* info token & their new character token.",
+  "otherNightReminder": "If the Damsel was chosen by the Huntsman, show the *YOU ARE* info token & their new character token.",
   "reminders": [
-   "Guess used"
+   "Guess Used"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "daoke",
-  "name": "刀客",
-  "team": "townsfolk",
-  "ability": "在你的首个夜晚，你会得知一个在场的爪牙角色。每局游戏限一次，你可以在白天公开选择一名玩家：如果他是你得知的角色，他死亡。",
-  "firstNight": 9410,
-  "firstNightReminder": "在为首个夜晚做准备时，将刀客的“追杀”标记放置在一个爪牙角色标记旁。在首个夜晚，唤醒刀客。对他展示标记了“追杀”的爪牙角色标记。让刀客重新入睡。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "追杀",
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "daoshi",
-  "name": "道士",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你要选择一名玩家：如果他是恶魔，你死亡，并且当晚不会再有其他玩家死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 22,
-  "otherNightReminder": "唤醒道士，让其选择一名玩家。如果他选中了恶魔，在他的角色标记旁放置“死亡”提示标记。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/damsel_g.webp"
  },
  {
   "id": "deusexfiasco",
   "name": "Deus ex Fiasco",
   "team": "fabled",
-  "ability": "At least once per game, the Storyteller will make a mistake, correct it, and publicly admit to it",
+  "edition": "carousel",
+  "ability": "At least once per game, the Storyteller will make a mistake, correct it, and publicly admit to it.",
+  "flavor": "It's not a bug, it's a feature. It's not an error, it's a tweak. It's not broken, it's quirky.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
    "Whoopsie"
   ],
-  "setup": true
+  "remindersGlobal": [],
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/carousel/deusexfiasco.webp"
  },
  {
   "id": "deviant",
   "name": "Deviant",
   "team": "traveller",
+  "edition": "snv",
   "ability": "If you were funny today, you cannot die by exile.",
-  "firstNight": 0,
+  "flavor": "Twas the lady's quip, forsooth.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/deviant_g.webp"
  },
  {
   "id": "devilsadvocate",
   "name": "Devil's Advocate",
   "team": "minion",
+  "edition": "bmr",
   "ability": "Each night, choose a living player (different to last night): if executed tomorrow, they don't die.",
-  "firstNight": 22,
-  "firstNightReminder": "The Devil's Advocate points to a living player. That player survives execution tomorrow.",
-  "otherNight": 14,
-  "otherNightReminder": "The Devil's Advocate points to a living player, different from the previous night. That player survives execution tomorrow.",
+  "flavor": "My client, should the objection be overruled, pleads innocent by virtue of the prosecution's non-observance of statute 27.B - incorrect or misleading conjugation of a verb. The fact that nine of the jury died last night is simply prima facie, which is, as Wills vs Thule set precedent for, further reason to acquit.",
+  "firstNightReminder": "The Devil's Advocate chooses a living player. :reminder:",
+  "otherNightReminder": "The Devil's Advocate chooses a living player. :reminder:",
   "reminders": [
-   "Survives execution"
+   "Survives Execution"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
- },
- {
-  "id": "dianxiaoer",
-  "name": "店小二",
-  "team": "townsfolk",
-  "ability": "在你的首个夜晚，你会得知两名善良玩家。他们之中会有一人醉酒，即使你已死亡。",
-  "firstNight": 44,
-  "firstNightReminder": "唤醒店小二，对他指向标记有店小二的“熟客”和“醉酒”提示标记的这两名玩家。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "熟客",
-   "醉酒"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "dianyuzhang",
-  "name": "典狱长",
-  "team": "demon",
-  "ability": "每个夜晚，你要选择一至三名玩家。如果明天白天其中之一被处决，其余玩家会在当晚死亡。否则，当晚他们之中会有一名玩家死亡。",
-  "firstNight": 31,
-  "firstNightReminder": "唤醒典狱长，让其选择至多三名玩家。在这些玩家角色标记旁放置“囚禁”提示标记。",
-  "otherNight": 33,
-  "otherNightReminder": "如果今天白天被处决的玩家标记有“囚禁”，则其他标记有囚禁的玩家死亡。否则，将其中一人标记为死亡。移除所有“囚禁”提示标记。唤醒典狱长，让其选择至多三名玩家。在这些玩家角色标记旁放置“囚禁”提示标记。",
-  "reminders": [
-   "囚禁",
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "diaomin",
-  "name": "刁民",
-  "team": "traveller",
-  "ability": "曾在白天粗暴地打断过你的发言的玩家之一会在当晚醉酒，即使你已死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "醉酒"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/bmr/devilsadvocate_g.webp"
  },
  {
   "id": "djinn",
   "name": "Djinn",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Use the Djinn's special rule. All players know what it is.",
-  "firstNight": 0,
+  "flavor": "نحن لسنا هنا. انت لست حقيقي. كل شيء هو وهم. أسئلتك هي جبل نار في يوم صافٍ.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/djinn.webp"
  },
  {
   "id": "doomsayer",
   "name": "Doomsayer",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "If 4 or more players live, each living player may publicly choose (once per game) that a player of their own alignment dies.",
+  "flavor": "And on the Seventh Day, there shall be a great flood and a pestilence upon the People of the Village of the Ravens! The dead shall rise and the living shall repent! O Woe! O Unholy day! Only by great sacrifice shall they prevail! So sayeth the Sages of Nostros and so sayeth I.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/doomsayer.webp"
  },
  {
   "id": "dreamer",
   "name": "Dreamer",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night, choose a player (not yourself or Travellers): you learn 1 good & 1 evil character, 1 of which is correct.",
-  "firstNight": 41,
-  "firstNightReminder": "The Dreamer points to a player. Show 1 good and 1 evil character token; one of these is correct.",
-  "otherNight": 57,
-  "otherNightReminder": "The Dreamer points to a player. Show 1 good and 1 evil character token; one of these is correct.",
+  "flavor": "I remember the Clockmaker. The sky was red and it was raining fractal triangles. There was a smell of violets and a bubbling sound. A woman with glowing eyes and a scraggly beard was hissing at the sky. Then, I awoke.",
+  "firstNightReminder": "The Dreamer points to a player. Show 1 good & 1 evil character token, 1 of which is their character.",
+  "otherNightReminder": "The Dreamer points to a player. Show 1 good & 1 evil character token, 1 of which is their character.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/dreamer_g.webp"
  },
  {
   "id": "drunk",
   "name": "Drunk",
   "team": "outsider",
+  "edition": "tb",
   "ability": "You do not know you are the Drunk. You think you are a Townsfolk character, but you are not.",
-  "firstNight": 0,
+  "flavor": "I’m only a *hic* social drinker, my dear. Admittedly, I am a heavy *burp* socializer.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [
+   "Is The Drunk"
+  ],
   "setup": true,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/drunk_g.webp"
  },
  {
   "id": "duchess",
   "name": "Duchess",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Each day, 3 players may choose to visit you. At night*, each visitor learns how many visitors are evil, but 1 gets false info.",
+  "flavor": "We shall entertain between the hours of 6 and 7 precisely. Tea at 6:15. Scones at 6:45. Do not be late. Formal wear applies, as always.",
   "firstNightReminder": "",
-  "otherNight": 1,
-  "otherNightReminder": "Wake each player marked \"Visitor\" or \"False Info\" one at a time. Show them the Duchess token, then fingers (1, 2, 3) equaling the number of evil players marked \"Visitor\" or, if you are waking the player marked \"False Info,\" show them any number of fingers except the number of evil players marked \"Visitor.\"",
+  "otherNightReminder": "One at a time: Wake each player marked *VISITOR* or *FALSE INFO*. Show the *THIS CHARACTER SELECTED YOU* & Duchess tokens, then give a finger signal.",
   "reminders": [
+   "Visitor",
    "Visitor",
    "False Info"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/duchess.webp"
  },
  {
   "id": "empath",
   "name": "Empath",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "Each night, you learn how many of your 2 alive neighbors are evil.",
-  "firstNight": 36,
-  "firstNightReminder": "Show the finger signal (0, 1, 2) for the number of evil alive neighbours of the Empath.",
-  "otherNight": 53,
-  "otherNightReminder": "Show the finger signal (0, 1, 2) for the number of evil neighbours.",
+  "flavor": "My skin prickles. Something is not right here. I can feel it.",
+  "firstNightReminder": "Give a finger signal.",
+  "otherNightReminder": "Give a finger signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/empath_g.webp"
  },
  {
   "id": "engineer",
   "name": "Engineer",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Once per game, at night, choose which Minions or which Demon is in play.",
-  "firstNight": 13,
-  "firstNightReminder": "The Engineer shows a 'no' head signal, or points to a Demon or points to the relevant number of Minions. If the Engineer chose characters, replace the Demon or Minions with the choices, then wake the relevant players and show them the You are card and the relevant character tokens.",
-  "otherNight": 6,
-  "otherNightReminder": "The Engineer shows a 'no' head signal, or points to a Demon or points to the relevant number of Minions. If the Engineer chose characters, replace the Demon or Minions with the choices, then wake the relevant players and show them the 'You are' card and the relevant character tokens.",
+  "flavor": "If it bends, great. If it breaks, well, it probably needed fixing anyway.",
+  "firstNightReminder": "The Engineer might choose Minions or Demons. Put the Engineer to sleep. Wake the target(s) one at a time. Show the *YOU ARE* info token & their new character token. :reminder:",
+  "otherNightReminder": "The Engineer might choose Minions or Demons. Put the Engineer to sleep. Wake the target(s) one at a time. Show the *YOU ARE* info token & their new character token. :reminder:",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/engineer_g.webp"
  },
  {
   "id": "eviltwin",
   "name": "Evil Twin",
   "team": "minion",
+  "edition": "snv",
   "ability": "You & an opposing player know each other. If the good player is executed, evil wins. Good can't win if you both live.",
-  "firstNight": 23,
-  "firstNightReminder": "Wake the Evil Twin and their twin. Confirm that they have acknowledged each other. Point to the Evil Twin. Show their Evil Twin token to the twin player. Point to the twin. Show their character token to the Evil Twin player.",
-  "otherNight": 0,
+  "flavor": "I'm not Sara! I'm Clara! SHE is Sara! Sara is the evil one! Not me!",
+  "firstNightReminder": "Wake both twins. Allow eye contact. Show the good twin's character token to the Evil Twin & vice versa.",
   "otherNightReminder": "",
   "reminders": [
    "Twin"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/eviltwin_g.webp"
  },
  {
   "id": "exorcist",
   "name": "Exorcist",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each night*, choose a player (different to last night): the Demon, if chosen, learns who you are then doesn't wake tonight.",
-  "firstNight": 0,
+  "flavor": "We cast you out, every unclean spirit, every satanic power, every onslaught of the infernal adversary, every legion, every diabolical group and sect, in the name and by the power of Our Lord Jesus Christ. We command you, begone and fly far from the Church of God, from the souls made by God in His image and redeemed by the precious blood of the divine Lamb.",
   "firstNightReminder": "",
-  "otherNight": 22,
-  "otherNightReminder": "The Exorcist points to a player, different from the previous night. If that player is the Demon: Wake the Demon. Show the Exorcist token. Point to the Exorcist. The Demon does not act tonight.",
+  "otherNightReminder": "The Exorcist chooses a player. :reminder: Put the Exorcist to sleep. If the Exorcist chose the Demon: Wake the Demon. Show the *THIS CHARACTER SELECTED YOU* & Exorcist tokens. Point to the Exorcist.",
   "reminders": [
    "Chosen"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/exorcist_g.webp"
  },
  {
   "id": "fanggu",
   "name": "Fang Gu",
   "team": "demon",
+  "edition": "snv",
   "ability": "Each night*, choose a player: they die. The 1st Outsider this kills becomes an evil Fang Gu & you die instead. [+1 Outsider]",
-  "firstNight": 0,
+  "flavor": "Your walls and your weapons are but smoke in dreams.",
   "firstNightReminder": "",
-  "otherNight": 29,
-  "otherNightReminder": "The Fang Gu points to a player. That player dies. Or, if that player was an Outsider and there are no other Fang Gu in play: The Fang Gu dies instead of the chosen player. The chosen player is now an evil Fang Gu. Wake the new Fang Gu. Show the 'You are' card, then the Fang Gu token. Show the 'You are' card, then the thumb-down 'evil' hand sign.",
+  "otherNightReminder": "The Fang Gu chooses a player. :reminder: If they chose an Outsider (once only): Replace the Outsider token with the spare Fang Gu token. Put the Fang Gu to sleep. Wake the target. Show the *YOU ARE* and Fang Gu tokens & give a thumbs-down. :reminder:",
   "reminders": [
    "Dead",
    "Once"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": "snv"
- },
- {
-  "id": "fangshi",
-  "name": "方士",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，在夜晚时*，你可以选择查看魔典的部分内容。死亡的玩家数量越多，你能看到的内容也就越多，最多能查看魔典的一半。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 69,
-  "otherNightReminder": "唤醒方士，如果他点头，让他查看魔典，但只展示部分内容。随后标记他“失去能力”。",
-  "reminders": [
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/snv/fanggu_g.webp"
  },
  {
   "id": "farmer",
   "name": "Farmer",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "When you die at night, an alive good player becomes a Farmer.",
-  "firstNight": 0,
+  "flavor": "Even the high and mighty need food on the table. Without us, the city starves.",
   "firstNightReminder": "",
-  "otherNight": 46,
-  "otherNightReminder": "If a Farmer died tonight, choose another good player and make them the Farmer. Wake this player, show them the 'You are' card and the Farmer character token.",
+  "otherNightReminder": "If the Farmer died tonight, wake a living good player. Show the *YOU ARE* info token and a Farmer token.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/farmer_g.webp"
  },
  {
   "id": "fearmonger",
   "name": "Fearmonger",
   "team": "minion",
+  "edition": "carousel",
   "ability": "Each night, choose a player: if you nominate & execute them, their team loses. All players know if you choose a new player.",
-  "firstNight": 26,
-  "firstNightReminder": "The Fearmonger points to a player. Place the Fear token next to that player and announce that a new player has been selected with the Fearmonger ability.",
-  "otherNight": 18,
-  "otherNightReminder": "The Fearmonger points to a player. If different from the previous night, place the Fear token next to that player and announce that a new player has been selected with the Fearmonger ability.",
+  "flavor": "Beware of gazing long into the Abyss, lest the Abyss also gaze into you.",
+  "firstNightReminder": "The Fearmonger chooses a player. :reminder: Announce that the Fearmonger has chosen a player.",
+  "otherNightReminder": "The Fearmonger chooses a player. :reminder: If the target is different to last night, announce that the Fearmonger has chosen a player.",
   "reminders": [
    "Fear"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "fengshuishi",
-  "name": "风水师",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，在夜晚时*，你可以选择除你以外的两名玩家：根据他们的阵营（相同/相反）得知他们之间距离（较近/较远）的那一侧玩家中是否有恶魔。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 54,
-  "otherNightReminder": "唤醒风水师。风水师要么摇头不使用能力，要么指向两名玩家。对其点头或摇头示意，随后在其角色标记旁放置“失去能力”提示标记。",
-  "reminders": [
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/fearmonger_g.webp"
  },
  {
   "id": "ferryman",
   "name": "Ferryman",
   "team": "fabled",
+  "edition": "carousel",
   "ability": "On the final day, all dead players regain their vote token.",
+  "flavor": "When righteous dreams come, they have the weight of truth.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/carousel/ferryman.webp"
  },
  {
   "id": "fibbin",
   "name": "Fibbin",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Once per game, 1 good player might get incorrect information.",
+  "flavor": "Tee-hee-hee. Tee. Hee. Hee.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
-   "Used"
+   "No Ability"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/fibbin.webp"
  },
  {
   "id": "fiddler",
   "name": "Fiddler",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Once per game, the Demon secretly chooses an opposing player: all players choose which of these 2 players win.",
+  "flavor": "I'll wager mi lyef ye cannae best me in a fiddle contest, ye boss-eyed snook! We'll go out on the lash, get the pub jammers an' have a right craic. I'll be layin' ma boots into ya come mornin' ye rumbly muppet.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/fiddler.webp"
  },
  {
   "id": "fisherman",
   "name": "Fisherman",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Once per game, during the day, visit the Storyteller for some advice to help your team win.",
-  "firstNight": 0,
+  "flavor": "This was my favourite part of the river... see how the sunlight makes a rainbow from the monastery to the market? This was the best place for big fish. And the older I get, the bigger they were.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/fisherman_g.webp"
  },
  {
   "id": "flowergirl",
   "name": "Flowergirl",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night*, you learn if a Demon voted today.",
-  "firstNight": 0,
+  "flavor": "Yesterday's violets have withered and died, but today my poppies bloom.",
   "firstNightReminder": "",
-  "otherNight": 58,
-  "otherNightReminder": "Nod 'yes' or shake head 'no' for whether the Demon voted today. Place the 'Demon not voted' marker (remove 'Demon voted', if any).",
+  "otherNightReminder": "Either nod or shake your head.",
   "reminders": [
-   "Demon voted",
-   "Demon not voted"
+   "Demon Voted",
+   "Demon Not Voted"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/flowergirl_g.webp"
  },
  {
   "id": "fool",
   "name": "Fool",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "The 1st time you die, you don't.",
-  "firstNight": 0,
+  "flavor": "...and the King said 'What?! I've never even owned a pair of rubber pantaloons, let alone a custard cannon!' Ho-ho! Jolly day!",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/fool_g.webp"
  },
  {
   "id": "fortuneteller",
   "name": "Fortune Teller",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "Each night, choose 2 players: you learn if either is a Demon. There is a good player that registers as a Demon to you.",
-  "firstNight": 37,
-  "firstNightReminder": "The Fortune Teller points to two players. Give the head signal (nod yes, shake no) for whether one of those players is the Demon. ",
-  "otherNight": 54,
-  "otherNightReminder": "The Fortune Teller points to two players. Show the head signal (nod 'yes', shake 'no') for whether one of those players is the Demon.",
+  "flavor": "I sense great evil in your soul! But... that could just be your perfume. I am allergic to Elderberry.",
+  "firstNightReminder": "The Fortune Teller chooses 2 players. Nod if either is the Demon (or the *RED HERRING*).",
+  "otherNightReminder": "The Fortune Teller chooses 2 players. Nod if either is the Demon (or the *RED HERRING*).",
   "reminders": [
-   "Red herring"
+   "Red Herring"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/fortuneteller_g.webp"
  },
  {
   "id": "gambler",
   "name": "Gambler",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each night*, choose a player & guess their character: if you guess wrong, you die.",
-  "firstNight": 0,
+  "flavor": "Heads, I win. Tails, you lose.",
   "firstNightReminder": "",
-  "otherNight": 11,
-  "otherNightReminder": "The Gambler points to a player, and a character on their sheet. If incorrect, the Gambler dies.",
+  "otherNightReminder": "The Gambler chooses a player & a character. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/gambler_g.webp"
  },
  {
   "id": "gangster",
   "name": "Gangster",
   "team": "traveller",
+  "edition": "carousel",
   "ability": "Once per day, you may choose to kill an alive neighbor, if your other alive neighbor agrees.",
-  "firstNight": 0,
+  "flavor": "I like your shoes. It would be such a shame if you had a little accident, and they got ruined. Now that you mention it, I like your cufflinks too.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "ganshiren",
-  "name": "赶尸人",
-  "team": "minion",
-  "ability": "与你邻近的两名镇民玩家会在其首次死亡时被当作仍然存活。[-1外来者]",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "以为存活"
-  ],
-  "setup": true,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/gangster_g.webp"
  },
  {
   "id": "gardener",
   "name": "Gardener",
   "team": "fabled",
-  "ability": "The Storyteller assigns 1 or more players' characters.",
+  "edition": "loric",
+  "ability": "The Storyteller assigns all players' characters.",
+  "flavor": "When sophistry becomes stupidity and hypocrisy cruelty, retreat to the garden. The final love of old men is flowers and stones.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": false
- },
- {
-  "id": "geling",
-  "name": "歌伶",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，在白天时，你可以提议所有玩家观看你的演出，并从同意参加的玩家中选择你的观众。如果恶魔成为了观众，你会在当晚死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 62,
-  "otherNightReminder": "如果伶人在白天使用了能力，且恶魔成为了观众，标记伶人死亡。",
-  "reminders": [
-   "失去能力",
-   "死亡",
-   "观众"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "remindersGlobal": [],
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/loric/gardener.webp"
  },
  {
   "id": "general",
   "name": "General",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, you learn which alignment the Storyteller believes is winning: good, evil, or neither.",
-  "firstNight": 48,
-  "firstNightReminder": "Show the General thumbs up for good winning, thumbs down for evil winning or thumb to the side for neither.",
-  "otherNight": 68,
-  "otherNightReminder": "Show the General thumbs up for good winning, thumbs down for evil winning or thumb to the side for neither.",
+  "flavor": "I don’t have time for quotes.",
+  "firstNightReminder": "Give a thumb signal.",
+  "otherNightReminder": "Give a thumb signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/general_g.webp"
  },
  {
   "id": "gnome",
   "name": "Gnome",
   "team": "traveller",
+  "edition": "carousel",
   "ability": "All players start knowing a player of your alignment. You may choose to kill anyone who nominates them.",
-  "firstNight": 0,
+  "flavor": "Four the score or seven beers, no shows are goes for me and my. A prank to crack the cranks and planks o’ the floor foundation length, so incontravertabubbilly mini. The large essays down streams of joyse, no greater than is scene, not inherdt. Ha-urrumph.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "Amigo"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/gnome_g.webp"
  },
  {
   "id": "goblin",
   "name": "Goblin",
   "team": "minion",
+  "edition": "carousel",
   "ability": "If you publicly claim to be the Goblin when nominated & are executed that day, your team wins.",
-  "firstNight": 0,
+  "flavor": "You don’t want to insult the goblins. You really, really don’t. On a completely different note… can I have another piece of cake?",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "Claimed"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/goblin_g.webp"
  },
  {
   "id": "godfather",
   "name": "Godfather",
   "team": "minion",
+  "edition": "bmr",
   "ability": "You start knowing which Outsiders are in play. If 1 died today, choose a player tonight: they die. [-1 or +1 Outsider]",
-  "firstNight": 21,
-  "firstNightReminder": "Show each of the Outsider tokens in play.",
-  "otherNight": 38,
-  "otherNightReminder": "If an Outsider died today: The Godfather points to a player. That player dies.",
+  "flavor": "Normally, it's just business. But when you insult my daughter, you insult me. And when you insult me, you insult my family. You really should be more careful - it would be a shame if you had an unfortunate accident.",
+  "firstNightReminder": "Show the character tokens of all in-play Outsiders.",
+  "otherNightReminder": "If an Outsider died today, the Godfather chooses a player. :reminder:",
   "reminders": [
-   "Died today",
+   "Died Today",
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/godfather_g.webp"
  },
  {
   "id": "godofug",
   "name": "God of Ug",
   "team": "fabled",
+  "edition": "loric",
   "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
+  "flavor": "Blessed are my children, for they see the beauty in simple things.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
    "Hat"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/loric/godofug.webp"
  },
  {
   "id": "golem",
   "name": "Golem",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "You may only nominate once per game. When you do, if the nominee is not the Demon, they die.",
-  "firstNight": 0,
+  "flavor": "Golem help? Golem smash! Golem help.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "Can not nominate"
+   "May Not Nominate"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/golem_g.webp"
  },
  {
   "id": "goon",
   "name": "Goon",
   "team": "outsider",
+  "edition": "bmr",
   "ability": "Each night, the 1st player to choose you with their ability is drunk until dusk. You become their alignment.",
-  "firstNight": 0,
+  "flavor": "Yes boss. I explained fings real good to dat geezer. He don't want me explain it again. Nah boss, I don't need no doctor - it's only a knife wound. Be right come mornin'",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/goon_g.webp"
  },
  {
   "id": "gossip",
   "name": "Gossip",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each day, you may make a public statement. Tonight, if it was true, a player dies.",
-  "firstNight": 0,
+  "flavor": "Blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah. Blah.",
   "firstNightReminder": "",
-  "otherNight": 47,
-  "otherNightReminder": "If the Gossip's public statement was true: Choose a player not protected from dying tonight. That player dies.",
+  "otherNightReminder": "If the Gossip is due to kill a player, they die. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/gossip_g.webp"
  },
  {
   "id": "grandmother",
   "name": "Grandmother",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "You start knowing a good player & their character. If the Demon kills them, you die too.",
-  "firstNight": 39,
-  "firstNightReminder": "Show the marked character token. Point to the marked player.",
-  "otherNight": 50,
-  "otherNightReminder": "If the Grandmother's grandchild was killed by the Demon tonight: The Grandmother dies.",
+  "flavor": "Take a jacket if you go outside, dearie. And your thermos. And your scarf. I have a weak heart, you know. Whatever would I do if you caught cold...or worse?",
+  "firstNightReminder": "Point to the grandchild player & show their character token.",
+  "otherNightReminder": "If the grandchild was killed by the Demon, the Grandmother dies too. :reminder:",
   "reminders": [
-   "Grandchild"
+   "Grandchild",
+   "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
- },
- {
-  "id": "gudiao",
-  "name": "蛊雕",
-  "team": "minion",
-  "ability": "蛊雕：每个夜晚，你要选择左或右：将你的飞行标记从当前位置移动到这个方向上的下一名存活善良玩家。他中毒且可能被当作邪恶阵营和爪牙角色，你会知道他原本的角色。",
-  "firstNight": 17,
-  "firstNightReminder": "唤醒蛊雕，让其选择一个方向。将他的“中毒”标记移动至那个方向上的下一个存活玩家的角色标记旁。随后对他指向那名玩家，并展示“他是”提示标记和该玩家的角色标记。",
-  "otherNight": 8,
-  "otherNightReminder": "唤醒蛊雕，让其选择一个方向。将他的“中毒”标记移动至那个方向上的下一个存活玩家的角色标记旁。随后对他指向那名玩家，并展示“他是”提示标记和该玩家的角色标记。",
-  "reminders": [
-   "中毒"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "guhuoniao",
-  "name": "姑获鸟",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。你可能会拥有上一个死于处决的爪牙的能力。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 8430,
-  "otherNightReminder": "唤醒姑获鸟，让其选择一名玩家，在玩家角色标记旁放置“死亡”提示标记。",
-  "reminders": [
-   "死于处决"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/bmr/grandmother_g.webp"
  },
  {
   "id": "gunslinger",
   "name": "Gunslinger",
   "team": "traveller",
+  "edition": "tb",
   "ability": "Each day, after the 1st vote has been tallied, you may choose a player that voted: they die.",
-  "firstNight": 0,
+  "flavor": "It's time someone took matters into their own hands. That someone... is me.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/gunslinger_g.webp"
  },
  {
   "id": "harlot",
   "name": "Harlot",
   "team": "traveller",
+  "edition": "snv",
   "ability": "Each night*, choose a living player: if they agree, you learn their character, but you both might die.",
-  "firstNight": 0,
+  "flavor": "Enchanté, Sailor. You look like you need someone to really listen to your troubles. I'm a good listener. Very, very good.",
   "firstNightReminder": "",
-  "otherNight": 1,
-  "otherNightReminder": "The Harlot points at any player. Then, put the Harlot to sleep. Wake the chosen player, show them the 'This character selected you' token, then the Harlot token. That player either nods their head yes or shakes their head no. If they nodded their head yes, wake the Harlot and show them the chosen player's character token. Then, you may decide that both players die.",
+  "otherNightReminder": "The Harlot chooses a living player. Put the Harlot to sleep. Wake the chosen player, show them the *THIS CHARACTER SELECTED YOU* token, then the Harlot token. If that player nods their head, wake the Harlot and show them the chosen player's character token. Both players might die. :reminder: :reminder:",
   "reminders": [
+   "Dead",
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/harlot_g.webp"
  },
  {
   "id": "harpy",
   "name": "Harpy",
   "team": "minion",
+  "edition": "carousel",
   "ability": "Each night, choose 2 players: tomorrow, the 1st player is mad that the 2nd is evil, or one or both might die.",
-  "firstNight": 24,
-  "firstNightReminder": "Wake the Harpy; they point at one player, then another. Wake the 1st player the Harpy pointed to, show them the 'This character has selected you' card, show them the Harpy token, then point at the 2nd player the Harpy pointed to.",
-  "otherNight": 14,
-  "otherNightReminder": "Wake the Harpy; they point at one player, then another. Wake the 1st player the Harpy pointed to, show them the 'This character has selected you' card, show them the Harpy token, then point at the 2nd player the Harpy pointed to.",
+  "flavor": "So fair a day I never did see, nor so fowl a presence hanging over me.",
+  "firstNightReminder": "The Harpy chooses 2 players. :reminder: :reminder: Put the Harpy to sleep. Wake the 1st target. Show the *THIS CHARACTER SELECTED YOU* token, the Harpy token, then point to the 2nd target.",
+  "otherNightReminder": "The Harpy chooses 2 players. :reminder: :reminder: Put the Harpy to sleep. Wake the 1st target. Show the *THIS CHARACTER SELECTED YOU* token, the Harpy token, then point to the 2nd target.",
   "reminders": [
    "Mad",
    "2nd"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/harpy_g.webp"
  },
  {
   "id": "hatter",
   "name": "Hatter",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "If you died today or tonight, the Minion & Demon players may choose new Minion & Demon characters to be.",
-  "firstNight": 0,
+  "flavor": "One Hat. Too Hat. Three Hat. Tea Hat. Fore Hat. Thrive Hat. Six Hat. Sticks Hat.",
   "firstNightReminder": "",
-  "otherNight": 40,
-  "otherNightReminder": "If the Hatter died today: Wake the Minions and Demon. Show them the 'This Character Selected You' info token, then the Hatter token. Each player either shakes their head no or points to another character of the same type as their current character.  If a second player would end up with the same character as another player, shake your head no and gesture for them to choose again. Put them to sleep. Change each player to the character they chose.",
+  "otherNightReminder": "If the Hatter died, wake the Minions & Demons. Each may choose a new character. If they do, show the *YOU ARE* token & their new character token.",
   "reminders": [
    "Tea Party Tonight"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "hebo",
-  "name": "河伯",
-  "team": "traveller",
-  "ability": "如果你提名了与你阵营相同的玩家，他可能会在当晚死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/hatter_g.webp"
  },
  {
   "id": "hellslibrarian",
   "name": "Hell's Librarian",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "Something bad might happen to whoever talks when the Storyteller has asked for silence.",
+  "flavor": "Shhhhhh. Please be quiet. It is best not to disturb the Librarian. I've heard it has a temper.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
    "Something Bad"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/hellslibrarian.webp"
  },
  {
   "id": "heretic",
   "name": "Heretic",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "Whoever wins, loses & whoever loses, wins, even if you are dead.",
-  "firstNight": 0,
+  "flavor": "After the hail has smashed the roof and splintered the glass of the Cathedral windows, it melts again into the earth, like a dying lamb in the desert sun. Such is the parable of the madman.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/heretic_g.webp"
  },
  {
   "id": "hermit",
   "name": "Hermit",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "You have all Outsider abilities. [-0 or -1 Outsider]",
-  "firstNight": 0,
+  "flavor": "In the lost and forgotten places of the earth, the soul’s light beckons.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "1",
    "2",
    "3"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
- },
- {
-  "id": "heshang",
-  "name": "和尚",
-  "team": "townsfolk",
-  "ability": "每个夜晚，当有邪恶玩家的能力首次选择或影响与你邻近的存活玩家时，改为此次能力不生效，你会得知这一信息。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "已生效"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/hermit_g.webp"
  },
  {
   "id": "highpriestess",
   "name": "High Priestess",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, learn which player the Storyteller believes you should talk to most.",
-  "firstNight": 50,
+  "flavor": "There is life behind the personality that uses personalities as masks. There are times when life puts off the mask and deep answers to deep.",
   "firstNightReminder": "Point to a player.",
-  "otherNight": 69,
   "otherNightReminder": "Point to a player.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/highpriestess_g.webp"
  },
  {
   "id": "hindu",
   "name": "Hindu",
   "team": "fabled",
+  "edition": "loric",
   "ability": "The first 4 players to die are immediately reincarnated as Travellers of the same alignment.",
+  "flavor": "चत्वारो मृत्युमध्ये पतन्ति, चत्वारो यात्री पुनरुद्गताः। चत्वारो धर्मे स्थितचित्तवृत्तेः, चत्वार एषां न पुनः क्षयः॥",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "huapi",
-  "name": "画皮",
-  "team": "minion",
-  "ability": "在你的首个夜晚，你要选择一名存活玩家：他死亡但会被当作存活。当他下一次死亡时，他重生，随后你重获能力。",
-  "firstNight": 6310,
-  "firstNightReminder": "首个夜晚，唤醒画皮，让其选择一名玩家，该玩家进入“活尸”状态。在魔典中该玩家的角色标记上添加帷幕标记，和“以为存活”标记。但不要宣布该玩家已经死亡，也不要在城镇广场上将该玩家的生命标记翻面。",
-  "otherNight": 8810,
-  "otherNightReminder": "如果画皮选择的玩家重生，在画皮的角色标记旁放置“重获能力”标记。每个夜晚，如果画皮有“重获能力”标记，唤醒画皮，让其选择一名玩家，该玩家进入“活尸”状态。在魔典中该玩家的角色标记上添加帷幕标记，和“以为存活”标记。但不要宣布该玩家已经死亡，也不要在城镇广场上将该玩家的生命标记翻面。",
-  "reminders": [
-   "以为存活",
-   "重获能力"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "humeiniang",
-  "name": "狐媚娘",
-  "team": "minion",
-  "ability": "在你的首个夜晚，你要选择一名玩家：他会知道狐媚娘在场。如果你死于处决，当晚他转变为邪恶阵营。",
-  "firstNight": 27,
-  "firstNightReminder": "唤醒狐媚娘，让她选择一名玩家。标记那名玩家“被魅惑”。随后唤醒那名玩家，对他展示“该角色的能力对你触发”和狐媚娘角色标记。",
-  "otherNight": 6,
-  "otherNightReminder": "如果今日狐媚娘死于处决，且被魅惑的玩家为善良阵营，唤醒被魅惑的玩家，对他展示“你是”和朝下的大拇指。",
-  "reminders": [
-   "被魅惑"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "hundun",
-  "name": "混沌",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。恶魔与爪牙互相不认识。当首次有爪牙死亡时，当晚他们会互相认识。[+1爪牙]",
-  "firstNight": 0,
-  "firstNightReminder": "如果混沌在场，注意不要唤醒爪牙和恶魔让他们互相认识。恶魔仍然能够得知自己的三个伪装。",
-  "otherNight": 0,
-  "otherNightReminder": "唤醒混沌，让他选择一名玩家，标记那名玩家死亡。如果混沌存活时有爪牙首次死亡，进行爪牙与恶魔的互认环节。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": true,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/loric/hindu.webp"
  },
  {
   "id": "huntsman",
   "name": "Huntsman",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Once per game, at night, choose a living player: the Damsel, if chosen, becomes a not-in-play Townsfolk. [+the Damsel]",
-  "firstNight": 30,
-  "firstNightReminder": "The Huntsman shakes their head 'no' or points to a player. If they point to the Damsel, wake that player, show the 'You are' card and a not-in-play character token.",
-  "otherNight": 51,
-  "otherNightReminder": "The Huntsman shakes their head 'no' or points to a player. If they point to the Damsel, wake that player, show the 'You are' card and a not-in-play character token.",
+  "flavor": "My cabin is warm and sturdy. My axe by the door, my boots drying by the fire, and elk stew a-simmering… Hark! A scream echoes through the valley! The rain and the mud and the cold, cold wind mask the scent of the wolves, but I know the path and my pace is steady. I am coming.",
+  "firstNightReminder": "The Huntsman might choose a player. :reminder: If they chose the Damsel: Put the Huntsman to sleep. Wake the target. Show the *YOU ARE* info token & their new character token.",
+  "otherNightReminder": "The Huntsman might choose a player. :reminder: If they chose the Damsel: Put the Huntsman to sleep. Wake the target. Show the *YOU ARE* info token & their new character token.",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/huntsman_g.webp"
  },
  {
   "id": "imp",
   "name": "Imp",
   "team": "demon",
+  "edition": "tb",
   "ability": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp.",
-  "firstNight": 0,
+  "flavor": "We must keep our wits sharp and our sword sharper. Evil walks among us, and will stop at nothing to destroy us good, simple folk, bringing our fine town to ruin. Trust no-one. But, if you must trust someone, trust me.",
   "firstNightReminder": "",
-  "otherNight": 24,
-  "otherNightReminder": "The Imp points to a player. That player dies. If the Imp chose themselves: Replace the character of 1 alive minion with a spare Imp token. Show the 'You are' card, then the Imp token.",
+  "otherNightReminder": "The Imp chooses a player. :reminder: If the Imp chose themselves: Replace 1 alive Minion token with a spare Imp token. Put the old Imp to sleep. Wake the new Imp. Show the *YOU ARE* token, then show the Imp token.",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/imp_g.webp"
  },
  {
   "id": "innkeeper",
   "name": "Innkeeper",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each night*, choose 2 players: they can't die tonight, but 1 is drunk until dusk.",
-  "firstNight": 0,
+  "flavor": "Come inside, fair traveller, and rest your weary bones. Drink and be merry, for the legions of the Dark One shall not harass thee tonight.",
   "firstNightReminder": "",
-  "otherNight": 9,
-  "otherNightReminder": "The previously protected and drunk players lose those markers. The Innkeeper points to two players. Those players are protected. One is drunk.",
+  "otherNightReminder": "The Innkeeper chooses 2 players. :reminder: :reminder: :reminder:",
   "reminders": [
-   "Protected",
+   "Safe",
+   "Safe",
    "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/innkeeper_g.webp"
  },
  {
   "id": "investigator",
   "name": "Investigator",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "You start knowing that 1 of 2 players is a particular Minion.",
-  "firstNight": 34,
-  "firstNightReminder": "Show the character token of a Minion in play. Point to two players, one of which is that character.",
-  "otherNight": 0,
+  "flavor": "It is a fine night for a stroll, wouldn't you say, Mister Morozov? Or should I say... BARON Morozov?",
+  "firstNightReminder": "Show the Minion character token. Point to both the *MINION* and *WRONG* players.",
   "otherNightReminder": "",
   "reminders": [
    "Minion",
    "Wrong"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
- },
- {
-  "id": "jianning",
-  "name": "奸佞",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。如果你今天白天没有投票，今晚你可以行动两次。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 27,
-  "otherNightReminder": "唤醒奸佞，让其选择一名玩家。如果白天奸佞未被提名，改为让其选择两名玩家。标记他选择的玩家死亡。",
-  "reminders": [
-   "死亡",
-   "未被提名",
-   "已被提名"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "jiaohuazi",
-  "name": "叫花子",
-  "team": "traveller",
-  "ability": "每个白天限一次，你可以公开选择一名其他玩家，让他选择一个非恶魔角色：你可能会获得这个角色的能力，直到下个黎明。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "jinweijun",
-  "name": "禁卫军",
-  "team": "minion",
-  "ability": "“疯狂”地想要死亡的玩家可能会立即被处决。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "jinweijun2",
-  "name": "禁卫军Ⅱ",
-  "team": "minion",
-  "ability": "在你的首个夜晚，你要选择存活或死亡。“疯狂”地想要这样做的玩家可能会立即被处决。",
-  "firstNight": 5610,
-  "firstNightReminder": "唤醒禁卫军，给他展示“求生”和“求死”标记，让其选择一枚，并让他重新入睡。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "求生",
-   "求死"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "jinyiwei",
-  "name": "锦衣卫",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你要选择一名玩家：如果他在下个黄昏前死亡，你代替他死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 14,
-  "otherNightReminder": "移除上个夜晚放置的“保护”标记。唤醒锦衣卫，让其选择一名玩家。在该玩家角色标记旁放置“保护”提示标记。",
-  "reminders": [
-   "保护"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "jiubao",
-  "name": "酒保",
-  "team": "outsider",
-  "ability": "与你邻近的善良玩家之一醉酒，即使你已死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "醉酒"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/tb/investigator_g.webp"
  },
  {
   "id": "judge",
   "name": "Judge",
   "team": "traveller",
+  "edition": "bmr",
   "ability": "Once per game, if another player nominated, you may choose to force the current execution to pass or fail.",
-  "firstNight": 0,
+  "flavor": "I find the defendant guilty of the crimes of murder, fraud, arson, larceny, impersonating an officer of the law, practicing medicine without a license, slander, regicide, and littering.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/judge_g.webp"
  },
  {
   "id": "juggler",
   "name": "Juggler",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "On your 1st day, publicly guess up to 5 players' characters. That night, you learn how many you got correct.",
-  "firstNight": 0,
+  "flavor": "For my next trick, as per request, I will need a flower, a bag of beans, a toy snake, a paintbrush, and a motorized gasoline-powered hedge trimming device. I warn you, this trick may be my last. Oh dear.",
   "firstNightReminder": "",
-  "otherNight": 62,
-  "otherNightReminder": "If today was the Juggler's first day: Show the hand signal for the number (0, 1, 2, etc.) of 'Correct' markers. Remove markers.",
+  "otherNightReminder": "Give a finger signal.",
   "reminders": [
+   "Correct",
+   "Correct",
+   "Correct",
+   "Correct",
    "Correct"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/juggler_g.webp"
  },
  {
   "id": "kazali",
   "name": "Kazali",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, choose a player: they die. [You choose which players are which Minions. -? to +? Outsiders]",
-  "firstNight": 2,
-  "firstNightReminder": "The Kazali points at a player and a Minion on the character sheet. Replace their old character token with the Minion token, show them the “You Are” info token then the Minion character token, and give a thumbs down. Repeat until the normal number of Minions exist. Put the Kazali to sleep.",
-  "otherNight": 35,
-  "otherNightReminder": "The Kazali points to a player. That player dies.",
+  "flavor": "Gon(z)a7les6. Take cau8tun. The mech4an4ion is iNvert10d. E99ors insy6tum. Reco{7}fig.",
+  "firstNightReminder": "The Kazali chooses which players are which Minions. Wake each target. Show the *YOU ARE* and Minion tokens & give a thumbs-down.",
+  "otherNightReminder": "The Kazali chooses a player. :reminder:",
   "reminders": [
    "Dead"
   ],
-  "setup": true
+  "remindersGlobal": [],
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/carousel/kazali_g.webp"
  },
  {
   "id": "king",
   "name": "King",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, if the dead equal or outnumber the living, you learn 1 alive character. The Demon knows you are the King.",
-  "firstNight": 9,
-  "firstNightReminder": "Wake the Demon, show them the 'This character selected you' card, show the King token and point to the King player.",
-  "otherNight": 64,
-  "otherNightReminder": "If there are more dead than living, show the King a character token of a living player.",
+  "flavor": "Betwixt the unknown strains of mortal strife / And morbid night, sweet with mystery and woe / Lies unfettered joys of fate’s long and colored life / Who’s garden blooms with each painted Face to Show.",
+  "firstNightReminder": "Wake the Demon: Show the *THIS PLAYER IS* & King tokens, then point to the King.",
+  "otherNightReminder": "If the dead equal or outnumber the living, show the character token of a living player.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/king_g.webp"
  },
  {
   "id": "klutz",
   "name": "Klutz",
   "team": "outsider",
+  "edition": "snv",
   "ability": "When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.",
-  "firstNight": 0,
+  "flavor": "Oops.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/klutz_g.webp"
  },
  {
   "id": "knaves",
   "name": "Knaves",
   "team": "fabled",
+  "edition": "loric",
   "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
+  "flavor": "Every wall is a door. Every meal is a feast.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/loric/knaves.webp"
  },
  {
   "id": "knight",
   "name": "Knight",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing 2 players that are not the Demon.",
-  "firstNight": 42,
-  "firstNightReminder": "Point to 2 non-Demon players.",
-  "otherNight": 0,
+  "flavor": "When a man lies, he murders some part of the world.",
+  "firstNightReminder": "Point to the 2 players marked *KNOW*.",
   "otherNightReminder": "",
   "reminders": [
    "Know",
    "Know"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "langzhong",
-  "name": "郎中",
-  "team": "townsfolk",
-  "ability": "每个夜晚，你要选择一名玩家：你会得知一个与他能力相关的词语。",
-  "firstNight": 35,
-  "firstNightReminder": "唤醒郎中，让其指向一名玩家。以不会被其他玩家察觉的形式对其提供与该玩家角色能力相关的一个词语。",
-  "otherNight": 61,
-  "otherNightReminder": "唤醒郎中，让其指向一名玩家。以不会被其他玩家察觉的形式对其提供与该玩家角色能力相关的一个词语。",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "lankeren",
-  "name": "烂柯人",
-  "team": "townsfolk",
-  "ability": "你不知道你的阵营（你有可能会属于邪恶阵营）。在你的首个夜晚，你会得知三名玩家，其中有且仅有两名玩家与你同一阵营。",
-  "firstNight": 28,
-  "firstNightReminder": "决定烂柯人的阵营，并唤醒他，指向三名玩家。其中两名玩家与他同一阵营。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "被得知"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/knight_g.webp"
  },
  {
   "id": "legion",
   "name": "Legion",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, a player might die. Executions fail if only evil voted. You register as a Minion too. [Most players are Legion]",
-  "firstNight": 0,
+  "flavor": "We are the chill wind on a winter’s day. We are the shadow in the moonless night. We are the poison in your tea and the whisper in your ear. We are everywhere.",
   "firstNightReminder": "",
-  "otherNight": 34,
-  "otherNightReminder": "Choose a player, that player dies.",
+  "otherNightReminder": "A player might die. :reminder:",
   "reminders": [
    "Dead",
-   "About to die"
+   "About To Die"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/legion_g.webp"
  },
  {
   "id": "leviathan",
   "name": "Leviathan",
   "team": "demon",
+  "edition": "carousel",
   "ability": "If more than 1 good player is executed, evil wins. All players know you are in play. After day 5, evil wins.",
-  "firstNight": 52,
-  "firstNightReminder": "Place the Leviathan 'Day 1' marker. Announce 'The Leviathan is in play; this is Day 1.'",
-  "otherNight": 72,
-  "otherNightReminder": "Change the Leviathan Day reminder for the next day.",
+  "flavor": "To the last, I grapple with thee. From Hell’s heart, I stab at thee. For hate’s sake, I spit my last breath at thee.",
+  "firstNightReminder": "Announce that the Leviathan is in play. :reminder:",
+  "otherNightReminder": "Change the Leviathan reminder token to the relevant day. :reminder: You may announce that the Leviathan is in play.",
   "reminders": [
    "Day 1",
    "Day 2",
    "Day 3",
    "Day 4",
    "Day 5",
-   "Good player executed"
+   "Good Player Executed"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/leviathan_g.webp"
  },
  {
   "id": "librarian",
   "name": "Librarian",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "You start knowing that 1 of 2 players is a particular Outsider. (Or that zero are in play.)",
-  "firstNight": 33,
-  "firstNightReminder": "Show the character token of an Outsider in play. Point to two players, one of which is that character.",
-  "otherNight": 0,
+  "flavor": "Certainly madam, under normal circumstances, you may borrow the Codex Malificarium from the library vaults. However, you do not seem to be a member.",
+  "firstNightReminder": "Show the Outsider character token. Point to both the *OUTSIDER* and *WRONG* players.",
   "otherNightReminder": "",
   "reminders": [
    "Outsider",
    "Wrong"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/librarian_g.webp"
  },
  {
   "id": "lilmonsta",
   "name": "Lil' Monsta",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night, Minions choose who babysits Lil' Monsta & \"is the Demon\". Each night*, a player might die. [+1 Minion]",
-  "firstNight": 16,
-  "firstNightReminder": "Wake all Minions together, allow them to vote by pointing at who they want to babysit Lil' Monsta.",
-  "otherNight": 36,
-  "otherNightReminder": "Wake all Minions together, allow them to vote by pointing at who they want to babysit Lil' Monsta. Choose a player, that player dies.",
+  "flavor": "Step 1: Be cute. Step 2: World domination. Step 3: Bweakfast.",
+  "firstNightReminder": "Wake the Minions. They choose a player. :reminder: Put the Minions to sleep. Wake the target. Show the *YOU ARE* & Lil' Monsta tokens.",
+  "otherNightReminder": "Wake the Minions. They choose a player. :reminder: Put the Minions to sleep. Wake the target. Show the *YOU ARE* & Lil' Monsta tokens. A player might die. :reminder:",
   "reminders": [],
-  "setup": true,
-  "edition": ""
- },
- {
-  "id": "limao",
-  "name": "狸猫",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你要选择一名除你及旅行者以外的玩家：如果恶魔在今晚杀死了他，你和他交换角色，然后你醉酒。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 2510,
-  "otherNightReminder": "唤醒狸猫，让他指向一名玩家。让狸猫重新入睡。将“太子”标记放在对应玩家角色标记旁。 如果标记太子的玩家死亡且不是恶魔，在魔典中交换狸猫和太子的角色标记。在新的交换后的角色旁放置“醉酒”提示标记。唤醒新的狸猫并依次向他展示“你是”信息标记、狸猫的角色标记。让狸猫重新入睡。唤醒原来的狸猫并依次向他展示“你是”信息标记，“太子”的角色标记。",
-  "reminders": [
-   "太子",
-   "醉酒"
+  "remindersGlobal": [
+   "Is The Demon",
+   "Dead"
   ],
-  "setup": false,
-  "edition": "syyl"
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/carousel/lilmonsta_g.webp"
  },
  {
   "id": "lleech",
   "name": "Lleech",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, choose a player: they die. You start by choosing a player: they are poisoned. You die if & only if they are dead.",
-  "firstNight": 15,
-  "firstNightReminder": "The Lleech points to a player. Place the Poisoned reminder token.",
-  "otherNight": 35,
-  "otherNightReminder": "The Lleech points to a player. That player dies.",
+  "flavor": "Tasty, tasty, tasty, tasty, tasty, tasty, tasty, tasty brai- I mean pie! Yes. Tasty pie. That’s what I meant to say.",
+  "firstNightReminder": "The Lleech chooses a player. :reminder:",
+  "otherNightReminder": "The Lleech chooses a player. :reminder:",
   "reminders": [
    "Dead",
    "Poisoned"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/lleech_g.webp"
  },
  {
   "id": "lordoftyphon",
   "name": "Lord of Typhon",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, choose a player: they die. [Evil characters are in a line. You are in the middle. +1 Minion. -? to +? Outsiders]",
-  "firstNight": 1,
-  "firstNightReminder": "Wake the players on either side of the Demon. Show them the 'You Are' card, the token of the Minion they now are, and a thumbs down to indicate they are evil.",
-  "otherNight": 31,
-  "otherNightReminder": "The Lord of Typhon points to a player. That player dies.",
+  "flavor": "In the shadowed and forgotten corners of the cosmos, where the stars whisper secrets to the void, lies a truth so profound that the merest glimpse of it unravels the sanity of mortal minds.",
+  "firstNightReminder": "Wake the Lord of Typhon's neighbors. Show the *YOU ARE* and Minion tokens & give a thumbs-down.",
+  "otherNightReminder": "The Lord of Typhon chooses a player. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/lordoftyphon_g.webp"
  },
  {
   "id": "lunatic",
   "name": "Lunatic",
   "team": "outsider",
+  "edition": "bmr",
   "ability": "You think you are a Demon, but you are not. The Demon knows who you are & who you choose at night.",
-  "firstNight": 7,
-  "firstNightReminder": "If 7 or more players: Show the Lunatic a number of arbitrary 'Minions', players equal to the number of Minions in play. Show 3 character tokens of arbitrary good characters. If the token received by the Lunatic is a Demon that would wake tonight: Allow the Lunatic to do the Demon actions. Place their 'attack' markers. Wake the Demon. Show the Demon's real character token. Show them the Lunatic player. If the Lunatic attacked players: Show the real demon each marked player. Remove any Lunatic 'attack' markers.",
-  "otherNight": 21,
-  "otherNightReminder": "Allow the Lunatic to do the actions of the Demon. Place their 'attack' markers. If the Lunatic selected players: Wake the Demon. Show the 'attack' marker, then point to each marked player. Remove any Lunatic 'attack' markers.",
+  "flavor": "I am the night... I think.",
+  "firstNightReminder": "If there are 7 or more players, wake the Lunatic: Show the *THESE ARE YOUR MINIONS* token. Point to any players. Show the *THESE CHARACTERS ARE NOT IN PLAY* token. Show 3 good character tokens. Put the Lunatic to sleep. Wake the Demon. Show the *YOU ARE* info token and the Demon token. Show the *THIS PLAYER IS* info token and the Lunatic token, then point to the Lunatic.",
+  "otherNightReminder": "Do whatever needs to be done to simulate the Demon acting. Put the Lunatic to sleep. Wake the Demon. Show the Lunatic token & point to them, then their target(s).",
   "reminders": [
-   "Attack 1",
-   "Attack 2",
-   "Attack 3"
+   "Chosen",
+   "Chosen",
+   "Chosen"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/lunatic_g.webp"
  },
  {
   "id": "lycanthrope",
   "name": "Lycanthrope",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night*, choose an alive player. If good, they die & the Demon doesn’t kill tonight. One good player registers as evil.",
-  "firstNight": 0,
+  "flavor": "Beneath the thin veneer of civilisation lies a howling madness.",
   "firstNightReminder": "",
-  "otherNight": 23,
-  "otherNightReminder": "The Lycanthrope points to a living player: if good, they die and no one else can die tonight.",
+  "otherNightReminder": "The Lycanthrope chooses a player. :reminder:",
   "reminders": [
-   "Dead",
-   "Faux Paw"
+   "Faux Paw",
+   "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/lycanthrope_g.webp"
  },
  {
   "id": "magician",
   "name": "Magician",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "The Demon thinks you are a Minion. Minions think you are a Demon.",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
+  "flavor": "1... 2... Abra... 3... 4... Cadabra... *poof!* And, as you can see, ladies and gentlemen, Captain Farnsworth’s bag of gold has disappeared! Gone! Without a trace! Thank you, and goodnight!",
+  "firstNightReminder": "During Minion Info, point to the Magician and the Demon. During Demon Info, point to the Magician and the Minions.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/magician_g.webp"
  },
  {
   "id": "marionette",
   "name": "Marionette",
   "team": "minion",
+  "edition": "carousel",
   "ability": "You think you are a good character, but you are not. The Demon knows who you are. [You neighbor the Demon]",
-  "firstNight": 11,
-  "firstNightReminder": "Select one of the good players next to the Demon and place the Is the Marionette reminder token. Wake the Demon and show them the Marionette.",
-  "otherNight": 0,
+  "flavor": "Words, words. They're all we have to go on.",
+  "firstNightReminder": "Wake the Demon. Show the *THIS PLAYER IS* & Marionette tokens. Point to the Marionette.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [
+   "Is The Marionette"
+  ],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/marionette_g.webp"
  },
  {
   "id": "mastermind",
   "name": "Mastermind",
   "team": "minion",
+  "edition": "bmr",
   "ability": "If the Demon dies by execution (ending the game), play for 1 more day. If a player is then executed, their team loses.",
-  "firstNight": 0,
+  "flavor": "The tentacles of that monster are nailed to the doors of the church. Mothers and children are dancing in the street. Excellent. Everything is proceeding exactly as I have planned.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/mastermind_g.webp"
  },
  {
   "id": "mathematician",
   "name": "Mathematician",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night, you learn how many players’ abilities worked abnormally (since dawn) due to another character's ability.",
-  "firstNight": 50,
-  "firstNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of players whose ability malfunctioned due to other abilities.",
-  "otherNight": 70,
-  "otherNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of players whose ability malfunctioned due to other abilities.",
+  "flavor": "Any consistent formal system x, within which a certain amount of elementary arithmetic can be carried out is incomplete; that is, there are statements of the language of x which can neither be proved nor disproved in x. Ergo, you are drunk.",
+  "firstNightReminder": "Give a finger signal.",
+  "otherNightReminder": "Give a finger signal.",
   "reminders": [
+   "Abnormal",
+   "Abnormal",
+   "Abnormal",
+   "Abnormal",
    "Abnormal"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/mathematician_g.webp"
  },
  {
   "id": "matron",
   "name": "Matron",
   "team": "traveller",
+  "edition": "bmr",
   "ability": "Each day, you may choose up to 3 sets of 2 players to swap seats. Players may not leave their seats to talk in private.",
-  "firstNight": 0,
+  "flavor": "Miss Featherbottom, be quiet. Master Rutherford, a teacup needs just the four fingers, please. I know you are a father of nine, but age, or lack there-of as the case may be, is never an excuse for poor manners.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/matron_g.webp"
  },
  {
   "id": "mayor",
   "name": "Mayor",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "If only 3 players live & no execution occurs, your team wins. If you die at night, another player might die instead.",
-  "firstNight": 0,
+  "flavor": "We must put our differences aside, and cease this senseless killing. We are all taxpayers after all. Well, most of us.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
- },
- {
-  "id": "mengpo",
-  "name": "孟婆",
-  "team": "minion",
-  "ability": "每个夜晚*，你要选择一名玩家：如果他存活，那么他要选择让自己失去能力，或死亡并保留能力直到下个黄昏。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 8820,
-  "otherNightReminder": "唤醒孟婆，让其选择一名玩家，随后让孟婆闭眼。唤醒孟婆选择的玩家，依次向他展示“该角色的能力对你生效”信息标记、孟婆的角色标记，随后让其用点头或者摇头来表示想要生死。如果其点头，放置“失去能力”标记，如果其摇头，放置“保留能力”标记。",
-  "reminders": [
-   "保留能力",
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/tb/mayor_g.webp"
  },
  {
   "id": "mezepheles",
   "name": "Mezepheles",
   "team": "minion",
+  "edition": "carousel",
   "ability": "You start knowing a secret word. The 1st good player to say this word becomes evil that night.",
-  "firstNight": 27,
-  "firstNightReminder": "Show the Mezepheles their secret word.",
-  "otherNight": 19,
-  "otherNightReminder": "Wake the 1st good player that said the Mezepheles' secret word and show them the 'You are' card and the thumbs down evil signal.",
+  "flavor": "That which issues from the heart alone, will bend the hearts of others to your own.",
+  "firstNightReminder": "Show the secret word.",
+  "otherNightReminder": "If a good player said the secret word, wake the player. Show the *YOU ARE* info token & give a thumbs-down. :reminder: :reminder:",
   "reminders": [
-   "Turns evil",
-   "No ability"
+   "Turns Evil",
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/mezepheles_g.webp"
  },
  {
   "id": "minstrel",
   "name": "Minstrel",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "When a Minion dies by execution, all other players (except Travellers) are drunk until dusk tomorrow.",
-  "firstNight": 0,
+  "flavor": "And I shall hear, tho' soft you tread above me... And all my dreams will warm and sweeter be... If you'll not fail to tell me that you love me... I simply sleep in peace until you come to me.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "Everyone drunk"
+   "Everyone Is Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/minstrel_g.webp"
  },
  {
   "id": "monk",
   "name": "Monk",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "Each night*, choose a player (not yourself): they are safe from the Demon tonight.",
-  "firstNight": 0,
+  "flavor": "'Tis an ill and deathly wind that blows tonight. Come, my brother, take shelter in the abbey while the storm rages. By my word, or by my life, you will be safe.",
   "firstNightReminder": "",
-  "otherNight": 13,
-  "otherNightReminder": "The previously protected player is no longer protected. The Monk points to a player not themself. Mark that player 'Protected'.",
+  "otherNightReminder": "The Monk chooses a player. :reminder:",
   "reminders": [
-   "Protected"
+   "Safe"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/monk_g.webp"
  },
  {
   "id": "moonchild",
   "name": "Moonchild",
   "team": "outsider",
+  "edition": "bmr",
   "ability": "When you learn that you died, publicly choose 1 alive player. Tonight, if it was a good player, they die.",
-  "firstNight": 0,
+  "flavor": "Scorpio looks sideways at the lovers, and you have a choice to make. With silver cross my palm, and your fate shall be revealed. With steel cross my throat, and by the stars you shall regret it.",
   "firstNightReminder": "",
-  "otherNight": 49,
-  "otherNightReminder": "If the Moonchild used their ability to target a player today: If that player is good, they die.",
+  "otherNightReminder": "If the Moonchild is due to kill a good player, they die. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/moonchild_g.webp"
  },
  {
   "id": "mutant",
   "name": "Mutant",
   "team": "outsider",
+  "edition": "snv",
   "ability": "If you are “mad” about being an Outsider, you might be executed.",
-  "firstNight": 0,
+  "flavor": "I am not a freak! I am a human being! Have mercy!",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
- },
- {
-  "id": "niangjiushi",
-  "name": "酿酒师",
-  "team": "minion",
-  "ability": "每个夜晚，你要选择一个善良角色并给出相应的信息形式：该角色通过自身能力获取信息时，改为得知你给出的信息，直到下个黄昏。[-1外来者]",
-  "firstNight": 18,
-  "firstNightReminder": "唤醒酿酒师，让其选择一个角色并给出该角色对应的信息形式。如果该角色在场，在对应的角色标记旁放置“微醺”提示标记。如有必要，记录下该信息形式作为备忘，但不要将这一信息展示给任何能查看魔典的玩家。",
-  "otherNight": 9,
-  "otherNightReminder": "唤醒酿酒师，让其选择一个角色并给出该角色对应的信息形式。如果该角色在场，在对应的角色标记旁放置“微醺”提示标记。如有必要，记录下该信息形式作为备忘，但不要将这一信息展示给任何能查看魔典的玩家。",
-  "reminders": [
-   "微醺"
-  ],
-  "setup": true,
-  "edition": "hdcs"
- },
- {
-  "id": "nichen",
-  "name": "逆臣",
-  "team": "outsider",
-  "ability": "在你的首个夜晚，你要选择除你以外的一名玩家：如果他先死于处决，你转变为邪恶；如果你先死于处决，他转变为邪恶。",
-  "firstNight": 38,
-  "firstNightReminder": "唤醒逆臣，让其选择一名玩家。在该玩家的角色标记旁放置“不共戴天”提示标记。",
-  "otherNight": 1,
-  "otherNightReminder": "如果逆臣或标记了“不共戴天”的玩家死于处决，唤醒两者之中的另一名玩家，告诉他变为邪恶阵营。",
-  "reminders": [
-   "不共戴天"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/snv/mutant_g.webp"
  },
  {
   "id": "nightwatchman",
   "name": "Nightwatchman",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Once per game, at night, choose a player: they learn you are the Nightwatchman.",
-  "firstNight": 46,
-  "firstNightReminder": "The Nightwatchman may point to a player. Wake that player, show the 'This character selected you' card and the Nightwatchman token, then point to the Nightwatchman player.",
-  "otherNight": 66,
-  "otherNightReminder": "The Nightwatchman may point to a player. Wake that player, show the 'This character selected you' card and the Nightwatchman token, then point to the Nightwatchman player.",
+  "flavor": "The night is cold and lonely, but I have the moon, the stars, the crisp wind and the soft thud of leather boots on cobbled stone for company. Yonder, candlelight flickers behind a murky window...",
+  "firstNightReminder": "The Nightwatchman might choose a player. Put the Nightwatchman to sleep. Wake the target. Show the *THIS PLAYER IS* & Nightwatchman tokens, then point to the Nightwatchman. :reminder:",
+  "otherNightReminder": "The Nightwatchman might choose a player. Put the Nightwatchman to sleep. Wake the target. Show the *THIS PLAYER IS* & Nightwatchman tokens, then point to the Nightwatchman. :reminder:",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/nightwatchman_g.webp"
  },
  {
   "id": "noble",
   "name": "Noble",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing 3 players, 1 and only 1 of which is evil.",
-  "firstNight": 43,
-  "firstNightReminder": "Point to 3 players including one evil player, in no particular order.",
-  "otherNight": 0,
+  "flavor": "Sarcasm is indeed the lowest form of wit. But speaking in response to your criticism, Sir, it is, nevertheless, a form of wit.",
+  "firstNightReminder": "Point to the 3 players marked *KNOW*.",
   "otherNightReminder": "",
   "reminders": [
-   "Seen"
+   "Know",
+   "Know",
+   "Know"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/noble_g.webp"
  },
  {
   "id": "nodashii",
   "name": "No Dashii",
   "team": "demon",
+  "edition": "snv",
   "ability": "Each night*, choose a player: they die. Your 2 Townsfolk neighbors are poisoned.",
-  "firstNight": 0,
+  "flavor": "By the sins of Arnoch, I feel thy laden stench. By the curs-ed sun and her foul legion of tiny grinning gods, I corrupt thee. By the blessed night and the hidden depths of the horrid and unholy sea, I end thy squalid life upon this plane.",
   "firstNightReminder": "",
-  "otherNight": 30,
-  "otherNightReminder": "The No Dashii points to a player. That player dies.",
+  "otherNightReminder": "The No Dashii chooses a player. :reminder:",
   "reminders": [
    "Dead",
+   "Poisoned",
    "Poisoned"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/nodashii_g.webp"
  },
  {
   "id": "ogre",
   "name": "Ogre",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "On your 1st night, choose a player (not yourself): you become their alignment (you don't know which) even if drunk or poisoned.",
-  "firstNight": 49,
-  "firstNightReminder": "The Ogre points to a player (not themselves) and becomes their alignment.",
-  "otherNight": 0,
+  "flavor": "<grunt><grin></grunt>",
+  "firstNightReminder": "The Ogre chooses a player. :reminder:",
   "otherNightReminder": "",
   "reminders": [
    "Friend"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/ogre_g.webp"
  },
  {
   "id": "ojo",
   "name": "Ojo",
   "team": "demon",
+  "edition": "carousel",
   "ability": "Each night*, choose a character: they die. If they are not in play, the Storyteller chooses who dies.",
-  "firstNight": 0,
+  "flavor": "Like a bonfire on a moonless night… I see you, mortal.",
   "firstNightReminder": "",
-  "otherNight": 32,
-  "otherNightReminder": "The Ojo points to a character on the sheet; if in play, that player dies. If it is not in play, the Storyteller chooses who dies instead.",
+  "otherNightReminder": "The Ojo chooses a character. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/ojo_g.webp"
  },
  {
   "id": "oracle",
   "name": "Oracle",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night*, you learn how many dead players are evil.",
-  "firstNight": 0,
+  "flavor": "Only the chosen may gaze beyond the veil. The dead are restless, and they point in silence toward the icy north.",
   "firstNightReminder": "",
-  "otherNight": 60,
-  "otherNightReminder": "Show the hand signal for the number (0, 1, 2, etc.) of dead evil players.",
+  "otherNightReminder": "Give a finger signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/oracle_g.webp"
  },
  {
   "id": "organgrinder",
   "name": "Organ Grinder",
   "team": "minion",
+  "edition": "carousel",
   "ability": "All players keep their eyes closed when voting and the vote tally is secret. Each night, choose if you are drunk until dusk.",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
+  "flavor": "Round and round the handles go. The more you dance the less you know.",
+  "firstNightReminder": "The Organ Grinder either nods their head yes to be drunk, or shakes their head no to be sober. :reminder:",
+  "otherNightReminder": "The Organ Grinder either nods their head yes to be drunk, or shakes their head no to be sober. :reminder:",
   "reminders": [
-   "Drunk",
-   "About to die"
+   "About To Die",
+   "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/organgrinder_g.webp"
  },
  {
   "id": "pacifist",
   "name": "Pacifist",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Executed good players might not die.",
-  "firstNight": 0,
+  "flavor": "Distrust all in whom the impulse to punish is powerful.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
- },
- {
-  "id": "panguan",
-  "name": "判官",
-  "team": "minion",
-  "ability": "在你的首个夜晚，你会得知一个关键词。在白天时（最后一天除外）有邪恶玩家首次说出该关键词会使得当前白天阶段立即结束。",
-  "firstNight": 0,
-  "firstNightReminder": "唤醒判官，并对其展示关键词。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/bmr/pacifist_g.webp"
  },
  {
   "id": "philosopher",
   "name": "Philosopher",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Once per game, at night, choose a good character: gain that ability. If this character is in play, they are drunk.",
-  "firstNight": 2,
-  "firstNightReminder": "The Philosopher either shows a 'no' head signal, or points to a good character on their sheet. If they chose a character: Swap the out-of-play character token with the Philosopher token. Or, if the character is in play, place the drunk marker by that player and the Not the Philosopher token by the Philosopher.",
-  "otherNight": 2,
-  "otherNightReminder": "If the Philosopher has not used their ability: the Philosopher either shows a 'no' head signal, or points to a good character on their sheet. If they chose a character: Swap the out-of-play character token with the Philosopher token. Or, if the character is in play, place the drunk marker by that player and the Not the Philosopher token by the Philosopher.",
-  "reminders": [],
+  "flavor": "If anything is real, beer is real. Drink, for tomorrow we may die.",
+  "firstNightReminder": "The Philosopher might choose a character. If necessary, swap their character token. :reminder:",
+  "otherNightReminder": "The Philosopher might choose a character. If necessary, swap their character token. :reminder:",
+  "reminders": [
+   "Drunk"
+  ],
+  "remindersGlobal": [
+   "Is The Philosopher"
+  ],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/philosopher_g.webp"
  },
  {
   "id": "pithag",
   "name": "Pit-Hag",
   "team": "minion",
+  "edition": "snv",
   "ability": "Each night*, choose a player & a character they become (if not in play). If a Demon is made, deaths tonight are arbitrary.",
-  "firstNight": 0,
+  "flavor": "Round about the cauldron go; In the poison'd entrails throw; Toad, that under cold stone; Days and nights has thirty-one; Sweated venom sleeping got; Boil thou first in the charmed pot.",
   "firstNightReminder": "",
-  "otherNight": 17,
-  "otherNightReminder": "The Pit-Hag points to a player and a character on the sheet. If this character is not in play, wake that player and show them the 'You are' card and the relevant character token. If the character is in play, nothing happens.",
+  "otherNightReminder": "The Pit-Hag chooses a player & a character. If they chose a character that is not in play: Put the Pit-Hag to sleep. Wake the target. Show the *YOU ARE* token & their new character token.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/pithag_g.webp"
  },
  {
   "id": "pixie",
   "name": "Pixie",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing 1 in-play Townsfolk. If you were mad that you were this character, you gain their ability when they die.",
-  "firstNight": 29,
-  "firstNightReminder": "Show the Pixie 1 in-play Townsfolk character token.",
-  "otherNight": 0,
+  "flavor": "Round and round the garden, go. Little girls run to and fro. Little boys climb up the tree. Which of these should Pixie be? Ladies smile and go to town.  Lords with axe chop forest down. What’s yours is mine. What’s mine, divine. Silly little Pixie, me.",
+  "firstNightReminder": "Show the Townsfolk character token marked *MAD*.",
   "otherNightReminder": "",
   "reminders": [
    "Mad",
-   "Has ability"
+   "Has Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/pixie_g.webp"
  },
  {
   "id": "plaguedoctor",
   "name": "Plague Doctor",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "When you die, the Storyteller gains a Minion ability.",
-  "firstNight": 0,
+  "flavor": "Pleauze shtay shtill. Thinks nid tiime for hillink. Myrhh-myrhh.",
   "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
+  "otherNightReminder": "If the Plague Doctor died, the Storyteller gained a Minion ability. If you haven’t done this yet, do so now. :reminder:",
   "reminders": [
    "Storyteller Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/plaguedoctor_g.webp"
  },
  {
   "id": "po",
   "name": "Po",
   "team": "demon",
+  "edition": "bmr",
   "ability": "Each night*, you may choose a player: they die. If your last choice was no-one, choose 3 players tonight.",
-  "firstNight": 0,
+  "flavor": "Would you like a flower? I'm so lonely.",
   "firstNightReminder": "",
-  "otherNight": 28,
-  "otherNightReminder": "If the Po chose no-one the previous night: The Po points to three players. Otherwise: The Po either shows the 'no' head signal , or points to a player. Chosen players die",
+  "otherNightReminder": "The Po may choose a player OR chooses 3 players if they chose no-one last night. :reminder: or :reminder: :reminder: :reminder:",
   "reminders": [
    "Dead",
-   "3 attacks"
+   "Dead",
+   "Dead",
+   "3 Attacks"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/po_g.webp"
  },
  {
   "id": "poisoner",
   "name": "Poisoner",
   "team": "minion",
+  "edition": "tb",
   "ability": "Each night, choose a player: they are poisoned tonight and tomorrow day.",
-  "firstNight": 17,
-  "firstNightReminder": "The Poisoner points to a player. That player is poisoned.",
-  "otherNight": 8,
-  "otherNightReminder": "The previously poisoned player is no longer poisoned. The Poisoner points to a player. That player is poisoned.",
+  "flavor": "Add compound Alpha to compound Beta... NOT TOO MUCH!",
+  "firstNightReminder": "The Poisoner chooses a player. :reminder:",
+  "otherNightReminder": "The Poisoner chooses a player. :reminder:",
   "reminders": [
    "Poisoned"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/poisoner_g.webp"
  },
  {
   "id": "politician",
   "name": "Politician",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "If you were the player most responsible for your team losing, you change alignment & win, even if dead.",
-  "firstNight": 0,
+  "flavor": "I'm glad you asked that question. Truly, I am. But I think the REAL question here is...",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/politician_g.webp"
  },
  {
   "id": "pope",
   "name": "Pope",
   "team": "fabled",
+  "edition": "loric",
   "ability": "There are duplicate good characters in play. They might also be bluffs.",
+  "flavor": "...Pulcherrimae.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/loric/pope.webp"
  },
  {
   "id": "poppygrower",
   "name": "Poppy Grower",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Minions & Demons do not know each other. If you die, they learn who each other are that night.",
-  "firstNight": 4,
-  "firstNightReminder": "Do not inform the Demon/Minions who each other are",
-  "otherNight": 3,
-  "otherNightReminder": "If the Poppy Grower has died, show the Minions/Demon who each other are.",
+  "flavor": "In the hidden groves of the deep forest, the black poppy dwells. To see its revelry is to be enchanted. To smell its thick aroma is to be lost forever, a slave to the gods of light and dark.",
+  "firstNightReminder": "Skip Minion Info and Demon Info. Wake the Demon. Show the *THESE CHARACTERS ARE NOT IN PLAY* token. Show 3 not-in-play good character tokens.",
+  "otherNightReminder": "If the Poppy Grower died today or tonight, wake all Minions. Show the *THIS IS THE DEMON* token. Point to the Demon. Put the Minions to sleep. Wake the Demon. Show the *THESE ARE YOUR MINIONS* token. Point to the Minions.",
   "reminders": [
-   "Evil wakes"
+   "Evil Wakes"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/poppygrower_g.webp"
  },
  {
   "id": "preacher",
   "name": "Preacher",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, choose a player: a Minion, if chosen, learns this. All chosen Minions have no ability.",
-  "firstNight": 14,
-  "firstNightReminder": "The Preacher chooses a player. If a Minion is chosen, wake the Minion and show the 'This character selected you' card and then the Preacher token.",
-  "otherNight": 7,
-  "otherNightReminder": "The Preacher chooses a player. If a Minion is chosen, wake the Minion and show the 'This character selected you' card and then the Preacher token.",
+  "flavor": "It is better to be rich and healthy than poor and sick.",
+  "firstNightReminder": "The Preacher chooses a player. :reminder: If they chose a Minion: Put the Preacher to sleep. Wake the target. Show the *THIS CHARACTER SELECTED YOU* & Preacher tokens.",
+  "otherNightReminder": "The Preacher chooses a player. :reminder: If they chose a Minion: Put the Preacher to sleep. Wake the target. Show the *THIS CHARACTER SELECTED YOU* & Preacher tokens.",
   "reminders": [
-   "At a sermon"
+   "No Ability",
+   "No Ability",
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/preacher_g.webp"
  },
  {
   "id": "princess",
   "name": "Princess",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "On your 1st day, if you nominated & executed a player, the Demon doesn't kill tonight.",
-  "firstNight": 0,
+  "flavor": "Our words are hounds, bound by silken threads, dear lords. Let kindness weave them true, lest the reigns unravel and rend our court.",
   "firstNightReminder": "",
-  "otherNight": 34,
-  "otherNightReminder": "If it was the Princess' first day today, and they nominated and executed a player, the Demon doesn't kill.",
+  "otherNightReminder": "If the Princess nominated the player who was executed today, wake the Demon as normal, but no one dies to the Demon's ability. :reminder:",
   "reminders": [
    "Doesn't Kill"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/princess_g.webp"
  },
  {
   "id": "professor",
   "name": "Professor",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Once per game, at night*, choose a dead player: if they are a Townsfolk, they are resurrected.",
-  "firstNight": 0,
+  "flavor": "The process is simple. Attach the hydraulic confabulator to the modified chi matrix amplifier, add 20 CCs of pseudodorafine, keep his Z levels above 20%, and your husband will be fine. Now, all we need is a lightning strike.",
   "firstNightReminder": "",
-  "otherNight": 45,
-  "otherNightReminder": "If the Professor has not used their ability: The Professor either shakes their head no, or points to a player. If that player is a Townsfolk, they are now alive.",
+  "otherNightReminder": "The Professor might choose a dead player. :reminder: :reminder:",
   "reminders": [
    "Alive",
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/professor_g.webp"
  },
  {
   "id": "psychopath",
   "name": "Psychopath",
   "team": "minion",
+  "edition": "carousel",
   "ability": "Each day, before nominations, you may publicly choose a player: they die. If executed, you only die if you lose roshambo.",
-  "firstNight": 0,
+  "flavor": "Surprise!",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/psychopath_g.webp"
  },
  {
   "id": "pukka",
   "name": "Pukka",
   "team": "demon",
+  "edition": "bmr",
   "ability": "Each night, choose a player: they are poisoned. The previously poisoned player dies then becomes healthy.",
-  "firstNight": 28,
-  "firstNightReminder": "The Pukka points to a player. That player is poisoned.",
-  "otherNight": 26,
-  "otherNightReminder": "The Pukka points to a player. That player is poisoned. The previously poisoned player dies. ",
+  "flavor": "You truly have been kind welcoming me into your beautiful home. I am so sorry I accidentally scratched you. A little thing. No matter. But please, take this golden toothpick as a humble token of my regret.",
+  "firstNightReminder": "The Pukka chooses a player. :reminder:",
+  "otherNightReminder": "The Pukka chooses a player. :reminder: The previously poisoned player dies then becomes healthy. :reminder:",
   "reminders": [
+   "Poisoned",
    "Poisoned",
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/pukka_g.webp"
  },
  {
   "id": "puzzlemaster",
   "name": "Puzzlemaster",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "1 player is drunk, even if you die. If you guess (once) who it is, learn the Demon player, but guess wrong & get false info.",
-  "firstNight": 0,
+  "flavor": "When one begins to think that some thing is merely some other thing, one is usually on the brink of an error. Patience, patience. Don’t confuse just and should with is and isn’t.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
    "Drunk",
-   "Guess used"
+   "Guess Used"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "qianke",
-  "name": "掮客",
-  "team": "townsfolk",
-  "ability": "每个夜晚，你要选择两名存活玩家：如果他们阵营相同，今晚任何玩家使用自身能力选择他们之一作为目标时，改为选中另一名玩家。",
-  "firstNight": 4,
-  "firstNightReminder": "唤醒车夫，让他指向两名存活玩家。如果这两名玩家阵营相同，在这些玩家的角色标记旁放置“熟客”提示标记。",
-  "otherNight": 2,
-  "otherNightReminder": "移除上个夜晚放置的“熟客”标记。唤醒车夫，让他指向两名存活玩家。如果这两名玩家阵营相同，在这些玩家的角色标记旁放置“熟客”提示标记。",
-  "reminders": [
-   "熟客"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "qilin",
-  "name": "麒麟",
-  "team": "fabled",
-  "ability": "在游戏的最后一天，最幸运的玩家身上会发生一些好的事情。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "好的事情"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "qintianjian",
-  "name": "钦天监",
-  "team": "townsfolk",
-  "ability": "在你的首个夜晚，你会得知离你最近的邪恶玩家位于你的哪一侧（左/右/相同）。如果与你邻近的玩家中有邪恶阵营，你会得知错误信息。",
-  "firstNight": 49,
-  "firstNightReminder": "唤醒占星者，对其用拇指指向其左侧或右侧示意。如果两侧邪恶玩家与他距离相同，拇指朝下示意。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "qiongqi",
-  "name": "穷奇",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。所有的外来者都可能会被当作邪恶阵营、爪牙角色或恶魔角色。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 31,
-  "otherNightReminder": "唤醒穷奇，让其选择一名玩家。标记那名玩家死亡。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "ranfangfangzhu",
-  "name": "染坊坊主",
-  "team": "townsfolk",
-  "ability": "如果你在夜晚死亡，恶魔的能力变成“每个夜晚*，可能会有一名玩家死亡。”",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "沉默"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/carousel/puzzlemaster_g.webp"
  },
  {
   "id": "ravenkeeper",
   "name": "Ravenkeeper",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "If you die at night, you are woken to choose a player: you learn their character.",
-  "firstNight": 0,
+  "flavor": "My birds will avenge me! Fly! Fly, my sweet and dutiful pets! To the manor and to the river! To the alleys and to the salons! Fly!",
   "firstNightReminder": "",
-  "otherNight": 42,
-  "otherNightReminder": "If the Ravenkeeper died tonight: The Ravenkeeper points to a player. Show that player's character token.",
+  "otherNightReminder": "If the Ravenkeeper died tonight, the Ravenkeeper chooses a player. Show that player's character token.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/ravenkeeper_g.webp"
  },
  {
   "id": "recluse",
   "name": "Recluse",
   "team": "outsider",
+  "edition": "tb",
   "ability": "You might register as evil & as a Minion or Demon, even if dead.",
-  "firstNight": 0,
+  "flavor": "Garn git ya darn grub ya mitts ofma lorn yasee. Grr. Natsy pikkins yonder southwise ye begittin afta ya! Git! Me harvy no so widda licks and demmons no be fightin' hadsup ne'er ma kin. Git, assay!",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/recluse_g.webp"
  },
  {
   "id": "revolutionary",
   "name": "Revolutionary",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "2 neighboring players are known to be the same alignment. Once per game, 1 of them registers falsely.",
+  "flavor": "United we feigned. Divided, we stalled.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
-   "Used"
+   "Register Falsely?",
+   "Aligned",
+   "Aligned"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/revolutionary.webp"
  },
  {
   "id": "riot",
   "name": "Riot",
   "team": "demon",
+  "edition": "carousel",
   "ability": "On day 3, Minions become Riot & nominees die but nominate an alive player immediately. This must happen.",
-  "firstNight": 0,
+  "flavor": "Larga vida a la revolución! Mi revolucion!",
   "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": true,
-  "edition": ""
- },
- {
-  "id": "rulianshi",
-  "name": "入殓师",
-  "team": "outsider",
-  "ability": "如果你提名并处决了恶魔，你会变成邪恶的恶魔。当剩余存活玩家小于等于四人时（旅行者除外），你失去能力。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 20,
-  "otherNightReminder": "如果白天入殓师提名了恶魔且恶魔被处决，唤醒他，并对他展示“你是”提示标记和恶魔角色标记。",
+  "otherNightReminder": "Change the Riot reminder token to the relevant day. :reminder: If it is night 3, you may wake the Minions. Show the *YOU ARE* & Riot tokens.",
   "reminders": [
-   "是恶魔"
+   "Day 1",
+   "Day 2",
+   "Day 3"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/riot_g.webp"
  },
  {
   "id": "sage",
   "name": "Sage",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "If the Demon kills you, you learn that it is 1 of 2 players.",
-  "firstNight": 0,
+  "flavor": "These mountainous tomes guard the secret, I am sure of it! Twixt word and word, it lies in wait. More candles, boy! More ink! These notes may look arcane, but the infernal puzzle is revealing itself.",
   "firstNightReminder": "",
-  "otherNight": 43,
-  "otherNightReminder": "If the Sage was killed by a Demon: Point to two players, one of which is that Demon.",
+  "otherNightReminder": "If the Demon killed the Sage, wake the Sage and point to 2 players, 1 of which is the Demon.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/sage_g.webp"
  },
  {
   "id": "sailor",
   "name": "Sailor",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "Each night, choose an alive player: either you or they are drunk until dusk. You can't die.",
-  "firstNight": 10,
-  "firstNightReminder": "The Sailor points to a living player. Either the Sailor, or the chosen player, is drunk.",
-  "otherNight": 4,
-  "otherNightReminder": "The previously drunk player is no longer drunk. The Sailor points to a living player. Either the Sailor, or the chosen player, is drunk.",
+  "flavor": "I'll drink any one of yer under the table! You! The chatterbox! Reckon you can take me? No? Howza 'bout you, Grandma? You ever tried Old McKillys Extra Spiced Rum before? Guaranteed to put hairs on yer chest! Step aboard, aye!",
+  "firstNightReminder": "The Sailor chooses a living player. :reminder:",
+  "otherNightReminder": "The Sailor chooses a living player. :reminder:",
   "reminders": [
    "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/sailor_g.webp"
  },
  {
   "id": "saint",
   "name": "Saint",
   "team": "outsider",
+  "edition": "tb",
   "ability": "If you die by execution, your team loses.",
-  "firstNight": 0,
+  "flavor": "Wisdom begets peace. Patience begets wisdom. Fear not, for the time shall come when fear too shall pass. Let us pray, and may the unity of our vision make saints of us all.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/saint_g.webp"
  },
  {
   "id": "savant",
   "name": "Savant",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each day, you may visit the Storyteller to learn 2 things in private: 1 is true & 1 is false.",
-  "firstNight": 0,
+  "flavor": "Seventy-two matchsticks on the floor... the sun sets early but the moon is unchanged... a torn piece of cloth... evil in the manor house... three by three... the one we trusted is not what he seems... green light means magnesium... residue, but the pattern is wrong... Seventy-two matchsticks on the floor...",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/savant_g.webp"
  },
  {
   "id": "scapegoat",
   "name": "Scapegoat",
   "team": "traveller",
+  "edition": "tb",
   "ability": "If a player of your alignment is executed, you might be executed instead.",
-  "firstNight": 0,
+  "flavor": "Good evening! Thank you for inviting me to the ball. I'm not from around here, but you sure seem like a friendly bunch, by golly. I'm sure we'll get along just dandy. What's all that rope for?",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/scapegoat_g.webp"
  },
  {
   "id": "scarletwoman",
   "name": "Scarlet Woman",
   "team": "minion",
+  "edition": "tb",
   "ability": "If there are 5 or more players alive & the Demon dies, you become the Demon. (Travellers don't count.)",
-  "firstNight": 0,
+  "flavor": "You have shown me the secrets of the Council of the Purple Flame. We have lain together in fire and in lust and in beastly commune, and I am forever your servant. But tonight, my dear, I am your master.",
   "firstNightReminder": "",
-  "otherNight": 20,
-  "otherNightReminder": "If the Scarlet Woman became the Demon today: Show the 'You are' card, then the demon token.",
+  "otherNightReminder": "If the Scarlet Woman became the Demon today, show them the *YOU ARE* token, then the Demon token.",
   "reminders": [
-   "Demon"
+   "Is The Demon"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/scarletwoman_g.webp"
  },
  {
   "id": "seamstress",
   "name": "Seamstress",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Once per game, at night, choose 2 players (not yourself): you learn if they are the same alignment.",
-  "firstNight": 42,
-  "firstNightReminder": "The Seamstress either shows a 'no' head signal, or points to two other players. If the Seamstress chose players , nod 'yes' or shake 'no' for whether they are of same alignment.",
-  "otherNight": 61,
-  "otherNightReminder": "If the Seamstress has not yet used their ability: the Seamstress either shows a 'no' head signal, or points to two other players. If the Seamstress chose players , nod 'yes' or shake 'no' for whether they are of same alignment.",
+  "flavor": "Did you hear that stranger in the cashmere coat put the word on our young Belle? And she said yes? Well, that's nothing compared to what Harry and that juggler got up to at the fair! The things I could say if I was a tattletale... my, yes.",
+  "firstNightReminder": "The Seamstress might choose 2 players. Nod or shake your head. :reminder:",
+  "otherNightReminder": "The Seamstress might choose 2 players. Nod or shake your head. :reminder:",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/seamstress_g.webp"
  },
  {
   "id": "sentinel",
   "name": "Sentinel",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "There might be 1 extra or 1 fewer Outsider in play.",
+  "flavor": "Name, please. Papers, please. Weapons, please.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [],
-  "setup": true
+  "remindersGlobal": [],
+  "setup": true,
+  "image": "https://release.botc.app/resources/characters/fabled/sentinel.webp"
  },
  {
   "id": "shabaloth",
   "name": "Shabaloth",
   "team": "demon",
+  "edition": "bmr",
   "ability": "Each night*, choose 2 players: they die. A dead player you chose last night might be regurgitated.",
-  "firstNight": 0,
+  "flavor": "Blarg f'taag nm mataan! No sho gumtha m'sik na yuuu. Fluuuuuuuuurg h-sikkkh.",
   "firstNightReminder": "",
-  "otherNight": 27,
-  "otherNightReminder": "One player that the Shabaloth chose the previous night might be resurrected. The Shabaloth points to two players. Those players die.",
+  "otherNightReminder": "A previously chosen player might be resurrected. :reminder: The Shabaloth chooses 2 players. :reminder: :reminder:",
   "reminders": [
+   "Dead",
    "Dead",
    "Alive"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
- },
- {
-  "id": "shaxing",
-  "name": "煞星",
-  "team": "outsider",
-  "ability": "如果你死亡，当晚与你邻近的存活玩家之一可能会死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 39,
-  "otherNightReminder": "如果天花病人死亡，将与其邻近的存活善良玩家之一标记为死亡。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "shelingchengzhi",
-  "name": "赦令承旨",
-  "team": "fabled",
-  "ability": "解除所有角色能力在进行选择时的限制条件。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "shiguan",
-  "name": "史官",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，如果白天有玩家死于处决，你会得知存活镇民的数量。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 13110,
-  "otherNightReminder": "如果死亡玩家人数大于存活玩家，唤醒史官并展示数字手势来告诉他存活镇民数量。",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "shijie",
-  "name": "使节",
-  "team": "outsider",
-  "ability": "每个夜晚限一次，所有玩家在使用自身能力选择邪恶玩家时会改为选中你，即使你已死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "已生效"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "shimengmo",
-  "name": "食梦貘",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。使用自身能力选择你的玩家会改为选中自己。[-1外来者]",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 30,
-  "otherNightReminder": "唤醒食梦貘，让其选择一名玩家。标记那名玩家死亡。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": true,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/bmr/shabaloth_g.webp"
  },
  {
   "id": "shugenja",
   "name": "Shugenja",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing if your closest evil player is clockwise or anti-clockwise. If equidistant, this info is arbitrary.",
-  "firstNight": 33,
-  "firstNightReminder": "Wake the Shugenja; point horizontally in the direction of the closest evil player. If the two closest evil players are equidistant, point your finger horizontally in either direction.",
-  "otherNight": 0,
+  "flavor": "これは夢。それも夢。すべ て夢です。",
+  "firstNightReminder": "Point clockwise or anticlockwise.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "shusheng",
-  "name": "书生",
-  "team": "outsider",
-  "ability": "恶魔知道你在场。每局游戏限一次，恶魔可以拜访说书人并猜测谁是书生。如果恶魔猜测正确，即使你已死亡，当晚该恶魔可以选择一名玩家：他死亡。",
-  "firstNight": 7,
-  "firstNightReminder": "唤醒恶魔，并对他展示“该角色的能力对你触发”提示标记与书生角色标记。",
-  "otherNight": 23,
-  "otherNightReminder": "如果白天恶魔成功猜中了书生是谁，唤醒那个恶魔，让其选择一名玩家。标记那名玩家死亡。",
-  "reminders": [
-   "已猜测",
-   "猜测正确",
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "shutong",
-  "name": "书童",
-  "team": "outsider",
-  "ability": "在你的首个夜晚，你要选择除你以外的一名玩家：除首个夜晚以外，当他被邪恶玩家的能力选择或影响时，你会在当晚死亡。",
-  "firstNight": 7430,
-  "firstNightReminder": "唤醒书童，让其选择一名玩家，在其选择的玩家标记旁放置“选择”。",
-  "otherNight": 8910,
-  "otherNightReminder": "如果标记有“选择”的玩家被邪恶玩家的能力选择或影响时，在书童旁放置“死亡”标记。",
-  "reminders": [
-   "选择",
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/carousel/shugenja_g.webp"
  },
  {
   "id": "slayer",
   "name": "Slayer",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "Once per game, during the day, publicly choose a player: if they are the Demon, they die.",
-  "firstNight": 0,
+  "flavor": "Die.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/slayer_g.webp"
  },
  {
   "id": "snakecharmer",
   "name": "Snake Charmer",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night, choose an alive player: a chosen Demon swaps characters & alignments with you & is then poisoned.",
-  "firstNight": 20,
-  "firstNightReminder": "The Snake Charmer points to a player. If that player is the Demon: swap the Demon and Snake Charmer character and alignments. Wake each player to inform them of their new role and alignment. The new Snake Charmer is poisoned.",
-  "otherNight": 12,
-  "otherNightReminder": "The Snake Charmer points to a player. If that player is the Demon: swap the Demon and Snake Charmer character and alignments. Wake each player to inform them of their new role and alignment. The new Snake Charmer is poisoned.",
+  "flavor": "Effendi... I am but a humble man, but my pipe is golden and a single tune will tame the wildest djinn, Inshallah. They say that greed hangs more men than rope. But not I, Effendi... not I.",
+  "firstNightReminder": "The Snake Charmer chooses a player. If they chose the Demon: Show the *YOU ARE* & Demon tokens. Give a thumbs down. Swap the Snake Charmer & Demon tokens. Put the old Snake Charmer to sleep. Wake the old Demon. Show the *YOU ARE* and Snake Charmer tokens & give a thumbs up. :reminder:",
+  "otherNightReminder": "The Snake Charmer chooses a player. If they chose the Demon: Show the *YOU ARE* & Demon tokens. Give a thumbs down. Swap the Snake Charmer & Demon tokens. Put the old Snake Charmer to sleep. Wake the old Demon. Show the *YOU ARE* and Snake Charmer tokens & give a thumbs up. :reminder:",
   "reminders": [
    "Poisoned"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/snakecharmer_g.webp"
  },
  {
   "id": "snitch",
   "name": "Snitch",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "Each Minion gets 3 bluffs.",
-  "firstNight": 6,
-  "firstNightReminder": "After Minion info wake each Minion and show them three not-in-play character tokens. These may be the same or different to each other and the ones shown to the Demon.",
-  "otherNight": 0,
+  "flavor": "It was John.",
+  "firstNightReminder": "Wake each Minion. Show the *THESE CHARACTERS ARE NOT IN PLAY* token. Show 3 not-in-play character tokens.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/snitch_g.webp"
  },
  {
   "id": "soldier",
   "name": "Soldier",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "You are safe from the Demon.",
-  "firstNight": 0,
+  "flavor": "As David said to Goliath, as Theseus said to the Minotaur, as Arjuna said to Bhagadatta... No.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/soldier_g.webp"
  },
  {
   "id": "spiritofivory",
   "name": "Spirit of Ivory",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "There can't be more than 1 extra evil player.",
+  "flavor": "The Wasteland calls. Bones rise to flesh, then fall to dust. The great spirit grows. The great spirit watches. The great spirit guides. The human listens, or the human is no more.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
-   "No extra evil"
+   "No More Evil"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/spiritofivory.webp"
  },
  {
   "id": "spy",
   "name": "Spy",
   "team": "minion",
+  "edition": "tb",
   "ability": "Each night, you see the Grimoire. You might register as good & as a Townsfolk or Outsider, even if dead.",
-  "firstNight": 47,
-  "firstNightReminder": "Show the Grimoire to the Spy for as long as they need.",
-  "otherNight": 67,
-  "otherNightReminder": "Show the Grimoire to the Spy for as long as they need.",
+  "flavor": "Any brewmaster worth their liquor, knows no concoction pours trouble quicker, than one where spies seem double.",
+  "firstNightReminder": "Show the Grimoire for as long as the Spy needs.",
+  "otherNightReminder": "Show the Grimoire for as long as the Spy needs.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/spy_g.webp"
  },
  {
   "id": "steward",
   "name": "Steward",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "You start knowing 1 good player.",
-  "firstNight": 41,
-  "firstNightReminder": "Point to 1 good player.",
-  "otherNight": 0,
+  "flavor": "How DARE you accuse Her Ladyship of wrongdoing? I’ve known her my entire life! All nine years!",
+  "firstNightReminder": "Point to the player marked *KNOW*.",
   "otherNightReminder": "",
   "reminders": [
    "Know"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/steward_g.webp"
  },
  {
   "id": "stormcatcher",
   "name": "Storm Catcher",
   "team": "fabled",
+  "edition": "loric",
   "ability": "Name a good character. If in play, they can only die by execution, but evil players learn which player it is.",
-  "firstNight": 1,
-  "firstNightReminder": "Mark a good player as \"Safe\". Wake each evil player and show them the marked player.",
+  "flavor": "At dawn, the temple’s long shadow creeps to the fountain. At dusk, the obelisk blocks the red glare, cooling warm water under the archway. All lines converge here. A storm is coming, and this, this pebbled and lush and holy place between the apple trees, is the eye.",
+  "firstNightReminder": "Announce which character is stormcaught. If that character is in play, mark that player as *STORMCAUGHT*. Wake each evil player and show them the character token, then the marked player.  If not in play, wake each evil player, show them the *THESE CHARACTERS ARE NOT IN PLAY* token & the relevant character token.",
   "otherNightReminder": "",
   "reminders": [
-   "Safe"
+   "Stormcaught"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/loric/stormcatcher.webp"
  },
  {
   "id": "summoner",
   "name": "Summoner",
   "team": "minion",
+  "edition": "carousel",
   "ability": "You get 3 bluffs. On the 3rd night, choose a player: they become an evil Demon of your choice. [No Demon]",
-  "firstNight": 8,
-  "firstNightReminder": "Show the 'These characters are not in play' card. Show 3 character tokens of good characters not in play.",
-  "otherNight": 19,
-  "otherNightReminder": "If it is the 3rd night, wake the Summoner. They point to a player and a Demon on the character sheet - that player becomes that Demon.",
+  "flavor": "Hail the guardians of the north; by my intellect, thou art cut. Hail the guardians of the east; by my will, thou art dominated. Hail the guardians of the south; by that which lies beyond, the mystery is revealed. Hail the guardians of the west; a shield in the darkness.",
+  "firstNightReminder": "Show the *THESE CHARACTERS ARE NOT IN PLAY* token. Show 3 not-in-play good character tokens.",
+  "otherNightReminder": "Change the Summoner reminder token to the relevant night. :reminder: If it is night 3, the Summoner chooses a player & a Demon character. Put the Summoner to sleep. Wake the target. Show the *YOU ARE* and Demon tokens & give a thumbs-down.",
   "reminders": [
    "Night 1",
    "Night 2",
    "Night 3"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/summoner_g.webp"
  },
  {
   "id": "sweetheart",
   "name": "Sweetheart",
   "team": "outsider",
+  "edition": "snv",
   "ability": "When you die, 1 player is drunk from now on.",
-  "firstNight": 0,
+  "flavor": "I will never forget her. Never.",
   "firstNightReminder": "",
-  "otherNight": 41,
-  "otherNightReminder": "Choose a player that is drunk.",
+  "otherNightReminder": "If the Sweetheart died, a player became drunk immediately. If you haven't done this yet, do so now. :reminder:",
   "reminders": [
    "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
- },
- {
-  "id": "taotie",
-  "name": "饕餮",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择任意数量的非旅行者玩家或一名旅行者玩家：如果他们的角色类型均不相同，他们死亡。[+1外来者]",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 28,
-  "otherNightReminder": "唤醒饕餮，让其选择任意数量的玩家。如果这些玩家的角色类型均不相同，标记这些玩家死亡。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": true,
-  "edition": "hdcs"
- },
- {
-  "id": "taowu",
-  "name": "梼杌",
-  "team": "demon",
-  "ability": "每个夜晚*，你要选择一名玩家：他死亡。每个夜晚限一次，如果你以这种方式杀死了一名外来者，当晚你可以再次行动。[+1外来者]",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 32,
-  "otherNightReminder": "唤醒梼杌，让其选择一名玩家，并标记那名玩家死亡。如果梼杌成功杀死了一名外来者，让他再选择一名玩家，标记那名玩家死亡。",
-  "reminders": [
-   "死亡"
-  ],
-  "setup": true,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/snv/sweetheart_g.webp"
  },
  {
   "id": "tealady",
   "name": "Tea Lady",
   "team": "townsfolk",
+  "edition": "bmr",
   "ability": "If both your alive neighbors are good, they can't die.",
-  "firstNight": 0,
+  "flavor": "If you are cold, tea will warm you. If you are too heated, tea will cool you. If you are depressed, tea will cheer you. If you are excited, tea will calm you.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "Can not die"
+   "Cannot Die",
+   "Cannot Die"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/tealady_g.webp"
  },
  {
   "id": "thief",
   "name": "Thief",
   "team": "traveller",
+  "edition": "tb",
   "ability": "Each night, choose a player (not yourself): their vote counts negatively tomorrow.",
-  "firstNight": 1,
-  "firstNightReminder": "The Thief points to a player. Put the Thief's 'Negative vote' reminder by the chosen player's character token.",
-  "otherNight": 1,
-  "otherNightReminder": "The Thief points to a player. Put the Thief's 'Negative vote' reminder by the chosen player's character token.",
+  "flavor": "I ain't done nuffink. I weren't even in dat alley last night! It weren't me what stole Mayor Bruno's briefcase wiv all dem fancy dockoments innit. Besides, it was too 'eavy to carry far.",
+  "firstNightReminder": "The Thief chooses a player. :reminder:",
+  "otherNightReminder": "The Thief chooses a player. :reminder:",
   "reminders": [
-   "Negative vote"
+   "Negative Vote"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/thief_g.webp"
  },
  {
   "id": "tinker",
   "name": "Tinker",
   "team": "outsider",
+  "edition": "bmr",
   "ability": "You might die at any time.",
-  "firstNight": 0,
+  "flavor": "I think I see the problem. Luckily, I have an idea! This catapult will shoot twice as far with just a minor adjustment...",
   "firstNightReminder": "",
-  "otherNight": 48,
-  "otherNightReminder": "The Tinker might die.",
+  "otherNightReminder": "The Tinker might die. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
- },
- {
-  "id": "tixingguan",
-  "name": "提刑官",
-  "team": "townsfolk",
-  "ability": "在你首次提名玩家后，你会在当晚得知他的角色。外来者会被你的能力当作爪牙或恶魔角色。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 56,
-  "otherNightReminder": "如果提刑官在白天进行了整局游戏中他的首次提名，唤醒他并对他展示他提名的玩家的角色标记。",
-  "reminders": [
-   "被首次提名"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/bmr/tinker_g.webp"
  },
  {
   "id": "tor",
   "name": "Tor",
   "team": "fabled",
+  "edition": "loric",
   "ability": "Players don't know their character or alignment. They learn them when they die.",
-  "firstNightReminder": "",
-  "otherNightReminder": "If a player died tonight, show the *YOU ARE* info token, their character token, & a thumbs up or thumbs down.",
+  "flavor": "With thunder as my voice and lightning as my blade, I, the eternal guardian, feast upon the fools who dare approach the forbidden gate. Behold, my sacred goal! To purge the beetle from the belly of the rocky earth, to ensnare it in a net of stars, on the hilltop where heaven meets earth.",
+  "firstNightReminder": "Skip Minion Info and Demon Info.",
+  "otherNightReminder": "If a player died tonight, show the *YOU ARE* info token, their character token, & give a thumb signal.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/loric/tor.webp"
  },
  {
   "id": "towncrier",
   "name": "Town Crier",
   "team": "townsfolk",
+  "edition": "snv",
   "ability": "Each night*, you learn if a Minion nominated today.",
-  "firstNight": 0,
+  "flavor": "Hear ye! Hear ye! Witchcraft in the labyrinth! Genius savant reveals all! Town in danger! Hear Ye!",
   "firstNightReminder": "",
-  "otherNight": 59,
-  "otherNightReminder": "Nod 'yes' or shake head 'no' for whether a Minion nominated today. Place the 'Minion not nominated' marker (remove 'Minion nominated', if any).",
+  "otherNightReminder": "Either nod or shake your head.",
   "reminders": [
-   "Minions not nominated",
-   "Minion nominated"
+   "Minions Not Nominated",
+   "Minion Nominated"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/towncrier_g.webp"
  },
  {
   "id": "toymaker",
   "name": "Toymaker",
   "team": "fabled",
+  "edition": "fabled",
   "ability": "The Demon may choose not to attack & must do this at least once per game. Evil players get normal starting info.",
-  "firstNightReminder": "",
-  "otherNight": 1,
-  "otherNightReminder": "If it is a night when a Demon attack could end the game, and the Demon is marked \"Final night: No Attack,\" then the Demon does not act tonight. (Do not wake them.)",
+  "flavor": "It buzzes! It walks down stairs! It keeps you warm at night! It tastes like sugar! The kiddies love it! Introducing... the brand new... Warm'o-buzzy-wuzzy-walk'a'bot-thingy-contraption! Fun for all ages!",
+  "firstNightReminder": "Resolve Minion Info and Demon Info, even though there are fewer than 7 players.",
+  "otherNightReminder": "If a Demon attack could end the game, and the Demon is marked *FINAL NIGHT: NO ATTACK*, do not wake the Demon.",
   "reminders": [
    "Final Night: No Attack"
   ],
-  "setup": false
+  "remindersGlobal": [],
+  "setup": false,
+  "image": "https://release.botc.app/resources/characters/fabled/toymaker.webp"
  },
  {
   "id": "undertaker",
   "name": "Undertaker",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "Each night*, you learn which character died by execution today.",
-  "firstNight": 0,
+  "flavor": "Hmmm....what have we here? The left boot is worn down to the heel, with flint shavings under the tongue. This is the garb of a Military man.",
   "firstNightReminder": "",
-  "otherNight": 56,
-  "otherNightReminder": "If a player was executed today: Show that player's character token.",
+  "otherNightReminder": "If a player was executed today, show their character token.",
   "reminders": [
-   "Executed"
+   "Died Today"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/undertaker_g.webp"
  },
  {
   "id": "ventriloquist",
   "name": "Ventriloquist",
   "team": "fabled",
+  "edition": "loric",
   "ability": "If a player is mad as a fresh character during their nomination, they might not die if executed today.",
+  "flavor": "Well, folks, gather ‘round! This here’s my pal Charlie, and he’s got a mouth on him that’d make a mule blush. But don’t worry folks, I do all the talkin’... or do I?",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
    "Mad"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/loric/ventriloquist.webp"
  },
  {
   "id": "vigormortis",
   "name": "Vigormortis",
   "team": "demon",
+  "edition": "snv",
   "ability": "Each night*, choose a player: they die. Minions you kill keep their ability & poison 1 Townsfolk neighbor. [-1 Outsider]",
-  "firstNight": 0,
+  "flavor": "All doors are one door. All keys are one key. All cups are one cup, but whosoever drinketh of the water that I give shall never thirst, but the water shall be in him a well springing up into everlasting life.",
   "firstNightReminder": "",
-  "otherNight": 32,
-  "otherNightReminder": "The Vigormortis points to a player. That player dies. If a Minion, they keep their ability and one of their Townsfolk neighbours is poisoned.",
+  "otherNightReminder": "The Vigormortis chooses a player. :reminder: If that player is a Minion, poison a neighboring Townsfolk. :reminder: :reminder:",
   "reminders": [
    "Dead",
-   "Has ability",
+   "Has Ability",
+   "Has Ability",
+   "Has Ability",
+   "Poisoned",
+   "Poisoned",
    "Poisoned"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/vigormortis_g.webp"
  },
  {
   "id": "villageidiot",
   "name": "Village Idiot",
   "team": "townsfolk",
+  "edition": "carousel",
   "ability": "Each night, choose a player: you learn their alignment. [+0 to +2 Village Idiots. 1 of the extras is drunk]",
-  "firstNight": 45,
-  "firstNightReminder": "The Village Idiot points to a player; give a thumbs up if that player is good or a thumbs down if that player is evil.",
-  "otherNight": 62,
-  "otherNightReminder": "The Village Idiot points to a player; give a thumbs up if that player is good or a thumbs down if that player is evil.",
+  "flavor": "Roses are blue, and violets are red, Please reverse what I just said.",
+  "firstNightReminder": "If there are multiple Village Idiots, mark one as *DRUNK*. :reminder: Wake the Village Idiots one at a time to choose a player. Give a thumb signal.",
+  "otherNightReminder": "Wake the Village Idiots one at a time to choose a player. Give a thumb signal.",
   "reminders": [
    "Drunk"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/villageidiot_g.webp"
  },
  {
   "id": "virgin",
   "name": "Virgin",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "The 1st time you are nominated, if the nominator is a Townsfolk, they are executed immediately.",
-  "firstNight": 0,
+  "flavor": "I am pure. Let those who are without sin cast themselves down and suffer in my stead. My reputation shall not be stained with your venomous accusations.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [
-   "No ability"
+   "No Ability"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/virgin_g.webp"
  },
  {
   "id": "vizier",
   "name": "Vizier",
   "team": "minion",
+  "edition": "carousel",
   "ability": "All players know you are the Vizier. You cannot die during the day. If good voted, you may choose to execute immediately.",
-  "firstNight": 54,
-  "firstNightReminder": "Announce 'The Vizier is in play' and state which player they are.",
-  "otherNight": 0,
+  "flavor": "An excellent decision, as always, sire. Such a petty crime as bumping into the Bishop indeed deserves your ‘justice’ and ‘mercy’. Take a stroll in the gardens. Visit the gallery and peruse the sculptures of Von Strauf. Relax, sire. Leave everything… to me.",
+  "firstNightReminder": "Announce which player is the Vizier.",
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/vizier_g.webp"
  },
  {
   "id": "vortox",
   "name": "Vortox",
   "team": "demon",
+  "edition": "snv",
   "ability": "Each night*, choose a player: they die. Townsfolk abilities yield false info. Each day, if no-one is executed, evil wins.",
-  "firstNight": 0,
+  "flavor": "Black is White. Right is Wrong. Left is Right. Up is Long. Down is Sight. Short is Blind. Follow me. Answers find.",
   "firstNightReminder": "",
-  "otherNight": 31,
-  "otherNightReminder": "The Vortox points to a player. That player dies.",
+  "otherNightReminder": "The Vortox chooses a player. :reminder:",
   "reminders": [
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/vortox_g.webp"
  },
  {
   "id": "voudon",
   "name": "Voudon",
   "team": "traveller",
+  "edition": "bmr",
   "ability": "Only you & the dead can vote. They don't need a vote token to do so. A 50% majority isn't required.",
-  "firstNight": 0,
+  "flavor": "Bien venu. Sit down. Breathe deep. Enter the land of the dead. See with their eyes. Speak with their voice. Yon sel lang se janm ase.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/voudon_g.webp"
  },
  {
   "id": "washerwoman",
   "name": "Washerwoman",
   "team": "townsfolk",
+  "edition": "tb",
   "ability": "You start knowing that 1 of 2 players is a particular Townsfolk.",
-  "firstNight": 32,
-  "firstNightReminder": "Show the character token of a Townsfolk in play. Point to two players, one of which is that character.",
-  "otherNight": 0,
+  "flavor": "Bloodstains on a dinner jacket? No, this is cooking sherry. How careless.",
+  "firstNightReminder": "Show the Townsfolk character token. Point to both the *TOWNSFOLK* and *WRONG* players.",
   "otherNightReminder": "",
   "reminders": [
    "Townsfolk",
    "Wrong"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "tb"
+  "image": "https://release.botc.app/resources/characters/tb/washerwoman_g.webp"
  },
  {
   "id": "widow",
   "name": "Widow",
   "team": "minion",
+  "edition": "carousel",
   "ability": "On your 1st night, look at the Grimoire & choose a player: they are poisoned. 1 good player knows a Widow is in play.",
-  "firstNight": 18,
-  "firstNightReminder": "Show the Grimoire to the Widow for as long as they need. The Widow points to a player. That player is poisoned. Wake a good player. Show the 'These characters are in play' card, then the Widow character token.",
-  "otherNight": 0,
+  "flavor": "More wine? Château d’Ergot ’07 is a very special vintage. My yes, very special indeed.",
+  "firstNightReminder": "Show the Grimoire for as long as the Widow needs. The Widow chooses a player. :reminder: Put the Widow to sleep. Wake the player marked *KNOW* & show the Widow token. :reminder:",
   "otherNightReminder": "",
   "reminders": [
-   "Poisoned"
+   "Poisoned",
+   "Know"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/widow_g.webp"
  },
  {
   "id": "witch",
   "name": "Witch",
   "team": "minion",
+  "edition": "snv",
   "ability": "Each night, choose a player: if they nominate tomorrow, they die. If just 3 players live, you lose this ability.",
-  "firstNight": 24,
-  "firstNightReminder": "The Witch points to a player. If that player nominates tomorrow they die immediately.",
-  "otherNight": 15,
-  "otherNightReminder": "If there are 4 or more players alive: The Witch points to a player. If that player nominates tomorrow they die immediately.",
+  "flavor": "Three drops of goat's blood. A lock of hair, torn in anger. The name is spoken, the shadow cast. Walk left foot first down that brambled path, and don't look back.",
+  "firstNightReminder": "The Witch chooses a player. :reminder:",
+  "otherNightReminder": "The Witch chooses a player. :reminder:",
   "reminders": [
    "Cursed"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "snv"
+  "image": "https://release.botc.app/resources/characters/snv/witch_g.webp"
  },
  {
   "id": "wizard",
   "name": "Wizard",
   "team": "minion",
+  "edition": "carousel",
   "ability": "Once per game, choose to make a wish. If granted, it might have a price & leave a clue as to its nature.",
-  "firstNight": 24,
-  "firstNightReminder": "Run the Wizard ability if applicable.",
-  "otherNight": 15,
-  "otherNightReminder": "Run the Wizard ability if applicable.",
+  "flavor": "Every man and every woman is a star. Love is the law, love under will.",
+  "firstNightReminder": "Do whatever needs to be done to satisfy the Wizard's ability.",
+  "otherNightReminder": "Do whatever needs to be done to satisfy the Wizard's ability.",
   "reminders": [
+   "?",
    "?"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/wizard_g.webp"
  },
  {
   "id": "wraith",
   "name": "Wraith",
   "team": "minion",
+  "edition": "carousel",
   "ability": "You may choose to open your eyes at night. You wake when other evil players do.",
-  "firstNight": 1,
+  "flavor": "Ra'āb ina pān ṣilli ša dāri. Rigim qallu ina šūri, šītu ša šunātīka iredde, u napšutka idlul ina pān maṣṣartī dāriti.",
   "firstNightReminder": "Wake the Wraith whenever other evil players wake.",
-  "otherNight": 1,
   "otherNightReminder": "Wake the Wraith whenever other evil players wake.",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "wudaozhe",
-  "name": "悟道者",
-  "team": "townsfolk",
-  "ability": "你以为你是一个外来者，但你实际上不是。如果有邪恶玩家的能力选择或影响了你，在该效果生效前你会变成一个不在场的镇民角色。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": true,
-  "edition": "hdcs"
- },
- {
-  "id": "wushiren",
-  "name": "舞狮人",
-  "team": "townsfolk",
-  "ability": "每个夜晚，你会得知一个在场角色。每局游戏限一次，你得知的信息改为恶魔的伪装之一。",
-  "firstNight": 0,
-  "firstNightReminder": "唤醒舞狮人，对他展示一个角色标记。如果展示了恶魔的伪装，在舞狮人角色标记旁放置“限一次”角色标记。如果舞狮人有“限一次”角色标记，则无法对他展示恶魔的伪装作为正确信息。",
-  "otherNight": 64,
-  "otherNightReminder": "唤醒舞狮人，对他展示一个角色标记。如果展示了恶魔的伪装，在舞狮人角色标记旁放置“限一次”角色标记。如果舞狮人有“限一次”角色标记，则无法对他展示恶魔的伪装作为正确信息。",
-  "reminders": [
-   "限一次"
-  ],
-  "setup": false,
-  "edition": "hdcs"
+  "image": "https://release.botc.app/resources/characters/carousel/wraith_g.webp"
  },
  {
   "id": "xaan",
   "name": "Xaan",
   "team": "minion",
+  "edition": "carousel",
   "ability": "On night X, all Townsfolk are poisoned until dusk. [X Outsiders]",
-  "firstNight": 22,
-  "firstNightReminder": "If the X token is placed in the Grimoire, all Townsfolk are poisoned.",
-  "otherNight": 5,
-  "otherNightReminder": "If the X token is placed in the Grimoire, all Townsfolk are poisoned.",
+  "flavor": "Down they fall. One by one. By two, by three, by five.",
+  "firstNightReminder": "If X is 1, mark the Xaan with the *X* reminder token. :reminder: :reminder:",
+  "otherNightReminder": "Change the Xaan reminder token to the relevant night. If it is night X, mark the Xaan with the *X* reminder token. :reminder: :reminder:",
   "reminders": [
    "Night 1",
    "Night 2",
    "Night 3",
    "X"
   ],
+  "remindersGlobal": [],
   "setup": true,
-  "edition": ""
- },
- {
-  "id": "xingjiaoshang",
-  "name": "行脚商",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，在夜晚时，你可以选择一名玩家：你会得知放置在该玩家角色标记旁的所有提示标记。",
-  "firstNight": 47,
-  "firstNightReminder": "唤醒行脚商，让其选择一名玩家。将当前放置在该玩家角色标记旁的所有提示标记展示给他看。",
-  "otherNight": 67,
-  "otherNightReminder": "唤醒行脚商，让其选择一名玩家。将当前放置在该玩家角色标记旁的所有提示标记展示给他看。",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "xionghaizi",
-  "name": "熊孩子",
-  "team": "townsfolk",
-  "ability": "每个夜晚，你要选择两个善良角色：他们的能力会产生错误信息，直到下个黄昏。",
-  "firstNight": 6,
-  "firstNightReminder": "唤醒熊孩子，让其选择两个善良角色。如果这些角色在场，在对应角色标记旁放置“捣蛋”提示标记。",
-  "otherNight": 5,
-  "otherNightReminder": "移除上个夜晚放置的“捣蛋”提示标记。唤醒熊孩子，让其选择两个善良角色。如果这些角色在场，在对应角色标记旁放置“捣蛋”提示标记。",
-  "reminders": [
-   "捣蛋"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "xizi",
-  "name": "戏子",
-  "team": "townsfolk",
-  "ability": "所有戏子互相认识。不论在场的戏子数量多少或存活与否，胜负结果会被对调。[所有善良玩家都是戏子]",
-  "firstNight": 12,
-  "firstNightReminder": "唤醒所有戏子，让他们互相确认。如有必要，对他们展示“你是”提示标记和戏子角色标记。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": true,
-  "edition": "hdcs"
- },
- {
-  "id": "xizinew",
-  "name": "戏子（改）",
-  "team": "townsfolk",
-  "ability": "其他善良玩家醉酒（旅行者除外），你们互相认识且无法转变阵营，对调胜负结果，即使你失去能力。",
-  "firstNight": 13,
-  "firstNightReminder": "同时唤醒所有除了旅行者以外的善良玩家，让他们互认。如有必要，可以向他们展示“该角色的能力对你生效”信息标记并展示戏子（改）角色标记。然后让他们重新入睡。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [
-   "善良醉酒"
-  ],
-  "setup": true,
-  "edition": "syyl"
- },
- {
-  "id": "xuncha",
-  "name": "巡察",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你要选择除你以外的两个善良角色：如果他们都存活，他们当晚不会死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 4420,
-  "otherNightReminder": "唤醒巡查，让其选择两个善良角色，如果这两个角色都在场，在对应玩家角色标记旁放置“保护”标记。",
-  "reminders": [
-   "保护"
-  ],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/carousel/xaan_g.webp"
  },
  {
   "id": "yaggababble",
   "name": "Yaggababble",
   "team": "demon",
+  "edition": "carousel",
   "ability": "You start knowing a secret phrase. For each time you said it publicly today, a player might die.",
-  "firstNight": 2,
+  "flavor": "Murders inside the Rue Morgue? Фальшивые новости! Hounds on the Baskerville moor? Фальшивые новости! Death while sailing the Nile? Фальшивые новости!",
   "firstNightReminder": "Show the Yaggababble their secret phrase.",
-  "otherNight": 35,
-  "otherNightReminder": "Choose a number of players up to the total number of times the Yaggababble said their secret phrase publicly, those players die.",
+  "otherNightReminder": "For each time the Yaggababble said their phrase today, a player might die. :reminder:",
   "reminders": [
+   "Dead",
+   "Dead",
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "yangguren",
-  "name": "养蛊人",
-  "team": "minion",
-  "ability": "在你存活时提名你的玩家会在当晚死亡，即使你已死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 38,
-  "otherNightReminder": "如果有玩家被放置了“提名”标记，标记该玩家死亡。",
-  "reminders": [
-   "提名",
-   "死亡"
-  ],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "yanluo",
-  "name": "阎罗",
-  "team": "demon",
-  "ability": "在你的首个夜晚，你能查看魔典并选择一名玩家：他在第三个夜晚死亡，即使因为任何原因让他不会死亡。每个夜晚，你要选择一名玩家：上个夜晚被你选择的玩家死亡。",
-  "firstNight": 11710,
-  "firstNightReminder": "首个夜晚，唤醒阎罗并让他按自己意愿的时长来查看魔典。 让阎罗选择一名玩家，放置“选择”标记在其角色图标旁，其在覅三个夜晚必定会死亡。 让阎罗选择一名玩家，放置“即将死亡”标记在其角色图标旁。",
-  "otherNight": 8410,
-  "otherNightReminder": "让阎罗选择一名玩家，放置“即将死亡”标记在其角色图标旁。",
-  "reminders": [
-   "即将死亡",
-   "选择"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "yanshi",
-  "name": "偃师",
-  "team": "townsfolk",
-  "ability": "如果你在夜晚死亡，你与一名存活爪牙玩家交换角色。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "yinluren",
-  "name": "引路人",
-  "team": "townsfolk",
-  "ability": "每个夜晚，你要选择两名玩家：你会得知今晚是否有邪恶玩家的能力选择或影响了他们之中的玩家。",
-  "firstNight": 52,
-  "firstNightReminder": "唤醒摆渡者，让其选择两名玩家。以点头或摇头作为信息给出。",
-  "otherNight": 72,
-  "otherNightReminder": "唤醒摆渡者，让其选择两名玩家。以点头或摇头作为信息给出。",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "yinyangshi",
-  "name": "阴阳师",
-  "team": "townsfolk",
-  "ability": "在你的首个夜晚，你会得知两个善良角色和两个邪恶角色。其中有且只有两个角色在场。",
-  "firstNight": 43,
-  "firstNightReminder": "唤醒阴阳师，并对其展示两个善良角色，两个邪恶角色，共四个角色标记。其中正好只有两个角色在场。",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "hdcs"
- },
- {
-  "id": "yishi",
-  "name": "驿使",
-  "team": "townsfolk",
-  "ability": "每个白天，你可以公开声明一个角色。在当晚，你会得知该角色是否在场。如果你因此得知了否，你失去此能力。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 12210,
-  "otherNightReminder": "在每个白天，如果驿使声明使用他的能力，如果驿使声明的角色在场，放置“猜测正确”提示标记在驿使角色标记旁。 当晚，唤醒驿使艺人。如果他猜测正确，对他点头表示“是”，对他摇头表示“否”，如果你对他摇头，放置一枚“失去能力”的标记在其角色旁",
-  "reminders": [
-   "猜测正确",
-   "失去能力"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "yongjiang",
-  "name": "俑匠",
-  "team": "townsfolk",
-  "ability": "如果已死亡玩家中没有邪恶玩家，你只会死于处决。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 0,
-  "otherNightReminder": "",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/carousel/yaggababble_g.webp"
  },
  {
   "id": "zealot",
   "name": "Zealot",
   "team": "outsider",
+  "edition": "carousel",
   "ability": "If there are 5 or more players alive, you must vote for every nomination.",
-  "firstNight": 0,
+  "flavor": "I enjoy talking to you. Your mind appeals to me. It resembles my own mind except that you happen to be insane.",
   "firstNightReminder": "",
-  "otherNight": 0,
   "otherNightReminder": "",
   "reminders": [],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
+  "image": "https://release.botc.app/resources/characters/carousel/zealot_g.webp"
  },
  {
   "id": "zenomancer",
   "name": "Zenomancer",
   "team": "fabled",
+  "edition": "loric",
   "ability": "One or more players each have a goal. When achieved, that player learns a piece of true info.",
+  "flavor": "The universe is a verb not a noun, they say, and it is turtles, turtles all the way down. Turtles all the way down, my friend, turtles all the way down.",
   "firstNightReminder": "",
   "otherNightReminder": "",
   "reminders": [
@@ -3534,53 +2853,25 @@
    "Goal",
    "Goal"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": ""
- },
- {
-  "id": "zhen",
-  "name": "鸩",
-  "team": "townsfolk",
-  "ability": "每局游戏限一次，在夜晚时*，你可以选择一个镇民角色：如果他在场，他醉酒并死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 8899,
-  "otherNightReminder": "唤醒鸩，让其选择一个镇民角色，如果该角色在场，在其角色标记旁放置“死亡”和“醉酒”提示标记",
-  "reminders": [
-   "死亡",
-   "失去能力",
-   "醉酒"
-  ],
-  "setup": false,
-  "edition": "syyl"
- },
- {
-  "id": "zhifu",
-  "name": "知府",
-  "team": "townsfolk",
-  "ability": "每个夜晚*，你会得知今天是否有非镇民且非旅行者玩家死亡。",
-  "firstNight": 0,
-  "firstNightReminder": "",
-  "otherNight": 12220,
-  "otherNightReminder": "如果在白天以及夜晚，只有镇民玩家死亡，对司民摇头表示“否”，否则点头表示“是”。",
-  "reminders": [],
-  "setup": false,
-  "edition": "syyl"
+  "image": "https://release.botc.app/resources/characters/loric/zenomancer.webp"
  },
  {
   "id": "zombuul",
   "name": "Zombuul",
   "team": "demon",
+  "edition": "bmr",
   "ability": "Each night*, if no-one died today, choose a player: they die. The 1st time you die, you live but register as dead.",
-  "firstNight": 0,
+  "flavor": "I do not. Understand. Your ways. Fellow human. Show me. The dirt. Where the holy. Lay. Sleeping. I too. Must sleep. Soon.",
   "firstNightReminder": "",
-  "otherNight": 25,
-  "otherNightReminder": "If no-one died during the day: The Zombuul points to a player. That player dies.",
+  "otherNightReminder": "If no one died today, the Zombuul chooses a player. :reminder:",
   "reminders": [
-   "Died today",
+   "Died Today",
    "Dead"
   ],
+  "remindersGlobal": [],
   "setup": false,
-  "edition": "bmr"
+  "image": "https://release.botc.app/resources/characters/bmr/zombuul_g.webp"
  }
 ]
