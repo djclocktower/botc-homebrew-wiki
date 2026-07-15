@@ -277,6 +277,31 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- shared validation for script/collection page fields ----
+// Caps text lengths, whitelists difficulty, constrains image paths to the
+// scripts/ and collections/ R2 areas, and runs the theme through the shared
+// sanitizer (hex colors, preset fonts, own -bg image slot only).
+const PAGE_FIELD_CAPS = {
+  name: 120, displayName: 120, author: 80, description: 2000, tagline: 140,
+  version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
+};
+const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
+function sanitizePageFields(o, themeBase) {
+  for (const k of Object.keys(PAGE_FIELD_CAPS)) {
+    if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
+  }
+  if (o.difficulty != null && !['', 'beginner', 'intermediate', 'veteran'].includes(o.difficulty)) {
+    o.difficulty = '';
+  }
+  for (const k of ['header', 'logo']) {
+    if (o[k] != null && !(typeof o[k] === 'string' && (o[k] === '' || PAGE_IMG_RE.test(o[k])))) {
+      o[k] = '';
+    }
+  }
+  const theme = PageRender.sanitizeTheme(o.theme, themeBase);
+  if (theme) o.theme = theme; else delete o.theme;
+}
+
 // ---- build the three JSON files from D1 (published pages only) ----
 async function buildPublicJSON(env, table) {
   let results;
@@ -1244,6 +1269,23 @@ export default {
               return jsonResponse({ error: 'That art slot belongs to a character owned by another account.' }, { status: 403 });
             }
           }
+          // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
+          // images collections/{id}[-logo|-bg].{ext}. If that page exists,
+          // only its owner may replace its images.
+          if (key.startsWith('scripts/')) {
+            const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+            const row = await getEntityRow(env, 'script', base);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
+            }
+          }
+          if (key.startsWith('collections/')) {
+            const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+            const row = await findCollectionRow(env, base);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
+            }
+          }
           // Never allow silently replacing someone else's uploaded file.
           const existing = await env.ART.head(key).catch(() => null);
           if (existing) {
@@ -1309,10 +1351,17 @@ export default {
       if (path === '/api/script') {
         const s = await request.json();
         if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+        if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
+          return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
+        }
         const existing = await getEntityRow(env, 'script', s.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
+        sanitizePageFields(s, 'scripts/' + s.slug);
+        s.characters = Array.isArray(s.characters)
+          ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
+          : [];
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         await env.DB.prepare(
