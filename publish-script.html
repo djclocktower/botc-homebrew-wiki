@@ -253,6 +253,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/sao.js"></script>
+  <script src="assets/theme-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -327,49 +328,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
     });
 
-    // ── Theme controls (font + colors) — values validated by sanitizeTheme
-    // client-side AND server-side; stored in meta.theme ──
-    (function initThemeUI(){
-      var sel = $('th-font');
-      var presets = (window.PageRender && window.PageRender.FONT_PRESETS) || { 'default': 'Wiki default' };
-      Object.keys(presets).forEach(function(k){
-        var opt = document.createElement('option');
-        opt.value = k; opt.textContent = presets[k];
-        sel.appendChild(opt);
-      });
-      sel.addEventListener('change', function(){
-        var m = getMeta(); m.theme = m.theme || {};
-        if (sel.value === 'default') delete m.theme.font; else m.theme.font = sel.value;
-        setMeta(m);
-      });
-      ['accent','panel','text','link'].forEach(function(k){
-        var input = $('th-' + k);
-        input.addEventListener('input', function(){
-          var m = getMeta(); m.theme = m.theme || {};
-          m.theme[k] = input.value; setMeta(m);
-          $('th-' + k + '-state').textContent = input.value;
-        });
-      });
-      Array.prototype.forEach.call(document.querySelectorAll('.th-clear'), function(btn){
-        btn.addEventListener('click', function(){
-          var k = btn.getAttribute('data-k');
-          var m = getMeta();
-          if (m.theme){ delete m.theme[k]; setMeta(m); }
-          $('th-' + k + '-state').textContent = 'not set';
-        });
-      });
-    })();
-
+    // ── Theme controls (shared with the collection editor — theme-editor.js).
+    // Values validated by sanitizeTheme client-side AND server-side. ──
+    window.ThemeEditor.wire({
+      get: function(){ return getMeta().theme || {}; },
+      set: function(t){ var m = getMeta(); m.theme = t; setMeta(m); }
+    });
     function primeTheme(theme){
-      theme = theme || {};
-      $('th-font').value = theme.font && $('th-font').querySelector('option[value="' + theme.font + '"]') ? theme.font : 'default';
-      ['accent','panel','text','link'].forEach(function(k){
-        if (theme[k]){ $('th-' + k).value = theme[k]; $('th-' + k + '-state').textContent = theme[k]; }
-        else { $('th-' + k + '-state').textContent = 'not set'; }
-      });
-      if (theme.font || theme.accent || theme.panel || theme.text || theme.link || theme.background){
-        $('sb-appearance').open = true;
-      }
+      if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
     }
 
     function primeFields(m){
