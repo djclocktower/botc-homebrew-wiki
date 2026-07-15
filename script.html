@@ -172,6 +172,7 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render.js"></script>
+  <script src="assets/sao.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -423,98 +424,11 @@
       renderAll();
     });
 
-    // ── SAO Sort ──
-    // Steven Approved Order: sort within each team group by ability prefix bucket,
-    // then ability text length, then name length, then alphabetically.
-    var SAO_PREFIXES = [
-      'Hermit',
-      'You start knowing',
-      'At night',
-      'Each dusk*',
-      'Each night',
-      'Each night*',
-      'Each day',
-      'Once per game, at night',
-      'Once per game, at night*',
-      'Once per game, during the day',
-      'Once per game',
-      'On your 1st night',
-      'On your 1st day',
-      'On',
-      'You think',
-      'You are',
-      'You have',
-      'You do not know',
-      'You might',
-      'You',
-      'When you die',
-      'When you learn that you died',
-      'When',
-      'If you die',
-      'If you died',
-      'If you are "mad"',
-      'If you',
-      'If the Demon dies',
-      'If the Demon kills',
-      'If the Demon',
-      'If both',
-      'If there are 5 or more players alive',
-      'If',
-      'All players',
-      'All',
-      'The 1st time',
-      'The',
-      'Good',
-      'Evil',
-      'Players',
-      'Minions',
-      'Atheist'
-    ];
-    var SAO_ANYTHING_ELSE_IDX = SAO_PREFIXES.indexOf('Atheist'); // slot just before Atheist
-
-    function saoRank(ability) {
-      var a = (ability || '').trim();
-      for (var i = 0; i < SAO_PREFIXES.length; i++) {
-        if (i === SAO_ANYTHING_ELSE_IDX) continue; // skip Atheist in prefix scan
-        if (a.indexOf(SAO_PREFIXES[i]) === 0) return i;
-      }
-      // <Anything else> gets the index just before Atheist
-      return SAO_ANYTHING_ELSE_IDX;
-    }
-
-    function saoCompare(a, b) {
-      var ra = saoRank(a.ability), rb = saoRank(b.ability);
-      if (ra !== rb) return ra - rb;
-      var la = (a.ability || '').length, lb = (b.ability || '').length;
-      if (la !== lb) return la - lb;
-      var na = (a.name || '').length, nb = (b.name || '').length;
-      if (na !== nb) return na - nb;
-      return (a.name || '').localeCompare(b.name || '');
-    }
-
+    // ── SAO Sort ── (Steven Approved Order — shared logic in assets/sao.js)
     document.getElementById('sb-sort').addEventListener('click', function () {
       var current = getScript();
       if (!current.length) return;
-      var TEAM_ORDER = ['townsfolk','outsider','minion','demon','traveller','fabled'];
-      var byTeam = {};
-      TEAM_ORDER.forEach(function (t) { byTeam[t] = []; });
-      // Also bucket unknowns
-      var unknowns = [];
-      current.forEach(function (slug) {
-        var c = bySlug[slug];
-        if (!c) return;
-        if (byTeam[c.team]) byTeam[c.team].push(c);
-        else unknowns.push(c);
-      });
-      // Sort each team group by SAO then flatten
-      var sorted = [];
-      TEAM_ORDER.forEach(function (t) {
-        byTeam[t].sort(saoCompare);
-        sorted = sorted.concat(byTeam[t].map(function (c) { return c.slug; }));
-      });
-      unknowns.sort(saoCompare);
-      sorted = sorted.concat(unknowns.map(function (c) { return c.slug; }));
-      setScript(sorted);
+      setScript(window.sortRosterSAO(current, bySlug));
       renderAll();
     });
 
