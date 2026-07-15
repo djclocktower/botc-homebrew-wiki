@@ -280,8 +280,8 @@
     function editorUrl(type, slug){
       var sl = encodeURIComponent(slug || '');
       if (type === 'character')  return 'edit?c=' + sl;
-      if (type === 'collection') return 'edit-collection?c=' + sl;
-      if (type === 'script')     return 'edit-script?s=' + sl;
+      if (type === 'collection') return 'publish-collection?c=' + sl;
+      if (type === 'script')     return 'publish-script?s=' + sl;
       return '#';
     }
     function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }

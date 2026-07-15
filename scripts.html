@@ -79,10 +79,11 @@
           var headerHTML = sc.header
             ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
+          var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
             '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
-            (sc.description ? '<p class="script-tile-desc">' + esc(sc.description) + '</p>' : '') +
+            (blurb ? '<p class="script-tile-desc">' + esc(blurb) + '</p>' : '') +
             '<div class="collection-footer">' +
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +

@@ -117,18 +117,26 @@
     var input = document.getElementById('search-input');
     var drop  = document.getElementById('search-drop');
     if (!input || !drop) return;
-    var allChars = null, fetchPromise = null;
+    var allChars = null, allScripts = [], allCollections = [], fetchPromise = null;
 
     function ensureData() {
       if (allChars) return Promise.resolve(allChars);
       if (fetchPromise) return fetchPromise;
-      fetchPromise = fetch(ROOT + 'characters.json?_=' + Date.now())
-        .then(function (r) { return r.json(); })
-        .then(function (l) { allChars = l; return l; });
+      fetchPromise = Promise.all([
+        fetch(ROOT + 'characters.json?_=' + Date.now()).then(function (r) { return r.json(); }),
+        fetch(ROOT + 'scripts.json?_=' + Date.now()).then(function (r) { return r.json(); }).catch(function () { return []; }),
+        fetch(ROOT + 'collections.json?_=' + Date.now()).then(function (r) { return r.json(); }).catch(function () { return []; })
+      ]).then(function (res) {
+        allChars = res[0] || [];
+        allScripts = res[1] || [];
+        allCollections = res[2] || [];
+        return allChars;
+      });
       return fetchPromise;
     }
 
-    // Returns {char, field} so we can show which field matched
+    // Returns {type, item, field} entries — characters first, then scripts,
+    // then collections. Caps at 8 results total.
     function search(q) {
       q = q.trim().toLowerCase();
       if (!q || !allChars) return [];
@@ -142,7 +150,19 @@
         else if ((c.appearsIn || '').toLowerCase().indexOf(q) !== -1) field = 'collection';
         else if ((c.creator || '').toLowerCase().indexOf(q) !== -1) field = 'creator';
         else if ((c.lede || '').toLowerCase().indexOf(q) !== -1) field = 'flavor';
-        if (field) out.push({ c: c, field: field });
+        if (field) out.push({ type: 'character', c: c, field: field });
+      }
+      function matchPage(p) {
+        return (p.name || p.displayName || '').toLowerCase().indexOf(q) !== -1 ||
+               (p.tagline || '').toLowerCase().indexOf(q) !== -1 ||
+               (p.description || '').toLowerCase().indexOf(q) !== -1 ||
+               (p.author || '').toLowerCase().indexOf(q) !== -1;
+      }
+      for (var s = 0; s < allScripts.length && out.length < 8; s++) {
+        if (matchPage(allScripts[s])) out.push({ type: 'script', c: allScripts[s] });
+      }
+      for (var k = 0; k < allCollections.length && out.length < 8; k++) {
+        if (matchPage(allCollections[k])) out.push({ type: 'collection', c: allCollections[k] });
       }
       return out;
     }
@@ -166,7 +186,7 @@
     function render(results, q) {
       var html;
       if (!results.length) {
-        html = '<div class="search-empty">No characters found for \u201c' + esc(q) + '\u201d</div>';
+        html = '<div class="search-empty">Nothing found for \u201c' + esc(q) + '\u201d</div>';
       } else {
         html = resultsHTML(results);
       }
@@ -175,8 +195,29 @@
       if (nb) nb.innerHTML = html;
     }
 
+    function pageThumb(p) {
+      var img = p.logo || p.header;
+      return img ? (ROOT + 'assets/' + img) : (ROOT + 'assets/favicon.png');
+    }
     function resultsHTML(results) {
       return results.map(function (r) {
+        if (r.type === 'script' || r.type === 'collection') {
+          var p = r.c;
+          var pname = p.name || p.displayName || '';
+          var phref = r.type === 'script'
+            ? ROOT + 's/' + encodeURIComponent(p.slug)
+            : ROOT + 'collection/' + encodeURIComponent(p.id || p.slug);
+          var psub = p.tagline || p.description || '';
+          if (psub.length > 80) psub = psub.slice(0, 80) + '\u2026';
+          return '<a class="search-result" href="' + esc(phref) + '" role="option">' +
+            '<img class="search-result-thumb" src="' + esc(pageThumb(p)) + '" alt="" ' +
+            'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
+            '<div class="search-result-info">' +
+            '<span class="search-result-name">' + esc(pname) +
+            '<span class="search-match">' + (r.type === 'script' ? 'Script' : 'Collection') + '</span></span>' +
+            '<span class="search-result-ability">' + esc(psub) + '</span>' +
+            '</div></a>';
+        }
         var c = r.c;
         var typeClass = GOOD[c.team] ? ' good' : '';
         var ability = c.ability || '';

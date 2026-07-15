@@ -24,10 +24,15 @@ Key dynamic behavior:
   live from D1** (published rows only). The repo copies of these files are
   stale seed backups kept only for `/api/seed` disaster recovery — never edit
   them expecting the site to change.
-- `GET /c/{slug}` is **server-side rendered** by the Worker from D1 using the
-  shared renderer in `assets/render.js` (bundled into the Worker via its
-  `import`). There are **no static per-character pages** anymore. The `.html`
-  form 301-redirects to the clean URL.
+- `GET /c/{slug}` (characters), `GET /s/{slug}` (scripts) and
+  `GET /collection/{id}` (collections) are all **server-side rendered** by the
+  Worker from D1. Characters use `assets/render.js`; scripts/collections use
+  `assets/render-page.js`. Both are bundled into the Worker via `import` and
+  share the `pageShell()` HTML frame. There are **no static per-entity pages**.
+  The `.html` form 301-redirects to the clean URL. Legacy `/script-view?s=`
+  301-redirects to `/s/{slug}`. **Collection URLs use the kebab `id`**, not the
+  PK `slug` (legacy rows have display-string slugs like `"The Academy"`);
+  `findCollectionRow()` resolves either.
 - `GET /assets/art|collections|scripts|tokens/*` is served **from R2 first**,
   falling back to committed files.
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
@@ -57,6 +62,18 @@ assets/
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+  render-page.js       Shared script+collection page renderer (synopsis, gameplay,
+                       roster, jinxes, night order, credits, infobox, JSON export,
+                       theming). Browser+Worker like render.js; init(Render) injects
+                       render.js's exports. resolveCollectionMembers() (hybrid
+                       match[]/include[]/exclude[]), sanitizeTheme(), FONT_PRESETS.
+  sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
+                       sortRosterSAO(). Used by script.html, publish-script.html,
+                       steven-approved-order.html, and safe in the Worker.
+  pageview.js          Client enhancements for /s/ and /collection/ SSR pages
+                       (edit button, JSON download).
+  theme-editor.js      Shared theme-kit form controls (font + color pickers) for
+                       publish-script.html and publish-collection.html.
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
@@ -67,12 +84,16 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
-publish-script.html    Script publishing page: name/author/description/header
-                       details form (localStorage botc_script_meta), Publish to
-                       Wiki + Save as Draft (/api/script status=draft|published),
-                       and ?s={slug} edit mode (loads drafts via /api/page).
-                       script-view.html previews an owner's draft (DRAFT banner).
-scripts.html, script-view.html, create-script.html (→script), edit-script.html (→publish-script)
+publish-script.html    Script publishing page: name/author/tagline/version/
+                       difficulty/description + wiki sections (synopsis, gameplay,
+                       strategy) + theme kit (logo/background/font/colors), header,
+                       SAO sort (localStorage botc_script_meta). Publish + Save as
+                       Draft (/api/script status=draft|published), ?s={slug} edit.
+publish-collection.html Collection maker/editor (replaces register-/edit-collection,
+                       now redirect stubs). Same fields as publish-script + hybrid
+                       membership manager (match terms + manual include/exclude).
+                       Publish/Draft via /api/collection; ?c={id} edit mode.
+scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
@@ -94,6 +115,19 @@ need a migration — just put them in the JSON; render.js decides what shows.
 rows (drafts visible to owner/admin). Character data schema: see the sample
 object in `migration/schema_explanation.md` or any `/characters.json` entry.
 
+Scripts and collections carry rich page fields in their `data` JSON (all
+optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
+strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
+membership — `match[]` (auto, normalized `appearsIn`) plus manual `include[]` /
+`exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js). Every
+one of these is length-capped and theme-validated server-side in
+`sanitizePageFields()` (worker.js). `theme` is `{font, accent, panel, text,
+link, background}` — colors must be `#rrggbb`, font a `FONT_PRESETS` key,
+background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
+`sanitizeTheme()` drops anything else and it's applied as CSS custom properties
+on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
+assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
 ## Frontend conventions
 
 - Pages fetch `characters.json` etc. and render client-side; `/c/` pages are
@@ -105,9 +139,10 @@ object in `migration/schema_explanation.md` or any `/characters.json` entry.
   example. Behavior belongs in `site.js`, not inline.
 - Teams: `townsfolk, outsider, minion, demon, traveller, fabled` (+ `loric`
   label). `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
-- SAO sort in script.html groups by team then by ability-prefix bucket
-  (matches steven-approved-order.html). More-specific prefixes ("Each night*")
-  must come before less-specific ("Each night") in the bucket list.
+- SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
+  single source of truth used by script.html, publish-script.html, and rendered
+  into steven-approved-order.html. More-specific prefixes ("Each night*") must
+  come before less-specific ("Each night") in the array — do not reorder.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 
 ## Caching

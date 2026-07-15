@@ -316,12 +316,12 @@
     var TYPE_LABEL = { character: 'Character', collection: 'Collection', script: 'Script' };
     function viewUrl(type, slug) {
       if (type === 'character')  return 'c/' + encodeURIComponent(slug);
-      if (type === 'collection') return 'all-characters?collection=' + encodeURIComponent(slug);
+      if (type === 'collection') return 'collection/' + encodeURIComponent(slug);
       return 's/' + encodeURIComponent(slug);
     }
     function editUrl(type, slug) {
       if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);
-      if (type === 'collection') return 'edit-collection?c=' + encodeURIComponent(slug);
+      if (type === 'collection') return 'publish-collection?c=' + encodeURIComponent(slug);
       return 'publish-script?s=' + encodeURIComponent(slug);
     }
     function fmtDate(s) {
