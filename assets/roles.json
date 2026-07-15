@@ -48,7 +48,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/alhadikhia_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/alhadikhia_e.webp"
  },
  {
   "id": "alsaahir",
@@ -147,7 +147,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/assassin_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/assassin_e.webp"
  },
  {
   "id": "atheist",
@@ -242,7 +242,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/tb/baron_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/baron_e.webp"
  },
  {
   "id": "beggar",
@@ -301,7 +301,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/boffin_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/boffin_e.webp"
  },
  {
   "id": "bonecollector",
@@ -332,7 +332,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/boomdandy_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/boomdandy_e.webp"
  },
  {
   "id": "bootlegger",
@@ -474,7 +474,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/cerenovus_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/cerenovus_e.webp"
  },
  {
   "id": "chambermaid",
@@ -625,7 +625,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/devilsadvocate_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/devilsadvocate_e.webp"
  },
  {
   "id": "djinn",
@@ -747,7 +747,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/eviltwin_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/eviltwin_e.webp"
  },
  {
   "id": "exorcist",
@@ -780,7 +780,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/snv/fanggu_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/fanggu_e.webp"
  },
  {
   "id": "farmer",
@@ -810,7 +810,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/fearmonger_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/fearmonger_e.webp"
  },
  {
   "id": "ferryman",
@@ -1009,7 +1009,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/goblin_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/goblin_e.webp"
  },
  {
   "id": "godfather",
@@ -1026,7 +1026,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/bmr/godfather_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/godfather_e.webp"
  },
  {
   "id": "godofug",
@@ -1155,7 +1155,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/harpy_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/harpy_e.webp"
  },
  {
   "id": "hatter",
@@ -1279,7 +1279,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/imp_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/imp_e.webp"
  },
  {
   "id": "innkeeper",
@@ -1366,7 +1366,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/kazali_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/kazali_e.webp"
  },
  {
   "id": "king",
@@ -1442,7 +1442,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/legion_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/legion_e.webp"
  },
  {
   "id": "leviathan",
@@ -1463,7 +1463,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/leviathan_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/leviathan_e.webp"
  },
  {
   "id": "librarian",
@@ -1497,7 +1497,7 @@
    "Dead"
   ],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/lilmonsta_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/lilmonsta_e.webp"
  },
  {
   "id": "lleech",
@@ -1514,7 +1514,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/lleech_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/lleech_e.webp"
  },
  {
   "id": "lordoftyphon",
@@ -1530,7 +1530,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/lordoftyphon_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/lordoftyphon_e.webp"
  },
  {
   "id": "lunatic",
@@ -1595,7 +1595,7 @@
    "Is The Marionette"
   ],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/marionette_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/marionette_e.webp"
  },
  {
   "id": "mastermind",
@@ -1609,7 +1609,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/mastermind_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/mastermind_e.webp"
  },
  {
   "id": "mathematician",
@@ -1674,7 +1674,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/mezepheles_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/mezepheles_e.webp"
  },
  {
   "id": "minstrel",
@@ -1788,7 +1788,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/nodashii_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/nodashii_e.webp"
  },
  {
   "id": "ogre",
@@ -1820,7 +1820,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/ojo_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/ojo_e.webp"
  },
  {
   "id": "oracle",
@@ -1851,7 +1851,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/organgrinder_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/organgrinder_e.webp"
  },
  {
   "id": "pacifist",
@@ -1897,7 +1897,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/pithag_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/pithag_e.webp"
  },
  {
   "id": "pixie",
@@ -1949,7 +1949,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/po_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/po_e.webp"
  },
  {
   "id": "poisoner",
@@ -1965,7 +1965,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/poisoner_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/poisoner_e.webp"
  },
  {
   "id": "politician",
@@ -2074,7 +2074,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/psychopath_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/psychopath_e.webp"
  },
  {
   "id": "pukka",
@@ -2092,7 +2092,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/pukka_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/pukka_e.webp"
  },
  {
   "id": "puzzlemaster",
@@ -2173,7 +2173,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/riot_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/riot_e.webp"
  },
  {
   "id": "sage",
@@ -2261,7 +2261,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/scarletwoman_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/scarletwoman_e.webp"
  },
  {
   "id": "seamstress",
@@ -2309,7 +2309,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/shabaloth_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/shabaloth_e.webp"
  },
  {
   "id": "shugenja",
@@ -2413,7 +2413,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/tb/spy_g.webp"
+  "image": "https://release.botc.app/resources/characters/tb/spy_e.webp"
  },
  {
   "id": "steward",
@@ -2463,7 +2463,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/summoner_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/summoner_e.webp"
  },
  {
   "id": "sweetheart",
@@ -2629,7 +2629,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/snv/vigormortis_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/vigormortis_e.webp"
  },
  {
   "id": "villageidiot",
@@ -2675,7 +2675,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/vizier_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/vizier_e.webp"
  },
  {
   "id": "vortox",
@@ -2691,7 +2691,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/vortox_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/vortox_e.webp"
  },
  {
   "id": "voudon",
@@ -2739,7 +2739,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/widow_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/widow_e.webp"
  },
  {
   "id": "witch",
@@ -2755,7 +2755,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/snv/witch_g.webp"
+  "image": "https://release.botc.app/resources/characters/snv/witch_e.webp"
  },
  {
   "id": "wizard",
@@ -2772,7 +2772,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/wizard_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/wizard_e.webp"
  },
  {
   "id": "wraith",
@@ -2786,7 +2786,7 @@
   "reminders": [],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/wraith_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/wraith_e.webp"
  },
  {
   "id": "xaan",
@@ -2805,7 +2805,7 @@
   ],
   "remindersGlobal": [],
   "setup": true,
-  "image": "https://release.botc.app/resources/characters/carousel/xaan_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/xaan_e.webp"
  },
  {
   "id": "yaggababble",
@@ -2823,7 +2823,7 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/carousel/yaggababble_g.webp"
+  "image": "https://release.botc.app/resources/characters/carousel/yaggababble_e.webp"
  },
  {
   "id": "zealot",
@@ -2872,6 +2872,6 @@
   ],
   "remindersGlobal": [],
   "setup": false,
-  "image": "https://release.botc.app/resources/characters/bmr/zombuul_g.webp"
+  "image": "https://release.botc.app/resources/characters/bmr/zombuul_e.webp"
  }
 ]
