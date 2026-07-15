@@ -317,7 +317,7 @@
     function viewUrl(type, slug) {
       if (type === 'character')  return 'c/' + encodeURIComponent(slug);
       if (type === 'collection') return 'all-characters?collection=' + encodeURIComponent(slug);
-      return 'script-view?s=' + encodeURIComponent(slug);
+      return 's/' + encodeURIComponent(slug);
     }
     function editUrl(type, slug) {
       if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);

@@ -43,7 +43,8 @@
  *   GET  /u/{username}        -> public profile page (serves profile.html)
  *   GET  /random              -> 302 to a random published character page
  *   GET  /sitemap.xml         -> built live from D1
- *   GET  /script-view.html    -> static page with OG/meta tags injected (?s=slug)
+ *   GET  /s/{slug}            -> script page (server-side rendered from D1)
+ *   GET  /script-view(.html)  -> 301 to /s/{slug} (legacy links)
  *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data
@@ -64,6 +65,10 @@
 
 // esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
 import Render from '../assets/render.js';
+// Shared script/collection page renderer (also used by the publish pages in
+// the browser). It receives render.js's exports through init().
+import PageRender from '../assets/render-page.js';
+PageRender.init(Render);
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -343,6 +348,79 @@ function attr(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
+// The topbar/nav markup mirrors the static pages (scripts.html is canonical).
+function pageShell(o) {
+  // o: {title, desc, canonicalUrl, ogImage, ogCard, crumb, body, bodyClass,
+  //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner}
+  const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
+    (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
+  const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
+    (o.mainStyle ? ' style="' + attr(o.mainStyle) + '"' : '');
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${attr(o.title)} — BOTC HomeBrew Wiki</title>
+<meta name="description" content="${attr(o.desc)}">
+<link rel="canonical" href="${attr(o.canonicalUrl)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="${attr(o.title)}">
+<meta property="og:description" content="${attr(o.desc)}">
+<meta property="og:image" content="${attr(o.ogImage)}">
+<meta property="og:url" content="${attr(o.canonicalUrl)}">
+<meta name="twitter:card" content="${attr(o.ogCard || 'summary')}">
+<meta name="twitter:title" content="${attr(o.title)}">
+<meta name="twitter:description" content="${attr(o.desc)}">
+<meta name="twitter:image" content="${attr(o.ogImage)}">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body${bodyAttrs}>
+${o.draftBanner || ''}
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="../">
+        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
+      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${o.crumb}</nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="../">Home</a>
+  <a href="../all-characters">All Characters</a>
+  <a href="../tags">Tags</a>
+  <a href="../creators">Creators</a>
+  <a href="../script">Script Builder</a>
+  <a href="../create">Create a Character</a>
+</nav>
+
+  <main${mainAttrs} id="content">${o.body}</main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>${o.bootstrap || ''}</script>
+${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').join('\n')}
+</body>
+</html>`;
+}
+
 function renderCharacterPage(d, origin, isDraft) {
   const team = d.team || 'townsfolk';
   const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
@@ -364,72 +442,124 @@ function renderCharacterPage(d, origin, isDraft) {
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
     : '';
+  return pageShell({
+    title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
+    crumb, body, draftBanner,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};`,
+    scripts: ['render.js', 'tags.js', 'charpage.js', 'site.js']
+  });
+}
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${attr(name)} — BOTC HomeBrew Wiki</title>
-<meta name="description" content="${attr(desc)}">
-<link rel="canonical" href="${attr(pageUrl)}">
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="BOTC HomeBrew Wiki">
-<meta property="og:title" content="${attr(name)}">
-<meta property="og:description" content="${attr(desc)}">
-<meta property="og:image" content="${attr(img)}">
-<meta property="og:url" content="${attr(pageUrl)}">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="${attr(name)}">
-<meta name="twitter:description" content="${attr(desc)}">
-<meta name="twitter:image" content="${attr(img)}">
-<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
-<link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css">
-</head>
-<body>
-${draftBanner}
-  <header class="topbar">
-    <div class="brand-group">
-      <a class="brand" href="../">
-        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
-        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
-      </a>
-      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
-      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
-    </div>
-    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${crumb}</nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
-  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-</header>
-<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
-  <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
-  </div>
-  <a href="../">Home</a>
-  <a href="../all-characters">All Characters</a>
-  <a href="../tags">Tags</a>
-  <a href="../creators">Creators</a>
-  <a href="../script">Script Builder</a>
-  <a href="../create">Create a Character</a>
-</nav>
+// ---- official BotC roles (assets/roles.json), for script rosters that
+// include imported official characters ('off-' slugs). Cached per isolate.
+let _officialRolesCache = null;
+async function loadOfficialRoles(env, origin) {
+  if (_officialRolesCache) return _officialRolesCache;
+  try {
+    const res = await env.ASSETS.fetch(new Request(origin + '/assets/roles.json'));
+    const roles = await res.json();
+    _officialRolesCache = (roles || []).filter(r => r && r.id).map(r => ({
+      slug: 'off-' + String(r.id).toLowerCase().replace(/[^a-z0-9]/g, ''),
+      official: true, id: r.id,
+      name: r.name || r.id, team: r.team || '',
+      ability: r.ability || '', image: r.image || '',
+      page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
+    }));
+  } catch {
+    _officialRolesCache = [];
+  }
+  return _officialRolesCache;
+}
 
-  <main class="wrap" id="content">${body}</main>
+// ---- shared SSR for /s/{slug} and /collection/{id} pages ----
+async function renderContentPage(env, request, url, type, slug) {
+  const isScript = type === 'script';
+  const table = isScript ? 'scripts' : 'collections';
+  let row = null;
+  try {
+    row = await env.DB.prepare(`SELECT data, status, owner_id FROM ${table} WHERE slug=?`)
+      .bind(slug).first();
+  } catch {
+    row = await env.DB.prepare(`SELECT data FROM ${table} WHERE slug=?`).bind(slug).first();
+  }
+  if (!isScript && !row) row = await findCollectionRow(env, slug);
+  if (!row || !row.data) return env.ASSETS.fetch(request);
 
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+  const isDraft = row.status === 'draft';
+  if (isDraft) {
+    const sess = await getSession(env, request);
+    if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
+  }
+  const d = JSON.parse(row.data);
+  if (!d.slug) d.slug = row.slug || slug;
 
-  <script>window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};</script>
-  <script src="../assets/render.js"></script>
-  <script src="../assets/tags.js"></script>
-  <script src="../assets/charpage.js"></script>
-  <script src="../assets/site.js"></script>
-</body>
-</html>`;
+  let chars = await buildPublicJSON(env, 'characters');
+  // Scripts can carry imported official roles ('off-' slugs) — resolve them
+  if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
+    chars = chars.concat(await loadOfficialRoles(env, url.origin));
+  }
+
+  const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
+  const theme = PageRender.sanitizeTheme(d.theme, themeBase);
+  const ta = PageRender.themeAttrs(theme, '../');
+
+  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+  const body = isScript
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft });
+
+  const nChars = isScript
+    ? (d.characters || []).length
+    : PageRender.resolveCollectionMembers(d, chars).length;
+  const desc = (d.tagline || '').trim() || (d.description || '').trim() ||
+    (nChars + '-character homebrew ' + (isScript ? 'script' : 'collection') +
+     ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
+  const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
+  const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
+  const editHref = isScript
+    ? '../publish-script?s=' + encodeURIComponent(d.slug)
+    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
+  const draftBanner = isDraft
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a> or <a href="../account" style="color:#ffe9ad">your account</a>.</div>'
+    : '';
+  const crumb = isScript
+    ? '<a href="../">Home</a><span class="sep">›</span><a href="../scripts">Scripts</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>'
+    : '<a href="../">Home</a><span class="sep">›</span><a href="../">Collections</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>';
+
+  const html = pageShell({
+    title: (isDraft ? 'Draft: ' : '') + name, desc, canonicalUrl: canonical,
+    ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
+    crumb, body, draftBanner,
+    bodyClass: ta.cls, bodyStyle: ta.style,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    scripts: ['render.js', 'pageview.js', 'site.js']
+  });
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+  });
+}
+
+// Collections: legacy rows have a display-string PK slug (e.g. "The Academy")
+// while URLs use the kebab id from the JSON ("the-academy"). Resolve by PK
+// first, then by data.id, then by normalized slug/displayName.
+async function findCollectionRow(env, key) {
+  if (!key) return null;
+  let hit = await env.DB.prepare(
+    'SELECT slug, display_name AS name, owner_id, status, data FROM collections WHERE slug=?'
+  ).bind(key).first().catch(() => null);
+  if (hit) return hit;
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const nkey = norm(key);
+  const { results } = await env.DB.prepare(
+    'SELECT slug, display_name AS name, owner_id, status, data FROM collections'
+  ).all().catch(() => ({ results: [] }));
+  for (const row of results || []) {
+    try {
+      const d = JSON.parse(row.data);
+      if (d.id === key || norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey) return row;
+    } catch { /* skip bad rows */ }
+  }
+  return null;
 }
 
 // ---- Discord OAuth helpers ----
@@ -509,6 +639,22 @@ export default {
         }
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
+      return env.ASSETS.fetch(request);
+    }
+
+    // ---------- SCRIPT PAGES (server-side rendered from D1) ----------
+    if (method === 'GET' && path.startsWith('/s/')) {
+      let slug = decodeURIComponent(path.slice(3));
+      if (slug.endsWith('.html')) {
+        slug = slug.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/s/' + slug + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
+        return renderContentPage(env, request, url, 'script', slug);
+      }
       return env.ASSETS.fetch(request);
     }
 
@@ -615,7 +761,7 @@ export default {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/script-view?s=' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -625,45 +771,19 @@ export default {
       });
     }
 
-    // ---------- SCRIPT VIEW (inject OG/meta tags so shared links unfurl) ----------
+    // ---------- SCRIPT VIEW (legacy URLs redirect to the SSR /s/ pages) ----------
     if (method === 'GET' && (path === '/script-view.html' || path === '/script-view')) {
       const slug = url.searchParams.get('s');
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-        try {
-          let row;
-          try {
-            row = await env.DB.prepare('SELECT data, status FROM scripts WHERE slug=?').bind(slug).first();
-          } catch {
-            row = await env.DB.prepare('SELECT data FROM scripts WHERE slug=?').bind(slug).first();
-          }
-          if (row && row.data && row.status !== 'draft') {
-            const s = JSON.parse(row.data);
-            const assetRes = await env.ASSETS.fetch(new Request(url.origin + '/script-view.html'));
-            let html = await assetRes.text();
-            const name = s.name || 'Script';
-            const nChars = (s.characters || []).length;
-            const desc = (s.description || '').trim() ||
-              (nChars + '-character homebrew script for Blood on the Clocktower' + (s.author ? ', by ' + s.author : '') + '.');
-            const pageUrl = url.origin + '/script-view?s=' + encodeURIComponent(slug);
-            const img = url.origin + '/assets/' + (s.header || 'logo_skull.png');
-            const metaBlock = '<title>' + attr(name) + ' — BOTC HomeBrew Wiki</title>\n' +
-              '<meta name="description" content="' + attr(desc) + '">\n' +
-              '<link rel="canonical" href="' + attr(pageUrl) + '">\n' +
-              '<meta property="og:type" content="article">\n' +
-              '<meta property="og:site_name" content="BOTC HomeBrew Wiki">\n' +
-              '<meta property="og:title" content="' + attr(name) + '">\n' +
-              '<meta property="og:description" content="' + attr(desc) + '">\n' +
-              '<meta property="og:image" content="' + attr(img) + '">\n' +
-              '<meta property="og:url" content="' + attr(pageUrl) + '">\n' +
-              '<meta name="twitter:card" content="' + (s.header ? 'summary_large_image' : 'summary') + '">';
-            html = html.replace('<title>Script — BOTC HomeBrew Wiki</title>', metaBlock);
-            return new Response(html, {
-              headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
-            });
-          }
-        } catch { /* fall through to the plain static page */ }
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/s/' + encodeURIComponent(slug), 'Cache-Control': 'no-store' }
+        });
       }
-      return env.ASSETS.fetch(request);
+      return new Response(null, {
+        status: 302,
+        headers: { Location: url.origin + '/scripts', 'Cache-Control': 'no-store' }
+      });
     }
 
     // ---------- AUTH: SIGN UP ----------

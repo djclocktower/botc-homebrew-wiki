@@ -301,7 +301,7 @@
         currentStatus = saveStatus;
         setEditMode(slug);
         var m = getMeta(); m.header = existingHeader || m.header; m.editSlug = slug; setMeta(m);
-        var url = SITE_ROOT + 'script-view?s=' + encodeURIComponent(slug);
+        var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
         if (isDraft) {
           pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.');
         } else {

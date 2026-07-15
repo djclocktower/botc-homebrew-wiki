@@ -75,7 +75,7 @@
         }
         grid.innerHTML = scripts.map(function(sc){
           var n = (sc.characters || []).length;
-          var href = 'script-view?s=' + encodeURIComponent(sc.slug);
+          var href = 's/' + encodeURIComponent(sc.slug);
           var headerHTML = sc.header
             ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
