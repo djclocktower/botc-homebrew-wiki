@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Collection Editor — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Create or edit a Blood on the Clocktower homebrew collection: name it, pick its characters, add a description and artwork, and publish it to the wiki.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Collection Editor">
+<meta property="og:description" content="Create or edit a Blood on the Clocktower homebrew collection and publish it to the wiki.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+/* ─── Collection editor layout (mirrors publish-script.html) ─── */
+.pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 860px; margin: 0 auto; }
+
+.sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
+.sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-fld { margin-bottom:12px; }
+.sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld .req { color:var(--evil); }
+.sb-fld input[type=text], .sb-fld textarea, .sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld textarea { resize:vertical; min-height:54px; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:140px; border:1px solid #cdbfa0; display:none; }
+
+.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
+.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
+.pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+.sb-publish-blurb { font-size:.82rem; color:var(--ink); opacity:.82; margin:4px 0 0; line-height:1.5; }
+#sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
+#sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+#sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+#sb-publish-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#sb-publish-status a { color:inherit; font-weight:700; }
+.pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+.pub-back:hover { color:#fff; text-decoration:underline; }
+
+details.sb-details { padding:0; }
+details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.15rem; }
+details.sb-details > summary::-webkit-details-marker { display:none; }
+details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
+details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > .sb-details-body { padding:4px 20px 18px; }
+
+.sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.th-row:last-child { border-bottom:none; }
+.th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+.pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
+.pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
+
+/* Membership manager */
+.pc-member-count { font-family:'Oswald',sans-serif; font-size:.82rem; color:#5b4632; margin:0 0 8px; }
+.pc-member-list { max-height:340px; overflow-y:auto; border:1px solid #cdbfa0; background:#fffdf8; }
+.pc-member { display:flex; align-items:center; gap:8px; padding:6px 10px; border-bottom:1px solid rgba(180,160,120,.25); }
+.pc-member:last-child { border-bottom:none; }
+.pc-member-thumb { width:32px; height:32px; object-fit:contain; flex-shrink:0; }
+.pc-member-name { flex:1; font-size:.92rem; color:var(--maroon); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pc-member-how { font-family:'Oswald',sans-serif; font-size:.68rem; letter-spacing:.04em; text-transform:uppercase; color:#6b5d49; background:rgba(91,31,33,.06); border:1px solid rgba(180,160,120,.4); padding:1px 7px; border-radius:999px; flex-shrink:0; }
+.pc-member-btn { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; flex-shrink:0; }
+.pc-member-btn:hover { color:var(--evil); border-color:var(--evil); }
+.pc-add-wrap { position:relative; margin-bottom:10px; }
+.pc-add-results { position:absolute; left:0; right:0; top:100%; z-index:20; background:#fffdf8; border:1px solid #cdbfa0; max-height:260px; overflow-y:auto; box-shadow:0 10px 24px rgba(20,6,16,.25); display:none; }
+.pc-add-results.open { display:block; }
+.pc-add-row { display:flex; align-items:center; gap:8px; width:100%; text-align:left; padding:6px 10px; background:none; border:0; border-bottom:1px solid rgba(180,160,120,.2); cursor:pointer; font:inherit; }
+.pc-add-row:hover { background:rgba(91,31,33,.06); }
+.pc-excluded { margin-top:10px; }
+.pc-excluded .pc-member-name { text-decoration:line-through; opacity:.7; }
+.pub-empty { color:#6b5d49; font-size:.92rem; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>
+      <span class="here">Collection Editor</span>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="scripts">Scripts</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+  <a href="create">Create a Character</a>
+</nav>
+
+  <main class="pub-main">
+    <div class="home-hero" style="padding-bottom:14px">
+      <h1 id="pub-page-title">Create a Collection</h1>
+      <p>A collection groups your characters into one wiki page — name it, pick its characters, and publish.</p>
+    </div>
+
+    <div id="gate" class="sb-details" style="display:none">
+      <h2>Log in first</h2>
+      <p class="sub">You need an account to create or edit a collection. <a href="login?next=publish-collection" style="color:var(--maroon);font-weight:600">Log in or sign up →</a></p>
+    </div>
+
+    <div id="editor" style="display:none">
+
+    <!-- Collection details -->
+    <div class="sb-details">
+      <h2>Collection Details</h2>
+      <p class="sub">Shown on the collection's wiki page.</p>
+      <div class="sb-fld">
+        <label for="pc-name">Collection name <span class="req">*</span></label>
+        <input type="text" id="pc-name" placeholder="e.g. The Academy">
+      </div>
+      <p class="pub-url" id="pub-url" style="display:none"></p>
+      <div class="sb-fld">
+        <label for="pc-author">Author / curator</label>
+        <input type="text" id="pc-author" placeholder="Your name">
+      </div>
+      <div class="sb-fld">
+        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional — one line shown under the title)</span></label>
+        <input type="text" id="pc-tagline" maxlength="140" placeholder="e.g. Class is in session.">
+      </div>
+      <div class="sb-fld-row">
+        <div class="sb-fld">
+          <label for="pc-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <input type="text" id="pc-version" maxlength="32" placeholder="e.g. 2.0">
+        </div>
+        <div class="sb-fld">
+          <label for="pc-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <select id="pc-difficulty">
+            <option value="">— not set —</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="veteran">Veteran</option>
+          </select>
+        </div>
+      </div>
+      <div class="sb-fld">
+        <label for="pc-desc">Description <span class="req">*</span></label>
+        <textarea id="pc-desc" placeholder="A short blurb about this collection."></textarea>
+      </div>
+      <div class="sb-fld">
+        <label for="pc-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional PNG, wide banner works best)</span></label>
+        <input type="file" id="pc-header" accept="image/*">
+        <img id="pc-header-prev" class="sb-header-prev" alt="header preview">
+        <div id="pc-header-note" class="sub" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- Membership -->
+    <div class="sb-details">
+      <h2>Characters</h2>
+      <p class="sub">Characters whose <em>Appears in</em> matches one of the match terms join automatically. You can also add or remove characters by hand.</p>
+      <div class="sb-fld">
+        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(comma-separated — e.g. "The Academy, Academy")</span></label>
+        <input type="text" id="pc-match" placeholder="The Academy">
+      </div>
+      <div class="sb-fld pc-add-wrap">
+        <label for="pc-add">Add a character</label>
+        <input type="text" id="pc-add" placeholder="Type a character name…" autocomplete="off">
+        <div class="pc-add-results" id="pc-add-results"></div>
+      </div>
+      <p class="pc-member-count" id="pc-member-count">0 characters</p>
+      <div class="pc-member-list" id="pc-member-list">
+        <p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>
+      </div>
+      <div class="pc-excluded" id="pc-excluded"></div>
+    </div>
+
+    <!-- Optional wiki-page text sections -->
+    <details class="sb-details" id="sb-sections">
+      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on the collection page like the official wiki.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(flavor intro — blank line = new paragraph)</span></label>
+          <textarea id="pc-synopsis" rows="4" maxlength="4000"></textarea>
+        </div>
+        <div class="sb-fld">
+          <label for="pc-gameplay">Gameplay overview</label>
+          <textarea id="pc-gameplay" rows="4" maxlength="4000"></textarea>
+        </div>
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="pc-strat-good">Playing Good</label>
+            <textarea id="pc-strat-good" rows="3" maxlength="2000"></textarea>
+          </div>
+          <div class="sb-fld">
+            <label for="pc-strat-evil">Playing Evil</label>
+            <textarea id="pc-strat-evil" rows="3" maxlength="2000"></textarea>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Optional page appearance / theme -->
+    <details class="sb-details" id="sb-appearance">
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="pc-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(square-ish works best)</span></label>
+            <input type="file" id="pc-logo" accept="image/*">
+            <img id="pc-logo-prev" class="sb-header-prev" alt="logo preview">
+            <div id="pc-logo-note" class="sub" style="margin-top:6px"></div>
+          </div>
+          <div class="sb-fld">
+            <label for="pc-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(large image, shown behind the page)</span></label>
+            <input type="file" id="pc-bg" accept="image/*">
+            <img id="pc-bg-prev" class="sb-header-prev" alt="background preview">
+            <div id="pc-bg-note" class="sub" style="margin-top:6px"></div>
+          </div>
+        </div>
+        <div class="sb-fld">
+          <label for="th-font">Heading font</label>
+          <select id="th-font"></select>
+        </div>
+        <div class="sb-fld">
+          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(leave unset to keep the wiki look)</span></label>
+          <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
+          <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
+          <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
+          <div class="th-row"><label for="th-link">Links / names</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
+        </div>
+      </div>
+    </details>
+
+    <div class="pub-actions">
+      <button class="sb-btn sb-btn-publish" id="pc-publish" type="button">★ Publish to Wiki</button>
+      <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <span class="pub-status-pill" id="pub-status-pill"></span>
+    </div>
+    <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. Name and description are required, and you must be logged in.</p>
+    <div id="sb-publish-status"></div>
+
+    </div><!-- /editor -->
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/theme-editor.js"></script>
+  <script>
+  (function () {
+    var allChars = [];
+    var bySlug = {};
+    var EDIT_KEY = null;         // collection id when editing
+    var EDIT_PK = null;          // the row's PK slug (legacy rows differ from id)
+    var currentStatus = null;    // 'draft' | 'published' | null
+    var theme = {};              // theme state (validated on save)
+    var include = [], exclude = [];
+    var headerDataURL = null, existingHeader = null;
+    var logoDataURL = null, existingLogo = null;
+    var bgDataURL = null, existingBg = null;
+
+    var SITE_ROOT = new URL('.', location.href).href;
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
+    function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+    function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
+
+    function matchTerms(){
+      return $('pc-match').value.split(',').map(function(s){ return norm(s); }).filter(Boolean);
+    }
+    function currentDef(){
+      return { match: matchTerms(), include: include, exclude: exclude };
+    }
+    function artSrc(c){
+      return c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png');
+    }
+
+    // ── membership list ──
+    function renderMembers(){
+      var def = currentDef();
+      var members = window.PageRender.resolveCollectionMembers(def, allChars);
+      var inc = {}; include.forEach(function(s){ inc[s] = 1; });
+      $('pc-member-count').textContent = members.length + ' character' + (members.length===1?'':'s');
+      if (!members.length){
+        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">No characters yet — set a match term or add characters above.</p>';
+      } else {
+        $('pc-member-list').innerHTML = members.map(function(c){
+          var manual = !!inc[c.slug];
+          return '<div class="pc-member">' +
+            '<img class="pc-member-thumb" loading="lazy" decoding="async" src="' + esc(artSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<span class="pc-member-name">' + esc(c.name) + '</span>' +
+            '<span class="pc-member-how">' + (manual ? 'added' : 'auto') + '</span>' +
+            '<button type="button" class="pc-member-btn" data-slug="' + esc(c.slug) + '" data-manual="' + (manual?'1':'0') + '">' + (manual ? 'remove' : 'exclude') + '</button>' +
+            '</div>';
+        }).join('');
+      }
+      var exc = exclude.map(function(s){ return bySlug[s]; }).filter(Boolean);
+      $('pc-excluded').innerHTML = !exc.length ? '' :
+        '<p class="pc-member-count">Excluded (' + exc.length + ')</p>' +
+        exc.map(function(c){
+          return '<div class="pc-member">' +
+            '<img class="pc-member-thumb" loading="lazy" decoding="async" src="' + esc(artSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<span class="pc-member-name">' + esc(c.name) + '</span>' +
+            '<button type="button" class="pc-member-btn" data-restore="' + esc(c.slug) + '">restore</button>' +
+            '</div>';
+        }).join('');
+    }
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.pc-member-btn');
+      if (!btn) return;
+      var restore = btn.getAttribute('data-restore');
+      if (restore){
+        exclude = exclude.filter(function(s){ return s !== restore; });
+        renderMembers(); return;
+      }
+      var slug = btn.getAttribute('data-slug');
+      if (btn.getAttribute('data-manual') === '1'){
+        include = include.filter(function(s){ return s !== slug; });
+      } else if (exclude.indexOf(slug) === -1){
+        exclude.push(slug);
+      }
+      renderMembers();
+    });
+    $('pc-match').addEventListener('input', renderMembers);
+
+    // ── add-character search ──
+    $('pc-add').addEventListener('input', function(){
+      var q = this.value.trim().toLowerCase();
+      var box = $('pc-add-results');
+      if (!q){ box.className = 'pc-add-results'; box.innerHTML = ''; return; }
+      var def = currentDef();
+      var memberSet = {};
+      window.PageRender.resolveCollectionMembers(def, allChars).forEach(function(c){ memberSet[c.slug] = 1; });
+      var hits = allChars.filter(function(c){
+        return !memberSet[c.slug] && (c.name||'').toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 12);
+      box.innerHTML = hits.length ? hits.map(function(c){
+        return '<button type="button" class="pc-add-row" data-slug="' + esc(c.slug) + '">' +
+          '<img class="pc-member-thumb" src="' + esc(artSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<span class="pc-member-name">' + esc(c.name) + '</span>' +
+          '<span class="pc-member-how">' + esc(c.creator || '') + '</span></button>';
+      }).join('') : '<p class="pub-empty" style="padding:8px 10px;margin:0">No matches.</p>';
+      box.className = 'pc-add-results open';
+    });
+    $('pc-add-results').addEventListener('click', function(e){
+      var row = e.target.closest && e.target.closest('.pc-add-row');
+      if (!row) return;
+      var slug = row.getAttribute('data-slug');
+      exclude = exclude.filter(function(s){ return s !== slug; });
+      if (include.indexOf(slug) === -1) include.push(slug);
+      $('pc-add').value = '';
+      this.className = 'pc-add-results'; this.innerHTML = '';
+      renderMembers();
+    });
+    document.addEventListener('click', function(e){
+      if (!e.target.closest || !e.target.closest('.pc-add-wrap')){
+        $('pc-add-results').className = 'pc-add-results';
+      }
+    });
+
+    // ── theme controls (shared widget) ──
+    window.ThemeEditor.wire({
+      get: function(){ return theme; },
+      set: function(t){ theme = t; }
+    });
+
+    // ── image inputs (resize to max width PNG) ──
+    function wireImageInput(inputId, prevId, noteId, maxW, onReady){
+      $(inputId).addEventListener('change', function(e){
+        var f = e.target.files[0]; if (!f) return;
+        var rd = new FileReader();
+        rd.onload = function(ev){
+          var img = new Image();
+          img.onload = function(){
+            var w = img.width, h = img.height;
+            if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+            var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            cv.getContext('2d').drawImage(img, 0, 0, w, h);
+            var dataURL = cv.toDataURL('image/png');
+            var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
+            $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            onReady(dataURL);
+          };
+          img.src = ev.target.result;
+        };
+        rd.readAsDataURL(f);
+      });
+    }
+    wireImageInput('pc-header', 'pc-header-prev', 'pc-header-note', 900, function(d){ headerDataURL = d; });
+    wireImageInput('pc-logo', 'pc-logo-prev', 'pc-logo-note', 400, function(d){ logoDataURL = d; });
+    wireImageInput('pc-bg', 'pc-bg-prev', 'pc-bg-note', 1600, function(d){ bgDataURL = d; });
+
+    // ── name → id preview ──
+    function updateUrlPreview(){
+      var id = EDIT_KEY || slugify($('pc-name').value);
+      var u = $('pub-url');
+      if (!id){ u.style.display = 'none'; return; }
+      u.style.display = '';
+      u.innerHTML = 'Page URL' + (EDIT_KEY ? ' (fixed once created)' : '') + ': <code>' + esc(SITE_ROOT + 'collection/' + id) + '</code>';
+    }
+    $('pc-name').addEventListener('input', updateUrlPreview);
+
+    function updateButtons(){
+      var pub = $('pc-publish'), draft = $('pc-draft'), pill = $('pub-status-pill');
+      pub.textContent   = currentStatus === 'published' ? '★ Save Changes' : '★ Publish to Wiki';
+      draft.textContent = currentStatus === 'draft' ? 'Save Draft'
+                        : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
+      pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
+      pill.textContent = currentStatus === 'draft' ? 'Draft' : currentStatus === 'published' ? 'Published' : '';
+    }
+
+    // ── save ──
+    function submitCollection(saveStatus){
+      var isDraft = saveStatus === 'draft';
+      var name = $('pc-name').value.trim();
+      var desc = $('pc-desc').value.trim();
+      if (!name){ pubStatus('err', 'Please give the collection a name.'); return; }
+      if (!desc){ pubStatus('err', 'Please add a short description.'); return; }
+      var id = EDIT_KEY || slugify(name);
+      if (!id){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
+
+      $('pc-publish').disabled = true;
+      $('pc-draft').disabled = true;
+      var verb = isDraft ? 'Saving draft' : 'Publishing';
+
+      var chain = Promise.resolve();
+      if (headerDataURL) chain = chain.then(function(){ pubStatus('work', verb + '… uploading header'); return apiUpload('collections/' + id + '.png', headerDataURL); });
+      if (logoDataURL)   chain = chain.then(function(){ pubStatus('work', verb + '… uploading logo'); return apiUpload('collections/' + id + '-logo.png', logoDataURL); });
+      if (bgDataURL)     chain = chain.then(function(){ pubStatus('work', verb + '… uploading background'); return apiUpload('collections/' + id + '-bg.png', bgDataURL); });
+
+      chain.then(function(){
+        pubStatus('work', verb + '… saving collection');
+        var t = {};
+        Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
+        if (bgDataURL) t.background = 'collections/' + id + '-bg.png';
+        else if (existingBg) t.background = existingBg;
+        t = window.PageRender.sanitizeTheme(t, 'collections/' + id);
+        var entry = {
+          id: id,
+          slug: EDIT_PK || id,
+          displayName: name,
+          author: $('pc-author').value.trim(),
+          description: desc,
+          tagline: $('pc-tagline').value.trim(),
+          version: $('pc-version').value.trim(),
+          difficulty: $('pc-difficulty').value,
+          synopsis: $('pc-synopsis').value.trim(),
+          gameplay: $('pc-gameplay').value.trim(),
+          strategyGood: $('pc-strat-good').value.trim(),
+          strategyEvil: $('pc-strat-evil').value.trim(),
+          match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
+          include: include.slice(),
+          exclude: exclude.slice(),
+          header: headerDataURL ? ('collections/' + id + '.png') : (existingHeader || ''),
+          status: saveStatus
+        };
+        var logo = logoDataURL ? ('collections/' + id + '-logo.png') : (existingLogo || '');
+        if (logo) entry.logo = logo;
+        if (t) entry.theme = t;
+        return apiSave(entry);
+      }).then(function(res){
+        if (headerDataURL){ existingHeader = 'collections/' + id + '.png'; headerDataURL = null; }
+        if (logoDataURL){ existingLogo = 'collections/' + id + '-logo.png'; logoDataURL = null; }
+        if (bgDataURL){ existingBg = 'collections/' + id + '-bg.png'; bgDataURL = null; }
+        currentStatus = saveStatus;
+        EDIT_KEY = id;
+        EDIT_PK = (res && res.slug) || EDIT_PK || id;
+        $('pub-page-title').textContent = 'Edit Collection';
+        updateUrlPreview(); updateButtons();
+        var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
+        if (isDraft){
+          pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> Hit <strong>Publish to Wiki</strong> when it’s ready.');
+        } else {
+          pubStatus('ok', '✓ Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.');
+        }
+        $('pc-publish').disabled = false;
+        $('pc-draft').disabled = false;
+      }).catch(function(err){
+        pubStatus('err', '✗ ' + err.message);
+        $('pc-publish').disabled = false;
+        $('pc-draft').disabled = false;
+      });
+    }
+    $('pc-publish').addEventListener('click', function(){ submitCollection('published'); });
+    $('pc-draft').addEventListener('click', function(){ submitCollection('draft'); });
+
+    // ── edit mode: ?c={id} ──
+    function loadForEdit(key){
+      return fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
+        .then(function(r){ if (!r.ok) throw new Error('not found'); return r.json(); })
+        .then(function(res){
+          var c = res.data; if (!c) return;
+          currentStatus = res.status || 'published';
+          EDIT_KEY = c.id || slugify(c.displayName || c.slug) || key;
+          EDIT_PK = c.slug || EDIT_KEY;
+          $('pub-page-title').textContent = 'Edit Collection';
+          document.title = 'Edit ' + (c.displayName || 'Collection') + ' — BOTC HomeBrew Wiki';
+          $('pc-name').value = c.displayName || '';
+          $('pc-author').value = c.author || '';
+          $('pc-tagline').value = c.tagline || '';
+          $('pc-version').value = c.version || '';
+          $('pc-difficulty').value = c.difficulty || '';
+          $('pc-desc').value = c.description || '';
+          $('pc-match').value = (c.match || []).join(', ');
+          $('pc-synopsis').value = c.synopsis || '';
+          $('pc-gameplay').value = c.gameplay || '';
+          $('pc-strat-good').value = c.strategyGood || '';
+          $('pc-strat-evil').value = c.strategyEvil || '';
+          if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
+          include = (c.include || []).slice();
+          exclude = (c.exclude || []).slice();
+          theme = {};
+          Object.keys(c.theme || {}).forEach(function(k){ theme[k] = c.theme[k]; });
+          if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
+          if (c.header){
+            existingHeader = c.header;
+            var pv = $('pc-header-prev'); pv.src = 'assets/' + c.header; pv.style.display = 'block';
+            $('pc-header-note').textContent = 'Current header — choose a file to replace it.';
+          }
+          if (c.logo){
+            existingLogo = c.logo;
+            var lv = $('pc-logo-prev'); lv.src = 'assets/' + c.logo; lv.style.display = 'block';
+            $('pc-logo-note').textContent = 'Current logo — choose a file to replace it.';
+            $('sb-appearance').open = true;
+          }
+          if (theme.background){
+            existingBg = theme.background;
+            var bv = $('pc-bg-prev'); bv.src = 'assets/' + theme.background; bv.style.display = 'block';
+            $('pc-bg-note').textContent = 'Current background — choose a file to replace it.';
+          }
+          updateUrlPreview(); updateButtons(); renderMembers();
+          if (res.canEdit === false){
+            pubStatus('err', 'This collection belongs to another account, so you cannot save changes to it.');
+            $('pc-publish').disabled = true;
+            $('pc-draft').disabled = true;
+          }
+        })
+        .catch(function(){ /* not found -> plain create view */ });
+    }
+
+    // ── boot: login gate, characters, optional edit target ──
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(me){
+        if (me && me.loggedIn){ $('editor').style.display = ''; }
+        else { $('gate').style.display = ''; }
+      })
+      .catch(function(){ $('gate').style.display = ''; });
+
+    fetch('characters.json?_=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(list){
+        allChars = list || [];
+        allChars.forEach(function(c){ bySlug[c.slug] = c; });
+        var key = new URLSearchParams(location.search).get('c');
+        if (key){ loadForEdit(key); }
+        else { updateButtons(); renderMembers(); }
+      })
+      .catch(function(){
+        $('pc-member-list').innerHTML = '<p class="pub-empty" style="padding:10px">Could not load characters.</p>';
+      });
+  })();
+  </script>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>

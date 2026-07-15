@@ -44,7 +44,9 @@
  *   GET  /random              -> 302 to a random published character page
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
+ *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
  *   GET  /script-view(.html)  -> 301 to /s/{slug} (legacy links)
+ *   POST /api/admin/assign-owner -> admin: set/clear a page's owner account
  *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data
@@ -683,6 +685,22 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
+    // ---------- COLLECTION PAGES (server-side rendered from D1) ----------
+    if (method === 'GET' && path.startsWith('/collection/')) {
+      let key = decodeURIComponent(path.slice('/collection/'.length));
+      if (key.endsWith('.html')) {
+        key = key.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/collection/' + encodeURIComponent(key) + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (key) {
+        return renderContentPage(env, request, url, 'collection', key);
+      }
+      return env.ASSETS.fetch(request);
+    }
+
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
     if (method === 'GET' && path.startsWith('/assets/')) {
       const key = path.slice('/assets/'.length);
@@ -777,7 +795,14 @@ export default {
           return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
         }
       }
-      const [chars, scripts] = await Promise.all([pub('characters'), pub('scripts')]);
+      async function pubCollections() {
+        try {
+          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections WHERE status='published'`).all()).results;
+        } catch {
+          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections`).all()).results;
+        }
+      }
+      const [chars, scripts, colls] = await Promise.all([pub('characters'), pub('scripts'), pubCollections()]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
         'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
@@ -787,6 +812,11 @@ export default {
       }
       for (const r of scripts) {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of colls) {
+        let id = '';
+        try { id = JSON.parse(r.data).id || ''; } catch { /* fall back to slug */ }
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/collection/' + encodeURIComponent(id || r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -1113,7 +1143,9 @@ export default {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';
       if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      const row = await getEntityRow(env, type, slug);
+      let row = await getEntityRow(env, type, slug);
+      // Legacy collection rows have display-string PK slugs; resolve by id too.
+      if (!row && type === 'collection') row = await findCollectionRow(env, slug);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const editable = canEditRow(sess, row);
@@ -1151,7 +1183,12 @@ export default {
         env.DB.prepare(
           `SELECT username, email, is_admin, created_at FROM users
            ORDER BY created_at DESC LIMIT 15`),
-        env.DB.prepare(`SELECT value FROM settings WHERE key='wiki_locked'`)
+        env.DB.prepare(`SELECT value FROM settings WHERE key='wiki_locked'`),
+        env.DB.prepare(
+          `SELECT 'collection' AS type, slug, display_name AS name FROM collections WHERE owner_id IS NULL
+           UNION ALL SELECT 'script', slug, name FROM scripts WHERE owner_id IS NULL
+           UNION ALL SELECT 'character', slug, name FROM characters WHERE owner_id IS NULL
+           ORDER BY type, name LIMIT 200`)
       ]);
 
       const lockVal = batch[6].results[0];
@@ -1162,7 +1199,8 @@ export default {
         recentCreations: batch[3].results,
         recentActivity: batch[4].results,
         recentSignups: batch[5].results,
-        locked: !!lockVal && lockVal.value === '1'
+        locked: !!lockVal && lockVal.value === '1',
+        unowned: batch[7].results
       });
     }
 
@@ -1172,7 +1210,8 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
 
       // Admin-only endpoints keep their old guard.
-      const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup');
+      const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup' ||
+                         path === '/api/admin/assign-owner');
       if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
@@ -1331,10 +1370,40 @@ export default {
 
       if (path === '/api/collection') {
         const c = await request.json();
-        if (!c || !c.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
-        const existing = await getEntityRow(env, 'collection', c.slug);
+        if (!c || (!c.slug && !c.id && !c.displayName)) {
+          return jsonResponse({ error: 'Missing collection name' }, { status: 400 });
+        }
+        // Resolve the row this write targets: PK slug first, then kebab id
+        // (legacy rows have display-string PK slugs, e.g. "The Academy").
+        let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
+        if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
+        }
+        // Keep the existing PK for updates; new collections use the kebab id
+        // as PK so the URL, id and PK all agree.
+        const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+        c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
+        if (!c.id) return jsonResponse({ error: 'Could not derive a collection id from that name.' }, { status: 400 });
+        const pkSlug = existing ? existing.slug : c.id;
+        if (!existing) {
+          // creating: the id must not collide with another collection's id
+          const clash = await findCollectionRow(env, c.id);
+          if (clash && clash.slug !== pkSlug) {
+            return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
+          }
+          c.slug = c.id;
+        } else {
+          c.slug = existing.slug;
+        }
+        if (!c.displayName) c.displayName = existing ? existing.name : c.slug;
+        sanitizePageFields(c, 'collections/' + c.id);
+        c.match = Array.isArray(c.match)
+          ? c.match.slice(0, 30).map(s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean)
+          : [];
+        for (const k of ['include', 'exclude']) {
+          c[k] = Array.isArray(c[k]) ? c[k].slice(0, 500).map(x => String(x).slice(0, 80)) : [];
         }
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
@@ -1343,9 +1412,9 @@ export default {
            VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
            ON CONFLICT(slug) DO UPDATE SET
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-        ).bind(c.slug, c.displayName || c.slug, sess.userId, JSON.stringify(c), status).run();
-        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', c.slug, c.displayName || c.slug);
-        return jsonResponse({ ok: true, slug: c.slug, status });
+        ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
+        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
       }
 
       if (path === '/api/script') {
@@ -1402,6 +1471,31 @@ export default {
         await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
         await logActivity(env, sess, 'delete', type, row.slug, row.name);
         return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: assign (or clear) a page's owner ----
+      // Body: {type: 'character'|'collection'|'script', slug, username|null}.
+      // Lets seeded pages (owner_id NULL) be claimed for their creators.
+      if (path === '/api/admin/assign-owner') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        let ownerId = null;
+        const uname = String(b.username || '').trim();
+        if (uname) {
+          const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
+            .bind(uname).first();
+          if (!u) return jsonResponse({ error: 'No user named "' + uname + '".' }, { status: 404 });
+          ownerId = u.id;
+        }
+        await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(ownerId, row.slug).run();
+        await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
       }
 
       // ---- admin: wiki lock ----
