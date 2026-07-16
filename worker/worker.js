@@ -43,7 +43,10 @@
  *   GET  /u/{username}        -> public profile page (serves profile.html)
  *   GET  /random              -> 302 to a random published character page
  *   GET  /sitemap.xml         -> built live from D1
- *   GET  /script-view.html    -> static page with OG/meta tags injected (?s=slug)
+ *   GET  /s/{slug}            -> script page (server-side rendered from D1)
+ *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
+ *   GET  /script-view(.html)  -> 301 to /s/{slug} (legacy links)
+ *   POST /api/admin/assign-owner -> admin: set/clear a page's owner account
  *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data
@@ -64,6 +67,10 @@
 
 // esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
 import Render from '../assets/render.js';
+// Shared script/collection page renderer (also used by the publish pages in
+// the browser). It receives render.js's exports through init().
+import PageRender from '../assets/render-page.js';
+PageRender.init(Render);
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -272,6 +279,31 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- shared validation for script/collection page fields ----
+// Caps text lengths, whitelists difficulty, constrains image paths to the
+// scripts/ and collections/ R2 areas, and runs the theme through the shared
+// sanitizer (hex colors, preset fonts, own -bg image slot only).
+const PAGE_FIELD_CAPS = {
+  name: 120, displayName: 120, author: 80, description: 2000, tagline: 140,
+  version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
+};
+const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
+function sanitizePageFields(o, themeBase) {
+  for (const k of Object.keys(PAGE_FIELD_CAPS)) {
+    if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
+  }
+  if (o.difficulty != null && !['', 'beginner', 'intermediate', 'veteran'].includes(o.difficulty)) {
+    o.difficulty = '';
+  }
+  for (const k of ['header', 'logo']) {
+    if (o[k] != null && !(typeof o[k] === 'string' && (o[k] === '' || PAGE_IMG_RE.test(o[k])))) {
+      o[k] = '';
+    }
+  }
+  const theme = PageRender.sanitizeTheme(o.theme, themeBase);
+  if (theme) o.theme = theme; else delete o.theme;
+}
+
 // ---- build the three JSON files from D1 (published pages only) ----
 async function buildPublicJSON(env, table) {
   let results;
@@ -343,6 +375,79 @@ function attr(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
+// The topbar/nav markup mirrors the static pages (scripts.html is canonical).
+function pageShell(o) {
+  // o: {title, desc, canonicalUrl, ogImage, ogCard, crumb, body, bodyClass,
+  //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner}
+  const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
+    (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
+  const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
+    (o.mainStyle ? ' style="' + attr(o.mainStyle) + '"' : '');
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${attr(o.title)} — BOTC HomeBrew Wiki</title>
+<meta name="description" content="${attr(o.desc)}">
+<link rel="canonical" href="${attr(o.canonicalUrl)}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="${attr(o.title)}">
+<meta property="og:description" content="${attr(o.desc)}">
+<meta property="og:image" content="${attr(o.ogImage)}">
+<meta property="og:url" content="${attr(o.canonicalUrl)}">
+<meta name="twitter:card" content="${attr(o.ogCard || 'summary')}">
+<meta name="twitter:title" content="${attr(o.title)}">
+<meta name="twitter:description" content="${attr(o.desc)}">
+<meta name="twitter:image" content="${attr(o.ogImage)}">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
+<link rel="apple-touch-icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body${bodyAttrs}>
+${o.draftBanner || ''}
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="../">
+        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
+      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${o.crumb}</nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="../">Home</a>
+  <a href="../all-characters">All Characters</a>
+  <a href="../tags">Tags</a>
+  <a href="../creators">Creators</a>
+  <a href="../script">Script Builder</a>
+  <a href="../create">Create a Character</a>
+</nav>
+
+  <main${mainAttrs} id="content">${o.body}</main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>${o.bootstrap || ''}</script>
+${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').join('\n')}
+</body>
+</html>`;
+}
+
 function renderCharacterPage(d, origin, isDraft) {
   const team = d.team || 'townsfolk';
   const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
@@ -364,72 +469,124 @@ function renderCharacterPage(d, origin, isDraft) {
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
     : '';
+  return pageShell({
+    title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
+    crumb, body, draftBanner,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};`,
+    scripts: ['render.js', 'tags.js', 'charpage.js', 'site.js']
+  });
+}
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${attr(name)} — BOTC HomeBrew Wiki</title>
-<meta name="description" content="${attr(desc)}">
-<link rel="canonical" href="${attr(pageUrl)}">
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="BOTC HomeBrew Wiki">
-<meta property="og:title" content="${attr(name)}">
-<meta property="og:description" content="${attr(desc)}">
-<meta property="og:image" content="${attr(img)}">
-<meta property="og:url" content="${attr(pageUrl)}">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="${attr(name)}">
-<meta name="twitter:description" content="${attr(desc)}">
-<meta name="twitter:image" content="${attr(img)}">
-<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
-<link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css">
-</head>
-<body>
-${draftBanner}
-  <header class="topbar">
-    <div class="brand-group">
-      <a class="brand" href="../">
-        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
-        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
-      </a>
-      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
-      <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
-    </div>
-    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${crumb}</nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
-  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-</header>
-<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
-  <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
-  </div>
-  <a href="../">Home</a>
-  <a href="../all-characters">All Characters</a>
-  <a href="../tags">Tags</a>
-  <a href="../creators">Creators</a>
-  <a href="../script">Script Builder</a>
-  <a href="../create">Create a Character</a>
-</nav>
+// ---- official BotC roles (assets/roles.json), for script rosters that
+// include imported official characters ('off-' slugs). Cached per isolate.
+let _officialRolesCache = null;
+async function loadOfficialRoles(env, origin) {
+  if (_officialRolesCache) return _officialRolesCache;
+  try {
+    const res = await env.ASSETS.fetch(new Request(origin + '/assets/roles.json'));
+    const roles = await res.json();
+    _officialRolesCache = (roles || []).filter(r => r && r.id).map(r => ({
+      slug: 'off-' + String(r.id).toLowerCase().replace(/[^a-z0-9]/g, ''),
+      official: true, id: r.id,
+      name: r.name || r.id, team: r.team || '',
+      ability: r.ability || '', image: r.image || '',
+      page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
+    }));
+  } catch {
+    _officialRolesCache = [];
+  }
+  return _officialRolesCache;
+}
 
-  <main class="wrap" id="content">${body}</main>
+// ---- shared SSR for /s/{slug} and /collection/{id} pages ----
+async function renderContentPage(env, request, url, type, slug) {
+  const isScript = type === 'script';
+  const table = isScript ? 'scripts' : 'collections';
+  let row = null;
+  try {
+    row = await env.DB.prepare(`SELECT data, status, owner_id FROM ${table} WHERE slug=?`)
+      .bind(slug).first();
+  } catch {
+    row = await env.DB.prepare(`SELECT data FROM ${table} WHERE slug=?`).bind(slug).first();
+  }
+  if (!isScript && !row) row = await findCollectionRow(env, slug);
+  if (!row || !row.data) return env.ASSETS.fetch(request);
 
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+  const isDraft = row.status === 'draft';
+  if (isDraft) {
+    const sess = await getSession(env, request);
+    if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
+  }
+  const d = JSON.parse(row.data);
+  if (!d.slug) d.slug = row.slug || slug;
 
-  <script>window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};</script>
-  <script src="../assets/render.js"></script>
-  <script src="../assets/tags.js"></script>
-  <script src="../assets/charpage.js"></script>
-  <script src="../assets/site.js"></script>
-</body>
-</html>`;
+  let chars = await buildPublicJSON(env, 'characters');
+  // Scripts can carry imported official roles ('off-' slugs) — resolve them
+  if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
+    chars = chars.concat(await loadOfficialRoles(env, url.origin));
+  }
+
+  const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
+  const theme = PageRender.sanitizeTheme(d.theme, themeBase);
+  const ta = PageRender.themeAttrs(theme, '../');
+
+  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+  const body = isScript
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft });
+
+  const nChars = isScript
+    ? (d.characters || []).length
+    : PageRender.resolveCollectionMembers(d, chars).length;
+  const desc = (d.tagline || '').trim() || (d.description || '').trim() ||
+    (nChars + '-character homebrew ' + (isScript ? 'script' : 'collection') +
+     ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
+  const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
+  const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
+  const editHref = isScript
+    ? '../publish-script?s=' + encodeURIComponent(d.slug)
+    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
+  const draftBanner = isDraft
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a> or <a href="../account" style="color:#ffe9ad">your account</a>.</div>'
+    : '';
+  const crumb = isScript
+    ? '<a href="../">Home</a><span class="sep">›</span><a href="../scripts">Scripts</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>'
+    : '<a href="../">Home</a><span class="sep">›</span><a href="../">Collections</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>';
+
+  const html = pageShell({
+    title: (isDraft ? 'Draft: ' : '') + name, desc, canonicalUrl: canonical,
+    ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
+    crumb, body, draftBanner,
+    bodyClass: ta.cls, bodyStyle: ta.style,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    scripts: ['render.js', 'pageview.js', 'site.js']
+  });
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+  });
+}
+
+// Collections: legacy rows have a display-string PK slug (e.g. "The Academy")
+// while URLs use the kebab id from the JSON ("the-academy"). Resolve by PK
+// first, then by data.id, then by normalized slug/displayName.
+async function findCollectionRow(env, key) {
+  if (!key) return null;
+  let hit = await env.DB.prepare(
+    'SELECT slug, display_name AS name, owner_id, status, data FROM collections WHERE slug=?'
+  ).bind(key).first().catch(() => null);
+  if (hit) return hit;
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const nkey = norm(key);
+  const { results } = await env.DB.prepare(
+    'SELECT slug, display_name AS name, owner_id, status, data FROM collections'
+  ).all().catch(() => ({ results: [] }));
+  for (const row of results || []) {
+    try {
+      const d = JSON.parse(row.data);
+      if (d.id === key || norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey) return row;
+    } catch { /* skip bad rows */ }
+  }
+  return null;
 }
 
 // ---- Discord OAuth helpers ----
@@ -509,6 +666,38 @@ export default {
         }
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
+      return env.ASSETS.fetch(request);
+    }
+
+    // ---------- SCRIPT PAGES (server-side rendered from D1) ----------
+    if (method === 'GET' && path.startsWith('/s/')) {
+      let slug = decodeURIComponent(path.slice(3));
+      if (slug.endsWith('.html')) {
+        slug = slug.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/s/' + slug + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
+        return renderContentPage(env, request, url, 'script', slug);
+      }
+      return env.ASSETS.fetch(request);
+    }
+
+    // ---------- COLLECTION PAGES (server-side rendered from D1) ----------
+    if (method === 'GET' && path.startsWith('/collection/')) {
+      let key = decodeURIComponent(path.slice('/collection/'.length));
+      if (key.endsWith('.html')) {
+        key = key.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/collection/' + encodeURIComponent(key) + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (key) {
+        return renderContentPage(env, request, url, 'collection', key);
+      }
       return env.ASSETS.fetch(request);
     }
 
@@ -606,7 +795,14 @@ export default {
           return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
         }
       }
-      const [chars, scripts] = await Promise.all([pub('characters'), pub('scripts')]);
+      async function pubCollections() {
+        try {
+          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections WHERE status='published'`).all()).results;
+        } catch {
+          return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections`).all()).results;
+        }
+      }
+      const [chars, scripts, colls] = await Promise.all([pub('characters'), pub('scripts'), pubCollections()]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
         'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
@@ -615,7 +811,12 @@ export default {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/script-view?s=' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of colls) {
+        let id = '';
+        try { id = JSON.parse(r.data).id || ''; } catch { /* fall back to slug */ }
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/collection/' + encodeURIComponent(id || r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -625,45 +826,19 @@ export default {
       });
     }
 
-    // ---------- SCRIPT VIEW (inject OG/meta tags so shared links unfurl) ----------
+    // ---------- SCRIPT VIEW (legacy URLs redirect to the SSR /s/ pages) ----------
     if (method === 'GET' && (path === '/script-view.html' || path === '/script-view')) {
       const slug = url.searchParams.get('s');
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-        try {
-          let row;
-          try {
-            row = await env.DB.prepare('SELECT data, status FROM scripts WHERE slug=?').bind(slug).first();
-          } catch {
-            row = await env.DB.prepare('SELECT data FROM scripts WHERE slug=?').bind(slug).first();
-          }
-          if (row && row.data && row.status !== 'draft') {
-            const s = JSON.parse(row.data);
-            const assetRes = await env.ASSETS.fetch(new Request(url.origin + '/script-view.html'));
-            let html = await assetRes.text();
-            const name = s.name || 'Script';
-            const nChars = (s.characters || []).length;
-            const desc = (s.description || '').trim() ||
-              (nChars + '-character homebrew script for Blood on the Clocktower' + (s.author ? ', by ' + s.author : '') + '.');
-            const pageUrl = url.origin + '/script-view?s=' + encodeURIComponent(slug);
-            const img = url.origin + '/assets/' + (s.header || 'logo_skull.png');
-            const metaBlock = '<title>' + attr(name) + ' — BOTC HomeBrew Wiki</title>\n' +
-              '<meta name="description" content="' + attr(desc) + '">\n' +
-              '<link rel="canonical" href="' + attr(pageUrl) + '">\n' +
-              '<meta property="og:type" content="article">\n' +
-              '<meta property="og:site_name" content="BOTC HomeBrew Wiki">\n' +
-              '<meta property="og:title" content="' + attr(name) + '">\n' +
-              '<meta property="og:description" content="' + attr(desc) + '">\n' +
-              '<meta property="og:image" content="' + attr(img) + '">\n' +
-              '<meta property="og:url" content="' + attr(pageUrl) + '">\n' +
-              '<meta name="twitter:card" content="' + (s.header ? 'summary_large_image' : 'summary') + '">';
-            html = html.replace('<title>Script — BOTC HomeBrew Wiki</title>', metaBlock);
-            return new Response(html, {
-              headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
-            });
-          }
-        } catch { /* fall through to the plain static page */ }
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/s/' + encodeURIComponent(slug), 'Cache-Control': 'no-store' }
+        });
       }
-      return env.ASSETS.fetch(request);
+      return new Response(null, {
+        status: 302,
+        headers: { Location: url.origin + '/scripts', 'Cache-Control': 'no-store' }
+      });
     }
 
     // ---------- AUTH: SIGN UP ----------
@@ -968,7 +1143,9 @@ export default {
       const type = url.searchParams.get('type') || 'character';
       const slug = url.searchParams.get('slug') || '';
       if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      const row = await getEntityRow(env, type, slug);
+      let row = await getEntityRow(env, type, slug);
+      // Legacy collection rows have display-string PK slugs; resolve by id too.
+      if (!row && type === 'collection') row = await findCollectionRow(env, slug);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const editable = canEditRow(sess, row);
@@ -1006,7 +1183,12 @@ export default {
         env.DB.prepare(
           `SELECT username, email, is_admin, created_at FROM users
            ORDER BY created_at DESC LIMIT 15`),
-        env.DB.prepare(`SELECT value FROM settings WHERE key='wiki_locked'`)
+        env.DB.prepare(`SELECT value FROM settings WHERE key='wiki_locked'`),
+        env.DB.prepare(
+          `SELECT 'collection' AS type, slug, display_name AS name FROM collections WHERE owner_id IS NULL
+           UNION ALL SELECT 'script', slug, name FROM scripts WHERE owner_id IS NULL
+           UNION ALL SELECT 'character', slug, name FROM characters WHERE owner_id IS NULL
+           ORDER BY type, name LIMIT 200`)
       ]);
 
       const lockVal = batch[6].results[0];
@@ -1017,7 +1199,8 @@ export default {
         recentCreations: batch[3].results,
         recentActivity: batch[4].results,
         recentSignups: batch[5].results,
-        locked: !!lockVal && lockVal.value === '1'
+        locked: !!lockVal && lockVal.value === '1',
+        unowned: batch[7].results
       });
     }
 
@@ -1027,7 +1210,8 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
 
       // Admin-only endpoints keep their old guard.
-      const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup');
+      const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup' ||
+                         path === '/api/admin/assign-owner');
       if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
@@ -1124,6 +1308,23 @@ export default {
               return jsonResponse({ error: 'That art slot belongs to a character owned by another account.' }, { status: 403 });
             }
           }
+          // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
+          // images collections/{id}[-logo|-bg].{ext}. If that page exists,
+          // only its owner may replace its images.
+          if (key.startsWith('scripts/')) {
+            const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+            const row = await getEntityRow(env, 'script', base);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
+            }
+          }
+          if (key.startsWith('collections/')) {
+            const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+            const row = await findCollectionRow(env, base);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
+            }
+          }
           // Never allow silently replacing someone else's uploaded file.
           const existing = await env.ART.head(key).catch(() => null);
           if (existing) {
@@ -1169,10 +1370,40 @@ export default {
 
       if (path === '/api/collection') {
         const c = await request.json();
-        if (!c || !c.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
-        const existing = await getEntityRow(env, 'collection', c.slug);
+        if (!c || (!c.slug && !c.id && !c.displayName)) {
+          return jsonResponse({ error: 'Missing collection name' }, { status: 400 });
+        }
+        // Resolve the row this write targets: PK slug first, then kebab id
+        // (legacy rows have display-string PK slugs, e.g. "The Academy").
+        let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
+        if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
+        }
+        // Keep the existing PK for updates; new collections use the kebab id
+        // as PK so the URL, id and PK all agree.
+        const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+        c.id = kebab(c.id) || kebab(c.displayName) || kebab(c.slug);
+        if (!c.id) return jsonResponse({ error: 'Could not derive a collection id from that name.' }, { status: 400 });
+        const pkSlug = existing ? existing.slug : c.id;
+        if (!existing) {
+          // creating: the id must not collide with another collection's id
+          const clash = await findCollectionRow(env, c.id);
+          if (clash && clash.slug !== pkSlug) {
+            return jsonResponse({ error: 'A collection with that name already exists.' }, { status: 409 });
+          }
+          c.slug = c.id;
+        } else {
+          c.slug = existing.slug;
+        }
+        if (!c.displayName) c.displayName = existing ? existing.name : c.slug;
+        sanitizePageFields(c, 'collections/' + c.id);
+        c.match = Array.isArray(c.match)
+          ? c.match.slice(0, 30).map(s => String(s).toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean)
+          : [];
+        for (const k of ['include', 'exclude']) {
+          c[k] = Array.isArray(c[k]) ? c[k].slice(0, 500).map(x => String(x).slice(0, 80)) : [];
         }
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
@@ -1181,18 +1412,25 @@ export default {
            VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
            ON CONFLICT(slug) DO UPDATE SET
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
-        ).bind(c.slug, c.displayName || c.slug, sess.userId, JSON.stringify(c), status).run();
-        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', c.slug, c.displayName || c.slug);
-        return jsonResponse({ ok: true, slug: c.slug, status });
+        ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
+        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
       }
 
       if (path === '/api/script') {
         const s = await request.json();
         if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+        if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
+          return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
+        }
         const existing = await getEntityRow(env, 'script', s.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
+        sanitizePageFields(s, 'scripts/' + s.slug);
+        s.characters = Array.isArray(s.characters)
+          ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
+          : [];
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         await env.DB.prepare(
@@ -1233,6 +1471,31 @@ export default {
         await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
         await logActivity(env, sess, 'delete', type, row.slug, row.name);
         return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: assign (or clear) a page's owner ----
+      // Body: {type: 'character'|'collection'|'script', slug, username|null}.
+      // Lets seeded pages (owner_id NULL) be claimed for their creators.
+      if (path === '/api/admin/assign-owner') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        let ownerId = null;
+        const uname = String(b.username || '').trim();
+        if (uname) {
+          const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
+            .bind(uname).first();
+          if (!u) return jsonResponse({ error: 'No user named "' + uname + '".' }, { status: 404 });
+          ownerId = u.id;
+        }
+        await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(ownerId, row.slug).run();
+        await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
       }
 
       // ---- admin: wiki lock ----

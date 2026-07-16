@@ -57,6 +57,29 @@
 .sb-jinx-row:last-child { border-bottom:none; }
 .sb-jinx-pair { font-weight:600; color:var(--maroon); font-size:.92rem; }
 .sb-jinx-text { font-size:.86rem; color:var(--ink); font-style:italic; }
+
+/* Collapsible optional sections */
+details.sb-details { padding:0; }
+details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.15rem; }
+details.sb-details > summary::-webkit-details-marker { display:none; }
+details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
+details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > .sb-details-body { padding:4px 20px 18px; }
+
+/* Field pairs + theme controls */
+.sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
+.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.th-row:last-child { border-bottom:none; }
+.th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+.sb-sort-row { margin-top:10px; }
+.pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
+.pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
 </style>
 </head>
 <body>
@@ -108,6 +131,9 @@
       <div id="pub-summary-body">
         <p class="pub-empty">Loading…</p>
       </div>
+      <div class="sb-sort-row">
+        <button type="button" class="sb-btn sb-btn-export" id="sb-sao-sort" title="Reorder the roster into Steven Approved Order">⇅ Sort Roster (SAO)</button>
+      </div>
     </div>
 
     <!-- Script details (feed the JSON _meta + the published page) -->
@@ -118,9 +144,29 @@
         <label for="sb-name">Script name <span class="req">*</span></label>
         <input type="text" id="sb-name" placeholder="e.g. Phantasmal Flames">
       </div>
+      <p class="pub-url" id="pub-url" style="display:none"></p>
       <div class="sb-fld">
         <label for="sb-author">Author <span class="req">*</span></label>
         <input type="text" id="sb-author" placeholder="Your name">
+      </div>
+      <div class="sb-fld">
+        <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional — one line shown under the title)</span></label>
+        <input type="text" id="sb-tagline" maxlength="140" placeholder="e.g. Nothing is as it seems in Ravenswood Bluff.">
+      </div>
+      <div class="sb-fld-row">
+        <div class="sb-fld">
+          <label for="sb-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <input type="text" id="sb-version" maxlength="32" placeholder="e.g. 1.2">
+        </div>
+        <div class="sb-fld">
+          <label for="sb-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <select id="sb-difficulty">
+            <option value="">— not set —</option>
+            <option value="beginner">Beginner</option>
+            <option value="intermediate">Intermediate</option>
+            <option value="veteran">Veteran</option>
+          </select>
+        </div>
       </div>
       <div class="sb-fld">
         <label for="sb-desc">Description <span class="req">*</span></label>
@@ -133,6 +179,63 @@
         <div id="sb-header-note" class="sub" style="margin-top:6px"></div>
       </div>
     </div>
+
+    <!-- Optional wiki-page text sections (official-wiki style) -->
+    <details class="sb-details" id="sb-sections">
+      <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on your script page like the official wiki.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(flavor intro — blank line = new paragraph)</span></label>
+          <textarea id="sb-synopsis" rows="4" maxlength="4000" placeholder="Clouds roll in over Ravenswood Bluff…"></textarea>
+        </div>
+        <div class="sb-fld">
+          <label for="sb-gameplay">Gameplay overview</label>
+          <textarea id="sb-gameplay" rows="4" maxlength="4000" placeholder="What makes this script tick? What should the Storyteller expect?"></textarea>
+        </div>
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="sb-strat-good">Playing Good</label>
+            <textarea id="sb-strat-good" rows="3" maxlength="2000" placeholder="Tips for the good team."></textarea>
+          </div>
+          <div class="sb-fld">
+            <label for="sb-strat-evil">Playing Evil</label>
+            <textarea id="sb-strat-evil" rows="3" maxlength="2000" placeholder="Tips for the evil team."></textarea>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Optional page appearance / theme -->
+    <details class="sb-details" id="sb-appearance">
+      <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for your script's wiki page.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="sb-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(square-ish works best)</span></label>
+            <input type="file" id="sb-logo" accept="image/*">
+            <img id="sb-logo-prev" class="sb-header-prev" alt="logo preview">
+            <div id="sb-logo-note" class="sub" style="margin-top:6px"></div>
+          </div>
+          <div class="sb-fld">
+            <label for="sb-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(large image, shown behind the page)</span></label>
+            <input type="file" id="sb-bg" accept="image/*">
+            <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
+            <div id="sb-bg-note" class="sub" style="margin-top:6px"></div>
+          </div>
+        </div>
+        <div class="sb-fld">
+          <label for="th-font">Heading font</label>
+          <select id="th-font"></select>
+        </div>
+        <div class="sb-fld">
+          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(leave unset to keep the wiki look)</span></label>
+          <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
+          <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
+          <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
+          <div class="th-row"><label for="th-link">Links / names</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
+        </div>
+      </div>
+    </details>
 
     <div class="pub-actions">
       <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
@@ -148,6 +251,9 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/sao.js"></script>
+  <script src="assets/theme-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -158,6 +264,10 @@
     var currentStatus = null;      // 'draft' | 'published' | null (brand-new, unsaved)
     var headerDataURL = null;      // set when a new header file is chosen
     var existingHeader = null;     // path of an already-published header
+    var logoDataURL = null;        // set when a new logo file is chosen
+    var existingLogo = null;       // path of an already-published logo
+    var bgDataURL = null;          // set when a new background file is chosen
+    var existingBg = null;         // path of an already-published background
 
     var SITE_ROOT = new URL('.', location.href).href;
     function $(id){ return document.getElementById(id); }
@@ -203,26 +313,60 @@
     }
 
     // ── Details form: persist to meta as the user types ──
-    ['sb-name','sb-author','sb-desc'].forEach(function(id){
+    var TEXT_FIELDS = {
+      'sb-name': 'name', 'sb-author': 'author', 'sb-desc': 'description',
+      'sb-tagline': 'tagline', 'sb-version': 'version', 'sb-difficulty': 'difficulty',
+      'sb-synopsis': 'synopsis', 'sb-gameplay': 'gameplay',
+      'sb-strat-good': 'strategyGood', 'sb-strat-evil': 'strategyEvil'
+    };
+    Object.keys(TEXT_FIELDS).forEach(function(id){
       var el = $(id); if (!el) return;
-      el.addEventListener('input', function(){
+      el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function(){
         var m = getMeta();
-        if (id === 'sb-name')   m.name = el.value;
-        if (id === 'sb-author') m.author = el.value;
-        if (id === 'sb-desc')   m.description = el.value;
+        m[TEXT_FIELDS[id]] = el.value;
         setMeta(m);
       });
     });
+
+    // ── Theme controls (shared with the collection editor — theme-editor.js).
+    // Values validated by sanitizeTheme client-side AND server-side. ──
+    window.ThemeEditor.wire({
+      get: function(){ return getMeta().theme || {}; },
+      set: function(t){ var m = getMeta(); m.theme = t; setMeta(m); }
+    });
+    function primeTheme(theme){
+      if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
+    }
 
     function primeFields(m){
       if (m.name)        $('sb-name').value = m.name;
       if (m.author)      $('sb-author').value = m.author;
       if (m.description) $('sb-desc').value = m.description;
+      if (m.tagline)     $('sb-tagline').value = m.tagline;
+      if (m.version)     $('sb-version').value = m.version;
+      if (m.difficulty)  $('sb-difficulty').value = m.difficulty;
+      if (m.synopsis)    $('sb-synopsis').value = m.synopsis;
+      if (m.gameplay)    $('sb-gameplay').value = m.gameplay;
+      if (m.strategyGood) $('sb-strat-good').value = m.strategyGood;
+      if (m.strategyEvil) $('sb-strat-evil').value = m.strategyEvil;
+      if (m.synopsis || m.gameplay || m.strategyGood || m.strategyEvil) $('sb-sections').open = true;
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
         $('sb-header-note').textContent = 'Current header — choose a file to replace it.';
       }
+      if (m.logo){
+        existingLogo = m.logo;
+        var lv = $('sb-logo-prev'); lv.src = 'assets/' + m.logo; lv.style.display = 'block';
+        $('sb-logo-note').textContent = 'Current logo — choose a file to replace it.';
+        $('sb-appearance').open = true;
+      }
+      if (m.theme && m.theme.background){
+        existingBg = m.theme.background;
+        var bv = $('sb-bg-prev'); bv.src = 'assets/' + m.theme.background; bv.style.display = 'block';
+        $('sb-bg-note').textContent = 'Current background — choose a file to replace it.';
+      }
+      primeTheme(m.theme);
     }
 
     // Reflect the saved status on the buttons + pill (mirrors the character editor)
@@ -240,27 +384,45 @@
       var t = $('pub-page-title'); if (t) t.textContent = 'Edit Script';
       var m = getMeta();
       document.title = 'Edit ' + (m.name || 'Script') + ' — BOTC HomeBrew Wiki';
+      var u = $('pub-url');
+      if (u){ u.style.display = ''; u.innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 's/' + slug) + '</code>'; }
       updateButtons();
     }
 
-    // Header upload → resize to max 900px wide PNG → preview + remember
-    $('sb-header').addEventListener('change', function(e){
-      var f = e.target.files[0]; if (!f) return;
-      var rd = new FileReader();
-      rd.onload = function(ev){
-        var img = new Image();
-        img.onload = function(){
-          var maxW = 900, w = img.width, h = img.height;
-          if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
-          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
-          headerDataURL = cv.toDataURL('image/png');
-          var pv = $('sb-header-prev'); pv.src = headerDataURL; pv.style.display = 'block';
-          $('sb-header-note').textContent = 'New header ready — will be uploaded when you publish.';
+    // Image upload → resize to a max width PNG → preview + remember
+    function wireImageInput(inputId, prevId, noteId, maxW, onReady){
+      $(inputId).addEventListener('change', function(e){
+        var f = e.target.files[0]; if (!f) return;
+        var rd = new FileReader();
+        rd.onload = function(ev){
+          var img = new Image();
+          img.onload = function(){
+            var w = img.width, h = img.height;
+            if (w > maxW){ h = Math.round(h * maxW / w); w = maxW; }
+            var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+            cv.getContext('2d').drawImage(img, 0, 0, w, h);
+            var dataURL = cv.toDataURL('image/png');
+            var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
+            $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            onReady(dataURL);
+          };
+          img.src = ev.target.result;
         };
-        img.src = ev.target.result;
-      };
-      rd.readAsDataURL(f);
+        rd.readAsDataURL(f);
+      });
+    }
+    wireImageInput('sb-header', 'sb-header-prev', 'sb-header-note', 900, function(d){ headerDataURL = d; });
+    wireImageInput('sb-logo', 'sb-logo-prev', 'sb-logo-note', 400, function(d){ logoDataURL = d; });
+    wireImageInput('sb-bg', 'sb-bg-prev', 'sb-bg-note', 1600, function(d){ bgDataURL = d; });
+
+    // ── SAO sort of the roster (shared logic in assets/sao.js) ──
+    $('sb-sao-sort').addEventListener('click', function(){
+      var current = getScript();
+      if (!current.length) return;
+      setScript(window.sortRosterSAO(current, bySlug));
+      renderSummary();
+      var btn = this; btn.textContent = '✓ Sorted!';
+      setTimeout(function(){ btn.textContent = '⇅ Sort Roster (SAO)'; }, 1500);
     });
 
     // ── Save the script (saveStatus = 'published' | 'draft') ──
@@ -291,17 +453,47 @@
       if (headerDataURL){
         chain = chain.then(function(){ pubStatus('work', verb + '… uploading header'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
       }
+      if (logoDataURL){
+        chain = chain.then(function(){ pubStatus('work', verb + '… uploading logo'); return apiUpload('scripts/' + slug + '-logo.png', logoDataURL); });
+      }
+      if (bgDataURL){
+        chain = chain.then(function(){ pubStatus('work', verb + '… uploading background'); return apiUpload('scripts/' + slug + '-bg.png', bgDataURL); });
+      }
       chain.then(function(){
         pubStatus('work', verb + '… saving script');
         var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
-        var entry = { slug:slug, name:name, header:header, author:author, description:desc, characters:chars.slice(), status:saveStatus };
+        var logo = logoDataURL ? ('scripts/' + slug + '-logo.png') : (existingLogo || '');
+        var m0 = getMeta();
+        var theme = {};
+        Object.keys(m0.theme || {}).forEach(function(k){ theme[k] = m0.theme[k]; });
+        if (bgDataURL) theme.background = 'scripts/' + slug + '-bg.png';
+        else if (existingBg) theme.background = existingBg;
+        theme = window.PageRender ? window.PageRender.sanitizeTheme(theme, 'scripts/' + slug) : theme;
+        var entry = {
+          slug: slug, name: name, header: header, author: author, description: desc,
+          characters: chars.slice(), status: saveStatus,
+          tagline: $('sb-tagline').value.trim(),
+          version: $('sb-version').value.trim(),
+          difficulty: $('sb-difficulty').value,
+          synopsis: $('sb-synopsis').value.trim(),
+          gameplay: $('sb-gameplay').value.trim(),
+          strategyGood: $('sb-strat-good').value.trim(),
+          strategyEvil: $('sb-strat-evil').value.trim()
+        };
+        if (logo) entry.logo = logo;
+        if (theme) entry.theme = theme;
         return apiSaveScript(entry);
       }).then(function(){
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
+        if (logoDataURL){ existingLogo = 'scripts/' + slug + '-logo.png'; logoDataURL = null; }
+        if (bgDataURL){
+          existingBg = 'scripts/' + slug + '-bg.png'; bgDataURL = null;
+          var m2 = getMeta(); m2.theme = m2.theme || {}; m2.theme.background = existingBg; setMeta(m2);
+        }
         currentStatus = saveStatus;
         setEditMode(slug);
-        var m = getMeta(); m.header = existingHeader || m.header; m.editSlug = slug; setMeta(m);
-        var url = SITE_ROOT + 'script-view?s=' + encodeURIComponent(slug);
+        var m = getMeta(); m.header = existingHeader || m.header; m.logo = existingLogo || m.logo; m.editSlug = slug; setMeta(m);
+        var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
         if (isDraft) {
           pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.');
         } else {
@@ -327,7 +519,14 @@
           var entry = res.data; if (!entry) return;
           currentStatus = res.status || 'published';
           setScript((entry.characters || []).slice());
-          var m = { name: entry.name||'', author: entry.author||'', description: entry.description||'', header: entry.header||'', editSlug: slug };
+          var m = {
+            name: entry.name||'', author: entry.author||'', description: entry.description||'',
+            header: entry.header||'', logo: entry.logo||'', editSlug: slug,
+            tagline: entry.tagline||'', version: entry.version||'', difficulty: entry.difficulty||'',
+            synopsis: entry.synopsis||'', gameplay: entry.gameplay||'',
+            strategyGood: entry.strategyGood||'', strategyEvil: entry.strategyEvil||'',
+            theme: entry.theme || {}
+          };
           setMeta(m);
           primeFields(m);
           setEditMode(slug);

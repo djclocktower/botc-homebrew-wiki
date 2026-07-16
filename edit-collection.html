@@ -3,178 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Edit Collection — BOTC HomeBrew Wiki</title>
+<title>Redirecting… — BOTC HomeBrew Wiki</title>
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
-<link rel="stylesheet" href="assets/styles.css">
-<style>
-  .ec-wrap { position:relative;z-index:5;max-width:860px;margin:0 auto;padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px; }
-  .ec-form { background:var(--parch);border:2px solid var(--parch-frame);padding:22px 26px; }
-  .ec-form h2 { font-family:'Dumbledor2',serif;font-weight:400;color:var(--maroon);margin:0 0 4px;font-size:1.5rem; }
-  .ec-form .sub { font-size:.86rem;color:#6b5d49;margin:0 0 18px; }
-  .fld { margin-bottom:15px; }
-  .fld label { display:block;font-family:'Oswald',sans-serif;font-weight:600;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:#5b4632;margin-bottom:4px; }
-  .fld select,.fld input[type=text],.fld textarea { width:100%;font-family:'Libre Franklin',sans-serif;font-size:.92rem;color:#241a12;background:#fffdf8;border:1px solid #cdbfa0;padding:9px 11px;box-sizing:border-box; }
-  .fld textarea { resize:vertical;min-height:80px; }
-  .ec-header-prev { margin-top:8px;max-width:100%;max-height:180px;border:1px solid #cdbfa0;display:none; }
-  .ec-note { font-size:.82rem;color:#6b5d49;margin-top:4px; }
-  .btn-pub { font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;border:none;padding:12px 22px;font-size:1rem;background:linear-gradient(180deg,#2f7d3e,#1c5429);color:#eafaee; }
-  .btn-pub:hover { filter:brightness(1.08); }
-  .btn-pub:disabled { opacity:.5;cursor:not-allowed; }
-  #ec-status { margin-top:12px;padding:10px 13px;font-size:.9rem;display:none; }
-  #ec-status.ok  { display:block;background:#dff0e2;color:#1c5429;border:1px solid #9bcfa9; }
-  #ec-status.err { display:block;background:#f6dede;color:#9A0D12;border:1px solid #d99; }
-  #ec-status.work{ display:block;background:#e9eefb;color:#234f74;border:1px solid #aac0e6; }
-  #ec-status a { color:inherit;font-weight:700; }
-  .ec-pick-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:18px; }
-  .ec-pick-card { background:var(--parch);border:2px solid var(--parch-frame);padding:16px;cursor:pointer;transition:border-color .15s; }
-  .ec-pick-card:hover { border-color:var(--maroon); }
-  .ec-pick-name { font-family:'Dumbledor2',serif;font-weight:400;color:var(--maroon);font-size:1.1rem;margin:0 0 4px; }
-  .ec-pick-desc { font-size:.84rem;color:#6b5d49; }
-</style>
+<script>
+  // The collection editor now lives on publish-collection.html (?c={id}).
+  (function () {
+    var c = new URLSearchParams(location.search).get('c');
+    location.replace('publish-collection' + (c ? '?c=' + encodeURIComponent(c) : ''));
+  })();
+</script>
 </head>
 <body>
-
-  <header class="topbar">
-    <div class="brand-group">
-      <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
-        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
-      </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
-    </div>
-    <nav class="crumb">
-      <a href="/">Home</a><span class="sep">›</span>
-      <a href="all-characters">Characters</a><span class="sep">›</span>
-      <span class="here" id="crumb-label">Edit Collection</span>
-    <span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
-  </header>
-
-  <main class="ec-wrap" id="main-content">
-    <p style="color:rgba(236,225,200,.7);text-align:center;padding:40px">Loading…</p>
-  </main>
-
-  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
-
-  <script>
-  (function(){
-    var SITE_ROOT = new URL('.', location.href).href;
-    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
-    function apiSaveCollection(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
-    function setStatus(cls,html){ var s=document.getElementById('ec-status'); if(s){s.className=cls;s.innerHTML=html;} }
-
-    var collId = new URLSearchParams(location.search).get('c');
-    var headerDataURL = null;
-    var collections = [];
-
-    fetch('collections.json?_='+Date.now()).then(function(r){return r.json();}).then(function(data){
-      collections = data;
-      if (collId) {
-        var coll = data.filter(function(c){return c.id===collId;})[0];
-        if (coll) return renderEditForm(coll);
-        document.getElementById('main-content').innerHTML = '<p style="color:rgba(236,225,200,.8);text-align:center;padding:40px">Collection not found.</p>';
-      } else {
-        renderPicker(data);
-      }
-    }).catch(function(){
-      document.getElementById('main-content').innerHTML = '<p style="color:#e6a;text-align:center;padding:40px">Could not load collections.</p>';
-    });
-
-    function renderPicker(data) {
-      document.getElementById('crumb-label').textContent = 'Collections';
-      document.title = 'Collections — BOTC HomeBrew Wiki';
-      var html = '<h2 style="font-family:\'Dumbledor2\',serif;font-weight:400;color:var(--parch);font-size:1.8rem;margin:0 0 6px">Collections</h2>'
-               + '<p style="color:rgba(236,225,200,.7);margin:0 0 4px">Choose a collection to edit its description and header image.</p>'
-               + '<div class="ec-pick-grid">';
-      data.forEach(function(c){
-        html += '<div class="ec-pick-card" onclick="location.href=\'edit-collection?c='+encodeURIComponent(c.id)+'\'">'
-              + '<p class="ec-pick-name">'+esc(c.displayName)+'</p>'
-              + '<p class="ec-pick-desc">'+(c.description||'<em style="opacity:.6">No description yet</em>')+'</p>'
-              + '</div>';
-      });
-      html += '</div>';
-      document.getElementById('main-content').innerHTML = html;
-    }
-
-    function renderEditForm(coll) {
-      document.getElementById('crumb-label').textContent = coll.displayName;
-      document.title = 'Edit ' + coll.displayName + ' — BOTC HomeBrew Wiki';
-
-      var prevHTML = coll.header
-        ? '<img id="ec-header-prev" class="ec-header-prev" src="assets/'+esc(coll.header)+'" alt="header preview" style="display:block">'
-          + '<p class="ec-note" id="ec-header-note">Current header — upload a new file to replace it.</p>'
-        : '<img id="ec-header-prev" class="ec-header-prev" alt="header preview"><p class="ec-note" id="ec-header-note"></p>';
-
-      document.getElementById('main-content').innerHTML =
-        '<div class="ec-form">'
-        + '<h2>'+esc(coll.displayName)+'</h2>'
-        + '<p class="sub">Edit description and header image for this collection page.</p>'
-        + '<div class="fld"><label>Description / blurb</label>'
-        + '<textarea id="ec-desc" placeholder="A short blurb about this collection, shown at the top of the collection page.">'+esc(coll.description||'')+'</textarea></div>'
-        + '<div class="fld"><label>Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional PNG, wide banner works best)</span></label>'
-        + '<input type="file" id="ec-header" accept="image/*">'
-        + prevHTML + '</div>'
-        + '<button type="button" class="btn-pub" id="ec-save">Save Changes</button>'
-        + '<div id="ec-status"></div>'
-        + '</div>'
-        + '<p style="margin-top:16px"><a href="all-characters?collection='+encodeURIComponent(coll.slug)+'" style="color:rgba(236,225,200,.7);font-size:.88rem">← View collection page</a></p>';
-
-      // Header upload
-      document.getElementById('ec-header').addEventListener('change', function(e){
-        var f = e.target.files[0]; if (!f) return;
-        var rd = new FileReader();
-        rd.onload = function(ev){
-          var img = new Image();
-          img.onload = function(){
-            var maxW=900, w=img.width, h=img.height;
-            if (w>maxW){h=Math.round(h*maxW/w);w=maxW;}
-            var cv=document.createElement('canvas');cv.width=w;cv.height=h;
-            cv.getContext('2d').drawImage(img,0,0,w,h);
-            headerDataURL = cv.toDataURL('image/png');
-            var pv=document.getElementById('ec-header-prev');
-            pv.src=headerDataURL;pv.style.display='block';
-            document.getElementById('ec-header-note').textContent='New header ready — will be uploaded on save.';
-          };
-          img.src=ev.target.result;
-        };
-        rd.readAsDataURL(f);
-      });
-
-      // Save
-      document.getElementById('ec-save').addEventListener('click', function(){
-        var desc = document.getElementById('ec-desc').value.trim();
-        var btn = document.getElementById('ec-save');
-        btn.disabled = true;
-        setStatus('work','Saving…');
-
-        var chain = Promise.resolve();
-        var displayHeader = 'collections/' + coll.id + '.png';
-
-        if (headerDataURL) {
-          chain = chain.then(function(){ setStatus('work','Uploading header…'); return apiUpload('collections/' + coll.id + '.png', headerDataURL); });
-        }
-
-        chain.then(function(){
-          setStatus('work','Saving collection…');
-          var entry = Object.assign({}, coll, {
-            description: desc,
-            header: headerDataURL ? displayHeader : (coll.header||'')
-          });
-          return apiSaveCollection(entry);
-        }).then(function(){
-          if(headerDataURL){coll.header=displayHeader;headerDataURL=null;}
-          coll.description=desc;
-          var url=SITE_ROOT+'all-characters?collection='+encodeURIComponent(coll.slug);
-          setStatus('ok','✓ Saved! Live now. <a href="'+url+'" target="_blank">'+esc(coll.displayName)+' collection</a>');
-          btn.disabled=false;
-        }).catch(function(err){
-          setStatus('err','✗ '+err.message);
-          btn.disabled=false;
-        });
-      });
-    }
-  })();
-  </script>
-  <script src="assets/site.js"></script>
+  <p style="font-family:sans-serif;text-align:center;padding:40px;color:#555">
+    Redirecting… if nothing happens, <a href="publish-collection">click here</a>.
+  </p>
 </body>
 </html>

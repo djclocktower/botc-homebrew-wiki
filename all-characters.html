@@ -113,18 +113,23 @@
       }
       return null;
     }
+    // Hybrid membership: a character belongs if its "Appears in" matches a
+    // collection's match[] OR it's explicitly in include[], minus exclude[].
+    function inCollection(c, coll) {
+      if ((coll.exclude || []).indexOf(c.slug) !== -1) return false;
+      if ((coll.include || []).indexOf(c.slug) !== -1) return true;
+      return coll.match.indexOf(norm(c.appearsIn)) !== -1;
+    }
     function charMatchesCollection(c, coll) {
       if (!coll) return true;
       if (coll.slug === 'Standalone') {
-        // standalone = no recognized collection
-        var a = norm(c.appearsIn);
-        if (!a) return true;
+        // standalone = belongs to no recognized collection
         for (var i = 0; i < AC_COLLECTIONS.length - 1; i++) {  // skip Standalone itself
-          if (AC_COLLECTIONS[i].match.indexOf(a) !== -1) return false;
+          if (inCollection(c, AC_COLLECTIONS[i])) return false;
         }
         return true;
       }
-      return coll.match.indexOf(norm(c.appearsIn)) !== -1;
+      return inCollection(c, coll);
     }
     // Slugs that appear in at least one homebrew script (scripts.json), for the
     // "Source" filter. Populated once the data loads.
@@ -132,13 +137,10 @@
     // A character's source category: a collection (Appears in matches a collection)
     // takes precedence over a script (listed in a homebrew script). null = neither.
     function sourceOf(c){
-      var a = norm(c.appearsIn);
-      if (a) {
-        for (var i = 0; i < AC_COLLECTIONS.length; i++) {
-          var coll = AC_COLLECTIONS[i];
-          if (coll.standalone) continue;
-          if (coll.match.indexOf(a) !== -1) return 'collection';
-        }
+      for (var i = 0; i < AC_COLLECTIONS.length; i++) {
+        var coll = AC_COLLECTIONS[i];
+        if (coll.standalone) continue;
+        if (inCollection(c, coll)) return 'collection';
       }
       if (SCRIPT_SLUGS[norm(c.slug)]) return 'script';
       return null;
@@ -374,7 +376,8 @@
       (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
-                match:c.match||[],description:c.description||'',header:c.header||''};
+                match:c.match||[],description:c.description||'',header:c.header||'',
+                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[]};
       });
       AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
                            match:[],standalone:true,description:'',header:''});
@@ -401,13 +404,19 @@
             if (activeCollection.header) {
               inner += '<div class="collection-hero-header"><img loading="lazy" decoding="async" class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
             }
+            if (activeCollection.tagline) {
+              inner += '<p class="collection-hero-tagline">' + esc(activeCollection.tagline) + '</p>';
+            }
             if (activeCollection.description) {
               inner += '<p class="collection-hero-desc">' + esc(activeCollection.description) + '</p>';
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
+            if (activeCollection.id && !activeCollection.standalone) {
+              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '">📖 View collection page</a>';
+            }
             inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary collection-edit-btn" href="edit-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
             }
             // Full collection JSON (official script-tool schema, every character)
             var collJsonText = '';

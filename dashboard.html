@@ -195,6 +195,15 @@
         </p>
       </section>
 
+      <!-- UNOWNED PAGES (assign an owner so a user can edit them) -->
+      <section class="panel">
+        <h3>Unowned pages <span class="count-pill" id="unowned-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Seeded pages have no owner account, so nobody can edit them on the site. Assign one to a user (by username) to hand it over. Leave the box empty and click <em>Clear</em> to remove an owner.
+        </p>
+        <div id="unowned-list"></div>
+      </section>
+
       <!-- STATS -->
       <section class="panel">
         <h3>At a glance</h3>
@@ -271,8 +280,8 @@
     function editorUrl(type, slug){
       var sl = encodeURIComponent(slug || '');
       if (type === 'character')  return 'edit?c=' + sl;
-      if (type === 'collection') return 'edit-collection?c=' + sl;
-      if (type === 'script')     return 'edit-script?s=' + sl;
+      if (type === 'collection') return 'publish-collection?c=' + sl;
+      if (type === 'script')     return 'publish-script?s=' + sl;
       return '#';
     }
     function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }
@@ -410,12 +419,56 @@
               (u.email ? ' <span style="opacity:.7">' + esc(u.email) + '</span>' : '') +
               '</div><span class="when" title="' + esc(absTime(u.created_at)) + '">joined ' + esc(relTime(u.created_at)) + '</span></li>';
           }, 'No accounts yet.');
+
+          renderUnowned(d.unowned || []);
         })
         .catch(function(e){
           if (e && e.message === 'forbidden') return;
           $('loading').textContent = 'Could not load the dashboard. Try refreshing.';
         });
     }
+
+    function renderUnowned(rows){
+      $('unowned-count').textContent = rows.length || '';
+      var box = $('unowned-list');
+      if (!rows.length){ box.innerHTML = '<p class="note">Every page has an owner. Nothing to assign.</p>'; return; }
+      box.innerHTML = rows.map(function(r, i){
+        var view = r.type === 'collection' ? 'collection/' + encodeURIComponent(r.slug)
+                 : r.type === 'script' ? 's/' + encodeURIComponent(r.slug)
+                 : 'c/' + encodeURIComponent(r.slug);
+        return '<div class="unowned-row" data-type="' + esc(r.type) + '" data-slug="' + esc(r.slug) + '" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(180,160,120,.25)">' +
+          '<span class="tag tag-type">' + esc(r.type) + '</span>' +
+          '<a href="' + esc(view) + '" style="flex:1;min-width:140px;color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(r.name || r.slug) + '</a>' +
+          '<input type="text" class="uo-user" placeholder="username" style="padding:5px 8px;border:1px solid #cdbfa0;background:#fffdf8;font:inherit;min-width:120px">' +
+          '<button type="button" class="btn uo-assign" data-i="' + i + '" style="padding:5px 12px">Assign</button>' +
+          '<span class="uo-status" style="font-size:.82rem;min-width:60px"></span>' +
+          '</div>';
+      }).join('');
+    }
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.uo-assign');
+      if (!btn) return;
+      var row = btn.closest('.unowned-row');
+      var status = row.querySelector('.uo-status');
+      var uname = row.querySelector('.uo-user').value.trim();
+      btn.disabled = true; status.textContent = 'Saving…'; status.style.color = '#8a6d12';
+      fetch('/api/admin/assign-owner', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: row.getAttribute('data-type'), slug: row.getAttribute('data-slug'), username: uname || null })
+      }).then(function(r){ return r.json(); }).then(function(res){
+        btn.disabled = false;
+        if (res && res.ok){
+          status.textContent = uname ? '✓ ' + uname : '✓ cleared';
+          status.style.color = '#1c5429';
+          if (uname){ setTimeout(function(){ row.style.opacity = '.5'; }, 300); }
+        } else {
+          status.textContent = '✗ ' + ((res && res.error) || 'failed');
+          status.style.color = '#9A0D12';
+        }
+      }).catch(function(err){
+        btn.disabled = false; status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
+      });
+    });
 
     function showGate(){
       $('loading').style.display = 'none';
