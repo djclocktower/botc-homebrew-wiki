@@ -35,7 +35,7 @@
  *   POST /api/collection      -> create/update a collection
  *   POST /api/script          -> create/update a script
  *   POST /api/publish         -> flip a page between draft and published
- *   POST /api/delete          -> delete a page you own
+ *   POST /api/delete          -> soft-delete a page you own (recoverable)
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
  *
  *   -- public pages & discovery --
@@ -49,7 +49,9 @@
  *   POST /api/admin/assign-owner -> admin: set/clear a page's owner account
  *
  *   -- admin --
- *   GET  /api/admin/dashboard -> dashboard data
+ *   GET  /api/admin/dashboard -> dashboard data (incl. deleted content)
+ *   POST /api/admin/restore   -> admin: restore a soft-deleted page
+ *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -416,6 +418,7 @@ ${o.draftBanner || ''}
       </a>
       <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
+      <button class="edit-link delete-link" id="delete-btn" type="button" style="display:none">&#128465;&#65039; Delete</button>
     </div>
     <nav class="crumb" aria-label="Breadcrumb" id="crumb">${o.crumb}</nav>
   <div class="search-wrap" id="search-wrap">
@@ -527,6 +530,9 @@ async function renderContentPage(env, request, url, type, slug) {
   }
   if (!isScript && !row) row = await findCollectionRow(env, slug);
   if (!row || !row.data) return env.ASSETS.fetch(request);
+
+  // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
+  if (row.status === 'deleted') return env.ASSETS.fetch(request);
 
   const isDraft = row.status === 'draft';
   if (isDraft) {
@@ -669,6 +675,9 @@ export default {
             .bind(slug).first();
         }
         if (row && row.data) {
+          // Soft-deleted pages are hidden from everyone (incl. owner/admin);
+          // recovery happens on the admin dashboard, not the live page.
+          if (row.status === 'deleted') return env.ASSETS.fetch(request);
           const isDraft = row.status === 'draft';
           if (isDraft) {
             const sess = await getSession(env, request);
@@ -1126,9 +1135,9 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       const batch = await env.DB.batch([
         env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
-        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
-        env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
-        env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
+        env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT ts, action, entity_type, entity_slug, entity_name FROM activity_log WHERE user_id=? ORDER BY ts DESC, id DESC LIMIT 50`).bind(sess.userId)
       ]);
       const u = batch[0].results[0];
@@ -1166,6 +1175,8 @@ export default {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const editable = canEditRow(sess, row);
+      // Soft-deleted pages read as gone; restore from the dashboard first.
+      if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
       if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
       return jsonResponse({ data: JSON.parse(row.data), status: row.status || 'published', canEdit: editable });
     }
@@ -1178,21 +1189,21 @@ export default {
       const batch = await env.DB.batch([
         env.DB.prepare(
           `SELECT
-             (SELECT COUNT(*) FROM characters)  AS characters,
-             (SELECT COUNT(*) FROM collections) AS collections,
-             (SELECT COUNT(*) FROM scripts)     AS scripts,
+             (SELECT COUNT(*) FROM characters  WHERE status IS NOT 'deleted') AS characters,
+             (SELECT COUNT(*) FROM collections WHERE status IS NOT 'deleted') AS collections,
+             (SELECT COUNT(*) FROM scripts     WHERE status IS NOT 'deleted') AS scripts,
              (SELECT COUNT(*) FROM users)       AS users`),
         env.DB.prepare(
-          `SELECT team, COUNT(*) AS n FROM characters GROUP BY team ORDER BY n DESC`),
+          `SELECT team, COUNT(*) AS n FROM characters WHERE status IS NOT 'deleted' GROUP BY team ORDER BY n DESC`),
         env.DB.prepare(
-          `SELECT 'character' AS type, slug, name, updated_at FROM characters
-           UNION ALL SELECT 'collection', slug, display_name, updated_at FROM collections
-           UNION ALL SELECT 'script', slug, name, updated_at FROM scripts
+          `SELECT 'character' AS type, slug, name, updated_at FROM characters WHERE status IS NOT 'deleted'
+           UNION ALL SELECT 'collection', slug, display_name, updated_at FROM collections WHERE status IS NOT 'deleted'
+           UNION ALL SELECT 'script', slug, name, updated_at FROM scripts WHERE status IS NOT 'deleted'
            ORDER BY updated_at DESC LIMIT 15`),
         env.DB.prepare(
-          `SELECT 'character' AS type, slug, name, created_at FROM characters
-           UNION ALL SELECT 'collection', slug, display_name, created_at FROM collections
-           UNION ALL SELECT 'script', slug, name, created_at FROM scripts
+          `SELECT 'character' AS type, slug, name, created_at FROM characters WHERE status IS NOT 'deleted'
+           UNION ALL SELECT 'collection', slug, display_name, created_at FROM collections WHERE status IS NOT 'deleted'
+           UNION ALL SELECT 'script', slug, name, created_at FROM scripts WHERE status IS NOT 'deleted'
            ORDER BY created_at DESC LIMIT 15`),
         env.DB.prepare(
           `SELECT ts, username, action, entity_type, entity_slug, entity_name
@@ -1202,13 +1213,29 @@ export default {
            ORDER BY created_at DESC LIMIT 15`),
         env.DB.prepare(`SELECT value FROM settings WHERE key='wiki_locked'`),
         env.DB.prepare(
-          `SELECT 'collection' AS type, slug, display_name AS name FROM collections WHERE owner_id IS NULL
-           UNION ALL SELECT 'script', slug, name FROM scripts WHERE owner_id IS NULL
-           UNION ALL SELECT 'character', slug, name FROM characters WHERE owner_id IS NULL
-           ORDER BY type, name LIMIT 200`)
+          `SELECT 'collection' AS type, slug, display_name AS name FROM collections WHERE owner_id IS NULL AND status IS NOT 'deleted'
+           UNION ALL SELECT 'script', slug, name FROM scripts WHERE owner_id IS NULL AND status IS NOT 'deleted'
+           UNION ALL SELECT 'character', slug, name FROM characters WHERE owner_id IS NULL AND status IS NOT 'deleted'
+           ORDER BY type, name LIMIT 200`),
+        env.DB.prepare(
+          `SELECT 'character' AS type, slug, name, updated_at, data FROM characters WHERE status='deleted'
+           UNION ALL SELECT 'collection', slug, display_name, updated_at, data FROM collections WHERE status='deleted'
+           UNION ALL SELECT 'script', slug, name, updated_at, data FROM scripts WHERE status='deleted'
+           ORDER BY updated_at DESC LIMIT 200`)
       ]);
 
       const lockVal = batch[6].results[0];
+      // Trim the deleted rows down to just what the panel needs (name, when,
+      // and who/when it was deleted) — never ship the whole data blob.
+      const deleted = (batch[8].results || []).map(r => {
+        let meta = {};
+        try { meta = (JSON.parse(r.data || '{}')._deleted) || {}; } catch { /* ignore */ }
+        return {
+          type: r.type, slug: r.slug, name: r.name,
+          updated_at: r.updated_at,
+          deletedAt: meta.at || null, deletedBy: meta.by || null, deletedFrom: meta.from || null
+        };
+      });
       return jsonResponse({
         counts: batch[0].results[0],
         charactersByTeam: batch[1].results,
@@ -1217,7 +1244,8 @@ export default {
         recentActivity: batch[4].results,
         recentSignups: batch[5].results,
         locked: !!lockVal && lockVal.value === '1',
-        unowned: batch[7].results
+        unowned: batch[7].results,
+        deleted: deleted
       });
     }
 
@@ -1228,7 +1256,8 @@ export default {
 
       // Admin-only endpoints keep their old guard.
       const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup' ||
-                         path === '/api/admin/assign-owner');
+                         path === '/api/admin/assign-owner' || path === '/api/admin/restore' ||
+                         path === '/api/admin/purge');
       if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
@@ -1469,6 +1498,7 @@ export default {
         const row = await getEntityRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        if (row.status === 'deleted') return jsonResponse({ error: 'That page is deleted. An admin can restore it from the dashboard.' }, { status: 400 });
         const status = b.status === 'draft' ? 'draft' : 'published';
         await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(status, row.slug).run();
@@ -1476,18 +1506,76 @@ export default {
         return jsonResponse({ ok: true, slug: row.slug, status });
       }
 
-      // ---- delete a page ----
+      // ---- delete a page (SOFT delete) ----
+      // The row is not removed — its status is flipped to 'deleted' so it drops
+      // out of the whole site (public JSON, SSR pages, search, the owner's
+      // account list) but can still be restored, or purged for good, from the
+      // admin Deleted Content panel. This keeps scripts/JSON that reference a
+      // character from silently breaking on an accidental delete. The prior
+      // status + who/when is stashed in the data blob (no schema migration).
       if (path === '/api/delete') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-        const row = await getEntityRow(env, type, String(b.slug || ''));
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        // Legacy collections have display-string PK slugs; the URL uses the id.
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
-        await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
+        if (row.status === 'deleted') return jsonResponse({ ok: true, slug: row.slug });
+        let data;
+        try { data = JSON.parse(row.data); } catch { data = {}; }
+        let byName = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          byName = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        data._deleted = { at: new Date().toISOString(), by: byName, from: row.status || 'published' };
+        await env.DB.prepare(`UPDATE ${t.table} SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(JSON.stringify(data), row.slug).run();
         await logActivity(env, sess, 'delete', type, row.slug, row.name);
-        return jsonResponse({ ok: true });
+        return jsonResponse({ ok: true, slug: row.slug });
+      }
+
+      // ---- admin: restore a soft-deleted page ----
+      // Puts the row back to the status it had before deletion (published or
+      // draft) and clears the _deleted marker.
+      if (path === '/api/admin/restore') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (row.status !== 'deleted') return jsonResponse({ error: 'That page is not deleted.' }, { status: 400 });
+        let data;
+        try { data = JSON.parse(row.data); } catch { data = {}; }
+        const from = (data._deleted && data._deleted.from) || 'published';
+        const status = from === 'draft' ? 'draft' : 'published';
+        delete data._deleted;
+        await env.DB.prepare(`UPDATE ${t.table} SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(status, JSON.stringify(data), row.slug).run();
+        await logActivity(env, sess, 'restore', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, status });
+      }
+
+      // ---- admin: permanently purge a soft-deleted page ----
+      // Only removes rows already in the 'deleted' state, so a page can never be
+      // hard-deleted without first passing through the recoverable trash.
+      if (path === '/api/admin/purge') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (row.status !== 'deleted') return jsonResponse({ error: 'Purge only removes already-deleted pages. Delete it first.' }, { status: 400 });
+        await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
+        await logActivity(env, sess, 'purge', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug });
       }
 
       // ---- admin: assign (or clear) a page's owner ----
