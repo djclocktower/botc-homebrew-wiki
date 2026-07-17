@@ -52,11 +52,18 @@ body {
   overscroll-behavior-y: none;
 }
 /* Background as a fixed, composited layer — avoids the background-attachment:fixed
-   jitter on mobile when the address bar shows/hides. Same pinned look on desktop. */
+   jitter on mobile when the address bar shows/hides. Same pinned look on desktop.
+   Height is pinned to 100lvh (the LARGE viewport height, constant whether the
+   mobile URL bar is shown or hidden) rather than inset:0. With inset:0 the layer
+   grew as the URL bar retracted, and background-size:cover then rescaled the
+   image — the background visibly zoomed and jumped. 100lvh keeps the layer a
+   fixed size so cover never rescales. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
+  height: 100vh;   /* fallback for browsers without large-viewport units */
+  height: 100lvh;
   z-index: -1;
   background: url('bg.jpg') center top / cover no-repeat var(--purple-deep);
   pointer-events: none;
