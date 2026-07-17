@@ -43,6 +43,19 @@
       .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '').slice(0, 50);
   }
 
+  // Official character icon URLs (from assets/roles.json \u2014 the same source the
+  // Token Tool uses for official art), keyed by slugId(id/name). When set, an
+  // official character named in a jinx uses its official icon instead of the
+  // committed assets/icons/*.png copy. Set by the Worker (SSR) and by the
+  // create/edit editors; if unset, jinx icons fall back to the local copies.
+  var OFFICIAL_ICON_URLS = null;
+  function setOfficialIconUrls(map) { OFFICIAL_ICON_URLS = map || null; }
+  function officialIconUrl(id) {
+    if (!OFFICIAL_ICON_URLS || !id) return '';
+    var u = OFFICIAL_ICON_URLS[slugId(id)];
+    return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
+  }
+
   /* ── Build official-schema JSON object from character data ── */
   function buildSchema(d) {
     var o = {
@@ -209,7 +222,10 @@
       var nm = jinxDisplayName(j);
       var rawId = j.id || slugId(j.name || '');
       var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-      var iconSrc = root + 'assets/icons/' + iconId + '.png';
+      // Prefer the official icon (release CDN, via roles.json) for official
+      // characters; fall back to the committed assets/icons copy otherwise.
+      var iconSrc = officialIconUrl(iconId) || officialIconUrl(nm) ||
+        (root + 'assets/icons/' + iconId + '.png');
       return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
         (iconId ? '<img loading="lazy" decoding="async" class="jico" src="' + iconSrc + '" alt=""' +
         ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
@@ -384,13 +400,15 @@
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
     window.findScriptJinxes = findScriptJinxes;
+    window.setOfficialIconUrls = setOfficialIconUrls;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
-      findScriptJinxes: findScriptJinxes
+      findScriptJinxes: findScriptJinxes,
+      setOfficialIconUrls: setOfficialIconUrls
     };
   }
 })();

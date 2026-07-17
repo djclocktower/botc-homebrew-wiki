@@ -316,6 +316,20 @@
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
     var $         = function (id) { return document.getElementById(id); };
+    // Official character jinx icons come from roles.json (same source the Token
+    // Tool uses); load it so the preview matches the published /c/ page.
+    fetch(SITE_ROOT + 'assets/roles.json').then(function (r) { return r.json(); })
+      .then(function (roles) {
+        var m = {};
+        (roles || []).forEach(function (r) {
+          if (r && r.image && /^https?:\/\//.test(r.image)) {
+            m[window.slugId(r.id)] = r.image;
+            if (r.name) m[window.slugId(r.name)] = r.image;
+          }
+        });
+        window.setOfficialIconUrls(m);
+        if (typeof update === 'function') update();
+      }).catch(function () {});
     var artDataURL   = null;
     var artAltDataURL = null;
     var importedImage = null;
