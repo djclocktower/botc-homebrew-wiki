@@ -498,6 +498,22 @@ async function loadOfficialRoles(env, origin) {
   return _officialRolesCache;
 }
 
+// Map of slugId(id/name) -> official icon URL, so /c/ jinx icons for official
+// characters use the same release-CDN art as the Token Tool. Cached per isolate.
+let _officialIconMapCache = null;
+async function officialIconMap(env, origin) {
+  if (_officialIconMapCache) return _officialIconMapCache;
+  const m = {};
+  for (const r of await loadOfficialRoles(env, origin)) {
+    if (r.image && /^https?:\/\//.test(r.image)) {
+      m[Render.slugId(r.id)] = r.image;
+      if (r.name) m[Render.slugId(r.name)] = r.image;
+    }
+  }
+  _officialIconMapCache = m;
+  return m;
+}
+
 // ---- shared SSR for /s/{slug} and /collection/{id} pages ----
 async function renderContentPage(env, request, url, type, slug) {
   const isScript = type === 'script';
@@ -660,6 +676,7 @@ export default {
           }
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
+          Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           return new Response(renderCharacterPage(d, url.origin, isDraft), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
