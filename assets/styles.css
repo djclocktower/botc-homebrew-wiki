@@ -1694,7 +1694,8 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sv-credits { margin-bottom: 16px; }
 .sv-credits-sub { font-size: .82rem; color: var(--ink); opacity: .7; margin: 0 0 8px; }
 .sv-credits-list { list-style: none; margin: 0; padding: 0; }
-.sv-credits-list li { padding: 4px 0; border-bottom: 1px solid rgba(180,160,120,.25); font-size: .95rem; }
+.sv-credits-list li { position: static; padding: 4px 0; border-bottom: 1px solid rgba(180,160,120,.25); font-size: .95rem; }
+.sv-credits-list li::before { display: none; }
 .sv-credits-list li:last-child { border-bottom: none; }
 .sv-credits-count { font-family: 'Oswald', sans-serif; font-size: .78rem; opacity: .65; color: var(--maroon); }
 
