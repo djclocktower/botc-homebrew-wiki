@@ -278,10 +278,10 @@
       '<dl class="info">' + rows + '</dl></div>';
   }
 
-  function renderJsonPanel(jsonText, actions) {
+  function renderJsonPanel(jsonText, actions, label) {
     return '<div class="json-box open">' +
       '<div class="json-bar">' +
-      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="true">Script JSON <span class="json-arrow">&#9662;</span></span>' +
+      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="true">' + esc(label || 'Script JSON') + ' <span class="json-arrow">&#9662;</span></span>' +
       '<button type="button" class="json-copy">Copy JSON</button>' +
       '</div>' +
       '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
@@ -349,7 +349,7 @@
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
-    aside += '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions) + '</div>';
+    aside += '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
 
     return top +
       '<div class="script-view-layout">' +
@@ -379,7 +379,8 @@
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
-      entries: entries, missing: missing, jsonText: jsonText, actions: actions
+      entries: entries, missing: missing, jsonText: jsonText, actions: actions,
+      jsonLabel: 'Script JSON'
     });
   }
 
@@ -408,7 +409,8 @@
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
-      entries: members, missing: [], jsonText: jsonText, actions: actions
+      entries: members, missing: [], jsonText: jsonText, actions: actions,
+      jsonLabel: 'Collection JSON'
     });
   }
 
