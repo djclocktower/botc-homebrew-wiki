@@ -37,7 +37,7 @@
 
 /* ─── Base ──────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html { scroll-behavior: smooth; overscroll-behavior-y: none; }
+html { scroll-behavior: smooth; }
 body {
   margin: 0;
   font-family: 'TradeGothicLT', 'Libre Franklin', -apple-system, sans-serif;
@@ -46,10 +46,6 @@ body {
   background-color: var(--purple-deep);
   min-height: 100vh;
   position: relative;
-  /* Kill the rubber-band overscroll bounce: without this, scrolling past the
-     top/bottom drags the whole viewport — fixed bg layer included — and the
-     pinned background visibly jumps. */
-  overscroll-behavior-y: none;
 }
 /* Background as a fixed, composited layer — avoids the background-attachment:fixed
    jitter on mobile when the address bar shows/hides. Same pinned look on desktop.
