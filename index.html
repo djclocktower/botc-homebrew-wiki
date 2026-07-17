@@ -359,9 +359,10 @@
 
     Promise.all([
       fetch('collections.json?_='+Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); })
+      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); }),
+      fetch('scripts.json?_=' + Date.now()).then(function(r){ return r.json(); }).catch(function(){return[];})
     ]).then(function(mainRes){
-      var collData=mainRes[0]||[], list=mainRes[1];
+      var collData=mainRes[0]||[], list=mainRes[1], scriptData=mainRes[2]||[];
       COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
@@ -391,10 +392,12 @@
         });
         var nCollections = Object.keys(collected).filter(function(k){ return collected[k].length; }).length;
         var nCreators = Object.keys(creatorSet).length;
+        var nScripts = scriptData.length;
         document.getElementById('landing-stats').textContent =
           list.length + ' characters · ' +
           nCollections + ' collection' + (nCollections===1?'':'s') + ' · ' +
-          nCreators + ' creator' + (nCreators===1?'':'s');
+          nCreators + ' creator' + (nCreators===1?'':'s') + ' · ' +
+          nScripts + ' script' + (nScripts===1?'':'s');
 
         // ── Collections grid ──────────────────────────────────
         var grid = document.getElementById('collections-grid');
