@@ -1,0 +1,741 @@
+{
+ "version": 1,
+ "generatedFrom": "nogreaterjoy.psd (1500x2100)",
+ "canvas": {
+  "w": 1500,
+  "h": 2100,
+  "aspect": "5:7",
+  "printNote": "Render export at 2x (3000x4200) or 3x (4500x6300) for ~300 DPI on A4/Letter with margins."
+ },
+ "palette": {
+  "townsfolk": "#0064AC",
+  "outsider": "#0A3E64",
+  "minion": "#640A0A",
+  "demon": "#D00000",
+  "ink": "#000000",
+  "nightLabel": "#FFFFFF",
+  "titleBase": "#AD1C20",
+  "barPurple": "sampled from bar-left.png"
+ },
+ "fonts": {
+  "title": {
+   "psdFont": "LHF Unlovable",
+   "ship": false,
+   "substitute": "Dumbledor (assets/fonts/dum2.ttf, already self-hosted)",
+   "note": "Commercial font - not redistributable. Demo title shipped as rasterized image (demo/title-nogreaterjoy.jpg). Live titles render in Dumbledor with gradient+bevel done in canvas."
+  },
+  "heading": {
+   "psdFont": "OptimusPrinceps",
+   "ship": true,
+   "src": "assets/fonts/OptimusPrinceps.ttf",
+   "bold": "assets/fonts/OptimusPrincepsSemiBold.ttf",
+   "license": "Manfred Klein freeware - free for private/charity use"
+  },
+  "ability": {
+   "psdFont": "Helvetica",
+   "ship": false,
+   "substitute": "Trade Gothic LT Std (already self-hosted)",
+   "note": "Metrics close enough; ability text is centered ragged so reflow is safe."
+  }
+ },
+ "textStyles": {
+  "teamHeader": {
+   "font": "heading",
+   "px": 42,
+   "tracking": 0.02,
+   "align": "left"
+  },
+  "charName": {
+   "font": "heading",
+   "px": 30,
+   "align": "center",
+   "color": "#000000"
+  },
+  "charNameBig": {
+   "font": "heading",
+   "px": 40,
+   "align": "center",
+   "color": "#000000"
+  },
+  "ability": {
+   "font": "ability",
+   "px": 22,
+   "lineHeight": 1.25,
+   "align": "center",
+   "color": "#000000"
+  },
+  "nightLabel": {
+   "font": "heading",
+   "px": 17,
+   "align": "center",
+   "color": "#FFFFFF"
+  },
+  "footnote": {
+   "font": "heading",
+   "px": 28,
+   "align": "right",
+   "color": "#000000"
+  }
+ },
+ "chrome": [
+  {
+   "id": "bg-parchment",
+   "type": "image",
+   "src": "template/bg-parchment.jpg",
+   "x": 0,
+   "y": 0,
+   "w": 1500,
+   "h": 2100
+  },
+  {
+   "id": "bar-left",
+   "type": "image",
+   "src": "template/bar-left.png",
+   "x": 0,
+   "y": 0,
+   "w": 96,
+   "h": 2100
+  },
+  {
+   "id": "bar-right",
+   "type": "image",
+   "src": "template/bar-right.png",
+   "x": 1402,
+   "y": 0,
+   "w": 98,
+   "h": 2100
+  },
+  {
+   "id": "botanical-top-left",
+   "type": "image",
+   "src": "template/botanical-top-left.png",
+   "x": 0,
+   "y": 0,
+   "w": 466,
+   "h": 440
+  },
+  {
+   "id": "botanical-top-right",
+   "type": "image",
+   "src": "template/botanical-top-right.png",
+   "x": 1129,
+   "y": 0,
+   "w": 371,
+   "h": 422
+  },
+  {
+   "id": "botanical-bottom-left",
+   "type": "image",
+   "src": "template/botanical-bottom-left.png",
+   "x": 0,
+   "y": 1687,
+   "w": 290,
+   "h": 413
+  },
+  {
+   "id": "botanical-bottom-right",
+   "type": "image",
+   "src": "template/botanical-bottom-right.png",
+   "x": 1261,
+   "y": 1510,
+   "w": 239,
+   "h": 508
+  },
+  {
+   "id": "botanical-berries-left",
+   "type": "image",
+   "src": "template/botanical-berries-left.png",
+   "x": 303,
+   "y": 1504,
+   "w": 680,
+   "h": 596
+  },
+  {
+   "id": "clock",
+   "type": "image",
+   "src": "template/clock.png",
+   "x": 789,
+   "y": 76,
+   "w": 384,
+   "h": 390
+  },
+  {
+   "id": "divider-townsfolk",
+   "type": "image",
+   "src": "template/divider-townsfolk.png",
+   "x": 429,
+   "y": 495,
+   "w": 1071,
+   "h": 5
+  },
+  {
+   "id": "divider-outsiders",
+   "type": "image",
+   "src": "template/divider-outsiders.png",
+   "x": 389,
+   "y": 1093,
+   "w": 1111,
+   "h": 5
+  },
+  {
+   "id": "divider-minions",
+   "type": "image",
+   "src": "template/divider-minions.png",
+   "x": 379,
+   "y": 1386,
+   "w": 1121,
+   "h": 5
+  },
+  {
+   "id": "divider-demon",
+   "type": "image",
+   "src": "template/divider-demon.png",
+   "x": 97,
+   "y": 1679,
+   "w": 1403,
+   "h": 7
+  },
+  {
+   "id": "night-moon-left",
+   "type": "image",
+   "src": "template/night-moon-left.png",
+   "x": 4,
+   "y": 703,
+   "w": 84,
+   "h": 85
+  },
+  {
+   "id": "night-moon-right",
+   "type": "image",
+   "src": "template/night-moon-right.png",
+   "x": 1408,
+   "y": 700,
+   "w": 84,
+   "h": 85
+  },
+  {
+   "id": "night-sun-left",
+   "type": "image",
+   "src": "template/night-sun-left.png",
+   "x": 2,
+   "y": 1315,
+   "w": 81,
+   "h": 47,
+   "visible": true,
+   "note": "hidden in PSD, part of design language - dawn marker"
+  },
+  {
+   "id": "night-sun-right",
+   "type": "image",
+   "src": "template/night-sun-right.png",
+   "x": 1415,
+   "y": 1221,
+   "w": 81,
+   "h": 47,
+   "visible": true
+  }
+ ],
+ "nightColumns": {
+  "left": {
+   "label": "FIRST NIGHT",
+   "labelBox": [
+    8,
+    651,
+    91,
+    701
+   ],
+   "x": 8,
+   "iconSize": 74,
+   "startY": 703,
+   "gapY": 82,
+   "note": "moon first, sun last, minis auto-sorted by firstNight order"
+  },
+  "right": {
+   "label": "OTHER NIGHTS",
+   "labelBox": [
+    1408,
+    650,
+    1496,
+    697
+   ],
+   "x": 1408,
+   "iconSize": 74,
+   "startY": 700,
+   "gapY": 82,
+   "note": "sorted by otherNight order"
+  }
+ },
+ "teamSections": [
+  {
+   "team": "townsfolk",
+   "header": {
+    "id": "hdr-townsfolk",
+    "type": "text",
+    "text": "TOWNSFOLK",
+    "x": 116,
+    "y": 480,
+    "w": 312,
+    "h": 40,
+    "style": "teamHeader",
+    "color": "#0064AC"
+   },
+   "divider": "divider-townsfolk",
+   "columns": 3
+  },
+  {
+   "team": "outsider",
+   "header": {
+    "id": "hdr-outsiders",
+    "type": "text",
+    "text": "OUTSIDERS",
+    "x": 108,
+    "y": 1074,
+    "w": 270,
+    "h": 39,
+    "style": "teamHeader",
+    "color": "#0A3E64"
+   },
+   "divider": "divider-outsiders",
+   "columns": 2
+  },
+  {
+   "team": "minion",
+   "header": {
+    "id": "hdr-minions",
+    "type": "text",
+    "text": "MINIONS",
+    "x": 109,
+    "y": 1365,
+    "w": 262,
+    "h": 47,
+    "style": "teamHeader",
+    "color": "#640A0A"
+   },
+   "divider": "divider-minions",
+   "columns": 2
+  },
+  {
+   "team": "demon",
+   "header": {
+    "id": "hdr-demon",
+    "type": "text",
+    "text": "DEMON",
+    "x": 613,
+    "y": 1652,
+    "w": 274,
+    "h": 56,
+    "style": "teamHeader",
+    "color": "#D00000"
+   },
+   "divider": "divider-demon",
+   "columns": 1
+  }
+ ],
+ "demo": {
+  "scriptName": "No Greater Joy",
+  "title": {
+   "type": "image",
+   "src": "demo/title-nogreaterjoy.jpg",
+   "x": 400,
+   "y": 8,
+   "w": 425,
+   "h": 465,
+   "note": "rasterized from reference.jpg; live titles use fonts.title.substitute"
+  },
+  "footnote": {
+   "id": "footnote",
+   "type": "text",
+   "text": "*NOT THE FIRST NIGHT",
+   "x": 984,
+   "y": 2046,
+   "w": 395,
+   "h": 34,
+   "style": "footnote"
+  },
+  "characters": [
+   {
+    "slug": "investigator",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-investigator",
+     "type": "image",
+     "src": "demo/icon-investigator.png",
+     "x": 106,
+     "y": 626,
+     "w": 174,
+     "h": 138
+    },
+    "name": {
+     "id": "n-inv",
+     "type": "text",
+     "text": "INVESTIGATOR",
+     "x": 236,
+     "y": 601,
+     "w": 256,
+     "h": 28,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-inv",
+     "type": "text",
+     "text": "You start knowing that 1 of 2 players is a particular Minion.",
+     "x": 235,
+     "y": 642,
+     "w": 300,
+     "h": 51,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "clockmaker",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-clockmaker",
+     "type": "image",
+     "src": "demo/icon-clockmaker.png",
+     "x": 543,
+     "y": 589,
+     "w": 174,
+     "h": 175
+    },
+    "name": {
+     "id": "n-clo",
+     "type": "text",
+     "text": "CLOCKMAKER",
+     "x": 699,
+     "y": 598,
+     "w": 230,
+     "h": 25,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-clo",
+     "type": "text",
+     "text": "You start knowing how many steps from the Demon to its nearest Minion.",
+     "x": 706,
+     "y": 632,
+     "w": 248,
+     "h": 109,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "empath",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-empath",
+     "type": "image",
+     "src": "demo/icon-empath.png",
+     "x": 958,
+     "y": 608,
+     "w": 163,
+     "h": 153
+    },
+    "name": {
+     "id": "n-emp",
+     "type": "text",
+     "text": "EMPATH",
+     "x": 1119,
+     "y": 599,
+     "w": 138,
+     "h": 28,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-emp",
+     "type": "text",
+     "text": "Each night, you learn how many of your 2 alive neighbors are evil.",
+     "x": 1119,
+     "y": 636,
+     "w": 251,
+     "h": 82,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "chambermaid",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-chambermaid",
+     "type": "image",
+     "src": "demo/icon-chambermaid.png",
+     "x": 126,
+     "y": 852,
+     "w": 162,
+     "h": 157
+    },
+    "name": {
+     "id": "n-cha",
+     "type": "text",
+     "text": "CHAMBERMAID",
+     "x": 284,
+     "y": 839,
+     "w": 283,
+     "h": 29,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-cha",
+     "type": "text",
+     "text": "Each night, choose 2 alive players (not yourself): you learn how many woke tonight due to their ability.",
+     "x": 286,
+     "y": 875,
+     "w": 292,
+     "h": 116,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "artist",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-artist",
+     "type": "image",
+     "src": "demo/icon-artist.png",
+     "x": 571,
+     "y": 822,
+     "w": 142,
+     "h": 200
+    },
+    "name": {
+     "id": "n-art",
+     "type": "text",
+     "text": "ARTIST",
+     "x": 713,
+     "y": 837,
+     "w": 145,
+     "h": 33,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-art",
+     "type": "text",
+     "text": "Once per game, during the day, privately ask the Storyteller any yes/no question.",
+     "x": 711,
+     "y": 878,
+     "w": 256,
+     "h": 116,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "sage",
+    "team": "townsfolk",
+    "icon": {
+     "id": "icon-sage",
+     "type": "image",
+     "src": "demo/icon-sage.png",
+     "x": 968,
+     "y": 831,
+     "w": 114,
+     "h": 191
+    },
+    "name": {
+     "id": "n-sag",
+     "type": "text",
+     "text": "SAGE",
+     "x": 1066,
+     "y": 840,
+     "w": 94,
+     "h": 33,
+     "style": "charName"
+    },
+    "ability": {
+     "id": "a-sag",
+     "type": "text",
+     "text": "If the Demon kills you, you learn that it is 1 of 2 players.",
+     "x": 1067,
+     "y": 881,
+     "w": 307,
+     "h": 54,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "drunk",
+    "team": "outsider",
+    "icon": {
+     "id": "icon-drunk",
+     "type": "image",
+     "src": "demo/icon-drunk.png",
+     "x": 118,
+     "y": 1113,
+     "w": 175,
+     "h": 257
+    },
+    "name": {
+     "id": "n-dru",
+     "type": "text",
+     "text": "DRUNK",
+     "x": 278,
+     "y": 1153,
+     "w": 188,
+     "h": 39,
+     "style": "charNameBig"
+    },
+    "ability": {
+     "id": "a-dru",
+     "type": "text",
+     "text": "You do not know you are the Drunk. You think you are a Townsfolk character, but you are not.",
+     "x": 287,
+     "y": 1205,
+     "w": 421,
+     "h": 153,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "klutz",
+    "team": "outsider",
+    "icon": {
+     "id": "icon-klutz",
+     "type": "image",
+     "src": "demo/icon-klutz.png",
+     "x": 770,
+     "y": 1134,
+     "w": 282,
+     "h": 251
+    },
+    "name": {
+     "id": "n-klu",
+     "type": "text",
+     "text": "KLUTZ",
+     "x": 972,
+     "y": 1154,
+     "w": 163,
+     "h": 39,
+     "style": "charNameBig"
+    },
+    "ability": {
+     "id": "a-klu",
+     "type": "text",
+     "text": "When you learn that you died, publicly choose 1 alive player: if they are evil, your team loses.",
+     "x": 1003,
+     "y": 1213,
+     "w": 364,
+     "h": 134,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "scarletwoman",
+    "team": "minion",
+    "icon": {
+     "id": "icon-scarletwoman",
+     "type": "image",
+     "src": "demo/icon-scarletwoman.png",
+     "x": 114,
+     "y": 1438,
+     "w": 268,
+     "h": 211
+    },
+    "name": {
+     "id": "n-sca",
+     "type": "text",
+     "text": "SCARLET WOMAN",
+     "x": 332,
+     "y": 1443,
+     "w": 437,
+     "h": 38,
+     "style": "charNameBig"
+    },
+    "ability": {
+     "id": "a-sca",
+     "type": "text",
+     "text": "If there are 5 or more players alive & the Demon dies, you become the Demon. (Travellers don’t count)",
+     "x": 370,
+     "y": 1498,
+     "w": 402,
+     "h": 143,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "baron",
+    "team": "minion",
+    "icon": {
+     "id": "icon-baron",
+     "type": "image",
+     "src": "demo/icon-baron.png",
+     "x": 792,
+     "y": 1410,
+     "w": 224,
+     "h": 233
+    },
+    "name": {
+     "id": "n-bar",
+     "type": "text",
+     "text": "BARON",
+     "x": 1035,
+     "y": 1437,
+     "w": 176,
+     "h": 40,
+     "style": "charNameBig"
+    },
+    "ability": {
+     "id": "a-bar",
+     "type": "text",
+     "text": "There are extra Outsiders in play. [+2 Outsiders]",
+     "x": 1006,
+     "y": 1494,
+     "w": 350,
+     "h": 67,
+     "style": "ability"
+    }
+   },
+   {
+    "slug": "imp",
+    "team": "demon",
+    "icon": {
+     "id": "icon-imp",
+     "type": "image",
+     "src": "demo/icon-imp.png",
+     "x": 223,
+     "y": 1737,
+     "w": 251,
+     "h": 271
+    },
+    "name": {
+     "id": "n-imp",
+     "type": "text",
+     "text": "IMP",
+     "x": 481,
+     "y": 1778,
+     "w": 167,
+     "h": 72,
+     "style": "charNameBig"
+    },
+    "ability": {
+     "id": "a-imp",
+     "type": "text",
+     "text": "Each night*, choose a player: they die. If you kill yourself this way, a Minion becomes the Imp.",
+     "x": 431,
+     "y": 1880,
+     "w": 887,
+     "h": 90,
+     "style": "ability"
+    }
+   }
+  ],
+  "nightOrder": {
+   "left": [
+    "night-moon-left",
+    "night-mini-investigator",
+    "night-mini-empath",
+    "night-mini-clockmaker",
+    "night-mini-drunk-mug",
+    "night-mini-chambermaid-left",
+    "night-sun-left"
+   ],
+   "right": [
+    "night-moon-right",
+    "night-mini-scarletwoman",
+    "night-mini-imp",
+    "night-mini-imp-alt",
+    "night-mini-sage",
+    "night-mini-chambermaid-right",
+    "night-sun-right"
+   ]
+  }
+ }
+}
