@@ -301,6 +301,7 @@
 
       <button type="button" class="btn btn-save" id="save">Save Changes</button>
       <button type="button" class="btn btn-ghost" id="save-publish" style="display:none" title="Save your changes and make this page public">Save &amp; Publish</button>
+      <button type="button" class="btn btn-del" id="delete-char" style="display:none;margin-left:8px" title="Remove this character from the site (an admin can restore it)">Delete Character</button>
       <div id="status"></div>
     </div>
 
@@ -829,6 +830,35 @@
     $('save').addEventListener('click', function(){ saveCharacter(); });
     $('save-publish').addEventListener('click', function(){ saveCharacter('published'); });
 
+    // ── delete: soft-delete this character (recoverable by an admin) ──
+    $('delete-char').addEventListener('click', function(){
+      var name = $('name') && $('name').value ? $('name').value : originalSlug;
+      if(!confirm('Delete "'+name+'"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      var del = $('delete-char');
+      del.disabled = true; del.textContent = 'Deleting…';
+      $('save').disabled = true; $('save-publish').disabled = true;
+      fetch('/api/delete', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'character', slug: originalSlug })
+      })
+      .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
+      .then(function(res){
+        if(res.status === 200 && res.body.ok){
+          setStatus('ok','&#10003; Deleted. Redirecting&hellip;');
+          setTimeout(function(){ location.href = 'account'; }, 900);
+        } else {
+          setStatus('err','&#10007; '+((res.body && res.body.error) || 'Delete failed.'));
+          del.disabled = false; del.textContent = 'Delete Character';
+          $('save').disabled = false; $('save-publish').disabled = false;
+        }
+      })
+      .catch(function(err){
+        setStatus('err','&#10007; '+err.message);
+        del.disabled = false; del.textContent = 'Delete Character';
+        $('save').disabled = false; $('save-publish').disabled = false;
+      });
+    });
+
     // ── login check: warn + disable save if not logged in ──
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
@@ -858,6 +888,8 @@
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
             $('save').disabled = true;
             $('save-publish').disabled = true;
+          } else {
+            $('delete-char').style.display = '';
           }
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';

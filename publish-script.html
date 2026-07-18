@@ -30,6 +30,7 @@
 /* Publish button + blurb + status */
 .sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
 .sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
+.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
 .pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
 .pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
@@ -240,6 +241,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     <div class="pub-actions">
       <button class="sb-btn sb-btn-publish" id="sb-publish" type="button">★ Publish to Wiki</button>
       <button class="sb-btn sb-btn-draft" id="sb-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button class="sb-btn sb-btn-delete" id="sb-delete" type="button" style="display:none" title="Remove this script from the site (an admin can restore it)">Delete Script</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
       <a class="pub-back" href="script">← Back to Script Builder</a>
     </div>
@@ -386,6 +388,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       document.title = 'Edit ' + (m.name || 'Script') + ' — BOTC HomeBrew Wiki';
       var u = $('pub-url');
       if (u){ u.style.display = ''; u.innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 's/' + slug) + '</code>'; }
+      $('sb-delete').style.display = '';
       updateButtons();
     }
 
@@ -510,6 +513,38 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     $('sb-publish').addEventListener('click', function(){ submitScript('published'); });
     $('sb-draft').addEventListener('click', function(){ submitScript('draft'); });
 
+    // ── delete: soft-delete this script (recoverable by an admin) ──
+    $('sb-delete').addEventListener('click', function(){
+      if (!EDIT_SLUG) return;
+      var nm = (getMeta().name) || EDIT_SLUG;
+      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      var del = $('sb-delete');
+      del.disabled = true; del.textContent = 'Deleting…';
+      $('sb-publish').disabled = true; $('sb-draft').disabled = true;
+      fetch('/api/delete', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'script', slug: EDIT_SLUG })
+      })
+      .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
+      .then(function(res){
+        if (res.status === 200 && res.body.ok){
+          // clear the local edit pointer so the builder doesn't reopen it
+          var m = getMeta(); delete m.editSlug; setMeta(m);
+          pubStatus('ok', '&#10003; Deleted. Redirecting&hellip;');
+          setTimeout(function(){ location.href = 'account'; }, 900);
+        } else {
+          pubStatus('err', '&#10007; ' + ((res.body && res.body.error) || 'Delete failed.'));
+          del.disabled = false; del.textContent = 'Delete Script';
+          $('sb-publish').disabled = false; $('sb-draft').disabled = false;
+        }
+      })
+      .catch(function(err){
+        pubStatus('err', '&#10007; ' + err.message);
+        del.disabled = false; del.textContent = 'Delete Script';
+        $('sb-publish').disabled = false; $('sb-draft').disabled = false;
+      });
+    });
+
     // ── Edit mode: ?s={slug} loads an existing script (drafts included for the
     // owner) via /api/page — the same endpoint the character editor uses. ──
     function loadForEdit(slug){
@@ -534,6 +569,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             pubStatus('err', 'This script belongs to another account, so you cannot save changes to it.');
             $('sb-publish').disabled = true;
             $('sb-draft').disabled = true;
+            $('sb-delete').style.display = 'none';
           }
           if (window.updateScriptBadge) window.updateScriptBadge();
         })
@@ -558,7 +594,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             // roster/details the user may have edited locally since publishing.
             fetch('/api/page?type=script&slug=' + encodeURIComponent(m.editSlug), { credentials: 'same-origin' })
               .then(function(r){ return r.ok ? r.json() : null; })
-              .then(function(res){ if (res){ currentStatus = res.status || 'published'; updateButtons(); } })
+              .then(function(res){
+                if (res){
+                  currentStatus = res.status || 'published';
+                  if (res.canEdit === false){ $('sb-delete').style.display = 'none'; }
+                  updateButtons();
+                }
+              })
               .catch(function(){});
           } else {
             updateButtons();

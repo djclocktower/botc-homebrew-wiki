@@ -28,6 +28,7 @@
 
 .sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
 .sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
+.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
 .pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
 .pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
 .pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
@@ -253,6 +254,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     <div class="pub-actions">
       <button class="sb-btn sb-btn-publish" id="pc-publish" type="button">★ Publish to Wiki</button>
       <button class="sb-btn sb-btn-draft" id="pc-draft" type="button" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button class="sb-btn sb-btn-delete" id="pc-delete" type="button" style="display:none" title="Remove this collection from the site (an admin can restore it)">Delete Collection</button>
       <span class="pub-status-pill" id="pub-status-pill"></span>
     </div>
     <p class="sb-publish-blurb">Publishing creates a <strong>public collection page</strong> that anyone can view. <strong>Save as Draft</strong> keeps it private to your account — only you (and admins) can see a draft. Name and description are required, and you must be logged in.</p>
@@ -507,6 +509,37 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     $('pc-publish').addEventListener('click', function(){ submitCollection('published'); });
     $('pc-draft').addEventListener('click', function(){ submitCollection('draft'); });
 
+    // ── delete: soft-delete this collection (recoverable by an admin) ──
+    $('pc-delete').addEventListener('click', function(){
+      var target = EDIT_PK || EDIT_KEY;
+      if (!target) return;
+      var nm = $('pc-name').value.trim() || target;
+      if (!confirm('Delete "' + nm + '"?\n\nIt will be removed from the site. An admin can restore it from the dashboard if this was a mistake.')) return;
+      var del = $('pc-delete');
+      del.disabled = true; del.textContent = 'Deleting…';
+      $('pc-publish').disabled = true; $('pc-draft').disabled = true;
+      fetch('/api/delete', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'collection', slug: target })
+      })
+      .then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); })
+      .then(function(res){
+        if (res.status === 200 && res.body.ok){
+          pubStatus('ok', '&#10003; Deleted. Redirecting&hellip;');
+          setTimeout(function(){ location.href = 'account'; }, 900);
+        } else {
+          pubStatus('err', '&#10007; ' + ((res.body && res.body.error) || 'Delete failed.'));
+          del.disabled = false; del.textContent = 'Delete Collection';
+          $('pc-publish').disabled = false; $('pc-draft').disabled = false;
+        }
+      })
+      .catch(function(err){
+        pubStatus('err', '&#10007; ' + err.message);
+        del.disabled = false; del.textContent = 'Delete Collection';
+        $('pc-publish').disabled = false; $('pc-draft').disabled = false;
+      });
+    });
+
     // ── edit mode: ?c={id} ──
     function loadForEdit(key){
       return fetch('/api/page?type=collection&slug=' + encodeURIComponent(key), { credentials: 'same-origin' })
@@ -552,10 +585,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             $('pc-bg-note').textContent = 'Current background — choose a file to replace it.';
           }
           updateUrlPreview(); updateButtons(); renderMembers();
+          $('pc-delete').style.display = '';
           if (res.canEdit === false){
             pubStatus('err', 'This collection belongs to another account, so you cannot save changes to it.');
             $('pc-publish').disabled = true;
             $('pc-draft').disabled = true;
+            $('pc-delete').style.display = 'none';
           }
         })
         .catch(function(){ /* not found -> plain create view */ });

@@ -519,12 +519,6 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   transition: color .15s, border-color .15s; white-space: nowrap;
 }
 .edit-link:hover { color: var(--parch); border-color: rgba(236,225,200,.55); }
-/* delete variant of the breadcrumb edit link (owner/admin only, shown via JS) */
-.delete-link { background: none; cursor: pointer; font: inherit;
-  font-family: 'Oswald', sans-serif; font-size: .72rem; font-weight: 600;
-  letter-spacing: .05em; text-transform: uppercase; }
-.delete-link:hover { color: #ffd9d0; border-color: rgba(240,150,140,.7); }
-.delete-link:disabled { opacity: .5; cursor: default; }
 
 /* ── Team page links ─────────────────────────────────────────────── */
 /* Type: link in info card on character pages */
