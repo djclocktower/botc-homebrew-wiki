@@ -46,3 +46,8 @@
 # refreshed roles list shows without a long cache wait
 /assets/roles.json
   Cache-Control: no-cache, must-revalidate
+
+# Script Studio asset pack (template chrome, demo art, template.json):
+# revalidate so design iterations show without a long cache wait
+/assets/script-studio/*
+  Cache-Control: no-cache, must-revalidate

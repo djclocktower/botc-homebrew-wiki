@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Script Studio — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Design print-ready illustrated Blood on the Clocktower script sheets — parchment, night-order bars, botanical art and auto-laid-out character sections — right in your browser.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Script Studio">
+<meta property="og:description" content="Design print-ready illustrated Blood on the Clocktower script sheets — parchment, night-order bars, botanical art and auto-laid-out character sections — right in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<style>
+/* ─── Script Studio (mirrors the Token Tool's parchment cards) ───── */
+.ss-wrap { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; }
+
+.ss-grid { display: grid; grid-template-columns: 320px minmax(0,1fr); gap: 22px; align-items: start; }
+@media (max-width: 900px) { .ss-grid { grid-template-columns: 1fr; } }
+
+.ss-card {
+  background-color: var(--card);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame); border-radius: 0;
+  padding: 16px 18px; margin: 0 0 22px;
+}
+.ss-card > h2 {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.1rem; letter-spacing: .05em; color: var(--maroon);
+  margin: 0 0 12px; padding-bottom: 6px;
+  border-bottom: 2px solid var(--parch-frame);
+}
+.ss-hint { font-size: .85rem; color: var(--ink); opacity: .85; margin: 10px 0 0; }
+
+/* source buttons */
+.ss-src-btn {
+  display: block; width: 100%; box-sizing: border-box; text-align: left;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .92rem;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--ink); padding: 9px 12px; margin: 0 0 8px; cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.ss-src-btn:hover { background: rgba(91,31,33,.08); }
+.ss-src-btn.on { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.ss-src-btn small { font-weight: 400; opacity: .8; }
+.ss-select {
+  width: 100%; box-sizing: border-box; margin: 2px 0 0;
+  border: 2px solid var(--parch-frame); border-radius: 0; background: #fffdf8;
+  color: var(--ink); font-family: 'Oswald', sans-serif; font-size: .9rem; padding: 8px 10px;
+}
+
+/* rows + segmented control (Token Tool pattern) */
+.ss-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0; flex-wrap: wrap; }
+.ss-row > label { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--ink); }
+.ss-seg { display: inline-flex; border: 2px solid var(--parch-frame); border-radius: 0; overflow: hidden; }
+.ss-seg button {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .85rem;
+  border: none; padding: 6px 14px; min-width: 48px;
+  background: #fffdf8; color: var(--ink); cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.ss-seg button + button { border-left: 2px solid var(--parch-frame); }
+.ss-seg button[aria-pressed="true"] { background: var(--maroon); color: var(--parch); }
+
+.ss-btn-primary {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-size: 1rem; cursor: pointer; border: none; border-radius: 0;
+  padding: 12px 26px; color: #f3ead4; width: 100%;
+  background: linear-gradient(180deg,#2f6fb8,#1d4a80);
+  transition: filter .15s;
+}
+.ss-btn-primary:hover { filter: brightness(1.1); }
+
+/* sheet preview — dark inset like the Token Tool preview */
+.ss-stage-card { padding: 12px; }
+.ss-stage-frame { background: #1d0a1a; border: 2px solid var(--parch-frame); padding: 10px; }
+#ss-stage-holder { width: 100%; line-height: 0; }
+#ss-stage-holder canvas { max-width: 100%; }
+.ss-current {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .85rem;
+  color: rgba(236,225,200,.85); text-align: center; padding: 8px 4px 2px;
+}
+
+/* loading + message bar */
+.ss-load {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 18px;
+  color: rgba(236,225,200,.85);
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  letter-spacing: .08em; font-size: .95rem;
+}
+.ss-load.done { display: none; }
+.ss-load-bar { position: relative; flex: 0 0 170px; height: 4px; background: rgba(240,232,213,.18); overflow: hidden; }
+.ss-load-bar::after {
+  content: ''; position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
+  background: var(--parch); animation: ss-slide 1.1s linear infinite;
+}
+@keyframes ss-slide { to { left: 100%; } }
+.ss-msg { display: none; margin: 0 0 18px; padding: 10px 13px; font-size: .9rem; border-radius: 0; }
+.ss-msg.ok   { display: block; background: #dff0e2; color: #1c5429; border: 1px solid #9bcfa9; }
+.ss-msg.info { display: block; background: #e4ecf6; color: #1d4a80; border: 1px solid #9ab6d9; }
+.ss-msg.warn { display: block; background: #f9edd9; color: #7a4a12; border: 1px solid #d9b26a; }
+.ss-msg.err  { display: block; background: #f6dede; color: #9A0D12; border: 1px solid #d99; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep">›</span><span class="here">Script Studio</span>
+    <span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a></nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="tags">Tags</a>
+    <a href="creators">Creators</a>
+    <a href="script">Script Builder</a>
+    <a href="tokens">Token Tool</a>
+  </nav>
+
+  <div class="home-hero" style="padding-bottom:14px">
+    <h1>Script Studio</h1>
+    <p>Turn any script into a print-ready illustrated sheet — parchment, botanicals, colored team sections and auto-computed night order.</p>
+  </div>
+
+  <main class="ss-wrap" id="content">
+    <div class="ss-load" id="ss-load"><span class="ss-load-bar"></span><span>Loading…</span></div>
+    <div class="ss-msg" id="ss-msg"></div>
+
+    <div class="ss-grid">
+      <aside>
+        <section class="ss-card">
+          <h2>Script</h2>
+          <button type="button" class="ss-src-btn on" id="ss-src-demo">Demo — No Greater Joy</button>
+          <button type="button" class="ss-src-btn" id="ss-src-builder">My Script Builder set <small id="ss-builder-count"></small></button>
+          <select class="ss-select" id="ss-src-published" aria-label="Published script">
+            <option value="">Published script…</option>
+          </select>
+          <p class="ss-hint">The sheet lays itself out: team sections, adaptive columns, and the first-night / other-nights side bars computed from each character’s night order.</p>
+        </section>
+
+        <section class="ss-card">
+          <h2>Export</h2>
+          <div class="ss-row"><label>Size</label>
+            <div class="ss-seg" id="ss-export-scale" role="group" aria-label="Export size">
+              <button data-v="1" aria-pressed="false">1×</button><button data-v="2" aria-pressed="true">2×</button><button data-v="3" aria-pressed="false">3×</button>
+            </div></div>
+          <button type="button" class="ss-btn-primary" id="ss-export">Download PNG</button>
+          <p class="ss-hint">2× (3000×4200) prints nicely on A4/Letter. 3× is full 300&nbsp;DPI but may fail on phones. Print PDF export is coming in a later phase.</p>
+        </section>
+
+        <section class="ss-card">
+          <h2>About</h2>
+          <p class="ss-hint" style="margin-top:0">This is the first release of Script Studio: the automatic renderer. Tap-to-edit — moving, resizing and restyling every element — is the next phase, followed by multi-page sheets and PDF export.</p>
+        </section>
+      </aside>
+
+      <section class="ss-card ss-stage-card">
+        <div class="ss-stage-frame">
+          <div id="ss-stage-holder"></div>
+        </div>
+        <div class="ss-current" id="ss-current"></div>
+      </section>
+    </div>
+
+    <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+  </main>
+
+  <script src="assets/konva.min.js"></script>
+  <script src="assets/script-studio.js"></script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
