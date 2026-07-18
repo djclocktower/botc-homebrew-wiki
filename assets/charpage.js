@@ -39,32 +39,6 @@
     editBtn.style.display = '';
   }
 
-  // Delete button — only shown to accounts that may edit this page (the owner,
-  // or any admin). Deleting is a soft-delete: the character drops off the site
-  // but an admin can restore it from the dashboard.
-  var delBtn = document.getElementById('delete-btn');
-  if (delBtn) {
-    fetch('/api/page?type=character&slug=' + encodeURIComponent(SLUG), { credentials: 'same-origin' })
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!d || !d.canEdit) return;
-        delBtn.style.display = '';
-        delBtn.addEventListener('click', function () {
-          var name = (document.querySelector('.gen-title') || {}).textContent || 'this character';
-          if (!confirm('Delete "' + name.trim() + '"?\n\nIt will be removed from the site. An admin can restore it from the dashboard.')) return;
-          delBtn.disabled = true; delBtn.textContent = 'Deleting…';
-          fetch('/api/delete', {
-            method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'character', slug: SLUG })
-          }).then(function (r) { return r.json().then(function (b) { return { status: r.status, body: b }; }); })
-            .then(function (res) {
-              if (res.status === 200 && res.body.ok) { location.href = (window.LINK_ROOT || '') + 'all-characters'; }
-              else { alert((res.body && res.body.error) || 'Delete failed.'); delBtn.disabled = false; delBtn.innerHTML = '&#128465;&#65039; Delete'; }
-            }).catch(function () { alert('Network error.'); delBtn.disabled = false; delBtn.innerHTML = '&#128465;&#65039; Delete'; });
-        });
-      }).catch(function () {});
-  }
-
   mountToggleButton('botc_script', '', '✓ On Your Script', '+ Add to Script',
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
   mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool');

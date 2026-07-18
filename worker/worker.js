@@ -418,7 +418,6 @@ ${o.draftBanner || ''}
       </a>
       <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
-      <button class="edit-link delete-link" id="delete-btn" type="button" style="display:none">&#128465;&#65039; Delete</button>
     </div>
     <nav class="crumb" aria-label="Breadcrumb" id="crumb">${o.crumb}</nav>
   <div class="search-wrap" id="search-wrap">
