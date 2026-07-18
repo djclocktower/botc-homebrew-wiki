@@ -133,11 +133,31 @@
   }
   .tag-create { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
   .tag-update { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
-  .tag-delete,.tag-lock { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
-  .tag-unlock { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-delete,.tag-lock,.tag-purge { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
+  .tag-unlock,.tag-restore { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
   .tag-type { background: rgba(0,0,0,.06); color: var(--ink); border: 1px solid rgba(0,0,0,.18); opacity: .85; }
   .empty { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
   .note { font-size: .8rem; opacity: .7; margin-top: 10px; font-style: italic; }
+
+  /* ---- deleted content rows ---- */
+  .del-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid rgba(180,160,120,.25);
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .del-row .del-name { flex: 1; min-width: 140px; color: var(--ink); font-weight: 600; }
+  .del-row .del-when { font-size: .78rem; opacity: .7; flex: 0 0 auto; }
+  .del-btn {
+    font-family: 'Dumbledor2', serif; font-size: .82rem; letter-spacing: .03em;
+    color: #f4ead2; border-radius: 6px; padding: 5px 12px; cursor: pointer;
+    border: 1px solid #4a1719; flex: 0 0 auto;
+  }
+  .del-restore { background: linear-gradient(180deg,#2f6e3a,#1f5128); border-color:#163d1d; }
+  .del-restore:hover { background: linear-gradient(180deg,#37823f,#27632f); }
+  .del-purge { background: linear-gradient(180deg,#7a2d2f,#5b1f21); }
+  .del-purge:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
+  .del-btn:disabled { opacity: .6; cursor: default; }
+  .del-status { font-size: .82rem; min-width: 56px; flex: 0 0 auto; }
 
   /* ---- gate / loading ---- */
   .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: var(--ink); }
@@ -202,6 +222,15 @@
           Seeded pages have no owner account, so nobody can edit them on the site. Assign one to a user (by username) to hand it over. Leave the box empty and click <em>Clear</em> to remove an owner.
         </p>
         <div id="unowned-list"></div>
+      </section>
+
+      <!-- DELETED CONTENT (soft-deleted pages: restore or purge for good) -->
+      <section class="panel">
+        <h3>Deleted content <span class="count-pill" id="deleted-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Pages deleted by their owners (or by you) are hidden from the whole site but kept here so nothing breaks by accident. <strong>Restore</strong> puts a page back exactly as it was; <strong>Purge</strong> removes it for good and cannot be undone.
+        </p>
+        <div id="deleted-list"></div>
       </section>
 
       <!-- STATS -->
@@ -421,6 +450,7 @@
           }, 'No accounts yet.');
 
           renderUnowned(d.unowned || []);
+          renderDeleted(d.deleted || []);
         })
         .catch(function(e){
           if (e && e.message === 'forbidden') return;
@@ -468,6 +498,62 @@
       }).catch(function(err){
         btn.disabled = false; status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
       });
+    });
+
+    function renderDeleted(rows){
+      $('deleted-count').textContent = rows.length || '';
+      var box = $('deleted-list');
+      if (!rows.length){ box.innerHTML = '<p class="note">Nothing has been deleted. The trash is empty.</p>'; return; }
+      box.innerHTML = rows.map(function(r){
+        var when = r.deletedAt ? relTime(r.deletedAt) : relTime(r.updated_at);
+        var who = r.deletedBy ? ' by ' + esc(r.deletedBy) : '';
+        return '<div class="del-row" data-type="' + esc(r.type) + '" data-slug="' + esc(r.slug) + '">' +
+          '<span class="tag tag-type">' + esc(r.type) + '</span>' +
+          '<span class="del-name">' + esc(r.name || r.slug) + '</span>' +
+          '<span class="del-when" title="' + esc(absTime(r.deletedAt || r.updated_at)) + '">deleted ' + esc(when) + who + '</span>' +
+          '<button type="button" class="del-btn del-restore" data-act="restore">Restore</button>' +
+          '<button type="button" class="del-btn del-purge" data-act="purge">Purge</button>' +
+          '<span class="del-status"></span>' +
+          '</div>';
+      }).join('');
+    }
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.del-btn');
+      if (!btn) return;
+      var row = btn.closest('.del-row');
+      var type = row.getAttribute('data-type');
+      var slug = row.getAttribute('data-slug');
+      var name = row.querySelector('.del-name').textContent;
+      var act = btn.getAttribute('data-act');
+      var status = row.querySelector('.del-status');
+      if (act === 'restore') {
+        if (!confirm('Restore this ' + type + ' ("' + name + '")? It will go back on the site.')) return;
+      } else {
+        if (!confirm('Permanently purge this ' + type + ' ("' + name + '")?\n\nThis cannot be undone — the page and its data are gone for good.')) return;
+      }
+      var buttons = row.querySelectorAll('.del-btn');
+      for (var i = 0; i < buttons.length; i++) buttons[i].disabled = true;
+      status.textContent = act === 'restore' ? 'Restoring…' : 'Purging…';
+      status.style.color = '#8a6d12';
+      fetch('/api/admin/' + act, {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: type, slug: slug })
+      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          if (res.status === 200 && res.body.ok) {
+            status.textContent = act === 'restore' ? '✓ restored' : '✓ purged';
+            status.style.color = '#1c5429';
+            row.style.transition = 'opacity .3s'; row.style.opacity = '.4';
+            setTimeout(loadDashboard, 700);
+          } else {
+            for (var j = 0; j < buttons.length; j++) buttons[j].disabled = false;
+            status.textContent = '✗ ' + ((res.body && res.body.error) || 'failed');
+            status.style.color = '#9A0D12';
+          }
+        }).catch(function(err){
+          for (var k = 0; k < buttons.length; k++) buttons[k].disabled = false;
+          status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
+        });
     });
 
     function showGate(){

@@ -473,7 +473,7 @@
       var slug = btn.getAttribute('data-slug');
       if (act === 'edit') { location.href = editUrl(type, slug); return; }
       if (act === 'delete') {
-        if (!confirm('Delete this ' + type + ' permanently? This cannot be undone.')) return;
+        if (!confirm('Delete this ' + type + '? It will be removed from the site. An admin can restore it if this was a mistake.')) return;
         btn.disabled = true;
         postJSON('/api/delete', { type: type, slug: slug }).then(function(res){
           if (res.ok && res.body.ok) load();
