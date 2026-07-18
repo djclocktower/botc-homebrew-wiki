@@ -33,6 +33,13 @@
   var SECT_Y0 = 480, SECT_Y1 = 2030;
 
   var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled'];
+  // Teensyville-sized sheets only for now — the template is teensy-scale;
+  // bigger scripts get multi-page/density support in Phase 3.
+  var TEAM_CAP = { townsfolk: 6, outsider: 2, minion: 2, demon: 2, traveller: 2, fabled: 2 };
+  // The design's icons cast drop shadows: heavy on the night-bar minis
+  // (per the template), softer on the main roster icons.
+  var ICON_SHADOW = { x: 5, y: 7, blur: 8, opacity: 0.35 };
+  var MINI_SHADOW = { x: 4, y: 6, blur: 4, opacity: 0.7 };
   var TEAM_LABEL = {
     townsfolk: 'TOWNSFOLK', outsider: 'OUTSIDERS', minion: 'MINIONS',
     demon: 'DEMON', traveller: 'TRAVELLERS', fabled: 'FABLED'
@@ -198,6 +205,12 @@
             rotation: L.rotation || 0, listening: false, name: L.id || ''
           };
           if (L.blend) cfg.globalCompositeOperation = L.blend;
+          if (L.shadow) {
+            cfg.shadowColor = L.shadow.color || '#000';
+            cfg.shadowBlur = L.shadow.blur || 0;
+            cfg.shadowOffset = { x: L.shadow.x || 0, y: L.shadow.y || 0 };
+            cfg.shadowOpacity = L.shadow.opacity != null ? L.shadow.opacity : 0.5;
+          }
           sheetLayer.add(new Konva.Image(cfg));
         } else if (L.type === 'text') {
           sheetLayer.add(makeTextNode(L));
@@ -312,10 +325,17 @@
 
   function buildScriptDoc(meta, list) {
     var byTeam = {};
+    var skipped = [];
     list.forEach(function (c) {
       var t = TEAM_ORDER.indexOf(c.team) !== -1 ? c.team : 'townsfolk';
-      (byTeam[t] = byTeam[t] || []).push(c);
+      var arr = (byTeam[t] = byTeam[t] || []);
+      if (arr.length >= (TEAM_CAP[t] || 2)) { skipped.push(cleanName(c.name) || c.slug); return; }
+      arr.push(c);
     });
+    // everything below (night bars, footnote) works from the kept roster
+    var used = [];
+    TEAM_ORDER.forEach(function (t) { if (byTeam[t]) used = used.concat(byTeam[t]); });
+    list = used;
 
     // Largest global scale whose sections fit the vertical budget — big
     // scripts compress toward the floor; below it we keep the floor and warn
@@ -354,6 +374,7 @@
       version: 1, canvas: { w: CANVAS_W, h: CANVAS_H },
       meta: { name: meta.name || 'Untitled Script', author: meta.author || '', source: meta.source || '' },
       overflow: overflow,
+      skipped: skipped,
       layers: layers
     };
   }
@@ -393,7 +414,10 @@
       var colW = (cx1 - cx0) / cols;
       var iconSize = (cols >= 3 ? 172 : cols === 2 ? 238 : 265) * s;
       var nameStyle = textStyle(cols >= 3 ? 'charName' : 'charNameBig', s);
+      // ability text runs much larger than the base 22px style, scaling up
+      // as columns widen — the demon's near-full-width line is the biggest
       var abStyle = textStyle('ability', s);
+      abStyle.fontSize = (cols >= 3 ? 27 : cols === 2 ? 30 : 37) * s;
 
       for (var r = 0; r < chars.length; r += cols) {
         var row = chars.slice(r, r + cols);
@@ -420,7 +444,7 @@
           var srcs = artSrcs(cell.ch);
           layers.push({
             id: 'icon-' + slug, type: 'image', src: srcs[0], srcAlts: srcs.slice(1),
-            x: cellX, y: iconY, w: iconSize, h: iconSize, fit: 'contain'
+            x: cellX, y: iconY, w: iconSize, h: iconSize, fit: 'contain', shadow: ICON_SHADOW
           });
           layers.push({ id: 'name-' + slug, type: 'text', text: cell.nm, x: textX, y: textY, w: cell.textW, style: cell.nameStyle });
           if (cell.ch.ability) {
@@ -471,7 +495,7 @@
       layers.push({
         id: 'night-' + side + '-' + c.slug, type: 'image', src: srcs[0], srcAlts: srcs.slice(1),
         x: geom.x, y: geom.startY + step * (i + 1),
-        w: geom.iconSize, h: geom.iconSize, fit: 'contain'
+        w: geom.iconSize, h: geom.iconSize, fit: 'contain', shadow: MINI_SHADOW
       });
     });
     layers.push({
@@ -529,6 +553,17 @@
     });
   }
 
+  // Post-render notice for anything the sheet couldn't include.
+  function noteLeftOff(missing, doc) {
+    var notes = [];
+    if (missing.length) notes.push(missing.length + ' not on the wiki (' + missing.join(', ') + ')');
+    if (doc.skipped && doc.skipped.length) {
+      notes.push(doc.skipped.length + ' over the teensy-size limits — sheets fit 6 Townsfolk / 2 Outsiders / 2 Minions / 2 Demons for now (' + doc.skipped.join(', ') + ')');
+    }
+    if (notes.length) msg('warn', 'Left off ' + notes.join('; ') + '.');
+    else if (!doc.overflow) msg();
+  }
+
   function setActiveSource(btnId) {
     ['ss-src-demo', 'ss-src-builder'].forEach(function (id) {
       var b = $(id);
@@ -558,10 +593,7 @@
     msg('info', 'Building sheet…');
     return resolveSlugs(slugs).then(function (r) {
       var doc = buildScriptDoc({ name: meta.name || 'My Script', author: meta.author || '', source: 'builder' }, r.chars);
-      return showDoc(doc).then(function () {
-        if (r.missing.length) msg('warn', 'Skipped ' + r.missing.length + ' character(s) not on the wiki: ' + r.missing.join(', '));
-        else if (!doc.overflow) msg();
-      });
+      return showDoc(doc).then(function () { noteLeftOff(r.missing, doc); });
     }).catch(function (e) {
       msg('err', 'Could not load characters: ' + e.message);
     });
@@ -579,10 +611,7 @@
       setActiveSource('ss-src-published');
       return resolveSlugs(sc.characters || []).then(function (r) {
         var doc = buildScriptDoc({ name: sc.name, author: sc.author || '', source: 'published' }, r.chars);
-        return showDoc(doc).then(function () {
-          if (r.missing.length) msg('warn', 'Skipped ' + r.missing.length + ' character(s): ' + r.missing.join(', '));
-          else if (!doc.overflow) msg();
-        });
+        return showDoc(doc).then(function () { noteLeftOff(r.missing, doc); });
       });
     }).catch(function (e) {
       msg('err', 'Could not load that script: ' + e.message);
