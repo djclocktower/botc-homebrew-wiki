@@ -148,7 +148,10 @@
    "x": 303,
    "y": 1504,
    "w": 680,
-   "h": 596
+   "h": 596,
+   "opacity": 0.13,
+   "blend": "multiply",
+   "note": "actually the compass-rose watermark from the PSD (mislabeled during extraction); drawn faint+multiplied to match the reference render"
   },
   {
    "id": "clock",
@@ -221,8 +224,8 @@
    "y": 1315,
    "w": 81,
    "h": 47,
-   "visible": true,
-   "note": "hidden in PSD, part of design language - dawn marker"
+   "visible": false,
+   "note": "extracted EMPTY (layer hidden in PSD) - fully transparent png. The real dawn marker is the gold sun glyph, see nightColumns.sunGlyph"
   },
   {
    "id": "night-sun-right",
@@ -232,10 +235,12 @@
    "y": 1221,
    "w": 81,
    "h": 47,
-   "visible": true
+   "visible": false,
+   "note": "extracted EMPTY - see night-sun-left"
   }
  ],
  "nightColumns": {
+  "sunGlyphNote": "PSD extraction mislabeled the gold dawn-sun glyphs as demo/night-mini-chambermaid-left/right.png (the demo's nightOrder lists them as the last 'mini' on each bar, which is why the demo still renders correctly). Canonical copies: template/night-sun-glyph-left.png / -right.png. Generated layouts draw the sun glyph in the slot after the last mini.",
   "left": {
    "label": "FIRST NIGHT",
    "labelBox": [
@@ -340,7 +345,8 @@
    "y": 8,
    "w": 425,
    "h": 465,
-   "note": "rasterized from reference.jpg; live titles use fonts.title.substitute"
+   "blend": "multiply",
+   "note": "rasterized from reference.jpg; multiply-blended so its light background melts into the parchment; live titles use fonts.title.substitute"
   },
   "footnote": {
    "id": "footnote",
