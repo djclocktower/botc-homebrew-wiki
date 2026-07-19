@@ -33,6 +33,46 @@
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
 
+  /* ── Site-wide announcement banner (set on the admin dashboard) ── */
+  (function () {
+    var CACHE_KEY = 'botc_announce';
+    var DISMISS_KEY = 'botc_announce_dismissed';
+    function show(ann) {
+      if (!ann || !ann.text) return;
+      var dismissed = '';
+      try { dismissed = localStorage.getItem(DISMISS_KEY) || ''; } catch (e) {}
+      if (dismissed === ann.text) return; // this exact message was dismissed
+      var bar = document.createElement('div');
+      bar.className = 'site-announcement';
+      var span = document.createElement('span');
+      span.textContent = ann.text; // textContent — announcement is plain text
+      var btn = document.createElement('button');
+      btn.className = 'site-announcement-close';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Dismiss announcement');
+      btn.textContent = '×';
+      btn.addEventListener('click', function () {
+        try { localStorage.setItem(DISMISS_KEY, ann.text); } catch (e) {}
+        bar.remove();
+      });
+      bar.appendChild(span);
+      bar.appendChild(btn);
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+    try {
+      var cached = JSON.parse(sessionStorage.getItem(CACHE_KEY));
+      if (cached && (Date.now() - cached.ts) < 60 * 1000) { show(cached.ann); return; }
+    } catch (e) {}
+    fetch('/api/announcement')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var ann = (d && d.announcement) || null;
+        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ann: ann })); } catch (e) {}
+        show(ann);
+      })
+      .catch(function () {});
+  })();
+
   /* ── Script-count badge on Script Builder nav links ── */
   var SCRIPT_KEY = 'botc_script';
   function scriptCount() {

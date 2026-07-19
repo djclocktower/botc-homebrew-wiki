@@ -138,14 +138,18 @@
     display: block; font-size: .78rem; text-transform: uppercase;
     letter-spacing: .07em; color: var(--maroon); font-weight: 700; margin-bottom: 5px;
   }
-  .set-field input, .set-field textarea {
+  .set-field input, .set-field textarea, .set-field select {
     width: 100%; box-sizing: border-box;
     font-size: .95rem; color: #241a12;
     background: #fffdf8; border: 1px solid #cdbfa0;
     border-radius: 6px; padding: 9px 12px;
   }
   .set-field textarea { min-height: 70px; resize: vertical; }
-  .set-field input:focus, .set-field textarea:focus { outline: 2px solid #b98; border-color: #b98; }
+  .set-field input:focus, .set-field textarea:focus, .set-field select:focus { outline: 2px solid #b98; border-color: #b98; }
+  .msg-item { padding: 9px 2px; border-top: 1px solid rgba(0,0,0,.08); font-size: .88rem; }
+  .msg-item:first-child { border-top: none; }
+  .msg-item .msg-body { white-space: pre-wrap; overflow-wrap: anywhere; opacity: .9; margin-top: 3px; }
+  .msg-item .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
   .btn {
     font-family: 'Dumbledor2', serif;
     font-size: 1rem; letter-spacing: .04em;
@@ -310,6 +314,37 @@
             <div style="margin-top:22px">
               <button class="btn secondary" id="logout-btn">Log Out</button>
             </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- contact the admins -->
+      <div class="panel">
+        <h3>Contact the Admins</h3>
+        <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard.
+        </p>
+        <div class="settings-grid">
+          <section>
+            <div class="set-field">
+              <label for="c-category">Topic</label>
+              <select id="c-category">
+                <option value="bug">Bug report</option>
+                <option value="suggestion">Suggestion</option>
+                <option value="question">Question</option>
+                <option value="other">Something else</option>
+              </select>
+            </div>
+            <div class="set-field">
+              <label for="c-body">Message</label>
+              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up — the more detail the better."></textarea>
+            </div>
+            <button class="btn" id="c-send">Send Message</button>
+            <div class="inline-msg" id="c-msg"></div>
+          </section>
+          <section>
+            <h4>Your messages</h4>
+            <div id="c-history" class="acct-body" style="font-size:.88rem"></div>
           </section>
         </div>
       </div>
@@ -617,6 +652,45 @@
       });
     });
 
+    // contact the admins
+    var C_LABEL = { bug: 'Bug report', suggestion: 'Suggestion', question: 'Question', other: 'Other' };
+    function loadMyMessages() {
+      fetch('/api/contact', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var box = $('c-history');
+          if (!d || !d.messages || !d.messages.length) {
+            box.innerHTML = '<span style="opacity:.7">Nothing sent yet.</span>';
+            return;
+          }
+          box.innerHTML = d.messages.map(function(m){
+            var badge = m.status === 'resolved'
+              ? '<span class="badge ok">resolved</span>'
+              : '<span class="badge warn">received</span>';
+            return '<div class="msg-item"><strong>' + esc(C_LABEL[m.category] || m.category || 'Message') + '</strong> ' +
+              badge + '<span class="when">' + esc(fmtDate(m.ts)) + '</span>' +
+              '<div class="msg-body">' + esc(m.body) + '</div></div>';
+          }).join('');
+        })
+        .catch(function(){});
+    }
+
+    $('c-send').addEventListener('click', function(){
+      var body = $('c-body').value.trim();
+      if (body.length < 5) { setInline('c-msg', 'err', 'Write a message first.'); return; }
+      var btn = this; btn.disabled = true;
+      postJSON('/api/contact', { category: $('c-category').value, body: body }).then(function(res){
+        btn.disabled = false;
+        if (res.ok && res.body.ok) {
+          $('c-body').value = '';
+          setInline('c-msg', 'ok', res.body.message || 'Message sent!');
+          loadMyMessages();
+        } else {
+          setInline('c-msg', 'err', res.body.error || 'Could not send — try again.');
+        }
+      });
+    });
+
     $('logout-btn').addEventListener('click', function(){
       fetch('/api/logout', { method: 'POST', credentials: 'same-origin' })
         .then(function(){ try { sessionStorage.removeItem('botc_me'); } catch(e){} location.href = '/'; });
@@ -634,6 +708,7 @@
           $('acct').style.display = 'block';
           renderProfile(data.profile);
           renderLists(data);
+          loadMyMessages();
         })
         .catch(function(){
           $('gate').style.display = 'block';
