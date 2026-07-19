@@ -131,11 +131,53 @@
     font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     padding: 1px 7px; border-radius: 999px; flex: 0 0 auto;
   }
-  .tag-create { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
-  .tag-update { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
+  .tag-create,.tag-publish,.tag-signup { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-update,.tag-unpublish { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
   .tag-delete,.tag-lock,.tag-purge { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
   .tag-unlock,.tag-restore { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-rollback { background: rgba(90,60,140,.14); color: #5a3c8c; border: 1px solid rgba(90,60,140,.4); }
   .tag-type { background: rgba(0,0,0,.06); color: var(--ink); border: 1px solid rgba(0,0,0,.18); opacity: .85; }
+  .tag-backup,.tag-assign-owner { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
+  .hist-link { font-size: .74rem; color: #5a3c8c; cursor: pointer; text-decoration: underline dotted; flex: 0 0 auto; }
+
+  /* ---- activity log filters ---- */
+  .act-filters {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin: 0 0 12px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .act-filters input, .act-filters select {
+    font: inherit; font-size: .88rem; color: #241a12;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+    padding: 6px 9px; max-width: 150px;
+  }
+  .small-btn {
+    font-family: 'Dumbledor2', serif; font-size: .88rem; letter-spacing: .03em;
+    color: #f4ead2; background: linear-gradient(180deg,#7a2d2f,#5b1f21);
+    border: 1px solid #4a1719; border-radius: 6px; padding: 7px 14px; cursor: pointer;
+  }
+  .small-btn:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
+  .small-btn:disabled { opacity: .6; cursor: default; }
+  .small-btn.alt { background: linear-gradient(180deg,#555,#333); border-color: #222; }
+
+  /* ---- report output ---- */
+  .rep-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; margin-bottom: 12px; }
+  .rep-controls input[type=number] { width: 72px; font: inherit; font-size: .9rem; padding: 6px 9px; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px; }
+  .rep-quick { font-size: .8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(122,45,47,.35); background: rgba(122,45,47,.08); color: var(--maroon); cursor: pointer; font-weight: 700; }
+  .rep-quick:hover { background: rgba(122,45,47,.16); }
+  #rep-out { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; }
+  #rep-out h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1rem; letter-spacing: .04em; margin: 16px 0 6px; }
+  #rep-out table { border-collapse: collapse; width: 100%; max-width: 440px; }
+  #rep-out td { padding: 4px 8px 4px 0; border-bottom: 1px solid rgba(0,0,0,.08); }
+  #rep-out td.n { text-align: right; font-weight: 700; color: var(--maroon); white-space: nowrap; }
+
+  /* ---- rollback rows ---- */
+  .rev-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid rgba(180,160,120,.25);
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+  }
+  .rev-row .rev-name { flex: 1; min-width: 140px; font-weight: 600; }
+  .rev-row .rev-meta { font-size: .78rem; opacity: .7; flex: 0 0 auto; }
   .empty { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
   .note { font-size: .8rem; opacity: .7; margin-top: 10px; font-style: italic; }
 
@@ -233,6 +275,25 @@
         <div id="deleted-list"></div>
       </section>
 
+      <!-- PAGE HISTORY & ROLLBACK -->
+      <section class="panel" id="rollback-panel">
+        <h3>Page history &amp; rollback</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Every time a page is saved, the version it replaced is kept (up to 20 per page). Pick a page to see its history and roll it back to an earlier version. The current version is saved first, so a rollback can itself be undone. The slug is the last part of the page's URL — e.g. <code>fisherman</code> for <code>/c/fisherman</code> — or use the <em>history</em> links in the activity log below.
+        </p>
+        <div class="act-filters">
+          <select id="rb-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="rb-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="rb-load">Load history</button>
+        </div>
+        <div id="rb-list"></div>
+        <div class="toast" id="rb-toast"></div>
+      </section>
+
       <!-- STATS -->
       <section class="panel">
         <h3>At a glance</h3>
@@ -245,10 +306,56 @@
         <div class="team-bars" id="team-bars"></div>
       </section>
 
-      <!-- ACTIVITY -->
+      <!-- ADMIN REPORT -->
       <section class="panel">
-        <h3>Recent activity <span class="count-pill" id="act-count"></span></h3>
+        <h3>Admin report</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Summarize everything that happened on the wiki over a time window you choose — edits, new pages, deletions, sign-ups, most active creators — with the full event log included in the download.
+        </p>
+        <div class="rep-controls">
+          <label for="rep-days">Last</label>
+          <input type="number" id="rep-days" value="7" min="1" max="365"> days
+          <button type="button" class="rep-quick" data-days="1">24 h</button>
+          <button type="button" class="rep-quick" data-days="7">week</button>
+          <button type="button" class="rep-quick" data-days="30">month</button>
+          <button type="button" class="rep-quick" data-days="90">3 months</button>
+          <button type="button" class="small-btn" id="rep-generate">Generate report</button>
+          <button type="button" class="small-btn alt" id="rep-download" style="display:none">Download .txt</button>
+        </div>
+        <div id="rep-out"></div>
+      </section>
+
+      <!-- ACTIVITY LOG -->
+      <section class="panel">
+        <h3>Activity log <span class="count-pill" id="act-count"></span></h3>
+        <div class="act-filters">
+          <input type="text" id="act-user" placeholder="username">
+          <select id="act-action">
+            <option value="">all actions</option>
+            <option>create</option><option>update</option><option>delete</option>
+            <option>publish</option><option>unpublish</option>
+            <option>restore</option><option>purge</option><option>rollback</option>
+            <option>signup</option><option>assign-owner</option>
+            <option>lock</option><option>unlock</option><option>backup</option>
+          </select>
+          <select id="act-type">
+            <option value="">all types</option>
+            <option>character</option><option>script</option><option>collection</option>
+            <option>user</option><option>wiki</option>
+          </select>
+          <select id="act-days">
+            <option value="">all time</option>
+            <option value="1">last 24 h</option>
+            <option value="7">last 7 days</option>
+            <option value="30">last 30 days</option>
+            <option value="90">last 90 days</option>
+          </select>
+          <button type="button" class="small-btn" id="act-apply">Filter</button>
+        </div>
         <ul class="feed" id="feed-activity"></ul>
+        <div style="margin-top:12px">
+          <button type="button" class="small-btn alt" id="act-more" style="display:none">Load more</button>
+        </div>
         <p class="note">Activity is recorded from now on. Past edits made before this dashboard existed won't appear here.</p>
       </section>
 
@@ -323,6 +430,8 @@
         '</div><span class="when" title="' + esc(absTime(ts)) + '">' + esc(relTime(ts)) + '</span></li>';
     }
 
+    var CONTENT_TYPES = { character: 1, script: 1, collection: 1 };
+
     function renderActivityRow(a){
       var actionTag = '<span class="tag tag-' + esc(a.action) + '">' + esc(a.action) + '</span>';
       var who = a.username ? esc(a.username) : 'someone';
@@ -333,6 +442,10 @@
         subject = '<a href="' + editorUrl(a.entity_type, a.entity_slug) + '">' +
                   esc(a.entity_name || a.entity_slug) + '</a>' +
                   ' <span class="tag tag-type">' + esc(typeLabel(a.entity_type)) + '</span>';
+        if (CONTENT_TYPES[a.entity_type]) {
+          subject += ' <span class="hist-link" data-hist-type="' + esc(a.entity_type) +
+                     '" data-hist-slug="' + esc(a.entity_slug) + '">history</span>';
+        }
       } else {
         subject = esc(a.entity_name || a.entity_type || '');
       }
@@ -340,6 +453,66 @@
         '<span>' + who + ' &middot; ' + subject + '</span></div>' +
         '<span class="when" title="' + esc(absTime(a.ts)) + '">' + esc(relTime(a.ts)) + '</span></li>';
     }
+
+    /* ---- full activity log (paginated + filterable) ---- */
+    var actNextBefore = null;
+
+    function activityFilters(){
+      return {
+        user:   $('act-user').value.trim(),
+        action: $('act-action').value,
+        type:   $('act-type').value,
+        days:   $('act-days').value
+      };
+    }
+
+    function loadActivity(reset){
+      var f = activityFilters();
+      var params = new URLSearchParams({ limit: '50' });
+      if (f.user)   params.set('user', f.user);
+      if (f.action) params.set('action', f.action);
+      if (f.type)   params.set('type', f.type);
+      if (f.days)   params.set('days', f.days);
+      if (!reset && actNextBefore) params.set('before', actNextBefore);
+      var feed = $('feed-activity');
+      var more = $('act-more');
+      if (reset) feed.innerHTML = '<div class="empty">Loading…</div>';
+      more.disabled = true;
+      fetch('/api/admin/activity?' + params.toString(), { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          more.disabled = false;
+          if (!d || !d.rows) {
+            if (reset) feed.innerHTML = '<div class="empty">Could not load the activity log.</div>';
+            return;
+          }
+          var html = d.rows.map(renderActivityRow).join('');
+          if (reset) feed.innerHTML = html || '<div class="empty">No activity matches those filters.</div>';
+          else feed.insertAdjacentHTML('beforeend', html);
+          actNextBefore = d.nextBefore;
+          var shown = feed.querySelectorAll('li').length;
+          $('act-count').textContent = shown + ' of ' + d.total;
+          more.style.display = d.hasMore ? '' : 'none';
+        })
+        .catch(function(){
+          more.disabled = false;
+          if (reset) feed.innerHTML = '<div class="empty">Could not load the activity log.</div>';
+        });
+    }
+
+    $('act-apply').addEventListener('click', function(){ loadActivity(true); });
+    $('act-user').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadActivity(true); });
+    $('act-more').addEventListener('click', function(){ loadActivity(false); });
+
+    // "history" links in activity rows jump to the rollback panel, prefilled.
+    document.addEventListener('click', function(e){
+      var h = e.target.closest && e.target.closest('.hist-link');
+      if (!h) return;
+      $('rb-type').value = h.getAttribute('data-hist-type');
+      $('rb-slug').value = h.getAttribute('data-hist-slug');
+      loadRevisions();
+      $('rollback-panel').scrollIntoView({ behavior: 'smooth' });
+    });
 
     function fillList(elId, rows, renderer, emptyMsg){
       var el = $(elId);
@@ -362,6 +535,195 @@
           '<span class="team-n">' + r.n + '</span></div>';
       }).join('');
     }
+
+    /* ---- admin report ---- */
+    var lastReport = null;
+
+    function fmtLogLine(a){
+      return (a.ts || '') + '  ' + (a.username || 'someone') + '  ' + a.action +
+        (a.entity_type ? '  ' + a.entity_type : '') +
+        (a.entity_name || a.entity_slug ? '  ' + (a.entity_name || a.entity_slug) : '');
+    }
+
+    function reportText(d){
+      var lines = [];
+      lines.push('BOTC HOMEBREW WIKI — ADMIN REPORT');
+      lines.push('Window: last ' + d.days + ' day' + (d.days === 1 ? '' : 's') +
+        ' (generated ' + new Date(d.generatedAt).toLocaleString() + ')');
+      var t = d.siteTotals || {};
+      lines.push('Site now: ' + (t.characters||0) + ' characters, ' + (t.collections||0) +
+        ' collections, ' + (t.scripts||0) + ' scripts, ' + (t.users||0) + ' users');
+      lines.push('');
+      lines.push('ACTIVITY — ' + d.activityCount + ' event' + (d.activityCount === 1 ? '' : 's'));
+      (d.byAction || []).forEach(function(r){ lines.push('  ' + r.action + ': ' + r.n); });
+      if (!(d.byAction || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('CONTENT CHANGES BY TYPE');
+      (d.contentByType || []).forEach(function(r){ lines.push('  ' + r.entity_type + ' — ' + r.action + ': ' + r.n); });
+      if (!(d.contentByType || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('NEW USERS — ' + (d.newUsers || []).length);
+      (d.newUsers || []).forEach(function(u){ lines.push('  ' + u.username + ' (joined ' + u.created_at + ')'); });
+      lines.push('');
+      lines.push('MOST ACTIVE USERS');
+      (d.topUsers || []).forEach(function(u){ lines.push('  ' + u.username + ': ' + u.n + ' actions'); });
+      if (!(d.topUsers || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('MOST TOUCHED PAGES');
+      (d.topPages || []).forEach(function(p){
+        lines.push('  ' + (p.entity_name || p.entity_slug) + ' (' + p.entity_type + '): ' + p.n + ' actions');
+      });
+      if (!(d.topPages || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('FULL LOG' + (d.logTruncated ? ' (first 1000 events)' : '') + ' — newest first');
+      (d.log || []).forEach(function(a){ lines.push('  ' + fmtLogLine(a)); });
+      if (!(d.log || []).length) lines.push('  (none)');
+      return lines.join('\n');
+    }
+
+    function reportTable(rows, cols){
+      if (!rows || !rows.length) return '<p class="empty">Nothing in this window.</p>';
+      return '<table>' + rows.map(function(r){
+        return '<tr><td>' + esc(cols.label(r)) + '</td><td class="n">' + esc(String(cols.value(r))) + '</td></tr>';
+      }).join('') + '</table>';
+    }
+
+    function renderReport(d){
+      var out = $('rep-out');
+      var html = '<h4>' + d.activityCount + ' event' + (d.activityCount === 1 ? '' : 's') +
+        ' in the last ' + d.days + ' day' + (d.days === 1 ? '' : 's') + '</h4>';
+      html += reportTable(d.byAction, { label: function(r){ return r.action; }, value: function(r){ return r.n; } });
+      html += '<h4>Content changes</h4>';
+      html += reportTable(d.contentByType, {
+        label: function(r){ return r.entity_type + ' — ' + r.action; }, value: function(r){ return r.n; }
+      });
+      html += '<h4>New users (' + (d.newUsers || []).length + ')</h4>';
+      html += reportTable(d.newUsers, {
+        label: function(u){ return u.username; }, value: function(u){ return relTime(u.created_at); }
+      });
+      html += '<h4>Most active users</h4>';
+      html += reportTable(d.topUsers, { label: function(u){ return u.username; }, value: function(u){ return u.n + ' actions'; } });
+      html += '<h4>Most touched pages</h4>';
+      html += reportTable(d.topPages, {
+        label: function(p){ return (p.entity_name || p.entity_slug) + ' (' + p.entity_type + ')'; },
+        value: function(p){ return p.n + ' actions'; }
+      });
+      html += '<p class="note">The download includes the full event log' +
+        (d.logTruncated ? ' (capped at the 1000 most recent events)' : '') + '.</p>';
+      out.innerHTML = html;
+    }
+
+    $('rep-generate').addEventListener('click', function(){
+      var btn = this;
+      var days = Math.min(Math.max(parseInt($('rep-days').value, 10) || 7, 1), 365);
+      $('rep-days').value = days;
+      btn.disabled = true;
+      $('rep-out').innerHTML = '<p class="empty">Building report…</p>';
+      fetch('/api/admin/report?days=' + days, { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.disabled = false;
+          if (!d || d.error) { $('rep-out').innerHTML = '<p class="empty">' + esc((d && d.error) || 'Report failed.') + '</p>'; return; }
+          lastReport = d;
+          renderReport(d);
+          $('rep-download').style.display = '';
+        })
+        .catch(function(){
+          btn.disabled = false;
+          $('rep-out').innerHTML = '<p class="empty">Network error — try again.</p>';
+        });
+    });
+
+    document.querySelectorAll('.rep-quick').forEach(function(b){
+      b.addEventListener('click', function(){
+        $('rep-days').value = b.getAttribute('data-days');
+        $('rep-generate').click();
+      });
+    });
+
+    $('rep-download').addEventListener('click', function(){
+      if (!lastReport) return;
+      var blob = new Blob([reportText(lastReport)], { type: 'text/plain;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'wiki-report-' + lastReport.days + 'd-' + new Date().toISOString().slice(0, 10) + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+
+    /* ---- page history & rollback ---- */
+    function loadRevisions(){
+      var type = $('rb-type').value;
+      var slug = $('rb-slug').value.trim();
+      var box = $('rb-list');
+      $('rb-toast').textContent = '';
+      if (!slug) { box.innerHTML = '<p class="empty">Enter a page slug first.</p>'; return; }
+      box.innerHTML = '<p class="empty">Loading history…</p>';
+      fetch('/api/admin/revisions?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(slug),
+            { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || d.error) { box.innerHTML = '<p class="empty">' + esc((d && d.error) || 'Could not load history.') + '</p>'; return; }
+          var head = d.current
+            ? '<p class="note" style="margin:0 0 8px">Current: <strong>' + esc(d.current.name || d.slug) + '</strong> (' + esc(d.current.status) + ')</p>'
+            : '<p class="note" style="margin:0 0 8px">No live page with that slug — check the spelling (it may also have been purged).</p>';
+          if (!d.revisions.length) {
+            box.innerHTML = head + '<p class="empty">No saved history for this page yet. Versions are recorded each time the page is edited from now on.</p>';
+            return;
+          }
+          box.innerHTML = head + d.revisions.map(function(rv){
+            var kb = rv.bytes ? Math.max(1, Math.round(rv.bytes / 1024)) + ' KB' : '';
+            return '<div class="rev-row" data-rev-id="' + rv.id + '">' +
+              '<span class="rev-name">' + esc(rv.name || d.slug) + '</span>' +
+              '<span class="rev-meta" title="' + esc(absTime(rv.ts)) + '">saved ' + esc(relTime(rv.ts)) +
+                (rv.edited_by ? ' · replaced by ' + esc(rv.edited_by) + '’s edit' : '') +
+                (kb ? ' · ' + kb : '') + '</span>' +
+              (d.current ? '<button type="button" class="del-btn del-restore rb-do">Roll back to this</button>' : '') +
+              '<span class="del-status"></span>' +
+              '</div>';
+          }).join('');
+        })
+        .catch(function(){ box.innerHTML = '<p class="empty">Network error — try again.</p>'; });
+    }
+
+    $('rb-load').addEventListener('click', loadRevisions);
+    $('rb-slug').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadRevisions(); });
+
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.rb-do');
+      if (!btn) return;
+      var row = btn.closest('.rev-row');
+      var name = row.querySelector('.rev-name').textContent;
+      var status = row.querySelector('.del-status');
+      if (!confirm('Roll this page back to the version "' + name + '"?\n\nThe current version is saved to history first, so you can undo this.')) return;
+      btn.disabled = true;
+      status.textContent = 'Rolling back…'; status.style.color = '#8a6d12';
+      fetch('/api/admin/rollback', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: $('rb-type').value,
+          slug: $('rb-slug').value.trim(),
+          id: parseInt(row.getAttribute('data-rev-id'), 10)
+        })
+      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          if (res.status === 200 && res.body.ok) {
+            status.textContent = '✓ rolled back'; status.style.color = '#1c5429';
+            $('rb-toast').className = 'toast ok';
+            $('rb-toast').textContent = 'Page rolled back. The version it replaced is now at the top of the history.';
+            loadRevisions();
+            loadActivity(true);
+          } else {
+            btn.disabled = false;
+            status.textContent = '✗ ' + ((res.body && res.body.error) || 'failed');
+            status.style.color = '#9A0D12';
+          }
+        }).catch(function(err){
+          btn.disabled = false;
+          status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
+        });
+    });
 
     var currentLocked = false;
 
@@ -436,8 +798,7 @@
           renderTeams(d.charactersByTeam);
           renderLock(d.locked);
 
-          $('act-count').textContent = (d.recentActivity || []).length || '';
-          fillList('feed-activity', d.recentActivity, renderActivityRow, 'No activity recorded yet.');
+          loadActivity(true);
           fillList('feed-edits', d.recentEdits, function(it){ return renderContentRow(it, 'updated_at'); }, 'Nothing yet.');
           fillList('feed-creations', d.recentCreations, function(it){ return renderContentRow(it, 'created_at'); }, 'Nothing yet.');
 

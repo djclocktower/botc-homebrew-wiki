@@ -196,6 +196,17 @@
           html = '<p class="profile-empty">' + esc(p.displayName || p.username) + ' hasn’t published anything yet.</p>';
         }
         panel.innerHTML = html;
+
+        // Admins get a shortcut to the dashboard from any profile page.
+        fetch('/api/me', { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); })
+          .then(function (me) {
+            if (!me || !me.loggedIn || !me.isAdmin) return;
+            var t = hero.querySelector('.profile-hero-text');
+            if (t) t.insertAdjacentHTML('beforeend',
+              '<p style="margin:8px 0 0"><a href="/dashboard" style="color:#e8c46a;font-size:.85rem;font-weight:700">&#9881; Admin Dashboard &rarr;</a></p>');
+          })
+          .catch(function () {});
       })
       .catch(function () { fail('Could not load this profile.'); });
   })();

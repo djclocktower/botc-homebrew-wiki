@@ -25,6 +25,7 @@
  *   -- account --
  *   GET  /api/account         -> profile + your pages + drafts + recent edits
  *   POST /api/account/profile -> update display name / bio
+ *   POST /api/account/avatar  -> upload/remove your profile picture (R2)
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
@@ -50,6 +51,10 @@
  *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data (incl. deleted content)
+ *   GET  /api/admin/activity  -> full activity log (paginated + filterable)
+ *   GET  /api/admin/report    -> activity report for the last ?days=N days
+ *   GET  /api/admin/revisions -> version history for one page (?type=&slug=)
+ *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
  *   POST /api/lock            -> lock/unlock the wiki
@@ -78,6 +83,10 @@ const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
 
 const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/'];
+// avatars/ is servable from R2 but NOT uploadable through the generic
+// /api/upload — profile pictures only go through /api/account/avatar,
+// which pins the key to the logged-in user's own slot.
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/']);
 const EXT_CONTENT_TYPE = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
@@ -266,6 +275,52 @@ async function logActivity(env, sess, action, entityType, slug, name) {
   } catch { /* never let logging break a write */ }
 }
 
+// ---- page revisions (version history for rollback) ----
+// The table is created lazily by the Worker itself, so no manual D1
+// migration is ever needed. Every content save snapshots the version it is
+// about to replace; the newest 20 revisions per page are kept.
+const REVISIONS_KEEP = 20;
+let _revisionsReady = false;
+async function ensureRevisionsTable(env) {
+  if (_revisionsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS revisions (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       name        TEXT,
+       status      TEXT,
+       data        TEXT NOT NULL,
+       edited_by   TEXT,
+       ts          TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_revisions_entity ON revisions(entity_type, slug, id)'
+  ).run();
+  _revisionsReady = true;
+}
+
+// Snapshot an existing row before it gets overwritten. `edited_by` records
+// who made the edit that replaced this version. Never blocks the save.
+async function saveRevision(env, sess, type, row) {
+  try {
+    await ensureRevisionsTable(env);
+    let by = null;
+    try {
+      const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+      by = u ? u.username : null;
+    } catch { /* non-fatal */ }
+    await env.DB.prepare(
+      'INSERT INTO revisions (entity_type, slug, name, status, data, edited_by) VALUES (?,?,?,?,?,?)'
+    ).bind(type, row.slug, row.name || null, row.status || 'published', row.data, by).run();
+    await env.DB.prepare(
+      `DELETE FROM revisions WHERE entity_type=? AND slug=? AND id NOT IN (
+         SELECT id FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC LIMIT ${REVISIONS_KEEP})`
+    ).bind(type, row.slug, type, row.slug).run();
+  } catch { /* history must never break a write */ }
+}
+
 // ---- ownership: may this session edit this row? ----
 function canEditRow(sess, row) {
   if (!sess) return false;
@@ -331,7 +386,7 @@ async function buildPublicJSON(env, table) {
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings'];
+  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions'];
   const saved = {};
   for (const t of tables) {
     try {
@@ -729,7 +784,7 @@ export default {
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
     if (method === 'GET' && path.startsWith('/assets/')) {
       const key = path.slice('/assets/'.length);
-      if (env.ART && R2_PREFIXES.some(p => key.startsWith(p))) {
+      if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
         const obj = await env.ART.get(key);
         if (obj) {
           const headers = new Headers();
@@ -1090,10 +1145,11 @@ export default {
         return redirectResponse(url.origin + '/account?linked=1');
       }
 
-      // Existing Discord-linked account -> log in.
+      // Existing Discord-linked account -> log in. A picture the user set on
+      // the wiki wins over the Discord one, so logging in never clobbers it.
       if (byDiscord) {
         await env.DB.prepare(
-          `UPDATE users SET discord_username=?, avatar_url=COALESCE(?, avatar_url), last_login=datetime('now') WHERE id=?`
+          `UPDATE users SET discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
         ).bind(du.username || discordName, avatarUrl, byDiscord.id).run();
         const t = await createSession(env, byDiscord.id, !!byDiscord.is_admin);
         return redirectResponse(url.origin + '/account', sessionCookie(t));
@@ -1248,6 +1304,126 @@ export default {
       });
     }
 
+    // ---------- ADMIN: FULL ACTIVITY LOG (paginated + filterable) ----------
+    // ?limit=50 (max 200), ?before={id} to page further back, and optional
+    // filters: ?user= (username), ?action=, ?type= (entity_type), ?days=N.
+    if (method === 'GET' && path === '/api/admin/activity') {
+      const sess = await getSession(env, request);
+      if (!sess || !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      const q = url.searchParams;
+      const limit = Math.min(Math.max(parseInt(q.get('limit') || '50', 10) || 50, 1), 200);
+      const filters = [];
+      const fBinds = [];
+      const uname = (q.get('user') || '').trim();
+      if (uname) { filters.push('lower(username)=lower(?)'); fBinds.push(uname); }
+      const action = (q.get('action') || '').trim();
+      if (action) { filters.push('action=?'); fBinds.push(action); }
+      const etype = (q.get('type') || '').trim();
+      if (etype) { filters.push('entity_type=?'); fBinds.push(etype); }
+      const days = parseInt(q.get('days') || '0', 10) || 0;
+      if (days > 0) { filters.push("ts >= datetime('now', ?)"); fBinds.push('-' + Math.min(days, 3650) + ' days'); }
+      const rowWh = filters.slice();
+      const rowBinds = fBinds.slice();
+      const before = parseInt(q.get('before') || '0', 10) || 0;
+      if (before) { rowWh.push('id < ?'); rowBinds.push(before); }
+      const [rowsRes, totalRes] = await Promise.all([
+        env.DB.prepare(
+          'SELECT id, ts, username, action, entity_type, entity_slug, entity_name FROM activity_log' +
+          (rowWh.length ? ' WHERE ' + rowWh.join(' AND ') : '') +
+          ' ORDER BY id DESC LIMIT ?'
+        ).bind(...rowBinds, limit).all(),
+        env.DB.prepare(
+          'SELECT COUNT(*) AS n FROM activity_log' +
+          (filters.length ? ' WHERE ' + filters.join(' AND ') : '')
+        ).bind(...fBinds).first()
+      ]);
+      const rows = rowsRes.results || [];
+      return jsonResponse({
+        rows,
+        total: totalRes ? totalRes.n : rows.length,
+        hasMore: rows.length === limit,
+        nextBefore: rows.length ? rows[rows.length - 1].id : null
+      });
+    }
+
+    // ---------- ADMIN: ACTIVITY REPORT FOR A TIME WINDOW ----------
+    // ?days=N (1–365, default 7). Summarizes everything in the window plus
+    // the full event log (capped at 1000 rows for the download).
+    if (method === 'GET' && path === '/api/admin/report') {
+      const sess = await getSession(env, request);
+      if (!sess || !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '7', 10) || 7, 1), 365);
+      const since = '-' + days + ' days';
+      const batch = await env.DB.batch([
+        env.DB.prepare(
+          `SELECT action, COUNT(*) AS n FROM activity_log WHERE ts >= datetime('now', ?)
+           GROUP BY action ORDER BY n DESC`).bind(since),
+        env.DB.prepare(
+          `SELECT entity_type, action, COUNT(*) AS n FROM activity_log
+           WHERE ts >= datetime('now', ?) AND entity_type IN ('character','collection','script')
+           GROUP BY entity_type, action ORDER BY entity_type, n DESC`).bind(since),
+        env.DB.prepare(
+          `SELECT username, COUNT(*) AS n FROM activity_log
+           WHERE ts >= datetime('now', ?) AND username IS NOT NULL
+           GROUP BY username ORDER BY n DESC LIMIT 10`).bind(since),
+        env.DB.prepare(
+          `SELECT entity_type, entity_slug, MAX(entity_name) AS entity_name, COUNT(*) AS n
+           FROM activity_log WHERE ts >= datetime('now', ?) AND entity_slug IS NOT NULL
+           GROUP BY entity_type, entity_slug ORDER BY n DESC LIMIT 10`).bind(since),
+        env.DB.prepare(
+          `SELECT username, created_at FROM users WHERE created_at >= datetime('now', ?)
+           ORDER BY created_at DESC LIMIT 100`).bind(since),
+        env.DB.prepare(
+          `SELECT COUNT(*) AS n FROM activity_log WHERE ts >= datetime('now', ?)`).bind(since),
+        env.DB.prepare(
+          `SELECT
+             (SELECT COUNT(*) FROM characters  WHERE status IS NOT 'deleted') AS characters,
+             (SELECT COUNT(*) FROM collections WHERE status IS NOT 'deleted') AS collections,
+             (SELECT COUNT(*) FROM scripts     WHERE status IS NOT 'deleted') AS scripts,
+             (SELECT COUNT(*) FROM users)       AS users`),
+        env.DB.prepare(
+          `SELECT ts, username, action, entity_type, entity_slug, entity_name FROM activity_log
+           WHERE ts >= datetime('now', ?) ORDER BY id DESC LIMIT 1000`).bind(since)
+      ]);
+      const log = batch[7].results || [];
+      return jsonResponse({
+        generatedAt: new Date().toISOString(),
+        days,
+        activityCount: batch[5].results[0] ? batch[5].results[0].n : 0,
+        byAction: batch[0].results,
+        contentByType: batch[1].results,
+        topUsers: batch[2].results,
+        topPages: batch[3].results,
+        newUsers: batch[4].results,
+        siteTotals: batch[6].results[0] || {},
+        log,
+        logTruncated: log.length === 1000
+      });
+    }
+
+    // ---------- ADMIN: VERSION HISTORY FOR ONE PAGE ----------
+    if (method === 'GET' && path === '/api/admin/revisions') {
+      const sess = await getSession(env, request);
+      if (!sess || !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      const type = url.searchParams.get('type') || '';
+      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+      let row = await getEntityRow(env, type, slugParam);
+      if (!row && type === 'collection') row = await findCollectionRow(env, slugParam);
+      const pk = row ? row.slug : slugParam;
+      await ensureRevisionsTable(env);
+      const { results } = await env.DB.prepare(
+        `SELECT id, ts, name, status, edited_by, length(data) AS bytes
+         FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC`
+      ).bind(type, pk).all();
+      return jsonResponse({
+        slug: pk,
+        current: row ? { name: row.name, status: row.status || 'published' } : null,
+        revisions: results || []
+      });
+    }
+
     // ---------- WRITES (logged-in users; ownership enforced) ----------
     if (method === 'POST' && path.startsWith('/api/')) {
       const sess = await getSession(env, request);
@@ -1256,7 +1432,7 @@ export default {
       // Admin-only endpoints keep their old guard.
       const adminOnly = (path === '/api/lock' || path === '/api/seed' || path === '/api/backup' ||
                          path === '/api/admin/assign-owner' || path === '/api/admin/restore' ||
-                         path === '/api/admin/purge');
+                         path === '/api/admin/purge' || path === '/api/admin/rollback');
       if (adminOnly && !sess.isAdmin) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
 
       // Content writes are blocked while the wiki is locked (true freeze,
@@ -1274,6 +1450,49 @@ export default {
         await env.DB.prepare('UPDATE users SET display_name=?, bio=? WHERE id=?')
           .bind(displayName, bio, sess.userId).run();
         return jsonResponse({ ok: true });
+      }
+
+      // ---- profile picture (uploaded to R2 under avatars/u{id}.{ext}) ----
+      // Body: {data: dataURL} to set, or {remove: true} to go back to the
+      // initial-letter avatar. The key is derived from the session, so users
+      // can only ever touch their own avatar slot.
+      if (path === '/api/account/avatar') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (await rateLimited(env, request, 'avatar', 20, 3600)) {
+          return jsonResponse({ error: 'Too many avatar changes. Try again later.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+        async function deleteOwnAvatars() {
+          for (const e of AVATAR_EXTS) {
+            try { await env.ART.delete('avatars/u' + sess.userId + '.' + e); } catch { /* best-effort */ }
+          }
+        }
+        if (b.remove) {
+          await deleteOwnAvatars();
+          await env.DB.prepare('UPDATE users SET avatar_url=NULL WHERE id=?').bind(sess.userId).run();
+          return jsonResponse({ ok: true, avatarUrl: null });
+        }
+        let data = String(b.data || '');
+        if (!data.startsWith('data:')) return jsonResponse({ error: 'Send the image as a data URL.' }, { status: 400 });
+        const contentType = data.slice(5, data.indexOf(';'));
+        const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' }[contentType];
+        if (!ext) return jsonResponse({ error: 'Profile pictures must be PNG, JPEG, or WebP.' }, { status: 400 });
+        data = data.slice(data.indexOf(',') + 1);
+        let bytes;
+        try { bytes = base64ToBytes(data); } catch { return jsonResponse({ error: 'Could not read that image.' }, { status: 400 }); }
+        if (!bytes.length) return jsonResponse({ error: 'Could not read that image.' }, { status: 400 });
+        if (bytes.length > 2 * 1024 * 1024) return jsonResponse({ error: 'Picture is too large (2 MB max).' }, { status: 413 });
+        await deleteOwnAvatars(); // clear any old picture with a different extension
+        const key = 'avatars/u' + sess.userId + '.' + ext;
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType },
+          customMetadata: { owner: String(sess.userId) }
+        });
+        // ?v= busts any cached copy the browser holds of the previous picture
+        const avatarUrl = '/assets/' + key + '?v=' + Date.now();
+        await env.DB.prepare('UPDATE users SET avatar_url=? WHERE id=?').bind(avatarUrl, sess.userId).run();
+        return jsonResponse({ ok: true, avatarUrl });
       }
 
       if (path === '/api/account/password') {
@@ -1400,6 +1619,7 @@ export default {
         }
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing) await saveRevision(env, sess, 'character', existing);
         await env.DB.prepare(
           `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
@@ -1452,6 +1672,7 @@ export default {
         }
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,datetime('now'),datetime('now'))
@@ -1478,6 +1699,7 @@ export default {
           : [];
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        if (existing) await saveRevision(env, sess, 'script', existing);
         await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
            VALUES (?,?,?,?,?,?,datetime('now'),datetime('now'))
@@ -1573,8 +1795,56 @@ export default {
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (row.status !== 'deleted') return jsonResponse({ error: 'Purge only removes already-deleted pages. Delete it first.' }, { status: 400 });
         await env.DB.prepare(`DELETE FROM ${t.table} WHERE slug=?`).bind(row.slug).run();
+        // A purged page is gone for good — drop its version history too.
+        try {
+          await env.DB.prepare('DELETE FROM revisions WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
+        } catch { /* revisions table may not exist yet */ }
         await logActivity(env, sess, 'purge', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug });
+      }
+
+      // ---- admin: roll a page back to an earlier revision ----
+      // Body: {type, slug, id} where id is a revision id from
+      // /api/admin/revisions. The current version is snapshotted first, so a
+      // rollback can itself be rolled back. Publish status and ownership are
+      // left as they are — only the page content moves.
+      if (path === '/api/admin/rollback') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is in the trash. Restore it from Deleted Content first, then roll it back.' }, { status: 400 });
+        }
+        await ensureRevisionsTable(env);
+        const rev = await env.DB.prepare(
+          'SELECT id, ts, data FROM revisions WHERE id=? AND entity_type=? AND slug=?'
+        ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
+        if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
+        let d;
+        try { d = JSON.parse(rev.data); } catch { d = null; }
+        if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
+        delete d._deleted;
+        await saveRevision(env, sess, type, row); // make the rollback undoable
+        if (type === 'character') {
+          if (!d.name || !d.team) return jsonResponse({ error: 'That revision is missing required fields.' }, { status: 500 });
+          await env.DB.prepare(
+            `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
+          ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
+        } else if (type === 'collection') {
+          await env.DB.prepare(
+            `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
+          ).bind(d.displayName || row.name || row.slug, JSON.stringify(d), row.slug).run();
+        } else {
+          await env.DB.prepare(
+            `UPDATE scripts SET name=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
+          ).bind(d.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
+        }
+        await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || row.name);
+        return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
 
       // ---- admin: assign (or clear) a page's owner ----

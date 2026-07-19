@@ -214,6 +214,7 @@
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
             <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
+            <a id="p-admin-link" href="dashboard" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">Admin Dashboard →</a>
           </div>
         </div>
         <div class="profile-meta">
@@ -252,6 +253,18 @@
         <div class="settings-grid">
           <section>
             <h4>Profile</h4>
+            <div class="set-field">
+              <label>Profile picture</label>
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                <div class="avatar" id="s-avatar-preview" style="width:56px;height:56px;font-size:1.5rem"></div>
+                <div>
+                  <input type="file" id="s-avatar-file" accept="image/png,image/jpeg,image/webp" style="display:none">
+                  <button class="btn" id="avatar-upload" type="button" style="padding:8px 14px;font-size:.92rem">Upload picture</button>
+                  <button class="mini-btn del" id="avatar-remove" type="button" style="display:none">Remove</button>
+                </div>
+              </div>
+              <div class="inline-msg" id="avatar-msg"></div>
+            </div>
             <div class="set-field">
               <label for="s-display">Display name</label>
               <input id="s-display" maxlength="40" placeholder="Shown instead of your username">
@@ -363,13 +376,18 @@
 
     function renderProfile(p) {
       PROFILE = p;
-      var av = $('avatar');
-      if (p.avatarUrl) av.innerHTML = '<img src="' + esc(p.avatarUrl) + '" alt="">';
-      else av.textContent = (p.displayName || p.username || '?').charAt(0).toUpperCase();
+      var initial = (p.displayName || p.username || '?').charAt(0).toUpperCase();
+      [$('avatar'), $('s-avatar-preview')].forEach(function(av){
+        if (!av) return;
+        if (p.avatarUrl) av.innerHTML = '<img src="' + esc(p.avatarUrl) + '" alt="">';
+        else { av.innerHTML = ''; av.textContent = initial; }
+      });
+      $('avatar-remove').style.display = p.avatarUrl ? 'inline-block' : 'none';
       $('p-display').textContent = p.displayName || p.username;
       $('p-username').textContent = p.username;
       var pl = $('p-public-link');
       if (pl) { pl.href = '/u/' + encodeURIComponent(p.username); pl.style.display = 'inline-block'; }
+      $('p-admin-link').style.display = p.isAdmin ? 'inline-block' : 'none';
       $('p-bio').textContent = p.bio || '';
       var badges = '';
       if (p.isAdmin) badges += '<span class="badge admin">Admin</span>';
@@ -526,6 +544,66 @@
           setInline('email-msg', res.ok ? 'ok' : 'err', res.ok ? (res.body.message || 'Email updated.') : (res.body.error || 'Update failed.'));
           if (res.ok) load();
         });
+    });
+
+    // profile picture: resize client-side to 256×256 (kind to phone uploads),
+    // send as a data URL, then refresh so every avatar spot updates.
+    $('avatar-upload').addEventListener('click', function(){ $('s-avatar-file').click(); });
+
+    $('s-avatar-file').addEventListener('change', function(){
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        setInline('avatar-msg', 'err', 'Please choose a PNG, JPEG, or WebP image.');
+        return;
+      }
+      setInline('avatar-msg', '', 'Preparing image…');
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        URL.revokeObjectURL(url);
+        var SIZE = 256;
+        var canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        var cx = canvas.getContext('2d');
+        // cover-crop the middle square so any aspect ratio comes out clean
+        var side = Math.min(img.width, img.height);
+        cx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, SIZE, SIZE);
+        var dataUrl = file.type === 'image/png'
+          ? canvas.toDataURL('image/png')
+          : canvas.toDataURL('image/jpeg', 0.88);
+        setInline('avatar-msg', '', 'Uploading…');
+        postJSON('/api/account/avatar', { data: dataUrl }).then(function(res){
+          if (res.ok && res.body.ok) {
+            setInline('avatar-msg', 'ok', 'Profile picture updated.');
+            try { sessionStorage.removeItem('botc_me'); } catch(e){}
+            load();
+          } else {
+            setInline('avatar-msg', 'err', res.body.error || 'Upload failed.');
+          }
+        });
+      };
+      img.onerror = function(){
+        URL.revokeObjectURL(url);
+        setInline('avatar-msg', 'err', 'Could not read that image.');
+      };
+      img.src = url;
+    });
+
+    $('avatar-remove').addEventListener('click', function(){
+      if (!confirm('Remove your profile picture?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/account/avatar', { remove: true }).then(function(res){
+        btn.disabled = false;
+        if (res.ok && res.body.ok) {
+          setInline('avatar-msg', 'ok', 'Profile picture removed.');
+          try { sessionStorage.removeItem('botc_me'); } catch(e){}
+          load();
+        } else {
+          setInline('avatar-msg', 'err', res.body.error || 'Remove failed.');
+        }
+      });
     });
 
     $('discord-unlink-btn').addEventListener('click', function(){
