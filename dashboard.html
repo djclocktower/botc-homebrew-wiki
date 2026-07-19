@@ -131,11 +131,91 @@
     font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
     padding: 1px 7px; border-radius: 999px; flex: 0 0 auto;
   }
-  .tag-create { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
-  .tag-update { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
+  .tag-create,.tag-publish,.tag-signup { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-update,.tag-unpublish { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
   .tag-delete,.tag-lock,.tag-purge { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
   .tag-unlock,.tag-restore { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-rollback { background: rgba(90,60,140,.14); color: #5a3c8c; border: 1px solid rgba(90,60,140,.4); }
   .tag-type { background: rgba(0,0,0,.06); color: var(--ink); border: 1px solid rgba(0,0,0,.18); opacity: .85; }
+  .tag-backup,.tag-assign-owner { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
+  .tag-ban,.tag-purge-images { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
+  .tag-unban,.tag-restore-backup { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+  .tag-promote,.tag-announce,.tag-contact,.tag-reset-link { background: rgba(44,91,154,.12); color: #2c5b9a; border: 1px solid rgba(44,91,154,.35); }
+  .tag-demote,.tag-clean-refs { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
+  .tag-protect,.tag-unprotect { background: rgba(90,60,140,.14); color: #5a3c8c; border: 1px solid rgba(90,60,140,.4); }
+
+  /* ---- generic admin row (users, inbox, orphans, bulk, backups) ---- */
+  .adm-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 9px 0; border-bottom: 1px solid rgba(180,160,120,.25);
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+  }
+  .adm-row .grow { flex: 1; min-width: 140px; }
+  .adm-row .dim { font-size: .78rem; opacity: .7; }
+  .adm-body {
+    flex-basis: 100%; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: rgba(255,253,248,.5); border: 1px solid rgba(180,160,120,.35);
+    border-radius: 6px; padding: 8px 10px; font-size: .88rem;
+  }
+  .mini-act {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .78rem; font-weight: 700; border-radius: 5px; padding: 5px 10px;
+    cursor: pointer; border: 1px solid; background: rgba(255,253,248,.5); flex: 0 0 auto;
+  }
+  .mini-act.ok   { color: #2a6e2a; border-color: rgba(42,110,42,.4); }
+  .mini-act.warn { color: #7a5c18; border-color: rgba(154,110,20,.4); }
+  .mini-act.bad  { color: #9a2c2c; border-color: rgba(154,44,44,.4); }
+  .mini-act:hover { background: rgba(255,253,248,.95); }
+  .mini-act:disabled { opacity: .5; cursor: default; }
+  .adm-textarea {
+    width: 100%; box-sizing: border-box; font: inherit; font-size: .92rem;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+    padding: 9px 12px; min-height: 60px; resize: vertical;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .orph-thumb { width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(0,0,0,.2); flex: 0 0 auto; background: #fff; }
+  .pv-bar-track { flex: 1 1 90px; height: 9px; background: rgba(0,0,0,.10); border-radius: 999px; overflow: hidden; min-width: 60px; }
+  .pv-bar-fill { height: 100%; border-radius: 999px; background: var(--maroon); }
+  .hist-link { font-size: .74rem; color: #5a3c8c; cursor: pointer; text-decoration: underline dotted; flex: 0 0 auto; }
+
+  /* ---- activity log filters ---- */
+  .act-filters {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin: 0 0 12px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .act-filters input, .act-filters select {
+    font: inherit; font-size: .88rem; color: #241a12;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+    padding: 6px 9px; max-width: 150px;
+  }
+  .small-btn {
+    font-family: 'Dumbledor2', serif; font-size: .88rem; letter-spacing: .03em;
+    color: #f4ead2; background: linear-gradient(180deg,#7a2d2f,#5b1f21);
+    border: 1px solid #4a1719; border-radius: 6px; padding: 7px 14px; cursor: pointer;
+  }
+  .small-btn:hover { background: linear-gradient(180deg,#8a3537,#6b2527); }
+  .small-btn:disabled { opacity: .6; cursor: default; }
+  .small-btn.alt { background: linear-gradient(180deg,#555,#333); border-color: #222; }
+
+  /* ---- report output ---- */
+  .rep-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; margin-bottom: 12px; }
+  .rep-controls input[type=number] { width: 72px; font: inherit; font-size: .9rem; padding: 6px 9px; background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px; }
+  .rep-quick { font-size: .8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid rgba(122,45,47,.35); background: rgba(122,45,47,.08); color: var(--maroon); cursor: pointer; font-weight: 700; }
+  .rep-quick:hover { background: rgba(122,45,47,.16); }
+  #rep-out { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; }
+  #rep-out h4 { font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1rem; letter-spacing: .04em; margin: 16px 0 6px; }
+  #rep-out table { border-collapse: collapse; width: 100%; max-width: 440px; }
+  #rep-out td { padding: 4px 8px 4px 0; border-bottom: 1px solid rgba(0,0,0,.08); }
+  #rep-out td.n { text-align: right; font-weight: 700; color: var(--maroon); white-space: nowrap; }
+
+  /* ---- rollback rows ---- */
+  .rev-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid rgba(180,160,120,.25);
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+  }
+  .rev-row .rev-name { flex: 1; min-width: 140px; font-weight: 600; }
+  .rev-row .rev-meta { font-size: .78rem; opacity: .7; flex: 0 0 auto; }
   .empty { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .6; font-size: .88rem; font-style: italic; padding: 6px 0; }
   .note { font-size: .8rem; opacity: .7; margin-top: 10px; font-style: italic; }
 
@@ -206,6 +286,47 @@
         <div class="toast" id="lock-toast" style="flex-basis:100%"></div>
       </section>
 
+      <!-- ANNOUNCEMENT BANNER -->
+      <section class="panel">
+        <h3>Announcement banner</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Show a message at the top of every page on the site — maintenance notices, contests, anything. Visitors can dismiss it; posting a new message shows it again for everyone.
+        </p>
+        <textarea class="adm-textarea" id="ann-text" maxlength="300" placeholder="e.g. The wiki will be briefly locked tonight for maintenance."></textarea>
+        <div class="act-filters" style="margin-top:10px">
+          <button type="button" class="small-btn" id="ann-post">Post announcement</button>
+          <button type="button" class="small-btn alt" id="ann-clear">Clear banner</button>
+          <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
+        </div>
+        <div class="toast" id="ann-toast"></div>
+      </section>
+
+      <!-- INBOX (contact-form messages) -->
+      <section class="panel">
+        <h3>Inbox <span class="count-pill" id="msg-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Bug reports, suggestions, and messages sent from the “Contact the Admins” form on account pages.
+        </p>
+        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+          <input type="checkbox" id="msg-show-all"> show resolved too
+        </label>
+        <div id="msg-list"></div>
+      </section>
+
+      <!-- USERS -->
+      <section class="panel">
+        <h3>Users <span class="count-pill" id="u-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Ban or unban accounts, grant or remove admin, or make a one-time password-reset link to hand to a user. Bans block logging in and all editing; the user's pages stay up.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="u-q" placeholder="search name or email">
+          <button type="button" class="small-btn" id="u-search">Search</button>
+        </div>
+        <div id="u-list"></div>
+        <div class="toast" id="u-toast"></div>
+      </section>
+
       <!-- MAINTENANCE TOOLS -->
       <section class="panel">
         <h3>Maintenance tools</h3>
@@ -233,6 +354,132 @@
         <div id="deleted-list"></div>
       </section>
 
+      <!-- PAGE HISTORY & ROLLBACK -->
+      <section class="panel" id="rollback-panel">
+        <h3>Page history &amp; rollback</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Every time a page is saved, the version it replaced is kept (up to 20 per page). Pick a page to see its history and roll it back to an earlier version. The current version is saved first, so a rollback can itself be undone. The slug is the last part of the page's URL — e.g. <code>fisherman</code> for <code>/c/fisherman</code> — or use the <em>history</em> links in the activity log below.
+        </p>
+        <div class="act-filters">
+          <select id="rb-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="rb-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="rb-load">Load history</button>
+        </div>
+        <div id="rb-list"></div>
+        <div class="toast" id="rb-toast"></div>
+      </section>
+
+      <!-- PROTECTED PAGES -->
+      <section class="panel">
+        <h3>Protected pages <span class="count-pill" id="prot-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          A protected page can only be edited, published, or deleted by admins — its owner sees a “page is protected” message. Handy for finished showcase pages or anything being vandalized.
+        </p>
+        <div class="act-filters">
+          <select id="prot-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="prot-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="prot-add">Protect</button>
+        </div>
+        <div id="prot-list"></div>
+        <div class="toast" id="prot-toast"></div>
+      </section>
+
+      <!-- BULK ACTIONS -->
+      <section class="panel">
+        <h3>Bulk actions</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, move to trash, restore, or add/remove a tag (characters only).
+        </p>
+        <div class="act-filters">
+          <select id="bulk-type">
+            <option value="character">Characters</option>
+            <option value="script">Scripts</option>
+            <option value="collection">Collections</option>
+          </select>
+          <input type="text" id="bulk-q" placeholder="filter by name">
+          <input type="text" id="bulk-owner" placeholder="owner (or 'none')">
+          <select id="bulk-status">
+            <option value="">not deleted</option>
+            <option value="published">published</option>
+            <option value="draft">drafts</option>
+            <option value="deleted">in trash</option>
+          </select>
+          <button type="button" class="small-btn" id="bulk-load">Load pages</button>
+        </div>
+        <div id="bulk-list"></div>
+        <div class="act-filters" id="bulk-act-row" style="display:none;margin-top:10px">
+          <select id="bulk-action">
+            <option value="assign-owner">Assign owner…</option>
+            <option value="clear-owner">Clear owner</option>
+            <option value="publish">Publish</option>
+            <option value="unpublish">Move to drafts</option>
+            <option value="delete">Move to trash</option>
+            <option value="restore">Restore from trash</option>
+            <option value="add-tag">Add tag…</option>
+            <option value="remove-tag">Remove tag…</option>
+          </select>
+          <input type="text" id="bulk-arg" placeholder="username">
+          <button type="button" class="small-btn" id="bulk-apply">Apply to selected</button>
+        </div>
+        <div class="toast" id="bulk-toast"></div>
+      </section>
+
+      <!-- BROKEN REFERENCES -->
+      <section class="panel">
+        <h3>Broken references <span class="count-pill" id="br-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Finds scripts and collections that point at characters which no longer exist (or sit in the trash / drafts), so pages don't quietly show gaps.
+        </p>
+        <button type="button" class="small-btn" id="br-scan">Scan the wiki</button>
+        <div id="br-list"></div>
+      </section>
+
+      <!-- ORPHANED IMAGES -->
+      <section class="panel">
+        <h3>Orphaned images <span class="count-pill" id="orph-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Uploaded images that no page references any more (replaced art, purged pages, avatars of deleted accounts). Deleting them frees storage and cannot break a live page — but it can't be undone.
+        </p>
+        <button type="button" class="small-btn" id="orph-scan">Scan for orphans</button>
+        <div id="orph-list"></div>
+        <div class="act-filters" id="orph-actions" style="display:none;margin-top:10px">
+          <label style="font-size:.85rem;display:inline-flex;align-items:center;gap:6px">
+            <input type="checkbox" id="orph-all"> select all
+          </label>
+          <button type="button" class="small-btn" id="orph-delete">Delete selected</button>
+        </div>
+        <div class="toast" id="orph-toast"></div>
+      </section>
+
+      <!-- BACKUPS -->
+      <section class="panel">
+        <h3>Backups <span class="count-pill" id="bk-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Nightly snapshots of the whole database (kept 30 days). Download any table as JSON, or restore a single page from a chosen night — the current version is saved to page history first, and even purged pages can be brought back this way.
+        </p>
+        <button type="button" class="small-btn" id="bk-load">Load backups</button>
+        <div id="bk-list"></div>
+        <div class="act-filters" id="bk-restore-row" style="display:none;margin-top:12px">
+          <select id="bk-date"></select>
+          <select id="bk-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="bk-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="bk-restore">Restore this page</button>
+        </div>
+        <div class="toast" id="bk-toast"></div>
+      </section>
+
       <!-- STATS -->
       <section class="panel">
         <h3>At a glance</h3>
@@ -245,10 +492,72 @@
         <div class="team-bars" id="team-bars"></div>
       </section>
 
-      <!-- ACTIVITY -->
+      <!-- PAGE VIEWS -->
       <section class="panel">
-        <h3>Recent activity <span class="count-pill" id="act-count"></span></h3>
+        <h3>Page views <span class="count-pill" id="pv-total"></span></h3>
+        <div class="act-filters">
+          <button type="button" class="rep-quick pv-range" data-days="7">7 days</button>
+          <button type="button" class="rep-quick pv-range" data-days="30">30 days</button>
+          <button type="button" class="rep-quick pv-range" data-days="90">90 days</button>
+        </div>
+        <div id="pv-list"></div>
+        <p class="note">Counting starts from when this feature deployed. Common bots and crawlers are filtered out; daily counts are kept for 180 days.</p>
+      </section>
+
+      <!-- ADMIN REPORT -->
+      <section class="panel">
+        <h3>Admin report</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Summarize everything that happened on the wiki over a time window you choose — edits, new pages, deletions, sign-ups, most active creators — with the full event log included in the download.
+        </p>
+        <div class="rep-controls">
+          <label for="rep-days">Last</label>
+          <input type="number" id="rep-days" value="7" min="1" max="365"> days
+          <button type="button" class="rep-quick" data-days="1">24 h</button>
+          <button type="button" class="rep-quick" data-days="7">week</button>
+          <button type="button" class="rep-quick" data-days="30">month</button>
+          <button type="button" class="rep-quick" data-days="90">3 months</button>
+          <button type="button" class="small-btn" id="rep-generate">Generate report</button>
+          <button type="button" class="small-btn alt" id="rep-download" style="display:none">Download .txt</button>
+        </div>
+        <div id="rep-out"></div>
+      </section>
+
+      <!-- ACTIVITY LOG -->
+      <section class="panel">
+        <h3>Activity log <span class="count-pill" id="act-count"></span></h3>
+        <div class="act-filters">
+          <input type="text" id="act-user" placeholder="username">
+          <select id="act-action">
+            <option value="">all actions</option>
+            <option>create</option><option>update</option><option>delete</option>
+            <option>publish</option><option>unpublish</option>
+            <option>restore</option><option>purge</option><option>rollback</option>
+            <option>signup</option><option>assign-owner</option>
+            <option>lock</option><option>unlock</option><option>backup</option>
+            <option>ban</option><option>unban</option><option>promote</option><option>demote</option>
+            <option>protect</option><option>unprotect</option><option>announce</option>
+            <option>contact</option><option>restore-backup</option><option>clean-refs</option>
+            <option>purge-images</option>
+          </select>
+          <select id="act-type">
+            <option value="">all types</option>
+            <option>character</option><option>script</option><option>collection</option>
+            <option>user</option><option>wiki</option>
+          </select>
+          <select id="act-days">
+            <option value="">all time</option>
+            <option value="1">last 24 h</option>
+            <option value="7">last 7 days</option>
+            <option value="30">last 30 days</option>
+            <option value="90">last 90 days</option>
+          </select>
+          <button type="button" class="small-btn" id="act-apply">Filter</button>
+        </div>
         <ul class="feed" id="feed-activity"></ul>
+        <div style="margin-top:12px">
+          <button type="button" class="small-btn alt" id="act-more" style="display:none">Load more</button>
+        </div>
         <p class="note">Activity is recorded from now on. Past edits made before this dashboard existed won't appear here.</p>
       </section>
 
@@ -323,6 +632,8 @@
         '</div><span class="when" title="' + esc(absTime(ts)) + '">' + esc(relTime(ts)) + '</span></li>';
     }
 
+    var CONTENT_TYPES = { character: 1, script: 1, collection: 1 };
+
     function renderActivityRow(a){
       var actionTag = '<span class="tag tag-' + esc(a.action) + '">' + esc(a.action) + '</span>';
       var who = a.username ? esc(a.username) : 'someone';
@@ -333,6 +644,10 @@
         subject = '<a href="' + editorUrl(a.entity_type, a.entity_slug) + '">' +
                   esc(a.entity_name || a.entity_slug) + '</a>' +
                   ' <span class="tag tag-type">' + esc(typeLabel(a.entity_type)) + '</span>';
+        if (CONTENT_TYPES[a.entity_type]) {
+          subject += ' <span class="hist-link" data-hist-type="' + esc(a.entity_type) +
+                     '" data-hist-slug="' + esc(a.entity_slug) + '">history</span>';
+        }
       } else {
         subject = esc(a.entity_name || a.entity_type || '');
       }
@@ -340,6 +655,66 @@
         '<span>' + who + ' &middot; ' + subject + '</span></div>' +
         '<span class="when" title="' + esc(absTime(a.ts)) + '">' + esc(relTime(a.ts)) + '</span></li>';
     }
+
+    /* ---- full activity log (paginated + filterable) ---- */
+    var actNextBefore = null;
+
+    function activityFilters(){
+      return {
+        user:   $('act-user').value.trim(),
+        action: $('act-action').value,
+        type:   $('act-type').value,
+        days:   $('act-days').value
+      };
+    }
+
+    function loadActivity(reset){
+      var f = activityFilters();
+      var params = new URLSearchParams({ limit: '50' });
+      if (f.user)   params.set('user', f.user);
+      if (f.action) params.set('action', f.action);
+      if (f.type)   params.set('type', f.type);
+      if (f.days)   params.set('days', f.days);
+      if (!reset && actNextBefore) params.set('before', actNextBefore);
+      var feed = $('feed-activity');
+      var more = $('act-more');
+      if (reset) feed.innerHTML = '<div class="empty">Loading…</div>';
+      more.disabled = true;
+      fetch('/api/admin/activity?' + params.toString(), { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          more.disabled = false;
+          if (!d || !d.rows) {
+            if (reset) feed.innerHTML = '<div class="empty">Could not load the activity log.</div>';
+            return;
+          }
+          var html = d.rows.map(renderActivityRow).join('');
+          if (reset) feed.innerHTML = html || '<div class="empty">No activity matches those filters.</div>';
+          else feed.insertAdjacentHTML('beforeend', html);
+          actNextBefore = d.nextBefore;
+          var shown = feed.querySelectorAll('li').length;
+          $('act-count').textContent = shown + ' of ' + d.total;
+          more.style.display = d.hasMore ? '' : 'none';
+        })
+        .catch(function(){
+          more.disabled = false;
+          if (reset) feed.innerHTML = '<div class="empty">Could not load the activity log.</div>';
+        });
+    }
+
+    $('act-apply').addEventListener('click', function(){ loadActivity(true); });
+    $('act-user').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadActivity(true); });
+    $('act-more').addEventListener('click', function(){ loadActivity(false); });
+
+    // "history" links in activity rows jump to the rollback panel, prefilled.
+    document.addEventListener('click', function(e){
+      var h = e.target.closest && e.target.closest('.hist-link');
+      if (!h) return;
+      $('rb-type').value = h.getAttribute('data-hist-type');
+      $('rb-slug').value = h.getAttribute('data-hist-slug');
+      loadRevisions();
+      $('rollback-panel').scrollIntoView({ behavior: 'smooth' });
+    });
 
     function fillList(elId, rows, renderer, emptyMsg){
       var el = $(elId);
@@ -362,6 +737,647 @@
           '<span class="team-n">' + r.n + '</span></div>';
       }).join('');
     }
+
+    /* ---- shared helpers for the newer panels ---- */
+    function getJSON(path){ return fetch(path, { credentials: 'same-origin' }).then(function(r){ return r.json(); }); }
+    function postJSON(path, body){
+      return fetch(path, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); });
+    }
+    function pubUrl(type, slug){
+      var sl = encodeURIComponent(slug || '');
+      if (type === 'script') return 's/' + sl;
+      if (type === 'collection') return 'collection/' + sl;
+      return 'c/' + sl;
+    }
+    function setToast(id, ok, text){
+      var el = $(id); el.className = 'toast ' + (ok ? 'ok' : 'err'); el.textContent = text;
+    }
+    function fmtBytes(n){
+      n = n || 0;
+      if (n > 1048576) return (n / 1048576).toFixed(1) + ' MB';
+      if (n > 1024) return Math.round(n / 1024) + ' KB';
+      return n + ' B';
+    }
+
+    /* ---- announcement banner ---- */
+    function loadAnnouncement(){
+      getJSON('/api/announcement').then(function(d){
+        var ann = d && d.announcement;
+        if (ann && ann.text) {
+          $('ann-text').value = ann.text;
+          $('ann-status').textContent = 'Live now' + (ann.by ? ' · posted by ' + ann.by : '');
+        } else {
+          $('ann-status').textContent = 'No banner is showing right now.';
+        }
+      }).catch(function(){});
+    }
+    $('ann-post').addEventListener('click', function(){
+      var text = $('ann-text').value.trim();
+      if (!text) { setToast('ann-toast', false, 'Write the announcement first (or use Clear banner).'); return; }
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/announce', { text: text }).then(function(res){
+        btn.disabled = false;
+        if (res.body && res.body.ok) { setToast('ann-toast', true, 'Announcement is live on every page.'); loadAnnouncement(); }
+        else setToast('ann-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+    $('ann-clear').addEventListener('click', function(){
+      if (!confirm('Remove the announcement banner from the site?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/announce', { text: '' }).then(function(res){
+        btn.disabled = false;
+        if (res.body && res.body.ok) { $('ann-text').value = ''; setToast('ann-toast', true, 'Banner cleared.'); loadAnnouncement(); }
+        else setToast('ann-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+
+    /* ---- inbox (contact-form messages) ---- */
+    var MSG_LABEL = { bug: 'Bug', suggestion: 'Suggestion', question: 'Question', other: 'Other' };
+    function loadMessages(){
+      var all = $('msg-show-all').checked;
+      getJSON('/api/admin/messages?status=' + (all ? 'all' : 'open')).then(function(d){
+        if (!d || !d.messages) return;
+        $('msg-count').textContent = d.openCount ? d.openCount + ' open' : '';
+        var box = $('msg-list');
+        if (!d.messages.length) {
+          box.innerHTML = '<p class="note">' + (all ? 'No messages yet.' : 'No open messages — inbox zero!') + '</p>';
+          return;
+        }
+        box.innerHTML = d.messages.map(function(m){
+          var resolved = m.status === 'resolved';
+          return '<div class="adm-row" data-msg-id="' + m.id + '">' +
+            '<span class="tag tag-type">' + esc(MSG_LABEL[m.category] || m.category || 'Message') + '</span>' +
+            '<span class="grow">' +
+              (m.username
+                ? '<a href="/u/' + encodeURIComponent(m.username) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(m.username) + '</a>'
+                : 'unknown user') +
+              (resolved ? ' <span class="tag tag-create">resolved</span>' : '') + '</span>' +
+            '<span class="dim" title="' + esc(absTime(m.ts)) + '">' + esc(relTime(m.ts)) + '</span>' +
+            '<button type="button" class="mini-act ' + (resolved ? 'warn' : 'ok') + '" data-msg-act="' + (resolved ? 'reopen' : 'resolve') + '">' + (resolved ? 'Reopen' : 'Resolve') + '</button>' +
+            '<button type="button" class="mini-act bad" data-msg-act="delete">Delete</button>' +
+            '<div class="adm-body">' + esc(m.body) + '</div>' +
+            '</div>';
+        }).join('');
+      });
+    }
+    $('msg-show-all').addEventListener('change', loadMessages);
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('[data-msg-act]');
+      if (!btn) return;
+      var act = btn.getAttribute('data-msg-act');
+      var id = parseInt(btn.closest('.adm-row').getAttribute('data-msg-id'), 10);
+      if (act === 'delete' && !confirm('Delete this message for good?')) return;
+      btn.disabled = true;
+      postJSON('/api/admin/message', { id: id, action: act }).then(function(res){
+        if (res.body && res.body.ok) loadMessages();
+        else { btn.disabled = false; alert((res.body && res.body.error) || 'Failed.'); }
+      });
+    });
+
+    /* ---- users panel ---- */
+    function loadUsers(){
+      var q = $('u-q').value.trim();
+      getJSON('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : '')).then(function(d){
+        if (!d || !d.users) return;
+        $('u-count').textContent = d.users.length || '';
+        var box = $('u-list');
+        if (!d.users.length) { box.innerHTML = '<p class="note">No users match.</p>'; return; }
+        box.innerHTML = d.users.map(function(u){
+          var isMe = u.id === d.me;
+          var badges = '';
+          if (u.is_admin) badges += ' <span class="tag tag-promote">admin</span>';
+          if (u.banned) badges += ' <span class="tag tag-ban">banned</span>';
+          var pages = (u.characters || 0) + (u.scripts || 0) + (u.collections || 0);
+          var btns = '';
+          if (!isMe) {
+            if (u.banned) btns += '<button type="button" class="mini-act ok" data-u-act="unban">Unban</button>';
+            else if (!u.is_admin) btns += '<button type="button" class="mini-act bad" data-u-act="ban">Ban</button>';
+            btns += u.is_admin
+              ? '<button type="button" class="mini-act warn" data-u-act="demote">Remove admin</button>'
+              : '<button type="button" class="mini-act warn" data-u-act="promote">Make admin</button>';
+          }
+          btns += '<button type="button" class="mini-act ok" data-u-act="reset-link">Reset link</button>';
+          return '<div class="adm-row" data-u-id="' + u.id + '" data-u-name="' + esc(u.username) + '">' +
+            '<span class="grow"><a href="/u/' + encodeURIComponent(u.username) + '" style="color:var(--maroon);font-weight:700;text-decoration:none">' + esc(u.username) + '</a>' + badges +
+            (isMe ? ' <span class="dim">(you)</span>' : '') +
+            '<br><span class="dim">' + esc(u.email || 'no email') + ' · joined ' + esc(relTime(u.created_at)) +
+            (u.last_login ? ' · seen ' + esc(relTime(u.last_login)) : '') +
+            ' · ' + pages + ' page' + (pages === 1 ? '' : 's') + '</span></span>' +
+            btns +
+            '<span class="del-status"></span>' +
+            '</div>';
+        }).join('');
+      });
+    }
+    $('u-search').addEventListener('click', loadUsers);
+    $('u-q').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadUsers(); });
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('[data-u-act]');
+      if (!btn) return;
+      var row = btn.closest('.adm-row');
+      var id = parseInt(row.getAttribute('data-u-id'), 10);
+      var name = row.getAttribute('data-u-name');
+      var act = btn.getAttribute('data-u-act');
+      var confirms = {
+        'ban': 'Ban @' + name + '? They will not be able to log in or edit anything until unbanned. Their published pages stay on the site.',
+        'promote': 'Make @' + name + ' an ADMIN? They get full access to every admin tool, including this dashboard.',
+        'demote': 'Remove admin from @' + name + '?',
+        'reset-link': 'Create a one-time password-reset link for @' + name + '? It works for 24 hours — send it to them privately.'
+      };
+      if (confirms[act] && !confirm(confirms[act])) return;
+      var status = row.querySelector('.del-status');
+      btn.disabled = true; status.textContent = '…'; status.style.color = '';
+      postJSON('/api/admin/user', { id: id, action: act }).then(function(res){
+        if (res.body && res.body.ok) {
+          if (act === 'reset-link' && res.body.resetLink) {
+            status.textContent = '';
+            btn.disabled = false;
+            var box = document.createElement('input');
+            box.type = 'text'; box.readOnly = true; box.value = res.body.resetLink;
+            box.style.cssText = 'flex-basis:100%;font-size:.78rem;padding:6px 8px;border:1px solid #cdbfa0;background:#fffdf8;border-radius:5px';
+            box.addEventListener('focus', function(){ box.select(); });
+            row.appendChild(box); box.focus();
+          } else {
+            loadUsers(); loadActivity(true);
+          }
+        } else {
+          btn.disabled = false;
+          status.textContent = '✗ ' + ((res.body && res.body.error) || 'failed');
+          status.style.color = '#9A0D12';
+        }
+      });
+    });
+
+    /* ---- protected pages ---- */
+    function renderProtected(rows){
+      $('prot-count').textContent = rows.length || '';
+      var box = $('prot-list');
+      if (!rows.length) { box.innerHTML = '<p class="note">No pages are protected.</p>'; return; }
+      box.innerHTML = rows.map(function(p){
+        return '<div class="adm-row" data-prot-type="' + esc(p.type) + '" data-prot-slug="' + esc(p.slug) + '">' +
+          '<span class="tag tag-type">' + esc(p.type) + '</span>' +
+          '<a class="grow" href="/' + pubUrl(p.type, p.slug) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(p.slug) + '</a>' +
+          '<button type="button" class="mini-act warn" data-prot-act="off">Unprotect</button>' +
+          '<span class="del-status"></span></div>';
+      }).join('');
+    }
+    $('prot-add').addEventListener('click', function(){
+      var slug = $('prot-slug').value.trim();
+      if (!slug) { setToast('prot-toast', false, 'Enter the page slug first.'); return; }
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/protect', { type: $('prot-type').value, slug: slug, protected: true }).then(function(res){
+        btn.disabled = false;
+        if (res.body && res.body.ok) {
+          setToast('prot-toast', true, 'Protected — only admins can change that page now.');
+          $('prot-slug').value = '';
+          loadDashboard();
+        } else setToast('prot-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('[data-prot-act]');
+      if (!btn) return;
+      var row = btn.closest('.adm-row');
+      btn.disabled = true;
+      postJSON('/api/admin/protect', {
+        type: row.getAttribute('data-prot-type'),
+        slug: row.getAttribute('data-prot-slug'),
+        protected: false
+      }).then(function(res){
+        if (res.body && res.body.ok) loadDashboard();
+        else { btn.disabled = false; alert((res.body && res.body.error) || 'Failed.'); }
+      });
+    });
+
+    /* ---- bulk actions ---- */
+    var BULK_ARG = { 'assign-owner': 'username', 'add-tag': 'tag name', 'remove-tag': 'tag name' };
+    function bulkArgSync(){
+      var ph = BULK_ARG[$('bulk-action').value];
+      $('bulk-arg').style.display = ph ? '' : 'none';
+      if (ph) $('bulk-arg').placeholder = ph;
+    }
+    $('bulk-action').addEventListener('change', bulkArgSync);
+    $('bulk-load').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      var p = new URLSearchParams({ type: $('bulk-type').value });
+      if ($('bulk-q').value.trim()) p.set('q', $('bulk-q').value.trim());
+      if ($('bulk-owner').value.trim()) p.set('owner', $('bulk-owner').value.trim());
+      if ($('bulk-status').value) p.set('status', $('bulk-status').value);
+      getJSON('/api/admin/pages?' + p.toString()).then(function(d){
+        btn.disabled = false;
+        var box = $('bulk-list');
+        if (!d || !d.pages) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not load pages.') + '</p>'; return; }
+        if (!d.pages.length) {
+          box.innerHTML = '<p class="note">No pages match those filters.</p>';
+          $('bulk-act-row').style.display = 'none';
+          return;
+        }
+        box.innerHTML =
+          '<label class="adm-row" style="font-weight:700;cursor:pointer"><input type="checkbox" id="bulk-all"> select all (' + d.pages.length + ')</label>' +
+          d.pages.map(function(pg){
+            return '<label class="adm-row" style="cursor:pointer">' +
+              '<input type="checkbox" class="bulk-check" value="' + esc(pg.slug) + '">' +
+              '<span class="grow">' + esc(pg.name || pg.slug) +
+              ' <span class="dim">' + esc(pg.status) + (pg.owner ? ' · ' + esc(pg.owner) : ' · unowned') + '</span></span>' +
+              '</label>';
+          }).join('');
+        $('bulk-act-row').style.display = '';
+        bulkArgSync();
+        document.getElementById('bulk-all').addEventListener('change', function(){
+          var on = this.checked;
+          box.querySelectorAll('.bulk-check').forEach(function(c){ c.checked = on; });
+        });
+      });
+    });
+    $('bulk-apply').addEventListener('click', function(){
+      var slugs = Array.prototype.map.call(document.querySelectorAll('#bulk-list .bulk-check:checked'), function(c){ return c.value; });
+      if (!slugs.length) { setToast('bulk-toast', false, 'Tick at least one page first.'); return; }
+      var action = $('bulk-action').value;
+      var label = $('bulk-action').options[$('bulk-action').selectedIndex].text.replace('…', '');
+      var arg = $('bulk-arg').value.trim();
+      if (BULK_ARG[action] && !arg) { setToast('bulk-toast', false, 'Enter the ' + BULK_ARG[action] + ' first.'); return; }
+      if (!confirm(label + ' — apply to ' + slugs.length + ' page' + (slugs.length === 1 ? '' : 's') + '?')) return;
+      var btn = this; btn.disabled = true;
+      var body = { action: action, type: $('bulk-type').value, slugs: slugs };
+      if (action === 'assign-owner') body.username = arg;
+      if (action === 'add-tag' || action === 'remove-tag') body.tag = arg;
+      postJSON('/api/admin/bulk', body).then(function(res){
+        btn.disabled = false;
+        if (res.body && res.body.ok) {
+          setToast('bulk-toast', true, 'Done: ' + res.body.done + ' page' + (res.body.done === 1 ? '' : 's') +
+            (res.body.failed && res.body.failed.length ? ' — failed: ' + res.body.failed.join(', ') : '') + '.');
+          $('bulk-load').click();
+          loadActivity(true);
+        } else setToast('bulk-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+
+    /* ---- broken references ---- */
+    $('br-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('br-list').innerHTML = '<p class="note">Scanning…</p>';
+      getJSON('/api/admin/broken-refs').then(function(d){
+        btn.disabled = false;
+        var box = $('br-list');
+        if (!d || !d.issues) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>'; return; }
+        $('br-count').textContent = d.issues.length || '';
+        if (!d.issues.length) {
+          box.innerHTML = '<p class="note">All clean — every reference in ' + d.checkedScripts + ' scripts and ' +
+            d.checkedCollections + ' collections points at a real character.</p>';
+          return;
+        }
+        box.innerHTML = d.issues.map(function(it){
+          var bits = [];
+          if (it.missing.length) bits.push('<span style="color:#9a2c2c;font-weight:700">missing: ' + it.missing.map(esc).join(', ') + '</span>');
+          if (it.deleted.length) bits.push('<span style="color:#8a6310">in trash: ' + it.deleted.map(esc).join(', ') + '</span>');
+          if (it.draft.length) bits.push('<span class="dim">drafts: ' + it.draft.map(esc).join(', ') + '</span>');
+          return '<div class="adm-row" data-br-type="' + esc(it.type) + '" data-br-slug="' + esc(it.slug) + '" data-br-missing="' + esc(it.missing.join(',')) + '">' +
+            '<span class="tag tag-type">' + esc(it.type) + '</span>' +
+            '<a class="grow" href="' + editorUrl(it.type, it.slug) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(it.name || it.slug) + '</a>' +
+            (it.missing.length ? '<button type="button" class="mini-act bad" data-br-act="clean">Remove missing (' + it.missing.length + ')</button>' : '') +
+            '<span class="del-status"></span>' +
+            '<div class="adm-body">' + bits.join('<br>') + '</div>' +
+            '</div>';
+        }).join('') +
+        '<p class="note">“In trash” refs fix themselves if you restore that character; drafts fix themselves when published. “Remove missing” is for characters that are gone for good (the page is snapshotted to history first).</p>';
+      });
+    });
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('[data-br-act]');
+      if (!btn) return;
+      var row = btn.closest('.adm-row');
+      var missing = (row.getAttribute('data-br-missing') || '').split(',').filter(Boolean);
+      if (!missing.length) return;
+      if (!confirm('Remove ' + missing.length + ' missing reference' + (missing.length === 1 ? '' : 's') + ' from this page?\n\nThe page is saved to history first, so this can be rolled back.')) return;
+      btn.disabled = true;
+      var status = row.querySelector('.del-status');
+      postJSON('/api/admin/clean-refs', {
+        type: row.getAttribute('data-br-type'),
+        slug: row.getAttribute('data-br-slug'),
+        remove: missing
+      }).then(function(res){
+        if (res.body && res.body.ok) {
+          status.textContent = '✓ cleaned'; status.style.color = '#1c5429';
+          btn.style.display = 'none';
+        } else {
+          btn.disabled = false;
+          status.textContent = '✗ ' + ((res.body && res.body.error) || 'failed');
+          status.style.color = '#9A0D12';
+        }
+      });
+    });
+
+    /* ---- orphaned images ---- */
+    $('orph-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('orph-list').innerHTML = '<p class="note">Scanning storage — this can take a few seconds…</p>';
+      getJSON('/api/admin/orphans').then(function(d){
+        btn.disabled = false;
+        var box = $('orph-list');
+        if (!d || !d.orphans) {
+          box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>';
+          $('orph-actions').style.display = 'none';
+          return;
+        }
+        $('orph-count').textContent = d.orphans.length ? d.orphans.length + ' · ' + fmtBytes(d.totalBytes) : '';
+        if (!d.orphans.length) {
+          box.innerHTML = '<p class="note">No orphaned images — storage is clean.</p>';
+          $('orph-actions').style.display = 'none';
+          return;
+        }
+        box.innerHTML = d.orphans.map(function(o){
+          return '<label class="adm-row" style="cursor:pointer">' +
+            '<input type="checkbox" class="orph-check" value="' + esc(o.key) + '">' +
+            '<img class="orph-thumb" loading="lazy" decoding="async" src="/assets/' + esc(o.key) + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
+            '<span class="grow" style="overflow-wrap:anywhere">' + esc(o.key) + '</span>' +
+            '<span class="dim">' + fmtBytes(o.size) + '</span>' +
+            '</label>';
+        }).join('') + (d.truncated ? '<p class="note">Showing the first 500 — delete these and scan again for the rest.</p>' : '');
+        $('orph-actions').style.display = '';
+        $('orph-all').checked = false;
+      });
+    });
+    $('orph-all').addEventListener('change', function(){
+      var on = this.checked;
+      document.querySelectorAll('.orph-check').forEach(function(c){ c.checked = on; });
+    });
+    $('orph-delete').addEventListener('click', function(){
+      var keys = Array.prototype.map.call(document.querySelectorAll('.orph-check:checked'), function(c){ return c.value; });
+      if (!keys.length) { setToast('orph-toast', false, 'Tick at least one image first.'); return; }
+      if (!confirm('Permanently delete ' + keys.length + ' image' + (keys.length === 1 ? '' : 's') + ' from storage?\n\nThis cannot be undone.')) return;
+      var btn = this; btn.disabled = true;
+      var batches = [];
+      for (var i = 0; i < keys.length; i += 100) batches.push(keys.slice(i, i + 100)); // API cap per call
+      var deleted = 0;
+      (function next(){
+        var batch = batches.shift();
+        if (!batch) {
+          btn.disabled = false;
+          setToast('orph-toast', true, 'Deleted ' + deleted + ' image' + (deleted === 1 ? '' : 's') + '.');
+          $('orph-scan').click();
+          return;
+        }
+        postJSON('/api/admin/purge-images', { keys: batch }).then(function(res){
+          if (res.body && res.body.ok) { deleted += res.body.deleted || 0; next(); }
+          else { btn.disabled = false; setToast('orph-toast', false, (res.body && res.body.error) || 'Delete failed.'); }
+        });
+      })();
+    });
+
+    /* ---- backups ---- */
+    $('bk-load').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('bk-list').innerHTML = '<p class="note">Loading…</p>';
+      getJSON('/api/admin/backups').then(function(d){
+        btn.disabled = false;
+        var box = $('bk-list');
+        if (!d || !d.backups) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not list backups.') + '</p>'; return; }
+        $('bk-count').textContent = d.backups.length || '';
+        if (!d.backups.length) {
+          box.innerHTML = '<p class="note">No backups yet — the nightly backup runs at 06:00 UTC, or run one now from your account tools.</p>';
+          return;
+        }
+        box.innerHTML = d.backups.map(function(b){
+          var links = b.tables.map(function(t){
+            return '<a href="/api/admin/backup-file?date=' + b.date + '&table=' + esc(t.table) + '" style="color:var(--good-name,#2c5b9a);text-decoration:none;white-space:nowrap">' + esc(t.table) + ' (' + fmtBytes(t.size) + ')</a>';
+          }).join(' · ');
+          return '<div class="adm-row"><span style="font-weight:700;flex:0 0 auto">' + esc(b.date) + '</span><span class="grow dim">' + links + '</span></div>';
+        }).join('');
+        var sel = $('bk-date');
+        sel.innerHTML = d.backups.map(function(b){ return '<option>' + esc(b.date) + '</option>'; }).join('');
+        $('bk-restore-row').style.display = '';
+      });
+    });
+    $('bk-restore').addEventListener('click', function(){
+      var slug = $('bk-slug').value.trim();
+      if (!slug) { setToast('bk-toast', false, 'Enter the page slug to restore.'); return; }
+      var date = $('bk-date').value;
+      if (!confirm('Restore "' + slug + '" (' + $('bk-type').value + ') from the ' + date + ' backup?\n\nThe current version (if any) is saved to page history first.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/restore-page', { date: date, type: $('bk-type').value, slug: slug }).then(function(res){
+        btn.disabled = false;
+        if (res.body && res.body.ok) {
+          setToast('bk-toast', true, 'Restored "' + res.body.slug + '" from ' + date + ' (status: ' + res.body.status + ').');
+          loadActivity(true);
+        } else setToast('bk-toast', false, (res.body && res.body.error) || 'Restore failed.');
+      });
+    });
+
+    /* ---- page-view analytics ---- */
+    function loadAnalytics(days){
+      getJSON('/api/admin/analytics?days=' + days).then(function(d){
+        if (!d || !d.top) return;
+        $('pv-total').textContent = (d.totals && d.totals.views || 0) + ' views · ' + days + ' days';
+        var box = $('pv-list');
+        if (!d.top.length) { box.innerHTML = '<p class="note">No views recorded in this window yet.</p>'; return; }
+        var max = d.top[0].views || 1;
+        box.innerHTML = d.top.map(function(p){
+          var pct = Math.max(3, Math.round(p.views / max * 100));
+          return '<div class="adm-row">' +
+            '<span class="tag tag-type">' + esc(p.entity_type) + '</span>' +
+            '<a class="grow" href="/' + pubUrl(p.entity_type, p.slug) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(p.name || p.slug) + '</a>' +
+            '<span class="pv-bar-track"><span class="pv-bar-fill" style="width:' + pct + '%"></span></span>' +
+            '<span style="font-weight:700;color:var(--maroon);flex:0 0 40px;text-align:right">' + p.views + '</span>' +
+            '</div>';
+        }).join('');
+      });
+    }
+    document.querySelectorAll('.pv-range').forEach(function(b){
+      b.addEventListener('click', function(){ loadAnalytics(parseInt(b.getAttribute('data-days'), 10) || 7); });
+    });
+
+    /* ---- admin report ---- */
+    var lastReport = null;
+
+    function fmtLogLine(a){
+      return (a.ts || '') + '  ' + (a.username || 'someone') + '  ' + a.action +
+        (a.entity_type ? '  ' + a.entity_type : '') +
+        (a.entity_name || a.entity_slug ? '  ' + (a.entity_name || a.entity_slug) : '');
+    }
+
+    function reportText(d){
+      var lines = [];
+      lines.push('BOTC HOMEBREW WIKI — ADMIN REPORT');
+      lines.push('Window: last ' + d.days + ' day' + (d.days === 1 ? '' : 's') +
+        ' (generated ' + new Date(d.generatedAt).toLocaleString() + ')');
+      var t = d.siteTotals || {};
+      lines.push('Site now: ' + (t.characters||0) + ' characters, ' + (t.collections||0) +
+        ' collections, ' + (t.scripts||0) + ' scripts, ' + (t.users||0) + ' users');
+      lines.push('');
+      lines.push('ACTIVITY — ' + d.activityCount + ' event' + (d.activityCount === 1 ? '' : 's'));
+      (d.byAction || []).forEach(function(r){ lines.push('  ' + r.action + ': ' + r.n); });
+      if (!(d.byAction || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('CONTENT CHANGES BY TYPE');
+      (d.contentByType || []).forEach(function(r){ lines.push('  ' + r.entity_type + ' — ' + r.action + ': ' + r.n); });
+      if (!(d.contentByType || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('NEW USERS — ' + (d.newUsers || []).length);
+      (d.newUsers || []).forEach(function(u){ lines.push('  ' + u.username + ' (joined ' + u.created_at + ')'); });
+      lines.push('');
+      lines.push('MOST ACTIVE USERS');
+      (d.topUsers || []).forEach(function(u){ lines.push('  ' + u.username + ': ' + u.n + ' actions'); });
+      if (!(d.topUsers || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('MOST TOUCHED PAGES');
+      (d.topPages || []).forEach(function(p){
+        lines.push('  ' + (p.entity_name || p.entity_slug) + ' (' + p.entity_type + '): ' + p.n + ' actions');
+      });
+      if (!(d.topPages || []).length) lines.push('  (none)');
+      lines.push('');
+      lines.push('FULL LOG' + (d.logTruncated ? ' (first 1000 events)' : '') + ' — newest first');
+      (d.log || []).forEach(function(a){ lines.push('  ' + fmtLogLine(a)); });
+      if (!(d.log || []).length) lines.push('  (none)');
+      return lines.join('\n');
+    }
+
+    function reportTable(rows, cols){
+      if (!rows || !rows.length) return '<p class="empty">Nothing in this window.</p>';
+      return '<table>' + rows.map(function(r){
+        return '<tr><td>' + esc(cols.label(r)) + '</td><td class="n">' + esc(String(cols.value(r))) + '</td></tr>';
+      }).join('') + '</table>';
+    }
+
+    function renderReport(d){
+      var out = $('rep-out');
+      var html = '<h4>' + d.activityCount + ' event' + (d.activityCount === 1 ? '' : 's') +
+        ' in the last ' + d.days + ' day' + (d.days === 1 ? '' : 's') + '</h4>';
+      html += reportTable(d.byAction, { label: function(r){ return r.action; }, value: function(r){ return r.n; } });
+      html += '<h4>Content changes</h4>';
+      html += reportTable(d.contentByType, {
+        label: function(r){ return r.entity_type + ' — ' + r.action; }, value: function(r){ return r.n; }
+      });
+      html += '<h4>New users (' + (d.newUsers || []).length + ')</h4>';
+      html += reportTable(d.newUsers, {
+        label: function(u){ return u.username; }, value: function(u){ return relTime(u.created_at); }
+      });
+      html += '<h4>Most active users</h4>';
+      html += reportTable(d.topUsers, { label: function(u){ return u.username; }, value: function(u){ return u.n + ' actions'; } });
+      html += '<h4>Most touched pages</h4>';
+      html += reportTable(d.topPages, {
+        label: function(p){ return (p.entity_name || p.entity_slug) + ' (' + p.entity_type + ')'; },
+        value: function(p){ return p.n + ' actions'; }
+      });
+      html += '<p class="note">The download includes the full event log' +
+        (d.logTruncated ? ' (capped at the 1000 most recent events)' : '') + '.</p>';
+      out.innerHTML = html;
+    }
+
+    $('rep-generate').addEventListener('click', function(){
+      var btn = this;
+      var days = Math.min(Math.max(parseInt($('rep-days').value, 10) || 7, 1), 365);
+      $('rep-days').value = days;
+      btn.disabled = true;
+      $('rep-out').innerHTML = '<p class="empty">Building report…</p>';
+      fetch('/api/admin/report?days=' + days, { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.disabled = false;
+          if (!d || d.error) { $('rep-out').innerHTML = '<p class="empty">' + esc((d && d.error) || 'Report failed.') + '</p>'; return; }
+          lastReport = d;
+          renderReport(d);
+          $('rep-download').style.display = '';
+        })
+        .catch(function(){
+          btn.disabled = false;
+          $('rep-out').innerHTML = '<p class="empty">Network error — try again.</p>';
+        });
+    });
+
+    document.querySelectorAll('.rep-quick').forEach(function(b){
+      b.addEventListener('click', function(){
+        $('rep-days').value = b.getAttribute('data-days');
+        $('rep-generate').click();
+      });
+    });
+
+    $('rep-download').addEventListener('click', function(){
+      if (!lastReport) return;
+      var blob = new Blob([reportText(lastReport)], { type: 'text/plain;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'wiki-report-' + lastReport.days + 'd-' + new Date().toISOString().slice(0, 10) + '.txt';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    });
+
+    /* ---- page history & rollback ---- */
+    function loadRevisions(){
+      var type = $('rb-type').value;
+      var slug = $('rb-slug').value.trim();
+      var box = $('rb-list');
+      $('rb-toast').textContent = '';
+      if (!slug) { box.innerHTML = '<p class="empty">Enter a page slug first.</p>'; return; }
+      box.innerHTML = '<p class="empty">Loading history…</p>';
+      fetch('/api/admin/revisions?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(slug),
+            { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || d.error) { box.innerHTML = '<p class="empty">' + esc((d && d.error) || 'Could not load history.') + '</p>'; return; }
+          var head = d.current
+            ? '<p class="note" style="margin:0 0 8px">Current: <strong>' + esc(d.current.name || d.slug) + '</strong> (' + esc(d.current.status) + ')</p>'
+            : '<p class="note" style="margin:0 0 8px">No live page with that slug — check the spelling (it may also have been purged).</p>';
+          if (!d.revisions.length) {
+            box.innerHTML = head + '<p class="empty">No saved history for this page yet. Versions are recorded each time the page is edited from now on.</p>';
+            return;
+          }
+          box.innerHTML = head + d.revisions.map(function(rv){
+            var kb = rv.bytes ? Math.max(1, Math.round(rv.bytes / 1024)) + ' KB' : '';
+            return '<div class="rev-row" data-rev-id="' + rv.id + '">' +
+              '<span class="rev-name">' + esc(rv.name || d.slug) + '</span>' +
+              '<span class="rev-meta" title="' + esc(absTime(rv.ts)) + '">saved ' + esc(relTime(rv.ts)) +
+                (rv.edited_by ? ' · replaced by ' + esc(rv.edited_by) + '’s edit' : '') +
+                (kb ? ' · ' + kb : '') + '</span>' +
+              (d.current ? '<button type="button" class="del-btn del-restore rb-do">Roll back to this</button>' : '') +
+              '<span class="del-status"></span>' +
+              '</div>';
+          }).join('');
+        })
+        .catch(function(){ box.innerHTML = '<p class="empty">Network error — try again.</p>'; });
+    }
+
+    $('rb-load').addEventListener('click', loadRevisions);
+    $('rb-slug').addEventListener('keydown', function(e){ if (e.key === 'Enter') loadRevisions(); });
+
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.rb-do');
+      if (!btn) return;
+      var row = btn.closest('.rev-row');
+      var name = row.querySelector('.rev-name').textContent;
+      var status = row.querySelector('.del-status');
+      if (!confirm('Roll this page back to the version "' + name + '"?\n\nThe current version is saved to history first, so you can undo this.')) return;
+      btn.disabled = true;
+      status.textContent = 'Rolling back…'; status.style.color = '#8a6d12';
+      fetch('/api/admin/rollback', {
+        method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: $('rb-type').value,
+          slug: $('rb-slug').value.trim(),
+          id: parseInt(row.getAttribute('data-rev-id'), 10)
+        })
+      }).then(function(r){ return r.json().then(function(d){ return { status: r.status, body: d }; }); })
+        .then(function(res){
+          if (res.status === 200 && res.body.ok) {
+            status.textContent = '✓ rolled back'; status.style.color = '#1c5429';
+            $('rb-toast').className = 'toast ok';
+            $('rb-toast').textContent = 'Page rolled back. The version it replaced is now at the top of the history.';
+            loadRevisions();
+            loadActivity(true);
+          } else {
+            btn.disabled = false;
+            status.textContent = '✗ ' + ((res.body && res.body.error) || 'failed');
+            status.style.color = '#9A0D12';
+          }
+        }).catch(function(err){
+          btn.disabled = false;
+          status.textContent = '✗ ' + err.message; status.style.color = '#9A0D12';
+        });
+    });
 
     var currentLocked = false;
 
@@ -436,8 +1452,7 @@
           renderTeams(d.charactersByTeam);
           renderLock(d.locked);
 
-          $('act-count').textContent = (d.recentActivity || []).length || '';
-          fillList('feed-activity', d.recentActivity, renderActivityRow, 'No activity recorded yet.');
+          loadActivity(true);
           fillList('feed-edits', d.recentEdits, function(it){ return renderContentRow(it, 'updated_at'); }, 'Nothing yet.');
           fillList('feed-creations', d.recentCreations, function(it){ return renderContentRow(it, 'created_at'); }, 'Nothing yet.');
 
@@ -451,6 +1466,7 @@
 
           renderUnowned(d.unowned || []);
           renderDeleted(d.deleted || []);
+          renderProtected(d.protectedPages || []);
         })
         .catch(function(e){
           if (e && e.message === 'forbidden') return;
@@ -566,7 +1582,15 @@
     wireLockButton();
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
-      .then(function(d){ if (d.loggedIn && d.isAdmin) loadDashboard(); else showGate(); })
+      .then(function(d){
+        if (d.loggedIn && d.isAdmin) {
+          loadDashboard();
+          loadAnnouncement();
+          loadMessages();
+          loadUsers();
+          loadAnalytics(7);
+        } else showGate();
+      })
       .catch(function(){ showGate(); });
   </script>
 </body>

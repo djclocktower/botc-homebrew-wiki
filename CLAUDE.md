@@ -33,13 +33,15 @@ Key dynamic behavior:
   301-redirects to `/s/{slug}`. **Collection URLs use the kebab `id`**, not the
   PK `slug` (legacy rows have display-string slugs like `"The Academy"`);
   `findCollectionRow()` resolves either.
-- `GET /assets/art|collections|scripts|tokens/*` is served **from R2 first**,
-  falling back to committed files.
+- `GET /assets/art|collections|scripts|tokens|avatars/*` is served **from R2
+  first**, falling back to committed files (`avatars/` is R2-only: profile
+  pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
-  delete|upload`), admin tools (dashboard, wiki lock, backup, seed). Writes
-  are ownership-checked (`owner_id`, admins bypass). All routes are listed in
-  the header comment of `worker/worker.js`.
+  delete|upload`), admin tools (dashboard, full activity log, report,
+  revisions/rollback, wiki lock, backup, seed). Writes are ownership-checked
+  (`owner_id`, admins bypass). All routes are listed in the header comment of
+  `worker/worker.js`.
 - `/u/{username}` public profiles, `/random`, `/sitemap.xml`, and
   `/script-view?s=` (OG-meta injection) are also Worker routes.
 
@@ -107,7 +109,16 @@ migration/             D1 schema reference (schema.sql, accounts_migration.sql,
 ## Database (D1, SQLite)
 
 Tables: `users`, `characters`, `collections`, `scripts`, `settings`,
-`activity_log`. Content tables use the **hybrid JSON blob** design: a few
+`activity_log`, plus Worker-auto-created (no manual migrations, ever):
+`revisions` (every content save snapshots the replaced version, 20 kept per
+page, for admin rollback), `messages` (contact-the-admins form → dashboard
+inbox), `page_views` (per-page daily view counts, bots filtered, 180-day
+retention), and a lazily ALTERed `users.banned` column. `settings` also holds
+`announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
+(admin page protection — only admins may edit/publish/delete those pages).
+Bans and admin promote/demote take effect immediately: POST requests and
+admin GETs re-read `is_admin`/`banned` from D1 instead of trusting the
+30-day session cookie. Content tables use the **hybrid JSON blob** design: a few
 indexed columns (slug PK, name, team, creator, owner_id, tags, appears_in,
 status) plus the **full object as JSON in `data`**. New character fields never
 need a migration — just put them in the JSON; render.js decides what shows.

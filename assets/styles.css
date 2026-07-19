@@ -1778,3 +1778,38 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 body.theme-bg::before {
   background: var(--pg-bg) center top / cover no-repeat var(--purple-deep);
 }
+
+/* ── Site-wide announcement banner (admin dashboard → Announcement) ──
+   Injected by site.js at the very top of <body> on every page. */
+.site-announcement {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  z-index: 60;
+  background: linear-gradient(180deg, #7a5c18, #5f4712);
+  color: #f7ecd0;
+  padding: 9px 44px 9px 14px;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .92rem;
+  line-height: 1.35;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,.35);
+  overflow-wrap: anywhere;
+}
+.site-announcement-close {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #f7ecd0;
+  opacity: .75;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.site-announcement-close:hover { opacity: 1; }

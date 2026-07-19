@@ -20,7 +20,8 @@ binding = "ASSETS"
 run_worker_first = [
   "/characters.json", "/collections.json", "/scripts.json", "/api/*",
   "/c/*", "/s/*", "/collection/*", "/u/*", "/random", "/sitemap.xml", "/script-view.html", "/script-view",
-  "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*"
+  "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",
+  "/assets/avatars/*"
 ]
 
 # ---- D1 database (the source of truth) ----

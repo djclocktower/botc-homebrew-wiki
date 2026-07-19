@@ -83,7 +83,53 @@ CREATE TABLE IF NOT EXISTS activity_log (
 CREATE INDEX IF NOT EXISTS idx_activity_ts   ON activity_log(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id, ts DESC);
 
+-- ---- REVISIONS (page version history for admin rollback) --
+-- NOTE: this table is created automatically by the Worker on first use
+-- (ensureRevisionsTable in worker/worker.js) — no manual migration needed.
+-- Every content save snapshots the version it replaces; the Worker keeps
+-- the newest 20 revisions per page. Reference only:
+CREATE TABLE IF NOT EXISTS revisions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity_type TEXT NOT NULL,                   -- character | collection | script
+  slug        TEXT NOT NULL,                   -- the row's PK slug
+  name        TEXT,
+  status      TEXT,                            -- status the page had at snapshot time
+  data        TEXT NOT NULL,                   -- full JSON blob of the old version
+  edited_by   TEXT,                            -- who made the edit that replaced it
+  ts          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_revisions_entity ON revisions(entity_type, slug, id);
+
+-- ---- MESSAGES (contact-the-admins form -> dashboard inbox) --
+-- Auto-created by the Worker on first use. Reference only:
+CREATE TABLE IF NOT EXISTS messages (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts       TEXT NOT NULL DEFAULT (datetime('now')),
+  user_id  INTEGER,
+  username TEXT,
+  category TEXT,                               -- bug | suggestion | question | other
+  body     TEXT NOT NULL,
+  status   TEXT NOT NULL DEFAULT 'open'        -- open | resolved
+);
+
+-- ---- PAGE VIEWS (analytics; one row per page per day) --------
+-- Auto-created by the Worker on first use; rows older than 180 days are
+-- pruned by the nightly cron. Reference only:
+CREATE TABLE IF NOT EXISTS page_views (
+  entity_type TEXT NOT NULL,                   -- character | script | collection
+  slug        TEXT NOT NULL,
+  day         TEXT NOT NULL,                   -- YYYY-MM-DD
+  n           INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (entity_type, slug, day)
+);
+
+-- ---- USERS: ban flag -----------------------------------------
+-- Auto-added by the Worker (ALTER TABLE, first use of the users panel).
+-- ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0;
+
 -- ---- SETTINGS (global key/value flags, e.g. wiki lock) ----
+-- Also holds: 'announcement' (JSON {text, at, by}) for the site-wide
+-- banner, and 'protected:{type}:{slug}' = '1' for admin page protection.
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT

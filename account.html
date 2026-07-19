@@ -138,14 +138,18 @@
     display: block; font-size: .78rem; text-transform: uppercase;
     letter-spacing: .07em; color: var(--maroon); font-weight: 700; margin-bottom: 5px;
   }
-  .set-field input, .set-field textarea {
+  .set-field input, .set-field textarea, .set-field select {
     width: 100%; box-sizing: border-box;
     font-size: .95rem; color: #241a12;
     background: #fffdf8; border: 1px solid #cdbfa0;
     border-radius: 6px; padding: 9px 12px;
   }
   .set-field textarea { min-height: 70px; resize: vertical; }
-  .set-field input:focus, .set-field textarea:focus { outline: 2px solid #b98; border-color: #b98; }
+  .set-field input:focus, .set-field textarea:focus, .set-field select:focus { outline: 2px solid #b98; border-color: #b98; }
+  .msg-item { padding: 9px 2px; border-top: 1px solid rgba(0,0,0,.08); font-size: .88rem; }
+  .msg-item:first-child { border-top: none; }
+  .msg-item .msg-body { white-space: pre-wrap; overflow-wrap: anywhere; opacity: .9; margin-top: 3px; }
+  .msg-item .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
   .btn {
     font-family: 'Dumbledor2', serif;
     font-size: 1rem; letter-spacing: .04em;
@@ -214,6 +218,7 @@
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
             <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
+            <a id="p-admin-link" href="dashboard" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">Admin Dashboard →</a>
           </div>
         </div>
         <div class="profile-meta">
@@ -252,6 +257,18 @@
         <div class="settings-grid">
           <section>
             <h4>Profile</h4>
+            <div class="set-field">
+              <label>Profile picture</label>
+              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                <div class="avatar" id="s-avatar-preview" style="width:56px;height:56px;font-size:1.5rem"></div>
+                <div>
+                  <input type="file" id="s-avatar-file" accept="image/png,image/jpeg,image/webp" style="display:none">
+                  <button class="btn" id="avatar-upload" type="button" style="padding:8px 14px;font-size:.92rem">Upload picture</button>
+                  <button class="mini-btn del" id="avatar-remove" type="button" style="display:none">Remove</button>
+                </div>
+              </div>
+              <div class="inline-msg" id="avatar-msg"></div>
+            </div>
             <div class="set-field">
               <label for="s-display">Display name</label>
               <input id="s-display" maxlength="40" placeholder="Shown instead of your username">
@@ -297,6 +314,37 @@
             <div style="margin-top:22px">
               <button class="btn secondary" id="logout-btn">Log Out</button>
             </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- contact the admins -->
+      <div class="panel">
+        <h3>Contact the Admins</h3>
+        <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard.
+        </p>
+        <div class="settings-grid">
+          <section>
+            <div class="set-field">
+              <label for="c-category">Topic</label>
+              <select id="c-category">
+                <option value="bug">Bug report</option>
+                <option value="suggestion">Suggestion</option>
+                <option value="question">Question</option>
+                <option value="other">Something else</option>
+              </select>
+            </div>
+            <div class="set-field">
+              <label for="c-body">Message</label>
+              <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up — the more detail the better."></textarea>
+            </div>
+            <button class="btn" id="c-send">Send Message</button>
+            <div class="inline-msg" id="c-msg"></div>
+          </section>
+          <section>
+            <h4>Your messages</h4>
+            <div id="c-history" class="acct-body" style="font-size:.88rem"></div>
           </section>
         </div>
       </div>
@@ -363,13 +411,18 @@
 
     function renderProfile(p) {
       PROFILE = p;
-      var av = $('avatar');
-      if (p.avatarUrl) av.innerHTML = '<img src="' + esc(p.avatarUrl) + '" alt="">';
-      else av.textContent = (p.displayName || p.username || '?').charAt(0).toUpperCase();
+      var initial = (p.displayName || p.username || '?').charAt(0).toUpperCase();
+      [$('avatar'), $('s-avatar-preview')].forEach(function(av){
+        if (!av) return;
+        if (p.avatarUrl) av.innerHTML = '<img src="' + esc(p.avatarUrl) + '" alt="">';
+        else { av.innerHTML = ''; av.textContent = initial; }
+      });
+      $('avatar-remove').style.display = p.avatarUrl ? 'inline-block' : 'none';
       $('p-display').textContent = p.displayName || p.username;
       $('p-username').textContent = p.username;
       var pl = $('p-public-link');
       if (pl) { pl.href = '/u/' + encodeURIComponent(p.username); pl.style.display = 'inline-block'; }
+      $('p-admin-link').style.display = p.isAdmin ? 'inline-block' : 'none';
       $('p-bio').textContent = p.bio || '';
       var badges = '';
       if (p.isAdmin) badges += '<span class="badge admin">Admin</span>';
@@ -528,6 +581,66 @@
         });
     });
 
+    // profile picture: resize client-side to 256×256 (kind to phone uploads),
+    // send as a data URL, then refresh so every avatar spot updates.
+    $('avatar-upload').addEventListener('click', function(){ $('s-avatar-file').click(); });
+
+    $('s-avatar-file').addEventListener('change', function(){
+      var file = this.files && this.files[0];
+      this.value = '';
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        setInline('avatar-msg', 'err', 'Please choose a PNG, JPEG, or WebP image.');
+        return;
+      }
+      setInline('avatar-msg', '', 'Preparing image…');
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        URL.revokeObjectURL(url);
+        var SIZE = 256;
+        var canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        var cx = canvas.getContext('2d');
+        // cover-crop the middle square so any aspect ratio comes out clean
+        var side = Math.min(img.width, img.height);
+        cx.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, SIZE, SIZE);
+        var dataUrl = file.type === 'image/png'
+          ? canvas.toDataURL('image/png')
+          : canvas.toDataURL('image/jpeg', 0.88);
+        setInline('avatar-msg', '', 'Uploading…');
+        postJSON('/api/account/avatar', { data: dataUrl }).then(function(res){
+          if (res.ok && res.body.ok) {
+            setInline('avatar-msg', 'ok', 'Profile picture updated.');
+            try { sessionStorage.removeItem('botc_me'); } catch(e){}
+            load();
+          } else {
+            setInline('avatar-msg', 'err', res.body.error || 'Upload failed.');
+          }
+        });
+      };
+      img.onerror = function(){
+        URL.revokeObjectURL(url);
+        setInline('avatar-msg', 'err', 'Could not read that image.');
+      };
+      img.src = url;
+    });
+
+    $('avatar-remove').addEventListener('click', function(){
+      if (!confirm('Remove your profile picture?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/account/avatar', { remove: true }).then(function(res){
+        btn.disabled = false;
+        if (res.ok && res.body.ok) {
+          setInline('avatar-msg', 'ok', 'Profile picture removed.');
+          try { sessionStorage.removeItem('botc_me'); } catch(e){}
+          load();
+        } else {
+          setInline('avatar-msg', 'err', res.body.error || 'Remove failed.');
+        }
+      });
+    });
+
     $('discord-unlink-btn').addEventListener('click', function(){
       var btn = this;
       if (!confirm('Unlink your Discord account? You will only be able to log in with your password.')) return;
@@ -536,6 +649,45 @@
         btn.disabled = false;
         setInline('discord-msg', res.ok ? 'ok' : 'err', res.ok ? 'Discord unlinked.' : (res.body.error || 'Unlink failed.'));
         if (res.ok) load();
+      });
+    });
+
+    // contact the admins
+    var C_LABEL = { bug: 'Bug report', suggestion: 'Suggestion', question: 'Question', other: 'Other' };
+    function loadMyMessages() {
+      fetch('/api/contact', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var box = $('c-history');
+          if (!d || !d.messages || !d.messages.length) {
+            box.innerHTML = '<span style="opacity:.7">Nothing sent yet.</span>';
+            return;
+          }
+          box.innerHTML = d.messages.map(function(m){
+            var badge = m.status === 'resolved'
+              ? '<span class="badge ok">resolved</span>'
+              : '<span class="badge warn">received</span>';
+            return '<div class="msg-item"><strong>' + esc(C_LABEL[m.category] || m.category || 'Message') + '</strong> ' +
+              badge + '<span class="when">' + esc(fmtDate(m.ts)) + '</span>' +
+              '<div class="msg-body">' + esc(m.body) + '</div></div>';
+          }).join('');
+        })
+        .catch(function(){});
+    }
+
+    $('c-send').addEventListener('click', function(){
+      var body = $('c-body').value.trim();
+      if (body.length < 5) { setInline('c-msg', 'err', 'Write a message first.'); return; }
+      var btn = this; btn.disabled = true;
+      postJSON('/api/contact', { category: $('c-category').value, body: body }).then(function(res){
+        btn.disabled = false;
+        if (res.ok && res.body.ok) {
+          $('c-body').value = '';
+          setInline('c-msg', 'ok', res.body.message || 'Message sent!');
+          loadMyMessages();
+        } else {
+          setInline('c-msg', 'err', res.body.error || 'Could not send — try again.');
+        }
       });
     });
 
@@ -556,6 +708,7 @@
           $('acct').style.display = 'block';
           renderProfile(data.profile);
           renderLists(data);
+          loadMyMessages();
         })
         .catch(function(){
           $('gate').style.display = 'block';
