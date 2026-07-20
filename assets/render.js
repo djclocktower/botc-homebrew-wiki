@@ -185,7 +185,7 @@
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
       (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
-      (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd>' + esc(d.appearsIn) + '</dd>' : '') +
+      (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' + esc(d.appearsIn.trim()) + '">' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
         var display = t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function(m){ return m.toUpperCase(); });

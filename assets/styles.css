@@ -667,11 +667,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 
 /* ── Author link (in character info card) ────────────────────────── */
-.author-link {
+.author-link,
+.appears-in-link {
   color: var(--good-name);
   text-decoration: none;
 }
-.author-link:hover { text-decoration: underline; }
+.author-link:hover,
+.appears-in-link:hover { text-decoration: underline; }
 
 /* ════════════════════════════════════════════════════════════════
    CREATOR ICONS SIDEBAR — fixed to left of screen
