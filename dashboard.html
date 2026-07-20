@@ -854,6 +854,7 @@
           var pages = (u.characters || 0) + (u.scripts || 0) + (u.collections || 0);
           var btns = '';
           if (!isMe) {
+            btns += '<a class="mini-act ok" style="text-decoration:none" href="/messages?to=' + encodeURIComponent(u.username) + '">Message</a>';
             if (u.banned) btns += '<button type="button" class="mini-act ok" data-u-act="unban">Unban</button>';
             else if (!u.is_admin) btns += '<button type="button" class="mini-act bad" data-u-act="ban">Ban</button>';
             btns += u.is_admin

@@ -130,14 +130,31 @@
         });
     }
     cachedMe().then(function (me) {
-      var label = me && me.loggedIn ? 'My Account' : 'Log In';
-      var href = ROOT + (me && me.loggedIn ? 'account' : 'login');
+      var loggedIn = !!(me && me.loggedIn);
+      var label = loggedIn ? 'My Account' : 'Log In';
+      var href = ROOT + (loggedIn ? 'account' : 'login');
+      var unread = (loggedIn && me.unreadMessages) || 0;
+      // "Messages" link (logged-in only), with an unread-count badge
+      function messagesLink() {
+        var a = document.createElement('a');
+        a.href = ROOT + 'messages'; a.textContent = 'Messages';
+        if (unread > 0) {
+          var b = document.createElement('span');
+          b.className = 'script-badge';
+          b.textContent = unread > 99 ? '99+' : unread;
+          a.appendChild(b);
+        }
+        return a;
+      }
       // mobile nav dropdown
       var drop = document.getElementById('nav-dropdown');
       if (drop && !findLinks('account', drop).length && !findLinks('login', drop).length) {
         var a = document.createElement('a');
         a.href = href; a.textContent = label;
         drop.appendChild(a);
+      }
+      if (loggedIn && drop && !findLinks('messages', drop).length) {
+        drop.appendChild(messagesLink());
       }
       // desktop crumb bar (after Token Tool, like the Token Tool injection)
       document.querySelectorAll('.crumb').forEach(function (crumb) {
@@ -149,6 +166,17 @@
         crumb.insertBefore(sep, anchor.nextSibling);
         crumb.insertBefore(link, sep.nextSibling);
       });
+      if (loggedIn) {
+        document.querySelectorAll('.crumb').forEach(function (crumb) {
+          if (findLinks('messages', crumb).length) return;
+          var anchor = findLinks('account', crumb)[0] || findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
+          if (!anchor) return;
+          var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
+          var link = messagesLink();
+          crumb.insertBefore(sep, anchor.nextSibling);
+          crumb.insertBefore(link, sep.nextSibling);
+        });
+      }
     }).catch(function () {});
   })();
 

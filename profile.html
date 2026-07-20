@@ -24,6 +24,13 @@
   .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; }
   .profile-joined { font-size:.82rem; color:rgba(236,225,200,.6); margin:0; }
   .profile-empty { text-align:center; color:rgba(236,225,200,.7); padding:30px; }
+  .profile-msg-btn {
+    display:inline-block; margin-top:10px; padding:7px 16px;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-weight:700; font-size:.88rem;
+    color:#f4ead2; background:linear-gradient(180deg,#7a2d2f,#5b1f21);
+    border:1px solid rgba(236,225,200,.35); border-radius:6px; text-decoration:none;
+  }
+  .profile-msg-btn:hover { background:linear-gradient(180deg,#8a3537,#6b2527); }
 </style>
 </head>
 <body>
@@ -197,13 +204,20 @@
         }
         panel.innerHTML = html;
 
-        // Admins get a shortcut to the dashboard from any profile page.
+        // Logged-in visitors get a Message button (not on their own profile);
+        // admins additionally get a shortcut to the dashboard.
         fetch('/api/me', { credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
           .then(function (me) {
-            if (!me || !me.loggedIn || !me.isAdmin) return;
+            if (!me || !me.loggedIn) return;
             var t = hero.querySelector('.profile-hero-text');
-            if (t) t.insertAdjacentHTML('beforeend',
+            if (!t) return;
+            if ((me.username || '').toLowerCase() !== p.username.toLowerCase()) {
+              t.insertAdjacentHTML('beforeend',
+                '<p style="margin:0"><a class="profile-msg-btn" href="/messages?to=' +
+                encodeURIComponent(p.username) + '">&#9993; Message ' + esc(p.displayName || p.username) + '</a></p>');
+            }
+            if (me.isAdmin) t.insertAdjacentHTML('beforeend',
               '<p style="margin:8px 0 0"><a href="/dashboard" style="color:#e8c46a;font-size:.85rem;font-weight:700">&#9881; Admin Dashboard &rarr;</a></p>');
           })
           .catch(function () {});

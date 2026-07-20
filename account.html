@@ -218,6 +218,7 @@
             <div class="uname">@<span id="p-username"></span></div>
             <div class="bio" id="p-bio"></div>
             <a id="p-public-link" href="#" style="display:none;font-size:.85rem;margin-top:4px">View public profile →</a>
+            <a id="p-messages-link" href="messages" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">✉ Messages →</a>
             <a id="p-admin-link" href="dashboard" style="display:none;font-size:.85rem;margin-top:4px;margin-left:12px;color:var(--maroon);font-weight:700">Admin Dashboard →</a>
           </div>
         </div>
@@ -422,6 +423,7 @@
       $('p-username').textContent = p.username;
       var pl = $('p-public-link');
       if (pl) { pl.href = '/u/' + encodeURIComponent(p.username); pl.style.display = 'inline-block'; }
+      $('p-messages-link').style.display = 'inline-block';
       $('p-admin-link').style.display = p.isAdmin ? 'inline-block' : 'none';
       $('p-bio').textContent = p.bio || '';
       var badges = '';

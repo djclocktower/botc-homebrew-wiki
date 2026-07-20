@@ -33,6 +33,13 @@
  *   POST /api/contact         -> send a message to the admins (bug/suggestion/…)
  *   GET  /api/announcement    -> current site-wide announcement (public)
  *
+ *   -- direct messages (user <-> user, incl. admins; /messages page) --
+ *   GET  /api/messages        -> conversation list + unread counts + block list
+ *   GET  /api/messages/thread -> one conversation (?with=username, ?before=id)
+ *   POST /api/messages/send   -> send a DM ({to, body})
+ *   POST /api/messages/block  -> block/unblock a user ({user, blocked})
+ *   POST /api/messages/delete -> hide a whole conversation for yourself ({with})
+ *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
  *   POST /api/character       -> create/update a character
@@ -373,6 +380,47 @@ async function ensureMessagesTable(env) {
   _messagesReady = true;
 }
 
+// ---- direct messages (user <-> user DMs, tables created lazily) ----
+// `dms` is one row per message; a "conversation" is just every row between a
+// pair of users. Each side can hide a conversation for themselves only
+// (sender_deleted / recipient_deleted); rows hidden by BOTH sides are purged.
+// `dm_blocks` stores per-user block lists (admins bypass blocks so the
+// admin <-> user channel always works).
+let _dmReady = false;
+async function ensureDmTables(env) {
+  if (_dmReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS dms (
+       id                INTEGER PRIMARY KEY AUTOINCREMENT,
+       ts                TEXT NOT NULL DEFAULT (datetime('now')),
+       sender_id         INTEGER NOT NULL,
+       recipient_id      INTEGER NOT NULL,
+       body              TEXT NOT NULL,
+       read_at           TEXT,
+       sender_deleted    INTEGER NOT NULL DEFAULT 0,
+       recipient_deleted INTEGER NOT NULL DEFAULT 0
+     )`
+  ).run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_dms_recipient ON dms(recipient_id, id)').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_dms_sender ON dms(sender_id, id)').run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS dm_blocks (
+       user_id    INTEGER NOT NULL,
+       blocked_id INTEGER NOT NULL,
+       ts         TEXT NOT NULL DEFAULT (datetime('now')),
+       PRIMARY KEY (user_id, blocked_id)
+     )`
+  ).run();
+  _dmReady = true;
+}
+
+async function findUserByUsername(env, username) {
+  if (!username) return null;
+  return env.DB.prepare(
+    'SELECT id, username, display_name, avatar_url, is_admin FROM users WHERE lower(username)=lower(?)'
+  ).bind(username).first().catch(() => null);
+}
+
 let _banReady = false;
 async function ensureBanColumn(env) {
   if (_banReady) return;
@@ -492,7 +540,7 @@ async function buildPublicJSON(env, table) {
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views'];
+  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks'];
   const saved = {};
   for (const t of tables) {
     try {
@@ -1112,6 +1160,14 @@ export default {
          FROM users WHERE id=?`
       ).bind(sess.userId).first().catch(() => null);
       if (!u) return jsonResponse({ loggedIn: false, isAdmin: false }, { 'Set-Cookie': clearCookie() });
+      // Unread DM count (dms table may not exist until the first message)
+      let unreadMessages = 0;
+      try {
+        const r = await env.DB.prepare(
+          'SELECT COUNT(*) AS n FROM dms WHERE recipient_id=? AND read_at IS NULL AND recipient_deleted=0'
+        ).bind(sess.userId).first();
+        unreadMessages = r ? r.n : 0;
+      } catch { /* no DMs yet */ }
       return jsonResponse({
         loggedIn: true,
         isAdmin: !!u.is_admin,
@@ -1121,7 +1177,8 @@ export default {
         email: u.email || null,
         emailVerified: !!u.email_verified,
         discordLinked: !!u.discord_id,
-        hasPassword: !!u.password_hash
+        hasPassword: !!u.password_hash,
+        unreadMessages
       });
     }
 
@@ -1316,6 +1373,110 @@ export default {
         'SELECT id, ts, category, body, status FROM messages WHERE user_id=? ORDER BY id DESC LIMIT 20'
       ).bind(sess.userId).all();
       return jsonResponse({ messages: results || [] });
+    }
+
+    // ---------- DIRECT MESSAGES: CONVERSATION LIST ----------
+    if (method === 'GET' && path === '/api/messages') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureDmTables(env);
+      const me = sess.userId;
+      // One row per conversation partner: newest message id + my unread count.
+      const { results: convs } = await env.DB.prepare(
+        `SELECT partner, MAX(id) AS last_id, SUM(unread) AS unread FROM (
+           SELECT CASE WHEN sender_id=?1 THEN recipient_id ELSE sender_id END AS partner,
+                  id,
+                  CASE WHEN recipient_id=?1 AND read_at IS NULL THEN 1 ELSE 0 END AS unread
+           FROM dms
+           WHERE (sender_id=?1 AND sender_deleted=0) OR (recipient_id=?1 AND recipient_deleted=0)
+         ) GROUP BY partner ORDER BY last_id DESC LIMIT 100`
+      ).bind(me).all();
+      const list = convs || [];
+      const lastById = {}, userById = {};
+      if (list.length) {
+        const marks = ids => ids.map(() => '?').join(',');
+        const lastIds = list.map(c => c.last_id);
+        const partnerIds = list.map(c => c.partner);
+        const [lasts, users] = await Promise.all([
+          env.DB.prepare(`SELECT id, ts, sender_id, body FROM dms WHERE id IN (${marks(lastIds)})`).bind(...lastIds).all(),
+          env.DB.prepare(`SELECT id, username, display_name, avatar_url, is_admin FROM users WHERE id IN (${marks(partnerIds)})`).bind(...partnerIds).all()
+        ]);
+        for (const r of lasts.results || []) lastById[r.id] = r;
+        for (const r of users.results || []) userById[r.id] = r;
+      }
+      let unreadTotal = 0;
+      const conversations = list.map(c => {
+        const u = userById[c.partner];
+        if (!u) return null; // partner account was deleted
+        const last = lastById[c.last_id] || {};
+        unreadTotal += c.unread || 0;
+        return {
+          username: u.username,
+          displayName: u.display_name || u.username,
+          avatarUrl: u.avatar_url || null,
+          isAdmin: !!u.is_admin,
+          unread: c.unread || 0,
+          lastTs: last.ts || null,
+          lastFromMe: last.sender_id === me,
+          lastBody: String(last.body || '').slice(0, 120)
+        };
+      }).filter(Boolean);
+      const { results: blocks } = await env.DB.prepare(
+        `SELECT u.username FROM dm_blocks b JOIN users u ON u.id=b.blocked_id
+         WHERE b.user_id=? ORDER BY lower(u.username)`
+      ).bind(me).all();
+      return jsonResponse({
+        conversations,
+        unreadTotal,
+        blocked: (blocks || []).map(b => b.username)
+      });
+    }
+
+    // ---------- DIRECT MESSAGES: ONE THREAD ----------
+    // ?with=username (+ optional ?before=id to page further back). Loading the
+    // newest page marks the incoming messages as read.
+    if (method === 'GET' && path === '/api/messages/thread') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureDmTables(env);
+      const other = await findUserByUsername(env, (url.searchParams.get('with') || '').trim());
+      if (!other) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+      if (other.id === sess.userId) return jsonResponse({ error: "You can't message yourself." }, { status: 400 });
+      const before = parseInt(url.searchParams.get('before'), 10) || 0;
+      const PAGE = 50;
+      const { results } = await env.DB.prepare(
+        `SELECT id, ts, sender_id, body, read_at FROM dms
+         WHERE ((sender_id=?1 AND recipient_id=?2 AND sender_deleted=0)
+             OR (sender_id=?2 AND recipient_id=?1 AND recipient_deleted=0))
+           AND (?3=0 OR id<?3)
+         ORDER BY id DESC LIMIT ${PAGE}`
+      ).bind(sess.userId, other.id, before).all();
+      const rows = results || [];
+      if (!before && rows.some(r => r.sender_id === other.id && !r.read_at)) {
+        await env.DB.prepare(
+          `UPDATE dms SET read_at=datetime('now')
+           WHERE recipient_id=? AND sender_id=? AND read_at IS NULL`
+        ).bind(sess.userId, other.id).run();
+      }
+      const youBlockedThem = !!(await env.DB.prepare(
+        'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+      ).bind(sess.userId, other.id).first());
+      return jsonResponse({
+        partner: {
+          username: other.username,
+          displayName: other.display_name || other.username,
+          avatarUrl: other.avatar_url || null,
+          isAdmin: !!other.is_admin
+        },
+        messages: rows.reverse().map(r => ({
+          id: r.id, ts: r.ts,
+          fromMe: r.sender_id === sess.userId,
+          read: !!r.read_at,
+          body: r.body
+        })),
+        hasMore: rows.length === PAGE,
+        youBlockedThem
+      });
     }
 
     // ---------- ACCOUNT PAGE DATA ----------
@@ -2362,6 +2523,72 @@ export default {
         ).bind(sess.userId, uname, category, body).run();
         await logActivity(env, sess, 'contact', 'message', null, category);
         return jsonResponse({ ok: true, message: 'Message sent — the admins will see it on their dashboard.' });
+      }
+
+      // ---- direct messages: send ----
+      if (path === '/api/messages/send') {
+        if (acctFlags.banned) {
+          return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
+        }
+        if (await rateLimited(env, request, 'dm', 20, 300)) {
+          return jsonResponse({ error: 'You are sending messages very quickly — wait a minute and try again.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        const to = String(b.to || '').trim();
+        const body = String(b.body || '').trim().slice(0, 3000);
+        if (!to) return jsonResponse({ error: 'Missing recipient.' }, { status: 400 });
+        if (!body) return jsonResponse({ error: 'Write a message first.' }, { status: 400 });
+        await ensureDmTables(env);
+        const target = await findUserByUsername(env, to);
+        if (!target) return jsonResponse({ error: 'No user is named “' + to + '”.' }, { status: 404 });
+        if (target.id === sess.userId) return jsonResponse({ error: "You can't message yourself." }, { status: 400 });
+        // Blocks stop regular users; admins bypass them so the admin <-> user
+        // channel (warnings, appeals) always works.
+        if (!sess.isAdmin) {
+          const blocked = await env.DB.prepare(
+            'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+          ).bind(target.id, sess.userId).first();
+          if (blocked) return jsonResponse({ error: 'This user is not accepting messages from you.' }, { status: 403 });
+        }
+        const ins = await env.DB.prepare(
+          'INSERT INTO dms (sender_id, recipient_id, body) VALUES (?,?,?)'
+        ).bind(sess.userId, target.id, body).run();
+        return jsonResponse({ ok: true, id: ins.meta.last_row_id });
+      }
+
+      // ---- direct messages: block / unblock a user ----
+      if (path === '/api/messages/block') {
+        const b = await request.json().catch(() => ({}));
+        await ensureDmTables(env);
+        const target = await findUserByUsername(env, String(b.user || '').trim());
+        if (!target) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+        if (target.id === sess.userId) return jsonResponse({ error: "You can't block yourself." }, { status: 400 });
+        if (b.blocked) {
+          await env.DB.prepare('INSERT OR IGNORE INTO dm_blocks (user_id, blocked_id) VALUES (?,?)')
+            .bind(sess.userId, target.id).run();
+        } else {
+          await env.DB.prepare('DELETE FROM dm_blocks WHERE user_id=? AND blocked_id=?')
+            .bind(sess.userId, target.id).run();
+        }
+        return jsonResponse({ ok: true, blocked: !!b.blocked });
+      }
+
+      // ---- direct messages: hide a whole conversation for yourself ----
+      // The other person keeps their copy; rows hidden by both sides are
+      // permanently purged.
+      if (path === '/api/messages/delete') {
+        const b = await request.json().catch(() => ({}));
+        await ensureDmTables(env);
+        const target = await findUserByUsername(env, String(b.with || '').trim());
+        if (!target) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+        await env.DB.batch([
+          env.DB.prepare('UPDATE dms SET sender_deleted=1 WHERE sender_id=? AND recipient_id=?')
+            .bind(sess.userId, target.id),
+          env.DB.prepare('UPDATE dms SET recipient_deleted=1 WHERE recipient_id=? AND sender_id=?')
+            .bind(sess.userId, target.id),
+          env.DB.prepare('DELETE FROM dms WHERE sender_deleted=1 AND recipient_deleted=1')
+        ]);
+        return jsonResponse({ ok: true });
       }
 
       // ---- admin: manage a user (ban/unban/promote/demote/reset link) ----
