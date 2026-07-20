@@ -313,6 +313,18 @@
         <div id="msg-list"></div>
       </section>
 
+      <!-- REPORTED DM CONVERSATIONS -->
+      <section class="panel">
+        <h3>Reported Conversations <span class="count-pill" id="dmr-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          When a member reports a private message conversation, it unlocks here so you can read it. Un-reported conversations stay private. After reviewing you can message either person or ban the offender from the Users panel.
+        </p>
+        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+          <input type="checkbox" id="dmr-show-all"> show resolved too
+        </label>
+        <div id="dmr-list"></div>
+      </section>
+
       <!-- USERS -->
       <section class="panel">
         <h3>Users <span class="count-pill" id="u-count"></span></h3>
@@ -838,6 +850,76 @@
       });
     });
 
+    /* ---- reported DM conversations ---- */
+    function dmrUserLink(u){
+      return u
+        ? '<a href="/u/' + encodeURIComponent(u) + '" style="color:var(--maroon);font-weight:700;text-decoration:none">@' + esc(u) + '</a>'
+        : '<span class="dim">deleted user</span>';
+    }
+    function loadDmReports(){
+      var all = $('dmr-show-all').checked;
+      getJSON('/api/admin/dm-reports?status=' + (all ? 'all' : 'open')).then(function(d){
+        if (!d || !d.reports) return;
+        $('dmr-count').textContent = d.openCount ? d.openCount + ' open' : '';
+        var box = $('dmr-list');
+        if (!d.reports.length) {
+          box.innerHTML = '<p class="note">' + (all ? 'No reports yet.' : 'No open reports.') + '</p>';
+          return;
+        }
+        box.innerHTML = d.reports.map(function(r){
+          var resolved = r.status === 'resolved';
+          return '<div class="adm-row" data-dmr-id="' + r.id + '" data-dmr-a="' + esc(r.reporter || '') + '" data-dmr-b="' + esc(r.reported || '') + '">' +
+            '<span class="grow">' + dmrUserLink(r.reporter) + ' reported ' + dmrUserLink(r.reported) +
+              (resolved ? ' <span class="tag tag-create">resolved</span>' : '') +
+              (r.reason ? '<br><span class="dim">“' + esc(r.reason) + '”</span>' : '') +
+            '</span>' +
+            '<span class="dim" title="' + esc(absTime(r.ts)) + '">' + esc(relTime(r.ts)) + '</span>' +
+            '<button type="button" class="mini-act ok" data-dmr-act="view">View thread</button>' +
+            '<button type="button" class="mini-act ' + (resolved ? 'warn' : 'ok') + '" data-dmr-act="' + (resolved ? 'reopen' : 'resolve') + '">' + (resolved ? 'Reopen' : 'Resolve') + '</button>' +
+            '<button type="button" class="mini-act bad" data-dmr-act="delete">Delete report</button>' +
+            '</div>';
+        }).join('');
+      });
+    }
+    $('dmr-show-all').addEventListener('change', loadDmReports);
+    document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('[data-dmr-act]');
+      if (!btn) return;
+      var row = btn.closest('.adm-row');
+      var id = parseInt(row.getAttribute('data-dmr-id'), 10);
+      var act = btn.getAttribute('data-dmr-act');
+      if (act === 'view') {
+        var existing = row.querySelector('.adm-body');
+        if (existing) { existing.remove(); btn.textContent = 'View thread'; return; }
+        btn.disabled = true;
+        getJSON('/api/admin/dm-thread?a=' + encodeURIComponent(row.getAttribute('data-dmr-a')) +
+                '&b=' + encodeURIComponent(row.getAttribute('data-dmr-b'))).then(function(d){
+          btn.disabled = false;
+          var div = document.createElement('div');
+          div.className = 'adm-body';
+          if (!d || d.error) {
+            div.textContent = (d && d.error) || 'Could not load the thread.';
+          } else if (!(d.messages || []).length) {
+            div.textContent = 'No messages remain in this conversation (both sides deleted it).';
+          } else {
+            div.innerHTML = d.messages.map(function(m){
+              return '<div style="margin:5px 0"><strong>@' + esc(m.from) + '</strong> ' +
+                '<span class="dim">' + esc(absTime(m.ts)) + '</span><br>' + esc(m.body) + '</div>';
+            }).join('');
+          }
+          row.appendChild(div);
+          btn.textContent = 'Hide thread';
+        }).catch(function(){ btn.disabled = false; });
+        return;
+      }
+      if (act === 'delete' && !confirm('Delete this report? The conversation itself is not touched, but it goes back to being private.')) return;
+      btn.disabled = true;
+      postJSON('/api/admin/dm-report', { id: id, action: act }).then(function(res){
+        if (res.body && res.body.ok) loadDmReports();
+        else { btn.disabled = false; alert((res.body && res.body.error) || 'Failed.'); }
+      });
+    });
+
     /* ---- users panel ---- */
     function loadUsers(){
       var q = $('u-q').value.trim();
@@ -854,6 +936,7 @@
           var pages = (u.characters || 0) + (u.scripts || 0) + (u.collections || 0);
           var btns = '';
           if (!isMe) {
+            btns += '<a class="mini-act ok" style="text-decoration:none" href="/messages?to=' + encodeURIComponent(u.username) + '">Message</a>';
             if (u.banned) btns += '<button type="button" class="mini-act ok" data-u-act="unban">Unban</button>';
             else if (!u.is_admin) btns += '<button type="button" class="mini-act bad" data-u-act="ban">Ban</button>';
             btns += u.is_admin
@@ -1587,6 +1670,7 @@
           loadDashboard();
           loadAnnouncement();
           loadMessages();
+          loadDmReports();
           loadUsers();
           loadAnalytics(7);
         } else showGate();

@@ -38,7 +38,8 @@ Key dynamic behavior:
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
-  delete|upload`), admin tools (dashboard, full activity log, report,
+  delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
+  the `/messages` page), admin tools (dashboard, full activity log, report,
   revisions/rollback, wiki lock, backup, seed). Writes are ownership-checked
   (`owner_id`, admins bypass). All routes are listed in the header comment of
   `worker/worker.js`.
@@ -100,6 +101,10 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, profile.html, reset-password.html
+messages.html         Direct messages (/messages): conversation list + thread UI
+                      over /api/messages*; ?to={username} opens/starts a thread.
+                      Message buttons live on /u/ profiles + dashboard user rows;
+                      site.js injects a topbar "Messages" link w/ unread badge.
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
@@ -112,8 +117,13 @@ Tables: `users`, `characters`, `collections`, `scripts`, `settings`,
 `activity_log`, plus Worker-auto-created (no manual migrations, ever):
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard
-inbox), `page_views` (per-page daily view counts, bots filtered, 180-day
-retention), and a lazily ALTERed `users.banned` column. `settings` also holds
+inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
+messages with per-side conversation hiding and per-user block lists; blocks
+don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
+row is what unlocks that one conversation for admin reading via
+`/api/admin/dm-thread` — un-reported DMs are never admin-readable), `page_views` (per-page daily
+view counts, bots filtered, 180-day retention), and a lazily ALTERed
+`users.banned` column. `settings` also holds
 `announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
 (admin page protection — only admins may edit/publish/delete those pages).
 Bans and admin promote/demote take effect immediately: POST requests and
