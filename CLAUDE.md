@@ -104,7 +104,8 @@ login.html, account.html, dashboard.html, profile.html, reset-password.html
 messages.html         Direct messages (/messages): conversation list + thread UI
                       over /api/messages*; ?to={username} opens/starts a thread.
                       Message buttons live on /u/ profiles + dashboard user rows;
-                      site.js injects a topbar "Messages" link w/ unread badge.
+                      site.js adds an unread-mail icon to the "My Account" nav
+                      link (no standalone Messages tab — owner's preference).
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
@@ -203,3 +204,8 @@ assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit
    token-tool.js strips them for tokens only. Don't "fix" the names.
 8. Jinx icons resolve by slugified id against `assets/icons/`; missing icons
    hide gracefully via onerror. Don't rename icon files.
+9. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
+   Cloudflare dashboard, NOT in the repo, and MUST be type "Secret" — Git
+   deploys delete dashboard vars of type "Text" (that once silently broke
+   Discord login). `keep_vars = true` would also fix it but Workers Builds
+   rejects that key (build fails in 0s) — don't add it to wrangler.toml.

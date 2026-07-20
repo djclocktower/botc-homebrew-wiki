@@ -157,18 +157,6 @@
       function flagAccountLink(a) {
         if (unread > 0 && !a.querySelector('.mail-flag')) a.appendChild(mailFlag());
       }
-      // "Messages" link (logged-in only), with an unread-count badge
-      function messagesLink() {
-        var a = document.createElement('a');
-        a.href = ROOT + 'messages'; a.textContent = 'Messages';
-        if (unread > 0) {
-          var b = document.createElement('span');
-          b.className = 'script-badge';
-          b.textContent = unread > 99 ? '99+' : unread;
-          a.appendChild(b);
-        }
-        return a;
-      }
       // Hardcoded "Login" links (e.g. the homepage crumb + hamburger) flip
       // to "My Account" once logged in. Nav/crumb links only — never links
       // inside page content.
@@ -187,11 +175,6 @@
       if (loggedIn && drop) {
         var navAcct = findLinks('account', drop)[0];
         if (navAcct) flagAccountLink(navAcct);
-        if (!findLinks('messages', drop).length) {
-          var ml = messagesLink();
-          if (navAcct && navAcct.nextSibling) drop.insertBefore(ml, navAcct.nextSibling);
-          else drop.appendChild(ml);
-        }
       }
       // desktop crumb bar (after Token Tool, like the Token Tool injection)
       document.querySelectorAll('.crumb').forEach(function (crumb) {
@@ -207,13 +190,6 @@
         document.querySelectorAll('.crumb').forEach(function (crumb) {
           var acct = findLinks('account', crumb)[0];
           if (acct) flagAccountLink(acct);
-          if (findLinks('messages', crumb).length) return;
-          var anchor = acct || findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
-          if (!anchor) return;
-          var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
-          var link = messagesLink();
-          crumb.insertBefore(sep, anchor.nextSibling);
-          crumb.insertBefore(link, sep.nextSibling);
         });
       }
     }).catch(function () {});

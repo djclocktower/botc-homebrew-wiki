@@ -87,6 +87,9 @@
 
   /* ---- two-pane layout (single column on phones) ---- */
   .msg-layout { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
+  /* grid items default to min-width:auto, so an un-wrappable message preview
+     would stretch the panel wider than the phone screen — never let it */
+  .msg-layout > .panel { min-width: 0; }
   @media (min-width: 860px) {
     .msg-layout { grid-template-columns: 340px minmax(0,1fr); gap: 20px; }
     .msg-layout .panel { margin-bottom: 0; }
@@ -124,10 +127,13 @@
   }
   .dm-avatar img { width: 100%; height: 100%; object-fit: cover; }
   .convo-main { flex: 1; min-width: 0; }
-  .convo-name { font-weight: 700; color: var(--maroon); font-size: .95rem; }
+  .convo-name {
+    display: block; font-weight: 700; color: var(--maroon); font-size: .95rem;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .convo-name .when { font-weight: 400; font-size: .72rem; opacity: .6; margin-left: 6px; white-space: nowrap; }
   .convo-preview {
-    font-size: .82rem; opacity: .75; margin-top: 2px;
+    display: block; font-size: .82rem; opacity: .75; margin-top: 2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .convo.unread .convo-preview { opacity: 1; font-weight: 700; }
@@ -146,10 +152,18 @@
 
   /* ---- thread ---- */
   .thread-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .thread-head .who { flex: 1; min-width: 0; }
-  .thread-head .who a { color: var(--maroon); font-weight: 700; text-decoration: none; font-size: 1.05rem; }
+  .thread-head .who { flex: 1; min-width: 0; overflow: hidden; }
+  .thread-head .who a {
+    color: var(--maroon); font-weight: 700; text-decoration: none; font-size: 1.05rem;
+    /* long names must truncate, never overlap the Block/Delete buttons */
+    display: inline-block; max-width: 100%; vertical-align: bottom;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .thread-head .who a:hover { text-decoration: underline; }
-  .thread-head .who .uname { font-size: .8rem; opacity: .7; }
+  .thread-head .who .uname {
+    font-size: .8rem; opacity: .7;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .back-btn { display: none; }
   @media (max-width: 859.98px) { .back-btn { display: inline-block; } }
   .thread-scroll {

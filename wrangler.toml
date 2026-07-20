@@ -10,6 +10,12 @@ name = "botc-homebrew-wiki"
 main = "worker/worker.js"
 compatibility_date = "2026-06-15"
 
+# NOTE on env vars (DISCORD_CLIENT_ID, RESEND_API_KEY, ...): set them in the
+# Cloudflare dashboard as type "Secret", NEVER type "Text". Git deploys wipe
+# dashboard "Text" variables (that's how Discord login silently broke once);
+# "Secret" variables always survive. (`keep_vars = true` would protect Text
+# vars too, but Workers Builds rejects that key — do not re-add it here.)
+
 # ---- Static assets ----
 # Serves all your HTML/CSS/images. The Worker runs FIRST so it can
 # intercept /characters.json, /collections.json, /scripts.json and /api/*,
