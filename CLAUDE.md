@@ -205,7 +205,7 @@ assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit
 8. Jinx icons resolve by slugified id against `assets/icons/`; missing icons
    hide gracefully via onerror. Don't rename icon files.
 9. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
-   Cloudflare dashboard, NOT in the repo. Dashboard vars of type "Text" used
-   to be deleted by every Git deploy (that once silently broke Discord
-   login); `keep_vars = true` in wrangler.toml now prevents that. Still
-   prefer type "Secret" for these values.
+   Cloudflare dashboard, NOT in the repo, and MUST be type "Secret" — Git
+   deploys delete dashboard vars of type "Text" (that once silently broke
+   Discord login). `keep_vars = true` would also fix it but Workers Builds
+   rejects that key (build fails in 0s) — don't add it to wrangler.toml.
