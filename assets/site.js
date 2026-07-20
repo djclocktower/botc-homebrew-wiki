@@ -120,7 +120,8 @@
     function cachedMe() {
       try {
         var raw = JSON.parse(sessionStorage.getItem(ME_KEY));
-        if (raw && (Date.now() - raw.ts) < 5 * 60 * 1000) return Promise.resolve(raw.me);
+        // short cache: keeps the unread-mail icon reasonably fresh
+        if (raw && (Date.now() - raw.ts) < 60 * 1000) return Promise.resolve(raw.me);
       } catch (e) {}
       return fetch('/api/me', { credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
@@ -134,6 +135,28 @@
       var label = loggedIn ? 'My Account' : 'Log In';
       var href = ROOT + (loggedIn ? 'account' : 'login');
       var unread = (loggedIn && me.unreadMessages) || 0;
+      // Little mail icon + count, appended to "My Account" links when there
+      // is unread mail. Clicking it goes straight to /messages.
+      function mailFlag() {
+        // span, not <a>: it lives inside the account link (nested anchors are
+        // invalid). Clicking it jumps to /messages instead of the account page.
+        var wrap = document.createElement('span');
+        wrap.className = 'mail-flag';
+        wrap.title = unread + ' unread message' + (unread === 1 ? '' : 's');
+        wrap.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          location.href = ROOT + 'messages';
+        });
+        wrap.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
+        var b = document.createElement('span');
+        b.className = 'script-badge';
+        b.textContent = unread > 99 ? '99+' : unread;
+        wrap.appendChild(b);
+        return wrap;
+      }
+      function flagAccountLink(a) {
+        if (unread > 0 && !a.querySelector('.mail-flag')) a.appendChild(mailFlag());
+      }
       // "Messages" link (logged-in only), with an unread-count badge
       function messagesLink() {
         var a = document.createElement('a');
@@ -146,6 +169,14 @@
         }
         return a;
       }
+      // Hardcoded "Login" links (e.g. the homepage crumb + hamburger) flip
+      // to "My Account" once logged in. Nav/crumb links only — never links
+      // inside page content.
+      if (loggedIn) {
+        document.querySelectorAll('.crumb a, .nav-dropdown a').forEach(function (a) {
+          if (linkMatches(a, 'login')) { a.href = href; a.textContent = label; }
+        });
+      }
       // mobile nav dropdown
       var drop = document.getElementById('nav-dropdown');
       if (drop && !findLinks('account', drop).length && !findLinks('login', drop).length) {
@@ -153,8 +184,14 @@
         a.href = href; a.textContent = label;
         drop.appendChild(a);
       }
-      if (loggedIn && drop && !findLinks('messages', drop).length) {
-        drop.appendChild(messagesLink());
+      if (loggedIn && drop) {
+        var navAcct = findLinks('account', drop)[0];
+        if (navAcct) flagAccountLink(navAcct);
+        if (!findLinks('messages', drop).length) {
+          var ml = messagesLink();
+          if (navAcct && navAcct.nextSibling) drop.insertBefore(ml, navAcct.nextSibling);
+          else drop.appendChild(ml);
+        }
       }
       // desktop crumb bar (after Token Tool, like the Token Tool injection)
       document.querySelectorAll('.crumb').forEach(function (crumb) {
@@ -168,8 +205,10 @@
       });
       if (loggedIn) {
         document.querySelectorAll('.crumb').forEach(function (crumb) {
+          var acct = findLinks('account', crumb)[0];
+          if (acct) flagAccountLink(acct);
           if (findLinks('messages', crumb).length) return;
-          var anchor = findLinks('account', crumb)[0] || findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
+          var anchor = acct || findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
           if (!anchor) return;
           var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
           var link = messagesLink();

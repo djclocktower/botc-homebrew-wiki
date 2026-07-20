@@ -265,7 +265,8 @@
             <textarea id="compose" maxlength="3000" placeholder="Write a message…" rows="1"></textarea>
             <button class="btn" id="send-btn" type="button" style="padding:10px 16px">Send</button>
           </div>
-          <div class="composer-hint">Enter to send · Shift+Enter for a new line · Be kind — admins can suspend accounts that abuse messages.</div>
+          <div class="composer-hint">Enter to send · Shift+Enter for a new line ·
+            <a href="#" id="report-link" style="color:inherit">Report conversation</a></div>
           <div class="inline-msg" id="send-msg"></div>
         </div>
       </div>
@@ -541,6 +542,19 @@
         btn.disabled = false;
         if (res.ok && res.body.ok) { openThread(current, true); loadList(); }
         else setInline('send-msg', 'err', res.body.error || 'Something went wrong.');
+      });
+    });
+
+    // Low-key report: flags the conversation so the admins can read it.
+    $('report-link').addEventListener('click', function(e){
+      e.preventDefault();
+      if (!current) return;
+      if (!confirm('Report this conversation to the wiki admins?\n\nThis lets the admins read the messages between you and @' + current + ' so they can look into the problem.')) return;
+      var reason = prompt('Anything the admins should know? (optional)');
+      if (reason === null) return; // cancelled
+      postJSON('/api/messages/report', { with: current, reason: reason.trim() }).then(function(res){
+        setInline('send-msg', res.ok ? 'ok' : 'err',
+          (res.body && (res.body.message || res.body.error)) || 'Done.');
       });
     });
 

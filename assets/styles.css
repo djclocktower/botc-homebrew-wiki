@@ -1424,6 +1424,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   vertical-align: middle;
 }
 
+/* ─── Unread-mail flag on the "My Account" link (site.js) ── */
+.mail-flag { display: inline-block; margin-left: 7px; white-space: nowrap; cursor: pointer; }
+.mail-flag svg { opacity: .85; }
+.mail-flag .script-badge { margin-left: 3px; }
+
 /* ─── Search "matched field" tag ─────────────────────────── */
 .search-match {
   display: inline-block; margin-left: 8px;

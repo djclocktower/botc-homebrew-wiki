@@ -39,6 +39,10 @@
  *   POST /api/messages/send   -> send a DM ({to, body})
  *   POST /api/messages/block  -> block/unblock a user ({user, blocked})
  *   POST /api/messages/delete -> hide a whole conversation for yourself ({with})
+ *   POST /api/messages/report -> report a conversation to the admins ({with, reason})
+ *   GET  /api/admin/dm-reports -> reported conversations (?status=open|all)
+ *   POST /api/admin/dm-report  -> resolve/reopen/delete one report
+ *   GET  /api/admin/dm-thread  -> transcript of a REPORTED conversation (?a=&b=)
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
@@ -411,6 +415,18 @@ async function ensureDmTables(env) {
        PRIMARY KEY (user_id, blocked_id)
      )`
   ).run();
+  // A report unlocks that one conversation for admin review — admins can
+  // never read DMs that nobody reported.
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS dm_reports (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       reporter_id INTEGER NOT NULL,
+       reported_id INTEGER NOT NULL,
+       reason      TEXT,
+       status      TEXT NOT NULL DEFAULT 'open'
+     )`
+  ).run();
   _dmReady = true;
 }
 
@@ -540,7 +556,7 @@ async function buildPublicJSON(env, table) {
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks'];
+  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports'];
   const saved = {};
   for (const t of tables) {
     try {
@@ -1767,6 +1783,60 @@ export default {
       return jsonResponse({ messages: list.results || [], openCount: open ? open.n : 0 });
     }
 
+    // ---------- ADMIN: REPORTED DM CONVERSATIONS ----------
+    if (method === 'GET' && path === '/api/admin/dm-reports') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureDmTables(env);
+      const status = url.searchParams.get('status') || 'open';
+      let sql =
+        `SELECT r.id, r.ts, r.reason, r.status,
+                ru.username AS reporter, tu.username AS reported
+         FROM dm_reports r
+         LEFT JOIN users ru ON ru.id=r.reporter_id
+         LEFT JOIN users tu ON tu.id=r.reported_id`;
+      const binds = [];
+      if (status !== 'all') { sql += ' WHERE r.status=?'; binds.push(status === 'resolved' ? 'resolved' : 'open'); }
+      sql += ' ORDER BY r.id DESC LIMIT 200';
+      const [list, open] = await Promise.all([
+        env.DB.prepare(sql).bind(...binds).all(),
+        env.DB.prepare("SELECT COUNT(*) AS n FROM dm_reports WHERE status='open'").first()
+      ]);
+      return jsonResponse({ reports: list.results || [], openCount: open ? open.n : 0 });
+    }
+
+    // ---------- ADMIN: TRANSCRIPT OF A REPORTED CONVERSATION ----------
+    // Privacy guard: only conversations someone reported can be opened, and
+    // only by an admin. ?a= and ?b= are the two usernames.
+    if (method === 'GET' && path === '/api/admin/dm-thread') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureDmTables(env);
+      const ua = await findUserByUsername(env, (url.searchParams.get('a') || '').trim());
+      const ub = await findUserByUsername(env, (url.searchParams.get('b') || '').trim());
+      if (!ua || !ub) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+      const reported = await env.DB.prepare(
+        `SELECT 1 FROM dm_reports
+         WHERE (reporter_id=?1 AND reported_id=?2) OR (reporter_id=?2 AND reported_id=?1)`
+      ).bind(ua.id, ub.id).first();
+      if (!reported) {
+        return jsonResponse({ error: 'That conversation has not been reported, so it stays private.' }, { status: 403 });
+      }
+      const { results } = await env.DB.prepare(
+        `SELECT id, ts, sender_id, body FROM dms
+         WHERE (sender_id=?1 AND recipient_id=?2) OR (sender_id=?2 AND recipient_id=?1)
+         ORDER BY id DESC LIMIT 100`
+      ).bind(ua.id, ub.id).all();
+      return jsonResponse({
+        a: ua.username, b: ub.username,
+        messages: (results || []).reverse().map(r => ({
+          id: r.id, ts: r.ts,
+          from: r.sender_id === ua.id ? ua.username : ub.username,
+          body: r.body
+        }))
+      });
+    }
+
     // ---------- ADMIN: ORPHANED IMAGES (R2 objects no page references) ----------
     if (method === 'GET' && path === '/api/admin/orphans') {
       const sess = await adminSession(env, request);
@@ -2591,6 +2661,38 @@ export default {
         return jsonResponse({ ok: true });
       }
 
+      // ---- direct messages: report a conversation to the admins ----
+      // Creating a report is what unlocks the conversation for admin review
+      // (GET /api/admin/dm-thread refuses un-reported pairs).
+      if (path === '/api/messages/report') {
+        if (await rateLimited(env, request, 'dmreport', 5, 3600)) {
+          return jsonResponse({ error: 'Too many reports in a row. Try again later.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        await ensureDmTables(env);
+        const target = await findUserByUsername(env, String(b.with || '').trim());
+        if (!target) return jsonResponse({ error: 'No such user.' }, { status: 404 });
+        if (target.id === sess.userId) return jsonResponse({ error: "You can't report yourself." }, { status: 400 });
+        const convo = await env.DB.prepare(
+          `SELECT 1 FROM dms
+           WHERE (sender_id=?1 AND recipient_id=?2 AND sender_deleted=0)
+              OR (sender_id=?2 AND recipient_id=?1 AND recipient_deleted=0)
+           LIMIT 1`
+        ).bind(sess.userId, target.id).first();
+        if (!convo) return jsonResponse({ error: 'There are no messages with this user to report.' }, { status: 400 });
+        const already = await env.DB.prepare(
+          "SELECT 1 FROM dm_reports WHERE reporter_id=? AND reported_id=? AND status='open'"
+        ).bind(sess.userId, target.id).first();
+        if (!already) {
+          const reason = String(b.reason || '').trim().slice(0, 500) || null;
+          await env.DB.prepare(
+            'INSERT INTO dm_reports (reporter_id, reported_id, reason) VALUES (?,?,?)'
+          ).bind(sess.userId, target.id, reason).run();
+          await logActivity(env, sess, 'report', 'dm', null, target.username);
+        }
+        return jsonResponse({ ok: true, message: 'Reported. The admins can now review this conversation.' });
+      }
+
       // ---- admin: manage a user (ban/unban/promote/demote/reset link) ----
       if (path === '/api/admin/user') {
         await ensureBanColumn(env);
@@ -2639,6 +2741,23 @@ export default {
           await env.DB.prepare('DELETE FROM messages WHERE id=?').bind(id).run();
         } else if (action === 'resolve' || action === 'reopen') {
           await env.DB.prepare('UPDATE messages SET status=? WHERE id=?')
+            .bind(action === 'resolve' ? 'resolved' : 'open', id).run();
+        } else {
+          return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        }
+        return jsonResponse({ ok: true });
+      }
+
+      // ---- admin: resolve/reopen/delete a reported DM conversation ----
+      if (path === '/api/admin/dm-report') {
+        await ensureDmTables(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10) || 0;
+        const action = String(b.action || '');
+        if (action === 'delete') {
+          await env.DB.prepare('DELETE FROM dm_reports WHERE id=?').bind(id).run();
+        } else if (action === 'resolve' || action === 'reopen') {
+          await env.DB.prepare('UPDATE dm_reports SET status=? WHERE id=?')
             .bind(action === 'resolve' ? 'resolved' : 'open', id).run();
         } else {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });

@@ -117,9 +117,11 @@ Tables: `users`, `characters`, `collections`, `scripts`, `settings`,
 `activity_log`, plus Worker-auto-created (no manual migrations, ever):
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard
-inbox — NOT user DMs), `dms` + `dm_blocks` (user↔user direct messages with
-per-side conversation hiding and per-user block lists; blocks don't apply to
-admin senders; unread count rides on `/api/me`), `page_views` (per-page daily
+inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
+messages with per-side conversation hiding and per-user block lists; blocks
+don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
+row is what unlocks that one conversation for admin reading via
+`/api/admin/dm-thread` — un-reported DMs are never admin-readable), `page_views` (per-page daily
 view counts, bots filtered, 180-day retention), and a lazily ALTERed
 `users.banned` column. `settings` also holds
 `announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
