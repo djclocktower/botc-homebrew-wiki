@@ -104,7 +104,8 @@ login.html, account.html, dashboard.html, profile.html, reset-password.html
 messages.html         Direct messages (/messages): conversation list + thread UI
                       over /api/messages*; ?to={username} opens/starts a thread.
                       Message buttons live on /u/ profiles + dashboard user rows;
-                      site.js injects a topbar "Messages" link w/ unread badge.
+                      site.js adds an unread-mail icon to the "My Account" nav
+                      link (no standalone Messages tab — owner's preference).
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
