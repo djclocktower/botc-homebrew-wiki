@@ -10,6 +10,12 @@ name = "botc-homebrew-wiki"
 main = "worker/worker.js"
 compatibility_date = "2026-06-15"
 
+# Keep variables/secrets that were set in the Cloudflare dashboard.
+# Without this, every Git-integration deploy DELETES dashboard-set
+# "Text"-type variables (that's how the Discord login credentials got
+# wiped once). Type "Secret" variables always survive; prefer those.
+keep_vars = true
+
 # ---- Static assets ----
 # Serves all your HTML/CSS/images. The Worker runs FIRST so it can
 # intercept /characters.json, /collections.json, /scripts.json and /api/*,
