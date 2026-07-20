@@ -48,4 +48,39 @@
     var target = document.getElementById(location.hash.slice(1));
     if (target) target.scrollIntoView();
   }
+
+  // Turn the "Appears in" value into a link to its collection page, when one
+  // exists. Resolves the same way the collection pages do (match[] normalized,
+  // then id / slug / displayName) so it works for match variants, and leaves
+  // the text plain when no collection matches (e.g. a bare script name).
+  (function linkAppearsIn() {
+    var dd = document.querySelector('.info-appears-in');
+    if (!dd) return;
+    var raw = dd.getAttribute('data-appears-in') || dd.textContent || '';
+    if (!raw.trim()) return;
+    function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+    var key = norm(raw);
+    if (!key) return;
+    var root = window.LINK_ROOT || '';
+    fetch(root + 'collections.json', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (cols) {
+        if (!Array.isArray(cols)) cols = (cols && cols.collections) || [];
+        var hit = null;
+        for (var i = 0; i < cols.length; i++) {
+          var c = cols[i]; if (!c) continue;
+          var matches = (c.match || []).map(norm);
+          if (matches.indexOf(key) !== -1 || norm(c.id) === key ||
+              norm(c.slug) === key || norm(c.displayName) === key) { hit = c; break; }
+        }
+        if (!hit) return;
+        var a = document.createElement('a');
+        a.className = 'appears-in-link';
+        a.href = root + 'collection/' + encodeURIComponent(hit.id || hit.slug || '');
+        a.textContent = raw;
+        dd.textContent = '';
+        dd.appendChild(a);
+      })
+      .catch(function () { /* leave as plain text on any error */ });
+  })();
 })();
