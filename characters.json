@@ -4873,5 +4873,104 @@
     "remindersGlobal": [],
     "setup": false,
     "jinxes": []
+  },
+  {
+    "slug": "vampire",
+    "name": "Vampire",
+    "team": "minion",
+    "ability": "You wake for Demon info instead of Minion info. The good Minion (you know who) thinks they are evil. [+1 good Minion]",
+    "image": [
+      "https://i.postimg.cc/RVwx478K/Vampire-Evil.png",
+      "https://i.postimg.cc/cJ4pRVJh/Vampire-Good.png"
+    ],
+    "imageAlt": "https://i.postimg.cc/cJ4pRVJh/Vampire-Good.png",
+    "creator": "",
+    "appearsIn": "",
+    "quote": "I will be welcomed, and you shall be damned.",
+    "flavor": "I will be welcomed, and you shall be damned.",
+    "lede": "The Vampire hides in the shadows to keep their thrall in the dark.",
+    "firstNight": 18.7,
+    "firstNightReminder": "Do not wake the Vampire during Minion info. Wake the Vampire during Demon info and show 3 not-in-play good character tokens. Put the Demon to sleep, then point the Vampire towards the good Minion.",
+    "otherNight": 0,
+    "reminders": [
+      "Thrall"
+    ],
+    "setup": true,
+    "summaryBullets": [
+      "The Minions don’t learn that there is a Vampire. They learn who the Demon is, as usual, and the expected number of Minions will wake.",
+      "The Vampire wakes with the Demon instead, learning the other Minions and bluffs with them.",
+      "One Minion is good. They register as good, & win with good, but they think they’re evil.",
+      "They still have their Minion ability, and it works like normal."
+    ],
+    "howToRun": [
+      "While setting up the bag, replace a Townsfolk token with an extra Minion token. Upon receiving the tokens back, mark one of them with the [[THRALL]] reminder (not the Vampire), and turn it upside down to indicate that player is good.",
+      "During the “Minion Info” step of the first night, do not wake the Vampire. Run this step as usual, not indicating which player is the Vampire.",
+      "During the “Demon Info” step of the first night, wake the Vampire as well as the Demon. Let them acknowledge each other. Indicate to each who the Minions are. Show each of them three characters which are not in play. (You can show them different characters, if you want!)",
+      "Put the Demon to sleep. Show the Vampire the player marked with the [[THRALL]] reminder. Put the Vampire to sleep."
+    ],
+    "examples": [
+      "Zoe the Fearmonger and Yolanda the Poisoner wake together on the first night, and learn that Alex is the Demon. Then, Alex the Imp and Xavier the Vampire wake together and learn that Zoe and Yolanda are the Minions, and each learn a set of bluffs. The Vampire learns that Yolanda is the good Minion they added.",
+      "Melvin is the good Devil's Advocate and thinks he’s evil. Melvin nominates a player that day, and neither the Vampire nor the other Minion does. The Town Crier still learns that a Minion nominated today.",
+      "All three Village Idiots choose Nora, the good Baron. Two learn good, and the drunk Village Idiot learns evil. Hearing this, Nora publicly claims to be the good Minion and nominates Lexi, her Demon. Lexi is executed and dies. Good wins, including Nora."
+    ],
+    "callout": "",
+    "jinxes": [
+      {
+        "id": "alchemist",
+        "reason": "An Alchemist-Vampire has no Vampire ability & the Vampire is in play."
+      },
+      {
+        "id": "engineer",
+        "reason": "The Engineer cannot create a Vampire."
+      },
+      {
+        "id": "hatter",
+        "reason": "The Vampire does not wake to change characters using the Hatter. Players cannot choose to become the Vampire using the Hatter."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "The Storyteller cannot gain the Vampire ability."
+      },
+      {
+        "id": "eviltwin",
+        "reason": "If the Vampire makes a good Evil Twin, they register as evil to their own ability."
+      },
+      {
+        "id": "spy",
+        "reason": "If the Vampire makes a good Spy, that player sees themselves as evil in the Grimoire, & the Vampire as good & as a good character. The Vampire learns which character they were seen as."
+      },
+      {
+        "id": "summoner",
+        "reason": "The Vampire learns which player the Summoner chooses."
+      },
+      {
+        "id": "vizier",
+        "reason": "If the Vampire makes a good Vizier, they register as evil to their own ability."
+      },
+      {
+        "id": "widow",
+        "reason": "If the Vampire makes a good Widow, that player sees themselves as evil in the Grimoire, & the Vampire as good & as a good character. The Vampire learns which character they were seen as."
+      },
+      {
+        "id": "wraith",
+        "reason": "The Wraith cannot wake during Demon info. The good Minion added by the Vampire registers as evil to the Wraith."
+      },
+      {
+        "id": "kazali",
+        "reason": "If Kazali makes a Vampire, they choose another player to become one of their Minions. Then, they choose which of the non-Vampire Minions is secretly good."
+      },
+      {
+        "id": "lilmonsta",
+        "reason": "The Vampire doesn't wake to choose who babysits Lil' Monsta."
+      },
+      {
+        "id": "lordoftyphon",
+        "reason": "A Vampire can only be placed at either end of the line & cannot neighbour the Demon. The good Minion is elsewhere in the line."
+      },
+      {
+        "id": "chancellorbb",
+        "reason": "If the Vampire adds a good Chancellor, they register as evil to their own ability."
+      }
+    ]
   }
 ]
