@@ -4878,7 +4878,7 @@
     "slug": "vampire",
     "name": "Vampire",
     "team": "minion",
-    "ability": "You wake for Demon info instead of Minion info. The good Minion (you know who) thinks they are evil. [+1 good Minion]",
+    "ability": "You wake for Demon info instead of Minion info. You know which Minion you added. [+1 good Minion who thinks they are evil]",
     "image": [
       "https://i.postimg.cc/RVwx478K/Vampire-Evil.png",
       "https://i.postimg.cc/cJ4pRVJh/Vampire-Good.png"
