@@ -4883,7 +4883,6 @@
       "https://i.postimg.cc/RVwx478K/Vampire-Evil.png",
       "https://i.postimg.cc/cJ4pRVJh/Vampire-Good.png"
     ],
-    "imageAlt": "https://i.postimg.cc/cJ4pRVJh/Vampire-Good.png",
     "creator": "Brewulation & Boilers",
     "appearsIn": "",
     "quote": "I will be welcomed, and you shall be damned.",
@@ -4971,6 +4970,9 @@
         "id": "chancellorbb",
         "reason": "If the Vampire adds a good Chancellor, they register as evil to their own ability."
       }
-    ]
+    ],
+    "art": "art/vampire.png",
+    "artAlt": "art/vampire-good.png",
+    "page": "c/vampire.html"
   }
 ]

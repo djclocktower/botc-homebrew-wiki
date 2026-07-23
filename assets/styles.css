@@ -678,9 +678,9 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 /* Creator's credit symbol next to their name in a character's info box.
    The glyph itself lives in the shared registry (assets/creators.js). */
 .creator-mark {
-  margin-left: 5px;
+  margin-left: 2px;
   font-family: serif;
-  color: var(--maroon);
+  color: var(--good-name);
   font-weight: 700;
   white-space: nowrap;
 }
