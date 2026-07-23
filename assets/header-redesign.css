@@ -247,6 +247,52 @@ html.redesign-on .search-input:focus {
    pencil glyph, so no ::before accent here (that produced two icons). */
 html.redesign-on .nav-dropdown a.edit-link-clone { color: #eadcbb; }
 
+/* ── 4c. Hamburger dropdown: match the redesigned bar ─────────────
+   The base .nav-dropdown still used the old bar's dark palette, so the
+   menu read as "the old bar". Re-skin it with the same deeper-purple
+   gradient, gold hairline dividers, gold hover, and the redesigned
+   search field, so the open menu matches the top bar it drops from. */
+html.redesign-on .nav-dropdown {
+  background: linear-gradient(180deg, rgba(37,15,43,.99), rgba(22,8,26,.99));
+  border-bottom: 1px solid rgba(214,196,150,.32);
+  box-shadow: 0 8px 20px rgba(5,1,7,.4);
+  backdrop-filter: blur(10px);
+}
+/* faint gilded glint along the menu's bottom edge, like the bar's */
+html.redesign-on .nav-dropdown::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.4) 50%, transparent 94%);
+  pointer-events: none;
+}
+html.redesign-on .nav-dropdown a {
+  color: rgba(240,232,213,.82);
+  border-bottom: 1px solid rgba(214,196,150,.14);
+}
+html.redesign-on .nav-dropdown a:hover {
+  background: rgba(214,196,150,.12);
+  color: #f8f0dd;
+}
+html.redesign-on .nav-dropdown a.active {
+  color: rgba(214,196,150,.55);
+}
+/* the in-menu search field: same warmer parchment tint + gold focus
+   ring as the top-bar search input */
+html.redesign-on .nav-dropdown-search {
+  border-bottom: 1px solid rgba(214,196,150,.2);
+}
+html.redesign-on .nav-dropdown-search input {
+  border: 1px solid rgba(214,196,150,.35);
+  background: rgba(240,232,213,.06);
+  color: #eadcbb;
+}
+html.redesign-on .nav-dropdown-search input::placeholder { color: rgba(222,207,167,.55); }
+html.redesign-on .nav-dropdown-search input:focus {
+  border-color: rgba(214,196,150,.75);
+  background: rgba(240,232,213,.10);
+  box-shadow: 0 0 0 3px rgba(214,196,150,.14);
+}
+
 /* ── 5. Small bonus fixes, same theme ─────────────────────────── */
 
 /* Hero: five identical parchment buttons = no hierarchy. Make the
