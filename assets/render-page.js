@@ -180,6 +180,29 @@
     return html;
   }
 
+  /* Collection roster as a full-width card grid (like all-characters), one
+     continuous grid ordered by the caller (team, then name). Cards reuse the
+     .char-card styles so the collection page matches the browse view. */
+  function renderRosterCards(entries, root) {
+    if (!entries.length) {
+      return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
+    }
+    var cards = entries.map(function (c) {
+      var label = '';
+      for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
+      if (!label) label = c.team || '';
+      return '<a class="char-card" href="' + esc(charHref(c, root)) + '">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        '<div class="char-card-info">' +
+        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
+        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
+        '<span class="char-card-link">View Character &rarr;</span>' +
+        '</div></a>';
+    }).join('');
+    return '<div class="char-grid">' + cards + '</div>';
+  }
+
   function renderJinxGroup(entries) {
     var findScriptJinxes = dep('findScriptJinxes');
     var jinxes = findScriptJinxes ? findScriptJinxes(entries) : [];
@@ -358,6 +381,55 @@
       '</div>';
   }
 
+  /* ── collection page body ──
+     A distinct layout from scripts: the characters show as a full-width card
+     grid (like the browse view), and there is no night-order box or character
+     credits list. Synopsis/gameplay prose sits in a parchment panel above the
+     grid; the information box + JSON export sit in a meta row below it. */
+  function renderCollectionBody(cfg) {
+    var root = cfg.root;
+    var top = cfg.header
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+         '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
+    if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
+    if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
+
+    var metaParts = [cfg.entries.length + ' character' + (cfg.entries.length === 1 ? '' : 's')];
+    if (cfg.author) metaParts.push('by ' + esc(cfg.author));
+    if (cfg.version) metaParts.push('v' + esc(String(cfg.version).replace(/^v/i, '')));
+    if (cfg.difficulty && DIFFICULTY_LABEL[cfg.difficulty]) metaParts.push(DIFFICULTY_LABEL[cfg.difficulty]);
+    top += '<p class="script-meta-line">' + metaParts.join(' · ') + '</p>';
+
+    // Prose sections (synopsis / gameplay) in a parchment panel so the ink text
+    // stays readable over the page background.
+    var proseHTML = '';
+    if (cfg.synopsis) proseHTML += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    var gameplay = '';
+    if (cfg.gameplay) gameplay += prose(cfg.gameplay);
+    if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
+    if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
+    if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
+
+    // Characters as a full-width card grid.
+    var chars = '<section class="coll-chars" id="sec-characters">' +
+      '<p class="coll-chars-count">' + cfg.entries.length + ' character' + (cfg.entries.length === 1 ? '' : 's') + '</p>' +
+      renderRosterCards(cfg.entries, root) + '</section>';
+
+    var jinx = renderJinxGroup(cfg.entries);
+    var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
+
+    var infobox = renderInfobox({
+      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
+    });
+    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
+    var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';
+
+    return top + prosePanel + chars + jinxPanel + meta;
+  }
+
   /* ── public renderers ── */
   function renderScriptPage(sc, allChars, opts) {
     opts = opts || {};
@@ -404,12 +476,12 @@
       { href: browseHref, label: 'Browse & Filter Characters' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
-    return renderPageBody({
+    return renderCollectionBody({
       root: root, name: name, header: coll.header, logo: coll.logo,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
-      entries: members, missing: [], jsonText: jsonText, actions: actions,
+      entries: members, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON'
     });
   }

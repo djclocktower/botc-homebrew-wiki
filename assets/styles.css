@@ -1612,6 +1612,24 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    COLLECTION PAGES — header image + description
    ════════════════════════════════════════════════════════════════ */
 
+/* SSR collection page (/collection/{id}) — full-width character card grid,
+   with the info box + JSON export in a meta row below. */
+.coll-chars { margin: 22px 0 8px; }
+.coll-chars-count {
+  text-align: center; font-family: 'Oswald', sans-serif;
+  letter-spacing: .07em; text-transform: uppercase; font-size: .9rem;
+  color: rgba(236,225,200,.72); margin: 0 0 20px;
+}
+.coll-prose { margin-bottom: 22px; }
+.coll-jinx { margin-top: 22px; }
+.coll-meta-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  gap: clamp(16px, 2.4vw, 30px); align-items: start; margin-top: 28px;
+}
+@media (max-width: 760px) { .coll-meta-row { grid-template-columns: 1fr; } }
+/* Themed pages recolor the count line to match the chosen text color */
+.theme-text .coll-chars-count { color: var(--pg-text); opacity: .8; }
+
 /* Header image shown at top of filtered collection page */
 
 

@@ -20,7 +20,9 @@
   if (dl) {
     dl.addEventListener('click', function (e) {
       e.preventDefault();
-      var code = document.querySelector('.script-json-panel .json-body code');
+      // One JSON panel per page; the collection layout drops the .script-json-panel
+      // wrapper, so match the code block directly rather than by container.
+      var code = document.querySelector('.json-body code');
       if (!code) return;
       var blob = new Blob([code.textContent], { type: 'application/json' });
       var u = URL.createObjectURL(blob);
