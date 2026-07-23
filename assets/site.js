@@ -389,7 +389,9 @@
       var open = drop.classList.toggle('open');
       btn.classList.toggle('open', open);
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) { var ns = document.getElementById('nav-search-input'); if (ns) setTimeout(function () { ns.focus(); }, 80); }
+      // Don't auto-focus the search field on open — that pops the mobile
+      // keyboard uninvited. The keyboard appears only when the user taps
+      // the search field themselves.
     });
     var navSearch = document.getElementById('nav-search-input');
     var topSearch = document.getElementById('search-input');

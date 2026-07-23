@@ -243,13 +243,9 @@ html.redesign-on .search-input:focus {
   }
 }
 /* the dropdown clone: identical look to the other dropdown entries
-   (Dumbledor2 uppercase rows), with a small gold pencil accent */
+   (Dumbledor2 uppercase rows). The button text already carries a ✎
+   pencil glyph, so no ::before accent here (that produced two icons). */
 html.redesign-on .nav-dropdown a.edit-link-clone { color: #eadcbb; }
-html.redesign-on .nav-dropdown a.edit-link-clone::before {
-  content: "✎";
-  margin-right: 10px;
-  color: rgba(214,196,150,.75);
-}
 
 /* ── 5. Small bonus fixes, same theme ─────────────────────────── */
 
