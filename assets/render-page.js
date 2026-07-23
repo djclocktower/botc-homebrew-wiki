@@ -305,11 +305,16 @@
   }
 
   function renderInfobox(opts) {
-    // opts: {root, logoPath, author, version, difficulty, entries, extraRows[]}
+    // opts: {root, logoPath, author, version, difficulty, entries, extraRows[],
+    //        authorProminent} — authorProminent shows the author as a bold
+    //        credit line at the top of the box instead of a plain table row.
     var root = opts.root;
+    var authorLink = opts.author
+      ? '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a>'
+      : '';
     var rows = '';
-    if (opts.author) {
-      rows += '<dt>Author:</dt><dd><a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a></dd>';
+    if (opts.author && !opts.authorProminent) {
+      rows += '<dt>Author:</dt><dd>' + authorLink + '</dd>';
     }
     if (opts.version) rows += '<dt>Version:</dt><dd>' + esc(opts.version) + '</dd>';
     if (opts.difficulty && DIFFICULTY_LABEL[opts.difficulty]) {
@@ -323,6 +328,7 @@
     return '<div class="card char-infocard sv-infobox">' +
       (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(root) + 'assets/' + esc(opts.logoPath) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
       '<h2 class="info-h">Information</h2>' +
+      (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + '</p>' : '') +
       '<dl class="info">' + rows + '</dl></div>';
   }
 
@@ -420,17 +426,15 @@
       ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
       : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
-    // Author credit — prominent, right at the top, name links to their page.
-    if (cfg.author) {
-      top += '<p class="coll-author">by <a class="coll-author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(cfg.author) + '">' + esc(cfg.author) + '</a></p>';
-    }
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
 
-    // Information + JSON/tokens boxes — moved to the top.
+    // Information + JSON/tokens boxes — moved to the top. The author credit
+    // lives prominently inside the Information box (linked to their page).
     var infobox = renderInfobox({
       root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
-      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
+      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows,
+      authorProminent: true
     });
     var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel, true) + '</div>';
     var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';

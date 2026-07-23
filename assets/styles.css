@@ -1625,15 +1625,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: var(--parch); font-size: clamp(2rem, 6vw, 3.4rem);
   margin: 6px 0 10px; line-height: 1.05;
 }
-.coll-author {
-  text-align: center; font-family: 'EB Garamond', serif; font-size: 1.25rem;
-  color: rgba(236,225,200,.85); margin: 0 0 10px;
+/* Prominent author credit inside the Information box. */
+.sv-info-author {
+  text-align: center; font-family: 'EB Garamond', serif; font-size: 1.18rem;
+  color: var(--ink); margin: -2px 0 12px;
 }
-.coll-author-link {
-  color: var(--good-name); font-weight: 700; text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
-.coll-author-link:hover { border-bottom-color: currentColor; }
+.sv-info-author .author-link { font-weight: 700; }
 
 .coll-chars { margin: 8px 0; }
 .coll-chars-count {
@@ -1668,8 +1665,8 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .coll-filter-bar.open { display: flex; }
 
 /* Themed pages recolor the count + author lines to match the chosen text color */
-.theme-text .coll-chars-count,
-.theme-text .coll-author { color: var(--pg-text); opacity: .85; }
+.theme-text .coll-chars-count { color: var(--pg-text); opacity: .85; }
+.theme-text .sv-info-author { color: var(--pg-text); }
 .theme-accent .coll-title { color: var(--pg-accent); }
 
 /* Header image shown at top of filtered collection page */
