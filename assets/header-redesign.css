@@ -38,7 +38,7 @@
               var crumb = document.querySelector('.crumb');
               if (crumb) crumb.appendChild(editBtn);
               /* mobile: clone into the hamburger dropdown (the crumb
-                 is hidden below 1024px, so the original never shows) */
+                 is hidden below 1200px, so the original never shows) */
               var dropdown = document.querySelector('.nav-dropdown');
               if (dropdown) {
                 var clone = editBtn.cloneNode(true);
@@ -78,10 +78,10 @@
      • Community Created Content badge — OPTION A: stays in the bar
        after the wordmark, but smaller (24px), slightly dimmed, with
        a thin gold divider, so the left side reads as one lockup.
-     • Desktop nav (≥1024px): the existing .crumb becomes a real nav
+     • Desktop nav (≥1200px): the existing .crumb becomes a real nav
        row — Dumbledor2 uppercase links, gold underline on hover,
        Login rendered as an outlined button. "Home" and the "·"
-       separators are hidden. Below 1024px the site's existing
+       separators are hidden. Below 1200px the site's existing
        hamburger + dropdown take over exactly as on mobile today.
      • Search: warmer parchment tint, gold focus ring.
      • Bonus: first hero button ("Browse All Characters") becomes
@@ -130,8 +130,13 @@ html.redesign-on .topbar .topbar-badge {
   border-left: 1px solid rgba(214,196,150,.32);
 }
 
-/* ── 3. Real navigation on desktop (≥1024px) ──────────────────── */
-@media (min-width: 1024px) {
+/* ── 3. Real navigation on desktop (≥1200px) ──────────────────────
+   The full lockup (brand + wordmark + six links + search) needs ~1200px
+   to sit on one row without squeezing the search off the edge. Showing it
+   any earlier made the search wrap/overflow on 10–13" desktops, so the nav
+   only appears at ≥1200px; below that the hamburger + dropdown take over
+   (see section 3b). The search can still shrink a little as a safety. */
+@media (min-width: 1200px) {
   html.redesign-on .crumb {
     display: flex !important;   /* beats the homepage inline "hide crumb" rule */
     align-items: center;
@@ -181,18 +186,16 @@ html.redesign-on .topbar .topbar-badge {
     color: #fff;
   }
 
-  /* hamburger is only for <1024px in the new design */
+  /* hamburger is only for <1200px in the new design */
   html.redesign-on .hamburger { display: none !important; }
 }
 
-/* ── 3b. Between the site's 880px hamburger breakpoint and the
-   1024px desktop-nav breakpoint, the full nav row would overflow /
-   wrap. The redesign spec says "below 1024px the hamburger takes
-   over" — but the site's base CSS only swaps to the hamburger at
-   ≤880px. Bridge that 881–1023px band here so the hamburger + the
-   dropdown behave exactly as they do on mobile (mirrors what the
-   homepage's old inline <style> did, now applied site-wide). ── */
-@media (min-width: 881px) and (max-width: 1023px) {
+/* ── 3b. Below the 1200px desktop-nav breakpoint the full nav row would
+   overflow / squeeze the search, so use the hamburger + dropdown instead.
+   The site's base CSS only swaps to the hamburger at ≤880px, so bridge the
+   881–1199px band here (the dropdown behaves exactly as it does on mobile;
+   mirrors what the homepage's old inline <style> did, now site-wide). ── */
+@media (min-width: 881px) and (max-width: 1199px) {
   html.redesign-on .crumb { display: none !important; }
   html.redesign-on .hamburger { display: flex !important; }
   html.redesign-on .nav-dropdown { position: fixed; left: 0; right: 0; }
@@ -208,7 +211,12 @@ html.redesign-on .search-input {
   border: 1px solid rgba(214,196,150,.35);
   padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
   font-size: .85rem;
+  /* a touch narrower than the base, and allowed to shrink, so the nav row
+     never pushes the search off the edge on narrower desktops */
+  width: clamp(130px, 15vw, 240px);
+  max-width: 100%;
 }
+html.redesign-on .search-wrap { flex-shrink: 1; min-width: 0; }
 html.redesign-on .search-input::placeholder { color: rgba(222,207,167,.55); }
 html.redesign-on .search-input:focus {
   border-color: rgba(214,196,150,.75);
@@ -221,11 +229,11 @@ html.redesign-on .search-input:focus {
    brand group. Approved placement (Option C): relocate it to the END
    of the .crumb row via the snippet in step 5 (see file header), where
    it renders as an outlined action button matching Login's treatment.
-   On mobile (<1024px) .crumb is hidden — the same snippet clones the
+   Below 1200px .crumb is hidden — the same snippet clones the
    link into the hamburger .nav-dropdown instead.
    No markup changes needed: if the snippet hasn't run (no-JS), the
    button simply stays in the brand group in its existing subdued style. */
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
   html.redesign-on .crumb .edit-link {
     font-family: 'Dumbledor2', serif;
     font-size: .8rem; font-weight: 600;

@@ -655,8 +655,7 @@ ${o.draftBanner || ''}
     <nav class="crumb" aria-label="Primary" id="crumb">
       <a href="../all-characters">All Characters</a>
       <a href="../scripts">Scripts</a>
-      <a href="../tags">Tags</a>
-      <a href="../creators">Creators</a>
+      <a href="../all-collections">Collections</a>
       <a href="../script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
@@ -674,8 +673,7 @@ ${o.draftBanner || ''}
   <a href="../">Home</a>
   <a href="../all-characters">All Characters</a>
   <a href="../scripts">Scripts</a>
-  <a href="../tags">Tags</a>
-  <a href="../creators">Creators</a>
+  <a href="../all-collections">Collections</a>
   <a href="../script">Script Builder</a>
 </nav>
 
