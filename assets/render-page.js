@@ -326,13 +326,13 @@
       '<dl class="info">' + rows + '</dl></div>';
   }
 
-  function renderJsonPanel(jsonText, actions, label) {
-    return '<div class="json-box open">' +
+  function renderJsonPanel(jsonText, actions, label, collapsed) {
+    return '<div class="json-box' + (collapsed ? '' : ' open') + '">' +
       '<div class="json-bar">' +
-      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="true">' + esc(label || 'Script JSON') + ' <span class="json-arrow">&#9662;</span></span>' +
+      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' + esc(label || 'Script JSON') + ' <span class="json-arrow">&#9662;</span></span>' +
       '<button type="button" class="json-copy">Copy JSON</button>' +
       '</div>' +
-      '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
+      '<pre class="json-body"' + (collapsed ? ' hidden' : '') + '><code>' + esc(jsonText) + '</code></pre>' +
       '</div>' + (actions || []).map(function (a) {
         return '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px"' +
           (a.id ? ' id="' + a.id + '"' : '') + ' href="' + esc(a.href) + '">' + a.label + '</a>';
@@ -432,7 +432,7 @@
       root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
-    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
+    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel, true) + '</div>';
     var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';
 
     // Prose sections (synopsis / gameplay) in a parchment panel.

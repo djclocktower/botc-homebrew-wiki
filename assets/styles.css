@@ -1661,7 +1661,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .coll-filter-toggle .filter-toggle-arrow { float: right; transition: transform .2s ease; }
 .coll-filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
-.coll-filter-bar { margin-bottom: 22px; }
+/* Collapse is driven by the .open class (not the [hidden] attr) so it behaves
+   the same on desktop and mobile — the mobile media query below forces the
+   bare .filter-bar to display:none, which the .open rule must override. */
+.coll-filter-bar { display: none; margin-bottom: 22px; }
+.coll-filter-bar.open { display: flex; }
 
 /* Themed pages recolor the count + author lines to match the chosen text color */
 .theme-text .coll-chars-count,

@@ -87,11 +87,13 @@
     '</select></div>';
   html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
   bar.innerHTML = html;
+  // Visibility is now governed by the .open class, not the [hidden] attribute
+  // (the [hidden] rule is !important and would beat .open on mobile).
+  bar.hidden = false;
 
-  // ── collapse/expand ──
+  // ── collapse/expand (collapsed by default, works on every screen size) ──
   toggle.addEventListener('click', function () {
-    var open = bar.hidden;
-    bar.hidden = !open;
+    var open = bar.classList.toggle('open');
     toggle.classList.toggle('open', open);
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
   });
