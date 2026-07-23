@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,53 +8,42 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
-<style>
-  /* Homepage nav: use the hamburger menu on desktop too, so the wide nav
-     doesn't wrap onto two lines. The top-bar search stays put; the in-menu
-     search is hidden on desktop to avoid a duplicate search box. */
-  @media (min-width: 881px) {
-    .crumb { display: none !important; }
-    .hamburger { display: flex !important; }
-    .nav-dropdown { position: fixed; left: 0; right: 0; }
-    .nav-dropdown.open { display: flex !important; }
-    .nav-dropdown-search { display: none; }
-  }
-</style>
+<link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
 
   <header class="topbar">
-    <a class="brand" href="/">
-      <img class="brand-skull" src="assets/logo_skull.png" alt="">
-      <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
       <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
-    </a>
-    <nav class="crumb" aria-label="Breadcrumb">
-      <span class="here">Home</span><span class="sep">·</span><a href="all-characters">All Characters</a><span class="sep">·</span><a href="scripts">Scripts</a><span class="sep">·</span><a href="tags">Tags</a><span class="sep">·</span><a href="creators">Creators</a><span class="sep">·</span><a href="script">Script Builder</a><span class="sep">·</span><a href="tokens">Token Tool</a><span class="sep">·</span><a href="login">Login</a>
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
     </nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
-  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-</header>
-<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
-  <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
-  </div>
-  <a href="/">Home</a>
-  <a href="all-characters">All Characters</a>
-  <a href="scripts">Scripts</a>
-  <a href="tags">Tags</a>
-  <a href="creators">Creators</a>
-  <a href="script">Script Builder</a>
-  <a href="tokens">Token Tool</a>
-  <a href="/random"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></svg>Random Character</a>
-  <a href="create">Create a Character</a>
-  <a href="login">Login</a>
-</nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
 
   
     <!-- ── HERO ───────────────────────────────────────────────── -->

@@ -1,0 +1,321 @@
+/* ════════════════════════════════════════════════════════════════
+   BOTC HomeBrew Wiki — HEADER REDESIGN (approved design, Option A)
+   ────────────────────────────────────────────────────────────────
+   HOW TO APPLY
+     1. Save this file next to your existing stylesheet
+        (e.g. assets/header-redesign.css).
+     2. In EVERY page's <head>, add it AFTER the existing
+        <link rel="stylesheet" href="assets/styles.css">:
+
+          <link rel="stylesheet" href="assets/header-redesign.css">
+
+     3. Add the class "redesign-on" to the <html> element of every
+        page:  <html lang="en" class="redesign-on">
+        (Or add it via JS; every rule below is scoped under
+        html.redesign-on so nothing changes without the class.)
+     4. Optional but recommended — scrolled-bar effect, one tiny
+        script before </body> on every page:
+
+          <script>
+            addEventListener('scroll', function () {
+              document.querySelector('.topbar')
+                .classList.toggle('scrolled', scrollY > 24);
+            }, { passive: true });
+          </script>
+
+     5. Editable pages only (character / collection / script pages —
+        anywhere <a class="edit-link" id="edit-btn"> exists): approved
+        EDIT BUTTON placement is "Option C" — outlined action at the
+        END of the .crumb nav/breadcrumb row on desktop, and a row
+        inside the hamburger dropdown on mobile. One snippet before
+        </body> on those pages handles both:
+
+          <script>
+            addEventListener('DOMContentLoaded', function () {
+              var editBtn = document.getElementById('edit-btn');
+              if (!editBtn) return;
+              /* desktop: move to the end of the crumb row */
+              var crumb = document.querySelector('.crumb');
+              if (crumb) crumb.appendChild(editBtn);
+              /* mobile: clone into the hamburger dropdown (the crumb
+                 is hidden below 1200px, so the original never shows) */
+              var dropdown = document.querySelector('.nav-dropdown');
+              if (dropdown) {
+                var clone = editBtn.cloneNode(true);
+                clone.id = 'edit-btn-mobile';
+                clone.classList.add('edit-link-clone');
+                clone.style.display = '';   /* override inline display:none */
+                dropdown.appendChild(clone);
+              }
+            });
+          </script>
+
+        Note: charpage.js sets editBtn.href and un-hides the button on
+        load; run this snippet AFTER that (placing it just before
+        </body> is sufficient). The clone picks up the same href.
+
+     ── APPLIED ON THIS SITE ──────────────────────────────────────
+     Steps 4 and 5 above are handled centrally in assets/site.js
+     (which every page with a top bar already loads), so no per-page
+     inline scripts were added. The scrolled-bar toggle and the Edit
+     button relocation/clone both live there. The topbar markup was
+     normalised to be identical on every static page and in the
+     Worker's server-rendered shell (worker.js › pageShell).
+
+   NO OTHER CHANGES NEEDED. It works with the existing header markup
+   (.topbar > .brand + .crumb + .search-wrap + .hamburger), including
+   the homepage's inline <style> that currently hides .crumb and
+   forces the hamburger on desktop — the !important rules below beat
+   it, so you do NOT have to delete that inline block (deleting it is
+   fine too).
+
+   WHAT IT DOES (approved scope)
+     • Bar: deeper purple matching the marble background, ~98%
+       opaque (stops cards ghosting through on scroll), subtle lift
+       shadow + faint gold glint on the bottom edge; fully solid with
+       a slightly firmer shadow once .scrolled is added past 24px.
+     • Brand: skull + wordmark aligned, slightly slimmer heights.
+     • Community Created Content badge — OPTION A: stays in the bar
+       after the wordmark, but smaller (24px), slightly dimmed, with
+       a thin gold divider, so the left side reads as one lockup.
+     • Desktop nav (≥1200px): the existing .crumb becomes a real nav
+       row — Dumbledor2 uppercase links, gold underline on hover,
+       Login rendered as an outlined button. "Home" and the "·"
+       separators are hidden. Below 1200px the site's existing
+       hamburger + dropdown take over exactly as on mobile today.
+     • Search: warmer parchment tint, gold focus ring.
+     • Bonus: first hero button ("Browse All Characters") becomes
+       the filled maroon primary CTA; long script-tile counts no
+       longer collide with the "View →" arrow.
+
+   Theme tokens used (already defined in styles.css):
+     --parch #F0E8D5 · --parch-frame #bda89a · --maroon #5B1F21
+     --purple-deep #1a0820 · --good-name #2f6fb8
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 1. The bar itself ────────────────────────────────────────── */
+html.redesign-on .topbar {
+  flex-wrap: nowrap;
+  gap: clamp(10px, 1.6vw, 22px);
+  padding: 7px clamp(16px, 3vw, 36px);
+  background: linear-gradient(180deg, rgba(44,19,51,.97), rgba(26,10,31,.98));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(214,196,150,.32);
+  box-shadow: 0 4px 14px rgba(5,1,7,.28);
+}
+/* faint gilded glint along the bottom edge */
+html.redesign-on .topbar::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.45) 50%, transparent 94%);
+  pointer-events: none;
+}
+/* stronger, fully-solid bar once scrolled (see step 4 above) */
+html.redesign-on .topbar.scrolled {
+  background: linear-gradient(180deg, rgba(37,15,43,.99), rgba(22,8,26,.99));
+  box-shadow: 0 6px 18px rgba(5,1,7,.34);
+}
+
+/* ── 2. Brand lockup ──────────────────────────────────────────── */
+html.redesign-on .brand { gap: 10px; align-items: center; }
+html.redesign-on .brand-skull { height: 42px; }
+html.redesign-on .brand-header-text { height: 33px; }
+
+/* Community Created Content badge — OPTION A (approved):
+   stays in the bar after the wordmark, tamed: smaller, dimmed,
+   divided from the wordmark by a thin gold rule. */
+html.redesign-on .topbar .topbar-badge {
+  height: 24px; opacity: .9;
+  margin-left: 2px; padding-left: 12px;
+  border-left: 1px solid rgba(214,196,150,.32);
+}
+
+/* ── 3. Real navigation on desktop (≥1200px) ──────────────────────
+   The full lockup (brand + wordmark + six links + search) needs ~1200px
+   to sit on one row without squeezing the search off the edge. Showing it
+   any earlier made the search wrap/overflow on 10–13" desktops, so the nav
+   only appears at ≥1200px; below that the hamburger + dropdown take over
+   (see section 3b). The search can still shrink a little as a safety. */
+@media (min-width: 1200px) {
+  html.redesign-on .crumb {
+    display: flex !important;   /* beats the homepage inline "hide crumb" rule */
+    align-items: center;
+    gap: 2px;
+    margin-left: clamp(8px, 1.6vw, 24px);
+    white-space: nowrap;
+    font-size: 1rem;            /* neutralise the old .8rem breadcrumb sizing */
+    letter-spacing: normal;
+  }
+  /* hide "Home" and the "·" separators — this is a nav, not a breadcrumb */
+  html.redesign-on .crumb .here,
+  html.redesign-on .crumb .sep { display: none; }
+
+  html.redesign-on .crumb a {
+    font-family: 'Dumbledor2', serif;
+    font-size: .8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: rgba(240,232,213,.72);
+    text-decoration: none;
+    padding: 9px 11px;
+    position: relative;
+    transition: color .15s ease;
+  }
+  /* gold underline that draws itself in on hover */
+  html.redesign-on .crumb a::after {
+    content: "";
+    position: absolute; left: 11px; right: 11px; bottom: 3px; height: 2px;
+    background: linear-gradient(90deg, #d6c496, #b79c6f);
+    transform: scaleX(0); transform-origin: left center;
+    transition: transform .18s ease;
+  }
+  html.redesign-on .crumb a:hover { color: #f8f0dd; }
+  html.redesign-on .crumb a:hover::after { transform: scaleX(1); }
+
+  /* Login → quiet outlined button at the end of the row */
+  html.redesign-on .crumb a:last-child {
+    margin-left: 10px;
+    padding: 6px 15px;
+    border: 1px solid rgba(214,196,150,.5);
+    color: #eadcbb;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  html.redesign-on .crumb a:last-child::after { display: none; }
+  html.redesign-on .crumb a:last-child:hover {
+    background: rgba(214,196,150,.16);
+    border-color: rgba(214,196,150,.8);
+    color: #fff;
+  }
+
+  /* hamburger is only for <1200px in the new design */
+  html.redesign-on .hamburger { display: none !important; }
+}
+
+/* ── 3b. Below the 1200px desktop-nav breakpoint the full nav row would
+   overflow / squeeze the search, so use the hamburger + dropdown instead.
+   The site's base CSS only swaps to the hamburger at ≤880px, so bridge the
+   881–1199px band here (the dropdown behaves exactly as it does on mobile;
+   mirrors what the homepage's old inline <style> did, now site-wide). ── */
+@media (min-width: 881px) and (max-width: 1199px) {
+  html.redesign-on .crumb { display: none !important; }
+  html.redesign-on .hamburger { display: flex !important; }
+  html.redesign-on .nav-dropdown { position: fixed; left: 0; right: 0; }
+  html.redesign-on .nav-dropdown.open { display: flex !important; }
+  /* the top-bar search stays visible in this band, so hide the
+     in-menu duplicate (same as the site does on real mobile ≤480) */
+  html.redesign-on .nav-dropdown-search { display: none; }
+}
+
+/* ── 4. Search ────────────────────────────────────────────────── */
+html.redesign-on .search-input {
+  background-color: rgba(240,232,213,.06);
+  border: 1px solid rgba(214,196,150,.35);
+  padding: 8px 12px 8px 32px;   /* keeps room for the inline SVG magnifier */
+  font-size: .85rem;
+  /* a touch narrower than the base, and allowed to shrink, so the nav row
+     never pushes the search off the edge on narrower desktops */
+  width: clamp(130px, 15vw, 240px);
+  max-width: 100%;
+}
+html.redesign-on .search-wrap { flex-shrink: 1; min-width: 0; }
+html.redesign-on .search-input::placeholder { color: rgba(222,207,167,.55); }
+html.redesign-on .search-input:focus {
+  border-color: rgba(214,196,150,.75);
+  background-color: rgba(240,232,213,.10);
+  box-shadow: 0 0 0 3px rgba(214,196,150,.14);
+}
+
+/* ── 4b. Edit button (editable pages: characters, collections, scripts) ──
+   These pages carry <a class="edit-link" id="edit-btn"> inside the
+   brand group. Approved placement (Option C): relocate it to the END
+   of the .crumb row via the snippet in step 5 (see file header), where
+   it renders as an outlined action button matching Login's treatment.
+   Below 1200px .crumb is hidden — the same snippet clones the
+   link into the hamburger .nav-dropdown instead.
+   No markup changes needed: if the snippet hasn't run (no-JS), the
+   button simply stays in the brand group in its existing subdued style. */
+@media (min-width: 1200px) {
+  html.redesign-on .crumb .edit-link {
+    font-family: 'Dumbledor2', serif;
+    font-size: .8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: #eadcbb; text-decoration: none;
+    border: 1px solid rgba(214,196,150,.5);
+    padding: 6px 15px; margin-left: 10px;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  html.redesign-on .crumb .edit-link::after { display: none; } /* no gold underline */
+  html.redesign-on .crumb .edit-link:hover {
+    background: rgba(214,196,150,.16);
+    border-color: rgba(214,196,150,.8);
+    color: #fff;
+  }
+}
+/* the dropdown clone: identical look to the other dropdown entries
+   (Dumbledor2 uppercase rows). The button text already carries a ✎
+   pencil glyph, so no ::before accent here (that produced two icons). */
+html.redesign-on .nav-dropdown a.edit-link-clone { color: #eadcbb; }
+
+/* ── 4c. Hamburger dropdown: match the redesigned bar ─────────────
+   The base .nav-dropdown still used the old bar's dark palette, so the
+   menu read as "the old bar". Re-skin it with the same deeper-purple
+   gradient, gold hairline dividers, gold hover, and the redesigned
+   search field, so the open menu matches the top bar it drops from. */
+html.redesign-on .nav-dropdown {
+  background: linear-gradient(180deg, rgba(37,15,43,.99), rgba(22,8,26,.99));
+  border-bottom: 1px solid rgba(214,196,150,.32);
+  box-shadow: 0 8px 20px rgba(5,1,7,.4);
+  backdrop-filter: blur(10px);
+}
+/* faint gilded glint along the menu's bottom edge, like the bar's */
+html.redesign-on .nav-dropdown::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent 6%, rgba(214,196,150,.4) 50%, transparent 94%);
+  pointer-events: none;
+}
+html.redesign-on .nav-dropdown a {
+  color: rgba(240,232,213,.82);
+  border-bottom: 1px solid rgba(214,196,150,.14);
+}
+html.redesign-on .nav-dropdown a:hover {
+  background: rgba(214,196,150,.12);
+  color: #f8f0dd;
+}
+html.redesign-on .nav-dropdown a.active {
+  color: rgba(214,196,150,.55);
+}
+/* the in-menu search field: same warmer parchment tint + gold focus
+   ring as the top-bar search input */
+html.redesign-on .nav-dropdown-search {
+  border-bottom: 1px solid rgba(214,196,150,.2);
+}
+html.redesign-on .nav-dropdown-search input {
+  border: 1px solid rgba(214,196,150,.35);
+  background: rgba(240,232,213,.06);
+  color: #eadcbb;
+}
+html.redesign-on .nav-dropdown-search input::placeholder { color: rgba(222,207,167,.55); }
+html.redesign-on .nav-dropdown-search input:focus {
+  border-color: rgba(214,196,150,.75);
+  background: rgba(240,232,213,.10);
+  box-shadow: 0 0 0 3px rgba(214,196,150,.14);
+}
+
+/* ── 5. Small bonus fixes, same theme ─────────────────────────── */
+
+/* Hero: five identical parchment buttons = no hierarchy. Make the
+   primary journey (Browse All Characters) the filled maroon CTA. */
+html.redesign-on .landing-ctas a:first-child {
+  background: linear-gradient(180deg, #8a3526, #5B1F21);
+  color: #f3ead4;
+  border: 2px solid var(--maroon);
+  box-shadow: 0 6px 16px rgba(40,12,30,.4);
+}
+html.redesign-on .landing-ctas a:first-child:hover {
+  filter: brightness(1.1);
+}
+
+/* Script/collection tiles: long "32 CHARACTERS · ALEX S." counts
+   collided with the "View →" arrow — let the footer wrap. */
+html.redesign-on .collection-footer { flex-wrap: wrap; gap: 4px 12px; }
+html.redesign-on .collection-count { min-width: 0; }

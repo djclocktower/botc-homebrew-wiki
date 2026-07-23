@@ -609,14 +609,17 @@ function attr(s) {
 // Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
 // The topbar/nav markup mirrors the static pages (scripts.html is canonical).
 function pageShell(o) {
-  // o: {title, desc, canonicalUrl, ogImage, ogCard, crumb, body, bodyClass,
+  // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
   //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner}
+  // The nav row is identical on every page (built into the shell below);
+  // site.js appends Token Tool + the Account/Login button, and moves the
+  // Edit button to the end of the row on editable pages.
   const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
   const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
     (o.mainStyle ? ' style="' + attr(o.mainStyle) + '"' : '');
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -636,6 +639,7 @@ function pageShell(o) {
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
 <link rel="apple-touch-icon" href="../assets/favicon.png">
 <link rel="stylesheet" href="../assets/styles.css">
+<link rel="stylesheet" href="../assets/header-redesign.css">
 </head>
 <body${bodyAttrs}>
 ${o.draftBanner || ''}
@@ -648,7 +652,12 @@ ${o.draftBanner || ''}
       <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
     </div>
-    <nav class="crumb" aria-label="Breadcrumb" id="crumb">${o.crumb}</nav>
+    <nav class="crumb" aria-label="Primary" id="crumb">
+      <a href="../all-characters">All Characters</a>
+      <a href="../scripts">Scripts</a>
+      <a href="../all-collections">Collections</a>
+      <a href="../script">Script Builder</a>
+    </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
     <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
@@ -663,10 +672,9 @@ ${o.draftBanner || ''}
   </div>
   <a href="../">Home</a>
   <a href="../all-characters">All Characters</a>
-  <a href="../tags">Tags</a>
-  <a href="../creators">Creators</a>
+  <a href="../scripts">Scripts</a>
+  <a href="../all-collections">Collections</a>
   <a href="../script">Script Builder</a>
-  <a href="../create">Create a Character</a>
 </nav>
 
   <main${mainAttrs} id="content">${o.body}</main>
@@ -680,8 +688,6 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 }
 
 function renderCharacterPage(d, origin, isDraft) {
-  const team = d.team || 'townsfolk';
-  const label = (Render.TEAM_LABEL && Render.TEAM_LABEL[team]) || team;
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
   const pageUrl = origin + '/c/' + d.slug;
@@ -690,19 +696,12 @@ function renderCharacterPage(d, origin, isDraft) {
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
   const body = Render.renderCharacter(d, artSrc, '../');
-  const crumb =
-    '<a href="../">Home</a><span class="sep">›</span>' +
-    '<a href="../all-characters">Characters</a><span class="sep">·</span>' +
-    '<a href="../script">Script Builder</a><span class="sep">·</span>' +
-    '<a href="../tokens">Token Tool</a><span class="sep">›</span>' +
-    '<a href="../team?t=' + attr(team) + '">' + attr(label) + '</a>' +
-    '<span class="sep">›</span><span class="here">' + attr(name) + '</span>';
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
     : '';
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
-    crumb, body, draftBanner,
+    body, draftBanner,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};`,
     scripts: ['render.js', 'tags.js', 'charpage.js', 'site.js']
   });
@@ -800,14 +799,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a> or <a href="../account" style="color:#ffe9ad">your account</a>.</div>'
     : '';
-  const crumb = isScript
-    ? '<a href="../">Home</a><span class="sep">›</span><a href="../scripts">Scripts</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>'
-    : '<a href="../">Home</a><span class="sep">›</span><a href="../">Collections</a><span class="sep">›</span><span class="here">' + attr(name) + '</span>';
 
   const html = pageShell({
     title: (isDraft ? 'Draft: ' : '') + name, desc, canonicalUrl: canonical,
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
-    crumb, body, draftBanner,
+    body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
     scripts: isScript
