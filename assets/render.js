@@ -56,6 +56,27 @@
     return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
   }
 
+  // Creator-symbol registry ("credit icons"), shared with creators.js. The
+  // Worker injects it for SSR (setCreators); in the browser we fall back to
+  // the global that assets/creators.js publishes. Either way, a character page
+  // shows the creator's symbol next to their name in the info box.
+  var CREATORS = null;
+  function setCreators(api) { CREATORS = api || null; }
+  function creatorsApi() {
+    if (CREATORS) return CREATORS;
+    if (typeof window !== 'undefined' && window.CreatorSymbols) return window.CreatorSymbols;
+    return null;
+  }
+  function creatorSymbol(name) {
+    var c = creatorsApi();
+    return (c && c.creatorSymbol) ? c.creatorSymbol(name) : '';
+  }
+  function stripCreatorMark(name, creator) {
+    var c = creatorsApi();
+    return (c && c.stripCreatorMark) ? c.stripCreatorMark(name, creator)
+      : String(name == null ? '' : name);
+  }
+
   /* ── Build official-schema JSON object from character data ── */
   function buildSchema(d) {
     var o = {
@@ -184,7 +205,9 @@
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
-      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a></dd>' : '') +
+      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a>' +
+        (creatorSymbol(d.creator.trim()) ? ' <span class="creator-mark" title="' + esc(d.creator.trim()) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(d.creator.trim())) + '</span>' : '') +
+        '</dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' + esc(d.appearsIn.trim()) + '">' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
@@ -278,7 +301,9 @@
     // Title auto-fits to its width: --nch (letter count, spaces collapsed) drives
     // a fluid font-size in .gen-title so short names grow large and long names
     // shrink to fill the same width without overlapping. See styles.css.
-    var titleName = d.name || 'Unnamed';
+    // The creator's symbol now renders as a credit icon in the info box, so
+    // strip any copy baked into the name (e.g. "Cheerleader ∇") from the title.
+    var titleName = stripCreatorMark(d.name, d.creator) || d.name || 'Unnamed';
     var nch = Math.max(String(titleName).replace(/\s+/g, ' ').trim().length, 4);
 
     return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
@@ -401,6 +426,7 @@
     window.TEAM_LABEL = TEAM_LABEL;
     window.findScriptJinxes = findScriptJinxes;
     window.setOfficialIconUrls = setOfficialIconUrls;
+    window.setCreators = setCreators;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -408,7 +434,8 @@
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
-      setOfficialIconUrls: setOfficialIconUrls
+      setOfficialIconUrls: setOfficialIconUrls,
+      setCreators: setCreators
     };
   }
 })();
