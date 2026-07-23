@@ -107,37 +107,6 @@ def _name_radius(total_adv):
     t = (total_adv - NAME_ADV_LO) / float(NAME_ADV_HI - NAME_ADV_LO)
     return NAME_R_MAX + t*(NAME_R_MIN - NAME_R_MAX)
 
-# ── optical kerning: only nudges outlier pairs, leaves typical pairs untouched ──
-KERN_LOOSE_THRESH = 16.0   # closest-approach above this = too loose -> pull in
-KERN_K_LOOSE      = 1.0
-KERN_TIGHT_MEAN   = 11.0   # mean gap below this = uniformly cramped -> push apart
-KERN_K_TIGHT      = 1.6
-KERN_CLAMP        = (-30.0, 8.0)
-_prof_cache = {}
-def _glyph_profiles(f, ch, size, pad=6):
-    key = (ch, size)
-    if key in _prof_cache: return _prof_cache[key]
-    w = int(f.getlength(ch)) + 2*pad; h = int(size*2.2)
-    im = Image.new('L', (w, h), 0); ImageDraw.Draw(im).text((pad, pad), ch, font=f, fill=255)
-    a = _np.array(im) > 60
-    L = _np.full(h, _np.nan); R = _np.full(h, _np.nan)
-    for y in range(h):
-        xs = _np.where(a[y])[0]
-        if len(xs): L[y] = xs[0]-pad; R[y] = xs[-1]-pad
-    _prof_cache[key] = (L, R)
-    return L, R
-def _pair_kern(f, c0, c1, size, track):
-    if c0 == ' ' or c1 == ' ': return 0.0
-    L0, R0 = _glyph_profiles(f, c0, size); L1, R1 = _glyph_profiles(f, c1, size)
-    s = f.getlength(c0) + track
-    gaps = [(s + L1[y]) - R0[y] for y in range(len(R0))
-            if not _np.isnan(R0[y]) and not _np.isnan(L1[y])]
-    if not gaps: return 0.0
-    mn = min(gaps); mean = sum(gaps)/len(gaps)
-    corr = (-KERN_K_LOOSE * max(0.0, mn - KERN_LOOSE_THRESH)
-            + KERN_K_TIGHT * max(0.0, KERN_TIGHT_MEAN - mean))
-    return max(KERN_CLAMP[0], min(KERN_CLAMP[1], corr))
-
 def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
     name = name.upper()
     arc = max(0.2, float(arc))
@@ -154,12 +123,11 @@ def render_name(name, size_mul=1.0, dy=0, dx=0, arc=1.0):
         if total_adv / R <= NAME_SPAN_MAX * max(1.0, arc):
             break
     asc, desc = f.getmetrics()
-    # per-pair optical corrections inserted between glyphs (0 for typical pairs)
-    corrs = [_pair_kern(f, name[i], name[i+1], size, track) for i in range(len(name)-1)]
-    # advance-centred placement (identical to before when all corrs==0)
-    starts = [0.0]; 
+    # pure advance-based placement — the kerned font bakes its spacing into the
+    # glyph advances, so no optical correction pass is needed
+    starts = [0.0]
     for i in range(len(name)-1):
-        starts.append(starts[-1] + advs[i] + corrs[i])
+        starts.append(starts[-1] + advs[i])
     centers = [starts[i] + advs[i]/2.0 for i in range(len(name))]
     total = starts[-1] + advs[-1]
     mid = total/2.0

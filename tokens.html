@@ -144,12 +144,33 @@
 .tt-preview img { max-width: 100%; max-height: 340px; display: block; }
 .tt-preview .ph { color: rgba(236,225,200,.55); font-family: 'Oswald', sans-serif; font-size: .88rem; text-align: center; }
 
-/* Two-column card grid on wide screens */
-.tt-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 22px; align-items: start; }
-@media (max-width: 1100px) { .tt-grid { grid-template-columns: 1fr; } }
+/* Workspace: controls stack on the left, preview sticks alongside on the right.
+   The preview spans the full column so it can stay pinned while you scroll the
+   long "Adjust All Tokens" list beneath the options. */
+.tt-workspace { display: grid; grid-template-columns: minmax(0,1fr) minmax(300px,380px); gap: 22px; align-items: start; }
+.tt-workspace > *:not(.tt-preview-col) { grid-column: 1; min-width: 0; }
+.tt-preview-col {
+  grid-column: 2; grid-row: 1 / span 50;
+  position: sticky; top: 66px; align-self: start;
+}
+@media (max-width: 1100px) {
+  .tt-workspace { grid-template-columns: 1fr; }
+  /* single column: preview still pins to the top as you scroll past it into the
+     controls below, but capped so it never swallows a small screen */
+  .tt-preview-col { grid-column: 1; grid-row: auto; top: 62px; z-index: 10; }
+  .tt-preview-col .tt-preview img { max-height: 34vh; }
+}
+@media (max-width: 820px) {
+  /* the "+ Add Characters" bar is itself sticky at top:56px (~46px tall), so the
+     pinned preview must clear it; keep the preview compact on phones */
+  .tt-preview-col { top: 104px; }
+  .tt-preview-col .tt-preview { min-height: 120px; padding: 10px; }
+  .tt-preview-col .tt-preview img { max-height: 30vh; }
+}
 
-/* Generate + output */
-.tt-actions { margin: 4px 0 18px; }
+/* Generate + output — loading bar sits inline beside the button */
+.tt-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 4px 0 18px; }
+#tt-load-gen { margin: 0; }
 .tt-btn-generate {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
   font-size: 1.05rem; cursor: pointer; border: none; border-radius: 0;
@@ -375,7 +396,7 @@
         <p class="sb-empty">Your set is empty. Add characters from the sidebar.</p>
       </div>
 
-      <div class="tt-grid">
+      <div class="tt-workspace">
         <section class="tt-card">
           <h2>Options</h2>
           <div class="tt-row"><label>Paper</label>
@@ -403,42 +424,46 @@
             <label class="tt-check"><input type="checkbox" id="opt-char" checked> Character sheet</label>
             <label class="tt-check"><input type="checkbox" id="opt-rem" checked> Reminder sheet</label>
           </div>
+          <div class="tt-row" style="justify-content:flex-start">
+            <label class="tt-check"><input type="checkbox" id="opt-official" checked> Print official characters</label>
+          </div>
         </section>
 
-        <section class="tt-card">
+        <section class="tt-card tt-preview-col">
           <h2>Preview</h2>
           <div class="tt-tf-bar" id="tt-tf-bar"></div>
           <div class="tt-preview" id="preview"><span class="ph">Add a character to preview a token</span></div>
         </section>
+
+        <section class="tt-card">
+          <div class="tt-adj-head" id="tt-adj-toggle">
+            <h2>Adjust All Tokens</h2>
+            <span class="tt-adj-caret" id="tt-adj-caret">&#9662;</span>
+          </div>
+          <div id="tt-adj-body" style="display:none">
+            <div id="tt-adj-panel"></div>
+            <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tt-adj-reset">Reset All Adjustments</button></div>
+          </div>
+        </section>
+
+        <section class="tt-card">
+          <div class="tt-adj-head" id="tt-assets-toggle">
+            <h2>Custom Assets</h2>
+            <span class="tt-adj-caret" id="tt-assets-caret">&#9662;</span>
+          </div>
+          <div id="tt-assets-body" style="display:none">
+            <p class="tt-assets-hint">Swap in your own art for parts of the token. PNG with transparency works best; images are session-based and small ones are remembered on this device.</p>
+            <div id="tt-assets-panel"></div>
+          </div>
+        </section>
+
+        <div class="tt-actions">
+          <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
+          <div class="tt-load done" id="tt-load-gen"><span class="tt-load-bar"></span><span>Rendering…</span></div>
+        </div>
+        <div class="tt-out" id="output"></div>
+        <div class="tt-thumbs" id="thumbs"></div>
       </div>
-
-      <section class="tt-card">
-        <div class="tt-adj-head" id="tt-adj-toggle">
-          <h2>Adjust All Tokens</h2>
-          <span class="tt-adj-caret" id="tt-adj-caret">&#9662;</span>
-        </div>
-        <div id="tt-adj-body" style="display:none">
-          <div id="tt-adj-panel"></div>
-          <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tt-adj-reset">Reset All Adjustments</button></div>
-        </div>
-      </section>
-
-      <section class="tt-card">
-        <div class="tt-adj-head" id="tt-assets-toggle">
-          <h2>Custom Assets</h2>
-          <span class="tt-adj-caret" id="tt-assets-caret">&#9662;</span>
-        </div>
-        <div id="tt-assets-body" style="display:none">
-          <p class="tt-assets-hint">Swap in your own art for parts of the token. PNG with transparency works best; images are session-based and small ones are remembered on this device.</p>
-          <div id="tt-assets-panel"></div>
-        </div>
-      </section>
-
-      <div class="tt-actions">
-        <button class="tt-btn-generate" id="generate" disabled>Generate Sheets</button>
-      </div>
-      <div class="tt-out" id="output"></div>
-      <div class="tt-thumbs" id="thumbs"></div>
 
       <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
     </main>

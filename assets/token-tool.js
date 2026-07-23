@@ -66,9 +66,17 @@
   var opts = {
     paper: 'A4', format: 'png', layout: 'grid',
     char_margin: 1.05, rem_margin: 1.10, pad_mm: 2,
-    dpi: 400, want_char: true, want_rem: true,
+    dpi: 400, want_char: true, want_rem: true, want_official: true,
     preview_scale: (window.matchMedia && matchMedia('(max-width: 820px)').matches) ? 0.32 : 0.42
   };
+
+  /* Official characters (from imported scripts / roles.json) are printed only
+     when the "Print official characters" option is on; homebrew always prints. */
+  function isOfficial(sl) { var c = charBySlug[sl]; return !!(c && c.official); }
+  function renderSlugs() {
+    return opts.want_official ? setSlugs.slice()
+                              : setSlugs.filter(function (sl) { return !isOfficial(sl); });
+  }
 
   /* ---- adjustments: defaults -> global -> per-token overrides ---- */
   var ADJ_DEF = {
@@ -719,7 +727,7 @@
     bar.innerHTML = '<span class="tt-tf-label">Transform ' + note + ':</span>' + chips +
       (a ? '<span class="tt-tf-hint">Drag to move &middot; corner to resize &middot; top handle to rotate</span>' : '');
   }
-  function refreshMainTf() { if (mainGizmo) { buildTfBar('tt-tf-bar', mainGizmo, function () { return charBySlug[setSlugs[0]]; }, '(all tokens)'); mainGizmo.sync(); } }
+  function refreshMainTf() { if (mainGizmo) { buildTfBar('tt-tf-bar', mainGizmo, function () { return charBySlug[renderSlugs()[0]]; }, '(all tokens)'); mainGizmo.sync(); } }
   function refreshEditorTf() { if (editorGizmo) { buildTfBar('tte-tf-bar', editorGizmo, function () { return editorSlug ? charBySlug[editorSlug] : null; }, '(this token)'); editorGizmo.sync(); } }
 
   function wireTransform() {
@@ -1006,6 +1014,7 @@
 
     $('opt-char').onchange = function () { opts.want_char = this.checked; refreshGenerate(); };
     $('opt-rem').onchange = function () { opts.want_rem = this.checked; refreshGenerate(); };
+    $('opt-official').onchange = function () { opts.want_official = this.checked; refreshGenerate(); schedulePreview(); };
   }
 
   /* ---- payloads ---- */
@@ -1041,9 +1050,10 @@
   function schedulePreview() { clearTimeout(previewTimer); previewTimer = setTimeout(doPreview, 280); }
   function doPreview() {
     var box = $('preview');
-    if (!setSlugs.length) { box.innerHTML = '<span class="ph">Add a character to preview a token</span>'; if (mainGizmo) mainGizmo.sync(); return; }
+    var slugs = renderSlugs();
+    if (!slugs.length) { box.innerHTML = '<span class="ph">Add a character to preview a token</span>'; if (mainGizmo) mainGizmo.sync(); return; }
     if (!pyReady) { box.innerHTML = '<span class="ph">Preview will appear once loading finishes…</span>'; return; }
-    var sl = setSlugs[0], mySeq = ++previewSeq;
+    var sl = slugs[0], mySeq = ++previewSeq;
     return callWorker('preview', { payload: payloadFor(sl), opts: opts, art: artList([sl]) })
       .then(function (res) {
         if (mySeq !== previewSeq) return; // a newer preview superseded this one
@@ -1056,20 +1066,23 @@
 
   /* ---- generate ---- */
   function refreshGenerate() {
-    $('generate').disabled = !(pyReady && setSlugs.length && (opts.want_char || opts.want_rem));
+    $('generate').disabled = !(pyReady && renderSlugs().length && (opts.want_char || opts.want_rem));
   }
+  function showGenLoad() { $('tt-load-gen').classList.remove('done'); }
+  function hideGenLoad() { $('tt-load-gen').classList.add('done'); }
   function wireGenerate() {
     $('generate').onclick = function () {
-      if (!pyReady || !setSlugs.length) return;
+      var slugs = renderSlugs();
+      if (!pyReady || !slugs.length) return;
       var btn = this; btn.disabled = true;
       $('output').innerHTML = ''; $('thumbs').innerHTML = ''; clearMsg();
-      showLoad('Rendering…');
-      callWorker('render', { payloads: setSlugs.map(payloadFor), opts: opts, art: artList(setSlugs) })
+      showGenLoad();
+      callWorker('render', { payloads: slugs.map(payloadFor), opts: opts, art: artList(slugs) })
         .then(function (res) {
-          hideLoad(); showOutput(res);
+          hideGenLoad(); showOutput(res);
           showMsg('ok', 'Done — ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');
         })
-        .catch(function (e) { hideLoad(); console.error(e); showMsg('err', 'Render error: ' + esc(e.message)); })
+        .catch(function (e) { hideGenLoad(); console.error(e); showMsg('err', 'Render error: ' + esc(e.message)); })
         .then(function () { btn.disabled = false; refreshGenerate(); });
     };
   }
