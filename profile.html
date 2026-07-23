@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +9,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon.png">
 <link rel="apple-touch-icon" href="/assets/favicon.png">
 <link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/header-redesign.css">
 <style>
   .profile-hero { display:flex; align-items:center; gap:22px; flex-wrap:wrap; justify-content:center; text-align:left; }
   .profile-avatar {
@@ -37,35 +38,38 @@
 
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="/index.html">
+      <a class="brand" href="/">
         <img class="brand-skull" src="/assets/logo_skull.png" alt="">
         <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
       <img class="topbar-badge" src="/assets/ccc-parchment.png" alt="Community Created Content">
     </div>
-    <nav class="crumb" aria-label="Breadcrumb" id="crumb">
-      <a href="/index.html">Home</a><span class="sep">›</span><a href="/all-characters.html">Characters</a>
-    <span class="sep">·</span><a href="/script.html">Script Builder</a></nav>
-  <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
-  </div>
-  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
-    <span></span><span></span><span></span>
-  </button>
-</header>
-<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
-  <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
-  </div>
-  <a href="/index.html">Home</a>
-  <a href="/all-characters.html">All Characters</a>
-  <a href="/scripts.html">Scripts</a>
-  <a href="/tags.html">Tags</a>
-  <a href="/creators.html">Creators</a>
-  <a href="/script.html">Script Builder</a>
-  <a href="/create.html">Create a Character</a>
-</nav>
+    <nav class="crumb" aria-label="Primary">
+      <a href="/all-characters">All Characters</a>
+      <a href="/scripts">Scripts</a>
+      <a href="/tags">Tags</a>
+      <a href="/creators">Creators</a>
+      <a href="/script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="/all-characters">All Characters</a>
+    <a href="/scripts">Scripts</a>
+    <a href="/tags">Tags</a>
+    <a href="/creators">Creators</a>
+    <a href="/script">Script Builder</a>
+  </nav>
 
   <div class="home-hero">
     <div class="profile-hero" id="profile-hero">

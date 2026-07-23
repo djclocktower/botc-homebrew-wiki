@@ -411,6 +411,39 @@
   })();
 })();
 
+/* ── Redesigned top bar: solid/scrolled state past 24px of scroll ── */
+(function () {
+  var tb = document.querySelector('.topbar');
+  if (!tb) return;
+  function onScroll() {
+    tb.classList.toggle('scrolled', (window.scrollY || window.pageYOffset || 0) > 24);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+/* ── Redesigned top bar: Edit button placement (editable pages) ──
+   Editable server-rendered pages (/c/, /s/, /collection/) carry
+   <a class="edit-link" id="edit-btn"> in the brand group; charpage.js /
+   pageview.js set its href and un-hide it BEFORE this file runs (script
+   order). Move it to the end of the nav row on desktop, and clone it into
+   the hamburger dropdown for mobile (where the nav row is hidden). Guarded
+   on display so a hidden/inactive button is never surfaced. */
+(function () {
+  var editBtn = document.getElementById('edit-btn');
+  if (!editBtn || editBtn.style.display === 'none') return;
+  var crumb = document.querySelector('.crumb');
+  if (crumb) crumb.appendChild(editBtn);
+  var dropdown = document.getElementById('nav-dropdown');
+  if (dropdown && !document.getElementById('edit-btn-mobile')) {
+    var clone = editBtn.cloneNode(true);
+    clone.id = 'edit-btn-mobile';
+    clone.classList.add('edit-link-clone');
+    clone.style.display = '';
+    dropdown.appendChild(clone);
+  }
+})();
+
 /* Auto-growing textareas: every edit form on the site expands to fit its
    content as you type, so long fields (abilities, descriptions, strategy
    notes) don't hide text behind a scrollbar. Opt out with class="no-autosize"
