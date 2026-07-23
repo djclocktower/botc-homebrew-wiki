@@ -108,6 +108,10 @@ import Render from '../assets/render.js';
 // the browser). It receives render.js's exports through init().
 import PageRender from '../assets/render-page.js';
 PageRender.init(Render);
+// Creator-symbol registry ("credit icons"), single source in creators.js.
+// Injected so SSR /c/ pages show a creator's symbol next to their name.
+import Creators from '../assets/creators.js';
+Render.setCreators(Creators);
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';

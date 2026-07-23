@@ -675,6 +675,17 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .author-link:hover,
 .appears-in-link:hover { text-decoration: underline; }
 
+/* Creator's credit symbol next to their name in a character's info box.
+   The glyph itself lives in the shared registry (assets/creators.js). */
+.creator-mark {
+  margin-left: 5px;
+  font-family: serif;
+  color: var(--maroon);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.theme-text .creator-mark { color: var(--pg-text); }
+
 /* ════════════════════════════════════════════════════════════════
    CREATOR ICONS SIDEBAR — fixed to left of screen
    ════════════════════════════════════════════════════════════════ */
