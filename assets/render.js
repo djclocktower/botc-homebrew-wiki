@@ -229,8 +229,7 @@
     if (artSrc) {
       emblem = altSrc
         ? '<img class="emblem has-alt" src="' + esc(artSrc) + '" data-main="' + esc(artSrc) +
-          '" data-alt="' + esc(altSrc) + '" alt="' + esc(d.name) + '" title="Click to see the alternate art">' +
-          '<span class="alt-art-hint">Click art to see alternate version</span>'
+          '" data-alt="' + esc(altSrc) + '" alt="' + esc(d.name) + '" title="Click to see the alternate art">'
         : '<img class="emblem" src="' + esc(artSrc) + '" alt="' + esc(d.name) + '">';
     }
     var infoCard = '<div class="card char-infocard">' +
