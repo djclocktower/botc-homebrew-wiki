@@ -398,8 +398,9 @@
 
         // ── Collections grid ──────────────────────────────────
         var grid = document.getElementById('collections-grid');
-        // Featured collections: 6 picked at random from those with members,
-        // reshuffled on every page load. The full list lives on /all-collections.
+        // Featured collections: 5 picked at random from those with members,
+        // reshuffled on every page load, plus an "All Collections" tile (6 total).
+        // The full list lives on /all-collections.
         var featuredPool = COLLECTIONS.filter(function(coll){
           return (collected[coll.slug] || []).length;
         });
@@ -408,7 +409,7 @@
           var tmp = featuredPool[i]; featuredPool[i] = featuredPool[j]; featuredPool[j] = tmp;
         }
         var html = '';
-        featuredPool.slice(0, 6).forEach(function(coll){
+        featuredPool.slice(0, 5).forEach(function(coll){
           var chars = collected[coll.slug] || [];
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
@@ -485,8 +486,14 @@
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        // show up to 6 on the homepage
-        grid.innerHTML = scripts.slice(0, 6).map(function(sc){
+        // Featured scripts: 5 picked at random and reshuffled on every page
+        // load, plus an "All Scripts" tile (6 total). Full list lives on /scripts.
+        var pool = scripts.slice();
+        for (var i = pool.length - 1; i > 0; i--){
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+        }
+        var html = pool.slice(0, 5).map(function(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
           var headerHTML = sc.header
@@ -500,6 +507,15 @@
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }).join('');
+        // "All Scripts" tile — browse every script on the wiki.
+        html += '<a class="collection-tile script-tile" href="scripts">' +
+          '<div class="script-card-header script-card-header-empty"><span>All Scripts</span></div>' +
+          '<h3 class="collection-name">All Scripts</h3>' +
+          '<div class="collection-footer">' +
+            '<span class="collection-count">' + scripts.length + ' script' + (scripts.length===1?'':'s') + '</span>' +
+            '<span class="collection-arrow">Browse →</span>' +
+          '</div></a>';
+        grid.innerHTML = html;
       })
       .catch(function(){
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.5);padding:24px">Could not load scripts.</p>';
