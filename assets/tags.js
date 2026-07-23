@@ -41,7 +41,7 @@
     'Setup': 'Changes the game during setup (square-bracket setup text).',
     'Single-Kill': 'An evil character that kills one player per night.',
     'Social': 'Affects how players talk, behave, or interact with each other.',
-    'Think': 'Complex character — rewards careful thought from players and Storyteller.',
+    'Think': 'Characters that think or make other players think they are different characters.',
     'Timer': 'Adds a time limit or countdown to the game.',
     'Votes': 'Interacts with voting — extra votes, blocked votes, or changed counts.',
     'Win Condition': 'Adds a new way for a player or team to win the game.',
