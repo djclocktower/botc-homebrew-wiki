@@ -810,7 +810,9 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     crumb, body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
-    scripts: ['render.js', 'pageview.js', 'site.js']
+    scripts: isScript
+      ? ['render.js', 'pageview.js', 'site.js']
+      : ['render.js', 'pageview.js', 'collection-filters.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }

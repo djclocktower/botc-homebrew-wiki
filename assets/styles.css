@@ -1612,23 +1612,61 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    COLLECTION PAGES — header image + description
    ════════════════════════════════════════════════════════════════ */
 
-/* SSR collection page (/collection/{id}) — full-width character card grid,
-   with the info box + JSON export in a meta row below. */
-.coll-chars { margin: 22px 0 8px; }
+/* SSR collection page (/collection/{id}) — full-width character card grid
+   grouped by team, with a big header, a prominent author credit, and the
+   info/JSON/tokens boxes at the top. */
+.coll-header-wrap { text-align: center; margin: 4px 0 14px; }
+.coll-header-img {
+  max-width: 100%; max-height: clamp(220px, 40vw, 460px); height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.5));
+}
+.coll-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400; text-align: center;
+  color: var(--parch); font-size: clamp(2rem, 6vw, 3.4rem);
+  margin: 6px 0 10px; line-height: 1.05;
+}
+.coll-author {
+  text-align: center; font-family: 'EB Garamond', serif; font-size: 1.25rem;
+  color: rgba(236,225,200,.85); margin: 0 0 10px;
+}
+.coll-author-link {
+  color: var(--good-name); font-weight: 700; text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.coll-author-link:hover { border-bottom-color: currentColor; }
+
+.coll-chars { margin: 8px 0; }
 .coll-chars-count {
   text-align: center; font-family: 'Oswald', sans-serif;
   letter-spacing: .07em; text-transform: uppercase; font-size: .9rem;
   color: rgba(236,225,200,.72); margin: 0 0 20px;
 }
+.coll-team-count { font-size: .8rem; opacity: .7; }
 .coll-prose { margin-bottom: 22px; }
 .coll-jinx { margin-top: 22px; }
 .coll-meta-row {
   display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
-  gap: clamp(16px, 2.4vw, 30px); align-items: start; margin-top: 28px;
+  gap: clamp(16px, 2.4vw, 30px); align-items: start; margin: 16px 0 26px;
 }
 @media (max-width: 760px) { .coll-meta-row { grid-template-columns: 1fr; } }
-/* Themed pages recolor the count line to match the chosen text color */
-.theme-text .coll-chars-count { color: var(--pg-text); opacity: .8; }
+
+/* On-page filter box — a collapsed dropdown on every screen size. */
+.coll-filters { margin: 4px 0 0; }
+.coll-filter-toggle {
+  display: block; width: 100%; max-width: 460px; margin: 0 auto 18px;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-weight: 400; letter-spacing: .06em; font-size: .95rem; cursor: pointer;
+  background: var(--parch); color: var(--maroon);
+  border: 2px solid var(--parch-frame); padding: 11px 16px; text-align: left;
+}
+.coll-filter-toggle .filter-toggle-arrow { float: right; transition: transform .2s ease; }
+.coll-filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+.coll-filter-bar { margin-bottom: 22px; }
+
+/* Themed pages recolor the count + author lines to match the chosen text color */
+.theme-text .coll-chars-count,
+.theme-text .coll-author { color: var(--pg-text); opacity: .85; }
+.theme-accent .coll-title { color: var(--pg-accent); }
 
 /* Header image shown at top of filtered collection page */
 

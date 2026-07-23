@@ -382,6 +382,12 @@
       AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
                            match:[],standalone:true,description:'',header:''});
                 var activeCollection = findCollection(COLLECTION_PARAM);
+        // The per-collection browse/filter view now lives on the collection
+        // page itself, so send real collections there. (Standalone stays here.)
+        if (activeCollection && activeCollection.id && !activeCollection.standalone) {
+          location.replace('collection/' + encodeURIComponent(activeCollection.id));
+          return;
+        }
         if (activeCollection) {
           list = list.filter(function (c) { return charMatchesCollection(c, activeCollection); });
           var displayName = activeCollection.displayName;

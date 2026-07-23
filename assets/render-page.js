@@ -180,18 +180,26 @@
     return html;
   }
 
-  /* Collection roster as a full-width card grid (like all-characters), one
-     continuous grid ordered by the caller (team, then name). Cards reuse the
-     .char-card styles so the collection page matches the browse view. */
-  function renderRosterCards(entries, root) {
+  /* Collection roster as a full-width card grid grouped by team, with a team
+     header above each group (like all-characters). Cards reuse the .char-card
+     styles and carry data-* attributes so collection-filters.js can filter and
+     sort them client-side. orderMap gives each slug its index in the full
+     character list, for the "recently added" sort. */
+  function renderRosterCards(entries, root, orderMap) {
     if (!entries.length) {
       return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
     }
-    var cards = entries.map(function (c) {
+    orderMap = orderMap || {};
+    function cardHTML(c) {
       var label = '';
       for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
-      return '<a class="char-card" href="' + esc(charHref(c, root)) + '">' +
+      return '<a class="char-card" href="' + esc(charHref(c, root)) + '"' +
+        ' data-team="' + esc(c.team || '') + '"' +
+        ' data-tags="' + esc(c.tags || '') + '"' +
+        ' data-creator="' + esc((c.creator || '').trim()) + '"' +
+        ' data-name="' + esc(c.name || '') + '"' +
+        ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
@@ -199,8 +207,25 @@
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character &rarr;</span>' +
         '</div></a>';
-    }).join('');
-    return '<div class="char-grid">' + cards + '</div>';
+    }
+    function section(key, label, grp) {
+      return '<section class="type-section coll-team" data-team="' + esc(key) + '">' +
+        '<h2 class="type-header' + (GOOD[key] ? ' good' : '') + '">' +
+        '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>' +
+        ' <span class="coll-team-count">(' + grp.length + ')</span></h2>' +
+        '<div class="type-rule"></div>' +
+        '<div class="char-grid">' + grp.map(cardHTML).join('') + '</div></section>';
+    }
+    var html = '';
+    TEAMS.forEach(function (t) {
+      var grp = entries.filter(function (c) { return c.team === t[0]; });
+      if (grp.length) html += section(t[0], t[1], grp);
+    });
+    var other = entries.filter(function (c) {
+      return !TEAMS.some(function (t) { return t[0] === c.team; });
+    });
+    if (other.length) html += section('other', 'Other', other);
+    return html;
   }
 
   function renderJinxGroup(entries) {
@@ -388,21 +413,29 @@
      grid; the information box + JSON export sit in a meta row below it. */
   function renderCollectionBody(cfg) {
     var root = cfg.root;
+    var n = cfg.entries.length;
+
+    // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
       : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
-         '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
+         '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
+    // Author credit — prominent, right at the top, name links to their page.
+    if (cfg.author) {
+      top += '<p class="coll-author">by <a class="coll-author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(cfg.author) + '">' + esc(cfg.author) + '</a></p>';
+    }
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
 
-    var metaParts = [cfg.entries.length + ' character' + (cfg.entries.length === 1 ? '' : 's')];
-    if (cfg.author) metaParts.push('by ' + esc(cfg.author));
-    if (cfg.version) metaParts.push('v' + esc(String(cfg.version).replace(/^v/i, '')));
-    if (cfg.difficulty && DIFFICULTY_LABEL[cfg.difficulty]) metaParts.push(DIFFICULTY_LABEL[cfg.difficulty]);
-    top += '<p class="script-meta-line">' + metaParts.join(' · ') + '</p>';
+    // Information + JSON/tokens boxes — moved to the top.
+    var infobox = renderInfobox({
+      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
+    });
+    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
+    var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';
 
-    // Prose sections (synopsis / gameplay) in a parchment panel so the ink text
-    // stays readable over the page background.
+    // Prose sections (synopsis / gameplay) in a parchment panel.
     var proseHTML = '';
     if (cfg.synopsis) proseHTML += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
     var gameplay = '';
@@ -412,22 +445,24 @@
     if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
 
-    // Characters as a full-width card grid.
-    var chars = '<section class="coll-chars" id="sec-characters">' +
-      '<p class="coll-chars-count">' + cfg.entries.length + ' character' + (cfg.entries.length === 1 ? '' : 's') + '</p>' +
-      renderRosterCards(cfg.entries, root) + '</section>';
+    // Optional collapsed filter box (built client-side by collection-filters.js).
+    var filters =
+      '<div class="coll-filters" id="coll-filters">' +
+      '<button type="button" class="filter-toggle coll-filter-toggle" id="coll-filter-toggle" aria-expanded="false" aria-controls="coll-filter-bar">' +
+      'Filter characters <span class="filter-toggle-arrow">&#9662;</span></button>' +
+      '<div class="filter-bar coll-filter-bar" id="coll-filter-bar" hidden></div>' +
+      '</div>';
+
+    // A single character count (updates as filters are applied).
+    var count = '<p class="coll-chars-count" id="coll-chars-count">' + n + ' character' + (n === 1 ? '' : 's') + '</p>';
+
+    var chars = '<section class="coll-chars" id="sec-characters">' + count +
+      '<div id="coll-grid">' + renderRosterCards(cfg.entries, root, cfg.orderMap) + '</div></section>';
 
     var jinx = renderJinxGroup(cfg.entries);
     var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
 
-    var infobox = renderInfobox({
-      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
-      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
-    });
-    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
-    var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';
-
-    return top + prosePanel + chars + jinxPanel + meta;
+    return top + meta + prosePanel + filters + chars + jinxPanel;
   }
 
   /* ── public renderers ── */
@@ -470,10 +505,13 @@
     });
     var name = coll.displayName || coll.slug || 'Collection';
     var jsonText = buildPageExport(name, coll.author, coll.header, members);
-    var browseHref = root + 'all-characters?collection=' + encodeURIComponent(coll.slug || coll.id || '');
+    // orderMap: each slug's index in the full character list, for "recently
+    // added" sorting in the on-page filter (higher index = more recent).
+    var orderMap = {};
+    (allChars || []).forEach(function (c, i) { orderMap[c.slug] = i; });
+    // Browse/filter now lives on this page, so that action is gone.
     var actions = [
       { id: 'json-download', href: '#', label: '⬇ Download JSON' },
-      { href: browseHref, label: 'Browse & Filter Characters' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({
@@ -481,7 +519,7 @@
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
-      entries: members, jsonText: jsonText, actions: actions,
+      entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON'
     });
   }
