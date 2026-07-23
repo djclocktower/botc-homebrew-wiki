@@ -692,6 +692,7 @@
       document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
       updatePerspectiveFields();
       update();
+      if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
     }
 
     // ── show/hide bluffing & fighting fields based on team ──

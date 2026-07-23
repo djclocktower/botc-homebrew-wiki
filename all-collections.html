@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Collections — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Browse every curated collection of homebrew Blood on the Clocktower characters on the wiki.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="All Collections">
+<meta property="og:description" content="Browse every curated collection of homebrew Blood on the Clocktower characters on the wiki.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Breadcrumb">
+      <a href="/">Home</a><span class="sep">›</span><span class="here">Collections</span>
+    <span class="sep">·</span><a href="all-characters">All Characters</a><span class="sep">·</span><a href="scripts">Scripts</a></nav>
+  <div class="search-wrap" id="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+  </div>
+  <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+<nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+  <div class="nav-dropdown-search">
+    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+  </div>
+  <a href="/">Home</a>
+  <a href="all-characters">All Characters</a>
+  <a href="scripts">Scripts</a>
+  <a href="tags">Tags</a>
+  <a href="creators">Creators</a>
+  <a href="script">Script Builder</a>
+  <a href="tokens">Token Tool</a>
+</nav>
+
+  <div class="home-hero">
+    <h1 id="hero-title">All Collections</h1>
+    <p id="hero-subtitle">Every curated collection of homebrew characters on the wiki.</p>
+    <a class="create-btn" href="publish-collection">+ Create a Collection</a>
+  </div>
+
+  <main class="home-panel">
+    <section class="landing-section">
+      <div class="collections-grid" id="collections-grid">
+        <p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">Loading collections…</p>
+      </div>
+    </section>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render-page.js"></script>
+  <script>
+  (function(){
+    function esc(s){
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function norm(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+    function pickIcons(charList, n){
+      var withArt = charList.filter(function(c){ return c.art; });
+      var out = [];
+      var teamsSeen = {};
+      for (var i = 0; i < withArt.length && out.length < n; i++){
+        var t = withArt[i].team;
+        if (!teamsSeen[t]) { out.push(withArt[i]); teamsSeen[t] = 1; }
+      }
+      for (var i = 0; i < withArt.length && out.length < n; i++){
+        if (out.indexOf(withArt[i]) === -1) out.push(withArt[i]);
+      }
+      return out;
+    }
+
+    function collectionTileHTML(name, id, count, icons, header, tagline){
+      var href = 'collection/' + encodeURIComponent(id);
+      var topHTML = header
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+      return '<a class="collection-tile" href="' + esc(href) + '">' +
+        topHTML +
+        '<h3 class="collection-name">' + esc(name) + '</h3>' +
+        (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
+        '<div class="collection-footer">' +
+          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
+          '<span class="collection-arrow">Browse →</span>' +
+        '</div>' +
+      '</a>';
+    }
+
+    var grid = document.getElementById('collections-grid');
+
+    Promise.all([
+      fetch('collections.json?_=' + Date.now()).then(function(r){ return r.json(); }).catch(function(){ return []; }),
+      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); })
+    ]).then(function(res){
+      var collData = res[0] || [], list = res[1] || [];
+      var COLLECTIONS = collData.map(function(c){
+        return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
+                match:c.match||[], tagline:c.tagline||'', description:c.description||'',
+                header:c.header||'', include:c.include||[], exclude:c.exclude||[]};
+      });
+
+      var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
+        || function(coll){ return list.filter(function(c){ return coll.match.indexOf(norm(c.appearsIn)) !== -1; }); };
+
+      // Alphabetical by display name so the full list is easy to scan.
+      COLLECTIONS.sort(function(a, b){
+        return (a.displayName||'').localeCompare(b.displayName||'');
+      });
+
+      var html = '';
+      COLLECTIONS.forEach(function(coll){
+        var chars = resolve(coll, list);
+        if (!chars.length) return; // skip empty collections
+        var displayName = coll.displayName || coll.slug;
+        var icons = pickIcons(chars, 4);
+        html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
+      });
+      grid.innerHTML = html || '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>';
+    }).catch(function(){
+      grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load collections.</p>';
+    });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

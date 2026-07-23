@@ -373,11 +373,8 @@
         var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
           || function(coll){ return list.filter(function(c){ return coll.match.indexOf(norm(c.appearsIn)) !== -1; }); };
         var collected = {};
-        var inSomeCollection = {};
         COLLECTIONS.forEach(function(coll){
-          var members = resolve(coll, list);
-          collected[coll.slug] = members;
-          members.forEach(function(c){ inSomeCollection[c.slug] = 1; });
+          collected[coll.slug] = resolve(coll, list);
         });
         var creatorSet = {};
         list.forEach(function(c){
@@ -401,30 +398,36 @@
 
         // ── Collections grid ──────────────────────────────────
         var grid = document.getElementById('collections-grid');
+        // Featured collections: 7 picked at random from those with members,
+        // reshuffled on every page load, plus an "All Collections" tile (8 total).
+        // The full list lives on /all-collections.
+        var featuredPool = COLLECTIONS.filter(function(coll){
+          return (collected[coll.slug] || []).length;
+        });
+        for (var i = featuredPool.length - 1; i > 0; i--){
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = featuredPool[i]; featuredPool[i] = featuredPool[j]; featuredPool[j] = tmp;
+        }
         var html = '';
-        COLLECTIONS.forEach(function(coll){
+        featuredPool.slice(0, 7).forEach(function(coll){
           var chars = collected[coll.slug] || [];
-          if (!chars.length) return; // skip empty collections
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
           html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
         });
-        // "Standalone" tile for characters in no collection
-        var standalone = list.filter(function(c){ return !inSomeCollection[c.slug]; });
-        if (standalone.length){
-          var icons = pickIcons(standalone, 4);
-          html += '<a class="collection-tile" href="all-characters">' +
-            '<div class="collection-icons">' + icons.map(function(c){
-              return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
-            }).join('') + '</div>' +
-            '<h3 class="collection-name">All Characters</h3>' +
-            
-            '<div class="collection-footer">' +
-              '<span class="collection-count">' + list.length + ' character' + (list.length===1?'':'s') + '</span>' +
-              '<span class="collection-arrow">Browse →</span>' +
-            '</div>' +
-          '</a>';
-        }
+        // "All Collections" tile — browse every collection on the wiki.
+        var nColl = featuredPool.length;
+        var allIcons = pickIcons(list, 4);
+        html += '<a class="collection-tile" href="all-collections">' +
+          '<div class="collection-icons">' + allIcons.map(function(c){
+            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
+          }).join('') + '</div>' +
+          '<h3 class="collection-name">All Collections</h3>' +
+          '<div class="collection-footer">' +
+            '<span class="collection-count">' + nColl + ' collection' + (nColl===1?'':'s') + '</span>' +
+            '<span class="collection-arrow">Browse →</span>' +
+          '</div>' +
+        '</a>';
         grid.innerHTML = html || '<p style="text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections found.</p>';
 
         // ── Browse-paths counts ───────────────────────────────
@@ -483,8 +486,14 @@
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        // show up to 6 on the homepage
-        grid.innerHTML = scripts.slice(0, 6).map(function(sc){
+        // Featured scripts: 7 picked at random and reshuffled on every page
+        // load, plus an "All Scripts" tile (8 total). Full list lives on /scripts.
+        var pool = scripts.slice();
+        for (var i = pool.length - 1; i > 0; i--){
+          var j = Math.floor(Math.random() * (i + 1));
+          var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+        }
+        var html = pool.slice(0, 7).map(function(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
           var headerHTML = sc.header
@@ -498,6 +507,15 @@
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }).join('');
+        // "All Scripts" tile — browse every script on the wiki.
+        html += '<a class="collection-tile script-tile" href="scripts">' +
+          '<div class="script-card-header script-card-header-empty"><span>All Scripts</span></div>' +
+          '<h3 class="collection-name">All Scripts</h3>' +
+          '<div class="collection-footer">' +
+            '<span class="collection-count">' + scripts.length + ' script' + (scripts.length===1?'':'s') + '</span>' +
+            '<span class="collection-arrow">Browse →</span>' +
+          '</div></a>';
+        grid.innerHTML = html;
       })
       .catch(function(){
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.5);padding:24px">Could not load scripts.</p>';

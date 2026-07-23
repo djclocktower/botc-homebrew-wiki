@@ -369,6 +369,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $('sb-bg-note').textContent = 'Current background — choose a file to replace it.';
       }
       primeTheme(m.theme);
+      if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
     }
 
     // Reflect the saved status on the buttons + pill (mirrors the character editor)

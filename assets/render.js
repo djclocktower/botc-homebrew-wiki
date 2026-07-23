@@ -427,6 +427,7 @@
     window.findScriptJinxes = findScriptJinxes;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setCreators = setCreators;
+    window.creatorSymbol = creatorSymbol;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -435,7 +436,8 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       setOfficialIconUrls: setOfficialIconUrls,
-      setCreators: setCreators
+      setCreators: setCreators,
+      creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark
     };
   }
 })();

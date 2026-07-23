@@ -171,6 +171,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <input type="file" id="pc-header" accept="image/*">
         <img id="pc-header-prev" class="sb-header-prev" alt="header preview">
         <div id="pc-header-note" class="sub" style="margin-top:6px"></div>
+        <button type="button" class="th-clear" id="pc-header-remove" style="display:none;margin-top:6px">Remove header</button>
       </div>
     </div>
 
@@ -183,8 +184,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <input type="text" id="pc-match" placeholder="The Academy">
       </div>
       <div class="sb-fld pc-add-wrap">
-        <label for="pc-add">Add a character</label>
-        <input type="text" id="pc-add" placeholder="Type a character name…" autocomplete="off">
+        <label for="pc-add">Add one of your characters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(searches characters you created)</span></label>
+        <input type="text" id="pc-add" placeholder="Search your characters…" autocomplete="off">
         <div class="pc-add-results" id="pc-add-results"></div>
       </div>
       <p class="pc-member-count" id="pc-member-count">0 characters</p>
@@ -229,12 +230,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <input type="file" id="pc-logo" accept="image/*">
             <img id="pc-logo-prev" class="sb-header-prev" alt="logo preview">
             <div id="pc-logo-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="pc-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
           <div class="sb-fld">
             <label for="pc-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(large image, shown behind the page)</span></label>
             <input type="file" id="pc-bg" accept="image/*">
             <img id="pc-bg-prev" class="sb-header-prev" alt="background preview">
             <div id="pc-bg-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="pc-bg-remove" style="display:none;margin-top:6px">Remove background</button>
           </div>
         </div>
         <div class="sb-fld">
@@ -277,9 +280,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var currentStatus = null;    // 'draft' | 'published' | null
     var theme = {};              // theme state (validated on save)
     var include = [], exclude = [];
-    var headerDataURL = null, existingHeader = null;
-    var logoDataURL = null, existingLogo = null;
-    var bgDataURL = null, existingBg = null;
+    var myChars = [];            // characters owned by the logged-in account (for the add search)
+    var headerDataURL = null, existingHeader = null, removeHeader = false;
+    var logoDataURL = null, existingLogo = null, removeLogo = false;
+    var bgDataURL = null, existingBg = null, removeBg = false;
 
     var SITE_ROOT = new URL('.', location.href).href;
     function $(id){ return document.getElementById(id); }
@@ -349,6 +353,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     $('pc-match').addEventListener('input', renderMembers);
 
     // ── add-character search ──
+    // Only searches characters created by the logged-in account (myChars),
+    // like the script builder. Auto-match terms above can still pull in other
+    // people's characters; this manual add is limited to your own.
     $('pc-add').addEventListener('input', function(){
       var q = this.value.trim().toLowerCase();
       var box = $('pc-add-results');
@@ -356,15 +363,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var def = currentDef();
       var memberSet = {};
       window.PageRender.resolveCollectionMembers(def, allChars).forEach(function(c){ memberSet[c.slug] = 1; });
-      var hits = allChars.filter(function(c){
+      var hits = myChars.filter(function(c){
         return !memberSet[c.slug] && (c.name||'').toLowerCase().indexOf(q) !== -1;
       }).slice(0, 12);
       box.innerHTML = hits.length ? hits.map(function(c){
         return '<button type="button" class="pc-add-row" data-slug="' + esc(c.slug) + '">' +
           '<img class="pc-member-thumb" src="' + esc(artSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
           '<span class="pc-member-name">' + esc(c.name) + '</span>' +
-          '<span class="pc-member-how">' + esc(c.creator || '') + '</span></button>';
-      }).join('') : '<p class="pub-empty" style="padding:8px 10px;margin:0">No matches.</p>';
+          '<span class="pc-member-how">' + esc(window.TEAM_LABEL && window.TEAM_LABEL[c.team] || c.team || '') + '</span></button>';
+      }).join('') : '<p class="pub-empty" style="padding:8px 10px;margin:0">' +
+        (myChars.length ? 'No matches among your characters.' : 'You have no published characters to add yet.') + '</p>';
       box.className = 'pc-add-results open';
     });
     $('pc-add-results').addEventListener('click', function(e){
@@ -390,7 +398,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     });
 
     // ── image inputs (resize to max width PNG) ──
-    function wireImageInput(inputId, prevId, noteId, maxW, onReady){
+    function wireImageInput(inputId, prevId, noteId, removeId, maxW, onReady){
       $(inputId).addEventListener('change', function(e){
         var f = e.target.files[0]; if (!f) return;
         var rd = new FileReader();
@@ -404,6 +412,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             var dataURL = cv.toDataURL('image/png');
             var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
             $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            if (removeId) $(removeId).style.display = '';
             onReady(dataURL);
           };
           img.src = ev.target.result;
@@ -411,9 +420,24 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         rd.readAsDataURL(f);
       });
     }
-    wireImageInput('pc-header', 'pc-header-prev', 'pc-header-note', 900, function(d){ headerDataURL = d; });
-    wireImageInput('pc-logo', 'pc-logo-prev', 'pc-logo-note', 400, function(d){ logoDataURL = d; });
-    wireImageInput('pc-bg', 'pc-bg-prev', 'pc-bg-note', 1600, function(d){ bgDataURL = d; });
+    // A new upload clears any pending "remove" so the picked file wins.
+    wireImageInput('pc-header', 'pc-header-prev', 'pc-header-note', 'pc-header-remove', 900, function(d){ headerDataURL = d; removeHeader = false; });
+    wireImageInput('pc-logo', 'pc-logo-prev', 'pc-logo-note', 'pc-logo-remove', 400, function(d){ logoDataURL = d; removeLogo = false; });
+    wireImageInput('pc-bg', 'pc-bg-prev', 'pc-bg-note', 'pc-bg-remove', 1600, function(d){ bgDataURL = d; removeBg = false; });
+
+    // ── remove buttons (clear header / logo / background on save) ──
+    function wireRemove(btnId, prevId, noteId, fileId, onRemove){
+      $(btnId).addEventListener('click', function(){
+        onRemove();
+        var pv = $(prevId); pv.src = ''; pv.style.display = 'none';
+        $(fileId).value = '';
+        $(noteId).textContent = 'Removed — will be cleared when you save.';
+        this.style.display = 'none';
+      });
+    }
+    wireRemove('pc-header-remove', 'pc-header-prev', 'pc-header-note', 'pc-header', function(){ headerDataURL = null; existingHeader = null; removeHeader = true; });
+    wireRemove('pc-logo-remove', 'pc-logo-prev', 'pc-logo-note', 'pc-logo', function(){ logoDataURL = null; existingLogo = null; removeLogo = true; });
+    wireRemove('pc-bg-remove', 'pc-bg-prev', 'pc-bg-note', 'pc-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; });
 
     // ── name → id preview ──
     function updateUrlPreview(){
@@ -458,7 +482,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var t = {};
         Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
         if (bgDataURL) t.background = 'collections/' + id + '-bg.png';
-        else if (existingBg) t.background = existingBg;
+        else if (!removeBg && existingBg) t.background = existingBg;
         t = window.PageRender.sanitizeTheme(t, 'collections/' + id);
         var entry = {
           id: id,
@@ -476,17 +500,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
           include: include.slice(),
           exclude: exclude.slice(),
-          header: headerDataURL ? ('collections/' + id + '.png') : (existingHeader || ''),
+          header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
-        var logo = logoDataURL ? ('collections/' + id + '-logo.png') : (existingLogo || '');
-        if (logo) entry.logo = logo;
+        // Always send logo ('' clears it server-side); background rides on theme.
+        entry.logo = logoDataURL ? ('collections/' + id + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
         if (t) entry.theme = t;
         return apiSave(entry);
       }).then(function(res){
         if (headerDataURL){ existingHeader = 'collections/' + id + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'collections/' + id + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){ existingBg = 'collections/' + id + '-bg.png'; bgDataURL = null; }
+        removeHeader = removeLogo = removeBg = false;   // removals are now persisted
         currentStatus = saveStatus;
         EDIT_KEY = id;
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
@@ -571,20 +596,24 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (c.header){
             existingHeader = c.header;
             var pv = $('pc-header-prev'); pv.src = 'assets/' + c.header; pv.style.display = 'block';
-            $('pc-header-note').textContent = 'Current header — choose a file to replace it.';
+            $('pc-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
+            $('pc-header-remove').style.display = '';
           }
           if (c.logo){
             existingLogo = c.logo;
             var lv = $('pc-logo-prev'); lv.src = 'assets/' + c.logo; lv.style.display = 'block';
-            $('pc-logo-note').textContent = 'Current logo — choose a file to replace it.';
+            $('pc-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
+            $('pc-logo-remove').style.display = '';
             $('sb-appearance').open = true;
           }
           if (theme.background){
             existingBg = theme.background;
             var bv = $('pc-bg-prev'); bv.src = 'assets/' + theme.background; bv.style.display = 'block';
-            $('pc-bg-note').textContent = 'Current background — choose a file to replace it.';
+            $('pc-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
+            $('pc-bg-remove').style.display = '';
           }
           updateUrlPreview(); updateButtons(); renderMembers();
+          if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
           $('pc-delete').style.display = '';
           if (res.canEdit === false){
             pubStatus('err', 'This collection belongs to another account, so you cannot save changes to it.');
@@ -600,7 +629,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
       .then(function(me){
-        if (me && me.loggedIn){ $('editor').style.display = ''; }
+        if (me && me.loggedIn){
+          $('editor').style.display = '';
+          // Load this account's own characters for the add-character search.
+          if (me.username){
+            fetch('/api/user?u=' + encodeURIComponent(me.username), { credentials: 'same-origin' })
+              .then(function(r){ return r.json(); })
+              .then(function(res){ myChars = (res && res.characters) || []; })
+              .catch(function(){ /* search just shows no matches */ });
+          }
+        }
         else { $('gate').style.display = ''; }
       })
       .catch(function(){ $('gate').style.display = ''; });

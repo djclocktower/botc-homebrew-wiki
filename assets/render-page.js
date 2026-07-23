@@ -180,6 +180,54 @@
     return html;
   }
 
+  /* Collection roster as a full-width card grid grouped by team, with a team
+     header above each group (like all-characters). Cards reuse the .char-card
+     styles and carry data-* attributes so collection-filters.js can filter and
+     sort them client-side. orderMap gives each slug its index in the full
+     character list, for the "recently added" sort. */
+  function renderRosterCards(entries, root, orderMap) {
+    if (!entries.length) {
+      return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
+    }
+    orderMap = orderMap || {};
+    function cardHTML(c) {
+      var label = '';
+      for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
+      if (!label) label = c.team || '';
+      return '<a class="char-card" href="' + esc(charHref(c, root)) + '"' +
+        ' data-team="' + esc(c.team || '') + '"' +
+        ' data-tags="' + esc(c.tags || '') + '"' +
+        ' data-creator="' + esc((c.creator || '').trim()) + '"' +
+        ' data-name="' + esc(c.name || '') + '"' +
+        ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        '<div class="char-card-info">' +
+        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
+        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
+        '<span class="char-card-link">View Character &rarr;</span>' +
+        '</div></a>';
+    }
+    function section(key, label, grp) {
+      return '<section class="type-section coll-team" data-team="' + esc(key) + '">' +
+        '<h2 class="type-header' + (GOOD[key] ? ' good' : '') + '">' +
+        '<a class="team-header-link" href="' + esc(root) + 'team?t=' + encodeURIComponent(key) + '">' + esc(label) + '</a>' +
+        ' <span class="coll-team-count">(' + grp.length + ')</span></h2>' +
+        '<div class="type-rule"></div>' +
+        '<div class="char-grid">' + grp.map(cardHTML).join('') + '</div></section>';
+    }
+    var html = '';
+    TEAMS.forEach(function (t) {
+      var grp = entries.filter(function (c) { return c.team === t[0]; });
+      if (grp.length) html += section(t[0], t[1], grp);
+    });
+    var other = entries.filter(function (c) {
+      return !TEAMS.some(function (t) { return t[0] === c.team; });
+    });
+    if (other.length) html += section('other', 'Other', other);
+    return html;
+  }
+
   function renderJinxGroup(entries) {
     var findScriptJinxes = dep('findScriptJinxes');
     var jinxes = findScriptJinxes ? findScriptJinxes(entries) : [];
@@ -257,11 +305,20 @@
   }
 
   function renderInfobox(opts) {
-    // opts: {root, logoPath, author, version, difficulty, entries, extraRows[]}
+    // opts: {root, logoPath, author, version, difficulty, entries, extraRows[],
+    //        authorProminent} — authorProminent shows the author as a bold
+    //        credit line at the top of the box instead of a plain table row.
     var root = opts.root;
+    // Creator/credit symbol next to the name, same as character info boxes.
+    var symFn = dep('creatorSymbol');
+    var sym = (typeof symFn === 'function' && opts.author) ? (symFn(opts.author) || '') : '';
+    var symHTML = sym ? ' <span class="creator-mark" title="' + esc(opts.author) + '’s symbol" aria-hidden="true">' + esc(sym) + '</span>' : '';
+    var authorLink = opts.author
+      ? '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a>'
+      : '';
     var rows = '';
-    if (opts.author) {
-      rows += '<dt>Author:</dt><dd><a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a></dd>';
+    if (opts.author && !opts.authorProminent) {
+      rows += '<dt>Author:</dt><dd>' + authorLink + symHTML + '</dd>';
     }
     if (opts.version) rows += '<dt>Version:</dt><dd>' + esc(opts.version) + '</dd>';
     if (opts.difficulty && DIFFICULTY_LABEL[opts.difficulty]) {
@@ -274,17 +331,19 @@
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
       (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(root) + 'assets/' + esc(opts.logoPath) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      // Prominent author credit sits directly under the logo.
+      (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
       '<dl class="info">' + rows + '</dl></div>';
   }
 
-  function renderJsonPanel(jsonText, actions, label) {
-    return '<div class="json-box open">' +
+  function renderJsonPanel(jsonText, actions, label, collapsed) {
+    return '<div class="json-box' + (collapsed ? '' : ' open') + '">' +
       '<div class="json-bar">' +
-      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="true">' + esc(label || 'Script JSON') + ' <span class="json-arrow">&#9662;</span></span>' +
+      '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' + esc(label || 'Script JSON') + ' <span class="json-arrow">&#9662;</span></span>' +
       '<button type="button" class="json-copy">Copy JSON</button>' +
       '</div>' +
-      '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
+      '<pre class="json-body"' + (collapsed ? ' hidden' : '') + '><code>' + esc(jsonText) + '</code></pre>' +
       '</div>' + (actions || []).map(function (a) {
         return '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px"' +
           (a.id ? ' id="' + a.id + '"' : '') + ' href="' + esc(a.href) + '">' + a.label + '</a>';
@@ -358,6 +417,63 @@
       '</div>';
   }
 
+  /* ── collection page body ──
+     A distinct layout from scripts: the characters show as a full-width card
+     grid (like the browse view), and there is no night-order box or character
+     credits list. Synopsis/gameplay prose sits in a parchment panel above the
+     grid; the information box + JSON export sit in a meta row below it. */
+  function renderCollectionBody(cfg) {
+    var root = cfg.root;
+    var n = cfg.entries.length;
+
+    // Header graphic — big and front-and-centre. Falls back to logo + title.
+    var top = cfg.header
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+         '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
+    if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
+    if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
+
+    // Information + JSON/tokens boxes — moved to the top. The author credit
+    // lives prominently inside the Information box (linked to their page).
+    var infobox = renderInfobox({
+      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows,
+      authorProminent: true
+    });
+    var json = '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel, true) + '</div>';
+    var meta = '<div class="coll-meta-row">' + infobox + json + '</div>';
+
+    // Prose sections (synopsis / gameplay) in a parchment panel.
+    var proseHTML = '';
+    if (cfg.synopsis) proseHTML += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
+    var gameplay = '';
+    if (cfg.gameplay) gameplay += prose(cfg.gameplay);
+    if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
+    if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
+    if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
+
+    // Optional collapsed filter box (built client-side by collection-filters.js).
+    var filters =
+      '<div class="coll-filters" id="coll-filters">' +
+      '<button type="button" class="filter-toggle coll-filter-toggle" id="coll-filter-toggle" aria-expanded="false" aria-controls="coll-filter-bar">' +
+      'Filter characters <span class="filter-toggle-arrow">&#9662;</span></button>' +
+      '<div class="filter-bar coll-filter-bar" id="coll-filter-bar" hidden></div>' +
+      '</div>';
+
+    // A single character count (updates as filters are applied).
+    var count = '<p class="coll-chars-count" id="coll-chars-count">' + n + ' character' + (n === 1 ? '' : 's') + '</p>';
+
+    var chars = '<section class="coll-chars" id="sec-characters">' + count +
+      '<div id="coll-grid">' + renderRosterCards(cfg.entries, root, cfg.orderMap) + '</div></section>';
+
+    var jinx = renderJinxGroup(cfg.entries);
+    var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
+
+    return top + meta + prosePanel + filters + chars + jinxPanel;
+  }
+
   /* ── public renderers ── */
   function renderScriptPage(sc, allChars, opts) {
     opts = opts || {};
@@ -398,18 +514,21 @@
     });
     var name = coll.displayName || coll.slug || 'Collection';
     var jsonText = buildPageExport(name, coll.author, coll.header, members);
-    var browseHref = root + 'all-characters?collection=' + encodeURIComponent(coll.slug || coll.id || '');
+    // orderMap: each slug's index in the full character list, for "recently
+    // added" sorting in the on-page filter (higher index = more recent).
+    var orderMap = {};
+    (allChars || []).forEach(function (c, i) { orderMap[c.slug] = i; });
+    // Browse/filter now lives on this page, so that action is gone.
     var actions = [
       { id: 'json-download', href: '#', label: '⬇ Download JSON' },
-      { href: browseHref, label: 'Browse & Filter Characters' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
-    return renderPageBody({
+    return renderCollectionBody({
       root: root, name: name, header: coll.header, logo: coll.logo,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
-      entries: members, missing: [], jsonText: jsonText, actions: actions,
+      entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON'
     });
   }

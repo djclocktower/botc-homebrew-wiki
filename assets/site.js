@@ -410,3 +410,28 @@
     });
   })();
 })();
+
+/* Auto-growing textareas: every edit form on the site expands to fit its
+   content as you type, so long fields (abilities, descriptions, strategy
+   notes) don't hide text behind a scrollbar. Opt out with class="no-autosize"
+   (used for the big JSON paste box on mass-upload). Pages that fill textareas
+   after load — the character/collection/script editors — can call
+   window.autosizeTextareas() to re-fit once the values are in. */
+(function () {
+  function fit(ta) {
+    if (!ta || ta.tagName !== 'TEXTAREA' || ta.classList.contains('no-autosize')) return;
+    ta.style.overflowY = 'hidden';
+    ta.style.height = 'auto';
+    ta.style.height = (ta.scrollHeight + 2) + 'px';
+  }
+  function fitAll() {
+    Array.prototype.forEach.call(document.querySelectorAll('textarea'), fit);
+  }
+  window.autosizeTextareas = fitAll;
+  document.addEventListener('input', function (e) { fit(e.target); });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fitAll);
+  } else {
+    fitAll();
+  }
+})();
