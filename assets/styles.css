@@ -1625,12 +1625,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: var(--parch); font-size: clamp(2rem, 6vw, 3.4rem);
   margin: 6px 0 10px; line-height: 1.05;
 }
-/* Prominent author credit inside the Information box. */
+/* Prominent author credit inside the Information box, under the logo. */
 .sv-info-author {
   text-align: center; font-family: 'EB Garamond', serif; font-size: 1.18rem;
-  color: var(--ink); margin: -2px 0 12px;
+  color: var(--ink); margin: 4px 0 10px;
 }
 .sv-info-author .author-link { font-weight: 700; }
+.sv-info-author .creator-mark { font-size: 1.05em; }
 
 .coll-chars { margin: 8px 0; }
 .coll-chars-count {

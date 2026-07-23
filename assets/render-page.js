@@ -309,12 +309,16 @@
     //        authorProminent} — authorProminent shows the author as a bold
     //        credit line at the top of the box instead of a plain table row.
     var root = opts.root;
+    // Creator/credit symbol next to the name, same as character info boxes.
+    var symFn = dep('creatorSymbol');
+    var sym = (typeof symFn === 'function' && opts.author) ? (symFn(opts.author) || '') : '';
+    var symHTML = sym ? ' <span class="creator-mark" title="' + esc(opts.author) + '’s symbol" aria-hidden="true">' + esc(sym) + '</span>' : '';
     var authorLink = opts.author
       ? '<a class="author-link" href="' + esc(root) + 'author?a=' + encodeURIComponent(opts.author) + '">' + esc(opts.author) + '</a>'
       : '';
     var rows = '';
     if (opts.author && !opts.authorProminent) {
-      rows += '<dt>Author:</dt><dd>' + authorLink + '</dd>';
+      rows += '<dt>Author:</dt><dd>' + authorLink + symHTML + '</dd>';
     }
     if (opts.version) rows += '<dt>Version:</dt><dd>' + esc(opts.version) + '</dd>';
     if (opts.difficulty && DIFFICULTY_LABEL[opts.difficulty]) {
@@ -327,8 +331,9 @@
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
       (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(root) + 'assets/' + esc(opts.logoPath) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      // Prominent author credit sits directly under the logo.
+      (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
-      (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + '</p>' : '') +
       '<dl class="info">' + rows + '</dl></div>';
   }
 
