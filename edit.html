@@ -687,10 +687,6 @@
         update();
       });
 
-      $('crumb').innerHTML =
-        '<a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>'+
-        '<a href="'+(entry.page||'#')+'">'+(entry.name||originalSlug)+'</a>'+
-        '<span class="sep">›</span><span class="here">Edit</span>';
       $('edit-sub').textContent = 'Editing: ' + entry.name;
       document.title = 'Edit ' + entry.name + ' — BOTC HomeBrew Wiki';
       updatePerspectiveFields();

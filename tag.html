@@ -78,11 +78,6 @@
       var d = window.describeTag && window.describeTag(displayTag);
       if (d) document.getElementById('hero-desc').textContent = d;
     })();
-    document.getElementById('crumb').innerHTML =
-      '<a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>' +
-      '<a href="tags">Tags</a><span class="sep">›</span>' +
-      '<span class="here">' + displayTag + '</span>';
-
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g,'&amp;')
         .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');

@@ -652,7 +652,7 @@ ${o.draftBanner || ''}
       <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
     </div>
-    <nav class="crumb" aria-label="Primary" id="crumb">
+    <nav class="crumb" aria-label="Primary">
       <a href="../all-characters">All Characters</a>
       <a href="../scripts">Scripts</a>
       <a href="../all-collections">Collections</a>

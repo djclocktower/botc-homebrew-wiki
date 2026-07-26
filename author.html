@@ -104,10 +104,6 @@
         document.getElementById('hero-title').textContent = displayName;
         document.getElementById('hero-sub').textContent =
           count === 1 ? '1 character' : count + ' characters';
-        document.getElementById('crumb').innerHTML =
-          '<a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>' +
-          '<a href="authors">Authors</a><span class="sep">›</span>' +
-          '<span class="here">' + esc(displayName) + '</span>';
 
         if (!chars.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found for <strong>' + esc(displayName) + '</strong>. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';

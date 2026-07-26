@@ -67,10 +67,6 @@
 
     document.title = label + ' — BOTC HomeBrew Wiki';
     document.getElementById('hero-title').textContent = label;
-    document.getElementById('crumb').innerHTML =
-      '<a href="/">Home</a><span class="sep">›</span><a href="all-characters">Characters</a><span class="sep">›</span>' +
-      '<span class="here">' + label + '</span>';
-
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g,'&amp;')
         .replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
