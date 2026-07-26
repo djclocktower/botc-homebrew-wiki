@@ -90,8 +90,6 @@
 
     function render(sc, bySlug, isDraft){
       document.title = (isDraft ? 'Draft: ' : '') + sc.name + ' — BOTC HomeBrew Wiki';
-      var cr = document.getElementById('crumb');
-      if (cr) cr.innerHTML = '<a href="/">Home</a><span class="sep">›</span><a href="scripts">Scripts</a><span class="sep">›</span><span class="here">' + esc(sc.name) + '</span>';
       var eb = document.getElementById('edit-btn');
       if (eb){ eb.href = 'publish-script?s=' + encodeURIComponent(sc.slug); eb.style.display = ''; }
 

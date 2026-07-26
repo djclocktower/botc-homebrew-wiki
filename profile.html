@@ -165,12 +165,6 @@
         if (!data || data.error) { fail(data && data.error || 'Could not load this profile.'); return; }
         var p = data.profile;
         document.title = (p.displayName || p.username) + ' — BOTC HomeBrew Wiki';
-        var crumb = document.getElementById('crumb');
-        if (crumb) crumb.innerHTML =
-          '<a href="/index.html">Home</a><span class="sep">›</span>' +
-          '<a href="/creators.html">Creators</a><span class="sep">›</span>' +
-          '<span class="here">' + esc(p.displayName || p.username) + '</span>';
-
         var nChars = data.characters.length, nScripts = data.scripts.length, nColls = data.collections.length;
         var avatarInner = p.avatarUrl
           ? '<img src="' + esc(p.avatarUrl) + '" alt="">'
