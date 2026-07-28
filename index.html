@@ -211,6 +211,15 @@
       </div>
     </section>
 
+    <!-- ── RULES ────────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header"><a href="rules" style="color:inherit;text-decoration:none">Rules</a></h2>
+      <div class="type-rule"></div>
+      <div class="about-card" id="home-rules">
+        <p style="text-align:center;color:var(--ink);opacity:.7">Loading rules…</p>
+      </div>
+    </section>
+
     <!-- ── ABOUT ────────────────────────────────────────────── -->
     <section class="landing-section">
       <h2 class="type-header">About This Wiki</h2>
@@ -239,6 +248,7 @@
         <li><a href="https://docs.google.com/document/d/1TrfUWge_pu_ykp7yMh93BTRho9oLOu_6j1AzNu6hU8M/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Squ4ll&rsquo;s Guide to Homebrew</a></li>
         <li><a href="https://discord.gg/TheCWUuvqZ" target="_blank" rel="noopener noreferrer">The Kitchen Discord</a></li>
         <li><a href="steven-approved-order">Steven Approved Order</a></li>
+        <li><a href="rules">Wiki Rules</a></li>
       </ul>
     </div>
   </aside>
@@ -513,6 +523,15 @@
   </script>
 
 
+  <script src="assets/rules.js"></script>
+  <script>
+  (function () {
+    var box = document.getElementById('home-rules');
+    if (box && typeof window.renderRulesHTML === 'function') {
+      box.innerHTML = window.renderRulesHTML();
+    }
+  })();
+  </script>
   <script src="assets/site.js"></script>
 </body>
 </html>

@@ -1068,7 +1068,7 @@ export default {
       }
       const [chars, scripts, colls] = await Promise.all([pub('characters'), pub('scripts'), pubCollections()]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
-        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order'];
+        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
