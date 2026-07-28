@@ -6,49 +6,29 @@
      • the standalone /rules page (rules.html)
      • the first-time agreement pop-up on Create/Edit (assets/rules-gate.js)
 
-   If you change the rules in a way people need to re-read, bump
-   RULES_VERSION. Everyone is then asked to tick the agreement box again
-   the next time they open Create or Edit.
+   To ADD a rule: copy one of the blocks below and change the two lines.
+   The "title" is the bold heading, the "body" is the smaller text under it.
+   Mind the commas — every block ends with }, except the last one.
+
+   If you change the rules in a way people need to re-read, increase
+   RULES_VERSION by 1 (keep the quote marks). Everyone is then asked to
+   tick the agreement box again the next time they open Create or Edit.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  var RULES_VERSION = '2026-07-28';
+  var RULES_VERSION = '2';
 
-  /* ⚠ PLACEHOLDER TEXT — replace with the real rules.
-     Each entry: { title: 'Short heading', body: 'One or two sentences.' } */
   var RULES = [
     {
-      title: 'Credit the artist',
-      body: 'Only upload art you made or have permission to use, and name the ' +
-            'original artist in the Icon by field. Do not upload AI-generated art ' +
-            'as someone else’s work.'
+      title: 'English only please!',
+      body: 'This is an English language wiki. For character collections in ' +
+            'different languages, consider asking the community for help ' +
+            'translating to English, or hosting on Bloodstar or Klutzbanana.'
     },
     {
-      title: 'Keep it appropriate',
-      body: 'No NSFW, hateful, or harassing content. This wiki is a shared space ' +
-            'for a game a lot of people play with their friends and family.'
-    },
-    {
-      title: 'Edit your own pages',
-      body: 'Do not edit or delete someone else’s character, script, or ' +
-            'collection without their say-so. Use the report button if a page ' +
-            'needs an admin to look at it.'
-    },
-    {
-      title: 'Write a complete character',
-      body: 'Give every character an ability, a team, and enough How to Run detail ' +
-            'that a Storyteller could actually run it at the table.'
-    },
-    {
-      title: 'Do not impersonate',
-      body: 'Do not publish official Pandemonium Institute characters as homebrew, ' +
-            'and do not post under someone else’s creator name.'
-    },
-    {
-      title: 'Admins have the final say',
-      body: 'Pages that break these rules may be edited, unpublished, or removed, ' +
-            'and repeat offenders may lose posting access.'
+      title: 'All characters must have icons.',
+      body: 'We recommend using Ravenswood Studio for creating character icons.'
     }
   ];
 
