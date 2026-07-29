@@ -44,6 +44,19 @@
  *   POST /api/admin/dm-report  -> resolve/reopen/delete one report
  *   GET  /api/admin/dm-thread  -> transcript of a REPORTED conversation (?a=&b=)
  *
+ *   -- comments (character / collection / script / news pages) --
+ *   GET  /api/comments        -> a page's comments (?type=&slug=; public)
+ *   POST /api/comments        -> post a comment (login; {agree:true} on first)
+ *   POST /api/comments/agree  -> record the one-time comment-terms agreement
+ *   POST /api/comments/delete -> remove one (author, page owner, or admin)
+ *   POST /api/comments/report -> report one to the admins
+ *
+ *   -- news (admin-written articles) --
+ *   GET  /api/news            -> published articles (?limit=, admin ?drafts=1)
+ *   GET  /api/news/item       -> one article (?slug=; drafts admin-only)
+ *   GET  /news/{slug}         -> article page (server-side rendered, comments)
+ *   POST /api/admin/news      -> create/update/delete an article
+ *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
  *   POST /api/character       -> create/update a character
@@ -84,9 +97,14 @@
  *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables)
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
- *   GET  /api/admin/pages     -> page list for bulk actions (?type=&q=&owner=)
- *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag ops
+ *   GET  /api/admin/pages     -> page list for bulk actions
+ *                                (?type=&q=&owner=&status=&flag=no-icon|partial|starlight|no-owner)
+ *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
+ *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
+ *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
+ *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -115,6 +133,9 @@ Render.setCreators(Creators);
 // Partial / Standard / Starlight rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
+// Lets render.js emit the Partial/Starlight badge without importing
+// classify.js itself (it is loaded standalone in the browser).
+Render.setClassBadge(Classify.classBadgeHTML);
 // News article renderer (also used by the /news index and the admin editor
 // preview in the browser).
 import NewsRender from '../assets/render-news.js';
@@ -654,8 +675,12 @@ async function buildPublicJSON(env, table) {
     // Partial/Standard/Starlight is derived here rather than stored, so a
     // page re-classifies itself the moment its owner adds a tag or a line of
     // almanac text. `starlight` is the only stored half (admin-set).
-    d.starlight = !!d.starlight;
-    d.classification = Classify.classifyPage(d, type);
+    // Standard is the default everywhere, so it is left off the wire —
+    // characters.json is ~1000 entries and the repetition is not free.
+    if (d.starlight) d.starlight = true; else delete d.starlight;
+    const cls = Classify.classifyPage(d, type);
+    if (cls !== 'standard') d.classification = cls;
+    else delete d.classification;
     return d;
   });
 }
@@ -802,6 +827,9 @@ function renderCharacterPage(d, origin, isDraft) {
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
+  // Stamped here too (not just in characters.json) so the Status row in the
+  // info box is right on a page reached directly.
+  d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
@@ -1329,9 +1357,19 @@ export default {
           return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections`).all()).results;
         }
       }
-      const [chars, scripts, colls] = await Promise.all([pub('characters'), pub('scripts'), pubCollections()]);
+      async function pubNews() {
+        try {
+          await ensureNewsTable(env);
+          return (await env.DB.prepare(
+            `SELECT slug, updated_at FROM news WHERE status='published'`
+          ).all()).results;
+        } catch { return []; }
+      }
+      const [chars, scripts, colls, news] = await Promise.all([
+        pub('characters'), pub('scripts'), pubCollections(), pubNews()
+      ]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
-        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules'];
+        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -1344,6 +1382,9 @@ export default {
         let id = '';
         try { id = JSON.parse(r.data).id || ''; } catch { /* fall back to slug */ }
         urls.push('<url><loc>' + xmlEsc(url.origin + '/collection/' + encodeURIComponent(id || r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of news) {
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/news/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -2330,10 +2371,12 @@ export default {
       const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '7', 10) || 7, 1), 365);
       const since = '-' + days + ' day';
       await ensureViewsTable(env);
+      await ensureNewsTable(env); // the name lookup below UNIONs it in
       const names =
         `(SELECT 'character' AS t, slug, name FROM characters
           UNION ALL SELECT 'script', slug, name FROM scripts
-          UNION ALL SELECT 'collection', slug, display_name FROM collections)`;
+          UNION ALL SELECT 'collection', slug, display_name FROM collections
+          UNION ALL SELECT 'news', slug, title FROM news)`;
       const [top, totals] = await Promise.all([
         env.DB.prepare(
           `SELECT pv.entity_type, pv.slug, SUM(pv.n) AS views, MAX(p.name) AS name
@@ -2367,7 +2410,10 @@ export default {
 
       // Content writes are blocked while the wiki is locked (true freeze,
       // applies to admins too). Lock toggle + seed are intentionally exempt.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload'].includes(path);
+      // Posting a comment counts as a content write: a wiki locked because of
+      // vandalism should not leave the comment boxes open. Removing and
+      // reporting comments stay available so moderation still works.
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
       // Suspended accounts can still use account settings and the contact
       // form (to appeal), but cannot touch content.
       if (isContentWrite && acctFlags.banned) {
@@ -3259,10 +3305,12 @@ export default {
         let slug = kebab(b.slug) || kebab(title);
         if (!slug) return jsonResponse({ error: 'Could not build a URL from that title.' }, { status: 400 });
         const existing = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
-        if (!existing && !b.slug) {
-          // New article: don't silently overwrite a same-titled one.
-          const clash = await env.DB.prepare('SELECT slug FROM news WHERE slug=?').bind(slug).first().catch(() => null);
-          if (clash) return jsonResponse({ error: 'An article with that title already exists.' }, { status: 409 });
+        // A brand-new article (no slug sent) whose title happens to kebab down
+        // to an article that already exists must NOT overwrite it.
+        if (existing && !b.slug) {
+          return jsonResponse({
+            error: 'An article with that title already exists — open it from the list below to edit it, or change the title.'
+          }, { status: 409 });
         }
 
         const image = String(b.image || '').trim().slice(0, 300);

@@ -65,6 +65,7 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
   <script>
   (function(){
     function esc(s){
@@ -88,14 +89,15 @@
       return out;
     }
 
-    function collectionTileHTML(name, id, count, icons, header, tagline){
+    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
       var topHTML = header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
-        '<h3 class="collection-name">' + esc(name) + '</h3>' +
+        '<h3 class="collection-name">' + esc(name) +
+          window.classBadgeHTML(window.classifyPage(coll || {}, 'collection')) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
@@ -114,7 +116,8 @@
       var COLLECTIONS = collData.map(function(c){
         return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                 match:c.match||[], tagline:c.tagline||'', description:c.description||'',
-                header:c.header||'', include:c.include||[], exclude:c.exclude||[]};
+                header:c.header||'', include:c.include||[], exclude:c.exclude||[],
+                starlight:!!c.starlight};
       });
 
       var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
@@ -131,7 +134,7 @@
         if (!chars.length) return; // skip empty collections
         var displayName = coll.displayName || coll.slug;
         var icons = pickIcons(chars, 4);
-        html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
+        html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'', coll);
       });
       grid.innerHTML = html || '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>';
     }).catch(function(){

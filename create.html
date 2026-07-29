@@ -320,6 +320,8 @@
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/editor-notices.js"></script>
   <script>
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
@@ -733,13 +735,17 @@
             });
           });
         })
-        .then(function () {
+        .then(function (saved) {
           var url = SITE_ROOT + 'c/' + slug;
-          if (isDraft) {
+          // The Worker downgrades a publish to a draft when there is no icon,
+          // so trust what came back rather than what we asked for.
+          if (saved && saved.status === 'draft') {
             setStatus('ok', '&#10003; Draft saved! Only you can see it: <a href="' + url + '" target="_blank">preview it</a> or publish later from <a href="account">your account page</a>.');
           } else {
             setStatus('ok', '&#10003; Published! Live now at <a href="' + url + '" target="_blank">' + url + '</a>');
           }
+          // Partial-page warning / missing-icon explanation.
+          if (window.showSaveNotice) window.showSaveNotice(saved, slug);
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         })

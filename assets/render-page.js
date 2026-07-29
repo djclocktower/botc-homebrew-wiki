@@ -338,6 +338,15 @@
       '<dl class="info">' + rows + '</dl></div>';
   }
 
+  /* Starlight row for the Information box. Admin-awarded (assets/classify.js);
+     Standard pages show nothing, which is the point of Standard. */
+  function starlightRow(d) {
+    if (!d || !d.starlight) return [];
+    return ['<dt>Status:</dt><dd><span class="page-class page-class-starlight" ' +
+      'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.">' +
+      '\u2726 Starlight</span></dd>'];
+  }
+
   function renderJsonPanel(jsonText, actions, label, collapsed) {
     return '<div class="json-box' + (collapsed ? '' : ' open') + '">' +
       '<div class="json-bar">' +
@@ -497,7 +506,8 @@
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Script JSON'
+      jsonLabel: 'Script JSON',
+      extraInfoRows: starlightRow(sc)
     });
   }
 
@@ -530,7 +540,8 @@
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Collection JSON'
+      jsonLabel: 'Collection JSON',
+      extraInfoRows: starlightRow(coll)
     });
   }
 

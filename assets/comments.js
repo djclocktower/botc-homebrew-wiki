@@ -153,6 +153,7 @@
   function post(url, body) {
     return fetch(url, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
     }).then(function (r) {
@@ -280,7 +281,8 @@
 
   function load() {
     return fetch('/api/comments?type=' + encodeURIComponent(TYPE) +
-                 '&slug=' + encodeURIComponent(SLUG) + '&_=' + Date.now())
+                 '&slug=' + encodeURIComponent(SLUG) + '&_=' + Date.now(),
+                 { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d.error) { root.hidden = true; return; }

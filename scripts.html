@@ -64,6 +64,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/classify.js"></script>
   <script>
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -84,7 +85,8 @@
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
-            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
+            '<h3 class="collection-name">' + esc(sc.name) +
+              window.classBadgeHTML(window.classifyPage(sc, 'script')) + '</h3>' +
             (blurb ? '<p class="script-tile-desc">' + esc(blurb) + '</p>' : '') +
             '<div class="collection-footer">' +
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +

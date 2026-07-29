@@ -346,14 +346,15 @@
       return out;
     }
 
-    function collectionTileHTML(name, id, count, icons, header, tagline){
+    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
       var topHTML = header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
-        '<h3 class="collection-name">' + esc(name) + '</h3>' +
+        '<h3 class="collection-name">' + esc(name) +
+          window.classBadgeHTML(window.classifyPage(coll || {}, 'collection')) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
@@ -405,7 +406,8 @@
       COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
-                header:c.header||'',include:c.include||[],exclude:c.exclude||[]};
+                header:c.header||'',include:c.include||[],exclude:c.exclude||[],
+                starlight:!!c.starlight};
       });
         // ── Stats ─────────────────────────────────────────────
         // Membership honors hybrid include/exclude via the shared resolver.
@@ -450,7 +452,7 @@
           var chars = collected[coll.slug] || [];
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
-          html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
+          html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'', coll);
         });
         // "All Collections" tile — browse every collection on the wiki.
         var nColl = featuredPool.length;

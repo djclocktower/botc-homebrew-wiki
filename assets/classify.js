@@ -73,9 +73,17 @@
 
   /* Partial = finished enough to publish (it has an icon) but empty of
      everything else. Starlight always wins: an admin has looked at the page,
-     so it is never also flagged unfinished. */
+     so it is never also flagged unfinished.
+
+     Only characters can be Partial. The `ability` check is what enforces
+     that: every character has one (the API rejects a save without it) and no
+     collection or script does, so passing a collection here can never come
+     back true even when the caller forgets to say what type it is. Without
+     this guard every collection and script would read as unfinished, because
+     none of them have tags or almanac text. */
   function isPartial(d) {
     if (!d || isStarlight(d)) return false;
+    if (!nonEmpty(d.ability)) return false;
     return !hasTags(d) && !hasAlmanac(d);
   }
 
@@ -149,8 +157,11 @@
     return isStarlight(d) ? STARLIGHT_WEIGHT : 1;
   }
 
-  /* Everything a reader should see by default: drops Partial pages. */
-  function eligible(list) {
+  /* Everything a reader should see by default: drops Partial pages. Only
+     characters are ever dropped — `type` is accepted for clarity at the call
+     site, but isPartial() is self-guarding either way. */
+  function eligible(list, type) {
+    if (type && type !== 'character') return (list || []).slice();
     return (list || []).filter(function (d) { return !isPartial(d); });
   }
 
