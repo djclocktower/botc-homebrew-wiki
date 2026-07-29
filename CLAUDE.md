@@ -203,7 +203,17 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
 - **Standard** — the default. No badge, nothing to earn.
 - **Starlight** — admin-only, on characters, collections **and** scripts.
   Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage
-  strips, and filterable on its own.
+  strips, and filterable on its own (a "Starlight only" chip on All
+  Characters, All Collections and Scripts).
+  A Starlight **collection lends the status to every character in it**
+  (`applyCollectionStarlight()` in worker.js, applied on read in
+  `buildPublicJSON` and on the SSR `/c/` page). Inherited status is never
+  written to the character row, so un-starring the collection takes it off
+  the characters too; a character's own flag always wins and carries
+  `starlightFrom` for the tooltip.
+  The visible mark is a bare `✦` that inherits the surrounding text colour
+  (`.starlight-star`) — deliberately not a coloured pill. On collection
+  tiles it sits after the character count behind a hairline `.coll-star-sep`.
 
 Only `starlight` is stored (a boolean in the page's `data` JSON, writable
 **only** through `POST /api/admin/starlight` or the bulk action — every save

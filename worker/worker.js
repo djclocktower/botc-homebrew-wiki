@@ -137,7 +137,7 @@ Render.setCreators(Creators);
 import Classify from '../assets/classify.js';
 // Lets render.js emit the Partial/Starlight badge without importing
 // classify.js itself (it is loaded standalone in the browser).
-Render.setClassBadge(Classify.classBadgeHTML);
+Render.setClassBadge(Classify.classRowHTML);
 // News article renderer (also used by the /news index and the admin editor
 // preview in the browser).
 import NewsRender from '../assets/render-news.js';
@@ -661,6 +661,35 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- Starlight inheritance ----
+// A Starlight collection lends the status to every character in it: awarding
+// it to "Ravenswood Chronicle" marks all of Ravenswood's characters too, so
+// the Starlight filter on All Characters shows them. Inherited status is
+// never written back to the character row — it is derived on read, so
+// removing Starlight from the collection takes it off the characters with
+// it, and a character keeps its own flag if it was given one directly.
+// `starlightFrom` records which collection lent it, for the tooltip.
+async function applyCollectionStarlight(env, chars) {
+  let rows;
+  try {
+    ({ results: rows } = await env.DB.prepare(
+      "SELECT data FROM collections WHERE status='published'"
+    ).all());
+  } catch { return chars; }
+  const starred = (rows || []).map(parseData).filter(d => d && d.starlight);
+  if (!starred.length) return chars;
+  for (const coll of starred) {
+    const name = coll.displayName || coll.id || coll.slug || 'a collection';
+    for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
+      if (c.starlight) continue;              // its own flag wins
+      c.starlight = true;
+      c.starlightFrom = name;
+      c.classification = 'starlight';
+    }
+  }
+  return chars;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
@@ -703,7 +732,7 @@ async function buildPublicJSON(env, table) {
   }
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
-  return results.map(r => {
+  const out = results.map(r => {
     const d = JSON.parse(r.data);
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
@@ -719,6 +748,9 @@ async function buildPublicJSON(env, table) {
     else delete d.classification;
     return d;
   });
+  // Characters pick up Starlight from any Starlight collection they belong to.
+  if (table === 'characters') await applyCollectionStarlight(env, out);
+  return out;
 }
 
 // ---- D1 -> R2 backup (nightly cron + POST /api/backup) ----
@@ -1245,6 +1277,9 @@ export default {
           }
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
+          // Same Starlight inheritance the JSON feeds get, so the star on the
+          // page agrees with the star in the grid it was clicked from.
+          if (!d.starlight) await applyCollectionStarlight(env, [d]);
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           return new Response(renderCharacterPage(d, url.origin, isDraft), {

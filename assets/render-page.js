@@ -342,9 +342,9 @@
      Standard pages show nothing, which is the point of Standard. */
   function starlightRow(d) {
     if (!d || !d.starlight) return [];
-    return ['<dt>Status:</dt><dd><span class="page-class page-class-starlight" ' +
-      'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.">' +
-      '\u2726 Starlight</span></dd>'];
+    return ['<dt>Status:</dt><dd><span class="starlight-star" ' +
+      'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks." ' +
+      'aria-label="Starlight">\u2726</span> Starlight</dd>'];
   }
 
   function renderJsonPanel(jsonText, actions, label, collapsed) {

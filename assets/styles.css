@@ -1950,23 +1950,37 @@ body.theme-bg::before {
 .rules-btn-go:disabled { opacity: .45; cursor: not-allowed; }
 .rules-btn-go:not(:disabled):hover { background: #7a2c2e; }
 
-/* ─── Page classification badges (Partial / Starlight) ───────── */
-/* Standard pages deliberately get no badge — see assets/classify.js. */
+/* ─── Page classification marks (Partial / Starlight) ────────── */
+/* Standard pages deliberately get nothing — see assets/classify.js. */
+
+/* Starlight is a bare star that takes the colour of whatever text it sits
+   next to, so it reads as part of the name rather than a badge stuck on it.
+   No background, no border, no colour of its own. */
+.starlight-star {
+  color: inherit; font-size: .78em; opacity: .65;
+  margin-left: .38em; vertical-align: baseline;
+  cursor: help; font-weight: inherit;
+}
+a:hover > .starlight-star,
+a:hover .starlight-star { opacity: .9; }
+
+/* Partial stays a word — a glyph can't say "unfinished" — but quietly. */
 .page-class {
   display: inline-block; vertical-align: middle;
-  font-family: 'Oswald', sans-serif; font-size: .68rem;
-  letter-spacing: .06em; text-transform: uppercase;
-  padding: 2px 7px; border: 1px solid currentColor; border-radius: 0;
-  white-space: nowrap; cursor: help;
+  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 1px 6px; border: 1px solid currentColor; border-radius: 0;
+  white-space: nowrap; cursor: help; margin-left: .45em;
+  opacity: .75; font-weight: 400;
 }
-.page-class-partial { color: #8a7248; background: rgba(190,165,100,.14); }
-.page-class-starlight { color: #6b4ea8; background: rgba(140,105,205,.14); }
-/* On the dark card grids the badge sits on parchment, so keep it readable. */
-.char-card .page-class, .featured-card .page-class { margin-left: 6px; }
-/* Starlight marker next to a page title. */
-.starlight-mark {
-  font-size: .8em; color: #8a6fd0; margin-left: 8px;
-  vertical-align: middle; cursor: help;
+.page-class-partial { color: #8a7248; background: none; }
+
+/* Collection tiles carry the star in the footer beside the character count,
+   separated by a hairline rule. */
+.coll-star-sep {
+  display: inline-block; width: 1px; height: .95em;
+  background: currentColor; opacity: .35;
+  margin: 0 .55em; vertical-align: -.12em;
 }
 
 /* ─── Comment sections (/c/, /s/, /collection/, /news/) ──────── */
@@ -2173,3 +2187,5 @@ body.theme-bg::before {
 /* Text links inside the site-wide announcement banner. */
 .site-announcement a { color: #ffe9ad; text-decoration: underline; text-underline-offset: 2px; }
 .site-announcement a:hover { color: #fff; }
+/* "(via Ravenswood Chronicle)" after an inherited Starlight status. */
+.starlight-from { font-size: .82em; opacity: .6; }

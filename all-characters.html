@@ -98,9 +98,9 @@
       return '<a class="char-card" href="' + esc(c.page) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) +
-          window.classBadgeHTML(window.classifyCharacter(c)) + '</div>' +
+        '<div class="char-card-name">' + esc(c.name) +
+          window.classBadgeHTML(window.classifyCharacter(c), { from: c.starlightFrom }) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';

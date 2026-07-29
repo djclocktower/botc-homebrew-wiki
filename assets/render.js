@@ -20,13 +20,13 @@
   function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
   /* Classification badge, if classify.js is around (browser) or its markup
      builder was injected (Worker). Standard pages get nothing by design. */
-  var classBadgeFn = null;
-  function setClassBadge(fn) { classBadgeFn = fn; }
-  function classBadge(cls) {
+  var classRowFn = null;
+  function setClassBadge(fn) { classRowFn = fn; }
+  function classBadge(cls, opts) {
     if (!cls || cls === 'standard') return '';
-    var fn = classBadgeFn ||
-      (typeof window !== 'undefined' ? window.classBadgeHTML : null);
-    return fn ? fn(cls) : '';
+    var fn = classRowFn ||
+      (typeof window !== 'undefined' ? window.classRowHTML : null);
+    return fn ? fn(cls, opts) : '';
   }
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
@@ -229,7 +229,8 @@
       // Partial / Starlight. The classification is worked out by
       // assets/classify.js and stamped onto the object by the Worker; Standard
       // pages carry no badge, so nothing is shown for them.
-      (classBadge(d.classification) ? '<dt>Status:</dt><dd>' + classBadge(d.classification) + '</dd>' : '') +
+      (classBadge(d.classification, { from: d.starlightFrom })
+        ? '<dt>Status:</dt><dd>' + classBadge(d.classification, { from: d.starlightFrom }) + '</dd>' : '') +
       '</dl>';
 
     // Copy-link button lives in the top-right corner *inside* the info card so

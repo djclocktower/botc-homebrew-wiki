@@ -169,14 +169,38 @@
                'and in Featured picks.'
   };
 
-  /* Small badge for grids and page headers. Standard pages get nothing —
-     that is the whole point of Standard. */
-  function classBadgeHTML(cls) {
-    if (cls !== 'partial' && cls !== 'starlight') return '';
-    var label = LABELS[cls];
-    return '<span class="page-class page-class-' + cls + '" title="' +
-      DESCRIPTIONS[cls].replace(/"/g, '&quot;') + '">' +
-      (cls === 'starlight' ? '✦ ' : '') + label + '</span>';
+  /* Marks for grids and page headers. Standard pages get nothing — that is
+     the whole point of Standard.
+
+     Starlight is a bare star that inherits the surrounding text colour, so
+     it reads as part of the title rather than a pill bolted onto it. Partial
+     stays a word because "unfinished" is not something a glyph can say. */
+  function classBadgeHTML(cls, opts) {
+    if (cls === 'starlight') {
+      var title = (opts && opts.from)
+        ? 'Starlight — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
+        : DESCRIPTIONS.starlight;
+      return '<span class="starlight-star" title="' + title.replace(/"/g, '&quot;') +
+        '" aria-label="Starlight">\u2726</span>';
+    }
+    if (cls === 'partial') {
+      return '<span class="page-class page-class-partial" title="' +
+        DESCRIPTIONS.partial.replace(/"/g, '&quot;') + '">' + LABELS.partial + '</span>';
+    }
+    return '';
+  }
+
+  /* The same status spelled out, for the Information tables on character,
+     script and collection pages. A lone glyph in a data table reads as a
+     typo; next to its own label it reads as a field. */
+  function classRowHTML(cls, opts) {
+    if (cls === 'starlight') {
+      return classBadgeHTML('starlight', opts) + ' Starlight' +
+        ((opts && opts.from) ? ' <span class="starlight-from">(via ' +
+          String(opts.from).replace(/&/g, '&amp;').replace(/</g, '&lt;') + ')</span>' : '');
+    }
+    if (cls === 'partial') return classBadgeHTML('partial');
+    return '';
   }
 
   /* Weighted pick used by Featured / random rotations. Starlight entries get
@@ -226,6 +250,7 @@
     hasIcon: hasIcon, hasAlmanac: hasAlmanac, hasTags: hasTags,
     hasMechanics: hasMechanics,
     needsIcon: needsIcon, isRulesPage: isRulesPage, RULES_TEAMS: RULES_TEAMS,
+    classRowHTML: classRowHTML,
     isPartial: isPartial, isStarlight: isStarlight,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,
