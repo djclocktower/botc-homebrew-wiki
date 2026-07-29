@@ -54,6 +54,16 @@
     <a class="create-btn" href="publish-collection">+ Create a Collection</a>
   </div>
 
+  <div class="home-panel" style="padding-bottom:0">
+    <div class="filter-bar" id="filter-bar" hidden>
+      <div class="filter-group"><span class="filter-group-label">Status</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip" id="fc-starlight"
+            title="Starlight — collections the wiki admins have picked out.">✦ Starlight only</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <main class="home-panel">
     <section class="landing-section">
       <div class="collections-grid" id="collections-grid">
@@ -128,15 +138,41 @@
         return (a.displayName||'').localeCompare(b.displayName||'');
       });
 
-      var html = '';
-      COLLECTIONS.forEach(function(coll){
-        var chars = resolve(coll, list);
-        if (!chars.length) return; // skip empty collections
-        var displayName = coll.displayName || coll.slug;
-        var icons = pickIcons(chars, 4);
-        html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'', coll);
-      });
-      grid.innerHTML = html || '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>';
+      // Collections with at least one member, in display order. Rendering is
+      // split out so the Starlight chip can re-run it without re-fetching.
+      var SHOWN = COLLECTIONS.map(function(coll){
+        return { coll: coll, chars: resolve(coll, list) };
+      }).filter(function(x){ return x.chars.length; });
+
+      var starlightOnly = false;
+      function draw(){
+        var rows = starlightOnly
+          ? SHOWN.filter(function(x){ return x.coll.starlight; })
+          : SHOWN;
+        grid.innerHTML = rows.map(function(x){
+          var coll = x.coll;
+          return collectionTileHTML(coll.displayName || coll.slug, coll.id || coll.slug,
+            x.chars.length, pickIcons(x.chars, 4), coll.header||'', coll.tagline||'', coll);
+        }).join('') || (starlightOnly
+          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Starlight collections yet.</p>'
+          : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
+      }
+
+      // The chip only appears once something has actually been given the
+      // status — an filter that can only ever return nothing is just noise.
+      var nStar = SHOWN.filter(function(x){ return x.coll.starlight; }).length;
+      if (nStar){
+        var bar = document.getElementById('filter-bar');
+        var btn = document.getElementById('fc-starlight');
+        btn.textContent = '\u2726 Starlight only (' + nStar + ')';
+        bar.hidden = false;
+        btn.addEventListener('click', function(){
+          starlightOnly = !starlightOnly;
+          btn.classList.toggle('active', starlightOnly);
+          draw();
+        });
+      }
+      draw();
     }).catch(function(){
       grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load collections.</p>';
     });

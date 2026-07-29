@@ -186,10 +186,20 @@ assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit
 and the Worker (which stamps `classification` + `starlight` onto every row in
 `/characters.json`, `/collections.json`, `/scripts.json`).
 
-- **Partial** — characters only: has an icon and an ability, but **no tags and
-  no almanac text**. Hidden from All Characters, the tag/team/creator pages,
-  Featured and the homepage unless the *reader* ticks the "Show Partial" chip.
-  Adding one tag *or* one line of almanac text upgrades it instantly.
+- **Partial** — characters only: an ability and nothing else — no tags, no
+  almanac prose, **and no mechanics** (night order, reminder tokens, setup,
+  jinxes). Hidden from All Characters, the tag/team/creator pages, Featured
+  and the homepage unless the *reader* ticks the "Show Partial" chip. Adding
+  a tag, a line of almanac text, or night-order info upgrades it instantly.
+  Counting mechanics is **load-bearing**: much of this wiki was bulk-imported
+  with full night order but no tags or prose, and judging on prose alone made
+  193 of 456 published characters (42%) read as unfinished. With mechanics
+  counted it is 9. Do not "simplify" `hasMechanics()` away.
+- **Fabled are exempt** from both the Partial tier and the icon requirement
+  (`RULES_TEAMS` in classify.js). On this wiki Fabled is where States,
+  Conditions, Calls, Alignments and Properties live — rules constructs that
+  are complete at one line and never had token art. Without the exemption 18
+  reference pages get swept into drafts and hidden.
 - **Standard** — the default. No badge, nothing to earn.
 - **Starlight** — admin-only, on characters, collections **and** scripts.
   Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage
@@ -205,7 +215,7 @@ a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `isPartial()` self-guards on `d.ability` so a collection or script can never
 be flagged Partial — do not remove that check.
 
-**Characters with no icon cannot be published.** `/api/character` silently
+**Characters with no icon cannot be published** (Fabled excepted, above). `/api/character` silently
 saves them as drafts (and says so, via `editor-notices.js`), and
 `/api/publish` refuses. `POST /api/admin/demote-no-icon` sweeps pages that went
 live before the rule; the dashboard has a scan + one-click button for it.

@@ -2397,7 +2397,9 @@ export default {
           updated_at: r.updated_at, owner: r.owner,
           starlight: !!d.starlight,
           classification: Classify.classifyPage(d, type),
-          hasIcon: type === 'character' ? Classify.hasIcon(d) : true,
+          // "hasIcon: true" for a page that does not need one, so the
+          // no-icon filter only ever surfaces pages with a real gap.
+          hasIcon: type === 'character' ? (!Classify.needsIcon(d) || Classify.hasIcon(d)) : true,
           missing: type === 'character' ? Classify.missingBits(d) : []
         };
       });
@@ -2793,7 +2795,7 @@ export default {
         // A character with no icon cannot go live. Publishing attempts are
         // saved as drafts instead so nothing is lost — the editor shows why.
         let iconBlocked = false;
-        if (status === 'published' && !Classify.hasIcon(c)) {
+        if (status === 'published' && Classify.needsIcon(c) && !Classify.hasIcon(c)) {
           status = 'draft';
           iconBlocked = true;
         }
@@ -2921,7 +2923,9 @@ export default {
         }
         const status = b.status === 'draft' ? 'draft' : 'published';
         // Same rule as /api/character: no icon, no publishing.
-        if (status === 'published' && type === 'character' && !Classify.hasIcon(parseData(row))) {
+        const pubData = type === 'character' ? parseData(row) : null;
+        if (status === 'published' && type === 'character' &&
+            Classify.needsIcon(pubData) && !Classify.hasIcon(pubData)) {
           return jsonResponse({
             error: 'This character needs an icon before it can be published. Open the editor and add one.',
             needsIcon: true
@@ -3500,7 +3504,12 @@ export default {
         const { results } = await env.DB.prepare(
           "SELECT slug, name, data FROM characters WHERE status='published'"
         ).all();
-        const hits = (results || []).filter(r => !Classify.hasIcon(parseData(r)));
+        // Fabled rules pages (States/Conditions/Calls) never had icons and
+        // are not supposed to — Classify.needsIcon() keeps them out of this.
+        const hits = (results || []).filter(r => {
+          const d = parseData(r);
+          return Classify.needsIcon(d) && !Classify.hasIcon(d);
+        });
         if (b.dryRun) {
           return jsonResponse({
             ok: true, dryRun: true, count: hits.length,

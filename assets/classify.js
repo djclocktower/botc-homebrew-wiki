@@ -9,10 +9,13 @@
 
    The three tiers
    ---------------
-   partial   Characters only. The page has an icon and an ability but nothing
-             else — no tags AND no almanac text of any kind. Partial pages are
-             hidden from browse/search listings, the tag pages, Featured and
-             the homepage, unless the *reader* ticks the "Partial" filter chip.
+   partial   Characters only. The page has an ability and nothing else — no
+             tags, no almanac text, and no mechanics either (night order,
+             reminder tokens, setup, jinxes). Partial pages are hidden from
+             browse/search listings, the tag pages, Featured and the homepage,
+             unless the *reader* ticks the "Partial" filter chip.
+             Fabled are exempt: on this wiki they are rules constructs
+             (States, Conditions, Calls) that are complete at one line.
    standard  The default. Anything with an icon, plus at least one tag or at
              least one scrap of almanac text. No badge, nothing to earn.
    starlight Admin-awarded, on characters, collections or scripts. Weighted
@@ -37,6 +40,24 @@
 
   function nonEmpty(v) {
     return typeof v === 'string' && v.trim() !== '';
+  }
+
+  /* Teams whose pages are rules constructs rather than player characters.
+     On this wiki Fabled is where States, Conditions, Calls, Alignments and
+     Properties live — "Muted (Condition)", "Guessing the Demon (Call)" — and
+     those have no token art and no almanac by nature. They are complete as
+     they are, so they are exempt from BOTH the icon requirement and the
+     Partial classification. Without this, 18 of the wiki's reference pages
+     would be swept into drafts and hidden from browsing. */
+  var RULES_TEAMS = { fabled: 1 };
+
+  function isRulesPage(d) {
+    return !!(d && RULES_TEAMS[String(d.team || '').toLowerCase()]);
+  }
+
+  /* Must this page have an icon before it can be published? */
+  function needsIcon(d) {
+    return !isRulesPage(d);
   }
 
   /* Does this character have an icon? `art` is a repo/R2 path
@@ -67,6 +88,27 @@
       String(d.tags).split(',').some(function (t) { return t.trim(); }));
   }
 
+  /* Mechanical content that is not almanac prose: night order, Storyteller
+     reminder text, reminder tokens, setup effects, jinxes.
+
+     This matters more than it looks. A large part of this wiki arrived by
+     bulk import: full night-order entries and reminder tokens, but no tags
+     and no almanac prose. Judged on prose alone, 193 of 456 published
+     characters — 42% of the wiki — read as "unfinished" and would vanish
+     from browsing. They are not unfinished; they are documented in a
+     different place. Counting mechanics takes that 193 down to 10, which is
+     the handful of genuinely bare pages the Partial tier is aimed at. */
+  function hasMechanics(d) {
+    if (!d) return false;
+    if (nonEmpty(d.firstNightReminder) || nonEmpty(d.otherNightReminder)) return true;
+    if (Number(d.firstNight) > 0 || Number(d.otherNight) > 0) return true;
+    if (Array.isArray(d.reminders) && d.reminders.some(nonEmpty)) return true;
+    if (Array.isArray(d.remindersGlobal) && d.remindersGlobal.some(nonEmpty)) return true;
+    if (Array.isArray(d.jinxes) && d.jinxes.length) return true;
+    if (d.setup === true) return true;
+    return false;
+  }
+
   function isStarlight(d) {
     return !!(d && d.starlight);
   }
@@ -84,7 +126,9 @@
   function isPartial(d) {
     if (!d || isStarlight(d)) return false;
     if (!nonEmpty(d.ability)) return false;
-    return !hasTags(d) && !hasAlmanac(d);
+    // Rules pages (Fabled) are finished at one line of text — see RULES_TEAMS.
+    if (isRulesPage(d)) return false;
+    return !hasTags(d) && !hasAlmanac(d) && !hasMechanics(d);
   }
 
   /* 'starlight' | 'partial' | 'standard' for a character. */
@@ -105,9 +149,10 @@
      editor's "this page is unfinished" popup and the admin page list. */
   function missingBits(d) {
     var out = [];
+    if (isRulesPage(d)) return out;   // nothing is missing from a rules page
     if (!hasIcon(d)) out.push('icon');
     if (!hasTags(d)) out.push('tags');
-    if (!hasAlmanac(d)) out.push('almanac');
+    if (!hasAlmanac(d) && !hasMechanics(d)) out.push('almanac');
     return out;
   }
 
@@ -179,6 +224,8 @@
 
   var API = {
     hasIcon: hasIcon, hasAlmanac: hasAlmanac, hasTags: hasTags,
+    hasMechanics: hasMechanics,
+    needsIcon: needsIcon, isRulesPage: isRulesPage, RULES_TEAMS: RULES_TEAMS,
     isPartial: isPartial, isStarlight: isStarlight,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,
