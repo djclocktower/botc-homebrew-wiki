@@ -55,6 +55,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/classify.js"></script>
   <script>
     var GOOD = { townsfolk: 1, outsider: 1 };
     var TEAM_LABEL = {
@@ -91,7 +92,8 @@
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">Unknown team. <a href="all-characters" style="color:#7fb2e6">Back to all characters</a>.</p>';
           return;
         }
-        var chars = list.filter(function(c) { return c.team === team; });
+        // Unfinished (Partial) pages stay out of the team listings.
+        var chars = window.eligible(list).filter(function(c) { return c.team === team; });
         if (!chars.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No ' + esc(label) + ' characters yet. <a href="create" style="color:#7fb2e6">Create one!</a></p>';
           return;

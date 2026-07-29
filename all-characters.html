@@ -76,6 +76,7 @@
 
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/classify.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -98,7 +99,8 @@
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
+        '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) +
+          window.classBadgeHTML(window.classifyCharacter(c)) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';
@@ -158,8 +160,21 @@
       catch (e) { return null; }
     })();
 
-    // Filter state
-    var STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], creator: '', sort: 'name-asc' };
+    // Filter state.
+    // Creators use the same 3-state include/exclude model as tags and teams
+    // (click = include, click again = exclude, third click = off) — there are
+    // far too many creators for a dropdown, so they get a search box instead
+    // of a chip wall. `showPartial` reveals unfinished pages, which are hidden
+    // from browsing by default; `starlightOnly` narrows to admin-picked pages.
+    function blankState(){
+      return {
+        includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
+        includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
+        creatorQuery: '', showPartial: false, starlightOnly: false, sort: 'name-asc'
+      };
+    }
+    var STATE = blankState();
+    var ALL_CREATORS = [];
     var FULL = [];   // collection-scoped full list
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
@@ -203,11 +218,31 @@
         srcPresent.forEach(function(s){ html += '<button type="button" class="filter-chip" data-source="'+esc(s[0])+'">'+esc(s[1])+'</button>'; });
         html += '</div></div>';
       }
-      // Creator
+      // Status (Partial / Starlight). Partial pages are hidden until the
+      // reader asks for them; Starlight is a narrowing filter.
+      var nPartial = list.filter(function(c){ return window.isPartial(c); }).length;
+      var nStar = list.filter(function(c){ return window.isStarlight(c); }).length;
+      if (nPartial || nStar){
+        html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
+        if (nPartial){
+          html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
+        }
+        if (nStar){
+          html += '<button type="button" class="filter-chip" id="fc-starlight" title="Starlight — pages the wiki admins have picked out.">✦ Starlight only (' + nStar + ')</button>';
+        }
+        html += '</div></div>';
+      }
+      // Creator — a search box plus 3-state chips. The full creator list is
+      // hundreds long, so only matches for the current search are shown;
+      // anything already picked stays pinned above the search results.
+      ALL_CREATORS = creators;
       if (creators.length > 1){
-        html += '<div class="filter-group"><span class="filter-group-label">Creator</span><select class="filter-select" id="fc-creator"><option value="">All creators</option>';
-        creators.forEach(function(c){ html += '<option value="'+esc(c)+'">'+esc(c)+'</option>'; });
-        html += '</select></div>';
+        html += '<div class="filter-group filter-group-creators"><span class="filter-group-label">Creator</span>' +
+          '<div class="filter-chip-selected-row" id="fc-creator-selected"></div>' +
+          '<input type="search" class="filter-search" id="fc-creator-search" ' +
+            'placeholder="Search ' + creators.length + ' creators…" autocomplete="off" aria-label="Search creators">' +
+          '<div class="filter-chips-scroll" id="fc-creator-list"></div>' +
+          '</div>';
       }
       // Sort
       html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="fc-sort">' +
@@ -301,20 +336,109 @@
           render();
         });
       });
-      var crSel = document.getElementById('fc-creator');
-      if (crSel) crSel.addEventListener('change', function(){ STATE.creator = crSel.value; render(); });
+      // ── Status chips ──
+      var partialBtn = document.getElementById('fc-partial');
+      if (partialBtn) partialBtn.addEventListener('click', function(){
+        STATE.showPartial = !STATE.showPartial;
+        partialBtn.classList.toggle('active', STATE.showPartial);
+        render();
+      });
+      var starBtn = document.getElementById('fc-starlight');
+      if (starBtn) starBtn.addEventListener('click', function(){
+        STATE.starlightOnly = !STATE.starlightOnly;
+        starBtn.classList.toggle('active', STATE.starlightOnly);
+        render();
+      });
+
+      // ── Creator search + 3-state chips ──
+      var crSearch = document.getElementById('fc-creator-search');
+      if (crSearch){
+        crSearch.addEventListener('input', function(){
+          STATE.creatorQuery = crSearch.value;
+          renderCreatorChips();
+        });
+        // Enter picks the only match, which makes the search usable one-handed
+        // on a phone without hunting for the chip.
+        crSearch.addEventListener('keydown', function(e){
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          var matches = matchingCreators();
+          if (matches.length === 1) { cycleCreator(matches[0]); crSearch.value = ''; STATE.creatorQuery = ''; }
+          renderCreatorChips();
+          render();
+        });
+        renderCreatorChips();
+      }
+
       document.getElementById('fc-sort').addEventListener('change', function(e){ STATE.sort = e.target.value; render(); });
       document.getElementById('fc-reset').addEventListener('click', function(){
-        STATE = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], creator: '', sort: 'name-asc' };
+        STATE = blankState();
         bar.querySelectorAll('.filter-chip').forEach(function(b){ b.classList.remove('active','active-exclude'); });
-        if (crSel) crSel.value = '';
+        if (crSearch) crSearch.value = '';
+        renderCreatorChips();
         document.getElementById('fc-sort').value = 'name-asc';
         render();
       });
     }
 
+    /* Creators matching the search box, capped so a blank search doesn't
+       paint every creator on the wiki. Picked creators are drawn separately. */
+    var CREATOR_LIST_CAP = 40;
+    function matchingCreators(){
+      var q = STATE.creatorQuery.trim().toLowerCase();
+      return ALL_CREATORS.filter(function(c){
+        if (STATE.includeCreators.indexOf(c) !== -1) return false;
+        if (STATE.excludeCreators.indexOf(c) !== -1) return false;
+        return !q || c.toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    /* unset → include → exclude → unset, matching the tag chips. */
+    function cycleCreator(name){
+      var ii = STATE.includeCreators.indexOf(name);
+      var ei = STATE.excludeCreators.indexOf(name);
+      if (ii === -1 && ei === -1) STATE.includeCreators.push(name);
+      else if (ii !== -1) { STATE.includeCreators.splice(ii, 1); STATE.excludeCreators.push(name); }
+      else STATE.excludeCreators.splice(ei, 1);
+    }
+
+    function creatorChipHTML(name, cls){
+      return '<button type="button" class="filter-chip' + (cls ? ' ' + cls : '') +
+        '" data-creator="' + esc(name) + '">' + esc(name) + '</button>';
+    }
+
+    function renderCreatorChips(){
+      var selected = document.getElementById('fc-creator-selected');
+      var listEl = document.getElementById('fc-creator-list');
+      if (!selected || !listEl) return;
+      selected.innerHTML =
+        STATE.includeCreators.map(function(c){ return creatorChipHTML(c, 'active'); }).join('') +
+        STATE.excludeCreators.map(function(c){ return creatorChipHTML(c, 'active-exclude'); }).join('');
+      var matches = matchingCreators();
+      var shown = matches.slice(0, CREATOR_LIST_CAP);
+      listEl.innerHTML = shown.map(function(c){ return creatorChipHTML(c, ''); }).join('') +
+        (matches.length > shown.length
+          ? '<span class="filter-more">+' + (matches.length - shown.length) + ' more — keep typing</span>'
+          : '') +
+        (!matches.length && STATE.creatorQuery.trim()
+          ? '<span class="filter-more">No creator matches “' + esc(STATE.creatorQuery.trim()) + '”</span>'
+          : '');
+      // Re-wire: both rows are rebuilt on every keystroke.
+      var wrap = document.getElementById('filter-bar');
+      wrap.querySelectorAll('[data-creator]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          cycleCreator(btn.getAttribute('data-creator'));
+          renderCreatorChips();
+          render();
+        });
+      });
+    }
+
     function applyFilters(){
       var out = FULL.slice();
+      // Partial (unfinished) pages are out of the list unless asked for.
+      if (!STATE.showPartial) out = out.filter(function(c){ return !window.isPartial(c); });
+      if (STATE.starlightOnly) out = out.filter(function(c){ return window.isStarlight(c); });
       if (STATE.includeTeams.length) out = out.filter(function(c){ return STATE.includeTeams.indexOf(c.team) !== -1; });
       if (STATE.excludeTeams.length) out = out.filter(function(c){ return STATE.excludeTeams.indexOf(c.team) === -1; });
       if (STATE.includeTags.length) out = out.filter(function(c){
@@ -327,7 +451,13 @@
       });
       if (STATE.includeSources.length) out = out.filter(function(c){ return STATE.includeSources.indexOf(sourceOf(c)) !== -1; });
       if (STATE.excludeSources.length) out = out.filter(function(c){ return STATE.excludeSources.indexOf(sourceOf(c)) === -1; });
-      if (STATE.creator) out = out.filter(function(c){ return (c.creator||'').trim() === STATE.creator; });
+      // Creators: include = must be one of these; exclude = must be none of them.
+      if (STATE.includeCreators.length) out = out.filter(function(c){
+        return STATE.includeCreators.indexOf((c.creator||'').trim()) !== -1;
+      });
+      if (STATE.excludeCreators.length) out = out.filter(function(c){
+        return STATE.excludeCreators.indexOf((c.creator||'').trim()) === -1;
+      });
       // sort
       if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
       else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
@@ -347,7 +477,9 @@
       if (toggle) {
         var nActive = STATE.includeTeams.length + STATE.excludeTeams.length +
           STATE.includeTags.length + STATE.excludeTags.length +
-          STATE.includeSources.length + STATE.excludeSources.length + (STATE.creator ? 1 : 0);
+          STATE.includeSources.length + STATE.excludeSources.length +
+          STATE.includeCreators.length + STATE.excludeCreators.length +
+          (STATE.showPartial ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
         toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
           ' <span class="filter-toggle-arrow">&#9662;</span>';
       }

@@ -55,6 +55,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/classify.js"></script>
   <script>
     var GOOD = { townsfolk: 1, outsider: 1 };
     var TEAM_LABEL = {
@@ -94,7 +95,8 @@
           return;
         }
 
-        var chars = list.filter(function(c) { return byAuthor(c, rawAuthor); });
+        // Unfinished (Partial) pages stay out of the author listings.
+        var chars = window.eligible(list).filter(function(c) { return byAuthor(c, rawAuthor); });
 
         // Use the capitalisation from the first matching character
         var displayName = chars.length ? chars[0].creator.trim() : rawAuthor;

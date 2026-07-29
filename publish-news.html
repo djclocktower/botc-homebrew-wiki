@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write News — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+.pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 900px; margin: 0 auto; }
+.sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
+.sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-fld { margin-bottom:12px; }
+.sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld .req { color:var(--evil); }
+.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:#8a7a63; }
+.sb-fld input[type=text], .sb-fld textarea { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld textarea { resize:vertical; min-height:54px; }
+#n-body { min-height:320px; font-family:'Libre Franklin',sans-serif; line-height:1.5; }
+.sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
+.sb-check { display:flex; align-items:center; gap:8px; font-size:.9rem; color:#241a12; margin:6px 0 12px; cursor:pointer; }
+.sb-check input { width:17px; height:17px; }
+.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
+.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
+.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
+.pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+.pub-back { display:inline-block; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+.pub-back:hover { color:#fff; text-decoration:underline; }
+#n-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
+#n-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+#n-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+#n-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#n-status a { color:inherit; font-weight:700; }
+.fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.6; margin:6px 0 0; }
+.fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
+/* Live preview reuses the real article styles so what you see is what ships. */
+.news-preview { background:var(--parch); border:2px solid var(--parch-frame); padding:14px 16px; margin-bottom:18px; }
+.news-preview > h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 10px; font-size:1.2rem; }
+.news-preview .news-article { border-width:2px; padding:16px 18px; }
+.article-list { list-style:none; margin:0; padding:0; }
+.article-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(180,160,120,.35); }
+.article-row:last-child { border-bottom:none; }
+.article-row a { color:var(--maroon); font-weight:600; font-size:.94rem; text-decoration:none; }
+.article-row a:hover { text-decoration:underline; }
+.article-row .meta { font-size:.8rem; color:#6b5d49; }
+.article-row .pill { font-family:'Oswald',sans-serif; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; }
+.article-row .pill.draft { background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.article-row .pill.published { background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <main class="pub-main">
+    <div class="home-hero" style="padding-bottom:14px">
+      <h1 id="page-title">Write a News Article</h1>
+      <p>News articles get their own page, appear on the homepage and on <a href="news" style="color:#ffe9ad">/news</a>, and readers can comment on them.</p>
+    </div>
+
+    <div id="gate" style="display:none">
+      <div class="sb-details">
+        <h2>Admins only</h2>
+        <p class="sub">The news editor is limited to wiki admins. <a href="login" style="color:var(--maroon);font-weight:600">Log in →</a></p>
+      </div>
+    </div>
+
+    <div id="editor" style="display:none">
+      <div class="sb-details">
+        <h2>Article</h2>
+        <p class="sub">The URL is built from the title the first time you save, then frozen so links keep working.</p>
+
+        <div class="sb-fld">
+          <label for="n-title">Title <span class="req">*</span></label>
+          <input type="text" id="n-title" placeholder="e.g. Starlight picks for July">
+        </div>
+        <p class="fmt-help" id="n-url" style="display:none"></p>
+
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="n-author">Byline <span class="opt">(optional)</span></label>
+            <input type="text" id="n-author" placeholder="e.g. dj_dj_dj">
+          </div>
+          <div class="sb-fld">
+            <label for="n-image">Hero image <span class="opt">(optional path or URL)</span></label>
+            <input type="text" id="n-image" placeholder="scripts/my-banner.png">
+          </div>
+        </div>
+
+        <div class="sb-fld">
+          <label for="n-summary">Summary <span class="opt">(optional — shown on cards; auto-generated if blank)</span></label>
+          <textarea id="n-summary" rows="2" maxlength="300"></textarea>
+        </div>
+
+        <div class="sb-fld">
+          <label for="n-body">Article <span class="req">*</span></label>
+          <textarea id="n-body" placeholder="Write your article here…"></textarea>
+          <p class="fmt-help">
+            Blank line = new paragraph &middot;
+            <code>## Heading</code> &middot;
+            <code>- bullet</code> &middot;
+            <code>**bold**</code> &middot;
+            <code>*italic*</code> &middot;
+            <code>[link text](https://example.com)</code> — internal links work too,
+            e.g. <code>[the Cartographer](/c/cartographer)</code>.
+          </p>
+        </div>
+
+        <label class="sb-check"><input type="checkbox" id="n-pinned"> Pin this article to the top of the news list</label>
+      </div>
+
+      <div class="news-preview">
+        <h2>Preview</h2>
+        <div id="n-preview"></div>
+      </div>
+
+      <div class="pub-actions">
+        <button type="button" class="sb-btn sb-btn-publish" id="n-publish">Publish</button>
+        <button type="button" class="sb-btn sb-btn-draft" id="n-draft">Save as Draft</button>
+        <button type="button" class="sb-btn sb-btn-delete" id="n-delete" style="display:none">Delete</button>
+        <span class="pub-status-pill" id="n-pill"></span>
+        <a class="pub-back" href="news">← All news</a>
+      </div>
+      <div id="n-status"></div>
+
+      <div class="sb-details" style="margin-top:22px">
+        <h2>All Articles</h2>
+        <p class="sub">Click one to edit it.</p>
+        <ul class="article-list" id="n-list"><li class="article-row"><span class="meta">Loading…</span></li></ul>
+      </div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render-news.js"></script>
+  <script>
+  (function(){
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ?n={slug} opens an existing article for editing.
+    var editingSlug = (function(){
+      try { return new URLSearchParams(location.search).get('n') || ''; } catch(e){ return ''; }
+    })();
+    var currentStatus = 'draft';
+
+    function say(cls, html){
+      var el = $('n-status');
+      el.className = cls || '';
+      el.innerHTML = html || '';
+    }
+
+    function collect(){
+      return {
+        slug: editingSlug || undefined,
+        title: $('n-title').value.trim(),
+        author: $('n-author').value.trim(),
+        summary: $('n-summary').value.trim(),
+        image: $('n-image').value.trim(),
+        body: $('n-body').value,
+        pinned: $('n-pinned').checked
+      };
+    }
+
+    function preview(){
+      var a = collect();
+      a.publishedAt = new Date().toISOString();
+      $('n-preview').innerHTML = window.NewsRender.renderArticle(a, { linkRoot: '' });
+    }
+
+    function setPill(status){
+      currentStatus = status;
+      var pill = $('n-pill');
+      pill.className = 'pub-status-pill ' + (status === 'published' ? 'published' : 'draft');
+      pill.textContent = status === 'published' ? 'Published' : 'Draft';
+    }
+
+    function showUrl(){
+      if (!editingSlug) { $('n-url').style.display = 'none'; return; }
+      $('n-url').style.display = '';
+      $('n-url').innerHTML = 'URL: <a href="news/' + encodeURIComponent(editingSlug) +
+        '" target="_blank" rel="noopener">/news/' + esc(editingSlug) + '</a>';
+      $('n-delete').style.display = '';
+      $('page-title').textContent = 'Edit News Article';
+    }
+
+    function save(status){
+      var a = collect();
+      if (!a.title) { say('err', 'Give the article a title first.'); return; }
+      if (!a.body.trim()) { say('err', 'Write the article body first.'); return; }
+      a.status = status;
+      say('work', 'Saving…');
+      fetch('/api/admin/news', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(a)
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.error) { say('err', esc(d.error)); return; }
+        editingSlug = d.slug;
+        setPill(d.status);
+        showUrl();
+        // Keep the address bar in step so a refresh reopens the same article.
+        try { history.replaceState(null, '', 'publish-news?n=' + encodeURIComponent(d.slug)); } catch(e){}
+        say('ok', d.status === 'published'
+          ? 'Published. <a href="news/' + encodeURIComponent(d.slug) + '">View the article →</a>'
+          : 'Saved as a draft. Only admins can see it.');
+        loadList();
+      }).catch(function(){ say('err', 'Could not reach the server. Try again.'); });
+    }
+
+    function del(){
+      if (!editingSlug) return;
+      if (!confirm('Delete this article for good? Its comments go with it.')) return;
+      fetch('/api/admin/news', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', slug: editingSlug })
+      }).then(function(r){ return r.json(); }).then(function(d){
+        if (d.error) { say('err', esc(d.error)); return; }
+        location.href = 'publish-news';
+      });
+    }
+
+    function loadList(){
+      fetch('/api/news?drafts=1&limit=100&_=' + Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var list = (d && d.articles) || [];
+          $('n-list').innerHTML = list.length ? list.map(function(a){
+            return '<li class="article-row">' +
+              '<a href="publish-news?n=' + encodeURIComponent(a.slug) + '">' + esc(a.title) + '</a>' +
+              '<span class="meta">' + esc(window.NewsRender.formatDate(a.publishedAt || a.updatedAt)) + '</span>' +
+              '<span class="pill ' + (a.status === 'published' ? 'published' : 'draft') + '">' +
+                (a.status === 'published' ? 'Published' : 'Draft') + '</span>' +
+            '</li>';
+          }).join('') : '<li class="article-row"><span class="meta">No articles yet.</span></li>';
+        });
+    }
+
+    function loadArticle(){
+      if (!editingSlug) { preview(); return; }
+      fetch('/api/news/item?slug=' + encodeURIComponent(editingSlug) + '&_=' + Date.now())
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d.error || !d.article) { say('err', 'That article could not be loaded.'); editingSlug = ''; return; }
+          var a = d.article;
+          $('n-title').value = a.title || '';
+          $('n-author').value = a.author || '';
+          $('n-summary').value = a.summary || '';
+          $('n-image').value = a.image || '';
+          $('n-body').value = a.body || '';
+          $('n-pinned').checked = !!a.pinned;
+          setPill(a.status);
+          showUrl();
+          preview();
+        });
+    }
+
+    // Admins only — everyone else gets the gate panel.
+    fetch('/api/me').then(function(r){ return r.json(); }).then(function(me){
+      if (!me || !me.isAdmin) { $('gate').style.display = ''; return; }
+      $('editor').style.display = '';
+      ['n-title','n-author','n-summary','n-image','n-body'].forEach(function(id){
+        $(id).addEventListener('input', preview);
+      });
+      $('n-publish').addEventListener('click', function(){ save('published'); });
+      $('n-draft').addEventListener('click', function(){ save('draft'); });
+      $('n-delete').addEventListener('click', del);
+      setPill('draft');
+      loadArticle();
+      loadList();
+    }).catch(function(){ $('gate').style.display = ''; });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

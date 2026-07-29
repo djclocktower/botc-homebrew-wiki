@@ -37,6 +37,21 @@
   (function () {
     var CACHE_KEY = 'botc_announce';
     var DISMISS_KEY = 'botc_announce_dismissed';
+    // Announcements may contain [label](url) text links. The formatter is
+    // shared with the news articles (assets/render-news.js), which escapes
+    // the text first and only lets http(s)/mailto/site-relative hrefs
+    // through — so an announcement can never inject markup. That file is not
+    // on every page, so it is pulled in on demand and only when the message
+    // actually contains a link.
+    function loadFormatter(cb) {
+      if (window.NewsRender) return cb(window.NewsRender);
+      var s = document.createElement('script');
+      s.src = ROOT + 'assets/render-news.js';
+      s.onload = function () { cb(window.NewsRender || null); };
+      s.onerror = function () { cb(null); };
+      document.head.appendChild(s);
+    }
+
     function show(ann) {
       if (!ann || !ann.text) return;
       var dismissed = '';
@@ -45,7 +60,12 @@
       var bar = document.createElement('div');
       bar.className = 'site-announcement';
       var span = document.createElement('span');
-      span.textContent = ann.text; // textContent — announcement is plain text
+      span.textContent = ann.text; // plain text unless it turns out to have links
+      if (/\[[^\]\n]+\]\([^)\s]+\)/.test(ann.text)) {
+        loadFormatter(function (NR) {
+          if (NR) span.innerHTML = NR.inlineFormat(ann.text);
+        });
+      }
       var btn = document.createElement('button');
       btn.className = 'site-announcement-close';
       btn.type = 'button';

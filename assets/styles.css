@@ -1949,3 +1949,191 @@ body.theme-bg::before {
 }
 .rules-btn-go:disabled { opacity: .45; cursor: not-allowed; }
 .rules-btn-go:not(:disabled):hover { background: #7a2c2e; }
+
+/* ─── Page classification badges (Partial / Starlight) ───────── */
+/* Standard pages deliberately get no badge — see assets/classify.js. */
+.page-class {
+  display: inline-block; vertical-align: middle;
+  font-family: 'Oswald', sans-serif; font-size: .68rem;
+  letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 7px; border: 1px solid currentColor; border-radius: 0;
+  white-space: nowrap; cursor: help;
+}
+.page-class-partial { color: #8a7248; background: rgba(190,165,100,.14); }
+.page-class-starlight { color: #6b4ea8; background: rgba(140,105,205,.14); }
+/* On the dark card grids the badge sits on parchment, so keep it readable. */
+.char-card .page-class, .featured-card .page-class { margin-left: 6px; }
+/* Starlight marker next to a page title. */
+.starlight-mark {
+  font-size: .8em; color: #8a6fd0; margin-left: 8px;
+  vertical-align: middle; cursor: help;
+}
+
+/* ─── Comment sections (/c/, /s/, /collection/, /news/) ──────── */
+.comments-section {
+  max-width: 900px; margin: 30px auto 10px; padding: 0 4px;
+}
+.cmt-list { list-style: none; margin: 0 0 22px; padding: 0; }
+.cmt {
+  display: flex; gap: 12px;
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame);
+  padding: 12px 14px; margin: 0 0 10px;
+}
+.cmt-avatar {
+  width: 38px; height: 38px; flex: none; border-radius: 50%;
+  object-fit: cover; border: 1px solid var(--parch-frame); background: #e6dbc2;
+}
+.cmt-avatar-letter {
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Dumbledor2', serif; font-size: 1.1rem;
+  color: #f7ecd0; background: var(--maroon); border-color: var(--maroon);
+}
+.cmt-main { flex: 1 1 auto; min-width: 0; }
+.cmt-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.cmt-who {
+  font-family: 'Oswald', sans-serif; font-size: .95rem; letter-spacing: .02em;
+  color: var(--maroon); text-decoration: none;
+}
+.cmt-who:hover { text-decoration: underline; }
+.cmt-badge {
+  font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .07em;
+  text-transform: uppercase; color: #f7ecd0; background: var(--maroon);
+  padding: 1px 6px;
+}
+.cmt-when { font-size: .78rem; color: #8a7a5e; }
+.cmt-body { color: var(--ink); font-size: .95rem; line-height: 1.5; overflow-wrap: anywhere; }
+.cmt-body p { margin: 0 0 8px; }
+.cmt-body p:last-child { margin-bottom: 0; }
+.cmt-actions { margin-top: 6px; display: flex; gap: 14px; }
+.cmt-action {
+  background: none; border: none; padding: 0; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  color: var(--good-name); text-decoration: underline; text-underline-offset: 3px;
+}
+.cmt-action:disabled { color: #8a7a5e; cursor: default; text-decoration: none; }
+.cmt-empty, .cmt-login {
+  color: rgba(236,225,200,.72); font-size: .92rem; margin: 0 0 18px;
+}
+.cmt-login a { color: #ffe9ad; }
+.cmt-form {
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); padding: 12px 14px;
+}
+.cmt-form textarea {
+  width: 100%; resize: vertical; min-height: 76px;
+  font-family: 'Libre Franklin', sans-serif; font-size: .95rem; line-height: 1.45;
+  color: var(--ink); background: #fffdf8;
+  border: 1px solid var(--parch-frame); border-radius: 0; padding: 8px 10px;
+}
+.cmt-form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-top: 10px;
+}
+.cmt-count { font-size: .76rem; color: #8a7a5e; }
+.cmt-submit {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .88rem; letter-spacing: .05em; padding: 9px 20px; cursor: pointer;
+  color: #f7ecd0; background: var(--maroon);
+  border: 2px solid var(--parch-frame); border-radius: 0;
+}
+.cmt-submit:disabled { opacity: .5; cursor: not-allowed; }
+.cmt-submit:not(:disabled):hover { background: #7a2c2e; }
+.cmt-error { color: var(--evil); font-size: .88rem; margin: 10px 0 0; }
+@media (max-width: 640px) {
+  .cmt { padding: 10px; gap: 9px; }
+  .cmt-avatar { width: 32px; height: 32px; }
+  .cmt-form-row { flex-direction: column-reverse; align-items: stretch; }
+  .cmt-submit { width: 100%; }
+  .cmt-count { text-align: right; }
+}
+
+/* ─── Author search filter (all-characters) ──────────────────── */
+.filter-search {
+  font-family: 'Libre Franklin', sans-serif; font-size: .88rem; color: var(--maroon);
+  background: #fffdf8; border: 1px solid var(--parch-frame); border-radius: 0;
+  padding: 6px 10px; width: 190px; max-width: 100%;
+}
+.filter-search::placeholder { color: #9c8a6a; }
+/* The matching-authors list scrolls inside itself so a thousand creators
+   never push the grid off the screen. */
+.filter-chips-scroll {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 132px; overflow-y: auto;
+  padding: 2px; margin-top: 6px;
+}
+.filter-chips-scroll:empty { display: none; }
+.filter-chip-selected-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip-selected-row:empty { display: none; }
+.filter-more {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.65); align-self: center;
+}
+@media (max-width: 640px) {
+  .filter-search { width: 100%; }
+  .filter-chips-scroll { max-height: 160px; }
+}
+
+/* ─── News ───────────────────────────────────────────────────── */
+.news-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.news-card {
+  display: block; text-decoration: none;
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); padding: 14px 16px;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.news-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(40,12,30,.35); }
+.news-card-date {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .06em;
+  text-transform: uppercase; color: #8a7a5e;
+}
+.news-card-title {
+  font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .02em;
+  color: var(--maroon); margin: 5px 0 7px; line-height: 1.25;
+}
+.news-card-summary { color: var(--ink); font-size: .92rem; line-height: 1.45; margin: 0; }
+.news-card-more {
+  display: inline-block; margin-top: 9px;
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em;
+  color: var(--good-name);
+}
+.news-article {
+  max-width: 900px; margin: 0 auto;
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 3px solid var(--parch-frame); padding: 22px 26px;
+}
+.news-article-head { border-bottom: 2px solid var(--parch-frame); padding-bottom: 12px; margin-bottom: 16px; }
+.news-article h1 {
+  font-family: 'Dumbledor2', serif; font-size: 1.7rem; letter-spacing: .02em;
+  color: var(--maroon); margin: 4px 0 8px; line-height: 1.2;
+}
+.news-meta { font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em; color: #8a7a5e; }
+.news-hero { width: 100%; height: auto; margin: 0 0 16px; border: 2px solid var(--parch-frame); }
+.news-body { color: var(--ink); font-size: 1rem; line-height: 1.6; overflow-wrap: anywhere; }
+.news-body p { margin: 0 0 13px; }
+.news-body h2 {
+  font-family: 'Dumbledor2', serif; font-size: 1.15rem; color: var(--maroon);
+  letter-spacing: .02em; margin: 22px 0 8px;
+}
+.news-body ul { margin: 0 0 13px; padding-left: 24px; }
+.news-body li { margin-bottom: 5px; }
+.news-body a { color: var(--good-name); text-decoration: underline; text-underline-offset: 2px; }
+.news-empty { color: rgba(236,225,200,.7); text-align: center; padding: 28px 10px; }
+.news-back { max-width: 900px; margin: 0 auto 12px; }
+.news-back a {
+  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.8); text-decoration: none;
+}
+.news-back a:hover { color: #fff; text-decoration: underline; }
+@media (max-width: 640px) {
+  .news-article { padding: 16px 14px; border-width: 2px; }
+  .news-article h1 { font-size: 1.35rem; }
+}
+
+/* Text links inside the site-wide announcement banner. */
+.site-announcement a { color: #ffe9ad; text-decoration: underline; text-underline-offset: 2px; }
+.site-announcement a:hover { color: #fff; }
