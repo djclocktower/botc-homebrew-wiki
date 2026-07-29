@@ -46,9 +46,11 @@
  *
  *   -- comments (character / collection / script / news pages) --
  *   GET  /api/comments        -> a page's comments (?type=&slug=; public)
- *   POST /api/comments        -> post a comment (login; {agree:true} on first)
+ *   POST /api/comments        -> post a comment or reply ({parentId} to reply;
+ *                                {agree:true} carries the first-time agreement)
  *   POST /api/comments/agree  -> record the one-time comment-terms agreement
  *   POST /api/comments/delete -> remove one (author, page owner, or admin)
+ *   POST /api/comments/pin    -> pin/unpin a thread (page owner or admin)
  *   POST /api/comments/report -> report one to the admins
  *
  *   -- news (admin-written articles) --
@@ -504,7 +506,41 @@ async function ensureCommentTables(env) {
   // Which version of the comment terms this account has agreed to.
   try { await env.DB.prepare('ALTER TABLE users ADD COLUMN comment_terms TEXT').run(); }
   catch { /* already there */ }
+  // Threading + pinning, added after the table shipped flat — lazily ALTERed
+  // like users.banned so there is still nothing to migrate by hand.
+  // parent_id is NULL for a top-level comment and never points at another
+  // reply: threads are exactly one level deep (see the flattening in
+  // POST /api/comments), which keeps them readable on a phone.
+  try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN parent_id INTEGER').run(); }
+  catch { /* already there */ }
+  try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0').run(); }
+  catch { /* already there */ }
   _commentsReady = true;
+}
+
+// Removing a top-level comment has to take its replies with it, or the page
+// shows answers to a question nobody can see. The replies get status
+// 'hidden' rather than 'removed' so restoring the parent brings back exactly
+// those, and never a reply an admin removed on its own merits.
+async function removeCommentCascade(env, row, by) {
+  await env.DB.prepare(
+    "UPDATE comments SET status='removed', pinned=0, removed_by=?, removed_at=datetime('now') WHERE id=?"
+  ).bind(by, row.id).run();
+  if (!row.parent_id) {
+    await env.DB.prepare(
+      "UPDATE comments SET status='hidden' WHERE parent_id=? AND status='visible'"
+    ).bind(row.id).run();
+  }
+}
+async function restoreCommentCascade(env, row) {
+  await env.DB.prepare(
+    "UPDATE comments SET status='visible', removed_by=NULL, removed_at=NULL WHERE id=?"
+  ).bind(row.id).run();
+  if (!row.parent_id) {
+    await env.DB.prepare(
+      "UPDATE comments SET status='visible' WHERE parent_id=? AND status='hidden'"
+    ).bind(row.id).run();
+  }
 }
 
 // ---- news articles (admin-written, /news + /news/{slug}) ----
@@ -1132,11 +1168,15 @@ export default {
       const target = await commentTarget(env, type, slug);
       if (!target) return jsonResponse({ error: 'Page not found' }, { status: 404 });
       await ensureCommentTables(env);
+      // Pinned top-level comments float to the top; everything else is
+      // oldest-first so a thread reads in the order it was written. Replies
+      // are grouped under their parent by the client.
       const { results } = await env.DB.prepare(
-        `SELECT c.id, c.ts, c.body, c.user_id, u.username, u.display_name, u.avatar_url, u.is_admin
+        `SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned,
+                u.username, u.display_name, u.avatar_url, u.is_admin
          FROM comments c LEFT JOIN users u ON u.id = c.user_id
          WHERE c.entity_type=? AND c.slug=? AND c.status='visible'
-         ORDER BY c.id ASC LIMIT 500`
+         ORDER BY c.pinned DESC, c.id ASC LIMIT 500`
       ).bind(type, target.slug).all().catch(() => ({ results: [] }));
 
       const sess = await getSession(env, request);
@@ -1163,6 +1203,8 @@ export default {
         me,
         comments: (results || []).map(r => ({
           id: r.id, ts: r.ts, body: r.body,
+          parentId: r.parent_id || null,
+          pinned: !!r.pinned,
           username: r.username || '[deleted user]',
           displayName: r.display_name || r.username || '[deleted user]',
           avatarUrl: r.avatar_url || null,
@@ -2289,18 +2331,20 @@ export default {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 1), 200);
       const base =
         `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
-                u.username, u.id AS user_id
+                c.parent_id, c.pinned, u.username, u.id AS user_id
          FROM comments c LEFT JOIN users u ON u.id = c.user_id`;
       let sql, binds = [];
       if (view === 'recent') {
         sql = base + " WHERE c.status='visible' ORDER BY c.id DESC LIMIT ?";
         binds = [limit];
       } else if (view === 'removed') {
-        sql = base + " WHERE c.status='removed' ORDER BY c.removed_at DESC LIMIT ?";
+        // 'hidden' = a reply that went down with its parent, not removed on
+        // its own. Shown here too so nothing is invisible to an admin.
+        sql = base + " WHERE c.status IN ('removed','hidden') ORDER BY COALESCE(c.removed_at, c.ts) DESC LIMIT ?";
         binds = [limit];
       } else {
         sql = `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
-                      u.username, u.id AS user_id,
+                      c.parent_id, c.pinned, u.username, u.id AS user_id,
                       COUNT(r.id) AS reports, MAX(r.reason) AS reason
                FROM comment_reports r
                JOIN comments c ON c.id = r.comment_id
@@ -2639,11 +2683,50 @@ export default {
             needsAgreement: true, termsVersion: COMMENT_TERMS_VERSION
           }, { status: 428 });
         }
+        // Replying: the parent must be a visible comment on this same page.
+        // Threads stay one level deep — replying to a reply attaches to that
+        // reply's parent instead of nesting further.
+        let parentId = null;
+        if (b.parentId) {
+          const parent = await env.DB.prepare(
+            "SELECT id, parent_id, entity_type, slug, status FROM comments WHERE id=?"
+          ).bind(parseInt(b.parentId, 10) || 0).first().catch(() => null);
+          if (!parent || parent.status !== 'visible' ||
+              parent.entity_type !== type || parent.slug !== target.slug) {
+            return jsonResponse({ error: 'The comment you replied to is no longer there.' }, { status: 404 });
+          }
+          parentId = parent.parent_id || parent.id;
+        }
         const res = await env.DB.prepare(
-          'INSERT INTO comments (entity_type, slug, user_id, body) VALUES (?,?,?,?)'
-        ).bind(type, target.slug, sess.userId, body).run();
-        await logActivity(env, sess, 'comment', type, target.slug, body.slice(0, 60));
-        return jsonResponse({ ok: true, id: (res.meta && res.meta.last_row_id) || null });
+          'INSERT INTO comments (entity_type, slug, user_id, body, parent_id) VALUES (?,?,?,?,?)'
+        ).bind(type, target.slug, sess.userId, body, parentId).run();
+        await logActivity(env, sess, parentId ? 'comment-reply' : 'comment',
+          type, target.slug, body.slice(0, 60));
+        return jsonResponse({
+          ok: true, id: (res.meta && res.meta.last_row_id) || null, parentId
+        });
+      }
+
+      // Pin / unpin a comment — admins and the page's owner. Only top-level
+      // comments can be pinned; pinning a reply pins the thread it belongs to.
+      if (path === '/api/comments/pin') {
+        await ensureCommentTables(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10);
+        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
+        if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
+        const target = await commentTarget(env, row.entity_type, row.slug);
+        const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
+        if (!sess.isAdmin && !isOwner) {
+          return jsonResponse({ error: 'Only the page owner and the admins can pin comments.' }, { status: 403 });
+        }
+        const pinId = row.parent_id || row.id;
+        const on = !!b.pinned;
+        await env.DB.prepare('UPDATE comments SET pinned=? WHERE id=?').bind(on ? 1 : 0, pinId).run();
+        await logActivity(env, sess, on ? 'comment-pin' : 'comment-unpin',
+          row.entity_type, row.slug, 'comment #' + pinId);
+        return jsonResponse({ ok: true, id: pinId, pinned: on });
       }
 
       // Remove a comment: its author, the page's owner, or any admin.
@@ -2664,9 +2747,7 @@ export default {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           by = u ? u.username : null;
         } catch { /* non-fatal */ }
-        await env.DB.prepare(
-          "UPDATE comments SET status='removed', removed_by=?, removed_at=datetime('now') WHERE id=?"
-        ).bind(by, id).run();
+        await removeCommentCascade(env, row, by);
         await logActivity(env, sess, 'comment-remove', row.entity_type, row.slug, 'comment #' + id);
         return jsonResponse({ ok: true, id });
       }
@@ -3360,24 +3441,26 @@ export default {
             const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
             by = u ? u.username : null;
           } catch { /* non-fatal */ }
-          if (removing) {
-            await env.DB.prepare(
-              "UPDATE comments SET status='removed', removed_by=?, removed_at=datetime('now') WHERE id=?"
-            ).bind(by, id).run();
-          } else {
-            await env.DB.prepare(
-              "UPDATE comments SET status='visible', removed_by=NULL, removed_at=NULL WHERE id=?"
-            ).bind(id).run();
-          }
+          if (removing) await removeCommentCascade(env, row, by);
+          else await restoreCommentCascade(env, row);
           await logActivity(env, sess, removing ? 'comment-remove' : 'comment-restore',
             row.entity_type, row.slug, 'comment #' + id);
         } else if (action === 'resolve') {
           await env.DB.prepare("UPDATE comment_reports SET status='resolved' WHERE comment_id=?").bind(id).run();
         } else if (action === 'purge') {
-          // Permanent: drops the row and its reports for good.
-          await env.DB.prepare('DELETE FROM comment_reports WHERE comment_id=?').bind(id).run();
-          await env.DB.prepare('DELETE FROM comments WHERE id=?').bind(id).run();
-          await logActivity(env, sess, 'comment-purge', row.entity_type, row.slug, 'comment #' + id);
+          // Permanent: drops the row, its replies, and all their reports.
+          const ids = [id];
+          if (!row.parent_id) {
+            const { results } = await env.DB.prepare('SELECT id FROM comments WHERE parent_id=?')
+              .bind(id).all().catch(() => ({ results: [] }));
+            for (const r of results || []) ids.push(r.id);
+          }
+          for (const cid of ids) {
+            await env.DB.prepare('DELETE FROM comment_reports WHERE comment_id=?').bind(cid).run();
+            await env.DB.prepare('DELETE FROM comments WHERE id=?').bind(cid).run();
+          }
+          await logActivity(env, sess, 'comment-purge', row.entity_type, row.slug,
+            'comment #' + id + (ids.length > 1 ? ' + ' + (ids.length - 1) + ' repl' + (ids.length === 2 ? 'y' : 'ies') : ''));
         } else {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         }

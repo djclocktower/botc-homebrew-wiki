@@ -64,27 +64,65 @@
     if (!state.me) return false;
     return c.mine || state.me.canModerate;
   }
+  // Pinning is a moderator act, not an author one: the page owner and the
+  // admins decide what sits at the top, never the person who wrote it.
+  function canPin() {
+    return !!(state.me && state.me.canModerate);
+  }
 
-  function commentHTML(c) {
+  function commentHTML(c, replies) {
     var actions = [];
+    if (state.me && state.me.canComment) {
+      actions.push('<button type="button" class="cmt-action" data-reply="' + c.id + '">Reply</button>');
+    }
+    if (canPin() && !c.parentId) {
+      actions.push('<button type="button" class="cmt-action" data-pin="' + c.id + '" ' +
+        'data-pinned="' + (c.pinned ? '1' : '') + '">' + (c.pinned ? 'Unpin' : 'Pin') + '</button>');
+    }
     if (canRemove(c)) {
       actions.push('<button type="button" class="cmt-action" data-remove="' + c.id + '">Remove</button>');
     } else if (state.me) {
       actions.push('<button type="button" class="cmt-action" data-report="' + c.id + '">Report</button>');
     }
-    return '<li class="cmt" id="cmt-' + c.id + '">' +
+    return '<li class="cmt' + (c.pinned ? ' cmt-is-pinned' : '') + '" id="cmt-' + c.id + '">' +
       avatarHTML(c) +
       '<div class="cmt-main">' +
         '<div class="cmt-head">' +
           '<a class="cmt-who" href="' + ROOT + 'u/' + encodeURIComponent(c.username) + '">' +
             esc(c.displayName) + '</a>' +
           (c.isAdmin ? '<span class="cmt-badge">Admin</span>' : '') +
+          (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin">📌 Pinned</span>' : '') +
           '<span class="cmt-when">' + esc(when(c.ts)) + '</span>' +
         '</div>' +
         '<div class="cmt-body">' + bodyHTML(c.body) + '</div>' +
         (actions.length ? '<div class="cmt-actions">' + actions.join('') + '</div>' : '') +
+        '<div class="cmt-reply-slot" id="cmt-reply-slot-' + c.id + '"></div>' +
+        (replies && replies.length
+          ? '<ul class="cmt-replies">' + replies.map(function (r) { return commentHTML(r, null); }).join('') + '</ul>'
+          : '') +
       '</div>' +
     '</li>';
+  }
+
+  /* Group the flat list the API returns into threads. The server already
+     sorted it (pinned first, then oldest-first), so nothing is re-sorted
+     here — replies just move under their parent in the order they arrived. */
+  function threads() {
+    // A reply can outlive its parent — an admin can restore one reply while
+    // leaving the comment it answered removed. Those orphans are promoted to
+    // top level rather than dropped, so nothing is counted but unrenderable.
+    var visible = {};
+    state.comments.forEach(function (c) { if (!c.parentId) visible[c.id] = true; });
+
+    var tops = [], byParent = {};
+    state.comments.forEach(function (c) {
+      if (c.parentId && visible[c.parentId]) {
+        (byParent[c.parentId] = byParent[c.parentId] || []).push(c);
+      } else {
+        tops.push(c);
+      }
+    });
+    return tops.map(function (t) { return { comment: t, replies: byParent[t.id] || [] }; });
   }
 
   function formHTML() {
@@ -115,7 +153,9 @@
         (n ? ' (' + n + ')' : '') + '</a></h2>' +
       '</div>' +
       (n
-        ? '<ul class="cmt-list">' + state.comments.map(commentHTML).join('') + '</ul>'
+        ? '<ul class="cmt-list">' + threads().map(function (t) {
+            return commentHTML(t.comment, t.replies);
+          }).join('') + '</ul>'
         : '<p class="cmt-empty">No comments yet.' +
           (state.me && state.me.canComment ? ' Be the first.' : '') + '</p>') +
       formHTML();
@@ -141,13 +181,66 @@
     root.querySelectorAll('[data-report]').forEach(function (btn) {
       btn.addEventListener('click', function () { report(btn.getAttribute('data-report'), btn); });
     });
+    root.querySelectorAll('[data-pin]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        pin(btn.getAttribute('data-pin'), !btn.getAttribute('data-pinned'), btn);
+      });
+    });
+    root.querySelectorAll('[data-reply]').forEach(function (btn) {
+      btn.addEventListener('click', function () { openReply(btn.getAttribute('data-reply'), btn); });
+    });
   }
 
-  function showError(msg) {
-    var el = root.querySelector('#cmt-error');
-    if (!el) { alert(msg); return; }
-    el.textContent = msg;
-    el.hidden = !msg;
+  /* Inline reply box, opened under the comment being answered. Only one is
+     ever open at a time — a page full of half-written reply boxes is a mess
+     on a phone. */
+  function openReply(id, btn) {
+    root.querySelectorAll('.cmt-reply-slot').forEach(function (slot) {
+      if (slot.id !== 'cmt-reply-slot-' + id) slot.innerHTML = '';
+    });
+    var slot = root.querySelector('#cmt-reply-slot-' + id);
+    if (!slot) return;
+    if (slot.firstChild) { slot.innerHTML = ''; return; }   // second click closes it
+
+    // Replying to a reply answers the same thread, so prefill the name to
+    // keep it clear who is being addressed.
+    var target = null;
+    for (var i = 0; i < state.comments.length; i++) {
+      if (String(state.comments[i].id) === String(id)) { target = state.comments[i]; break; }
+    }
+    var prefill = (target && target.parentId) ? '@' + target.displayName + ' ' : '';
+
+    slot.innerHTML =
+      '<form class="cmt-form cmt-form-reply">' +
+        '<textarea rows="2" maxlength="2000" placeholder="Reply…" aria-label="Write a reply">' +
+          esc(prefill) + '</textarea>' +
+        '<div class="cmt-form-row">' +
+          '<button type="button" class="cmt-action cmt-reply-cancel">Cancel</button>' +
+          '<button type="submit" class="cmt-submit">Post reply</button>' +
+        '</div>' +
+        '<p class="cmt-error" hidden></p>' +
+      '</form>';
+
+    var form = slot.querySelector('form');
+    var box = slot.querySelector('textarea');
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+    slot.querySelector('.cmt-reply-cancel').addEventListener('click', function () {
+      slot.innerHTML = '';
+      if (btn) btn.focus();
+    });
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      submit(box.value, id, form);
+    });
+  }
+
+  function pin(id, on, btn) {
+    btn.disabled = true;
+    post('/api/comments/pin', { id: id, pinned: on }).then(function (d) {
+      if (d.error) { btn.disabled = false; alert(d.error); return; }
+      load();
+    });
   }
 
   function post(url, body) {
@@ -164,44 +257,67 @@
     });
   }
 
-  function submit(text) {
+  /* Posts a new comment, or a reply when `parentId` is given. `form` is the
+     reply form the text came from, so errors land next to the box the person
+     is actually looking at instead of at the bottom of the page. */
+  function submit(text, parentId, form) {
     var body = String(text || '').trim();
     if (!body) return;
-    showError('');
-    var btn = root.querySelector('#cmt-submit');
+    var errEl = form ? form.querySelector('.cmt-error') : root.querySelector('#cmt-error');
+    var btn = form ? form.querySelector('.cmt-submit') : root.querySelector('#cmt-submit');
+    var btnLabel = parentId ? 'Post reply' : 'Post comment';
+    function fail(msg) {
+      if (!errEl) { if (msg) alert(msg); return; }
+      errEl.textContent = msg || '';
+      errEl.hidden = !msg;
+    }
+    fail('');
     if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
 
     function send(agree) {
-      return post('/api/comments', { type: TYPE, slug: SLUG, body: body, agree: !!agree })
-        .then(function (d) {
-          if (d.needsAgreement) {
-            // First comment ever: show the agreement, then retry once.
-            return showAgreement().then(function (ok) {
-              if (!ok) throw new Error('');
-              return send(true);
-            });
-          }
-          if (d.error) throw new Error(d.error);
-          return d;
-        });
+      return post('/api/comments', {
+        type: TYPE, slug: SLUG, body: body,
+        parentId: parentId || undefined, agree: !!agree
+      }).then(function (d) {
+        if (d.needsAgreement) {
+          // First comment ever: show the agreement, then retry once.
+          return showAgreement().then(function (ok) {
+            if (!ok) throw new Error('');
+            return send(true);
+          });
+        }
+        if (d.error) throw new Error(d.error);
+        return d;
+      });
     }
 
     send(state.me && state.me.agreed)
       .then(function () {
-        var box = root.querySelector('#cmt-box');
-        if (box) box.value = '';
+        if (!parentId) {
+          var box = root.querySelector('#cmt-box');
+          if (box) box.value = '';
+        }
         if (state.me) state.me.agreed = true;
+        // load() re-renders everything, which closes the reply box for us.
         return load();
       })
-      .catch(function (err) { if (err && err.message) showError(err.message); })
-      .then(function () {
-        var b = root.querySelector('#cmt-submit');
-        if (b) { b.disabled = false; b.textContent = 'Post comment'; }
+      .catch(function (err) {
+        fail(err && err.message);
+        if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
       });
   }
 
   function remove(id) {
-    if (!confirm('Remove this comment?')) return;
+    // Removing a top-level comment takes its replies with it (the server
+    // hides them and brings them back if the comment is restored), so say so
+    // rather than surprising someone.
+    var nReplies = state.comments.filter(function (c) {
+      return String(c.parentId) === String(id);
+    }).length;
+    var msg = nReplies
+      ? 'Remove this comment and its ' + nReplies + ' repl' + (nReplies === 1 ? 'y' : 'ies') + '?'
+      : 'Remove this comment?';
+    if (!confirm(msg)) return;
     post('/api/comments/delete', { id: id }).then(function (d) {
       if (d.error) { alert(d.error); return; }
       load();

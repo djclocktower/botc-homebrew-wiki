@@ -137,9 +137,14 @@ Tables: `users`, `characters`, `collections`, `scripts`, `settings`,
 `activity_log`, plus Worker-auto-created (no manual migrations, ever):
 `news` (admin-written articles: slug PK, title, JSON `data`, status,
 `published_at` stamped once so editing an old article doesn't jump it to the
-top), `comments` + `comment_reports` (one flat thread per page keyed by
-`entity_type`+`slug`; removal sets `status='removed'` so it can be undone,
-purge deletes for good) and a lazily ALTERed `users.comment_terms` column
+top), `comments` + `comment_reports` (keyed by `entity_type`+`slug`; threads are
+**one level deep** — `parent_id` is NULL or a top-level id, never another
+reply, and the API flattens a reply-to-a-reply onto its thread. `pinned` is
+set only on top-level rows, by the page owner or an admin, and sorts first.
+Comment `status` is `visible` | `removed` (taken down on its own) |
+`hidden` (a reply that went down with its parent); restoring a parent
+un-hides exactly the `hidden` ones and leaves individually-removed replies
+alone. Purge deletes a comment and its replies for good) and a lazily ALTERed `users.comment_terms` column
 holding the comment-guidelines version that account agreed to,
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard

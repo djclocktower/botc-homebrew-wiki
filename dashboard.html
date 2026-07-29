@@ -1155,7 +1155,9 @@
           return;
         }
         $('cmt-list').innerHTML = list.map(function(c){
-          var acts = c.status === 'removed'
+          // 'removed' (taken down on its own) and 'hidden' (went down with its
+          // parent) both restore the same way.
+          var acts = c.status !== 'visible'
             ? '<button type="button" class="small-btn cmt-act" data-id="' + c.id + '" data-action="restore">Restore</button>'
             : '<button type="button" class="small-btn alt cmt-act" data-id="' + c.id + '" data-action="remove">Remove</button>';
           if (c.reports) {
@@ -1167,8 +1169,13 @@
               '<strong>' + esc(c.username || '[deleted user]') + '</strong> ' +
               '<span class="dim">on <a href="' + esc(pubUrl(c.entity_type, c.slug)) + '" target="_blank">' +
                 esc(c.entity_type) + '/' + esc(c.slug) + '</a> · ' + esc(String(c.ts || '').slice(0, 16)) +
+                (c.parent_id ? ' · reply to #' + c.parent_id : '') +
+                (c.pinned ? ' · 📌 pinned' : '') +
                 (c.reports ? ' · ' + c.reports + ' report' + (c.reports === 1 ? '' : 's') : '') +
                 (c.status === 'removed' ? ' · removed by ' + esc(c.removed_by || 'admin') : '') +
+                // 'hidden' = went down with its parent rather than being
+                // removed on its own; restoring the parent brings it back.
+                (c.status === 'hidden' ? ' · hidden with its parent comment' : '') +
               '</span>' +
               '<br>' + esc(cmtSnippet(c.body)) +
               (c.reason ? '<br><span class="dim">Reason given: ' + esc(c.reason) + '</span>' : '') +
