@@ -52,7 +52,7 @@
   ];
   var SAO_ANYTHING_ELSE_IDX = SAO_PREFIXES.indexOf('Atheist'); // slot just before Atheist
 
-  var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled'];
+  var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
 
   function saoRank(ability) {
     var a = (ability || '').trim();

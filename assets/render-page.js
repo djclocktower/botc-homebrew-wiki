@@ -29,7 +29,8 @@
 
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
-    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled']
+    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
+    ['loric', 'Loric']
   ];
   var GOOD = { townsfolk: 1, outsider: 1 };
   var DIFFICULTY_LABEL = {

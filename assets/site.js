@@ -114,6 +114,22 @@
     });
   })();
 
+  /* ── "Create a Character" link in the crumb nav (desktop top bar) ──
+     Injected after Script Builder, i.e. BEFORE Token Tool, so the Account
+     link (added later, anchored on Token Tool) stays the last child —
+     header-redesign.css styles .crumb a:last-child as the outlined button. */
+  (function () {
+    document.querySelectorAll('.crumb').forEach(function (crumb) {
+      if (findLinks('create', crumb).length) return;
+      var sb = findLinks('script', crumb)[0];
+      if (!sb) return;
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
+      var link = document.createElement('a'); link.href = ROOT + 'create'; link.textContent = 'Create a Character';
+      crumb.insertBefore(sep, sb.nextSibling);
+      crumb.insertBefore(link, sep.nextSibling);
+    });
+  })();
+
   /* ── Account link (crumb bar + mobile nav), based on login state ── */
   (function () {
     var ME_KEY = 'botc_me';
@@ -366,6 +382,15 @@
       ttLink.textContent = 'Token Tool';
       var sb = findLinks('script', drop)[0];
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
+    }
+    // "Create a Character" sits between Script Builder and Token Tool, matching
+    // the desktop crumb order.
+    if (!findLinks('create', drop).length) {
+      var ccLink = document.createElement('a');
+      ccLink.href = ROOT + 'create';
+      ccLink.textContent = 'Create a Character';
+      var sbc = findLinks('script', drop)[0];
+      if (sbc) drop.insertBefore(ccLink, sbc.nextSibling); else drop.appendChild(ccLink);
     }
     // Random Character link (/random is a Worker route, so the path is absolute).
     if (!drop.querySelector('a[href="/random"]')) {

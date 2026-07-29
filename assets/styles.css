@@ -137,6 +137,8 @@ body::after { display: none; }
   display: flex; flex-direction: column;
   gap: clamp(16px, 2.2vw, 26px);
   align-self: start;
+  min-width: 0;               /* grid items default to min-width:auto and would
+                                 otherwise refuse to shrink below their content */
 }
 .char-parchment {
   position: relative; border-radius: 0;
@@ -185,8 +187,15 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .emblem { display: block; width: min(86%, 286px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
-.info { display: grid; grid-template-columns: 90px 1fr; gap: 8px 8px; color: var(--ink); font-size: .98rem; }
+/* minmax(0,1fr) + wrapping: a long unbroken value (creator handle, collection
+   name, tag, URL) must not widen the track and push the card off the page. */
+.info { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px 8px; color: var(--ink); font-size: .98rem; }
 .info dt { font-weight: 600; } .info dd { margin: 0; }
+.info dt, .info dd { overflow-wrap: anywhere; word-break: break-word; }
+/* Same treatment everywhere else free text can carry an unbroken run. */
+.quote, .jname, .jtext,
+.char-card-ability, .script-char-ability,
+.sv-credits-list li { overflow-wrap: anywhere; word-break: break-word; }
 .jhead { margin: 2px auto 12px; }
 .jinx { display: grid; grid-template-columns: 48px 1fr; gap: 12px; align-items: start; padding: 9px 4px; border-radius: 0; transition: background .18s ease; }
 .jinx + .jinx { border-top: 1px solid rgba(180,160,120,.4); }
@@ -398,8 +407,8 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* ─── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 880px) {
-  .char-layout  { grid-template-columns: 1fr; }
-  .cols         { grid-template-columns: 1fr; gap: 8px; }
+  .char-layout  { grid-template-columns: minmax(0, 1fr); }
+  .cols         { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .char-title   { width: 84%; }
   .crumb        { display: none; }
   .char-parchment, .char-infocard, .char-side { grid-column: 1; grid-row: auto; }
@@ -1387,7 +1396,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    The card supplies the top/right strokes (its own 4px border); the button
    only draws left/bottom edges in the same frame colour, so the tab reads
    as part of the frame instead of a second, misaligned outline. */
-.char-infocard { position: relative; }
+.char-infocard { position: relative; min-width: 0; }
 .card-actions {
   position: absolute; top: 0; right: 0; z-index: 2;
 }
@@ -1575,7 +1584,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr);
   gap: clamp(16px, 2.4vw, 30px); align-items: start;
 }
-@media (max-width: 900px) { .script-view-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .script-view-layout { grid-template-columns: minmax(0, 1fr); } }
 .script-chars-panel {
   background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
   border: 2px solid var(--parch-frame); padding: 20px 24px;
@@ -1884,3 +1893,59 @@ body.theme-bg::before {
   cursor: pointer;
 }
 .site-announcement-close:hover { opacity: 1; }
+
+/* ─── Rules list + first-time agreement modal ────────────────── */
+.rules-list { list-style: decimal; margin: 0; padding-left: 26px; }
+.rules-item { margin: 0 0 14px; color: var(--ink); }
+.rules-item:last-child { margin-bottom: 0; }
+.rules-item-title {
+  display: block;
+  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: 1.02rem; letter-spacing: .01em;
+  color: var(--maroon);
+}
+.rules-item-body { display: block; font-size: .96rem; line-height: 1.45; overflow-wrap: anywhere; }
+
+/* Overlay mirrors the Token Tool modal (tokens.html .tt-modal). */
+.rules-modal {
+  position: fixed; inset: 0; z-index: 400; display: none;
+  background: rgba(20,6,18,.78);
+  align-items: flex-start; justify-content: center;
+  overflow-y: auto; padding: 20px 10px 40px;
+}
+.rules-modal.open { display: flex; }
+.rules-modal-lock { overflow: hidden; }
+.rules-modal-card {
+  background-color: var(--card);
+  background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 4px solid var(--parch-frame); border-radius: 0;
+  padding: 18px 20px; width: min(680px, 100%);
+  box-shadow: 0 8px 24px rgba(40,12,30,.4);
+}
+.rules-modal-title {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: 1.15rem; letter-spacing: .05em; color: var(--maroon);
+  margin: 0 0 8px; padding-bottom: 8px;
+  border-bottom: 2px solid var(--parch-frame);
+}
+.rules-modal-intro { font-size: .94rem; color: var(--ink); margin: 0 0 14px; line-height: 1.45; }
+.rules-agree {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 18px 0 0; padding-top: 14px;
+  border-top: 1px solid rgba(180,160,120,.5);
+  font-size: .96rem; color: var(--ink); cursor: pointer;
+}
+.rules-agree input { margin-top: 3px; width: 18px; height: 18px; flex: none; cursor: pointer; }
+.rules-modal-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 16px; }
+.rules-btn-cancel { color: var(--maroon); font-size: .92rem; text-decoration: underline; text-underline-offset: 3px; }
+.rules-btn-go {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .95rem; letter-spacing: .05em;
+  padding: 10px 24px; cursor: pointer;
+  color: #f7ecd0; background: var(--maroon);
+  border: 2px solid var(--parch-frame); border-radius: 0;
+  transition: opacity .15s ease, background .15s ease;
+}
+.rules-btn-go:disabled { opacity: .45; cursor: not-allowed; }
+.rules-btn-go:not(:disabled):hover { background: #7a2c2e; }

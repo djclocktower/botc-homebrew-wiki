@@ -159,8 +159,17 @@ assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit
 - Shared topbar markup is copied per page (no template system). If you change
   it, change it on **all** pages — use `scripts.html` as the canonical
   example. Behavior belongs in `site.js`, not inline.
-- Teams: `townsfolk, outsider, minion, demon, traveller, fabled` (+ `loric`
-  label). `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
+- Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric` — always
+  in that order. There is **no** single source of truth: the list is re-declared
+  by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
+  `render-page.js`, `collection-filters.js`, `render.js`, `site.js`,
+  `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
+  script/publish-script/script-view.html`, plus the `<select id="team">` in
+  `create.html`/`edit.html`, the `normTeam()` whitelist in `mass-upload.html`
+  and `TEAM_COLORS` in `dashboard.html`. **Adding a team means editing every
+  one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
+  (drives the blue `.good` class) — Traveller/Fabled/Loric are in neither.
+  `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
   single source of truth used by script.html, publish-script.html, and rendered
   into steven-approved-order.html. More-specific prefixes ("Each night*") must

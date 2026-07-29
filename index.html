@@ -91,7 +91,7 @@
         <a class="browse-card" href="all-characters">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 4-1 6-2 2 1 4 2 6 2h2"/></svg></div>
           <h3 class="browse-card-title">By Team</h3>
-          <p class="browse-card-desc">Townsfolk, Outsiders, Minions, Demons, Travellers, and Fabled.</p>
+          <p class="browse-card-desc">Townsfolk, Outsiders, Minions, Demons, Travellers, Fabled, and Loric.</p>
           <span class="browse-card-count" id="bc-team">—</span>
         </a>
         <a class="browse-card" href="creators">
@@ -211,6 +211,15 @@
       </div>
     </section>
 
+    <!-- ── RULES ────────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header"><a href="rules" style="color:inherit;text-decoration:none">Rules</a></h2>
+      <div class="type-rule"></div>
+      <div class="about-card" id="home-rules">
+        <p style="text-align:center;color:var(--ink);opacity:.7">Loading rules…</p>
+      </div>
+    </section>
+
     <!-- ── ABOUT ────────────────────────────────────────────── -->
     <section class="landing-section">
       <h2 class="type-header">About This Wiki</h2>
@@ -239,6 +248,7 @@
         <li><a href="https://docs.google.com/document/d/1TrfUWge_pu_ykp7yMh93BTRho9oLOu_6j1AzNu6hU8M/edit?usp=sharing" target="_blank" rel="noopener noreferrer">Squ4ll&rsquo;s Guide to Homebrew</a></li>
         <li><a href="https://discord.gg/TheCWUuvqZ" target="_blank" rel="noopener noreferrer">The Kitchen Discord</a></li>
         <li><a href="steven-approved-order">Steven Approved Order</a></li>
+        <li><a href="rules">Wiki Rules</a></li>
       </ul>
     </div>
   </aside>
@@ -254,7 +264,7 @@
   (function(){
     var TEAM_LABEL = {
       townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled'
+      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
     };
     var GOOD = { townsfolk: 1, outsider: 1 };
 
@@ -513,6 +523,15 @@
   </script>
 
 
+  <script src="assets/rules.js"></script>
+  <script>
+  (function () {
+    var box = document.getElementById('home-rules');
+    if (box && typeof window.renderRulesHTML === 'function') {
+      box.innerHTML = window.renderRulesHTML();
+    }
+  })();
+  </script>
   <script src="assets/site.js"></script>
 </body>
 </html>

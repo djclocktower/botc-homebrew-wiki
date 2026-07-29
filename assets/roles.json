@@ -261,7 +261,7 @@
  {
   "id": "bigwig",
   "name": "Big Wig",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "Each nominee chooses a player: until voting, only they may speak & they are mad the nominee is good or they might die.",
   "flavor": "Vanity asks ‘Is it popular?’ Cowardice asks ‘Is it safe?’ Conscience asks ‘Is it right?’ Who among us will ask: ‘Is it true?’",
@@ -337,7 +337,7 @@
  {
   "id": "bootlegger",
   "name": "Bootlegger",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "This script has homebrew characters or rules.",
   "flavor": "When I was born, I was named ‘Homebrewy McHomebrewface’, like my father before me. A respectable name, for a dignified age.",
@@ -954,7 +954,7 @@
  {
   "id": "gardener",
   "name": "Gardener",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "The Storyteller assigns all players' characters.",
   "flavor": "When sophistry becomes stupidity and hypocrisy cruelty, retreat to the garden. The final love of old men is flowers and stones.",
@@ -1031,7 +1031,7 @@
  {
   "id": "godofug",
   "name": "God of Ug",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "One Ug hat. When wear Ug hat, must speak one sound at a time but vote twice. If fail, pass Ug hat.",
   "flavor": "Blessed are my children, for they see the beauty in simple things.",
@@ -1238,7 +1238,7 @@
  {
   "id": "hindu",
   "name": "Hindu",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "The first 4 players to die are immediately reincarnated as Travellers of the same alignment.",
   "flavor": "चत्वारो मृत्युमध्ये पतन्ति, चत्वारो यात्री पुनरुद्गताः। चत्वारो धर्मे स्थितचित्तवृत्तेः, चत्वार एषां न पुनः क्षयः॥",
@@ -1399,7 +1399,7 @@
  {
   "id": "knaves",
   "name": "Knaves",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "There are 2 Storytellers: one lies & one tells the truth. Once per game, at dusk, they might switch.",
   "flavor": "Every wall is a door. Every meal is a feast.",
@@ -1984,7 +1984,7 @@
  {
   "id": "pope",
   "name": "Pope",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "There are duplicate good characters in play. They might also be bluffs.",
   "flavor": "...Pulcherrimae.",
@@ -2434,7 +2434,7 @@
  {
   "id": "stormcatcher",
   "name": "Storm Catcher",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "Name a good character. If in play, they can only die by execution, but evil players learn which player it is.",
   "flavor": "At dawn, the temple’s long shadow creeps to the fountain. At dusk, the obelisk blocks the red glare, cooling warm water under the archway. All lines converge here. A storm is coming, and this, this pebbled and lush and holy place between the apple trees, is the eye.",
@@ -2533,7 +2533,7 @@
  {
   "id": "tor",
   "name": "Tor",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "Players don't know their character or alignment. They learn them when they die.",
   "flavor": "With thunder as my voice and lightning as my blade, I, the eternal guardian, feast upon the fools who dare approach the forbidden gate. Behold, my sacred goal! To purge the beetle from the belly of the rocky earth, to ensnare it in a net of stars, on the hilltop where heaven meets earth.",
@@ -2596,7 +2596,7 @@
  {
   "id": "ventriloquist",
   "name": "Ventriloquist",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "If a player is mad as a fresh character during their nomination, they might not die if executed today.",
   "flavor": "Well, folks, gather ‘round! This here’s my pal Charlie, and he’s got a mouth on him that’d make a mule blush. But don’t worry folks, I do all the talkin’... or do I?",
@@ -2842,7 +2842,7 @@
  {
   "id": "zenomancer",
   "name": "Zenomancer",
-  "team": "fabled",
+  "team": "loric",
   "edition": "loric",
   "ability": "One or more players each have a goal. When achieved, that player learns a piece of true info.",
   "flavor": "The universe is a verb not a noun, they say, and it is turtles, turtles all the way down. Turtles all the way down, my friend, turtles all the way down.",

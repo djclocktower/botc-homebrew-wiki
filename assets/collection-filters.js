@@ -14,7 +14,8 @@
 
   var TEAMS = [
     ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'], ['minion', 'Minion'],
-    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'], ['other', 'Other']
+    ['demon', 'Demon'], ['traveller', 'Traveller'], ['fabled', 'Fabled'],
+    ['loric', 'Loric'], ['other', 'Other']
   ];
 
   function esc(s) {
