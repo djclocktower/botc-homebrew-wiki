@@ -320,6 +320,8 @@
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/editor-notices.js"></script>
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
@@ -808,11 +810,14 @@
             return j;
           });
         });
-      }).then(function(){
-        currentStatus = saveStatus;
+      }).then(function(saved){
+        // The Worker forces a draft when the page has no icon, so take the
+        // status it actually stored rather than the one we requested.
+        currentStatus = (saved && saved.status) || saveStatus;
         updatePublishButton();
+        if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
         var url = SITE_ROOT + 'c/' + originalSlug;
-        if (saveStatus === 'draft') {
+        if (currentStatus === 'draft') {
           setStatus('ok','&#10003; Draft saved (not public). <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
         } else {
           setStatus('ok','&#10003; Saved! Live now. <a href="'+url+'" target="_blank">View character &rarr;</a>');

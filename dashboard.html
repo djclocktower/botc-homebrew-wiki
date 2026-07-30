@@ -315,7 +315,12 @@
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Show a message at the top of every page on the site — maintenance notices, contests, anything. Visitors can dismiss it; posting a new message shows it again for everyone.
         </p>
-        <textarea class="adm-textarea" id="ann-text" maxlength="300" placeholder="e.g. The wiki will be briefly locked tonight for maintenance."></textarea>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+          You can put text links in it with <code>[the text people click](where it goes)</code> — e.g.
+          <code>Read the [July update](/news/july-update)</code>, or a full
+          <code>https://…</code> address for another site. Everything else stays plain text.
+        </p>
+        <textarea class="adm-textarea" id="ann-text" maxlength="600" placeholder="e.g. The wiki will be briefly locked tonight — details on the [news page](/news)."></textarea>
         <div class="act-filters" style="margin-top:10px">
           <button type="button" class="small-btn" id="ann-post">Post announcement</button>
           <button type="button" class="small-btn alt" id="ann-clear">Clear banner</button>
@@ -427,11 +432,73 @@
         <div class="toast" id="prot-toast"></div>
       </section>
 
+      <!-- COMMENT MODERATION -->
+      <section class="panel">
+        <h3>Comments <span class="count-pill" id="cmt-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Comments left on character, script, collection and news pages. Reported ones come here first. Removing a comment hides it from the page but keeps it here so you can undo; purge deletes it for good. A page's owner can also remove comments on their own page.
+        </p>
+        <div class="act-filters">
+          <select id="cmt-view">
+            <option value="reported">reported</option>
+            <option value="recent">most recent</option>
+            <option value="removed">removed</option>
+          </select>
+          <button type="button" class="small-btn" id="cmt-load">Load comments</button>
+        </div>
+        <div id="cmt-list"></div>
+        <div class="toast" id="cmt-toast"></div>
+      </section>
+
+      <!-- STARLIGHT -->
+      <section class="panel">
+        <h3>Starlight</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Starlight marks a page as one of the wiki's best. Starlight pages carry a badge, are weighted about five times higher in the Featured Character slot, the Random Character button and the homepage collection/script strips, and readers can filter for them. Works on characters, scripts and collections. Use Bulk actions above to do a whole batch at once.
+        </p>
+        <div class="act-filters">
+          <select id="star-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="star-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="star-add">Give Starlight</button>
+          <button type="button" class="small-btn alt" id="star-remove">Remove Starlight</button>
+        </div>
+        <div class="toast" id="star-toast"></div>
+      </section>
+
+      <!-- CHARACTERS WITH NO ICON -->
+      <section class="panel">
+        <h3>Characters with no icon <span class="count-pill" id="noicon-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          A character can no longer be published without an icon — the editor saves it as a draft and explains why. This finds pages that went live <em>before</em> that rule existed. Moving them to drafts hides them from the site until their owner adds art; nothing is deleted, and re-publishing is one click.
+        </p>
+        <button type="button" class="small-btn" id="noicon-scan">Find them</button>
+        <button type="button" class="small-btn alt" id="noicon-fix" style="display:none">Move all to drafts</button>
+        <div id="noicon-list"></div>
+        <div class="toast" id="noicon-toast"></div>
+      </section>
+
+      <!-- NEWS -->
+      <section class="panel">
+        <h3>News <span class="count-pill" id="news-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Articles written by admins. Published ones get their own page, show on the homepage and on <a href="news" style="color:inherit;text-decoration:underline">/news</a>, and readers can comment on them.
+        </p>
+        <div class="act-filters">
+          <a class="small-btn" href="publish-news" style="text-decoration:none">Write an article</a>
+          <button type="button" class="small-btn alt" id="news-load">Refresh list</button>
+        </div>
+        <div id="news-list"></div>
+      </section>
+
       <!-- BULK ACTIONS -->
       <section class="panel">
         <h3>Bulk actions</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, move to trash, restore, or add/remove a tag (characters only).
+          Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, grant or remove Starlight, move to trash, restore, or add/remove a tag (characters only). The second dropdown narrows the list to pages with no icon, unfinished (Partial) pages, existing Starlight pages, or pages with no owner.
         </p>
         <div class="act-filters">
           <select id="bulk-type">
@@ -446,6 +513,14 @@
             <option value="published">published</option>
             <option value="draft">drafts</option>
             <option value="deleted">in trash</option>
+            <option value="all">everything (incl. trash)</option>
+          </select>
+          <select id="bulk-flag">
+            <option value="">any status</option>
+            <option value="no-icon">no icon (characters)</option>
+            <option value="partial">Partial pages</option>
+            <option value="starlight">Starlight pages</option>
+            <option value="no-owner">no owner</option>
           </select>
           <button type="button" class="small-btn" id="bulk-load">Load pages</button>
         </div>
@@ -456,6 +531,8 @@
             <option value="clear-owner">Clear owner</option>
             <option value="publish">Publish</option>
             <option value="unpublish">Move to drafts</option>
+            <option value="starlight">Give Starlight ✦</option>
+            <option value="unstarlight">Remove Starlight</option>
             <option value="delete">Move to trash</option>
             <option value="restore">Restore from trash</option>
             <option value="add-tag">Add tag…</option>
@@ -787,6 +864,7 @@
       var sl = encodeURIComponent(slug || '');
       if (type === 'script') return 's/' + sl;
       if (type === 'collection') return 'collection/' + sl;
+      if (type === 'news') return 'news/' + sl;
       return 'c/' + sl;
     }
     function setToast(id, ok, text){
@@ -1060,6 +1138,136 @@
       });
     });
 
+    /* ---- comment moderation ---- */
+    function cmtSnippet(body){
+      var t = String(body || '').replace(/\s+/g, ' ').trim();
+      return t.length > 220 ? t.slice(0, 219) + '…' : t;
+    }
+    function loadComments(){
+      var view = $('cmt-view').value;
+      $('cmt-list').innerHTML = '<p class="note">Loading…</p>';
+      getJSON('/api/admin/comments?view=' + encodeURIComponent(view)).then(function(d){
+        $('cmt-count').textContent = d && d.openReports ? d.openReports + ' reported' : '';
+        var list = (d && d.comments) || [];
+        if (!list.length) {
+          $('cmt-list').innerHTML = '<p class="note">' +
+            (view === 'reported' ? 'Nothing reported. ' : 'No comments here. ') + '</p>';
+          return;
+        }
+        $('cmt-list').innerHTML = list.map(function(c){
+          // 'removed' (taken down on its own) and 'hidden' (went down with its
+          // parent) both restore the same way.
+          var acts = c.status !== 'visible'
+            ? '<button type="button" class="small-btn cmt-act" data-id="' + c.id + '" data-action="restore">Restore</button>'
+            : '<button type="button" class="small-btn alt cmt-act" data-id="' + c.id + '" data-action="remove">Remove</button>';
+          if (c.reports) {
+            acts += ' <button type="button" class="small-btn cmt-act" data-id="' + c.id + '" data-action="resolve">Clear report</button>';
+          }
+          acts += ' <button type="button" class="small-btn alt cmt-act" data-id="' + c.id + '" data-action="purge">Purge</button>';
+          return '<div class="adm-row" style="align-items:flex-start;flex-wrap:wrap;gap:6px">' +
+            '<span class="grow" style="min-width:220px">' +
+              '<strong>' + esc(c.username || '[deleted user]') + '</strong> ' +
+              '<span class="dim">on <a href="' + esc(pubUrl(c.entity_type, c.slug)) + '" target="_blank">' +
+                esc(c.entity_type) + '/' + esc(c.slug) + '</a> · ' + esc(String(c.ts || '').slice(0, 16)) +
+                (c.parent_id ? ' · reply to #' + c.parent_id : '') +
+                (c.pinned ? ' · 📌 pinned' : '') +
+                (c.reports ? ' · ' + c.reports + ' report' + (c.reports === 1 ? '' : 's') : '') +
+                (c.status === 'removed' ? ' · removed by ' + esc(c.removed_by || 'admin') : '') +
+                // 'hidden' = went down with its parent rather than being
+                // removed on its own; restoring the parent brings it back.
+                (c.status === 'hidden' ? ' · hidden with its parent comment' : '') +
+              '</span>' +
+              '<br>' + esc(cmtSnippet(c.body)) +
+              (c.reason ? '<br><span class="dim">Reason given: ' + esc(c.reason) + '</span>' : '') +
+            '</span>' +
+            '<span>' + acts + '</span>' +
+          '</div>';
+        }).join('');
+        $('cmt-list').querySelectorAll('.cmt-act').forEach(function(btn){
+          btn.addEventListener('click', function(){
+            var action = btn.getAttribute('data-action');
+            if (action === 'purge' && !confirm('Delete this comment permanently? This cannot be undone.')) return;
+            btn.disabled = true;
+            postJSON('/api/admin/comment', { id: btn.getAttribute('data-id'), action: action })
+              .then(function(res){
+                if (res.body && res.body.ok) { setToast('cmt-toast', true, 'Done.'); loadComments(); }
+                else { btn.disabled = false; setToast('cmt-toast', false, (res.body && res.body.error) || 'Failed.'); }
+              });
+          });
+        });
+      });
+    }
+    $('cmt-load').addEventListener('click', loadComments);
+    $('cmt-view').addEventListener('change', loadComments);
+
+    /* ---- Starlight ---- */
+    function setStarlight(on){
+      var slug = $('star-slug').value.trim();
+      if (!slug) { setToast('star-toast', false, 'Enter a page slug first.'); return; }
+      postJSON('/api/admin/starlight', { type: $('star-type').value, slug: slug, starlight: on })
+        .then(function(res){
+          if (res.body && res.body.ok) {
+            setToast('star-toast', true, (on ? 'Starlight given to ' : 'Starlight removed from ') + res.body.slug + '.');
+            $('star-slug').value = '';
+            loadActivity(true);
+          } else setToast('star-toast', false, (res.body && res.body.error) || 'Failed.');
+        });
+    }
+    $('star-add').addEventListener('click', function(){ setStarlight(true); });
+    $('star-remove').addEventListener('click', function(){ setStarlight(false); });
+
+    /* ---- characters with no icon ---- */
+    $('noicon-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('noicon-list').innerHTML = '<p class="note">Scanning…</p>';
+      postJSON('/api/admin/demote-no-icon', { dryRun: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('noicon-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; return; }
+        $('noicon-count').textContent = d.count ? d.count + ' published' : '';
+        if (!d.count) {
+          $('noicon-list').innerHTML = '<p class="note">Every published character has an icon. Nothing to do.</p>';
+          $('noicon-fix').style.display = 'none';
+          return;
+        }
+        $('noicon-list').innerHTML = d.pages.map(function(p){
+          return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+            '" target="_blank">' + esc(p.name || p.slug) + '</a></span></div>';
+        }).join('');
+        $('noicon-fix').style.display = '';
+      });
+    });
+    $('noicon-fix').addEventListener('click', function(){
+      if (!confirm('Move every published character with no icon to drafts?\n\nThey disappear from the site until their owner adds art. Nothing is deleted, and you can publish any of them again from Bulk actions.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/demote-no-icon', {}).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }
+        setToast('noicon-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' moved to drafts.');
+        $('noicon-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- news ---- */
+    function loadNews(){
+      getJSON('/api/news?drafts=1&limit=100').then(function(d){
+        var list = (d && d.articles) || [];
+        $('news-count').textContent = list.length ? list.length + '' : '';
+        $('news-list').innerHTML = list.length ? list.map(function(a){
+          return '<div class="adm-row">' +
+            '<span class="grow"><a href="publish-news?n=' + encodeURIComponent(a.slug) + '">' +
+              esc(a.title) + '</a> <span class="dim">' + esc(a.status) +
+              (a.pinned ? ' · pinned' : '') + '</span></span>' +
+            '<a class="small-btn alt" style="text-decoration:none" href="' + esc(pubUrl('news', a.slug)) +
+              '" target="_blank">View</a>' +
+          '</div>';
+        }).join('') : '<p class="note">No articles yet.</p>';
+      });
+    }
+    $('news-load').addEventListener('click', loadNews);
+
     /* ---- bulk actions ---- */
     var BULK_ARG = { 'assign-owner': 'username', 'add-tag': 'tag name', 'remove-tag': 'tag name' };
     function bulkArgSync(){
@@ -1074,6 +1282,7 @@
       if ($('bulk-q').value.trim()) p.set('q', $('bulk-q').value.trim());
       if ($('bulk-owner').value.trim()) p.set('owner', $('bulk-owner').value.trim());
       if ($('bulk-status').value) p.set('status', $('bulk-status').value);
+      if ($('bulk-flag').value) p.set('flag', $('bulk-flag').value);
       getJSON('/api/admin/pages?' + p.toString()).then(function(d){
         btn.disabled = false;
         var box = $('bulk-list');
@@ -1086,10 +1295,16 @@
         box.innerHTML =
           '<label class="adm-row" style="font-weight:700;cursor:pointer"><input type="checkbox" id="bulk-all"> select all (' + d.pages.length + ')</label>' +
           d.pages.map(function(pg){
+            // Flag anything an admin would want to spot at a glance.
+            var notes = [];
+            if (pg.starlight) notes.push('✦ Starlight');
+            if (pg.classification === 'partial') notes.push('Partial');
+            if (pg.hasIcon === false) notes.push('NO ICON');
             return '<label class="adm-row" style="cursor:pointer">' +
               '<input type="checkbox" class="bulk-check" value="' + esc(pg.slug) + '">' +
               '<span class="grow">' + esc(pg.name || pg.slug) +
-              ' <span class="dim">' + esc(pg.status) + (pg.owner ? ' · ' + esc(pg.owner) : ' · unowned') + '</span></span>' +
+              ' <span class="dim">' + esc(pg.status) + (pg.owner ? ' · ' + esc(pg.owner) : ' · unowned') +
+              (notes.length ? ' · ' + esc(notes.join(' · ')) : '') + '</span></span>' +
               '</label>';
           }).join('');
         $('bulk-act-row').style.display = '';
@@ -1697,6 +1912,8 @@
           loadDmReports();
           loadUsers();
           loadAnalytics(7);
+          loadComments();
+          loadNews();
         } else showGate();
       })
       .catch(function(){ showGate(); });

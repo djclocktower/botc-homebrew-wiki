@@ -64,6 +64,18 @@
 
   <main class="home-panel">
 
+    <!-- ── NEWS ─────────────────────────────────────────────── -->
+    <!-- Hidden until there is at least one published article, so the
+         homepage never shows an empty News heading. -->
+    <section class="landing-section" id="news-section" hidden>
+      <h2 class="type-header"><a href="news" style="color:inherit;text-decoration:none">News</a></h2>
+      <div class="type-rule"></div>
+      <div class="news-grid" id="news-grid"></div>
+      <p style="text-align:right;margin:10px 2px 0">
+        <a href="news" style="font-family:'Oswald',sans-serif;font-size:.82rem;letter-spacing:.05em;color:rgba(236,225,200,.75);text-decoration:none">All news →</a>
+      </p>
+    </section>
+
     <!-- ── COLLECTIONS ──────────────────────────────────────── -->
     <section class="landing-section">
       <h2 class="type-header">Collections</h2>
@@ -260,6 +272,33 @@
        LANDING PAGE DATA — collections, browse counts, recent, featured
        ──────────────────────────────────────────────────────── -->
   <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/render-news.js"></script>
+  <script>
+  /* ── News panel ──────────────────────────────────────────────
+     Shows the three most recent published articles. The whole section
+     stays hidden while there are none. */
+  (function(){
+    var sec = document.getElementById('news-section');
+    var grid = document.getElementById('news-grid');
+    if (!sec || !grid) return;
+    fetch('/api/news?limit=3&_=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var list = (d && d.articles) || [];
+        if (!list.length) return;
+        list.sort(function(a,b){
+          if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+          return String(b.publishedAt||'').localeCompare(String(a.publishedAt||''));
+        });
+        grid.innerHTML = list.map(function(a){
+          return window.NewsRender.renderCard(a, { linkRoot: '' });
+        }).join('');
+        sec.hidden = false;
+      })
+      .catch(function(){ /* no news, no panel */ });
+  })();
+  </script>
   <script>
   (function(){
     var TEAM_LABEL = {
@@ -307,7 +346,7 @@
       return out;
     }
 
-    function collectionTileHTML(name, id, count, icons, header, tagline){
+    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
       var topHTML = header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
@@ -317,7 +356,9 @@
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
-          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
+          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
+            ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
+              window.classBadgeHTML('starlight') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';
@@ -344,7 +385,8 @@
         '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
-          '<h3 class="featured-name">' + esc(c.name) + '</h3>' +
+          '<h3 class="featured-name">' + esc(c.name) +
+            (c.starlight ? window.classBadgeHTML('starlight', { from: c.starlightFrom }) : '') + '</h3>' +
           (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
           (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
           '<div class="featured-meta">' +
@@ -365,7 +407,8 @@
       COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
-                header:c.header||'',include:c.include||[],exclude:c.exclude||[]};
+                header:c.header||'',include:c.include||[],exclude:c.exclude||[],
+                starlight:!!c.starlight};
       });
         // ── Stats ─────────────────────────────────────────────
         // Membership honors hybrid include/exclude via the shared resolver.
@@ -403,16 +446,14 @@
         var featuredPool = COLLECTIONS.filter(function(coll){
           return (collected[coll.slug] || []).length;
         });
-        for (var i = featuredPool.length - 1; i > 0; i--){
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = featuredPool[i]; featuredPool[i] = featuredPool[j]; featuredPool[j] = tmp;
-        }
+        // Starlight collections surface more often (assets/classify.js).
+        featuredPool = window.weightedShuffle(featuredPool);
         var html = '';
         featuredPool.slice(0, 7).forEach(function(coll){
           var chars = collected[coll.slug] || [];
           var displayName = coll.displayName || coll.slug;
           var icons = pickIcons(chars, 4);
-          html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
+          html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'', coll);
         });
         // "All Collections" tile — browse every collection on the wiki.
         var nColl = featuredPool.length;
@@ -447,17 +488,23 @@
         document.getElementById('bc-tag').textContent = Object.keys(tagSet).length + ' tags';
 
         // ── Recently added (last 8 in array order) ────────────
-        var recent = list.slice().reverse().slice(0, 8);
+        // Partial (unfinished) pages stay off the front page.
+        var recent = window.eligible(list.slice().reverse()).slice(0, 8);
         document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
 
         // ── Featured (rotates daily) ──────────────────────────
-        // Pick characters that have substantial content (lede, art) for the featured spot
-        var eligible = list.filter(function(c){
+        // Needs real content to be worth featuring; Partial pages are
+        // filtered out by weightedPick and Starlight pages come up more often.
+        // The RNG is seeded from the day number so the pick is stable for
+        // everyone for 24 hours instead of changing on every refresh.
+        var featureable = list.filter(function(c){
           return c.art && (c.lede || c.ability) && c.name;
         });
-        if (eligible.length){
-          var day = Math.floor(Date.now() / 86400000);
-          var picked = eligible[day % eligible.length];
+        var picked = window.weightedPick(featureable, (function(){
+          var s = (Math.floor(Date.now() / 86400000) * 2654435761) % 4294967296;
+          return function(){ s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
+        })());
+        if (picked){
           document.getElementById('featured-wrap').innerHTML = featuredCardHTML(picked);
         } else {
           document.getElementById('featured-wrap').innerHTML =
@@ -486,12 +533,9 @@
           return;
         }
         // Featured scripts: 7 picked at random and reshuffled on every page
-        // load, plus an "All Scripts" tile (8 total). Full list lives on /scripts.
-        var pool = scripts.slice();
-        for (var i = pool.length - 1; i > 0; i--){
-          var j = Math.floor(Math.random() * (i + 1));
-          var tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
-        }
+        // load, plus an "All Scripts" tile (8 total). Full list lives on
+        // /scripts. Starlight scripts are weighted to the front of the shuffle.
+        var pool = window.weightedShuffle(scripts);
         var html = pool.slice(0, 7).map(function(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);

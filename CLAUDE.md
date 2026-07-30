@@ -21,7 +21,11 @@ framework — plain HTML/CSS/JS everywhere.
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
-  live from D1** (published rows only). The repo copies of these files are
+  live from D1** (published rows only). Adding **`?drafts=1`** includes draft
+  rows and stamps each row's `status` — but **only for a logged-in admin**;
+  anyone else asking for it silently gets the normal published-only feed, so
+  the site never reveals that unpublished pages exist. `author.html` uses this
+  to show an author's drafts in a separate "Drafts — admins only" section. The repo copies of these files are
   stale seed backups kept only for `/api/seed` disaster recovery — never edit
   them expecting the site to change.
 - `GET /c/{slug}` (characters), `GET /s/{slug}` (scripts) and
@@ -33,16 +37,21 @@ Key dynamic behavior:
   301-redirects to `/s/{slug}`. **Collection URLs use the kebab `id`**, not the
   PK `slug` (legacy rows have display-string slugs like `"The Academy"`);
   `findCollectionRow()` resolves either.
+- `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
+  same `pageShell()`); `/news` itself is the static `news.html` index. News
+  articles are admin-written and live in their own `news` table.
 - `GET /assets/art|collections|scripts|tokens|avatars/*` is served **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
-  the `/messages` page), admin tools (dashboard, full activity log, report,
-  revisions/rollback, wiki lock, backup, seed). Writes are ownership-checked
-  (`owner_id`, admins bypass). All routes are listed in the header comment of
-  `worker/worker.js`.
+  the `/messages` page), **comments** (`/api/comments*` — the comment section on
+  every character/script/collection/news page), **news** (`/api/news*`,
+  `/api/admin/news`), admin tools (dashboard, full activity log, report,
+  revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
+  Writes are ownership-checked (`owner_id`, admins bypass). All routes are
+  listed in the header comment of `worker/worker.js`.
 - `/u/{username}` public profiles, `/random`, `/sitemap.xml`, and
   `/script-view?s=` (OG-meta injection) are also Worker routes.
 
@@ -70,6 +79,18 @@ assets/
                        theming). Browser+Worker like render.js; init(Render) injects
                        render.js's exports. resolveCollectionMembers() (hybrid
                        match[]/include[]/exclude[]), sanitizeTheme(), FONT_PRESETS.
+  classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
+                       TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
+                       badge builder, and the Starlight weighting used by
+                       Featured, /random and the homepage strips. Browser+Worker.
+  comments.js          Comment section widget for /c/, /s/, /collection/, /news/
+                       (reads window.PAGE_TYPE + PAGE_SLUG), incl. the one-time
+                       "be respectful" agreement modal.
+  render-news.js       News article renderer + inlineFormat(), the safe
+                       [label](url) / **bold** / ## heading / - bullet subset.
+                       site.js lazy-loads it to put links in announcements.
+  editor-notices.js    Post-save modals for create/edit: "this page is Partial"
+                       and "saved as a draft because there's no icon".
   sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.
@@ -96,6 +117,8 @@ publish-collection.html Collection maker/editor (replaces register-/edit-collect
                        now redirect stubs). Same fields as publish-script + hybrid
                        membership manager (match terms + manual include/exclude).
                        Publish/Draft via /api/collection; ?c={id} edit mode.
+news.html              /news index (client-rendered from /api/news)
+publish-news.html      Admin-only news editor: write/preview/publish/pin/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
@@ -116,6 +139,17 @@ migration/             D1 schema reference (schema.sql, accounts_migration.sql,
 
 Tables: `users`, `characters`, `collections`, `scripts`, `settings`,
 `activity_log`, plus Worker-auto-created (no manual migrations, ever):
+`news` (admin-written articles: slug PK, title, JSON `data`, status,
+`published_at` stamped once so editing an old article doesn't jump it to the
+top), `comments` + `comment_reports` (keyed by `entity_type`+`slug`; threads are
+**one level deep** — `parent_id` is NULL or a top-level id, never another
+reply, and the API flattens a reply-to-a-reply onto its thread. `pinned` is
+set only on top-level rows, by the page owner or an admin, and sorts first.
+Comment `status` is `visible` | `removed` (taken down on its own) |
+`hidden` (a reply that went down with its parent); restoring a parent
+un-hides exactly the `hidden` ones and leaves individually-removed replies
+alone. Purge deletes a comment and its replies for good) and a lazily ALTERed `users.comment_terms` column
+holding the comment-guidelines version that account agreed to,
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard
 inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
@@ -149,6 +183,56 @@ background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Page classification (Partial / Standard / Starlight)
+
+`assets/classify.js` is the **single source of truth**, shared by the browser
+and the Worker (which stamps `classification` + `starlight` onto every row in
+`/characters.json`, `/collections.json`, `/scripts.json`).
+
+- **Partial** — characters only: an ability and nothing else — no tags, no
+  almanac prose, **and no mechanics** (night order, reminder tokens, setup,
+  jinxes). Hidden from All Characters, the tag/team/creator pages, Featured
+  and the homepage unless the *reader* ticks the "Show Partial" chip. Adding
+  a tag, a line of almanac text, or night-order info upgrades it instantly.
+  Counting mechanics is **load-bearing**: much of this wiki was bulk-imported
+  with full night order but no tags or prose, and judging on prose alone made
+  193 of 456 published characters (42%) read as unfinished. With mechanics
+  counted it is 9. Do not "simplify" `hasMechanics()` away.
+- **Fabled are exempt** from both the Partial tier and the icon requirement
+  (`RULES_TEAMS` in classify.js). On this wiki Fabled is where States,
+  Conditions, Calls, Alignments and Properties live — rules constructs that
+  are complete at one line and never had token art. Without the exemption 18
+  reference pages get swept into drafts and hidden.
+- **Standard** — the default. No badge, nothing to earn.
+- **Starlight** — admin-only, on characters, collections **and** scripts.
+  Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage
+  strips, and filterable on its own (a "Starlight only" chip on All
+  Characters, All Collections and Scripts).
+  A Starlight **collection lends the status to every character in it**
+  (`applyCollectionStarlight()` in worker.js, applied on read in
+  `buildPublicJSON` and on the SSR `/c/` page). Inherited status is never
+  written to the character row, so un-starring the collection takes it off
+  the characters too; a character's own flag always wins and carries
+  `starlightFrom` for the tooltip.
+  The visible mark is a bare `✦` that inherits the surrounding text colour
+  (`.starlight-star`) — deliberately not a coloured pill. On collection
+  tiles it sits after the character count behind a hairline `.coll-star-sep`.
+
+Only `starlight` is stored (a boolean in the page's `data` JSON, writable
+**only** through `POST /api/admin/starlight` or the bulk action — every save
+handler overwrites whatever the client sent with the stored value). Partial vs
+Standard is derived on every read, so nothing ever needs migrating. If you add
+a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
+`ALMANAC_TEXT_FIELDS` in `classify.js` too, or pages using it stay Partial.
+
+`isPartial()` self-guards on `d.ability` so a collection or script can never
+be flagged Partial — do not remove that check.
+
+**Characters with no icon cannot be published** (Fabled excepted, above). `/api/character` silently
+saves them as drafts (and says so, via `editor-notices.js`), and
+`/api/publish` refuses. `POST /api/admin/demote-no-icon` sweeps pages that went
+live before the rule; the dashboard has a scan + one-click button for it.
 
 ## Frontend conventions
 
@@ -213,7 +297,12 @@ assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit
    token-tool.js strips them for tokens only. Don't "fix" the names.
 8. Jinx icons resolve by slugified id against `assets/icons/`; missing icons
    hide gracefully via onerror. Don't rename icon files.
-9. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
+9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
+   the static `news.html` and must stay that way, or the Worker swallows it.
+10. Announcements and news bodies go through `NewsRender.inlineFormat()`, which
+   escapes first and whitelists hrefs (http/https/mailto/site-relative only).
+   Never switch either to `innerHTML` with raw text.
+11. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
    Cloudflare dashboard, NOT in the repo, and MUST be type "Secret" — Git
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds

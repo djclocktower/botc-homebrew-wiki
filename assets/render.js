@@ -18,6 +18,16 @@
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
   function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
+  /* Classification badge, if classify.js is around (browser) or its markup
+     builder was injected (Worker). Standard pages get nothing by design. */
+  var classRowFn = null;
+  function setClassBadge(fn) { classRowFn = fn; }
+  function classBadge(cls, opts) {
+    if (!cls || cls === 'standard') return '';
+    var fn = classRowFn ||
+      (typeof window !== 'undefined' ? window.classRowHTML : null);
+    return fn ? fn(cls, opts) : '';
+  }
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -216,6 +226,11 @@
       }).filter(Boolean).join('<span class="tag-sep">, </span>') + '</dd>' : '') +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
+      // Partial / Starlight. The classification is worked out by
+      // assets/classify.js and stamped onto the object by the Worker; Standard
+      // pages carry no badge, so nothing is shown for them.
+      (classBadge(d.classification, { from: d.starlightFrom })
+        ? '<dt>Status:</dt><dd>' + classBadge(d.classification, { from: d.starlightFrom }) + '</dd>' : '') +
       '</dl>';
 
     // Copy-link button lives in the top-right corner *inside* the info card so
@@ -426,6 +441,7 @@
     window.findScriptJinxes = findScriptJinxes;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setCreators = setCreators;
+    window.setClassBadge = setClassBadge;
     window.creatorSymbol = creatorSymbol;
   }
   if (typeof module !== 'undefined' && module.exports) {
@@ -435,7 +451,7 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       setOfficialIconUrls: setOfficialIconUrls,
-      setCreators: setCreators,
+      setCreators: setCreators, setClassBadge: setClassBadge,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark
     };
   }

@@ -54,6 +54,16 @@
     <a class="create-btn" href="script">+ Create a Script</a>
   </div>
 
+  <div class="home-panel" style="padding-bottom:0">
+    <div class="filter-bar" id="filter-bar" hidden>
+      <div class="filter-group"><span class="filter-group-label">Status</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip" id="fc-starlight"
+            title="Starlight — scripts the wiki admins have picked out.">✦ Starlight only</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <main class="home-panel">
     <section class="landing-section">
       <div class="collections-grid" id="scripts-grid">
@@ -64,6 +74,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/classify.js"></script>
   <script>
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -75,7 +86,8 @@
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        grid.innerHTML = scripts.map(function(sc){
+        var starlightOnly = false;
+        function cardHTML(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
           var headerHTML = sc.header
@@ -84,13 +96,35 @@
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
-            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
+            '<h3 class="collection-name">' + esc(sc.name) +
+              window.classBadgeHTML(window.classifyPage(sc, 'script')) + '</h3>' +
             (blurb ? '<p class="script-tile-desc">' + esc(blurb) + '</p>' : '') +
             '<div class="collection-footer">' +
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
-        }).join('');
+        }
+        function draw(){
+          var rows = starlightOnly
+            ? scripts.filter(function(sc){ return sc.starlight; })
+            : scripts;
+          grid.innerHTML = rows.map(cardHTML).join('') ||
+            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Starlight scripts yet.</p>';
+        }
+        // The chip only shows up once something carries the status.
+        var nStar = scripts.filter(function(sc){ return sc.starlight; }).length;
+        if (nStar){
+          var bar = document.getElementById('filter-bar');
+          var btn = document.getElementById('fc-starlight');
+          btn.textContent = '\u2726 Starlight only (' + nStar + ')';
+          bar.hidden = false;
+          btn.addEventListener('click', function(){
+            starlightOnly = !starlightOnly;
+            btn.classList.toggle('active', starlightOnly);
+            draw();
+          });
+        }
+        draw();
       })
       .catch(function(){
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load scripts.</p>';

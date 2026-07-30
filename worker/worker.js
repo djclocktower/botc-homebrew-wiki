@@ -9,6 +9,9 @@
  *   GET  /characters.json     -> built from D1 (published pages only)
  *   GET  /collections.json    -> built from D1
  *   GET  /scripts.json        -> built from D1
+ *     ?drafts=1               -> ADMINS ONLY: also includes draft rows, each
+ *                                stamped with `status`. Non-admins asking for
+ *                                it get the ordinary published-only feed.
  *
  *   -- auth --
  *   POST /api/signup          -> create an account (username/email/password)
@@ -43,6 +46,21 @@
  *   GET  /api/admin/dm-reports -> reported conversations (?status=open|all)
  *   POST /api/admin/dm-report  -> resolve/reopen/delete one report
  *   GET  /api/admin/dm-thread  -> transcript of a REPORTED conversation (?a=&b=)
+ *
+ *   -- comments (character / collection / script / news pages) --
+ *   GET  /api/comments        -> a page's comments (?type=&slug=; public)
+ *   POST /api/comments        -> post a comment or reply ({parentId} to reply;
+ *                                {agree:true} carries the first-time agreement)
+ *   POST /api/comments/agree  -> record the one-time comment-terms agreement
+ *   POST /api/comments/delete -> remove one (author, page owner, or admin)
+ *   POST /api/comments/pin    -> pin/unpin a thread (page owner or admin)
+ *   POST /api/comments/report -> report one to the admins
+ *
+ *   -- news (admin-written articles) --
+ *   GET  /api/news            -> published articles (?limit=, admin ?drafts=1)
+ *   GET  /api/news/item       -> one article (?slug=; drafts admin-only)
+ *   GET  /news/{slug}         -> article page (server-side rendered, comments)
+ *   POST /api/admin/news      -> create/update/delete an article
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
@@ -84,9 +102,14 @@
  *   GET  /api/admin/backups   -> list nightly R2 backups (dates + tables)
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
- *   GET  /api/admin/pages     -> page list for bulk actions (?type=&q=&owner=)
- *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag ops
+ *   GET  /api/admin/pages     -> page list for bulk actions
+ *                                (?type=&q=&owner=&status=&flag=no-icon|partial|starlight|no-owner)
+ *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
+ *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
+ *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
+ *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -112,6 +135,15 @@ PageRender.init(Render);
 // Injected so SSR /c/ pages show a creator's symbol next to their name.
 import Creators from '../assets/creators.js';
 Render.setCreators(Creators);
+// Partial / Standard / Starlight rules — shared with every browser page so
+// the badges and filters agree with what the Worker serves.
+import Classify from '../assets/classify.js';
+// Lets render.js emit the Partial/Starlight badge without importing
+// classify.js itself (it is loaded standalone in the browser).
+Render.setClassBadge(Classify.classRowHTML);
+// News article renderer (also used by the /news index and the admin editor
+// preview in the browser).
+import NewsRender from '../assets/render-news.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -132,6 +164,9 @@ const CONTENT = {
   collection: { table: 'collections', nameCol: 'display_name' },
   script:     { table: 'scripts',     nameCol: 'name' }
 };
+// Every content type that can carry comments. `news` is not in CONTENT (it is
+// not user-editable content) but readers can comment on articles.
+const COMMENTABLE = ['character', 'collection', 'script', 'news'];
 
 // ---- password hashing (PBKDF2, matches the seeded admin hash) ----
 const PBKDF2_ITERATIONS = 100000;
@@ -434,6 +469,125 @@ async function ensureDmTables(env) {
   _dmReady = true;
 }
 
+// ---- comments (character / collection / script / news pages) ----
+// One flat thread per page — no nesting, which keeps the mobile layout
+// readable and the moderation model simple. Removing a comment sets
+// status='removed' rather than deleting the row, so an admin can undo a
+// mistaken removal from the dashboard.
+const COMMENT_MAX = 2000;
+// Bumping this re-prompts everyone with the "be respectful" agreement.
+const COMMENT_TERMS_VERSION = '1';
+let _commentsReady = false;
+async function ensureCommentTables(env) {
+  if (_commentsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS comments (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       user_id     INTEGER NOT NULL,
+       body        TEXT NOT NULL,
+       status      TEXT NOT NULL DEFAULT 'visible',
+       removed_by  TEXT,
+       removed_at  TEXT
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_comments_page ON comments(entity_type, slug, id)'
+  ).run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS comment_reports (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       comment_id  INTEGER NOT NULL,
+       reporter_id INTEGER NOT NULL,
+       reason      TEXT,
+       status      TEXT NOT NULL DEFAULT 'open'
+     )`
+  ).run();
+  // Which version of the comment terms this account has agreed to.
+  try { await env.DB.prepare('ALTER TABLE users ADD COLUMN comment_terms TEXT').run(); }
+  catch { /* already there */ }
+  // Threading + pinning, added after the table shipped flat — lazily ALTERed
+  // like users.banned so there is still nothing to migrate by hand.
+  // parent_id is NULL for a top-level comment and never points at another
+  // reply: threads are exactly one level deep (see the flattening in
+  // POST /api/comments), which keeps them readable on a phone.
+  try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN parent_id INTEGER').run(); }
+  catch { /* already there */ }
+  try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0').run(); }
+  catch { /* already there */ }
+  _commentsReady = true;
+}
+
+// Removing a top-level comment has to take its replies with it, or the page
+// shows answers to a question nobody can see. The replies get status
+// 'hidden' rather than 'removed' so restoring the parent brings back exactly
+// those, and never a reply an admin removed on its own merits.
+async function removeCommentCascade(env, row, by) {
+  await env.DB.prepare(
+    "UPDATE comments SET status='removed', pinned=0, removed_by=?, removed_at=datetime('now') WHERE id=?"
+  ).bind(by, row.id).run();
+  if (!row.parent_id) {
+    await env.DB.prepare(
+      "UPDATE comments SET status='hidden' WHERE parent_id=? AND status='visible'"
+    ).bind(row.id).run();
+  }
+}
+async function restoreCommentCascade(env, row) {
+  await env.DB.prepare(
+    "UPDATE comments SET status='visible', removed_by=NULL, removed_at=NULL WHERE id=?"
+  ).bind(row.id).run();
+  if (!row.parent_id) {
+    await env.DB.prepare(
+      "UPDATE comments SET status='visible' WHERE parent_id=? AND status='hidden'"
+    ).bind(row.id).run();
+  }
+}
+
+// ---- news articles (admin-written, /news + /news/{slug}) ----
+// Same hybrid shape as the content tables: a few indexed columns plus the
+// whole article as JSON in `data`, so new article fields never need a
+// migration. Created lazily on first use like revisions/dms.
+let _newsReady = false;
+async function ensureNewsTable(env) {
+  if (_newsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS news (
+       slug         TEXT PRIMARY KEY,
+       title        TEXT NOT NULL,
+       owner_id     INTEGER,
+       data         TEXT NOT NULL,
+       status       TEXT NOT NULL DEFAULT 'draft',
+       created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+       updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
+       published_at TEXT
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_news_status ON news(status, published_at)'
+  ).run();
+  _newsReady = true;
+}
+
+// Find the page a comment is aimed at and work out who may moderate it.
+// Returns null when the page doesn't exist or isn't publicly visible.
+async function commentTarget(env, type, slug) {
+  if (!COMMENTABLE.includes(type) || !slug) return null;
+  if (type === 'news') {
+    await ensureNewsTable(env);
+    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
+      .bind(slug).first().catch(() => null);
+    if (!row || row.status !== 'published') return null;
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+  }
+  let row = await getEntityRow(env, type, slug);
+  if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+  if (!row || row.status !== 'published') return null;
+  return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+}
+
 async function findUserByUsername(env, username) {
   if (!username) return null;
   return env.DB.prepare(
@@ -510,6 +664,41 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- Starlight inheritance ----
+// A Starlight collection lends the status to every character in it: awarding
+// it to "Ravenswood Chronicle" marks all of Ravenswood's characters too, so
+// the Starlight filter on All Characters shows them. Inherited status is
+// never written back to the character row — it is derived on read, so
+// removing Starlight from the collection takes it off the characters with
+// it, and a character keeps its own flag if it was given one directly.
+// `starlightFrom` records which collection lent it, for the tooltip.
+async function applyCollectionStarlight(env, chars) {
+  let rows;
+  try {
+    ({ results: rows } = await env.DB.prepare(
+      "SELECT data FROM collections WHERE status='published'"
+    ).all());
+  } catch { return chars; }
+  const starred = (rows || []).map(parseData).filter(d => d && d.starlight);
+  if (!starred.length) return chars;
+  for (const coll of starred) {
+    const name = coll.displayName || coll.id || coll.slug || 'a collection';
+    for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
+      if (c.starlight) continue;              // its own flag wins
+      c.starlight = true;
+      c.starlightFrom = name;
+      c.classification = 'starlight';
+    }
+  }
+  return chars;
+}
+
+// A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
+function parseData(row) {
+  if (!row || !row.data) return {};
+  try { return JSON.parse(row.data); } catch { return {}; }
+}
+
 // ---- shared validation for script/collection page fields ----
 // Caps text lengths, whitelists difficulty, constrains image paths to the
 // scripts/ and collections/ R2 areas, and runs the theme through the shared
@@ -536,21 +725,43 @@ function sanitizePageFields(o, themeBase) {
 }
 
 // ---- build the three JSON files from D1 (published pages only) ----
-async function buildPublicJSON(env, table) {
+// `opts.includeDrafts` adds draft rows and stamps each row's `status`, for the
+// admin-only ?drafts=1 form of the JSON feeds. Soft-deleted rows are never
+// included either way — recovery is the dashboard's job.
+async function buildPublicJSON(env, table, opts = {}) {
+  const drafts = !!opts.includeDrafts;
+  const where = drafts ? "status IN ('published','draft')" : "status='published'";
   let results;
   try {
-    ({ results } = await env.DB.prepare(`SELECT data FROM ${table} WHERE status='published'`).all());
+    ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
   } catch {
     // status column not migrated yet -> serve everything (legacy behaviour)
     ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
   }
-  return results.map(r => {
+  const type = table === 'characters' ? 'character'
+    : table === 'collections' ? 'collection' : 'script';
+  const out = results.map(r => {
     const d = JSON.parse(r.data);
+    // Only the admin feed carries status; the public one must never imply
+    // that unpublished pages exist.
+    if (drafts) d.status = r.status || 'published';
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
+    // Partial/Standard/Starlight is derived here rather than stored, so a
+    // page re-classifies itself the moment its owner adds a tag or a line of
+    // almanac text. `starlight` is the only stored half (admin-set).
+    // Standard is the default everywhere, so it is left off the wire —
+    // characters.json is ~1000 entries and the repetition is not free.
+    if (d.starlight) d.starlight = true; else delete d.starlight;
+    const cls = Classify.classifyPage(d, type);
+    if (cls !== 'standard') d.classification = cls;
+    else delete d.classification;
     return d;
   });
+  // Characters pick up Starlight from any Starlight collection they belong to.
+  if (table === 'characters') await applyCollectionStarlight(env, out);
+  return out;
 }
 
 // ---- D1 -> R2 backup (nightly cron + POST /api/backup) ----
@@ -560,7 +771,7 @@ async function buildPublicJSON(env, table) {
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports'];
+  const tables = ['characters', 'collections', 'scripts', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
   const saved = {};
   for (const t of tables) {
     try {
@@ -695,6 +906,9 @@ function renderCharacterPage(d, origin, isDraft) {
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
+  // Stamped here too (not just in characters.json) so the Status row in the
+  // info box is right on a page reached directly.
+  d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
@@ -702,8 +916,9 @@ function renderCharacterPage(d, origin, isDraft) {
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
     body, draftBanner,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};`,
-    scripts: ['render.js', 'tags.js', 'charpage.js', 'site.js']
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
+      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
+    scripts: ['render.js', 'tags.js', 'charpage.js', 'comments.js', 'site.js']
   });
 }
 
@@ -807,8 +1022,8 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     bodyClass: ta.cls, bodyStyle: ta.style,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
     scripts: isScript
-      ? ['render.js', 'pageview.js', 'site.js']
-      : ['render.js', 'pageview.js', 'collection-filters.js', 'site.js']
+      ? ['render.js', 'pageview.js', 'comments.js', 'site.js']
+      : ['render.js', 'pageview.js', 'collection-filters.js', 'comments.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -871,14 +1086,17 @@ export default {
     const method = request.method;
 
     // ---------- DATA ENDPOINTS (replace static JSON files) ----------
-    if (method === 'GET' && path === '/characters.json') {
-      return jsonResponse(await buildPublicJSON(env, 'characters'));
-    }
-    if (method === 'GET' && path === '/collections.json') {
-      return jsonResponse(await buildPublicJSON(env, 'collections'));
-    }
-    if (method === 'GET' && path === '/scripts.json') {
-      return jsonResponse(await buildPublicJSON(env, 'scripts'));
+    // ?drafts=1 includes unpublished pages, for admins only. Anyone else
+    // asking for it silently gets the ordinary published-only feed rather
+    // than an error, so a stale bookmark or a logged-out admin can never be
+    // told that drafts exist. Every one of these responses is `no-store`
+    // (jsonResponse), so a cache can't hand an admin's copy to a visitor.
+    if (method === 'GET' && (path === '/characters.json' || path === '/collections.json' || path === '/scripts.json')) {
+      const table = path === '/characters.json' ? 'characters'
+        : path === '/collections.json' ? 'collections' : 'scripts';
+      const wantsDrafts = url.searchParams.get('drafts') === '1';
+      const includeDrafts = wantsDrafts && !!(await adminSession(env, request));
+      return jsonResponse(await buildPublicJSON(env, table, { includeDrafts }));
     }
 
     // ---------- SITE-WIDE ANNOUNCEMENT (public; site.js shows the banner) ----------
@@ -889,6 +1107,157 @@ export default {
         if (r && r.value) ann = JSON.parse(r.value);
       } catch { /* no announcement */ }
       return jsonResponse({ announcement: ann && ann.text ? ann : null });
+    }
+
+    // ---------- NEWS ----------
+    // Public list. ?limit=N for the homepage panel; admins can add
+    // ?drafts=1 to see unpublished articles in the editor's list.
+    if (method === 'GET' && path === '/api/news') {
+      await ensureNewsTable(env);
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10) || 30, 1), 100);
+      let includeDrafts = false;
+      if (url.searchParams.get('drafts') === '1') {
+        includeDrafts = !!(await adminSession(env, request));
+      }
+      const { results } = await env.DB.prepare(
+        includeDrafts
+          ? `SELECT slug, title, status, published_at, updated_at, data FROM news
+             ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
+          : `SELECT slug, title, status, published_at, updated_at, data FROM news
+             WHERE status='published' ORDER BY published_at DESC LIMIT ?`
+      ).bind(limit).all().catch(() => ({ results: [] }));
+      return jsonResponse({
+        articles: (results || []).map(r => {
+          const d = parseData(r);
+          return {
+            slug: r.slug, title: r.title, status: r.status,
+            publishedAt: r.published_at, updatedAt: r.updated_at,
+            author: d.author || null,
+            summary: d.summary || NewsRender.autoSummary(d.body, 160),
+            image: d.image || null,
+            // Body is only sent on the single-article route — the list stays
+            // small even with a hundred long articles in it.
+            pinned: !!d.pinned
+          };
+        })
+      });
+    }
+
+    // One article as JSON. Public for published articles; the admin editor
+    // uses it to load drafts too.
+    if (method === 'GET' && path === '/api/news/item') {
+      await ensureNewsTable(env);
+      const slug = url.searchParams.get('slug') || '';
+      const row = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      if (row.status !== 'published' && !(await adminSession(env, request))) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      const d = parseData(row);
+      return jsonResponse({
+        article: {
+          ...d, slug: row.slug, title: row.title, status: row.status,
+          publishedAt: row.published_at, updatedAt: row.updated_at
+        }
+      });
+    }
+
+    // ---------- NEWS ARTICLE PAGES (server-side rendered) ----------
+    if (method === 'GET' && path.startsWith('/news/')) {
+      let slug = decodeURIComponent(path.slice(6));
+      if (slug.endsWith('.html')) {
+        slug = slug.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/news/' + slug + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      await ensureNewsTable(env);
+      const row = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
+      if (!row) return env.ASSETS.fetch(request);
+      const isDraft = row.status !== 'published';
+      if (isDraft && !(await adminSession(env, request))) return env.ASSETS.fetch(request);
+      if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'news', row.slug));
+
+      const d = parseData(row);
+      const a = {
+        ...d, slug: row.slug, title: row.title,
+        publishedAt: row.published_at, updatedAt: row.updated_at
+      };
+      const desc = (a.summary || NewsRender.autoSummary(a.body, 180) ||
+        'News from the BOTC Homebrew Wiki.');
+      const img = a.image
+        ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
+        : url.origin + '/assets/logo_skull.png';
+      const html = pageShell({
+        title: (isDraft ? 'Draft: ' : '') + (a.title || 'News'),
+        desc, canonicalUrl: url.origin + '/news/' + encodeURIComponent(a.slug),
+        ogImage: img, ogCard: a.image ? 'summary_large_image' : 'summary',
+        body: '<p class="news-back"><a href="../news">← All news</a></p>' +
+          NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
+        draftBanner: isDraft
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only admins can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the news editor</a>.</div>'
+          : '',
+        bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
+        scripts: ['comments.js', 'site.js']
+      });
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      });
+    }
+
+    // ---------- COMMENTS (public read; posting needs an account) ----------
+    if (method === 'GET' && path === '/api/comments') {
+      const type = url.searchParams.get('type') || '';
+      const slug = url.searchParams.get('slug') || '';
+      const target = await commentTarget(env, type, slug);
+      if (!target) return jsonResponse({ error: 'Page not found' }, { status: 404 });
+      await ensureCommentTables(env);
+      // Pinned top-level comments float to the top; everything else is
+      // oldest-first so a thread reads in the order it was written. Replies
+      // are grouped under their parent by the client.
+      const { results } = await env.DB.prepare(
+        `SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned,
+                u.username, u.display_name, u.avatar_url, u.is_admin
+         FROM comments c LEFT JOIN users u ON u.id = c.user_id
+         WHERE c.entity_type=? AND c.slug=? AND c.status='visible'
+         ORDER BY c.pinned DESC, c.id ASC LIMIT 500`
+      ).bind(type, target.slug).all().catch(() => ({ results: [] }));
+
+      const sess = await getSession(env, request);
+      let me = null;
+      if (sess) {
+        const u = await env.DB.prepare(
+          'SELECT id, username, is_admin, banned, comment_terms FROM users WHERE id=?'
+        ).bind(sess.userId).first().catch(() => null);
+        if (u) {
+          me = {
+            username: u.username,
+            isAdmin: !!u.is_admin,
+            // Suspended accounts can read but not post.
+            canComment: !u.banned,
+            // Page owners moderate their own page; admins moderate everything.
+            canModerate: !!u.is_admin || (target.ownerId != null && target.ownerId === u.id),
+            agreed: String(u.comment_terms || '') === COMMENT_TERMS_VERSION
+          };
+        }
+      }
+      return jsonResponse({
+        type, slug: target.slug,
+        termsVersion: COMMENT_TERMS_VERSION,
+        me,
+        comments: (results || []).map(r => ({
+          id: r.id, ts: r.ts, body: r.body,
+          parentId: r.parent_id || null,
+          pinned: !!r.pinned,
+          username: r.username || '[deleted user]',
+          displayName: r.display_name || r.username || '[deleted user]',
+          avatarUrl: r.avatar_url || null,
+          isAdmin: !!r.is_admin,
+          mine: !!(sess && r.user_id === sess.userId)
+        }))
+      });
     }
 
     // ---------- CHARACTER PAGES (server-side rendered from D1) ----------
@@ -922,6 +1291,9 @@ export default {
           }
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
+          // Same Starlight inheritance the JSON feeds get, so the star on the
+          // page agrees with the star in the grid it was clicked from.
+          if (!d.starlight) await applyCollectionStarlight(env, [d]);
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           return new Response(renderCharacterPage(d, url.origin, isDraft), {
@@ -987,15 +1359,25 @@ export default {
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------
     if (method === 'GET' && path === '/random') {
-      let row;
+      // Weighted by classification: Starlight pages come up more often and
+      // Partial (unfinished) pages never do. Falls back to a plain SQL
+      // RANDOM() pick if the table can't be read as JSON for any reason.
+      let picked = null;
       try {
-        row = await env.DB.prepare(
-          "SELECT slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
-        ).first();
-      } catch {
-        row = await env.DB.prepare(
-          'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
-        ).first();
+        const chars = await buildPublicJSON(env, 'characters');
+        picked = Classify.weightedPick(chars);
+      } catch { /* fall through */ }
+      let row = picked && picked.slug ? { slug: picked.slug } : null;
+      if (!row) {
+        try {
+          row = await env.DB.prepare(
+            "SELECT slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
+          ).first();
+        } catch {
+          row = await env.DB.prepare(
+            'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
+          ).first();
+        }
       }
       const dest = row ? '/c/' + row.slug : '/all-characters';
       return new Response(null, {
@@ -1066,9 +1448,19 @@ export default {
           return (await env.DB.prepare(`SELECT slug, data, updated_at FROM collections`).all()).results;
         }
       }
-      const [chars, scripts, colls] = await Promise.all([pub('characters'), pub('scripts'), pubCollections()]);
+      async function pubNews() {
+        try {
+          await ensureNewsTable(env);
+          return (await env.DB.prepare(
+            `SELECT slug, updated_at FROM news WHERE status='published'`
+          ).all()).results;
+        } catch { return []; }
+      }
+      const [chars, scripts, colls, news] = await Promise.all([
+        pub('characters'), pub('scripts'), pubCollections(), pubNews()
+      ]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
-        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules'];
+        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -1081,6 +1473,9 @@ export default {
         let id = '';
         try { id = JSON.parse(r.data).id || ''; } catch { /* fall back to slug */ }
         urls.push('<url><loc>' + xmlEsc(url.origin + '/collection/' + encodeURIComponent(id || r.slug)) + '</loc>' + lastmod(r) + '</url>');
+      }
+      for (const r of news) {
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/news/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
       }
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
@@ -1974,6 +2369,45 @@ export default {
       });
     }
 
+    // ---------- ADMIN: COMMENT MODERATION ----------
+    // ?view=reported (default) shows open reports; ?view=recent shows the
+    // latest comments site-wide; ?view=removed shows what's been taken down.
+    if (method === 'GET' && path === '/api/admin/comments') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureCommentTables(env);
+      const view = url.searchParams.get('view') || 'reported';
+      const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 1), 200);
+      const base =
+        `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
+                c.parent_id, c.pinned, u.username, u.id AS user_id
+         FROM comments c LEFT JOIN users u ON u.id = c.user_id`;
+      let sql, binds = [];
+      if (view === 'recent') {
+        sql = base + " WHERE c.status='visible' ORDER BY c.id DESC LIMIT ?";
+        binds = [limit];
+      } else if (view === 'removed') {
+        // 'hidden' = a reply that went down with its parent, not removed on
+        // its own. Shown here too so nothing is invisible to an admin.
+        sql = base + " WHERE c.status IN ('removed','hidden') ORDER BY COALESCE(c.removed_at, c.ts) DESC LIMIT ?";
+        binds = [limit];
+      } else {
+        sql = `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
+                      c.parent_id, c.pinned, u.username, u.id AS user_id,
+                      COUNT(r.id) AS reports, MAX(r.reason) AS reason
+               FROM comment_reports r
+               JOIN comments c ON c.id = r.comment_id
+               LEFT JOIN users u ON u.id = c.user_id
+               WHERE r.status='open'
+               GROUP BY c.id ORDER BY MAX(r.id) DESC LIMIT ?`;
+        binds = [limit];
+      }
+      const { results } = await env.DB.prepare(sql).bind(...binds).all().catch(() => ({ results: [] }));
+      const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'")
+        .first().catch(() => ({ n: 0 }));
+      return jsonResponse({ view, comments: results || [], openReports: (open && open.n) || 0 });
+    }
+
     // ---------- ADMIN: PAGE LIST FOR BULK ACTIONS ----------
     if (method === 'GET' && path === '/api/admin/pages') {
       const sess = await adminSession(env, request);
@@ -1994,14 +2428,35 @@ export default {
       if (owner === 'none') wh.push('p.owner_id IS NULL');
       else if (owner) { wh.push('lower(u.username)=lower(?)'); binds.push(owner); }
       if (['published', 'draft', 'deleted'].includes(status)) { wh.push('p.status=?'); binds.push(status); }
+      else if (status === 'all') { /* every status, deleted included */ }
       else wh.push("p.status IS NOT 'deleted'");
+      // Content flags can't be expressed in SQL (they live in the data blob),
+      // so pull `data` and filter in JS. 'any' means no flag filter.
+      const flag = (url.searchParams.get('flag') || '').trim();
       const { results } = await env.DB.prepare(
-        `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner
+        `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner, p.data
          FROM ${t.table} p LEFT JOIN users u ON u.id = p.owner_id
-         WHERE ${wh.join(' AND ')}
-         ORDER BY p.updated_at DESC LIMIT 300`
+         ${wh.length ? 'WHERE ' + wh.join(' AND ') : ''}
+         ORDER BY p.updated_at DESC LIMIT 1000`
       ).bind(...binds).all();
-      return jsonResponse({ pages: results || [] });
+      let pages = (results || []).map(r => {
+        const d = parseData(r);
+        return {
+          slug: r.slug, name: r.name, status: r.status,
+          updated_at: r.updated_at, owner: r.owner,
+          starlight: !!d.starlight,
+          classification: Classify.classifyPage(d, type),
+          // "hasIcon: true" for a page that does not need one, so the
+          // no-icon filter only ever surfaces pages with a real gap.
+          hasIcon: type === 'character' ? (!Classify.needsIcon(d) || Classify.hasIcon(d)) : true,
+          missing: type === 'character' ? Classify.missingBits(d) : []
+        };
+      });
+      if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
+      else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
+      else if (flag === 'starlight') pages = pages.filter(p => p.starlight);
+      else if (flag === 'no-owner') pages = pages.filter(p => !p.owner);
+      return jsonResponse({ pages: pages.slice(0, 400), total: pages.length });
     }
 
     // ---------- ADMIN: PAGE-VIEW ANALYTICS ----------
@@ -2011,10 +2466,12 @@ export default {
       const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '7', 10) || 7, 1), 365);
       const since = '-' + days + ' day';
       await ensureViewsTable(env);
+      await ensureNewsTable(env); // the name lookup below UNIONs it in
       const names =
         `(SELECT 'character' AS t, slug, name FROM characters
           UNION ALL SELECT 'script', slug, name FROM scripts
-          UNION ALL SELECT 'collection', slug, display_name FROM collections)`;
+          UNION ALL SELECT 'collection', slug, display_name FROM collections
+          UNION ALL SELECT 'news', slug, title FROM news)`;
       const [top, totals] = await Promise.all([
         env.DB.prepare(
           `SELECT pv.entity_type, pv.slug, SUM(pv.n) AS views, MAX(p.name) AS name
@@ -2048,7 +2505,10 @@ export default {
 
       // Content writes are blocked while the wiki is locked (true freeze,
       // applies to admins too). Lock toggle + seed are intentionally exempt.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload'].includes(path);
+      // Posting a comment counts as a content write: a wiki locked because of
+      // vandalism should not leave the comment boxes open. Removing and
+      // reporting comments stay available so moderation still works.
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
       // Suspended accounts can still use account settings and the contact
       // form (to appeal), but cannot touch content.
       if (isContentWrite && acctFlags.banned) {
@@ -2233,6 +2693,137 @@ export default {
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
+      // ---- comments ----
+      // Agreeing to the comment terms. The browser also shows the modal, but
+      // the server is what actually gates posting, so a first comment can
+      // carry {agree:true} and be accepted in one round-trip.
+      if (path === '/api/comments/agree') {
+        await ensureCommentTables(env);
+        await env.DB.prepare('UPDATE users SET comment_terms=? WHERE id=?')
+          .bind(COMMENT_TERMS_VERSION, sess.userId).run();
+        return jsonResponse({ ok: true, agreed: true });
+      }
+
+      if (path === '/api/comments') {
+        if (acctFlags.banned) {
+          return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
+        }
+        if (await rateLimited(env, request, 'comment', 30, 3600)) {
+          return jsonResponse({ error: 'Slow down — too many comments from this connection. Try again later.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const target = await commentTarget(env, type, String(b.slug || ''));
+        if (!target) return jsonResponse({ error: 'That page does not exist (or is not published yet).' }, { status: 404 });
+        const body = String(b.body || '').replace(/\r\n/g, '\n').trim().slice(0, COMMENT_MAX);
+        if (!body) return jsonResponse({ error: 'Write something first.' }, { status: 400 });
+        await ensureCommentTables(env);
+        // First-time commenters must accept the terms; the client sends
+        // agree:true from the modal alongside their first comment.
+        const u = await env.DB.prepare('SELECT comment_terms FROM users WHERE id=?')
+          .bind(sess.userId).first().catch(() => null);
+        let agreed = u && String(u.comment_terms || '') === COMMENT_TERMS_VERSION;
+        if (!agreed && b.agree) {
+          await env.DB.prepare('UPDATE users SET comment_terms=? WHERE id=?')
+            .bind(COMMENT_TERMS_VERSION, sess.userId).run();
+          agreed = true;
+        }
+        if (!agreed) {
+          return jsonResponse({
+            error: 'Please agree to the comment guidelines first.',
+            needsAgreement: true, termsVersion: COMMENT_TERMS_VERSION
+          }, { status: 428 });
+        }
+        // Replying: the parent must be a visible comment on this same page.
+        // Threads stay one level deep — replying to a reply attaches to that
+        // reply's parent instead of nesting further.
+        let parentId = null;
+        if (b.parentId) {
+          const parent = await env.DB.prepare(
+            "SELECT id, parent_id, entity_type, slug, status FROM comments WHERE id=?"
+          ).bind(parseInt(b.parentId, 10) || 0).first().catch(() => null);
+          if (!parent || parent.status !== 'visible' ||
+              parent.entity_type !== type || parent.slug !== target.slug) {
+            return jsonResponse({ error: 'The comment you replied to is no longer there.' }, { status: 404 });
+          }
+          parentId = parent.parent_id || parent.id;
+        }
+        const res = await env.DB.prepare(
+          'INSERT INTO comments (entity_type, slug, user_id, body, parent_id) VALUES (?,?,?,?,?)'
+        ).bind(type, target.slug, sess.userId, body, parentId).run();
+        await logActivity(env, sess, parentId ? 'comment-reply' : 'comment',
+          type, target.slug, body.slice(0, 60));
+        return jsonResponse({
+          ok: true, id: (res.meta && res.meta.last_row_id) || null, parentId
+        });
+      }
+
+      // Pin / unpin a comment — admins and the page's owner. Only top-level
+      // comments can be pinned; pinning a reply pins the thread it belongs to.
+      if (path === '/api/comments/pin') {
+        await ensureCommentTables(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10);
+        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
+        if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
+        const target = await commentTarget(env, row.entity_type, row.slug);
+        const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
+        if (!sess.isAdmin && !isOwner) {
+          return jsonResponse({ error: 'Only the page owner and the admins can pin comments.' }, { status: 403 });
+        }
+        const pinId = row.parent_id || row.id;
+        const on = !!b.pinned;
+        await env.DB.prepare('UPDATE comments SET pinned=? WHERE id=?').bind(on ? 1 : 0, pinId).run();
+        await logActivity(env, sess, on ? 'comment-pin' : 'comment-unpin',
+          row.entity_type, row.slug, 'comment #' + pinId);
+        return jsonResponse({ ok: true, id: pinId, pinned: on });
+      }
+
+      // Remove a comment: its author, the page's owner, or any admin.
+      if (path === '/api/comments/delete') {
+        await ensureCommentTables(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10);
+        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
+        if (!row || row.status !== 'visible') return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
+        const target = await commentTarget(env, row.entity_type, row.slug);
+        const isOwner = target && target.ownerId != null && target.ownerId === sess.userId;
+        if (!sess.isAdmin && !isOwner && row.user_id !== sess.userId) {
+          return jsonResponse({ error: 'You can only remove your own comments.' }, { status: 403 });
+        }
+        let by = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          by = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        await removeCommentCascade(env, row, by);
+        await logActivity(env, sess, 'comment-remove', row.entity_type, row.slug, 'comment #' + id);
+        return jsonResponse({ ok: true, id });
+      }
+
+      // Report a comment to the admins (shows up in the dashboard queue).
+      if (path === '/api/comments/report') {
+        await ensureCommentTables(env);
+        if (await rateLimited(env, request, 'comment-report', 20, 3600)) {
+          return jsonResponse({ error: 'Too many reports. Try again later.' }, { status: 429 });
+        }
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10);
+        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        const row = await env.DB.prepare('SELECT id FROM comments WHERE id=?').bind(id).first().catch(() => null);
+        if (!row) return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
+        const already = await env.DB.prepare(
+          "SELECT id FROM comment_reports WHERE comment_id=? AND reporter_id=? AND status='open'"
+        ).bind(id, sess.userId).first().catch(() => null);
+        if (already) return jsonResponse({ ok: true, id, already: true });
+        await env.DB.prepare(
+          'INSERT INTO comment_reports (comment_id, reporter_id, reason) VALUES (?,?,?)'
+        ).bind(id, sess.userId, String(b.reason || '').trim().slice(0, 500) || null).run();
+        return jsonResponse({ ok: true, id });
+      }
+
       // ---- content create / update ----
       if (path === '/api/character') {
         const c = await request.json();
@@ -2245,8 +2836,18 @@ export default {
         if (existing && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
-        const status = c.status === 'draft' ? 'draft' : 'published';
+        let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        // Starlight is admin-only: never trust the client, always carry the
+        // stored value forward. /api/admin/starlight is the only way to set it.
+        c.starlight = existing ? !!parseData(existing).starlight : false;
+        // A character with no icon cannot go live. Publishing attempts are
+        // saved as drafts instead so nothing is lost — the editor shows why.
+        let iconBlocked = false;
+        if (status === 'published' && Classify.needsIcon(c) && !Classify.hasIcon(c)) {
+          status = 'draft';
+          iconBlocked = true;
+        }
         if (existing) await saveRevision(env, sess, 'character', existing);
         await env.DB.prepare(
           `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
@@ -2258,7 +2859,15 @@ export default {
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
-        return jsonResponse({ ok: true, slug: c.slug, status });
+        return jsonResponse({
+          ok: true, slug: c.slug, status,
+          classification: Classify.classifyCharacter(c),
+          missing: Classify.missingBits(c),
+          iconBlocked,
+          notice: iconBlocked
+            ? 'Saved as a draft: a character needs an icon before it can be published. Add one and publish again.'
+            : undefined
+        });
       }
 
       if (path === '/api/collection') {
@@ -2303,6 +2912,8 @@ export default {
         }
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        // Admin-only flag: keep whatever is stored, ignore the client.
+        c.starlight = existing ? !!parseData(existing).starlight : false;
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -2333,6 +2944,8 @@ export default {
           : [];
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        // Admin-only flag: keep whatever is stored, ignore the client.
+        s.starlight = existing ? !!parseData(existing).starlight : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
         await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
@@ -2358,6 +2971,15 @@ export default {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         const status = b.status === 'draft' ? 'draft' : 'published';
+        // Same rule as /api/character: no icon, no publishing.
+        const pubData = type === 'character' ? parseData(row) : null;
+        if (status === 'published' && type === 'character' &&
+            Classify.needsIcon(pubData) && !Classify.hasIcon(pubData)) {
+          return jsonResponse({
+            error: 'This character needs an icon before it can be published. Open the editor and add one.',
+            needsIcon: true
+          }, { status: 400 });
+        }
         await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(status, row.slug).run();
         await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
@@ -2787,10 +3409,177 @@ export default {
         return jsonResponse({ ok: true, slug: row.slug, protected: !!b.protected });
       }
 
+      // ---- admin: create / update / delete a news article ----
+      // {slug?, title, author?, summary?, body, image?, pinned?, status}
+      // The slug is derived from the title on first save and then frozen, so
+      // published article URLs never move under readers' feet.
+      if (path === '/api/admin/news') {
+        await ensureNewsTable(env);
+        const b = await request.json().catch(() => ({}));
+        const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 80);
+
+        if (b.action === 'delete') {
+          const slug = String(b.slug || '');
+          const row = await env.DB.prepare('SELECT title FROM news WHERE slug=?').bind(slug).first().catch(() => null);
+          if (!row) return jsonResponse({ error: 'Article not found.' }, { status: 404 });
+          await env.DB.prepare('DELETE FROM news WHERE slug=?').bind(slug).run();
+          await ensureCommentTables(env);
+          await env.DB.prepare("DELETE FROM comments WHERE entity_type='news' AND slug=?").bind(slug).run();
+          await logActivity(env, sess, 'delete', 'news', slug, row.title);
+          return jsonResponse({ ok: true, deleted: slug });
+        }
+
+        const title = String(b.title || '').trim().slice(0, 160);
+        if (!title) return jsonResponse({ error: 'Give the article a title.' }, { status: 400 });
+        const body = String(b.body || '').replace(/\r\n/g, '\n').slice(0, 40000);
+        if (!body.trim()) return jsonResponse({ error: 'Write the article body first.' }, { status: 400 });
+
+        let slug = kebab(b.slug) || kebab(title);
+        if (!slug) return jsonResponse({ error: 'Could not build a URL from that title.' }, { status: 400 });
+        const existing = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
+        // A brand-new article (no slug sent) whose title happens to kebab down
+        // to an article that already exists must NOT overwrite it.
+        if (existing && !b.slug) {
+          return jsonResponse({
+            error: 'An article with that title already exists — open it from the list below to edit it, or change the title.'
+          }, { status: 409 });
+        }
+
+        const image = String(b.image || '').trim().slice(0, 300);
+        const article = {
+          slug, title,
+          author: String(b.author || '').trim().slice(0, 80) || null,
+          summary: String(b.summary || '').trim().slice(0, 300) || null,
+          body,
+          // Hero images live in the R2 scripts/collections areas or are remote
+          // URLs; anything else is dropped rather than half-trusted.
+          image: (/^https?:\/\//i.test(image) || /^(scripts|collections|art)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i.test(image))
+            ? image : null,
+          pinned: !!b.pinned
+        };
+        const status = b.status === 'published' ? 'published' : 'draft';
+        // published_at is stamped once, the first time it goes live, so
+        // editing an old article doesn't jump it to the top of the list.
+        const publishedAt = status === 'published'
+          ? ((existing && existing.published_at) || new Date().toISOString().replace('T', ' ').slice(0, 19))
+          : (existing ? existing.published_at : null);
+
+        await env.DB.prepare(
+          `INSERT INTO news (slug,title,owner_id,data,status,created_at,updated_at,published_at)
+           VALUES (?,?,?,?,?,datetime('now'),datetime('now'),?)
+           ON CONFLICT(slug) DO UPDATE SET
+             title=excluded.title, data=excluded.data, status=excluded.status,
+             updated_at=datetime('now'), published_at=excluded.published_at`
+        ).bind(slug, title, sess.userId, JSON.stringify(article), status, publishedAt).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'news', slug, title);
+        return jsonResponse({ ok: true, slug, status });
+      }
+
+      // ---- admin: act on one comment ----
+      // remove/restore the comment itself, or clear its report queue entry.
+      if (path === '/api/admin/comment') {
+        await ensureCommentTables(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10);
+        const action = String(b.action || '');
+        if (!id) return jsonResponse({ error: 'Missing comment id.' }, { status: 400 });
+        const row = await env.DB.prepare('SELECT * FROM comments WHERE id=?').bind(id).first().catch(() => null);
+        if (!row) return jsonResponse({ error: 'Comment not found.' }, { status: 404 });
+        if (action === 'remove' || action === 'restore') {
+          const removing = action === 'remove';
+          let by = null;
+          try {
+            const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+            by = u ? u.username : null;
+          } catch { /* non-fatal */ }
+          if (removing) await removeCommentCascade(env, row, by);
+          else await restoreCommentCascade(env, row);
+          await logActivity(env, sess, removing ? 'comment-remove' : 'comment-restore',
+            row.entity_type, row.slug, 'comment #' + id);
+        } else if (action === 'resolve') {
+          await env.DB.prepare("UPDATE comment_reports SET status='resolved' WHERE comment_id=?").bind(id).run();
+        } else if (action === 'purge') {
+          // Permanent: drops the row, its replies, and all their reports.
+          const ids = [id];
+          if (!row.parent_id) {
+            const { results } = await env.DB.prepare('SELECT id FROM comments WHERE parent_id=?')
+              .bind(id).all().catch(() => ({ results: [] }));
+            for (const r of results || []) ids.push(r.id);
+          }
+          for (const cid of ids) {
+            await env.DB.prepare('DELETE FROM comment_reports WHERE comment_id=?').bind(cid).run();
+            await env.DB.prepare('DELETE FROM comments WHERE id=?').bind(cid).run();
+          }
+          await logActivity(env, sess, 'comment-purge', row.entity_type, row.slug,
+            'comment #' + id + (ids.length > 1 ? ' + ' + (ids.length - 1) + ' repl' + (ids.length === 2 ? 'y' : 'ies') : ''));
+        } else {
+          return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        }
+        return jsonResponse({ ok: true, id, action });
+      }
+
+      // ---- admin: Starlight status ----
+      // Starlight is the only stored half of the classification system: a
+      // boolean in the page's data JSON that only this endpoint can write.
+      // It works on characters, collections and scripts alike.
+      if (path === '/api/admin/starlight') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        const on = !!b.starlight;
+        const d = parseData(row);
+        if (!!d.starlight === on) return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+        d.starlight = on;
+        if (!on) delete d.starlight;
+        await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
+          .bind(JSON.stringify(d), row.slug).run();
+        await logActivity(env, sess, on ? 'starlight' : 'unstarlight', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+      }
+
+      // ---- admin: one-click cleanup of published characters with no icon ----
+      // The icon rule only bites on save/publish, so this sweeps the pages
+      // that went live before the rule existed. Every affected page becomes a
+      // draft — nothing is deleted, and re-publishing is one click once the
+      // owner adds art. Pass {dryRun:true} to just count them.
+      if (path === '/api/admin/demote-no-icon') {
+        const b = await request.json().catch(() => ({}));
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE status='published'"
+        ).all();
+        // Fabled rules pages (States/Conditions/Calls) never had icons and
+        // are not supposed to — Classify.needsIcon() keeps them out of this.
+        const hits = (results || []).filter(r => {
+          const d = parseData(r);
+          return Classify.needsIcon(d) && !Classify.hasIcon(d);
+        });
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, count: hits.length,
+            pages: hits.slice(0, 300).map(r => ({ slug: r.slug, name: r.name }))
+          });
+        }
+        for (const r of hits) {
+          await env.DB.prepare("UPDATE characters SET status='draft', updated_at=datetime('now') WHERE slug=?")
+            .bind(r.slug).run();
+        }
+        await logActivity(env, sess, 'unpublish', 'character', null,
+          hits.length + ' page(s) with no icon moved to draft');
+        return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+      }
+
       // ---- admin: site-wide announcement banner ----
       if (path === '/api/admin/announce') {
         const b = await request.json().catch(() => ({}));
-        const text = String(b.text || '').trim().slice(0, 300);
+        // Roomier than it looks: [label](https://…) link markup eats
+        // characters that the reader never sees.
+        const text = String(b.text || '').trim().slice(0, 600);
         if (!text) {
           await env.DB.prepare("DELETE FROM settings WHERE key='announcement'").run();
           await logActivity(env, sess, 'announce', 'wiki', null, 'cleared');
@@ -2923,7 +3712,8 @@ export default {
         const t = CONTENT[type];
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
         const action = String(b.action || '');
-        const ACTIONS = ['publish', 'unpublish', 'delete', 'restore', 'assign-owner', 'clear-owner', 'add-tag', 'remove-tag'];
+        const ACTIONS = ['publish', 'unpublish', 'delete', 'restore', 'assign-owner', 'clear-owner',
+                        'add-tag', 'remove-tag', 'starlight', 'unstarlight'];
         if (!ACTIONS.includes(action)) return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         const slugs = (Array.isArray(b.slugs) ? b.slugs : []).slice(0, 200).map(String);
         if (!slugs.length) return jsonResponse({ error: 'No pages selected.' }, { status: 400 });
@@ -2971,6 +3761,15 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
+            } else if (action === 'starlight' || action === 'unstarlight') {
+              const on = action === 'starlight';
+              const d = parseData(row);
+              if (!!d.starlight !== on) {
+                d.starlight = on;
+                if (!on) delete d.starlight;
+                await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
+                  .bind(JSON.stringify(d), row.slug).run();
+              }
             } else {
               // add-tag / remove-tag: tags are a comma-separated string kept
               // in both the indexed column and the data JSON.

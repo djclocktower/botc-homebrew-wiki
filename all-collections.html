@@ -54,6 +54,16 @@
     <a class="create-btn" href="publish-collection">+ Create a Collection</a>
   </div>
 
+  <div class="home-panel" style="padding-bottom:0">
+    <div class="filter-bar" id="filter-bar" hidden>
+      <div class="filter-group"><span class="filter-group-label">Status</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip" id="fc-starlight"
+            title="Starlight — collections the wiki admins have picked out.">✦ Starlight only</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <main class="home-panel">
     <section class="landing-section">
       <div class="collections-grid" id="collections-grid">
@@ -65,6 +75,7 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
   <script>
   (function(){
     function esc(s){
@@ -88,7 +99,7 @@
       return out;
     }
 
-    function collectionTileHTML(name, id, count, icons, header, tagline){
+    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
       var topHTML = header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
@@ -98,7 +109,9 @@
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
-          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') + '</span>' +
+          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
+            ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
+              window.classBadgeHTML('starlight') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';
@@ -114,7 +127,8 @@
       var COLLECTIONS = collData.map(function(c){
         return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                 match:c.match||[], tagline:c.tagline||'', description:c.description||'',
-                header:c.header||'', include:c.include||[], exclude:c.exclude||[]};
+                header:c.header||'', include:c.include||[], exclude:c.exclude||[],
+                starlight:!!c.starlight};
       });
 
       var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
@@ -125,15 +139,41 @@
         return (a.displayName||'').localeCompare(b.displayName||'');
       });
 
-      var html = '';
-      COLLECTIONS.forEach(function(coll){
-        var chars = resolve(coll, list);
-        if (!chars.length) return; // skip empty collections
-        var displayName = coll.displayName || coll.slug;
-        var icons = pickIcons(chars, 4);
-        html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'');
-      });
-      grid.innerHTML = html || '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>';
+      // Collections with at least one member, in display order. Rendering is
+      // split out so the Starlight chip can re-run it without re-fetching.
+      var SHOWN = COLLECTIONS.map(function(coll){
+        return { coll: coll, chars: resolve(coll, list) };
+      }).filter(function(x){ return x.chars.length; });
+
+      var starlightOnly = false;
+      function draw(){
+        var rows = starlightOnly
+          ? SHOWN.filter(function(x){ return x.coll.starlight; })
+          : SHOWN;
+        grid.innerHTML = rows.map(function(x){
+          var coll = x.coll;
+          return collectionTileHTML(coll.displayName || coll.slug, coll.id || coll.slug,
+            x.chars.length, pickIcons(x.chars, 4), coll.header||'', coll.tagline||'', coll);
+        }).join('') || (starlightOnly
+          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Starlight collections yet.</p>'
+          : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
+      }
+
+      // The chip only appears once something has actually been given the
+      // status — an filter that can only ever return nothing is just noise.
+      var nStar = SHOWN.filter(function(x){ return x.coll.starlight; }).length;
+      if (nStar){
+        var bar = document.getElementById('filter-bar');
+        var btn = document.getElementById('fc-starlight');
+        btn.textContent = '\u2726 Starlight only (' + nStar + ')';
+        bar.hidden = false;
+        btn.addEventListener('click', function(){
+          starlightOnly = !starlightOnly;
+          btn.classList.toggle('active', starlightOnly);
+          draw();
+        });
+      }
+      draw();
     }).catch(function(){
       grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load collections.</p>';
     });
