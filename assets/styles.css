@@ -1808,14 +1808,27 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: flex; align-items: flex-start; gap: 8px; padding: 5px 0;
   border-bottom: 1px solid rgba(180,160,120,.2); counter-increment: night;
 }
+/* position:static undoes the global bullet rule (li::before is absolute at
+   left:0). .sv-night-item zeroes the list padding that bullet lives in, so
+   left absolute meant the step number sat on top of the character's
+   thumbnail. As a flex item it takes its own 20px column, which is what the
+   min-width here was always for. */
 .sv-night-item::before {
-  content: counter(night) "."; font-family: 'Oswald', sans-serif; font-weight: 600;
+  content: counter(night) "."; position: static;
+  font-family: 'Oswald', sans-serif; font-weight: 600;
   font-size: .78rem; color: var(--maroon); opacity: .55; min-width: 20px; padding-top: 3px;
 }
 .sv-night-item:last-child { border-bottom: none; }
 .sv-night-thumb { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
 .sv-night-text { display: flex; flex-direction: column; min-width: 0; }
-.sv-night-name { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem; color: var(--maroon); text-decoration: none; }
+/* Same display face as the roster names above, a size down: this is a dense
+   two-column list, and the reminder text under each name carries the detail. */
+.sv-night-name {
+  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-size: 1rem; letter-spacing: .04em; line-height: 1.16;
+  text-transform: uppercase; color: var(--maroon); text-decoration: none;
+  overflow-wrap: anywhere; word-break: break-word;
+}
 .sv-night-name:hover { text-decoration: underline; }
 .sv-night-reminder { font-size: .8rem; color: var(--ink); opacity: .8; line-height: 1.3; }
 .sv-night-empty { font-size: .85rem; color: var(--ink); opacity: .6; margin: 4px 0; }
@@ -1838,6 +1851,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .page-themed .sv-subhead,
 .page-themed .info-h,
 .page-themed .sv-night-head,
+.page-themed .sv-night-name,
 .page-themed .jinx-drop-title {
   font-family: var(--pg-font, 'Dumbledor2', serif);
 }
