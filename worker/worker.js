@@ -138,9 +138,9 @@ Render.setCreators(Creators);
 // Partial / Standard / Starlight rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
-// Lets render.js emit the Partial/Starlight badge without importing
-// classify.js itself (it is loaded standalone in the browser).
-Render.setClassBadge(Classify.classRowHTML);
+// Lets render.js emit the Starlight star without importing classify.js
+// itself (it is loaded standalone in the browser).
+Render.setStarMark(Classify.classBadgeHTML);
 // News article renderer (also used by the /news index and the admin editor
 // preview in the browser).
 import NewsRender from '../assets/render-news.js';
@@ -898,7 +898,26 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 </html>`;
 }
 
-function renderCharacterPage(d, origin, isDraft) {
+// The "this page is Partial" nudge. Only ever rendered for someone who can
+// edit the page (owner or admin) — a reader has no use for it, and the wiki
+// does not advertise which pages its authors haven't finished.
+function partialNoticeHTML(d) {
+  const missing = Classify.missingBits(d)
+    .map(b => b === 'almanac' ? 'almanac text or night order' : b);
+  const still = missing.length
+    ? ' Still missing: ' + escapeHtml(missing.join(', ')) + '.'
+    : '';
+  return '<div class="page-notice page-notice-partial" role="status">' +
+    '<strong>Only you and the admins can see this.</strong> ' +
+    'This page counts as <em>Partial</em> — it has an ability, but no tags, no ' +
+    'almanac text and no mechanics (night order, reminder tokens, setup, jinxes), ' +
+    'so it stays hidden from All Characters, the tag pages and the homepage unless ' +
+    'a reader turns on the “Show Partial” filter.' + still +
+    ' One tag or one line of almanac text is enough to fix it. ' +
+    '<a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
+}
+
+function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
   const pageUrl = origin + '/c/' + d.slug;
@@ -906,13 +925,13 @@ function renderCharacterPage(d, origin, isDraft) {
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
-  // Stamped here too (not just in characters.json) so the Status row in the
-  // info box is right on a page reached directly.
+  // Stamped here too (not just in characters.json) so the Starlight star in
+  // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
-  const draftBanner = isDraft
+  const draftBanner = (isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
-    : '';
+    : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
     body, draftBanner,
@@ -1285,18 +1304,27 @@ export default {
           // recovery happens on the admin dashboard, not the live page.
           if (row.status === 'deleted') return env.ASSETS.fetch(request);
           const isDraft = row.status === 'draft';
-          if (isDraft) {
-            const sess = await getSession(env, request);
-            if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
-          }
+          // Two things want to know whether this viewer owns the page: the
+          // draft gate and the Partial nudge. Resolve it at most once, and
+          // only when one of them asks — a logged-out reader looking at a
+          // finished page never pays for a session lookup.
+          let editable = null;
+          const canEdit = async () => {
+            if (editable === null) editable = canEditRow(await getSession(env, request), row);
+            return editable;
+          };
+          if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
           // Same Starlight inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          // "This page is Partial" is shown to the people who can act on it
+          // and to nobody else (see partialNoticeHTML).
+          const partialNotice = Classify.isPartial(d) && await canEdit();
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
-          return new Response(renderCharacterPage(d, url.origin, isDraft), {
+          return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }

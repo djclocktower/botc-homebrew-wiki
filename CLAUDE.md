@@ -218,6 +218,16 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
   The visible mark is a bare `✦` that inherits the surrounding text colour
   (`.starlight-star`) — deliberately not a coloured pill. On collection
   tiles it sits after the character count behind a hairline `.coll-star-sep`.
+  On a `/c/` page it sits at the end of the **Tags** row behind the same
+  hairline (`.info-star-sep`) — it is a mark, never a link, so it can't be
+  mistaken for a clickable tag; a Starlight page with no tags of its own
+  shows an em dash (`.tag-none`) on the tags side. There is **no Status row
+  in the character info box** any more: Starlight is that star, and Partial
+  is shown only to people who can act on it — the Worker renders a
+  `.page-notice-partial` banner above the topbar (`partialNoticeHTML()` in
+  worker.js) for the page's owner and admins, and nobody else. Scripts and
+  collections still carry a Status row (`starlightRow()` in render-page.js);
+  they have no tags row to hang the star off.
 
 Only `starlight` is stored (a boolean in the page's `data` JSON, writable
 **only** through `POST /api/admin/starlight` or the bulk action — every save

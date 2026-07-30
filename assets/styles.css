@@ -1976,11 +1976,33 @@ a:hover .starlight-star { opacity: .9; }
 .page-class-partial { color: #8a7248; background: none; }
 
 /* Collection tiles carry the star in the footer beside the character count,
-   separated by a hairline rule. */
-.coll-star-sep {
+   and character pages carry it at the end of the Tags row — both behind a
+   hairline rule, so the star reads as a mark rather than as another item in
+   the list next to it (it is not a tag and is not clickable). */
+.coll-star-sep, .info-star-sep {
   display: inline-block; width: 1px; height: .95em;
   background: currentColor; opacity: .35;
   margin: 0 .55em; vertical-align: -.12em;
+}
+/* Placeholder for the tags side of that row when a page is Starlight but has
+   no tags of its own (it can inherit the star from its collection). */
+.tag-none { opacity: .5; }
+
+/* ─── Owner-only page notices (Partial nudge on /c/ pages) ──── */
+/* Sits above the topbar like the draft banner, but quieter: it is advice,
+   not a state. Only the page's owner and admins are ever served it. */
+.page-notice {
+  background: #3a2c17; color: #efe3c6;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .92rem; line-height: 1.45;
+  text-align: center; padding: 10px 16px;
+  border-bottom: 1px solid rgba(247,236,208,.18);
+}
+.page-notice strong { color: #ffe9ad; font-weight: 700; }
+.page-notice em { font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+.page-notice a { color: #ffe9ad; white-space: nowrap; }
+@media (max-width: 640px) {
+  .page-notice { font-size: .84rem; padding: 9px 12px; text-align: left; }
 }
 
 /* ─── Comment sections (/c/, /s/, /collection/, /news/) ──────── */
