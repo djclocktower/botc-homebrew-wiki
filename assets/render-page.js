@@ -158,7 +158,7 @@
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '">' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -181,9 +181,24 @@
     return html;
   }
 
+  /* The empty chrome of the collapsed filter box. The bar itself is built in
+     the browser by card-filters.js, which is handed these three ids; creator
+     pages reuse this so there is one piece of filter markup, not two.
+     `pfx` namespaces the ids ('coll' -> coll-filters / coll-filter-toggle
+     / coll-filter-bar), because a page could carry more than one grid. */
+  function filterBoxHTML(pfx, label) {
+    var p = pfx || 'coll';
+    return '<div class="coll-filters" id="' + p + '-filters">' +
+      '<button type="button" class="filter-toggle coll-filter-toggle" id="' + p + '-filter-toggle"' +
+      ' aria-expanded="false" aria-controls="' + p + '-filter-bar">' +
+      esc(label || 'Filter characters') + ' <span class="filter-toggle-arrow">&#9662;</span></button>' +
+      '<div class="filter-bar coll-filter-bar" id="' + p + '-filter-bar" hidden></div>' +
+      '</div>';
+  }
+
   /* Collection roster as a full-width card grid grouped by team, with a team
      header above each group (like all-characters). Cards reuse the .char-card
-     styles and carry data-* attributes so collection-filters.js can filter and
+     styles and carry data-* attributes so card-filters.js can filter and
      sort them client-side. orderMap gives each slug its index in the full
      character list, for the "recently added" sort. */
   function renderRosterCards(entries, root, orderMap) {
@@ -195,15 +210,35 @@
       var label = '';
       for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
-      return '<a class="char-card" href="' + esc(charHref(c, root)) + '"' +
+      // data-partial / data-starlight let card-filters.js offer the Show
+      // Partial and Starlight-only chips. `classification` is stamped by the
+      // Worker on every row it serves (buildPublicJSON / /api/user), so it is
+      // already here — this file never needs classify.js of its own.
+      var cls = c.classification || '';
+      var starred = !!(c.starlight || cls === 'starlight');
+      // Marks on the name: the Starlight star (same bare glyph as everywhere
+      // else) and, on a creator page's drafts, what is still unpublished.
+      var marks =
+        (c.status === 'draft'
+          ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
+        (starred
+          ? '<span class="starlight-star" title="' +
+            (c.starlightFrom
+              ? 'Starlight — part of the ' + esc(c.starlightFrom) + ' collection.'
+              : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
+            '" aria-label="Starlight">✦</span>' : '');
+      return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
+        '" href="' + esc(charHref(c, root)) + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
+        (cls === 'partial' ? ' data-partial="1"' : '') +
+        (starred ? ' data-starlight="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
         '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character &rarr;</span>' +
@@ -464,13 +499,8 @@
     if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
     var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
 
-    // Optional collapsed filter box (built client-side by collection-filters.js).
-    var filters =
-      '<div class="coll-filters" id="coll-filters">' +
-      '<button type="button" class="filter-toggle coll-filter-toggle" id="coll-filter-toggle" aria-expanded="false" aria-controls="coll-filter-bar">' +
-      'Filter characters <span class="filter-toggle-arrow">&#9662;</span></button>' +
-      '<div class="filter-bar coll-filter-bar" id="coll-filter-bar" hidden></div>' +
-      '</div>';
+    // Collapsed filter box; card-filters.js fills the bar in the browser.
+    var filters = filterBoxHTML('coll');
 
     // A single character count (updates as filters are applied).
     var count = '<p class="coll-chars-count" id="coll-chars-count">' + n + ' character' + (n === 1 ? '' : 's') + '</p>';
@@ -549,6 +579,8 @@
     init: init,
     renderScriptPage: renderScriptPage,
     renderCollectionPage: renderCollectionPage,
+    renderRosterCards: renderRosterCards,
+    filterBoxHTML: filterBoxHTML,
     resolveCollectionMembers: resolveCollectionMembers,
     sanitizeTheme: sanitizeTheme,
     themeAttrs: themeAttrs,

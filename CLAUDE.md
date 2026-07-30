@@ -24,8 +24,7 @@ Key dynamic behavior:
   live from D1** (published rows only). Adding **`?drafts=1`** includes draft
   rows and stamps each row's `status` — but **only for a logged-in admin**;
   anyone else asking for it silently gets the normal published-only feed, so
-  the site never reveals that unpublished pages exist. `author.html` uses this
-  to show an author's drafts in a separate "Drafts — admins only" section. The repo copies of these files are
+  the site never reveals that unpublished pages exist. The repo copies of these files are
   stale seed backups kept only for `/api/seed` disaster recovery — never edit
   them expecting the site to change.
 - `GET /c/{slug}` (characters), `GET /s/{slug}` (scripts) and
@@ -52,8 +51,14 @@ Key dynamic behavior:
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
-- `/u/{username}` public profiles, `/random`, `/sitemap.xml`, and
-  `/script-view?s=` (OG-meta injection) are also Worker routes.
+- **Creator pages are one page on two keys.** `/u/{username}` (an account) and
+  `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
+  which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account
+  302-redirects from `/author?a=` to `/u/{username}`; a name with no account
+  renders in place, because half the wiki was bulk-imported under names that
+  never had a login. See "Creator identity" below.
+- `/random`, `/sitemap.xml`, and `/script-view?s=` (OG-meta injection) are also
+  Worker routes.
 
 ## Repo map
 
@@ -79,6 +84,14 @@ assets/
                        theming). Browser+Worker like render.js; init(Render) injects
                        render.js's exports. resolveCollectionMembers() (hybrid
                        match[]/include[]/exclude[]), sanitizeTheme(), FONT_PRESETS.
+                       Also renderRosterCards() + filterBoxHTML(), reused by the
+                       creator page so its cards match a collection page's.
+  card-filters.js      The collapsed filter box (3-state team/tag chips, Show
+                       Partial, Starlight only, creator, sort). mountCardFilters()
+                       wires one box to one grid; auto-mounts on SSR collection
+                       pages, and profile.html mounts its own. Reads the card
+                       data-* attributes renderRosterCards() writes — one filter
+                       implementation, not one per page.
   classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Starlight weighting used by
@@ -103,7 +116,10 @@ assets/
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar)
 all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
-team/tag/tags/creators/author/authors.html   Browse pages
+team/tag/tags.html     Browse pages
+creators.html          The one creator index: every name that has published
+                       something, with its symbol, account (if any) and counts,
+                       from /api/creators. authors.html is a redirect stub to it.
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
@@ -123,7 +139,13 @@ scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
-login.html, account.html, dashboard.html, profile.html, reset-password.html
+login.html, account.html, dashboard.html, reset-password.html
+profile.html           The creator page, served at BOTH /u/{username} and
+                       /author?a={name} (there is no author.html any more).
+                       Hero + pinned strip + characters (shared filter bar) +
+                       scripts + collections + a drafts section for the owner
+                       and admins, plus an admin box for linking a creator name
+                       to an account.
 messages.html         Direct messages (/messages): conversation list + thread UI
                       over /api/messages*; ?to={username} opens/starts a thread.
                       Message buttons live on /u/ profiles + dashboard user rows;
@@ -183,6 +205,34 @@ background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Creator identity (which names belong to which account)
+
+A page's **Creator** is free text; an account is a row in `users`. They are not
+the same thing and never will be — roughly half the wiki was bulk-imported with
+a creator string and `owner_id NULL`. The creator page needs to know when a name
+and an account are the same person, and decides it two ways
+(`resolveCreatorAccount()` / `creatorNamesFor()` in worker.js):
+
+1. **Proof by ownership** — the account owns at least one **published** page
+   credited to that name; whoever owns the most wins, ties on lowest user id.
+   Published is load-bearing: counting drafts would let anyone claim any name by
+   saving an unpublished page credited to it. Do not relax it.
+2. **Admin override** — a `settings` row, key `creator_alias:{lower(name)}`,
+   value = the username. An **empty value** pins the name as deliberately
+   unlinked, overruling a wrong ownership match. This is the only way to attach
+   bulk-imported pages, which can never prove anything. Set from the admin box
+   on the creator page itself (`POST /api/admin/creator-alias`).
+
+A creator page then shows the union of *pages the account owns* and *pages
+credited to any name it has claimed*, so a page counts either way round.
+Nothing is written to the pages, so it all stays correct as pages change hands.
+
+Extra profile fields (links + up to 3 pinned pages) live in one lazily-ALTERed
+`users.profile_json` column — same hybrid-JSON reasoning as the content tables.
+`sanitizeProfileExtra()` caps and validates them (http(s) links only, Discord is
+a handle not a URL); pins are re-checked against what the account actually owns
+on save **and** on read, so a pin that goes draft quietly drops out.
 
 ## Page classification (Partial / Standard / Starlight)
 
@@ -256,7 +306,7 @@ live before the rule; the dashboard has a scan + one-click button for it.
 - Teams: `townsfolk, outsider, minion, demon, traveller, fabled, loric` — always
   in that order. There is **no** single source of truth: the list is re-declared
   by hand as a `TEAMS` array or `TEAM_LABEL` map in `sao.js` (`TEAM_ORDER`),
-  `render-page.js`, `collection-filters.js`, `render.js`, `site.js`,
+  `render-page.js`, `card-filters.js`, `render.js`, `site.js`,
   `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`, the `normTeam()` whitelist in `mass-upload.html`
