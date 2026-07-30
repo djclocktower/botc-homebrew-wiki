@@ -76,51 +76,83 @@
 
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
-      return '<a class="char-card" href="' + esc(c.page) + '">' +
+      var isDraft = c.status === 'draft';
+      return '<a class="char-card' + (isDraft ? ' char-card-draft' : '') + '" href="' + esc(c.page) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art">' +
         '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
+        '<div class="char-card-name">' + esc(c.name) +
+          (isDraft ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
+          window.classBadgeHTML(window.classifyCharacter(c), { from: c.starlightFrom }) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character →</span>' +
         '</div></a>';
     }
 
-    fetch('characters.json?_=' + Date.now())
+    // Admins get this author's unpublished pages too, marked as drafts.
+    // ?drafts=1 is admin-gated server-side; a non-admin asking for it just
+    // gets the ordinary published feed, so this needs no permission check of
+    // its own — the /api/me call only decides whether to bother asking.
+    fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r) { return r.json(); })
-      .then(function(list) {
+      .catch(function() { return {}; })
+      .then(function(me) {
+        var isAdmin = !!(me && me.isAdmin);
+        return fetch('characters.json' + (isAdmin ? '?drafts=1&_=' : '?_=') + Date.now(),
+                     { credentials: 'same-origin' })
+          .then(function(r) { return r.json(); })
+          .then(function(list) { render(list); });
+      })
+      .catch(function() {
+        document.getElementById('panel').innerHTML =
+          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
+      });
+
+    function render(list) {
         var panel = document.getElementById('panel');
         if (!rawAuthor) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No author specified. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';
           return;
         }
 
-        // Unfinished (Partial) pages stay out of the author listings.
-        var chars = window.eligible(list).filter(function(c) { return byAuthor(c, rawAuthor); });
+        var mine = list.filter(function(c) { return byAuthor(c, rawAuthor); });
+        // Unfinished (Partial) pages stay out of the author listings. Drafts
+        // are separated out so they never pad the public character count.
+        var drafts = mine.filter(function(c) { return c.status === 'draft'; });
+        var chars = window.eligible(mine).filter(function(c) { return c.status !== 'draft'; });
 
         // Use the capitalisation from the first matching character
-        var displayName = chars.length ? chars[0].creator.trim() : rawAuthor;
+        var named = chars.length ? chars : drafts;
+        var displayName = named.length ? named[0].creator.trim() : rawAuthor;
         var count = chars.length;
 
         document.title = displayName + ' — BOTC HomeBrew Wiki';
         document.getElementById('hero-title').textContent = displayName;
         document.getElementById('hero-sub').textContent =
-          count === 1 ? '1 character' : count + ' characters';
+          (count === 1 ? '1 character' : count + ' characters') +
+          (drafts.length ? ' · ' + drafts.length + ' draft' + (drafts.length === 1 ? '' : 's') : '');
 
-        if (!chars.length) {
+        if (!chars.length && !drafts.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found for <strong>' + esc(displayName) + '</strong>. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';
           return;
         }
 
-        panel.innerHTML =
-          '<div class="type-section"><div class="char-grid">' +
-          chars.map(card).join('') +
-          '</div></div>';
-      })
-      .catch(function() {
-        document.getElementById('panel').innerHTML =
-          '<p style="text-align:center;color:#e6a;padding:30px">Could not load character list.</p>';
-      });
+        var html = '';
+        if (chars.length) {
+          html += '<div class="type-section"><div class="char-grid">' +
+            chars.map(card).join('') + '</div></div>';
+        }
+        // Drafts get their own clearly-labelled section at the bottom, so an
+        // admin is never unsure which pages the public can actually see.
+        if (drafts.length) {
+          html += '<section class="type-section" id="drafts">' +
+            '<h2 class="type-header">Drafts <span class="draft-count">admins only</span></h2>' +
+            '<div class="type-rule"></div>' +
+            '<p class="draft-note">Not visible to anyone but their owner and the admins.</p>' +
+            '<div class="char-grid">' + drafts.map(card).join('') + '</div></section>';
+        }
+        panel.innerHTML = html;
+    }
   </script>
 
   <script src="assets/site.js"></script>

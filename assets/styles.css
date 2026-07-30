@@ -2189,3 +2189,25 @@ a:hover .starlight-star { opacity: .9; }
 .site-announcement a:hover { color: #fff; }
 /* "(via Ravenswood Chronicle)" after an inherited Starlight status. */
 .starlight-from { font-size: .82em; opacity: .6; }
+
+/* ─── Draft markers (admin views: author pages) ──────────────── */
+/* Same amber the SSR draft banner uses, so "draft" always looks the same. */
+.draft-mark {
+  display: inline-block; vertical-align: middle;
+  font-family: 'Oswald', sans-serif; font-size: .64rem;
+  letter-spacing: .07em; text-transform: uppercase;
+  padding: 1px 6px; margin-left: .45em;
+  color: #7a5c18; border: 1px solid currentColor; border-radius: 0;
+  white-space: nowrap; cursor: help;
+}
+/* A dashed edge marks the whole card as not-yet-public at a glance. */
+.char-card-draft { border-style: dashed; opacity: .9; }
+.draft-count {
+  font-family: 'Oswald', sans-serif; font-size: .6em;
+  letter-spacing: .08em; text-transform: uppercase;
+  opacity: .6; vertical-align: middle; margin-left: .5em;
+}
+.draft-note {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .03em;
+  color: rgba(236,225,200,.6); text-align: center; margin: 0 0 14px;
+}

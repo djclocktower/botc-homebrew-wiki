@@ -9,6 +9,9 @@
  *   GET  /characters.json     -> built from D1 (published pages only)
  *   GET  /collections.json    -> built from D1
  *   GET  /scripts.json        -> built from D1
+ *     ?drafts=1               -> ADMINS ONLY: also includes draft rows, each
+ *                                stamped with `status`. Non-admins asking for
+ *                                it get the ordinary published-only feed.
  *
  *   -- auth --
  *   POST /api/signup          -> create an account (username/email/password)
@@ -722,10 +725,15 @@ function sanitizePageFields(o, themeBase) {
 }
 
 // ---- build the three JSON files from D1 (published pages only) ----
-async function buildPublicJSON(env, table) {
+// `opts.includeDrafts` adds draft rows and stamps each row's `status`, for the
+// admin-only ?drafts=1 form of the JSON feeds. Soft-deleted rows are never
+// included either way — recovery is the dashboard's job.
+async function buildPublicJSON(env, table, opts = {}) {
+  const drafts = !!opts.includeDrafts;
+  const where = drafts ? "status IN ('published','draft')" : "status='published'";
   let results;
   try {
-    ({ results } = await env.DB.prepare(`SELECT data FROM ${table} WHERE status='published'`).all());
+    ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
   } catch {
     // status column not migrated yet -> serve everything (legacy behaviour)
     ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
@@ -734,6 +742,9 @@ async function buildPublicJSON(env, table) {
     : table === 'collections' ? 'collection' : 'script';
   const out = results.map(r => {
     const d = JSON.parse(r.data);
+    // Only the admin feed carries status; the public one must never imply
+    // that unpublished pages exist.
+    if (drafts) d.status = r.status || 'published';
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
@@ -1075,14 +1086,17 @@ export default {
     const method = request.method;
 
     // ---------- DATA ENDPOINTS (replace static JSON files) ----------
-    if (method === 'GET' && path === '/characters.json') {
-      return jsonResponse(await buildPublicJSON(env, 'characters'));
-    }
-    if (method === 'GET' && path === '/collections.json') {
-      return jsonResponse(await buildPublicJSON(env, 'collections'));
-    }
-    if (method === 'GET' && path === '/scripts.json') {
-      return jsonResponse(await buildPublicJSON(env, 'scripts'));
+    // ?drafts=1 includes unpublished pages, for admins only. Anyone else
+    // asking for it silently gets the ordinary published-only feed rather
+    // than an error, so a stale bookmark or a logged-out admin can never be
+    // told that drafts exist. Every one of these responses is `no-store`
+    // (jsonResponse), so a cache can't hand an admin's copy to a visitor.
+    if (method === 'GET' && (path === '/characters.json' || path === '/collections.json' || path === '/scripts.json')) {
+      const table = path === '/characters.json' ? 'characters'
+        : path === '/collections.json' ? 'collections' : 'scripts';
+      const wantsDrafts = url.searchParams.get('drafts') === '1';
+      const includeDrafts = wantsDrafts && !!(await adminSession(env, request));
+      return jsonResponse(await buildPublicJSON(env, table, { includeDrafts }));
     }
 
     // ---------- SITE-WIDE ANNOUNCEMENT (public; site.js shows the banner) ----------

@@ -21,7 +21,11 @@ framework — plain HTML/CSS/JS everywhere.
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
-  live from D1** (published rows only). The repo copies of these files are
+  live from D1** (published rows only). Adding **`?drafts=1`** includes draft
+  rows and stamps each row's `status` — but **only for a logged-in admin**;
+  anyone else asking for it silently gets the normal published-only feed, so
+  the site never reveals that unpublished pages exist. `author.html` uses this
+  to show an author's drafts in a separate "Drafts — admins only" section. The repo copies of these files are
   stale seed backups kept only for `/api/seed` disaster recovery — never edit
   them expecting the site to change.
 - `GET /c/{slug}` (characters), `GET /s/{slug}` (scripts) and
