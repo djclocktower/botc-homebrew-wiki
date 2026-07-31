@@ -1,6 +1,6 @@
 {
  "source": "https://travel-by-starlight.carrd.co/",
- "note": "Import record for the Travel by the Starlight collection. The creators mark their characters with ♊︎ on the source site; credit is preserved here via the creator/author fields on every row. Only game data is stored - ability, night order, night reminders, reminder tokens, setup, jinxes and the Storyteller \"How to Run\" steps. The creators' almanac prose is not reproduced; see the source.",
+ "note": "Import record for the Travel by the Starlight collection. The creators mark their characters with ♊︎ on the source site; credit is preserved here via the creator/iconBy/author fields on every row. Character data mirrors the creators' almanac: ability, night order, night reminders, reminder tokens, setup, jinxes, Storyteller \"How to Run\" steps, summary, examples, tips and flavour. Reminder tokens, night order and setup flags were verified field-by-field against the official JSON on each character's page.",
  "collection": {
   "id": "travel-by-starlight",
   "slug": "Travel by Starlight",
@@ -64,11 +64,26 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "herbalist",
-   "quote": "",
+   "quote": "Don’t worry, a pinch of salt mixed with the mushrooms from the hills down south will do the trick. You’ll be fine in no time! I just need to remember if this is salt or sugar…",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "Once per game, during the night, the Herbalist may choose to gain the ability of any off-script character that will benefit the losing team.",
+    "Whichever team is losing is totally up to your judgement. You can judge by the amount of information (or misinformation) the good team has, how well the evil players are trusted, how experienced the Demon is, etc.",
+    "The Herbalist does not become the character of the ability they gain, nor that character's alignment.",
+    "If the ability the Herbalist gains acts on the first night, they use it tonight. If the ability the Herbalist gains works while dead, it works while the Herbalist is dead.",
+    "If the Herbalist is drunk or poisoned while they attempt to use the Herbalist ability, they think they gain an ability when they did not.",
+    "The Herbalist can gain the ability of evil characters, but it is strongly advised not to give Demon characters, as it drastically unbalances the game in most cases. Instead, the Lycanthrope is recommended where applicable."
+   ],
+   "examples": [
+    "Good players think that the Spy is the Professor. The Herbalist uses their ability. They gain the off-script Bounty Hunter ability and sees the Spy.",
+    "The Slayer pushes the demon as evil. The Herbalist uses their remedy and gains the off-script Heretic ability.",
+    "The Herbalist is under suspicion. The Herbalist uses their ability and gains the off-script Virgin ability."
+   ],
+   "tips": [
+    "Wait for the perfect time to use your ability. If you think good is winning, hold off on using it. When you think good is losing, use it! Characters like the General can be a big help with this.",
+    "Don't use your ability at all, if you think good is winning. You will probably get a useless ability and waste your one-time shot, or worse, get a nasty Outsider ability.",
+    "Use the ability you gained to find out who was winning. If you got a very helpful ability, that probably means good was losing, and you can backtrack from there to find out more information, or vice versa."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/herbalist.png",
@@ -136,18 +151,35 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "transmuter",
-   "quote": "",
+   "quote": "The Master Work is sought by many, but discovered only by a few. / The secret must be guarded carefully, for power corrupts; absolute power corrupts absolutely.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "All Minions are protected from death: they cannot die at night; if they are executed, the Storyteller declares that that player is executed but does not die.",
+    "Only Minions are protected this way. Other players who die must die. Even if they are protected in any way (from the Tea Lady, Sailor, Fool etc.) the protection fails.",
+    "If the Transmuter is drunk or poisoned, Minions may still die and other protection abilities work again until the Transmuter is sober and healthy."
+   ],
+   "examples": [
+    "During the day, the Baron is executed and does not die.",
+    "The Tea Lady neighbors the alive Fortune Teller and alive Monk. The Fortune Teller is executed, and dies.",
+    "The Monk protects the Transmuter at night. The Demon attacks the Transmuter, and the Transmuter dies."
+   ],
+   "tips": [
+    "No Minion can die at any time. Since the game would usually end if the Demon dies, you know for a fact that all dead players are good!",
+    "If a player ever survives execution at all, reveal yourself. You know positively that that player must be a Minion. If you can convince the town that you are good, you will have found a confirmed Minion.",
+    "If you ever decide that you want the Minions dead, execute yourself. Since all Minions must stay alive as long as you're around, your death enables them to die again."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/transmuter.png",
    "page": "c/transmuter",
    "image": "https://botchomebrew.wiki/assets/art/transmuter.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Transmuter / Goon: If the Demon attacks the Goon, the Demon is still drunk and the Goon turns evil.\n\nTransmuter / Assassin: The Assassin can successfully kill a Minion."
+    }
+   ],
    "released": "9/01/2025"
   },
   {
@@ -203,18 +235,38 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "fae",
-   "quote": "",
+   "quote": "Well, hello there! Did you just move here? Well, let me introduce you to my good ol' pal, Greg! He's also a new face around town, and I'm sure you'll get along fantastic! Well, at least, I'm sure he'll enjoy a good feas- I mean friend! Yes, friend! Anyways, this is his cavern, try to get along, and try not to scream too loud!",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Storyteller decides the Fae's setup modifier before passing the bag to the players, and makes adjustments to the bag as neccesary.",
+    "The Storyteller may also adjust the setup after the players draw from the bag, in the same way a Lord of Typhon might.",
+    "The Fae learns their own setup modifier, not any setup modifiers of other characters.",
+    "If the Fae is drunk or poisoned, their setup effect is not reverted, but they might learn incorrect information about their setup modifier.",
+    "If a Fae is created mid game, they do not have a setup effect, so learn nothing."
+   ],
+   "examples": [
+    "The Fae's setup modifier is [Exactly 2 Outsiders]. Although there should only be 1 Outsider in this game, the Storyteller puts 2 Outsiders in the bag, and then wakes the Fae to show them what their setup modifier is.",
+    "The Fae's setup modifier is [All Minions are evil Townsfolk]. There should be 2 Minions this game, but no Minions go in the bag. On the first night, the Storyteller wakes 2 Townsfolk to tell them that they are evil.",
+    "The Fae's setup modifier is [Evil players are in a line]. No Minion characters go into the bag. During the first night, the Storyteller wakes 2 of the Demon's neighbors and tells them that they are evil Minions."
+   ],
+   "tips": [
+    "The way you play the Fae depends on your setup modifier. If your modifier has something to do with the evil team, for example [1 Minion is an evil Townsfolk], it's probably best to tell the group this, as this affects worldbuilding and matters a lot late game.",
+    "If your modifier allows you to trust a few certain players, for example [+the Fortune Teller], its usually best to seek out the player(s) you think are good, and work with them in private, hiding them from the Demon. Alternatively, announce your modifier to the group, to encourage trust of you and this certain player.",
+    "Find out if you are drunk or poisoned. Although it doesnt matter much late-game, if you were drunk or poisoned on night 1, you may have learned an incorrect setup modifier. If you think this happened to you, your real setup modifier could be anything! If your game so far seems very odd, keep this in mind.",
+    "Overall, your setup modifier will be different every game, so do what you think is best for the script and scenario."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/fae.png",
    "page": "c/fae",
    "image": "https://botchomebrew.wiki/assets/art/fae.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Fae / Cannibal: If the Cannibal eats the Fae, they learn the Fae's setup modifier.\n\nFae / Spy: It is up to the Storyteller whether they show the Spy the Fae's setup modifier.\n\nFae / Widow: It is up to the Storyteller whether they show the Widow the Fae's setup modifier."
+    }
+   ],
    "released": "12/25/2025"
   },
   {
@@ -270,18 +322,43 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "katari",
-   "quote": "",
+   "quote": ":3",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "After the players return their character tokens to the Storyteller, the Storyteller gives the Katari their token on night 1.",
+    "The Katari may do whatever they want with their character token. They may show it to other players, hide it in a physical location, or give it to another player.",
+    "Players may not ask other players to empty their pockets to \"prove they aren't holding the Katari token.\"",
+    "If a Minion guesses where the token is, the Katari immediately becomes an Outsider. They may guess which player is holding it, or what physical location it is in. They may guess during the day, or at night. They may make this guess publicly, or privately.",
+    "Only the first guess made by a Minion counts.",
+    "If the Katari becomes an Outsider, dies, or otherwise loses their ability, the Katari must give their token back to the Storyteller."
+   ],
+   "examples": [
+    "On the first day, the Katari gives their token to the High Priestess. The next day, the High Priestess shows the Katari token to the Baron. That night, when the Storyteller wakes the Baron, the Baron points at the High Priestess. The Katari immediately becomes the Klutz.",
+    "The Katari is executed and dies. That night, the Storyteller wakes the Katari, and shows them the WHERE IS THE TOKEN? info card. The Katari points to under the desk. The Storyteller collects the token from under the desk, and puts it back into the grimoire."
+   ],
+   "tips": [
+    "Hide that token! You really don't want an evil player to see it, so make sure you hide it well.",
+    "There are multiple options for what you can do with your token, and each has its own benefits.",
+    "Keep your token on you the whole game. This gives you the most agency on who sees your token, as you can show it to anyone you want.",
+    "Give your token to someone. This makes it less likely that it will be guessed, and that you become an Outsider. Also, it makes it easy for other players to vouch for you.",
+    "Lastly, hide the token somewhere, and only tell its location to the people you trust. This makes it difficult for the token to be guessed (unless you tell a Minion its location), but it might make Minions suspicious if a certain few players keep looking at one spot.",
+    "Don't show your token to anyone the first few days. Wait, listen, and gather enough info to find someone you trust, and then show them the token.",
+    "Alternatively, put your trust into one player early on, and give them your token. If you become an Outsider early in the game, then you can infer that the player is probably evil.",
+    "It's generally a bad idea to show your token to everyone publicly. The cost of being an Outsider is almost always not worth being confirmed.",
+    "If you show your token to enough players (specifically 1 more than the amount of evil players in the game), you can get publicly confirmed without showing your token. If all of these players publicly vouch for you, you can't all be evil, so you must be good."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/katari.png",
    "page": "c/katari",
    "image": "https://botchomebrew.wiki/assets/art/katari.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Online Accessibility",
+     "content": "When running the Katari online, use the following rules:\n\nOnly players may \"hold the token.\" Players holding the token know they are holding the token. The Katari starts holding the token.\n\nPlayers holding the token may either \"show\" or \"give\" the token to another player. If a player is shown the token, they learn who has the token. If a player is given the token, the token moves to the player it was given to. The starting player no longer has the token, and learns this.\n\nWhen the Katari dies, becomes an Outsider, or otherwise loses their ability, the token is removed from play, & the player currently holding the token learns this.\n\nMinions must guess which player has the token to successfully transform the Katari into an Outsider."
+    }
+   ],
    "released": "1/20/2026"
   },
   {
@@ -322,18 +399,39 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "queer",
-   "quote": "",
+   "quote": "Be gay. Do crime.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Queer only gets this information when killed by a Demon attack. Being executed does not count.",
+    "If the Queer chooses an ally, all learn both players and that they are the same alignment.",
+    "If the Queer chooses an opposing player, nothing happens.",
+    "If the Queer is drunk or poisoned when the Demon kills them, they are woken to choose a player, but nothing happens. Even if they sober up later, the group does not suddenly learn who the Queer chose.",
+    "If the Queer chooses themself, all players learn that the Queer player is the same alignment as themself."
+   ],
+   "examples": [
+    "The Imp kills Jake, the Queer, at night. Jake wakes and chooses Elijah, the Undertaker. The Storyteller announces that Elijah and Jake are the same alignment.",
+    "The Queer is killed by the Demon, and wakes to choose the Baron. Nothing happens.",
+    "The Queer is killed by the Assassin. They never wake to choose anyone, and are not announced."
+   ],
+   "tips": [
+    "Obviously, you should usually be trying to get killed by the Demon. Do whatever works best for you.",
+    "Whem you do die, pick a player you don't know much about. If they are good, then they'll get publicly confirmed. If they are evil, you learn this. Either way, you get a good read on their alignment.",
+    "Alternatively, pick a player you think is evil! If you don't get announced, you can confirm your suspicions, but if you do, then you have some very strong info for the group!",
+    "If you are under suspicion by the group, choose a player you think is good, to confirm yourself. If you don't know who is good, you can always just pick yourself.",
+    "Like all characters of this ilk, you can always out yourself and try to not die. This ensures that you will probably live until the final 3 (provided the good team trusts you), and if you do die, you can get some strong info."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/queer.png",
    "page": "c/queer",
    "image": "https://botchomebrew.wiki/assets/art/queer.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Queer / Cult Leader: If the Queer picks the Cult Leader, the Queer's pick is only announced if the Cult Leader is the same alignment as the Queer at the time they are picked.\n\nQueer / Lycanthrope: The Lycanthrope's \"Faux Paw\" registers as evil to the Queer.\n\nQueer / Goon: If the Queer dies by the Demon and is the 1st player to choose the Goon at night, the Queer's pick is not announced, regardless of if they are the same alignment as the Goon."
+    }
+   ],
    "released": "2/14/2026"
   },
   {
@@ -367,11 +465,25 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "moonjay",
-   "quote": "",
+   "quote": "Oh, Moonjay, dear Moonjay, What a game of questions we play. Your time’s come, carry my words today: Deliver this letter to the one I adore, if you may.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Moonjay will come to you during the day and ask for a question. Be prepared to give them one.",
+    "The question you give the Moonjay can be anything: whether a certain role is in play, if someone was drunk last night, is a certain player lying/telling the truth, etc.",
+    "The Moonjay does not have to answer their question the moment you give it to them. They are allowed to talk with the group about their question beforehand.",
+    "If the Moonjay does not answer the question correctly (or does not answer at all) by the end of the day, they get a strike. If the Moonjay gets two strikes, the good team immediately loses.",
+    "The Moonjay must still answer their questions even if they are dead."
+   ],
+   "examples": [
+    "Dazed, the Moonjay, visits the Storyteller and is asked \"Who, if any, is the Soldier?\" They answer correctly, and the game continues.",
+    "The Moonjay is asked \"Is the Vortox in play?\", the same question they learned yesterday. They answer incorrectly again, and evil wins."
+   ],
+   "tips": [
+    "You don't have to answer your question right away! When the Storyteller gives you your question, go back to the group to get help. Maybe someone else knows something you don't.",
+    "Beware of evil players! They may try to give you false information to make you answer your question wrong.",
+    "Be very careful. You can only afford to answer one question wrong. Take as much time as you need.",
+    "Use your questions as information! If Day 1 you answered that a specific person was the Savant, and then Day 2 you answered that the Xaan was in play, then at least one of those statements has to be true."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/moonjay.png",
@@ -428,18 +540,41 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "mutineer",
-   "quote": "",
+   "quote": "Cap'n, with all due respect, you've forced my hand.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Mutineer becomes the opposite alignment of the player they choose. If the choose a good player, they become evil. If they choose an evil player, they become good.",
+    "The Mutineer learns the alignment they become.",
+    "If the previously chosen player dies, the Mutineer chooses a new player at night. Their alignment may or may not change.",
+    "If a Mutineer is made mid-game, then they act on that night instead of the first.",
+    "If the Mutineer is drunk or poisoned when they choose a player at night, they stay the same alignment no matter who they choose, but may not choose again until the player chosen dies."
+   ],
+   "examples": [
+    "On their first night, the Mutineer chooses the Baron. The Mutineer stays good. Later in the game, the Baron is executed. That night, the Mutineer chooses the Moonjay. The Mutineer turns evil.",
+    "The Mutineer chooses the Acrobat. The Mutineer turns evil. Later in the game, the Acrobat dies at night due to their ability. The Mutineer chooses the Savant. The Mutineer stays evil.",
+    "The good Mutineer chooses the Empath while poisoned. The Mutineer stays good. When the Empath dies, the Mutineer wakes that night and is prompted to choose another player."
+   ],
+   "tips": [
+    "You can use your alignment to determine the alignments of the players you choose. This might be useful later in the game.",
+    "On the first night, if you remain good, don't tell the group this! They will probably immediately execute the player you chose, and then you will have to pick again, and will likely become evil.",
+    "If you are dead and are good, tell the group who you chose at night and your alignment after doing so. You can't change alignments when you are dead, so there is nothing to lose!",
+    "If you are dead and are evil, lie about the players you chose and your alignment after doing so! Getting the good team to execute all the wrong players will be a big help for the evil team.",
+    "If you are evil, don't out as the Mutineer to confuse the Outsider count and offer more false information.",
+    "At the end of the game when 3 players live, it is safe to out yourself as the Mutineer as you won't have to choose again.",
+    "At the end of the game when 4 players live, it might not be safe to out yourself, as you could still flip alignments on the final night. It would be a bummer to give the good team a bunch of wonderful information and not get to experience the win with them."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/mutineer.png",
    "page": "c/mutineer",
    "image": "https://botchomebrew.wiki/assets/art/mutineer.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Mutineer / Goon: If the Mutineer chooses the Goon, the Mutineer stays the same alignment, and learns this. The Goon becomes the same alignment as the Mutineer.\n\nMutineer / Spirit of Ivory: If the Spirit of Ivory is in play and there is already one extra evil player, the Mutineer will become or stay good no matter who they choose."
+    }
+   ],
    "released": "3/1/2025"
   },
   {
@@ -471,11 +606,28 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "axiom",
-   "quote": "",
+   "quote": "User Input: “How can the net amount of entropy of the universe be massively decreased?” / Critical error: INSUFFICIENT DATA FOR MEANINGFUL ANSWER / Initiating data collection: success. / Terminating process by demonstration. / Returning following output: Let there be light.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "Once per game, at night, the Storyteller shows the Axiom a statement. The statement may be true, or may be false, and the Axiom doesn't know which.",
+    "Regardless of if the statement is true or false, the Axiom must be mad this statement is true, or might be executed.",
+    "The Axiom does not have to be mad about anything if they have not learned a statement, and cannot be executed for breaking madness at that time.",
+    "If the Axiom logically proves their statement false out loud, they do not have to follow their madness anymore. If the Axiom is able to provide very strong mechanical reasoning for their statement to be true, it counts as \"logically proving\" the statement. If the Axiom logically proves their statement true, this still counts as following madness, so they also avoid execution.",
+    "If the Axiom claims to be the Axiom after learning their statement, but do not prove this statement, this usually implies they are mad, so might be executed. If the Axiom claims to be the Axiom before learning a statement, they cannot be executed, but may struggle with following madness when they receive their statement."
+   ],
+   "examples": [
+    "The Axiom's statement is \"Harry is the Demon.\" When Harry dies at night, the Axiom tells the group they are the Axiom and reveals their statement, since dead players cannot be the demon. The Axiom is not executed.",
+    "On night 3, the Axiom learns \"Pat is good.\" Although this statement is true, the Axiom does nothing to convince the group that Pat is good. The Storyteller executes the Axiom.",
+    "The Axiom learns \"Hope is Evil.\" The Axiom says they are the Axiom, and tries to prove their statement false by saying that Bendan, the Undertaker, learned that Hope is the Barber. Although Hope truly is the Barber, since Bendan can be evil or giving false info, the Storyteller decides that the Axiom has not proven the statement false and executes them."
+   ],
+   "tips": [
+    "Don't tell the group you are the Axiom. If you say this, this implies you are mad, and you will likely be executed. Even if you haven't learned a statement yet, you might struggle to follow madness if you are an outted Axiom.",
+    "Only tell the group your statement once you have COMPLETELY proven your statement false. Consider all possibilities: certain players being evil and lying, being good and lying, drunkenness and poisoning, etc.",
+    "You don't always have to prove your statement false! Remember that the Storyteller can give you true statements. If you can successfully prove your statement true, you won't have to follow the madness anymore!",
+    "This might seem obvious, but bluff as a character that would back up your madness. For example, if your statement is \"Player A and Player B are the same alignment,\" then bluff as the Seamstress who got a yes on those players!",
+    "Consider bluffing as an Outsider to not confuse the Outsider count.",
+    "When you die, feel free to come out with your real role and statement; you don't have to follow your madness if you are dead."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/axiom.png",
@@ -514,11 +666,25 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "temple-guard",
-   "quote": "",
+   "quote": "Halt! State your business in this sacred city of Moxdor. You must, of course, pay the appropriate toll fee. Oh! and do fill out this entrance form, taxed at five gold. Yes, yes, thank you. The pen will be two gold, by the way. If you cannot provide your own ink, there is an extra fee of ten gold.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The 1st good player that comes back to life after dying immediately becomes evil. They do not change character, only alignment.",
+    "If the Temple Guard dies, good players who rise do not turn evil.",
+    "If the Temple Guard dies, and nobody else has risen this game (including themself), they may choose to come back to life. The Storyteller wakes the Temple Guard each night, and they either nod or shake their head.",
+    "Alternatively, if they are feeling silly, the Temple Guard may choose to rise during the day. They do this by either consulting the Storyteller or using their ability publicly.",
+    "If a dead Temple Guard is drunk or poisoned and chooses to rise, they do not rise but may later choose to rise again if no-one else has risen."
+   ],
+   "examples": [
+    "The Shabaloth kills the Empath and Ravenkeeper at night. The next night, the Ravenkeeper is regurgitated, and becomes the evil-aligned Ravenkeeper because a Temple Guard is in play.",
+    "The Professor chooses the dead Temple Guard at night. The resurrection fails, but that night, the Temple Guard chooses to rise and become evil. In the morning, the players learn that the Temple Guard player has come back to life.",
+    "During the day, Lachlan, the Temple Guard, says out loud, \"I am the Temple Guard. I choose to rise.\" The Storyteller immediately announces that Lachlan has come back to life."
+   ],
+   "tips": [
+    "Die. Die as early as possible. The sooner you die, the better. The advantage of this is that you can adapt to the situation you're in: lay low and wait for the perfect opportunity to resurrect yourself. Of course, if you think that good is winning, you can stay dead and win with good.",
+    "If someone rises before you while you're still alive, you know that they must now be evil. You can either immediately out yourself, gaining the town's trust, or wait and notice changes in their social behavior, and use this as evidence to prove yourself later.",
+    "If you are scared that someone will rise before you, you can resurrect yourself immediately after dying. Yes, you will probably out yourself as evil this way, but if you think this is better than not resurrecting at all, this is an option."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/temple-guard.png",
@@ -554,12 +720,35 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "facade",
-   "quote": "",
+   "quote": "Hmm, it appears that our show has concluded finally at last. Well, in case I don't see ya, good afternoon, good evening, and good night!",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
-   "bluffing": [],
+   "summaryBullets": [
+    "While the Facade is dead, at any time, the Storyteller might declare that the game is over and that the good team has won (good has not actually won yet).",
+    "If this happens, before the Grimoire is revealed, a majority (over half) of good players must agree to return to play, or else evil wins.",
+    "Dead players don't need a vote token to agree to return to play, and their vote token is not spent if they do agree.",
+    "If the Facade creates a fake win, but most good players agree to return to play, the game continues as if nothing had happened.",
+    "If good wins for real but most good players agree to return to play, evil wins."
+   ],
+   "examples": [
+    "7 players are alive, and the Soldier is executed and dies. The Storyteller (falsely) declares that good has won. After about 10 seconds of waiting, only 2 good players agree to return to play. The Storyteller declares that evil has won instead, and begins to reveal the Grimoire.",
+    "The Xaan is bluffing as the Facade. There is no Facade in play. When the Demon is executed and the Storyteller says that good has won, all good players agree to return to play. Evil wins.",
+    "5 players are alive, and the Facade is dead. The Empath was executed today. The Storyteller declares that good has won, but most good players agree to return to play. The game continues, the Empath dies, and night begins."
+   ],
+   "tips": [
+    "Don't die. You completely neutralize your ability for as long as you are alive. Bluff as something less valuable to the good team, get an Innkeeper to protect you, or just do anything you can to stay alive.",
+    "If you do die, reveal yourself. The good team needs to know your ability is in play. There's little to no point in hiding now. Unless…",
+    "Usually, when the Demon is on the block, Minions will scramble to nominate a good player instead. This type of behavior is usually easy to read. However, if evil knows that you are the Facade, they will likely remain calm because they know they haven't lost for sure yet. Continuing to stay quiet after you die prevents evil from knowing that you are in play, and allows you to socially read Minions to prevent you from losing to your own ability.",
+    "It's usually better to die later in the game rather than earlier. The earlier you die, the more chances your ability procks and the more likely you are to lose the game.",
+    "Be very wary of good winning before the final day. Get everyone to reveal their information as soon as possible to make an informed choice on whether you want to return to play or not.",
+    "Be as trustworthy as possible. If nobody trusts you when your ability procks, you have basically lost the game. Get other players to use their abilities on you (in private, as to not tempt the Demon) to confirm you.",
+    "It doesn't matter if you die on the final night. Your ability would never prock anyway, because once you execute a player, the game will always end for real."
+   ],
+   "bluffing": [
+    "The Facade is an outstanding bluff for evil players. If your Demon is executed, claim that you are the dead Facade and that good needs to return to play now, or lose. If you manage to convince them, you save the game.",
+    "As the Demon, if you suspect that you will be executed tomorrow, kill a Minion, and get them to bluff as the Facade. Alternatively, bluff as the Facade yourself. Remember that showtime can begin as soon as the Facade dies.",
+    "If you die, and you think your Demon will come under fire, immediately reveal yourself as the Facade. Say that you were \"hiding,\" but now that you are dead, your ability is active and good needs to be careful.",
+    "Bluffing as a Facade is tricky, as good will likely be wary of spontaneous Facade claims. If you ever suspect that your Demon will die soon, tell a few players in private that you are the Facade and were \"hiding\" the whole game. If it's too late for that, pretend you told a fellow evil player that you were the Facade, and hope that they play along."
+   ],
    "fighting": [],
    "art": "art/facade.png",
    "page": "c/facade",
@@ -604,11 +793,26 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "wyvern",
-   "quote": "",
+   "quote": "Wyvern fly, / Soar so high. / Roar a cry, / Split the sky.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "Any good player who voted on the Wyvern today might die that night.",
+    "Only good players who voted for the Wyvern's execution count. Voting for anything else (like the Fiddler) do not count as voting for the Wyvern.",
+    "Only one player maximum may die by the Wyvern each night.",
+    "Only players that voted for the Wyvern today might die at night. Votes from previous days do not count."
+   ],
+   "examples": [
+    "The Herbalist, Butler, and Marionette voted on the Wyvern today. At night, the Storyteller decides that the Herbalist dies.",
+    "The Chef, Empath, Zealot, Moonchild, and Zuggtmoy have voted on the Wyvern today. The Wyvern is executed and dies. At night, the Storyteller decides that the Empath dies."
+   ],
+   "tips": [
+    "Your goal is to be suspicious enough to get votes on you, but not enough to where you get executed. Be careful.",
+    "Act reckless! Take risks! Do things you normally wouldn't do as an evil player! Your goal is to get votes, and the more votes you have, the more likely you are to kill someone with your ability.",
+    "Don't be super reckless though, as it might be too obvious that you are the Wyvern if too many people die from your ability.",
+    "Have your evil team coordinate with a certain player to try to get them killed by the Wyvern, saving your demon's precious kills for other victims.",
+    "You can get your whole evil team to vote on you. This has two benefits: it might encourage other players to vote on you (votes = kills = good!), or if no one else votes on you, it might make it look like there is no Wyvern, as the Storyteller will probably not kill evil players with your ability.",
+    "If you want to hide the fact that there is a Wyvern for whatever reason, don't be super suspicious. This will minimize the risk of people dying from your ability, potentially revealing that there is a Wyvern."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/wyvern.png",
@@ -669,18 +873,39 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "warlock",
-   "quote": "",
+   "quote": "Dormammu! I've come to bargain!",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "Only good and alive Townsfolk count for the Warlock's ability. Evil Townsfolk or dead Townsfolk don't count.",
+    "The game only ends if the player all Townsfolk voted on is executed. If a different player was executed that day, the Warlock's ability does not trigger.",
+    "The executee does not have to vote on themself to trigger the Warlock's ability.",
+    "If the Warlock's ability triggers, then the executee's team loses. So, if an evil player would trigger the Warlock's ability, then good wins.",
+    "At least one alive good Townsfolk has to vote for the Warlock's ability to trigger.",
+    "If the Warlock is executed and all alive good Townsfolk voted on them, they die before their ability triggers, so evil does not lose."
+   ],
+   "examples": [
+    "5 players are alive: the Soldier, the Empath, the Zealot, the Warlock, and the Imp. The Soldier is nominated, and the Empath, Zealot, and Warlock vote for them. The Soldier is executed, and evil wins.",
+    "2 Townsfolk are dead. They both vote for the Pit-Hag, who is executed that day. The game continues, because dead players do not count to triggering the Warlock's ability."
+   ],
+   "tips": [
+    "Your ability is very weak early in the game, but becomes exponentially more powerful the fewer players live. Stay alive if you can help it.",
+    "If your Demon is nominated, convince as few players to vote as possible, \"just in case there is a Warlock\". This makes it easier to lift off of your Demon later that day.",
+    "If a good player is nominated, convince as many players to vote on them as possible! This will usually involve you convincing them that a different Minion is in play, so it might not work, but it will be a very satisfying win if you can pull it off.",
+    "Keep more Outsiders than Townsfolk alive. The fewer Townsfolk live, the less that have to vote to trigger your ability.",
+    "If the group really wants to push an execution, but they are scared that they might lose to your ability, you might be able to convince them to get everyone except you (or another evil player) to vote to prevent them losing to the Warlock."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/warlock.png",
    "page": "c/warlock",
    "image": "https://botchomebrew.wiki/assets/art/warlock.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Warlock / Banshee: The Banshee does not have to vote for the Warlock's ability to trigger.\n\nWarlock / Minstrel: If a Minion is executed, the Warlock ability triggers before they become drunk."
+    }
+   ],
    "released": "5/30/2025"
   },
   {
@@ -725,18 +950,30 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "myconid",
-   "quote": "",
+   "quote": "Thank you Mario! But our princess is in another castle!",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "All Minions and Demons wake at the same time. They all see the Grimoire, and may communicate to each other using hand signals, whispers, writing on paper or a phone, etc.",
+    "The evil players may take as long as they would like to look at the Grimoire before sleeping."
+   ],
+   "examples": [
+    "The Demon's bluffs are Empath, Steward, and Pixie. When the Demon and the Myconid see the Grimoire, the Demon points at the Empath token, then at themself, then makes the number 1 signal. The Myconid points at the Steward token, then at themself, then at the Demon. The Demon nods, and then they both go to sleep."
+   ],
+   "tips": [
+    "You are the sole mastermind of the evil team. On you first night, pay attention to everything. Co-ordinate with your evil team, find out what they are bluffing, and make the craziest plays you can think of."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/myconid.png",
    "page": "c/myconid",
    "image": "https://botchomebrew.wiki/assets/art/myconid.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Myconid / Chambermaid: On their 1st night, Minions and Demons wake due to the Myconid's ability. So, a Myconid would count as waking on the first night, but a Baron, for example, would not.\n\nMyconid / Marionette: The Marionette does not wake for the Myconid's ability."
+    }
+   ],
    "released": "1/24/2026"
   },
   {
@@ -799,11 +1036,29 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "zuggtmoy",
-   "quote": "",
+   "quote": "Corrupt. Death. Decay. Rot. Rebirth. Rise. Spores. Spread. Undeath.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Zuggtmoy gets an extra bluff: a total of 4 bluffs for a regular game or a singular bluff for a teensyville game (without the Toymaker).",
+    "On their first night, the Zuggtmoy chooses one of their bluffs. Then, any evil player then gains that ability: Minions, Travellers, evil Townsfolk or Outsiders, or the Zuggtmoy themselves.",
+    "If the player that had an ability from the Zuggtmoy turns good, they still keep that ability.",
+    "If the player that had an ability from the Zuggtmoy dies, they still keep that ability.",
+    "If the player that had an ability from the Zuggtmoy is drunk or poisoned, they still keep that ability. If the Zuggtmoy is drunk or poisoned (or dead), that player temporarily loses that ability."
+   ],
+   "examples": [
+    "Ben, the Zuggtmoy, wakes night one and learns that his bluffs are the Pacifist, Saint, Snake Charmer, and Gossip. Ben chooses the Gossip. Later that night, Stella, the Baron, wakes and gains the Gossip ability.",
+    "In a 5-player game, James, the Zuggtmoy, chooses and gains the professor ability as his only bluff; He resurrects Cara, the Slayer. Cara shoots James, and the good team wins.",
+    "John, the Zuggtmoy, wakes night one and learns that his bluffs are the Alchemist, Tinker, Herbalist, and the Empath; John chooses the Herbalist. Alex, the evil Gangster, gains the Herbalist ability. When evil is losing, Alex uses the Herbalist ability: he gains the Poisoner ability."
+   ],
+   "tips": [
+    "Obviously, you get an extra bluff, so you and your fellow minions can be a bit more flexible with bluffing.",
+    "Choose the character that would be the most helpful to you. You have little information to go off of, so just choose the bluff that you think is most powerful, or most fun to play, or most devastating.",
+    "Remember that it might not be you that gets the ability. If it is a minion, preferably try to keep that minion alive longer.",
+    "If you are a minion and you just got a Zuggtmoy ability, coordinate with your demon as soon as possible to figure out a game plan.",
+    "If you are a minion and you just got a Zuggtmoy ability, congrats, you just got a free bluff! You don't have to talk to the demon for bluffs, and you get a cool new ability! Be careful though, because your fellow evils might not know you are using the Zuggtmoy ability as a bluff, so you might get into a double claim.",
+    "If you have the Zuggtmoy ability, bluff as that character! Its a lot easier to bluff as something if you actually have that ability.",
+    "If you have the Zuggtmoy ability, don't bluff as that character to confuse the good team. For example, if you have the Courtier ability, tell the good team you are something else and drink a random good character. Not only will good not see the extra misinformation coming, it will look like that player is just evil!"
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/zuggtmoy.png",
@@ -888,11 +1143,25 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "tartarus",
-   "quote": "",
+   "quote": "I wait... I stall... I hide... / In the everlasting darkness, I hunger... / Feed me, or pay the price.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "During the day, before the nomination phase, any player may publicly choose that they die.",
+    "If no good player chooses to die by the Tartarus each day, evil wins that dusk. If an Outsider chose to die by the Tartarus, evil also wins at dusk. If the Demon is executed before dusk, good wins."
+   ],
+   "examples": [
+    "On the first day, the Gambler chooses to die. On the second day, the High Priestess chooses to die, but is secretly the Marionette. That day, the Cerenovus is executed, and evil wins.",
+    "There are 3 players alive: the Widow, the Tartarus, and the Fool. The Widow chooses to die, and evil wins.",
+    "The Goon chooses to die by the Tartarus. That day, the Tartarus is executed, and good wins."
+   ],
+   "tips": [
+    "Keep your minions alive. If a minion survives until the final three, they can volunteer to die, and then evil wins. Your focus for the entire game should be to make your minions as trustworthy as possible.",
+    "Don't get outed, if possible. It's not the end of the world if the good team figures out you are the Tartarus, but it sure will set your team back a bit. If worst comes to worst, you can whip out a Sailor or Tea Lady bluff to hopefully avoid the good team finding out who you are.",
+    "If you are a minion, stay alive! Evil wins if you live until the final 3, so make sure you are among the most trustworthy players.",
+    "If you are a minion, you can attempt to bluff as the Tartarus using abilities like the Devil's Advocate. If the good team thinks you are the Tartarus, they won't attempt to kill them until three players live. This strategy will hopefully help you live until the final 3.",
+    "Frame good players as the Tartarus! That Chambermaid didn't die because of the Tea Lady? Obvious evil play. The Town Crier survived execution? Of course they're evil.",
+    "You can't kill at night, so you can't get rid of powerful characters easily. Your only way to undermine them is by encouraging them to die during the day, or accuse them using some conflicting information of your own."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/tartarus.png",
@@ -988,11 +1257,26 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "veil",
-   "quote": "",
+   "quote": "Remember, traveller: do not dare gaze between the lights, for it is there which one finds the darkest night.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Veil is not a player, rather, it is an extra empty seat. Players do not know where this empty seat is placed. The placement of the Veil is decided during setup.",
+    "The Veil doesn't register as a player. This means the vote tally, abilities like the Empath, and base character count are unchanged.",
+    "To execute the Veil, players must execute the gap between the two players where the Veil sits. Players cannot choose a gap with an ability, but may nominate and vote on a gap.",
+    "The Veil's misregisteration only affect Townsfolk. They do not affect Outsiders, Minions, Demons, or evil info.",
+    "The Veil's neighbors register as evil, and as both a Minion and Demon. However, only those 2 players can register as evil and as evil characters. All other players register as good, & as a Townsfolk or Outsider."
+   ],
+   "examples": [
+    "The Veil's neighbors are the Savant and the Balloonist. The Assassin is executed and dies. The Undertaker learns that the Empath died today. Then, the Balloonist is executed. The Undertaker learns that the Assassin died today.",
+    "A player was executed today. Nobody dies due to the Veil tonight. The next day, a gap between two players is executed. A player dies due to the Veil that night. The next day, the gap where the Veil sits is executed, and good wins.",
+    "3 players are alive. A Veil is in play. The group executes one of the alive players, and evil wins."
+   ],
+   "tips": [
+    "The best possible scenario for you is for the good team to think there is no Veil in play. Keep tabs on the beliefs of the group. If they are confused about the Demon type, keep it that way. Bluff information suggesting a different Demon. If you can make it all the way to the final three without the good team figuring out there is a Veil, you basically win the game.",
+    "The second best scenario for you is for the good team to think the Veil is somewhere it isn't. If the good team has figured out that it's Veil game, or you think they will figure it out, bluff information that paints the gate members as good, and any other players as evil, even if that means incriminating your own evil team.",
+    "You will have very little control over deaths at night. The Veil rarely ever kills, and when it does, you have no control over who dies. Keep this in mind. You may have to push for no executions or an execution of a gap in order to get frequent kills. Alternatively, if you have a spare Assassin or Wyvern in your back pocket, you may want to maximize your kills using their ability.",
+    "If you are the Demon and there is no Veil in play, you may want to consider framing a Veil game. You can achieve this by sinking kills every so often or framing certain pairs of players. Even if the good team realizes there is no Veil by the end of the game, any execution they spent on a gap is an execution they didn't spend on you!"
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/veil.png",
@@ -1032,18 +1316,38 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "samurai-travel-by-starlight",
-   "quote": "",
+   "quote": "My poor Glacia... I will avenge those who dared harm my family. And once my duty is done, I will die a warrior.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "If the Samurai is on-script, any number of characters are marked with an icon on the script sheet. These characters can be good or evil, but should usually be good.",
+    "If none of the characters marked on the script are in play, if good would win, evil does instead, and vice versa. If any marked character is in play, nothing happens.",
+    "If the Samurai is not in play, the marked characters mean nothing and do not affect the game.",
+    "If a non-marked character becomes a marked character midway through the game, they are considered as marked to the Samurai, and vice versa.",
+    "Misregisteration does not effect the marked status of a character. A non-marked character that registers as a marked character does not count as a marked character for the Samurai's win condition, and vice versa."
+   ],
+   "examples": [
+    "The Fortune Teller and Butler are marked. Neither are in play. On the final night, the Samurai kills themself, and evil wins.",
+    "The Undertaker is marked. The Samurai kills the Undertaker, and the next day, the group executes the Samurai. Good wins.",
+    "The Acrobat is the only marked character in play. The Cacklejack transforms the Acrobat into the Barber. That night, the Samurai kills themself, and evil wins."
+   ],
+   "tips": [
+    "Be very, very attentive. Pay attention to the social reads of good players. Pay attention to the marked characters on script, and how they would act. See which good players act this way.",
+    "Bluff as a marked character, or get a Minion to bluff as one. If there happen to be no marked characters, and the group believes you, then they think they should be playing for the win when they shouldn't be!",
+    "Never kill yourself until 4 players live. Even if you are sure that there are no marked characters, its best to wait until final 4 to kill yourself, unless you are afraid that good will somehow win (via a Klutz, for example) otherwise.",
+    "When 3 players live, pay attention to who is claiming what. All good players should be telling the truth by now, so you will know if you should be killing yourself, or staying alive."
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/samurai-travel-by-starlight.png",
    "page": "c/samurai-travel-by-starlight",
    "image": "https://botchomebrew.wiki/assets/art/samurai-travel-by-starlight.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "Samurai / Spy: It is recommended that you mark the Spy so that evil can't instantly win.\n\nSamurai / Widow: It is recommended that you mark the Widow so that evil can't instantly win.\n\nSamurai / Hindu: If a marked character dies and becomes a Traveller, they are no longer considered marked."
+    }
+   ],
    "released": "1/23/2026"
   },
   {
@@ -1072,10 +1376,18 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "aurora",
-   "quote": "",
+   "quote": "I heard there was like a demon guy around here or something, can I see him? I'm a biiiiiiiiiiiiiiiiiiiiig fan. Well, I think, anyways.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "When the Aurora joins the game, the Storyteller does not tell the Aurora their alignment, nor who the demon is (if evil).",
+    "Each night, the Aurora learns a \"yes\" or a \"no\", based on if their team is winning.",
+    "When the Storyteller wakes a player at night, they may choose to wake the Aurora too. When the original player goes to sleep, the Aurora is put to sleep. Players who wake together may communicate through body language."
+   ],
+   "examples": [
+    "The Demon player is under suspicion, and the good team is planning to execute them. The good Aurora learns a \"yes\".",
+    "The evil Aurora, believing they are good, has woken with the Fortune Teller each night and has given them advice on who to pick. Later in the game, they start to wake with the Poisoner, and after figuring out they are evil, directs the Poisoner to poison the Fortune Teller.",
+    "The good Aurora wakes with the Demon each night. Halfway through the game, they out which player the Demon is. The Demon is executed, and good wins."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1112,10 +1424,18 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "cartomancer",
-   "quote": "",
+   "quote": "The cards, the cards, the cards will tell... / Your past, your present, and your future as well.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "Each day, the Cartomancer names an info token publicly, so that all players hear.",
+    "The Storyteller can use the card in any way that aligns with the card's main function. For example, the YOU ARE card can be used to change a player's character, the THESE CHARACTERS ARE NOT IN PLAY card can be used to give a player information, etc. Feel free to be a bit creative.",
+    "The Cartomancer might make off-script characters, at the Storyteller's discretion."
+   ],
+   "examples": [
+    "The evil Cartomancer chooses the YOU ARE info token. The No Dashii wakes, sees the YOU ARE info token, a thumbs down sign, and the Imp token.",
+    "The good Cartomancer chooses the THIS CHARACTER SELECTED YOU info token. The Poisoner wakes, learns that they were chosen by the Preacher, and does not wake tonight. Later that game, the Cartomancer is exiled. The Poisoner regains their ability.",
+    "The good Cartomancer chooses the THIS IS THE DEMON info token. That night, a good player wakes and is shown the THIS IS THE DEMON info token, then the Fang Gu token."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1123,7 +1443,16 @@
    "page": "c/cartomancer",
    "image": "https://botchomebrew.wiki/assets/art/cartomancer.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Tips And Tricks (If You Are Good)",
+     "content": "It doesn't matter much what you choose, since the use of your ability will almost always help the good team. So, feel free to either pick whichever card you think would benefit you in the moment, or just whatever feels the most fun.\n\nKnow your cards! There are 8 info tokens in the game at your disposal, each used for different purposes.\n\nThe YOU ARE info token is primarily used to change a player's character. You can, for example, upgrade Outsiders into Townsfolk, or downgrade Minions into Outsiders.\n\nThe THIS PLAYER IS info token can be used to give a player information. For example, a good player might wake and learn that a different player is the Fortune Teller.\n\nThe THIS CHARACTER SELECTED YOU info token can sometimes be used for information, but also as more of a power option. You can exorcise the Demon or preach a Minion this way.\n\nThe THESE CHARACTERS ARE NOT IN PLAY info token, in the base game, is used to provide bluffs, but can be used as information given to good players.\n\nThe THIS IS THE DEMON and THESE ARE YOUR MINIONS info tokens, used for evil info in the base game, can be used to tell a good player which Demon or which Minions are in play, or give a hint as to which players they might be.\n\nFinally, the DID YOU VOTE TODAY? and DID YOU NOMINATE TODAY? info tokens probably won't help you much, but if your Storyteller is crazy enough, they can be used to run a nomination or vote in the middle of the night! If you are feeling ballsy, feel free to pick one of these.\n\nEach dawn, you should be searching to find out what happened last night with the info token you chose. The player(s) affected will probably come talk to you anyway, so be ready.\n\nSometimes, the Storyteller will use your ability to benefit evil. This is okay. Because you are a good Traveller, this just means the next use of your ability will certainly be used to help the good team."
+    },
+    {
+     "title": "Tips And Tricks (If You Are Evil)",
+     "content": "Like a good Cartomancer, it doesn't matter much what you choose, since the use of your ability will almost always help the evil team. So, feel free to either pick whichever card you think would benefit you in the moment, or just whatever feels the most fun.\n\nAlso like a good Cartomancer, knowing your cards is important. However, your choice will usually help the evil team.\n\nThe YOU ARE info token can be used to downgrade good characters, or upgrade evil characters. Encourage affected evil players to claim that their (good) character was upgraded into something more helpful, to make you look good.\n\nThe THIS PLAYER IS info token is primarily used for information, which won't help you much. However, you can use it to point your Demon to that Savant who has been secretly getting powerful information all game.\n\nYour best use of the THIS CHARACTER SELECTED YOU info token is for powerful purposes. Use it to give your Demon a Barber swap, or a free Hatter tea party for your evil team.\n\nThe THESE CHARACTERS ARE NOT IN PLAY info token can be used to give your evil team extra bluffs, which is helpful early game.\n\nThe THIS IS THE DEMON and THESE ARE YOUR MINIONS info tokens won't do much for you, unless you have a Poppy Grower on your hands. However, you can use them to socially read good, which is helpful.\n\nFinally, the DID YOU VOTE TODAY? and DID YOU NOMINATE TODAY? info tokens won't be much help, but feel free to choose them to test your Storyteller's creativity.\n\nLike a good Cartomancer, try to figure out what happens with your ability each night. This can give you a better sense of who might be evil, as well as helping you read good, which is nice.\n\nSometimes, the Storyteller will use your ability to benefit good. This is fine, as you can look like a good Traveller now! Use this as a defense to ward the town away from exiling you.\n\nOccasionally, the Storyteller will use your ability in a way that obviously benefits evil. This likely will get you exiled, but its okay! Sometimes your ability is worth you being exiled, rather than trying to look good."
+    }
+   ],
    "released": "6/28/2026"
   },
   {
@@ -1153,11 +1482,19 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "marathon",
-   "quote": "",
+   "quote": "Hyponatremia (n): the condition of having an abnormally low level of sodium in the blood that is typically marked by nausea, vomiting, headache, confusion, fatigue, and muscle cramps and that when severe may be life-threatening if untreated.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
-   "tips": [],
+   "summaryBullets": [
+    "The Marathon may get up and leave their seat while the Storyteller runs the vote. The vote will run until the clockhand meets the Marathon again.",
+    "If the clockhand reaches a player multiple times per vote, that player's vote may count multiple times.",
+    "The intent of the Marathon is for the Marathon to run around the circle, staying ahead of the clockhand at all times to gather the most amount of votes. The Storyteller should gradually increase the speed of the clockhand as the vote goes on."
+   ],
+   "examples": [
+    "The vote starts at the Marathon. The Marathon ends up lapping the circle 5 times before the Storyteller catches up to them. 3 players kept their hands up for the whole vote, so the final tally was 15 votes."
+   ],
+   "tips": [
+    "RUN!!!!!"
+   ],
    "bluffing": [],
    "fighting": [],
    "art": "art/marathon.png",
@@ -1198,10 +1535,17 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "the-moon",
-   "quote": "",
+   "quote": "The Moon shrouds itself into the receding night sky as the morning dew glistens bright in the greeneries of the fae-blessed forest... / On the beach shines droplets of Aether, the stuff of magic, the water of life, the secret to immortality and power. / The Moon glows bright one last time before giving way to the vast blues of the morning sun.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "It is the Storyteller's decision on who roleplayed the best this game. It is also the Storyteller's decision for the criteria for \"roleplaying the best,\" and should be known to all players.",
+    "It is recommended that you only use The Moon to bless once or twice."
+   ],
+   "examples": [
+    "The Grandmother dies of heartbreak. As the player sobs in misery over their dead grandchild, the Storyteller announces that The Moon has brought the grandchild back to life.",
+    "The Politician wins the election to become the mayor of Ravenswood Bluff against the Bureaucrat. the Storyteller declares that if the Politician dies, another player might instead.",
+    "The Imp successfully convinces the town that they are Chef by making food for everyone. After the feast, the storyteller announces that all opposing players who ate the food are drunk until dusk."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1209,7 +1553,12 @@
    "page": "c/the-moon",
    "image": "https://botchomebrew.wiki/assets/art/the-moon.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "X-Card / The Moon - The usage of the X-Card with The Moon is a highly recommended combination, as it allows for players to stop the roleplay at hand should they feel uncomfortable without feeling pressured."
+    }
+   ],
    "released": "6/11/2025"
   },
   {
@@ -1240,10 +1589,23 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "zodiac",
-   "quote": "",
+   "quote": "This is the Zodiac speaking: -... . / --. .- -.-- --..-- / -.. --- / -.-. .-. .. -- . .-.-.-",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "Each night, the Demon is woken to give the Storyteller an announcement. At dawn, that announcement is revealed.",
+    "The Demon may instead request that the announcement is revealed later that day.",
+    "The Demon may also consult the Storyteller during the day to tell them an announcement. The announcement is revealed later that day, at the Storyteller's discretion.",
+    "If there are multiple Demons in play, only one Demon may make an announcement at a time.",
+    "The Demon does not have to make an announcement if they don't want to.",
+    "When an announcement is made, the Storyteller says \"Zodiac speaking:\" (or something similar), followed by the Demon's announcement. The players don't learn who the Demon is, just what the announcement is.",
+    "The Storyteller should make it clear which announcements are mechanical and which announcements are from the Zodiac. For example, the Demon cannot use the Zodiac to fake a Leviathan."
+   ],
+   "examples": [
+    "At the beginning of Day 2, the Storyteller says \"Zodiac Speaking: Hope was boring anyways,\" and announces that Hope has died.",
+    "The Demon has made a request to delay their announcement. At dusk of the final day, the Mayor is executed, and the Storyteller announces \"This is the Zodiac speaking: you missed me!\" and announces that evil wins.",
+    "The Demon has made a request to delay their announcement. Harry is executed later that game. The Storyteller announces \"This is the Zodiac speaking: my bomb will detonate in 3... 2... 1...\". The Storyteller then announces that the Boomdandy has exploded.",
+    "Lachlan is the Saint. On the second day, the Storyteller announces \"This is the Zodiac speaking: I'm most definitely not Lachlan.\" Lachlan has fun."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1282,10 +1644,19 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "cookie",
-   "quote": "",
+   "quote": "We use cookies to customize your experience. There is no decline button.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "The Cookie cannot hide itself from being in play.",
+    "If the Cookie is on a script, this should be made clear to all players and a mutual agreement should be reached before the script is played.",
+    "Consider asking for if any of the players would not want to play a game with a specific NPC in play before choosing which NPCs are in play with the Cookie, and/or list out any potential bans from the Cookie's ability.",
+    "The Cookie does not have to hide all in-play NPCs. If any Fabled are in play for accessibility reasons, like the Angel, the Storyteller should still announce that the Fabled is in-play."
+   ],
+   "examples": [
+    "Harry doesn't want to play a game with the Fibbin in play. The Storyteller announces that the Fibbin will not be considered for the Cookie's ability.",
+    "Players join a game of Trouble Brewing knowing the Angel and the Cookie in play. Once everyone is ready to start the game and asks for the bag, the Storyteller announces that the Tor is in play and puts all players to sleep.",
+    "In a Yaggababble script with the Cookie in play, players agree that the Bootlegger may be added by the Cookie. After the game starts, players learn that the Hell's Librarian and the Bootlegger is in play with the following Bootlegger rule: \"The Yaggababble learns a gesture instead of a phrase.\" The Storyteller then asks for silence."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1326,10 +1697,16 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "confectioner",
-   "quote": "",
+   "quote": "Happy birthday to you, happy birthday to you. Happy birthday dear Stella, happy birthday to you.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "The \"gift\" received can be something mechanical or non-mechanical, and is decided by the Storyteller.",
+    "The \"players involved\" in the special occasion are announced by the Storyteller."
+   ],
+   "examples": [
+    "Today is Stella's birthday. On the 2nd day, she chooses to receive her gift, and the Storyteller announces that Stella may vote twice on each nomination today.",
+    "Today is Valentine's day. James, the Storyteller, announces that today marks his boyfriend's special occasion. Later that game, James' boyfriend asks for his gift - and James pulls out a diamond ring. The crowd goes wild."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1367,10 +1744,20 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "x-card",
-   "quote": "",
+   "quote": "Everyone, calm down - we all know cereal goes in before milk, but it doesn't need to get this heated over someone who doesn't have such common sense.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "First and foremost, the X-card is a boundary and a safety tool. In almost all cases, when a X-card is used, requests to use the X-card should be approved, no questions asked.",
+    "At any time during the game, anyone may ask the Storyteller to activate the X-Card. If the Storyteller agrees, the game is put on hold. All active nominations (if any) stop, and the game is paused until the players are ready to start again. During this period, the Storyteller may ask for silence for all players.",
+    "Anyone can request that the X-card be activated, regardless of if they are a player. This means that the Storyteller and the spectators can also utilize the X-card.",
+    "Note that the X-card's effect can be replicated within games without the usage of this Fabled. However, the presence of the X-Card sets the expectation that the game can be paused, allowing players to request it more openly."
+   ],
+   "examples": [
+    "Trin gets overwhelmed easily. During the final day, with the tension at its highest, Trin taps the X-Card to pause the game so she can take a breather.",
+    "It's time to eat. The Storyteller asks everyone to pause the game temporarily while they enjoy some lunch.",
+    "An argument gets too heated. One of the spectators asks the Storyteller to pause the game - the Storyteller grabs everyone's attention and asks for silence.",
+    "The Boomdandy has exploded. A player tries to use the X-Card to get more time to think, but the Storyteller denies this request."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1378,7 +1765,12 @@
    "page": "c/x-card",
    "image": "https://botchomebrew.wiki/assets/art/x-card.png",
    "starlight": true,
-   "customBoxes": [],
+   "customBoxes": [
+    {
+     "title": "Notable Interactions",
+     "content": "X-Card / The Moon - The usage of the X-Card with The Moon is a highly recommended combination, as it allows for players to stop the roleplay at hand should they feel uncomfortable without feeling pressured."
+    }
+   ],
    "released": "12/14/2025"
   },
   {
@@ -1407,10 +1799,20 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "collective",
-   "quote": "",
+   "quote": "Hello there! We're the Hopehills, nice to meet you! We don't think we've seen you around town before, but we sure hope us neighbors can get along!",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "Players who are new, don't understand the rules of the game, or have some other disability can choose to sit in the same seat as someone they trust.",
+    "These players don't physically sit in the same seat, but are all considered as one player as far as the game goes. This means that they all have the same character.",
+    "One player of the collective serves as the \"host,\" and makes decisions like how to use their ability, and when to nominate or vote.",
+    "The host can change at any time, but it is up to the collective who the host is. You may use a physical host card to denote the host.",
+    "If the collective's character would wake at night, the whole collective wakes and may communicate with each other, but only the host chooses."
+   ],
+   "examples": [
+    "Ari is young and really wants to try out the cool mafia game her siblings have been playing. Trin, one of the more experienced players, volunteers to join the game with Ari through the Collective.",
+    "Connor constantly runs late to a game. Bryan offers to partner with him through the Collective the next time he runs late.",
+    "Harry, Sophie, and Trin are linked via the Collective. Harry, Trin, and Sophie all raise hands to vote for a nomination, but only one vote is tallied."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
@@ -1448,10 +1850,17 @@
    "jinxDisplay": "sidebar",
    "customJson": "",
    "slug": "yggdrasil",
-   "quote": "",
+   "quote": "From the glories of Æsir, Asgard, to the pride of the Fae, Alfheim, to the realm of the dead, Helheim... I connect all. Seek me, if you dare. Find my roots, which journey everywhere. But know this, mortals of Midguard; beyond the borders of your realm - you, who chase wonder, are already here.",
    "creator": "Harry & Co & Bendan",
-   "summaryBullets": [],
-   "examples": [],
+   "summaryBullets": [
+    "If the Yggdrasil is in play, the Storyteller assigns at least 2 bags to the players, one at a time.",
+    "After all bags have been assigned, all players close their eyes and vote on which bag to play. The bag with the majority vote is the bag that is played. All other bags are discarded. If the vote is tied, the Storyteller chooses which bag is played.",
+    "Previously assigned bags that are not being played have no effect on the game.",
+    "The Storyteller may use the same character in multiple different bags."
+   ],
+   "examples": [
+    "2 bags were assigned. Mia recieves the Balloonist token, then the Chambermaid token. When voting starts, Mia votes for bag 1. Because most players voted for bag 1, bag 1 is played, so Mia is the Balloonist this game."
+   ],
    "tips": [],
    "bluffing": [],
    "fighting": [],
