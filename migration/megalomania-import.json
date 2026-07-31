@@ -3,16 +3,23 @@
     "id": "megalomania",
     "slug": "megalomania",
     "displayName": "Megalomania",
+    "author": "Ma'ayan",
+    "description": "Megalomania (Ω) is Ma'ayan's collection of homebrew characters that they believe are of an adequate quality to be included in custom scripts.",
+    "tagline": "Homebrew characters of an adequate quality for any custom script.",
+    "version": "",
+    "difficulty": "",
+    "synopsis": "",
+    "gameplay": "",
+    "strategyGood": "",
+    "strategyEvil": "",
     "match": [
       "megalomania"
     ],
     "include": [],
     "exclude": [],
-    "description": "Megalomania (Ω) is Ma'ayan's collection of homebrew characters that they believe are of an adequate quality to be included in custom scripts.",
-    "tagline": "Homebrew characters of an adequate quality for any custom script.",
-    "author": "Ma'ayan",
+    "header": "",
     "logo": "",
-    "header": ""
+    "starlight": true
   },
   "characters": [
     {
