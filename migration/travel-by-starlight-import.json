@@ -1,13 +1,13 @@
 {
  "source": "https://travel-by-starlight.carrd.co/",
- "note": "Import record for the Travel by the Starlight collection. Characters carry the creators' \"♊︎\" credit mark on the source site; credit is preserved via the creator/iconBy fields and the collection description. Script synopses are summarized rather than copied - see the source almanac for the full text.",
+ "note": "Import record for the Travel by the Starlight collection. The creators mark their characters with ♊︎ on the source site; credit is preserved here via the creator/author fields on every row. Only game data is stored - ability, night order, night reminders, reminder tokens, setup, jinxes and the Storyteller \"How to Run\" steps. The creators' almanac prose is not reproduced; see the source.",
  "collection": {
   "id": "travel-by-starlight",
   "slug": "Travel by Starlight",
   "displayName": "Travel by the Starlight",
   "author": "Harry & Co & Bendan",
-  "description": "Travel by the Starlight is a collection of D&D and fantasy-inspired Blood on the Clocktower characters by Harry & Co and Bendan, set in their homebrew world of Stardusk. Imported from the creators' almanac at https://travel-by-starlight.carrd.co/",
-  "tagline": "D&D and fantasy-inspired homebrew from the world of Stardusk.",
+  "description": "",
+  "tagline": "",
   "version": "",
   "difficulty": "",
   "synopsis": "",
@@ -75,12 +75,7 @@
    "page": "c/herbalist",
    "image": "https://botchomebrew.wiki/assets/art/herbalist.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Herbalist is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/25/2025"
   },
   {
@@ -152,12 +147,7 @@
    "page": "c/transmuter",
    "image": "https://botchomebrew.wiki/assets/art/transmuter.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Transmuter is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "9/01/2025"
   },
   {
@@ -224,12 +214,7 @@
    "page": "c/fae",
    "image": "https://botchomebrew.wiki/assets/art/fae.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Fae is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "12/25/2025"
   },
   {
@@ -296,12 +281,7 @@
    "page": "c/katari",
    "image": "https://botchomebrew.wiki/assets/art/katari.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Katari is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/20/2026"
   },
   {
@@ -353,12 +333,7 @@
    "page": "c/queer",
    "image": "https://botchomebrew.wiki/assets/art/queer.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Queer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "2/14/2026"
   },
   {
@@ -403,12 +378,7 @@
    "page": "c/moonjay",
    "image": "https://botchomebrew.wiki/assets/art/moonjay.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Moonjay is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/25/2025"
   },
   {
@@ -469,12 +439,7 @@
    "page": "c/mutineer",
    "image": "https://botchomebrew.wiki/assets/art/mutineer.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Mutineer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "3/1/2025"
   },
   {
@@ -517,12 +482,7 @@
    "page": "c/axiom",
    "image": "https://botchomebrew.wiki/assets/art/axiom.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Axiom is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "4/18/2025"
   },
   {
@@ -565,12 +525,7 @@
    "page": "c/temple-guard",
    "image": "https://botchomebrew.wiki/assets/art/temple-guard.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Temple Guard is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/21/2026"
   },
   {
@@ -610,12 +565,7 @@
    "page": "c/facade",
    "image": "https://botchomebrew.wiki/assets/art/facade.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Facade is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "5/1/2026"
   },
   {
@@ -665,12 +615,7 @@
    "page": "c/wyvern",
    "image": "https://botchomebrew.wiki/assets/art/wyvern.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Wyvern is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/25/2025"
   },
   {
@@ -735,12 +680,7 @@
    "page": "c/warlock",
    "image": "https://botchomebrew.wiki/assets/art/warlock.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Warlock is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "5/30/2025"
   },
   {
@@ -796,12 +736,7 @@
    "page": "c/myconid",
    "image": "https://botchomebrew.wiki/assets/art/myconid.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Myconid is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/24/2026"
   },
   {
@@ -875,12 +810,7 @@
    "page": "c/zuggtmoy",
    "image": "https://botchomebrew.wiki/assets/art/zuggtmoy.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Zuggtmoy is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/25/2025"
   },
   {
@@ -969,12 +899,7 @@
    "page": "c/tartarus",
    "image": "https://botchomebrew.wiki/assets/art/tartarus.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Tartarus is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "3/22/2025"
   },
   {
@@ -1074,12 +999,7 @@
    "page": "c/veil",
    "image": "https://botchomebrew.wiki/assets/art/veil.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Veil is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "10/09/2025"
   },
   {
@@ -1123,12 +1043,7 @@
    "page": "c/samurai-travel-by-starlight",
    "image": "https://botchomebrew.wiki/assets/art/samurai-travel-by-starlight.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Samurai is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/23/2026"
   },
   {
@@ -1168,12 +1083,7 @@
    "page": "c/aurora",
    "image": "https://botchomebrew.wiki/assets/art/aurora.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Aurora is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "2/15/2025"
   },
   {
@@ -1213,12 +1123,7 @@
    "page": "c/cartomancer",
    "image": "https://botchomebrew.wiki/assets/art/cartomancer.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Cartomancer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "6/28/2026"
   },
   {
@@ -1259,12 +1164,7 @@
    "page": "c/marathon",
    "image": "https://botchomebrew.wiki/assets/art/marathon.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Marathon is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "6/28/2026"
   },
   {
@@ -1309,12 +1209,7 @@
    "page": "c/the-moon",
    "image": "https://botchomebrew.wiki/assets/art/the-moon.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "The Moon is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "6/11/2025"
   },
   {
@@ -1356,12 +1251,7 @@
    "page": "c/zodiac",
    "image": "https://botchomebrew.wiki/assets/art/zodiac.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Zodiac is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "12/15/2025"
   },
   {
@@ -1403,12 +1293,7 @@
    "page": "c/cookie",
    "image": "https://botchomebrew.wiki/assets/art/cookie.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Cookie is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "12/16/2025"
   },
   {
@@ -1452,12 +1337,7 @@
    "page": "c/confectioner",
    "image": "https://botchomebrew.wiki/assets/art/confectioner.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Confectioner is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/25/2026"
   },
   {
@@ -1498,12 +1378,7 @@
    "page": "c/x-card",
    "image": "https://botchomebrew.wiki/assets/art/x-card.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "X-Card is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "12/14/2025"
   },
   {
@@ -1543,12 +1418,7 @@
    "page": "c/collective",
    "image": "https://botchomebrew.wiki/assets/art/collective.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Collective is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "1/24/2026"
   },
   {
@@ -1589,12 +1459,7 @@
    "page": "c/yggdrasil",
    "image": "https://botchomebrew.wiki/assets/art/yggdrasil.png",
    "starlight": true,
-   "customBoxes": [
-    {
-     "title": "Full almanac",
-     "content": "Yggdrasil is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
-    }
-   ],
+   "customBoxes": [],
    "released": "4/12/2026"
   }
  ],
@@ -1604,7 +1469,7 @@
    "name": "Axiom of Logic",
    "header": "",
    "author": "Harry & Co",
-   "description": "A Teensyville logic puzzle built around consistent, powerful information: Savant, Clockmaker and Seamstress can crack the game open, while the evil team leans on madness and the Vortox rather than drunkenness to muddy it.",
+   "description": "",
    "characters": [
     "off-clockmaker",
     "off-fortuneteller",
@@ -1620,7 +1485,7 @@
     "off-vortox",
     "off-bootlegger"
    ],
-   "tagline": "Teensyville script by Harry & Co.",
+   "tagline": "",
    "version": "11/02/25",
    "difficulty": "",
    "synopsis": "",
@@ -1637,7 +1502,7 @@
    "name": "Magic School Buss",
    "header": "",
    "author": "Harry & Co",
-   "description": "A Teensyville script where every ability yields information and the threat of double-Drunks looms. Townsfolk are high-value targets against tight evil coordination, and good players must sort truth from falsehood.",
+   "description": "",
    "characters": [
     "off-steward",
     "off-empath",
@@ -1653,7 +1518,7 @@
     "off-imp",
     "off-bootlegger"
    ],
-   "tagline": "Teensyville script by Harry & Co.",
+   "tagline": "",
    "version": "6/28/26",
    "difficulty": "",
    "synopsis": "",
@@ -1671,7 +1536,7 @@
    "name": "It Was All a Dream",
    "header": "",
    "author": "Harry & Co, Bendan",
-   "description": "A full Ravenswood Bluff script about claims that contradict themselves. Facade, Poppy Grower and Samurai let both teams make plays no other characters support, so good often benefits from lying and evil can take much riskier lines.",
+   "description": "",
    "characters": [
     "fae",
     "off-preacher",
@@ -1700,7 +1565,7 @@
     "samurai-travel-by-starlight",
     "off-bootlegger"
    ],
-   "tagline": "Ravenswood Bluff script by Harry & Co, Bendan.",
+   "tagline": "",
    "version": "5/1/2026",
    "difficulty": "",
    "synopsis": "",
