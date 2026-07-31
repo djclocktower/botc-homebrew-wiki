@@ -1,0 +1,1716 @@
+{
+ "source": "https://travel-by-starlight.carrd.co/",
+ "note": "Import record for the Travel by the Starlight collection. Characters carry the creators' \"♊︎\" credit mark on the source site; credit is preserved via the creator/iconBy fields and the collection description. Script synopses are summarized rather than copied - see the source almanac for the full text.",
+ "collection": {
+  "id": "travel-by-starlight",
+  "slug": "Travel by Starlight",
+  "displayName": "Travel by the Starlight",
+  "author": "Harry & Co & Bendan",
+  "description": "Travel by the Starlight is a collection of D&D and fantasy-inspired Blood on the Clocktower characters by Harry & Co and Bendan, set in their homebrew world of Stardusk. Imported from the creators' almanac at https://travel-by-starlight.carrd.co/",
+  "tagline": "D&D and fantasy-inspired homebrew from the world of Stardusk.",
+  "version": "",
+  "difficulty": "",
+  "synopsis": "",
+  "gameplay": "",
+  "strategyGood": "",
+  "strategyEvil": "",
+  "match": [
+   "travel by the starlight",
+   "travel by starlight"
+  ],
+  "include": [],
+  "exclude": [],
+  "header": "",
+  "logo": "",
+  "starlight": false
+ },
+ "characters": [
+  {
+   "name": "Herbalist",
+   "team": "townsfolk",
+   "ability": "Once per game, at night, you may choose to gain the ability of a non-listed character that will benefit the losing alignment. You learn which.",
+   "lede": "The Herbalist creates the perfect remedy to fix anything... Should it not backfire.",
+   "howToRun": [
+    "Each night, wake the Herbalist. They either shake their head no or nod their head yes.",
+    "If they shake their head no, nothing happens. Put the Herbalist to sleep.",
+    "If they nod their head yes, show them the token of an off-script character that would benefit whichever team you believe is losing.",
+    "Swap the Herbalist token with the chosen character token and mark them with the IS THE HERBALIST reminder."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 9.2,
+   "firstNightReminder": "The Herbalist nods or shakes their head. If they nod, they gain an ability and learn which.",
+   "otherNight": 7.2,
+   "otherNightReminder": "The Herbalist nods or shakes their head. If they nod, they gain an ability and learn which.",
+   "reminders": [],
+   "remindersGlobal": [
+    "Is the Herbalist"
+   ],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "bountyhunter",
+     "reason": "If the Herbalist gains the Bounty Hunter ability, a Townsfolk might turn evil."
+    },
+    {
+     "id": "boffin",
+     "reason": "If the Herbalist gains the Boffin ability, the Herbalist does not learn what ability the Demon has."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "herbalist",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/herbalist.png",
+   "page": "c/herbalist",
+   "image": "https://botchomebrew.wiki/assets/art/herbalist.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Herbalist is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/25/2025"
+  },
+  {
+   "name": "Transmuter",
+   "team": "townsfolk",
+   "ability": "Minions & only Minions can’t die.",
+   "lede": "The Transmuter wields the power of immortality to sort good from evil.",
+   "howToRun": [
+    "If a Minion would die, they remain alive. If a non-Minion player would die, they must die, even if for some reason they could not."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Lumi",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "lycanthrope",
+     "reason": "If the Lycanthrope kills a good player at night, the Demon can’t kill tonight."
+    },
+    {
+     "id": "mayor",
+     "reason": "If the Mayor dies at night, a different player might die instead."
+    },
+    {
+     "id": "princess",
+     "reason": "If the Princess nominated and executed a player on their 1st day, the Demon doesn’t kill tonight."
+    },
+    {
+     "id": "devilsadvocate",
+     "reason": "The 1st good player (not the Transmuter) the Devil's Advocate chooses registers as a Minion to the Transmuter."
+    },
+    {
+     "id": "vizier",
+     "reason": "If the Transmuter and Vizier are both in-play, the existence of the Vizier is not announced by the Storyteller."
+    },
+    {
+     "id": "legion",
+     "reason": "Legion who die still die, but the Transmuter might learn they are Legion."
+    },
+    {
+     "id": "lilmonsta",
+     "reason": "If a Minion is holding Lil’ Monsta, they can still die even if a Transmuter is in-play."
+    },
+    {
+     "id": "lleech",
+     "reason": "The Lleech can’t die if their host is alive. A Minion host can still die."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "transmuter",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/transmuter.png",
+   "page": "c/transmuter",
+   "image": "https://botchomebrew.wiki/assets/art/transmuter.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Transmuter is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "9/01/2025"
+  },
+  {
+   "name": "Fae",
+   "team": "townsfolk",
+   "ability": "You start knowing your setup modifier. [???]",
+   "lede": "The Fae is a tricksome being always up for mischief.",
+   "howToRun": [
+    "While setting up the game, before putting character tokens in the bag, decide what the Fae's setup modifier will be. Write this down on a piece of paper, or on a phone. Then, adjust the bag as neccesary.",
+    "At the start of the first night, you may adjust players' characters, according to the Fae's setup modifier. Wake those players and tell them their new character.",
+    "During the first night, wake the Fae. Show them the setup modifier than you wrote down earlier. Put the Fae to sleep.",
+    "Note that the Fae comes with 5 total Fae character tokens that you may use if you wish."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 60.2,
+   "firstNightReminder": "Show the Fae their setup modifier.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [
+    {
+     "id": "philosopher",
+     "reason": "If the Philosopher gains the Fae ability, they learn information about the starting bag."
+    },
+    {
+     "id": "pixie",
+     "reason": "If the Pixie gains the Fae ability, they learn information about the starting bag."
+    },
+    {
+     "id": "marionette",
+     "reason": "If the Marionette thinks they are the Fae, the Fae's setup modifier applies."
+    },
+    {
+     "id": "pithag",
+     "reason": "If the Pit-Hag creates a Fae, the Fae learns information about the starting bag."
+    },
+    {
+     "id": "kazali",
+     "reason": "If the Kazali turns the Fae into a Minion, the Fae's setup modifier applies."
+    },
+    {
+     "id": "lordoftyphon",
+     "reason": "If the Lord of Typhon turns the Fae into a Minion, the Fae's setup modifier applies."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "fae",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/fae.png",
+   "page": "c/fae",
+   "image": "https://botchomebrew.wiki/assets/art/fae.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Fae is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "12/25/2025"
+  },
+  {
+   "name": "Katari",
+   "team": "townsfolk",
+   "ability": "You start holding the Katari token. If a Minion guesses where it is (once), you become an Outsider. You are sober & healthy.",
+   "lede": "The Katari is an agile and nimble folk thriving through stealth and secrecy.",
+   "howToRun": [
+    "At the start of the first night, give the Katari their character token back. Give them a moment to hide it.",
+    "Each night (regardless of if a Katari is in play), wake each Minion. Show them the THIS CHARACTER SELECTED YOU info token, then the Katari token. They either guess where the Katari token is by pointing to a player or location, or shake their head no. Put them to sleep.",
+    "If a Minion correctly guesses the location of the Katari token, replace the Katari token with an Outsider token. Then, wake the Katari. Show them the YOU ARE info token, and then their new character. Collect the Katari's token from them, and put it back into the grimoire. If the Minion guesses incorrectly, mark them with the GUESS USED reminder.",
+    "If the Katari dies, collect their token from them, and put it back into the grimoire.",
+    "Note: The Katari comes with 2 Katari character tokens, one for your grimoire, and one for the Katari. Minions must guess the location of the token the Katari started with.",
+    "If you would like to know where the Katari's token is, you may wake the Katari and show them the WHERE IS THE TOKEN? info card. They must answer honestly, and then put them to sleep."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 23.11,
+   "firstNightReminder": "Give the Katari their token. Wake all Minions. If they guess where the Katari token is, the Katari becomes an Outsider. :reminder:",
+   "otherNight": 35.2,
+   "otherNightReminder": "Wake all Minions. If they guess where the Katari token is, the Katari becomes an Outsider. :reminder:",
+   "reminders": [
+    "Guess Used"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "cannibal",
+     "reason": "If the Cannibal gains the Katari ability & a Katari is in play, the Cannibal doesn't get a 2nd Katari token."
+    },
+    {
+     "id": "philosopher",
+     "reason": "If the Philosopher gains the Katari ability & a Katari is in play, the Katari doesn't get a 2nd Katari token."
+    },
+    {
+     "id": "damsel",
+     "reason": "If the Katari becomes the Damsel, Minions don't learn a Damsel is now in play."
+    },
+    {
+     "id": "drunk",
+     "reason": "The Drunk cannot think that they are the Katari."
+    },
+    {
+     "id": "marionette",
+     "reason": "The Marionette cannot think that they are the Katari."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "katari",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/katari.png",
+   "page": "c/katari",
+   "image": "https://botchomebrew.wiki/assets/art/katari.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Katari is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/20/2026"
+  },
+  {
+   "name": "Queer",
+   "team": "townsfolk",
+   "ability": "If the Demon kills you, choose a player: if they are the same alignment as you, all players learn this.",
+   "lede": "The Queer seeks out an ally to have their back.",
+   "howToRun": [
+    "If the Queer was killed by the Demon, wake the Queer. They point at any player. If that player is the same alignment as the Queer, declare that the chosen player and the Queer player are the same alignment. If that player is not the same alignment as the Queer, nothing happens. Put the Queer to sleep."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 59.6,
+   "otherNightReminder": "If the Queer was killed by a Demon, they point to a player. If they are the same alignment as them, announce that both players are the same alignment.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "leviathan",
+     "reason": "Each night*, the Leviathan chooses an alive good player (different to previous nights): a chosen Queer uses their ability but does not die."
+    },
+    {
+     "id": "riot",
+     "reason": "Each night*, Riot chooses an alive good player (different to previous nights): a chosen Queer uses their ability but does not die."
+    },
+    {
+     "id": "vortox",
+     "reason": "All players learn true information about the Queer & their chosen player."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "queer",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/queer.png",
+   "page": "c/queer",
+   "image": "https://botchomebrew.wiki/assets/art/queer.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Queer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "2/14/2026"
+  },
+  {
+   "name": "Moonjay",
+   "team": "outsider",
+   "ability": "Each day, even if dead, privately learn & answer a question: if answered incorrectly twice, your team loses.",
+   "lede": "The Moonjay is a messenger bird whose slip-up can cost their side the fight.",
+   "howToRun": [
+    "Once per day, if the Moonjay requests a private chat with you, take them away from the circle so you cannot be overheard. Ask a question to them, and then return them to the circle.",
+    "When they are ready to answer the question, take them back away from the circle and listen to their answer.",
+    "If they answer incorrectly, mark them with the ONE STRIKE reminder. If they already have the ONE STRIKE reminder, declare that the game is over and which team has won.",
+    "Make sure that the questions you give are not too hard, as the Moonjay can't afford to answer many wrong.",
+    "Optional Rule: Once per game, the Moonjay may choose to learn how many strikes they have."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "One Strike"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "moonjay",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/moonjay.png",
+   "page": "c/moonjay",
+   "image": "https://botchomebrew.wiki/assets/art/moonjay.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Moonjay is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/25/2025"
+  },
+  {
+   "name": "Mutineer",
+   "team": "outsider",
+   "ability": "On your 1st night, choose an alive player (not yourself): you become opposite their alignment. If they died today or tonight, choose again.",
+   "lede": "The Mutineer rebels against a player until they stand no more.",
+   "howToRun": [
+    "During the first night, wake the Mutineer. They point at an alive player. Mark that player with a MUTINY reminder.",
+    "The Mutineer becomes opposite the chosen player's alignment: show the Mutineer the YOU ARE info token and then a thumbs up (if good) or a thumbs down (if evil) to let them know what their new alignment is. Flip their character token in the grimoire if needed to represent the Mutineer's new alignment.",
+    "Put the Mutineer to sleep.",
+    "If the player marked MUTINY died today or tonight, the Mutineer chooses a new player at night."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Lumi",
+   "edition": "",
+   "firstNight": 65.1,
+   "firstNightReminder": "The Mutineer chooses a player: show the Mutineer their new alignment. :reminder:",
+   "otherNight": 85.2,
+   "otherNightReminder": "The Mutineer might choose a player: show the Mutineer their new alignment. :reminder:",
+   "reminders": [
+    "Mutiny"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "boffin",
+     "reason": "The Demon cannot have the Mutineer ability."
+    },
+    {
+     "id": "pithag",
+     "reason": "If the Pit-Hag turns an evil player into the Mutineer, they can’t turn good due to their own ability."
+    },
+    {
+     "id": "vizier",
+     "reason": "The Mutineer cannot choose the Vizier."
+    },
+    {
+     "id": "zuggtmoy_travelbythestarlight",
+     "reason": "The Zuggtmoy cannot choose that an evil player gains the Mutineer ability."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "mutineer",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/mutineer.png",
+   "page": "c/mutineer",
+   "image": "https://botchomebrew.wiki/assets/art/mutineer.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Mutineer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "3/1/2025"
+  },
+  {
+   "name": "Axiom",
+   "team": "outsider",
+   "ability": "Once per game, at night, you learn a statement. If you are not mad it is true, you must prove it false, or might be executed.",
+   "lede": "The Axiom postulates a statement... but one miscalculation may be fatal.",
+   "howToRun": [
+    "Once per game, at night, write a statement on a piece of paper, or on a phone. Wake the Axiom. Show them this statement. Put the Axiom to sleep. Mark them with the MAD reminder.",
+    "If the Axiom has successfully proven their statement false, remove the MAD reminder. If you believe the Axiom is not mad that their statement is true, and they are marked MAD, you may execute them.",
+    "It is advised that you give the Axiom a statement early in the game rather than later. This gives them a fair chance to be mad about their statement."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 68.5,
+   "firstNightReminder": "You may show the Axiom their statement.",
+   "otherNight": 68.6,
+   "otherNightReminder": "You may show the Axiom their statement.",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "axiom",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/axiom.png",
+   "page": "c/axiom",
+   "image": "https://botchomebrew.wiki/assets/art/axiom.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Axiom is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "4/18/2025"
+  },
+  {
+   "name": "Temple Guard",
+   "team": "outsider",
+   "ability": "The 1st good player to rise becomes evil. If no-one has risen, you may choose to rise.",
+   "lede": "The Temple Guard corrupts resurrections.",
+   "howToRun": [
+    "If a good player comes back to life, and no-one is marked NO MORE EVIL, that good player becomes evil. Flip their token upside-down in the grimoire, wake them, and show them the YOU ARE info token and then a thumbs down, then put them to sleep. Then, mark the Temple Guard with the NO MORE EVIL reminder token.",
+    "If a good player comes back to life, and the Temple Guard is marked NO MORE EVIL, nothing happens.",
+    "Each night that the Temple guard is dead and no-one is marked NO MORE EVIL, wake the Temple Guard. They either nod or shake their head. If they shake their head, put them back to sleep. If they nod their head, the Temple Guard comes back to life: remove their shroud, flip their token upside-down in the grimoire, wake them, and show them the YOU ARE info token and then a thumbs down, then put them to sleep. Then, mark the Temple Guard with the NO MORE EVIL reminder token."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 61.5,
+   "otherNightReminder": "If a player rose, they become evil. :reminder: If not, the dead Temple Guard either nods or shakes their head. If they nod their head, they rise and become evil. :reminder:",
+   "reminders": [
+    "No More Evil"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "temple-guard",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/temple-guard.png",
+   "page": "c/temple-guard",
+   "image": "https://botchomebrew.wiki/assets/art/temple-guard.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Temple Guard is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/21/2026"
+  },
+  {
+   "name": "Facade",
+   "team": "outsider",
+   "ability": "If you are dead, good might think they win at any time (once). Then, unless most good players agree to return to play, evil wins.",
+   "lede": "The Facade builds the perfect lie.",
+   "howToRun": [
+    "If the Facade is dead, at any time, you may declare that the game is over and that the Facade's team has won (make this fake win seem as real as possible). Wait around 30 seconds before revealing players' characters to give the players a chance to continue the game. If over half of all good players agree to return to play, play continues as normal. If not, announce that evil wins.",
+    "If good wins the game legitimately and over half of all good players agree to return to play, announce that evil wins."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry (from The Gallery)",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "facade",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/facade.png",
+   "page": "c/facade",
+   "image": "https://botchomebrew.wiki/assets/art/facade.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Facade is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "5/1/2026"
+  },
+  {
+   "name": "Wyvern",
+   "team": "minion",
+   "ability": "Each night*, a good player who voted for you today might die, even if you are dead.",
+   "lede": "The Wyvern crushes any who dare oppose them.",
+   "howToRun": [
+    "Each day, if a good player votes for the Wyvern, you may mark them with a VOTED reminder token.",
+    "Each night except the first, the marked player, if any, dies - mark them with the DEAD reminder. Remove all other reminders."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 52.3,
+   "otherNightReminder": "A player who voted for the Wyvern today might die. :reminder:",
+   "reminders": [
+    "Voted",
+    "Voted",
+    "Voted",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "plaguedoctor",
+     "reason": "If the Storyteller would gain the Wyvern ability, a Minion gains it, and learns this."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "wyvern",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/wyvern.png",
+   "page": "c/wyvern",
+   "image": "https://botchomebrew.wiki/assets/art/wyvern.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Wyvern is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/25/2025"
+  },
+  {
+   "name": "Warlock",
+   "team": "minion",
+   "ability": "If all alive good Townsfolk voted for today's executee (except them, at least one), their team loses. [-1 or +1 Outsider]",
+   "lede": "The Warlock punishes those who spill innocent blood, even if by mistake.",
+   "howToRun": [
+    "While setting up the game, before putting the character tokens in the bag, either remove one Townsfolk and add one Outsider or remove one Outsider and add one Townsfolk.",
+    "If all alive good Townsfolk vote for a certain player's execution (except themself), mark that player with the TRIBUTE reminder.",
+    "If the player marked TRIBUTE is executed, declare that the game is over and which team was won.",
+    "At the end of the day, remove the TRIBUTE reminder."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Lumi",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Tribute"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [
+    {
+     "id": "lycanthrope",
+     "reason": "The Lycanthrope’s “Faux Paw” player has to vote to trigger the Warlock’s ability."
+    },
+    {
+     "id": "eviltwin",
+     "reason": "The Warlock’s ability does not activate on the dead Evil Twin."
+    },
+    {
+     "id": "goblin",
+     "reason": "If the Warlock's ability would activate on the Goblin & the Goblin has claimed to be the Goblin, evil wins."
+    },
+    {
+     "id": "psychopath",
+     "reason": "The Warlock's ability does not activate on the Psychopath if the Psychopath has used their ability or was executed."
+    },
+    {
+     "id": "vizier",
+     "reason": "The Warlock’s ability does not activate on the Vizier."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "warlock",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/warlock.png",
+   "page": "c/warlock",
+   "image": "https://botchomebrew.wiki/assets/art/warlock.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Warlock is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "5/30/2025"
+  },
+  {
+   "name": "Myconid",
+   "team": "minion",
+   "ability": "On your 1st night, Minions & Demons wake together & see the Grimoire.",
+   "lede": "The Myconid networks the evil team.",
+   "howToRun": [
+    "During the first night, wake all Minions and Demons together. Show each of them the Grimoire, or lay it in the center of town square where they can all see. When they are ready, put them all to sleep."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 26.5,
+   "firstNightReminder": "Wake all Minions and Demons, and show them the Grimoire.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "magician",
+     "reason": "If the Magician is in play, Minions & Demons wake separately, and the Magician's and evil character's tokens are removed when they see the grimoire."
+    },
+    {
+     "id": "poppygrower",
+     "reason": "If the Poppy Grower is in play, Minions & Demons don't wake together to see the grimoire until the Poppy Grower dies."
+    },
+    {
+     "id": "damsel",
+     "reason": "If the Myconid is (or has been) in play, the Damsel is poisoned."
+    },
+    {
+     "id": "heretic",
+     "reason": "Only 1 jinxed character can be in play."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "myconid",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/myconid.png",
+   "page": "c/myconid",
+   "image": "https://botchomebrew.wiki/assets/art/myconid.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Myconid is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/24/2026"
+  },
+  {
+   "name": "Zuggtmoy",
+   "team": "demon",
+   "ability": "Each night*, choose a player: they die. You get an extra bluff & start by choosing 1: an evil player gains its ability.",
+   "lede": "The Zuggtmoy plants her flowers onto her followers.",
+   "howToRun": [
+    "During the first night, wake the Zuggtmoy. When you are giving them bluffs, show them an extra not-in-play character. The Zuggtmoy will point to a character token or a character on their character sheet. Put the Zuggtmoy to sleep.",
+    "Choose an evil player. Wake that player. Show them the THIS CHARACTER SELECTED YOU info token, then the Zuggtmoy character token, then the chosen bluff's character token. That player now has that ability; place that character token next to the evil player's character token. Mark them with the Zuggtmoy's SPORE reminder token.",
+    "That player now has this ability. They use it as if they were that character, and wake at night when that character would normally wake to use their ability.",
+    "Each night except the first, wake the Zuggtmoy. They point at any player. That player dies - mark them Zuggtmoy's DEAD reminder token."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 17.9,
+   "firstNightReminder": "Show the Zuggtmoy 1 extra bluff during the DEMON INFO step: they choose 1. Wake an evil player: show them the THIS CHARACTER SELECTED YOU info token, followed by the Zuggtmoy character token and then the character token they chose. :reminder:",
+   "otherNight": 50.56,
+   "otherNightReminder": "The Zuggtmoy chooses a player: they die. :reminder:",
+   "reminders": [
+    "Spore",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [
+    {
+     "id": "cultleader",
+     "reason": "If the Zuggtmoy chooses the Cult Leader, the evil player that gains the Cult Leader ability cannot turn good due to this ability."
+    },
+    {
+     "id": "damsel",
+     "reason": "If the Zuggtmoy chooses the Damsel, the Storyteller chooses a good player to become the Damsel instead."
+    },
+    {
+     "id": "drunk",
+     "reason": "If the Zuggtmoy chooses the Drunk, the evil player that would gain this ability chooses a Townsfolk player to have this ability instead."
+    },
+    {
+     "id": "goon",
+     "reason": "If the Zuggtmoy chooses the Goon, the evil player that gains the Goon ability cannot turn good due to this ability."
+    },
+    {
+     "id": "heretic",
+     "reason": "The Zuggtmoy cannot choose that an evil player gains the Heretic ability."
+    },
+    {
+     "id": "ogre",
+     "reason": "The Zuggtmoy cannot choose that an evil player gains the Ogre ability."
+    },
+    {
+     "id": "politician",
+     "reason": "The Zuggtmoy cannot choose that an evil player gains the Politician ability."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "zuggtmoy",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/zuggtmoy.png",
+   "page": "c/zuggtmoy",
+   "image": "https://botchomebrew.wiki/assets/art/zuggtmoy.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Zuggtmoy is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/25/2025"
+  },
+  {
+   "name": "Tartarus",
+   "team": "demon",
+   "ability": "Each day, before nominations, players may choose to die: if no good player died this way today or an Outsider did, evil wins at dusk. [-1 to +1 Outsiders]",
+   "lede": "The Tartarus is an everlasting pit hungering for blood.",
+   "howToRun": [
+    "Each day, before the nomination phase, players may choose to die. Mark them with the DEAD reminder.",
+    "Each dusk, if no good player is marked DEAD, or an Outsider is marked DEAD, declare that the game is over and the evil team wins."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Dead",
+    "Dead",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [
+    {
+     "id": "choirboy",
+     "reason": "The King can choose to die by the Tartarus."
+    },
+    {
+     "id": "slayer",
+     "reason": "Not jinxed, but note that the Slayer must survive till the final 3 to use their ability."
+    },
+    {
+     "id": "soldier",
+     "reason": "The Soldier cannot die from the Tartarus - this makes the soldier confirmable if executed."
+    },
+    {
+     "id": "bansheejinx",
+     "reason": "Each night*, the Tartarus chooses an alive good player (different to previous nights): a chosen Banshee dies & gains their ability."
+    },
+    {
+     "id": "engineerjinx",
+     "reason": "If the Engineer creates a Tartarus, Armageddon day is tomorrow."
+    },
+    {
+     "id": "grandmotherjinx",
+     "reason": "If the grandchild dies due to the Tartarus ability, the Grandmother dies tonight."
+    },
+    {
+     "id": "ravenkeeperjinx",
+     "reason": "Each night*, the Tartarus chooses an alive player (different to previous nights): a chosen Ravenkeeper uses their ability but does not die."
+    },
+    {
+     "id": "sagejinx",
+     "reason": "Each night*, the Tartarus chooses an alive good player (different to previous nights): a chosen Sage uses their ability but does not die."
+    },
+    {
+     "id": "hatterjinx",
+     "reason": "If the Hatter dies and the demon chooses Tartarus, Armageddon day is tomorrow."
+    },
+    {
+     "id": "eviltwinjinx",
+     "reason": "If the good twin chooses to die to the Tartarus ability, they register as being executed to the Evil Twin."
+    },
+    {
+     "id": "pithagjinx",
+     "reason": "If the Pit-Hag creates a Tartarus, Armageddon day is tomorrow."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "tartarus",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/tartarus.png",
+   "page": "c/tartarus",
+   "image": "https://botchomebrew.wiki/assets/art/tartarus.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Tartarus is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "3/22/2025"
+  },
+  {
+   "name": "Veil",
+   "team": "demon",
+   "ability": "Each night*, if no-one died today, a player dies. Only your neighbors register as evil characters to Townsfolk. [+1 Minion. Your seat is hidden]",
+   "lede": "The Veil exists between the gaps of reality.",
+   "howToRun": [
+    "While setting up the game, before putting character tokens in the bag, remove the Veil character token and add a Minion character token.",
+    "While preparing the first night, place the Veil token between any two players. Mark both of the Veil's neighbors with the GATE reminder.",
+    "The Veil's neighbors register as evil and as both a Minion and Demon to Townsfolk. However, all other players register as good and as a Townsfolk or Outsider to Townsfolk.",
+    "Each day, if a player dies, mark them with the DIED TODAY reminder. (If a gap is executed, that is not a player, so do not place the DIED TODAY reminder.) Each night except the first, if no-one is marked DIED TODAY, a player of your choice dies—mark them with the DEAD reminder."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 37.5,
+   "otherNightReminder": "If no-one died today, a player dies. :reminder:",
+   "reminders": [],
+   "remindersGlobal": [
+    "Died Today",
+    "Dead",
+    "Gate",
+    "Gate"
+   ],
+   "setup": true,
+   "jinxes": [
+    {
+     "id": "alsaahir",
+     "reason": "The Veil's misregisteration does not affect the Alsaahir ability. The Alsaahir may guess a gap as the Demon."
+    },
+    {
+     "id": "cannibal",
+     "reason": "Evil players register as evil to the Cannibal."
+    },
+    {
+     "id": "engineer",
+     "reason": "If the Engineer creates a not-in-play Veil, the Demon becomes a not-in-play Minion neighboring the Veil & learns where the Veil sits. If in-play, vice versa."
+    },
+    {
+     "id": "magician",
+     "reason": "If a Veil is in play, Minions think the Magician is a Minion."
+    },
+    {
+     "id": "snakecharmer",
+     "reason": "If the Snake Charmer is in play, the Veil must always neighbor a Minion. Only that Minion registers as the Demon to the Snake Charmer."
+    },
+    {
+     "id": "soldier",
+     "reason": "The Soldier is not safe from the Veil's misregistration."
+    },
+    {
+     "id": "barber",
+     "reason": "If the Barber dies & the Veil is in play, the Storyteller chooses for the Veil."
+    },
+    {
+     "id": "hatter",
+     "reason": "If the Demon chooses to become the Veil, they become a not-in-play Minion neighboring the Veil & learns where the Veil sits."
+    },
+    {
+     "id": "boffin",
+     "reason": "If a Veil is in play, the Boffin gives themselves a good character's ability instead."
+    },
+    {
+     "id": "boomdandy",
+     "reason": "When the Boomdandy explodes, the Storyteller announces the gap where the Veil sits (if a Veil is in play) or an arbitrary gap (if the Veil is not in play). Players may point to this gap to die."
+    },
+    {
+     "id": "pithag",
+     "reason": "If the Pit-Hag creates a Veil, they must choose a gap between two players. If a Veil is in play and the Pit-Hag creates a Demon, the Storyteller may choose that the Veil is out-of-play."
+    },
+    {
+     "id": "scarletwoman",
+     "reason": "If there are 5 or more players alive & the Veil dies, a gap neighboring the Scarlet Woman becomes the new Veil & the Scarlet Woman learns where."
+    },
+    {
+     "id": "summoner",
+     "reason": "If the Summoner creates a Veil, the chosen player becomes a not-in-play evil Minion neighboring the Veil instead & learns where the Veil sits."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "veil",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/veil.png",
+   "page": "c/veil",
+   "image": "https://botchomebrew.wiki/assets/art/veil.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Veil is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "10/09/2025"
+  },
+  {
+   "name": "Samurai",
+   "team": "demon",
+   "ability": "Each night*, choose a player: they die. If no marked characters are in play, whoever wins, loses, & whoever loses, wins. [-1 or +1 Outsider]",
+   "lede": "The Samurai seeks vengeance over those who wronged them.",
+   "howToRun": [
+    "At the start of the game, if no marked characters are in play, put the DIE WITH HONOR reminder in the center of the grimoire.",
+    "Each night except the first, wake the Samurai. They point at any player. That player dies—mark them with the DEAD reminder. Put the Samurai to sleep.",
+    "If the game ends and the DIE WITH HONOR reminder is in the center of the grimoire, if good would win, declare that evil wins instead, and if evil would win, declare that good wins instead. If the DIE WITH HONOR reminder is not in the center of the grimoire, the game ends normally."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 10.1,
+   "firstNightReminder": "If no marked characters are in play, put the DIE WITH HONOR reminder in the center of the grimoire. :reminder:",
+   "otherNight": 47.6,
+   "otherNightReminder": "The Samurai points at a player: they die. :reminder:",
+   "reminders": [
+    "Dead",
+    "Die With Honor"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "samurai-travel-by-starlight",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/samurai-travel-by-starlight.png",
+   "page": "c/samurai-travel-by-starlight",
+   "image": "https://botchomebrew.wiki/assets/art/samurai-travel-by-starlight.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Samurai is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/23/2026"
+  },
+  {
+   "name": "Aurora",
+   "team": "traveller",
+   "ability": "You do not know your alignment. Each night, you learn if your alignment is winning. You might wake when other players do.",
+   "lede": "Aurora doesn't know whose side she fights for.",
+   "howToRun": [
+    "When the Aurora joins the game, do not tell them their alignment nor who the demon is (if they are evil). Each night, wake the Aurora. If you believe the Aurora's team is winning, nod your head yes. If you believe the Aurora's team is losing or no team is winning, shake your head no.",
+    "At night, if you wake a player for any reason, you may wake the Aurora too. When you put the original player to sleep, put the Aurora to sleep too."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 1,
+   "firstNightReminder": "Show the Aurora a head signal (nod 'yes', shake 'no') for if their team is winning.",
+   "otherNight": 1,
+   "otherNightReminder": "Show the Aurora a head signal (nod 'yes', shake 'no') for if their team is winning.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "aurora",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/aurora.png",
+   "page": "c/aurora",
+   "image": "https://botchomebrew.wiki/assets/art/aurora.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Aurora is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "2/15/2025"
+  },
+  {
+   "name": "Cartomancer",
+   "team": "traveller",
+   "ability": "Each day, publicly choose an info token: the Storyteller must use it tonight & might break rules to do so.",
+   "lede": "The Cartomancer utilizes the power of cards.",
+   "howToRun": [
+    "Each day, set the token the Cartomancer chooses aside, so that you remember it.",
+    "That night, use the token in some way. Feel free to break rules to do so."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Lumi",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 2.5,
+   "otherNightReminder": "Use the chosen info token in any way.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "cartomancer",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/cartomancer.png",
+   "page": "c/cartomancer",
+   "image": "https://botchomebrew.wiki/assets/art/cartomancer.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Cartomancer is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "6/28/2026"
+  },
+  {
+   "name": "Marathon",
+   "team": "traveller",
+   "ability": "You may move your seat during nominations. Voting always starts & ends at you.",
+   "lede": "The Marathon runs.",
+   "howToRun": [
+    "When running a vote, start at the Marathon and spin clockwise, counting votes out loud. When your hand reaches the Marathon, stop the vote.",
+    "Start the vote slow, and gradually increase your speed as the vote goes on. If the Marathon is physically disabled, or otherwise unable to run fast, slow your speed down at a reasonable pace for that player.",
+    "If the Marathon is unable to move for some reason, you may use the following ability for Marathon instead: Voting always starts at you & runs until you choose to stop it. The Storyteller may also stop it after one rotation."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "marathon",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/marathon.png",
+   "page": "c/marathon",
+   "image": "https://botchomebrew.wiki/assets/art/marathon.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Marathon is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "6/28/2026"
+  },
+  {
+   "name": "The Moon",
+   "team": "loric",
+   "ability": "Players who the Storyteller believes roleplayed the best this game might gain a blessing & all players learn how.",
+   "lede": "The Moon is the source of all magic which blesses those it favors.",
+   "howToRun": [
+    "At any time, declare that The Moon is in play. Add The Moon's token and their BLESSING reminder to the Grimoire. Tell the players what your criteria for roleplaying is.",
+    "At any time, announce which player(s) you judge to have roleplayed the best, according to your criteria. Announce what \"blessing\" happens to them. Use the BLESSING reminder if necessary.",
+    "The \"blessing\" that happens is up to you, however a small boost works much better than a more powerful one. The Moon is meant to be a fun character, so do whatever you think fits best.",
+    "OPTIONAL RULE: You can ask all players to close their eyes and have them vote on who they think roleplayed the best."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Bendan",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Blessing",
+    "Blessing"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "the-moon",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/the-moon.png",
+   "page": "c/the-moon",
+   "image": "https://botchomebrew.wiki/assets/art/the-moon.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "The Moon is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "6/11/2025"
+  },
+  {
+   "name": "Zodiac",
+   "team": "loric",
+   "ability": "The Demon may privately make public announcements.",
+   "lede": "The Zodiac is a killer demon seeking drama and chaos.",
+   "howToRun": [
+    "Each night, wake the Demon. They either nod or shake their head. If they shake their head, put them back to sleep.",
+    "If they nod their head, give the Demon a piece of paper or a phone to write an announcement on. When the Demon is finished, put them back to sleep.",
+    "At dawn, say \"Zodiac Speaking:\", or otherwise signal that the Demon is making an announcement, then reveal the Demon's announcement.",
+    "The Demon may alternatively come speak to you during the day and tell you an announcement. Later that day, reveal the announcement that the Demon told you to the group."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Bendan",
+   "edition": "",
+   "firstNight": 89.11,
+   "firstNightReminder": "The Demon may write a statement. Publicly reveal it at dawn.",
+   "otherNight": 89.11,
+   "otherNightReminder": "The Demon may write a statement. Publicly reveal it at dawn.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "zodiac",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/zodiac.png",
+   "page": "c/zodiac",
+   "image": "https://botchomebrew.wiki/assets/art/zodiac.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Zodiac is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "12/15/2025"
+  },
+  {
+   "name": "Cookie",
+   "team": "loric",
+   "ability": "Players might not learn other in-play NPCs until the game starts. [+? NPCs]",
+   "lede": "The Cookie is a surprise pop-up that customizes your Clocktower Experience™.",
+   "howToRun": [
+    "At the start of the game, announce that the Cookie is in play.",
+    "When choosing characters, decide which NPCs you want to be in play, and adjust the bag accordingly.",
+    "Right before the players draw their character tokens from the bag, announce which NPCs are in play. Pass the bag to the players.",
+    "Lorics like the Bootlegger add more unpredictability to the game, and should be excluded from potential Cookie setups unless the players agree to it."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 1.01,
+   "firstNightReminder": "Announce which NPCs are in play.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "cookie",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/cookie.png",
+   "page": "c/cookie",
+   "image": "https://botchomebrew.wiki/assets/art/cookie.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Cookie is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "12/16/2025"
+  },
+  {
+   "name": "Confectioner",
+   "team": "loric",
+   "ability": "Today marks a special occasion. Players involved may choose to receive a gift & all players learn what.",
+   "lede": "Use the Confectioner to celebrate a special occasion.",
+   "howToRun": [
+    "At the start of the game, declare that the Confectioner is in play and which players are involved in the occasion.",
+    "At any point in the game, if an involved player chooses to receive a gift, announce this, and give them a gift (mechanical or non-mechanical). Tell the players what the gift is. You may use the GIFT reminders if you wish.",
+    "If you choose to give a mechanical gift, don't make it too powerful. A small boost works better than a large one."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Harry",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Gift",
+    "Gift"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "confectioner",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/confectioner.png",
+   "page": "c/confectioner",
+   "image": "https://botchomebrew.wiki/assets/art/confectioner.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Confectioner is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/25/2026"
+  },
+  {
+   "name": "X-Card",
+   "team": "fabled",
+   "ability": "Anyone may request that the game is on hold & the Storyteller may ask for silence.",
+   "lede": "Use the X-Card to allow players to take a moment to breathe or calm down.",
+   "howToRun": [
+    "At any point in the game, announce that the X-Card is in play (if you wish, you may draw a X on a piece of paper or an index card and place it in reach of everyone). Explain the X-Card and what it does.",
+    "At any point in the game, a player may physically tap the X-Card or otherwise communicate that they are using the X-Card. Declare that the game is on pause and consider asking everyone to quiet down. Allow players to leave the game area if needed.",
+    "When that player signals they are ready again, gather everyone back and start the game again."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Bendan",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "x-card",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/x-card.png",
+   "page": "c/x-card",
+   "image": "https://botchomebrew.wiki/assets/art/x-card.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "X-Card is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "12/14/2025"
+  },
+  {
+   "name": "Collective",
+   "team": "fabled",
+   "ability": "Multiple players occupy the same seat. Only 1 may vote, nominate, & use their ability.",
+   "lede": "The Collective is multiple people of the same mind.",
+   "howToRun": [
+    "While setting up the game, before handing the bag to the players, announce which players are part of the collective and which of them is the host. Ensure that the bag is adjusted accordingly.",
+    "If the collective's character would wake at night, wake the whole collective. Prompt the host to choose. Allow them time to discuss with one another using whispers, hand signals, etc."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "The Hopehill System",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "collective",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/collective.png",
+   "page": "c/collective",
+   "image": "https://botchomebrew.wiki/assets/art/collective.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Collective is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "1/24/2026"
+  },
+  {
+   "name": "Yggdrasil",
+   "team": "fabled",
+   "ability": "The Storyteller assigns multiple bags. Players secretly vote on which 1 to play.",
+   "lede": "Use the Yggdrasil to ensure players receive the character that they enjoy most.",
+   "howToRun": [
+    "After you assign the 1st bag, and the players' character tokens have been handed back to you, take a picture of the Grimoire using your phone (if you have a really good memory, you may skip this step).",
+    "Assign a second bag. You may use the same, or different characters from the previous bag. After characters have been handed back to you, take another picture of the current Grimoire. Repeat this step according to how many bags you plan to assign.",
+    "After all bags have been assigned, ask all players to close their eyes. Announce \"Bag 1 votes, starting now,\" and tally votes for the first bag. Do this for however many bags you assigned. When you are finished, recreate the Grimoire of whichever bag was voted on by the players, and start the first night."
+   ],
+   "callout": "",
+   "appearsIn": "Travel by the Starlight",
+   "tags": "",
+   "translatedBy": "",
+   "iconBy": "Lumi Hopehill",
+   "edition": "",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customJson": "",
+   "slug": "yggdrasil",
+   "quote": "",
+   "creator": "Harry & Co & Bendan",
+   "summaryBullets": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "art": "art/yggdrasil.png",
+   "page": "c/yggdrasil",
+   "image": "https://botchomebrew.wiki/assets/art/yggdrasil.png",
+   "starlight": true,
+   "customBoxes": [
+    {
+     "title": "Full almanac",
+     "content": "Yggdrasil is by Harry & Co & Bendan. The complete almanac - worked examples, tips and the full write-up - is on the creators' own site:\n\nhttps://travel-by-starlight.carrd.co/"
+    }
+   ],
+   "released": "4/12/2026"
+  }
+ ],
+ "scripts": [
+  {
+   "slug": "axiom-of-logic",
+   "name": "Axiom of Logic",
+   "header": "",
+   "author": "Harry & Co",
+   "description": "A Teensyville logic puzzle built around consistent, powerful information: Savant, Clockmaker and Seamstress can crack the game open, while the evil team leans on madness and the Vortox rather than drunkenness to muddy it.",
+   "characters": [
+    "off-clockmaker",
+    "off-fortuneteller",
+    "off-undertaker",
+    "off-monk",
+    "off-savant",
+    "off-seamstress",
+    "axiom",
+    "off-lunatic",
+    "off-cerenovus",
+    "off-baron",
+    "off-ojo",
+    "off-vortox",
+    "off-bootlegger"
+   ],
+   "tagline": "Teensyville script by Harry & Co.",
+   "version": "11/02/25",
+   "difficulty": "",
+   "synopsis": "",
+   "gameplay": "",
+   "strategyGood": "",
+   "strategyEvil": "",
+   "bootlegger": [
+    "The Baron adds only one Outsider instead of two."
+   ],
+   "starlight": false
+  },
+  {
+   "slug": "magic-school-buss",
+   "name": "Magic School Buss",
+   "header": "",
+   "author": "Harry & Co",
+   "description": "A Teensyville script where every ability yields information and the threat of double-Drunks looms. Townsfolk are high-value targets against tight evil coordination, and good players must sort truth from falsehood.",
+   "characters": [
+    "off-steward",
+    "off-empath",
+    "off-dreamer",
+    "off-savant",
+    "off-alsaahir",
+    "off-artist",
+    "off-hermit",
+    "off-drunk",
+    "myconid",
+    "off-baron",
+    "off-lilmonsta",
+    "off-imp",
+    "off-bootlegger"
+   ],
+   "tagline": "Teensyville script by Harry & Co.",
+   "version": "6/28/26",
+   "difficulty": "",
+   "synopsis": "",
+   "gameplay": "",
+   "strategyGood": "",
+   "strategyEvil": "",
+   "bootlegger": [
+    "The Baron adds only one Outsider instead of two.",
+    "The Drunk and the Hermit must yield false info."
+   ],
+   "starlight": false
+  },
+  {
+   "slug": "it-was-all-a-dream",
+   "name": "It Was All a Dream",
+   "header": "",
+   "author": "Harry & Co, Bendan",
+   "description": "A full Ravenswood Bluff script about claims that contradict themselves. Facade, Poppy Grower and Samurai let both teams make plays no other characters support, so good often benefits from lying and evil can take much riskier lines.",
+   "characters": [
+    "fae",
+    "off-preacher",
+    "off-fortuneteller",
+    "off-innkeeper",
+    "off-gambler",
+    "off-exorcist",
+    "off-gossip",
+    "off-savant",
+    "off-alsaahir",
+    "off-courtier",
+    "off-fisherman",
+    "off-juggler",
+    "off-poppygrower",
+    "off-drunk",
+    "off-tinker",
+    "off-recluse",
+    "facade",
+    "wyvern",
+    "off-assassin",
+    "off-boomdandy",
+    "off-mastermind",
+    "off-nodashii",
+    "off-imp",
+    "off-po",
+    "samurai-travel-by-starlight",
+    "off-bootlegger"
+   ],
+   "tagline": "Ravenswood Bluff script by Harry & Co, Bendan.",
+   "version": "5/1/2026",
+   "difficulty": "",
+   "synopsis": "",
+   "gameplay": "",
+   "strategyGood": "",
+   "strategyEvil": "",
+   "bootlegger": [
+    "If the Poppy Grower becomes drunk, poisoned, or leaves play, Minions & Demons learn who each other are that night."
+   ],
+   "starlight": false
+  }
+ ]
+}
