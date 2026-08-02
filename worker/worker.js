@@ -110,6 +110,9 @@
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
  *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
+ *   POST /api/admin/import-odyssey -> ONE-TIME: load migration/odyssey-import.json
+ *                                     (119 characters + the Odyssey include[] list).
+ *                                     Remove once it has been run.
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -144,6 +147,11 @@ Render.setClassBadge(Classify.classRowHTML);
 // News article renderer (also used by the /news index and the admin editor
 // preview in the browser).
 import NewsRender from '../assets/render-news.js';
+// One-time payload for POST /api/admin/import-odyssey (the "Import Odyssey"
+// button on the dashboard). Bundled into the Worker because migration/ is in
+// .assetsignore and so is never served as a static file. Delete this import,
+// the route and the dashboard card once the import has been run.
+import odysseyImport from '../migration/odyssey-import.json';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -3572,6 +3580,72 @@ export default {
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' page(s) with no icon moved to draft');
         return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+      }
+
+      // ---- admin: one-time Odyssey import ----
+      // Loads migration/odyssey-import.json (bundled above) into D1: 119 of
+      // Taiyi's characters plus the 6 slugs that join the Odyssey collection
+      // through include[]. Idempotent — re-running it just rewrites the same
+      // rows. Remove this block, the import at the top of the file and the
+      // dashboard card once it has been run.
+      if (path === '/api/admin/import-odyssey') {
+        const b = await request.json().catch(() => ({}));
+        const chars = odysseyImport.characters || [];
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, count: chars.length,
+            collection: odysseyImport.collection,
+            sample: chars.slice(0, 8).map(c => ({ slug: c.slug, name: c.name, team: c.team }))
+          });
+        }
+        let created = 0, updated = 0, drafted = [];
+        for (const src of chars) {
+          const c = Object.assign({}, src);
+          delete c.status;
+          const existing = await getEntityRow(env, 'character', c.slug);
+          // Starlight is admin-only and never comes from a payload: carry the
+          // stored value forward, exactly as /api/character does.
+          c.starlight = existing ? !!parseData(existing).starlight : false;
+          // Same no-icon guard as a normal save, so a missing image can never
+          // put a broken page live.
+          let status = 'published';
+          if (Classify.needsIcon(c) && !Classify.hasIcon(c)) { status = 'draft'; drafted.push(c.slug); }
+          if (existing) await saveRevision(env, sess, 'character', existing);
+          await env.DB.prepare(
+            `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+             ON CONFLICT(slug) DO UPDATE SET
+               name=excluded.name, team=excluded.team, creator=excluded.creator,
+               tags=excluded.tags, appears_in=excluded.appears_in,
+               data=excluded.data, status=excluded.status, updated_at=datetime('now')`
+          ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
+                 c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
+          if (existing) updated++; else created++;
+        }
+        // The 6 characters that already lived under their own slugs keep the
+        // appearsIn (and collections) they had, so they join Odyssey through
+        // the collection's manual include[] list instead.
+        let includeAdded = [];
+        const collRow = await findCollectionRow(env, (odysseyImport.collection || {}).id || 'odyssey');
+        if (collRow) {
+          const cd = parseData(collRow);
+          const inc = Array.isArray(cd.include) ? cd.include.slice() : [];
+          for (const slug of (odysseyImport.collection.addToInclude || [])) {
+            if (inc.indexOf(slug) === -1) { inc.push(slug); includeAdded.push(slug); }
+          }
+          if (includeAdded.length) {
+            cd.include = inc;
+            await env.DB.prepare("UPDATE collections SET data=?, updated_at=datetime('now') WHERE slug=?")
+              .bind(JSON.stringify(cd), collRow.slug).run();
+          }
+        }
+        await logActivity(env, sess, 'create', 'character', null,
+          'Odyssey import: ' + created + ' created, ' + updated + ' updated');
+        return jsonResponse({
+          ok: true, created, updated, total: chars.length,
+          includeAdded, drafted,
+          collection: collRow ? collRow.slug : null
+        });
       }
 
       // ---- admin: site-wide announcement banner ----

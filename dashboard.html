@@ -481,6 +481,18 @@
         <div class="toast" id="noicon-toast"></div>
       </section>
 
+      <!-- ODYSSEY IMPORT (one-time; remove this card once it has been run) -->
+      <section class="panel">
+        <h3>Import Odyssey <span class="count-pill" id="ody-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          One-time load of Taiyi's <em>Odyssey</em> almanacs — 119 characters with their full write-ups, artwork and night order. Safe to run twice: it rewrites the same rows rather than duplicating them, and every page it replaces is saved to revisions first. Once it has run, this card can be removed.
+        </p>
+        <button type="button" class="small-btn" id="ody-check">Check what will be imported</button>
+        <button type="button" class="small-btn alt" id="ody-run" style="display:none">Import them</button>
+        <div id="ody-list"></div>
+        <div class="toast" id="ody-toast"></div>
+      </section>
+
       <!-- NEWS -->
       <section class="panel">
         <h3>News <span class="count-pill" id="news-count"></span></h3>
@@ -1246,6 +1258,35 @@
         if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }
         setToast('noicon-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' moved to drafts.');
         $('noicon-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- Odyssey import (one-time; remove with the card above) ---- */
+    $('ody-check').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('ody-list').innerHTML = '<p class="note">Checking…</p>';
+      postJSON('/api/admin/import-odyssey', { dryRun: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('ody-list').innerHTML = '<p class="note">' + esc(d.error || 'Check failed.') + '</p>'; return; }
+        $('ody-count').textContent = d.count + ' characters';
+        $('ody-list').innerHTML = '<p class="note">Ready to import ' + d.count +
+          ' characters, e.g. ' + esc(d.sample.map(function(c){ return c.name; }).join(', ')) + '…</p>';
+        $('ody-run').style.display = '';
+      });
+    });
+    $('ody-run').addEventListener('click', function(){
+      if (!confirm('Import all 119 Odyssey characters?\n\nPages that already exist are replaced (their current version is saved to revisions first, so you can roll any of them back).')) return;
+      var btn = this; btn.disabled = true;
+      setToast('ody-toast', true, 'Importing… this takes a few seconds.');
+      postJSON('/api/admin/import-odyssey', {}).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('ody-toast', false, d.error || 'Import failed.'); return; }
+        setToast('ody-toast', true, d.created + ' created, ' + d.updated + ' updated' +
+          (d.includeAdded && d.includeAdded.length ? ', ' + d.includeAdded.length + ' added to the collection' : '') +
+          (d.drafted && d.drafted.length ? ' — ' + d.drafted.length + ' saved as drafts (no icon)' : '') + '.');
         loadActivity(true);
       });
     });
