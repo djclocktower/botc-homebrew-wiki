@@ -110,6 +110,8 @@
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
  *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
+ *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
+ *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -144,6 +146,11 @@ Render.setClassBadge(Classify.classRowHTML);
 // News article renderer (also used by the /news index and the admin editor
 // preview in the browser).
 import NewsRender from '../assets/render-news.js';
+// One-time text cleanup for the Odyssey almanacs, driving
+// POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
+// Lives in migration/ (in .assetsignore) so it is never served as a static file.
+// Delete this import, the route and the card once the cleanup has been run.
+import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
@@ -3572,6 +3579,52 @@ export default {
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' page(s) with no icon moved to draft');
         return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+      }
+
+      // ---- admin: one-time Odyssey text cleanup ----
+      // Strips the translation's em dashes and rewrites its gendered pronouns
+      // to they/them/their across the Odyssey almanacs, leaving `ability` and
+      // the flavour quote's pronouns alone. The rules live in
+      // migration/odyssey-cleanup.js so the same code can be dry-run locally.
+      // Remove this block, the import at the top and the dashboard card once
+      // it has been run.
+      if (path === '/api/admin/cleanup-odyssey') {
+        const b = await request.json().catch(() => ({}));
+        // translatedBy is the Odyssey import's own marker: it matches those 119
+        // rows and nothing else on the wiki.
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, status, data FROM characters WHERE json_extract(data,'$.translatedBy')='DJ_DJ_DJ'"
+        ).all();
+        const rows = results || [];
+        const plan = [], flags = [];
+        for (const row of rows) {
+          const res = OdysseyCleanup.cleanCharacter(parseData(row));
+          res.flags.forEach(f => flags.push({ slug: row.slug, field: f.field, flag: f.flag }));
+          if (res.changed) plan.push({ row, data: res.data, n: res.changed });
+        }
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, scanned: rows.length,
+            pages: plan.length, fields: plan.reduce((a, p) => a + p.n, 0),
+            flags
+          });
+        }
+        // A flagged case means the rules met something they were not built for.
+        // Refuse rather than write half-checked prose.
+        if (flags.length) {
+          return jsonResponse({ error: flags.length + ' flagged case(s); nothing was changed.', flags }, { status: 400 });
+        }
+        for (const p of plan) {
+          await saveRevision(env, sess, 'character', p.row);
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(p.data), p.row.slug).run();
+        }
+        await logActivity(env, sess, 'update', 'character', null,
+          'Odyssey text cleanup: ' + plan.length + ' page(s)');
+        return jsonResponse({
+          ok: true, scanned: rows.length, pages: plan.length,
+          fields: plan.reduce((a, p) => a + p.n, 0), flags: []
+        });
       }
 
       // ---- admin: site-wide announcement banner ----
