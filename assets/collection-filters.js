@@ -57,8 +57,11 @@
   var tagSet = {}, creatorSet = {};
   cards.forEach(function (c) {
     cardTags(c).forEach(function (t) { tagSet[t] = 1; });
-    var cr = (c.getAttribute('data-creator') || '').trim();
-    if (cr) creatorSet[cr] = 1;
+    // Co-credited cards offer each of their creators as its own option.
+    (c.getAttribute('data-creator') || '').split(',').forEach(function (n) {
+      n = n.trim();
+      if (n) creatorSet[n] = 1;
+    });
   });
   var tags = Object.keys(tagSet).sort();
   var creators = Object.keys(creatorSet).sort(function (a, b) {
@@ -138,7 +141,13 @@
     var ctags = cardTags(card);
     if (STATE.inTags.length && !STATE.inTags.every(function (t) { return ctags.indexOf(t) !== -1; })) return false;
     if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
-    if (STATE.creator && (card.getAttribute('data-creator') || '').trim() !== STATE.creator) return false;
+    // data-creator holds the whole comma-separated credit string; a filter on
+    // one name matches any card that credits them.
+    if (STATE.creator) {
+      var credits = (card.getAttribute('data-creator') || '').split(',')
+        .map(function (n) { return n.trim(); });
+      if (credits.indexOf(STATE.creator) === -1) return false;
+    }
     return true;
   }
 

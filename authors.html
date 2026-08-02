@@ -55,6 +55,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/creators.js"></script>
   <script>
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g,'&amp;')
@@ -67,15 +68,14 @@
         // Build case-insensitive author map: lowercased key → {display, count}
         // First occurrence of each name wins for display capitalisation
         var authorMap = {};
+        // Co-credited pages list every creator, comma-separated, and each one
+        // is counted towards their own author page (assets/creators.js).
         list.forEach(function(c) {
-          var raw = (c.creator || '').trim();
-          if (!raw) return;
-          var key = raw.toLowerCase();
-          if (authorMap[key]) {
-            authorMap[key].count++;
-          } else {
-            authorMap[key] = { display: raw, count: 1 };
-          }
+          window.splitCreators(c.creator).forEach(function(raw) {
+            var key = raw.toLowerCase();
+            if (authorMap[key]) authorMap[key].count++;
+            else authorMap[key] = { display: raw, count: 1 };
+          });
         });
 
         var panel = document.getElementById('panel');

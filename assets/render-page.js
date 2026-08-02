@@ -278,11 +278,13 @@
 
   function renderCredits(entries, root) {
     var counts = {};
+    // Co-credited characters count towards each creator separately, so the
+    // credits list matches the links on the character pages themselves.
+    var split = dep('splitCreators') ||
+      function (s) { return String(s || '').split(',').map(function (n) { return n.trim(); }).filter(Boolean); };
     entries.forEach(function (c) {
       if (c.official) return;
-      var cr = (c.creator || '').trim();
-      if (!cr) return;
-      counts[cr] = (counts[cr] || 0) + 1;
+      split(c.creator).forEach(function (cr) { counts[cr] = (counts[cr] || 0) + 1; });
     });
     var names = Object.keys(counts);
     if (!names.length) return '';

@@ -189,7 +189,8 @@
       var tagSet = {}, creatorSet = {};
       list.forEach(function(c){
         splitTags(c).forEach(function(t){ tagSet[titleCase(t)] = 1; });
-        if (c.creator && c.creator.trim()) creatorSet[c.creator.trim()] = 1;
+        // Co-credited pages ("Taiyi (太一), Saki") give every name its own chip.
+        window.splitCreators(c.creator).forEach(function(n){ creatorSet[n] = 1; });
       });
       var tags = Object.keys(tagSet).sort();
       var creators = Object.keys(creatorSet).sort(function(a,b){ return a.toLowerCase()<b.toLowerCase()?-1:1; });
@@ -453,10 +454,12 @@
       if (STATE.excludeSources.length) out = out.filter(function(c){ return STATE.excludeSources.indexOf(sourceOf(c)) === -1; });
       // Creators: include = must be one of these; exclude = must be none of them.
       if (STATE.includeCreators.length) out = out.filter(function(c){
-        return STATE.includeCreators.indexOf((c.creator||'').trim()) !== -1;
+        return window.splitCreators(c.creator).some(function(n){
+          return STATE.includeCreators.indexOf(n) !== -1; });
       });
       if (STATE.excludeCreators.length) out = out.filter(function(c){
-        return STATE.excludeCreators.indexOf((c.creator||'').trim()) === -1;
+        return !window.splitCreators(c.creator).some(function(n){
+          return STATE.excludeCreators.indexOf(n) !== -1; });
       });
       // sort
       if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });

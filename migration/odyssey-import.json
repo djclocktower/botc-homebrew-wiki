@@ -1,6 +1,6 @@
 {
  "source": "Odyssey_Almanacs_English.zip - English translations of Taiyi’s 119 《奥德赛》(Odyssey) character almanacs, supplied by djclocktower.",
- "note": "Full almanac import: every section of every almanac is carried onto the wiki. Rule Details -> summaryBullets, How to Run -> howToRun, Examples -> examples, Playing Tips -> tips, \"Bluffing as the X\" -> bluffing, and the reminder-token detail and Design Notes go into custom sidebar boxes. Icons come from the image URLs in each almanac’s Script Tool JSON block, normalized onto the site’s 591x591 frame with the same algorithm as assets/art-normalize.js. Translation credited to DJ_DJ_DJ on every row. Licence on all 119: \"Open (may be used in any script; do not modify the ability)\".",
+ "note": "Full almanac import: every section of every almanac is carried onto the wiki. Rule Details -> summaryBullets, How to Run -> howToRun, Examples -> examples, Playing Tips -> tips, \"Bluffing as the X\" -> bluffing, and the reminder-token detail and Design Notes go into custom sidebar boxes. Icons come from the image URLs in each almanac’s Script Tool JSON block, normalized onto the site’s 591x591 frame with the same algorithm as assets/art-normalize.js. Translation credited to DJ_DJ_DJ on every row. Creator is \"Taiyi (太一)\", with the concept co-designer appended after a comma on the 10 characters that have one; each comma-separated name links to its own author page. Licence on all 119: \"Open (may be used in any script; do not modify the ability)\".",
  "nightOrder": "Taiyi’s almanacs number the night order on their own scale (7510, 11010, ...). Each entry names an official reference character, so each row is anchored to that character’s standard script-tool night order and offset by 0.1 (before/after). Characters sharing an anchor are ordered by the almanac’s own sub-value. 86 of 102 entries resolve against the standard table; the 16 listed in \"estimatedNightAnchors\" below hang off characters the standard table does not carry, and were placed by hand - worth spot-checking.",
  "collection": {
   "id": "odyssey",
@@ -275,7 +275,7 @@
    ],
    "tips": [],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -322,7 +322,7 @@
    ],
    "tips": [],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -376,7 +376,7 @@
     "If you drew a Minion or Demon character, Lethe definitely wasn't activated this game. But you can use this to fabricate logic suggesting Lethe was activated — even trick good players into executing themselves, helping you win."
    ],
    "bluffing": [],
-   "creator": "Taiyi, Saki (homage to the designer of the colliding design)",
+   "creator": "Taiyi (太一), Saki",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -434,7 +434,7 @@
    ],
    "tips": [],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -479,7 +479,7 @@
    ],
    "tips": [],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -537,7 +537,7 @@
     "The Painter is a solid bluff. You can use its ability to excuse never revealing your character. If you want to survive to the end, \"confirm\" one or two good players' characters so they trust you.",
     "If you are a Minion unafraid of death, you can publicly claim to have learned several good characters—mixing your evil teammates among them to improve their odds of survival. Or go aggressive: claim your correct guesses were evil characters and accuse specific players. This is risky but high-reward: whether you are executed or your targets are, the Demon buys a great deal of time."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei. & 洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -599,7 +599,7 @@
    "bluffing": [
     "Have the Demon kill a player most of the town believes is evil, then step forward as the Witcher claiming you killed them. You will be highly credible."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei. & 洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -656,7 +656,7 @@
     "The Constable is not an easy bluff, because its ability adds an Outsider. You usually need a teammate to coordinate an Outsider claim with you, or your team must have its own Outsider-adding ability, before you can wear this disguise perfectly. Otherwise you'll quickly fall under suspicion when the Outsider count doesn't add up.",
     "If you are a Minion, you can name the Demon as the player you learned. If the other players trust you enough, they'll conclude that player definitely isn't the Demon."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei. & 洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -718,7 +718,7 @@
     "If a teammate of yours is widely believed to be evil, you can pretend to have chosen them, then name another teammate (whom you're helping bluff as an Outsider) and a Townsfolk as your learned pair. This nicely supports that teammate's Outsider bluff.",
     "Remember, the Herald cannot choose themself."
    ],
-   "creator": "Taiyi, Aa",
+   "creator": "Taiyi (太一), Aa",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -788,7 +788,7 @@
     "If you are the Demon, choose carefully and report believable information. This helps you survive to the late game.",
     "You can claim Bard for the first few days, then pivot to another character if the bluff fails. Claiming Bard to help hide the real Bard is something good players often do—so it reads as good."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Midsummer nights dream",
@@ -851,7 +851,7 @@
     "The Aerialist works as a backup bluff. When your bluff as an important Townsfolk collapses, you can claim you were actually the Aerialist all along, confusing evil and baiting the Demon into killing you to help the good team.",
     "If you are a less-important Minion, you can publicly claim Aerialist and ask a player (anyone—even a teammate) to nominate and execute you, then use your \"information\" to attack other players or protect your teammates."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei. & 洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -911,7 +911,7 @@
     "Publicly claiming to be the Heiress has a certain deterrent effect — people may not dare execute you, especially early in the game.",
     "If several players died, you can step forward as the Heiress and suggest the multiple deaths might be your doing. This gives the night's many deaths a plausible explanation, keeping the good team from seeing the real cause."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei. & 洛甜蕾",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -978,7 +978,7 @@
     "If you're a good player and you survived a questioning, your answer wasn't necessarily right. But conversely, if you were executed, you definitely answered wrong."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1041,7 +1041,7 @@
     "If you became the Leper Gnome from a Townsfolk, now you must seriously consider who you should fight for. If you can be sure no other Townsfolk has chosen you — meaning you still have your ability — you can win together with evil through the Leper Gnome's ability. But if another Townsfolk has chosen you — that makes you lose your ability, and you still need to serve the good team! Unfortunately, you don't know whether you still have your ability. Think hard! Judge carefully!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1096,7 +1096,7 @@
     "If you're a good player who suspects Cerberus is in play and you believe Cerberus hasn't killed his Minions, he's very likely secretly building up power, plotting to kill all Minions at once to end the game early. Find the Demon quickly — otherwise the game may suddenly end on a night with 5–6 alive players."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1174,7 +1174,7 @@
     "If you are the Goblin or the Baron, you can play aggressively: announce that someone lied—attack your exchange partner outright, or make the town believe the Demon is a Vortox. This does raise your risk of execution, of course.",
     "If you are the Demon or the Scarlet Woman, play it safe: announce that nobody lied, earning the town's approval and trust."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1241,7 +1241,7 @@
     "You can also claim the player you protected last night still died, pretending to be the Drunk or drunk/poisoned.",
     "After a Minion claims to be the Goblin, have the Demon kill them at night, then claim you protected an important player—the Minion's death will look like your handiwork, winning you the town's trust."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1297,7 +1297,7 @@
     "If the Demon is Cerberus, the Lunar Knight is an excellent bluff, because Cerberus itself can kill Minions and produce multiple night deaths. Claiming a dead Minion as your kill is easier to believe—they really were a Minion! And since they're your teammate, they won't react strongly and can even play along with your bluff.",
     "If you're bluffing as the Lunar Knight, do the things a Lunar Knight would do: push to execute the Tea Lady's neighbors or the Fool, or propose executing nobody."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1359,7 +1359,7 @@
     "The Lady of the Lake rarely survives to the end, so if you bluff as her, you may need to explain late in the game why you haven't died.",
     "Her information is crucial, so if you bluff as her, plan in advance what information to report and what consequences it will have. If your information accuses other players of not being Townsfolk, several players will likely stand up and attack you."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1415,7 +1415,7 @@
     "If your team has a Devil's Advocate, the White Knight may be a fine bluff — he offers another explanation for why a player protected by the Devil's Advocate didn't die.",
     "When a player survives because of the Devil's Advocate's or the Tea Lady's ability — especially if they didn't want to be executed in the first place — you can step forward as the White Knight, making it look like they survived the execution thanks to your ability."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1477,7 +1477,7 @@
     "If you're an Outsider, hide your character well! Don't reveal it carelessly, or the Dark Knight will use your death to attack other players."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1530,7 +1530,7 @@
     "If you're a good player and you learn the Narcotizer is in play, tell everyone at dawn immediately! This is extremely important — it not only means the Narcotizer is in play, it also means you were poisoned by the Narcotizer before, and that starting last night a new player is being poisoned by the Narcotizer!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1586,7 +1586,7 @@
     "If you're a good player, once the Siren takes her bow she permanently loses the ability to make Townsfolk produce false information. If you believe the Siren has taken her bow, treat all information as true!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1643,7 +1643,7 @@
     "If you're a good player, fighting Arthur may require locating every Minion, since you don't know which Minion Arthur will Castle with. But if nights never produce extra deaths, don't worry about Demon relocation — Arthur definitely hasn't Castled yet."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1701,7 +1701,7 @@
     "If you're an Outsider, carefully identify the in-play Demon! Whether it's Corruptus matters enormously to you. If you're still alive before the game ends, Corruptus's ability definitely can't affect you — vote for whoever you believe is the Demon with confidence! But if you're dead, be careful — if the Demon is Corruptus, you must help the evil team to achieve final victory."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1761,7 +1761,7 @@
     "Follow the example news items as closely as you can; avoid fabricating anything too outlandish, or other players will spot your lie instantly.",
     "If your Paperboy bluff fails, you can pivot to claiming the Sage, the Ronin, the Silversmith, or the Aerialist, explaining that your bluff was meant to help the good team confuse the Demon."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1819,7 +1819,7 @@
     "Or, if you want to fake the presence of some other Minion, report information containing that Minion plus an Outsider who is obviously not in play.",
     "Whatever information you report, remember the Tuner's information is corrupted by the Vortox. If everyone confirms the Demon in play is the Vortox and your information can't be explained, you may well be executed."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -1872,7 +1872,7 @@
     "You can double-act with an evil teammate: one of you claims to be the Perfumer, the other claims to have learned the Perfumer is in play, mutually confirming you're both good.",
     "If you have a Goblin teammate, have them first claim to have learned the Perfumer is in play; then you say you're the Perfumer and you chose a Demon or the Scarlet Woman, staging a \"successful fishing trip.\" This steers the town into executing the Goblin — and even if the Goblin publicly claims to be the Goblin, everyone will think they're just a non-Goblin making a last-ditch struggle."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Babybus, A Midsummer Night's Dream",
@@ -1948,7 +1948,7 @@
     "If you think a player may have been turned into the Doll, they no longer have their ability — their ability and information are no longer trustworthy."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2011,7 +2011,7 @@
    "bluffing": [
     "The Martyra is a fairly hard character to bluff. If you don't die at night, it's very hard to explain why."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2069,7 +2069,7 @@
     "The Yeti isn't a great Demon bluff, since generally only evil wants the Yeti alive at the end.",
     "If you're a Minion, stepping forward as the Yeti in the mid-to-late game can be a good choice. If the Yeti is really in play, you can force them out; if not, you can steer everyone into executing you to help the Demon survive to the end."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2134,7 +2134,7 @@
     "The Wolfboy works well as a backup bluff.",
     "If you die, you can claim you were a Wolfboy and attack the other Outsider players."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2200,7 +2200,7 @@
     "The Cowboy is a hard character to bluff. If you go the whole game without your ability executing a player or getting you executed, it's hard to convince others you're a Cowboy.",
     "If you want to bluff as the Cowboy and survive to the late game, plan in advance how to explain why your ability never fired. Claiming your \"nemesis\" is already dead is a reasonable explanation — but other players may still demand you nominate the dead player to trigger the execution and prove you're the Cowboy."
    ],
-   "creator": "Taiyi, 提线政客",
+   "creator": "Taiyi (太一), 提线政客",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2269,7 +2269,7 @@
     "Each day, offer opinions about who should \"explore\" — this helps everyone believe you're the Cat Adventurers.",
     "Think carefully about how to report your information. Your information sets two players against each other; if they're both inclined to trust each other as good, they may unite to attack you. In most cases, naming a player the day's \"explorer\" already distrusts helps you win the town's trust."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2324,7 +2324,7 @@
     "Actively pushing to execute your neighbors makes you look more like a Ranger.",
     "If your neighbor died that day, remember that as the Ranger you'd be woken and act — decide your claimed choice in advance."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2391,7 +2391,7 @@
     "The Valkyrie is a hard character for the Demon to bluff. After important Townsfolk die, everyone will demand to know why you didn't step in to protect them. Without a good answer, you may be executed.",
     "A good plan: a Minion bluffs as the Valkyrie and is killed by the Demon at night. The dead Minion can claim they protected the Demon or another evil player, making them look like good players."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2457,7 +2457,7 @@
     "Revealing yourself as Hell's Outcast early is risky — people may execute you immediately to keep you from joining evil.",
     "Revealing yourself as Hell's Outcast late may be a fine choice, explaining your odd behavior earlier in the game. As long as nobody publicly enthroned Hell's Outcast this game and the Outsider count isn't abnormal, you can probably survive to the end."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2534,7 +2534,7 @@
     "Bluffing as Don Quixote is a great way to get a locked-on Demon off the hook! Whether you're a Minion or the Demon themself, once you claim to be Don Quixote, logically any player in the game could register as a Demon to Townsfolk abilities. Especially after pretending to visit the Storyteller and claiming the player you learned is the locked-on Demon — the danger of the Demon being executed today drops a notch.",
     "Note! Before Don Quixote visits the Storyteller, the affected player doesn't change; after each visit, it changes immediately. Organize what you want to say in advance — don't leave too big a hole in your story."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Midsummer nights dream",
@@ -2594,7 +2594,7 @@
     "Because of Puck's existence, you can't fully trust players who have \"proven themselves\" with their abilities — such as the Perfumer, the Cowboy, the Ranger, the Lady. They might be evil players created by Puck!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2662,7 +2662,7 @@
     "A player killed by CodeX definitely wasn't poisoned by CodeX. If you suspect a player was killed by CodeX, they definitely weren't poisoned by CodeX."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "A Midsummer Night's Dream",
@@ -2724,7 +2724,7 @@
     "Watch the Outsider count in play — if it's above default, then even if no Outsider has learned the Cyclops is in play, the Cyclops very likely exists."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2790,7 +2790,7 @@
     "In most cases, the Ettin turns a Townsfolk or Outsider into another Ettin at game start. If the Outsider count in play doesn't match the default, consider this possibility!"
    ],
    "bluffing": [],
-   "creator": "Taiyi, Lei.",
+   "creator": "Taiyi (太一), Lei.",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2857,7 +2857,7 @@
     "If you're a dead good player chosen by the Archlich, make your choices the players you suspect of being the Archlich! Let the audacious Demon reap what he sowed!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "A Midsummer Night's Dream",
@@ -2928,7 +2928,7 @@
     "In the vast majority of cases, only by executing the Hydra on the final day can the good team win immediately. But that doesn't mean executing the Hydra early is a bad idea — the good team might get an alive good Demon! That's a huge temptation — the good team can kill any player it wants. So if you find the Hydra early in the game, executing her immediately or saving him for the final day are both viable choices."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -2987,7 +2987,7 @@
     "If the Chimera and the Cyclops are both in play, the Outsider count doesn't decrease. You can't conclude the Demon isn't the Chimera just because the Outsider count is correct."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3054,7 +3054,7 @@
     "If you realize the Hanged Man's ability has triggered and the situation is spiraling out of control, you can claim that you are the Hanged Man. Since your ability hasn't triggered, the result won't reverse — use this to steer players into executing whoever you want.",
     "The Hanged Man works as a backup bluff after your first bluff fails. The Hanged Man rarely reveals himself, so it's fairly feasible: in the mid-to-late game, especially on the final day, you can claim you were the Hanged Man all along and steer players toward the wrong execution."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3123,7 +3123,7 @@
     "Keenly observe the trust chains inside the good team. A clever move: target your \"checks\" at players who already distrust each other. For example, if you notice someone strongly questioning another's identity, include both in your \"information\" report. This effectively inflames their existing conflict, plunging them into mutual accusations and creating room for you to survive.",
     "Absolutely do not rush to publish your \"intelligence\" early in the game. At the start you hold almost zero information; the more you say, the more you slip. The hardest part of this bluff is the early game. Patiently observe for a few days, then gradually release your carefully scripted \"information\" once the board is clearer. Absolute accuracy isn't the priority — the key is that your logic must fit the current situation and sound reasonable."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3186,7 +3186,7 @@
     "Mummies tend to actively seek death. If you want to bluff as the Mummy, your best bet is asking other players to nominate and execute you — but that usually means a very real risk of death.",
     "You can use your failure to rise on the final day to \"prove\" the player who nominated you is good."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3257,7 +3257,7 @@
     "Lead everyone in partying every night — it makes other players believe you're the Cat Chorus.",
     "Bluffing as the Cat Chorus lets you explain why a Townsfolk's information was \"off\" on the first night — they were drunk because of you."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "洛甜蕾",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3320,7 +3320,7 @@
    "bluffing": [
     "The Beekeeper poisons a player, usually a Townsfolk. If you can't explain some Townsfolk's information, you can claim to be the Beekeeper and say they were poisoned by your ability."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3380,7 +3380,7 @@
     "If you're a good player and someone declares they're the Hekatonkheires after dying by execution, remember the votes they received that day. If they're really the Hekatonkheires, that means the evil team can add those votes to any execution on any day at any time — actively prepare and respond."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3445,7 +3445,7 @@
     "In a 12-player game with the Skeleton King in play, there's generally 1 Demon, 2 Minions, and 3 Outsiders. Even if every Townsfolk dies, good only needs to win one dead Townsfolk's vote to execute the Skeleton King on the final day. So don't over-fear the Skeleton King — persuading the wavering dead Townsfolk is the key."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3512,7 +3512,7 @@
     "To bluff as the Skipper, keep your information internally consistent. If your first report says \"the Demon is among the left half\" and your second says \"the Demon is among the right half,\" your credibility as the Skipper collapses.",
     "Claim to be the Skipper and offer opinions about whom to execute, claiming that following your advice finds the Demon faster."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3570,7 +3570,7 @@
     "Bluff as the Medium and nominate executions: the other side will inevitably deny learning the Medium is in play, and you attack them as an evil player.",
     "Bluff as the Medium, nominate and execute your teammate, and cover for each other, faking a Medium-and-Townsfolk pair."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3633,7 +3633,7 @@
     "In the mid-to-late game, report that a pair including the Demon contains a Minion — this may make the good team think the Demon is a Minion and choose not to execute them. This is risky, though.",
     "Reporting that players are not Minions brings you closer to them. But if you never find a Minion, players will question whether you're real."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3696,7 +3696,7 @@
     "The key prerequisite for bluffing as the Sensate is correctly reporting players' characters — especially players who haven't revealed. Get it wrong and you may be suspected immediately.",
     "To keep the Sensate from gaining too much information, the Demon mostly chooses the same player for the first few days unless that player has died. Note this: as the Sensate, what you learn should always be living players' characters."
    ],
-   "creator": "Taiyi, 黑猫 (Black Cat)",
+   "creator": "Taiyi (太一), 黑猫 (Black Cat)",
    "iconBy": "洛甜蕾",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3754,7 +3754,7 @@
     "Blood Thieves rarely reveal themselves. Revealing yourself as the Blood Thief early gets you executed very easily — though if you're a Minion eager to die, that's a fine approach.",
     "Revealing yourself as the Blood Thief in the mid-to-late game — especially on the final day — confuses the good team enormously. They can't tell whether you're a Blood Thief who became the Demon, a Blood Thief who didn't, or even a Minion posing as the Blood Thief."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3814,7 +3814,7 @@
     "Two-Face can hardly earn anyone's trust, and some players always want to execute Two-Face to fix their team — so bluffing as Two-Face is fairly dangerous.",
     "If you claim to be Two-Face and currently good, you're accusing the last player who died by execution of being evil — tread carefully if you're not prepared for that."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3878,7 +3878,7 @@
     "Bluff as the Mob lawyer: name your \"client\" and analyze them, verbally attacking your \"client\" as the evil player the Storyteller wants to protect, and demand their execution.",
     "To bluff as the Mob lawyer, announce yourself early and reveal your \"client\" daily — it wins trust more easily. But you don't actually have the ability, so your \"clients\" should be marginal players — to avoid executing them without a substitution, which would make others suspect you."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "洛甜蕾",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -3948,7 +3948,7 @@
     "If you're bluffing as the Pirate Cat King, remember: everyone wants the Pirate Cat King dead before the final day! That both lets treasure hunters get tokens and self-proves you. So if you're the Demon, your risk of execution is enormous.",
     "If you're bluffing as the Pirate Cat King, remember: you have no real \"treasure\" to share. So even if you die on the final day, you can't prove yourself on the final day. If you don't plan to come out as evil on the final day, prepare in advance an explanation for why your ability didn't work properly."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4013,7 +4013,7 @@
     "If you're a good player and the abnormal extra night deaths include characters whose abilities greatly affect the situation — such as the Virgin or the Gossip — the Clone may have killed them and gained their abilities. Guard against the Clone using new abilities to cause greater destruction."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4076,7 +4076,7 @@
     "The Witch Doctor can't protect himself. If you've found the Witch Doctor, execute him as soon as possible."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4135,7 +4135,7 @@
     "If the Demon is the Sea-born, the vast majority of players in play are good. An evil Storyteller is manipulating Minion abilities trying to deceive you. You'll have enough days to find that single evil player."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4195,7 +4195,7 @@
    "bluffing": [
     "Bluffing as the Gargoyle is usually difficult, since you don't have the Gargoyle's ability. But if the script has characters like the Yaggababble or the Witch that can help you fake a Gargoyle, you can try posing as one."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4255,7 +4255,7 @@
     "Report several good players to ignite conflict between them — make them attack each other!",
     "Weave real evil players into your information; it makes you look more like a genuine Onmyoji."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4313,7 +4313,7 @@
     "If you're a Townsfolk and you've found Venomtail, the players \"downstream\" of him aren't necessarily all good! Other evil players may be mixed in among them as cover — distinguish carefully."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4379,7 +4379,7 @@
     "If you're a good player, Yuki-onna's first-night choice has little reference to go on — it's mostly a blind choice. So the probability of an important player being poisoned on night one isn't high. If you find an important player seemingly poisoned by Yuki-onna, it's likely Yuki-onna chose them again after dying — try to find who Yuki-onna is among the dead players."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4441,7 +4441,7 @@
     "If you're a Minion and your Demon boss is in mortal danger, you can deliberately declare to force the other players to execute you! That keeps your Demon boss safe — for today, at least."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4504,7 +4504,7 @@
     "If you're a good player, in scripts with Illus, get in the habit of thinking along two logic lines — one where Illus is in play and information is false, one where Illus isn't in play and information is true."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "洛甜蕾 (Luo Tianlei)",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4565,7 +4565,7 @@
     "If you're a good player and want to argue the in-play Demon is Tzeentch, then other Demons' abilities definitely can't be in effect — because no other Demon can be in play alongside Tzeentch! So if you think a \"proven\" player is Tzeentch, first think: does that make sense without any other Demon ability in play?"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4628,7 +4628,7 @@
     "If you're a good player, the Titan can't mutually confirm with their evil teammates, so the board gets chaotic — evil abilities may attack each other, even kill each other."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4698,7 +4698,7 @@
     "Bluffing as the Druid usually requires close coordination with the Demon, or your story won't hold together.",
     "To bluff as the Druid, plan your strategy. A Druid typically jumps out when the night's dead player isn't one of their living neighbors, since that means an evil player sits beside them."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4762,7 +4762,7 @@
     "To bluff as the Myconid, don't reveal yourself in the early-to-mid game — real Myconids usually try to bluff as other characters early on.",
     "The Myconid is a fine backup bluff, since the ability inherently makes Myconid players hide their true character. If your earlier bluff falls apart, say you're the Myconid!"
    ],
-   "creator": "Taiyi, 星火乐",
+   "creator": "Taiyi (太一), 星火乐",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4836,7 +4836,7 @@
     "If you don't know what information to make up, ask the Storyteller for help! They'll offer suggestions that can help you.",
     "Your information should tie in with \"abnormal character counts\" and be logically self-consistent, or you may be branded an evil player fabricating information."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4902,7 +4902,7 @@
     "If you're an evil player who doesn't fear death, make up whatever riddle you like! A number, a nonsense sentence, even a gesture! You don't even need to design an answer! Who cares — let the good team puzzle over it slowly!",
     "If you're the Demon bluffing as the Riddler, be more careful with your riddle design. Don't be easily seen as making things up; at least one or two riddles should clearly point to one or two in-play characters, which makes you far more credible."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -4956,7 +4956,7 @@
     "If you're good and you think the in-play Minion or Demon characters changed, the Shaman may have used his ability — the Shaman can turn Demons and Minions into not-in-play characters all at once."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5019,7 +5019,7 @@
     "Bluffing as the Pearl Diver, you can report information covering 2 good players to attack them as containing an evil player.",
     "Bluffing as the Pearl Diver, if you'd rather survive, you can report information covering an evil player — e.g., a Minion really does sit at that distance. This helps everyone trust you as a genuine Pearl Diver."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5072,7 +5072,7 @@
     "If you're the Versifier, even after you're dead, the force-execution part of your ability still works — you can recite the phrase yourself or have your teammates recite it to force an execution. Better still, trick a good player into reciting it."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5129,7 +5129,7 @@
     "If you're a good player, a cunning Crosswing may deliberately not use her ability! If players who should have been poisoned by Crosswing have their abilities work normally, that doesn't prove Crosswing isn't in play!"
    ],
    "bluffing": [],
-   "creator": "Taiyi, 洋平 (Yangping)",
+   "creator": "Taiyi (太一), 洋平 (Yangping)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5188,7 +5188,7 @@
    "bluffing": [
     "Your information mostly protects certain players. Report players who look good as much as possible — it makes you look more like a real Paladin."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5248,7 +5248,7 @@
     "If you're another character who can cause execution survival, such as the Devil's Advocate, you can claim to be the Alewife — the player who didn't die by execution is a Minion you protected.",
     "If you go public as the Alewife, it means every player who previously died by execution wasn't a Minion. If people don't accept that, you may not be trusted."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5311,7 +5311,7 @@
     "If you have an ability that keeps you from dying by execution, such as the Devil's Advocate, you can bluff as Squid Girl. If you're executed but don't die, that helps prove you're Squid Girl.",
     "If a safe night occurs, you can claim to be Squid Girl — reasonably explaining the safe night while implying all Townsfolk are drunk."
    ],
-   "creator": "Taiyi, 卡布达",
+   "creator": "Taiyi (太一), 卡布达",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5367,7 +5367,7 @@
     "If you're a good player, the Tornado moves every day — conventional methods may struggle to pin down the Demon. You must predict where the Demon will move and deal with possible evil players in advance!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5428,7 +5428,7 @@
    "bluffing": [
     "Bluff as another character first, then — after that bluff fails — admit you're actually the Warlock. That looks like something a Warlock would do."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5488,7 +5488,7 @@
     "If the player you nominated and executed died, attack them as an evil player!",
     "If you're an evil player bluffing as the Arbiter, good players may repeatedly demand you nominate and execute people. If you fail to protect the executed, you may lose their trust."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5545,7 +5545,7 @@
     "Deliberately nominate first, or wait until the last moment to nominate! It makes you look more like a Ninja.",
     "If you have an ability that causes extra deaths, pairing it with a Ninja bluff lets you smear your victims as evil players you assassinated."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5605,7 +5605,7 @@
     "Coordinate with abilities that can cause safe nights, and claim to be the Vanguard!",
     "If you're an evil player, the Vanguard may be a fine choice. You can claim your ability simply didn't trigger because you lost the gamble."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5667,7 +5667,7 @@
     "If you're a good player and you've found a suspected Dawnyx, deal with her first."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5726,7 +5726,7 @@
     "If you're a good player and an Outsider dies abnormally at night, consider whether the Kitsune is in play. If the Kitsune is in play, the initial Outsider count differs from default. Check the Outsider count — see whether the evil team is falsely claiming Outsider!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5794,7 +5794,7 @@
     "Remember, you don't have the Bellringer's ability, so you can't actually get yourself executed. But you can pretend the other player didn't lie.",
     "Although in most cases a good player you aske probably won't lie, they might lie deliberately to test your ability. Don't panic if so — you can calmly shed the Bellringer bluff, since anyone can claim to be the Bellringer."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5862,7 +5862,7 @@
     "Claim everything is normal when Townsfolk are actually erroring! Cover up the problems!",
     "Don't claim there's no problem when Townsfolk abilities are obviously erroring, or you'll be suspected immediately."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5930,7 +5930,7 @@
     "If your nominated player died that night but no extra death appeared, your Hunter bluff may be hanging by a thread.",
     "If you have an ability that causes extra night deaths, the Hunter is a great bluff. Nominate a player, kill them at night, and at dawn claim the other player who died that night was killed by you."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -5992,7 +5992,7 @@
     "If you're a good player and a safe night occurs, the Echo may be urgently building power! Beware of him ending the game early!"
    ],
    "bluffing": [],
-   "creator": "Taiyi, 阿尔伯特 (Albert — homage to the designer of the colliding design)",
+   "creator": "Taiyi (太一), 阿尔伯特 (Albert)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6056,7 +6056,7 @@
     "If you're a good player: although the Kraken has mighty vitality, once registering as dead he can only kill alive players beside him. So if a player you suspect of being the Kraken dies, and that night a player not neighboring him dies — he definitely isn't the Kraken."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6117,7 +6117,7 @@
     "The Centaur is a highly aggressive bluff. Claim to be the Centaur, attack two players both claiming Townsfolk, and accuse them of not dying to your ability — this creates enormous focus.",
     "If you can cause extra deaths, that's strong evidence supporting your Centaur bluff."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6180,7 +6180,7 @@
     "Bug Catchers tend to nominate a lot. To bluff as one, remember to nominate often!",
     "If you're the Demon bluffing as the Bug Catcher, a good plan is to nominate a Minion in the mid-to-late game and claim the Minion is the Demon. Whether or not people believe you, you look less like the Demon — because if they do believe you, they'll execute the Minion."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6236,7 +6236,7 @@
     "Make up any player you like — you can attack the pair equidistant from them, or attack that player as evil outright.",
     "If you're the Demon, inventing a player seated between two Minions may be a fine choice."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6296,7 +6296,7 @@
     "If you're a Minion, the Dame is an excellent bluff. Deliberately reporting characters that seem not in play lets you attack earlier deaths as containing evil players.",
     "If you're the Demon, the key to bluffing as the Dame is reporting relatively credible in-play characters in the early-to-mid game, then switching to characters that seem not in play in the mid-to-late game. This helps everyone trust you more."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6363,7 +6363,7 @@
     "If you're a Minion bluffing as the Notary, you can be more aggressive! Report lots of \"no\" results to keep creating opposition!",
     "If you're the Demon, reporting \"yes\" when the executed player and their nominator both look good helps you win the other players' trust!"
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6426,7 +6426,7 @@
     "A player bluffing as the Scarecrow doesn't have the Scarecrow's ability, so after your death nobody survives execution — making you look even more like an evil player.",
     "The Scarecrow works as a last-resort excuse: if your claimed character is questioned about a malfunctioning ability, you can argue you might be the Scarecrow."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6488,7 +6488,7 @@
     "If you're a Minion and you're sure the Rascal isn't in play, announce you're the Rascal! It causes enormous confusion for the good team.",
     "If you're the Demon, bluff as the Rascal with caution — once the good team finds the first night's information wasn't wrong, they may execute you immediately."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6545,7 +6545,7 @@
     "Bluffing as the Loverbound can explain some strange deaths — provided you're already dead.",
     "The Loverbound works as a backup bluff. After your other bluffs all fail, you can reveal that you're actually a Loverbound."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6605,7 +6605,7 @@
     "Bluffing as the Viking is fairly risky, because Vikings generally seek death — it's hard to explain why you're a Viking who's been alive and well the whole game.",
     "Remember, you don't have the Viking's ability: even after death, you can't force-execute anyone. Be mentally prepared for that."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6660,7 +6660,7 @@
     "The Visagiste is very sensitive about her own nominations. If you want to bluff as the Visagiste, best not to nominate other players carelessly — this makes you look more credible.",
     "Use the Visagiste as a backup bluff. The Visagiste always tends to hide her character; after your first bluff fails, you can reveal that you're actually a Visagiste — and even attack the players who nominated you as Minions or the Demon."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6725,7 +6725,7 @@
     "Geishas are always seeking death. Playing a player who wants to die makes you look more like a Geisha.",
     "The Geisha works as a backup bluff: when your first bluff fails, you can explain you're actually a Geisha."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6791,7 +6791,7 @@
     "Mermaids always choose to protect the more important-looking Townsfolk, so choose the more important players — it makes you more credible.",
     "Players the Mermaid protects usually don't die at night. Don't attack the player you're \"protecting,\" or you'll have no way to explain it."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6850,7 +6850,7 @@
     "The Psychic can only learn dead players' teams — be careful not to talk yourself into a corner.",
     "Generally, the Psychic prefers choosing players who died by execution."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6906,7 +6906,7 @@
     "If you're a good player and you've identified a player as the Yasha, think carefully about how to deal with him. Executing him means sacrificing another player; not executing him means he may nominate and attack other players every day."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -6968,7 +6968,7 @@
     "The MarMonk works as your backup bluff, especially after failing to bluff an important character.",
     "Generally, the MarMonk doesn't die at night — you can use this to explain why the Demon never attacked you."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7019,7 +7019,7 @@
    "bluffing": [
     "Bluff as the Tanner and report false information to disrupt the good team's judgment of how evil characters are distributed."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7070,7 +7070,7 @@
     "If you're a good player and you think the good team is on a roll, executing one suspected evil player after another — watch out! The in-play Demon is very possibly the Minotaur. If the Minotaur is in play and gets executed as the last evil player, you lose. If you sense the Demon might be the Minotaur, change your execution strategy — execute the most Demon-like players early, or save suspected Demons for execution on the final day."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7138,7 +7138,7 @@
     "Bluffing as the Kappa makes every Outsider untrustworthy — logically, any of them could be an evil bluff.",
     "Before bluffing as the Kappa, first judge whether the Kappa is in play to avoid a clash."
    ],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7190,7 +7190,7 @@
     "If you're a good player, Nurgle usually avoids attacking players neighboring important Minions, so as not to disrupt their abilities. If you can confirm the in-play Demon is Nurgle, a player claiming an important Townsfolk who stays alive — with both neighbors also alive — is highly suspicious."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7258,7 +7258,7 @@
     "The Somnmaid works as a backup bluff: admit you're actually the Somnmaid after your other bluff fails.",
     "You can go public as the Somnmaid and name the Demon character you learned. If no player died last night, this move is very effective for selling your Somnmaid bluff."
    ],
-   "creator": "Taiyi, Imp",
+   "creator": "Taiyi (太一), Imp",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7328,7 +7328,7 @@
     "If you're a good player and you believe the Demon is Khorne, try to execute players every day. Even if you don't choose someone to execute, Khorne will \"choose for you\" at night."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7386,7 +7386,7 @@
     "If you're a good player, arrange each day's executions sensibly, and watch which players Toxblast's poison might land on. If the players neighboring the executed player aren't Townsfolk, Toxblast's poison skips over them to poison players further away — don't overlook this."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7448,7 +7448,7 @@
     "If you're another evil player, should you tell the Twinflowers they're Twinflowers? It depends on the situation. If things are going well for evil, you can leave them \"unawakened\" for now. If things look bad, find them, tell them the truth, and let them fight hard for the evil team!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7515,7 +7515,7 @@
     "If you're a good player and clever enough, you can bait Daruma into answering your question — it may be tricky, but it's the only way to get rid of this nuisance for good!"
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",
@@ -7576,7 +7576,7 @@
     "If you're a good player and you learn who Slaanesh is — that means you've been charmed by Slaanesh! Don't immediately reveal who Slaanesh is, because until Slaanesh charms a new player, your fates are bound together. If you discover a new player has been charmed, don't hesitate — immediately reveal who Slaanesh is and try to execute him."
    ],
    "bluffing": [],
-   "creator": "Taiyi",
+   "creator": "Taiyi (太一)",
    "iconBy": "Lei.",
    "translatedBy": "DJ_DJ_DJ",
    "appearsIn": "Odyssey",

@@ -86,6 +86,15 @@
     return (c && c.stripCreatorMark) ? c.stripCreatorMark(name, creator)
       : String(name == null ? '' : name);
   }
+  // Co-credited pages store their creators comma-separated; each one links to
+  // its own author page. creators.js owns the rule — this falls back to the
+  // same split so a page that hasn't loaded it still renders every name.
+  function splitCreators(s) {
+    var c = creatorsApi();
+    if (c && c.splitCreators) return c.splitCreators(s);
+    return String(s == null ? '' : s).split(',')
+      .map(function (n) { return n.trim(); }).filter(Boolean);
+  }
 
   /* ── Build official-schema JSON object from character data ── */
   function buildSchema(d) {
@@ -215,9 +224,13 @@
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
-      (d.creator && d.creator.trim() ? '<dt>Creator:</dt><dd><a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(d.creator.trim()) + '">' + esc(d.creator.trim()) + '</a>' +
-        (creatorSymbol(d.creator.trim()) ? ' <span class="creator-mark" title="' + esc(d.creator.trim()) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(d.creator.trim())) + '</span>' : '') +
-        '</dd>' : '') +
+      (splitCreators(d.creator).length
+        ? '<dt>Creator' + (splitCreators(d.creator).length > 1 ? 's' : '') + ':</dt><dd>' +
+          splitCreators(d.creator).map(function (n) {
+            return '<a class="author-link" href="' + root + 'author?a=' + encodeURIComponent(n) + '">' + esc(n) + '</a>' +
+              (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
+          }).join('<span class="tag-sep">, </span>') +
+          '</dd>' : '') +
       (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' + esc(d.appearsIn.trim()) + '">' + esc(d.appearsIn) + '</dd>' : '') +
       (d.tags && d.tags.trim() ? '<dt>Tags:</dt><dd>' + d.tags.split(',').map(function(t){
         t = t.trim(); if(!t) return '';
@@ -317,7 +330,8 @@
     // shrink to fill the same width without overlapping. See styles.css.
     // The creator's symbol now renders as a credit icon in the info box, so
     // strip any copy baked into the name (e.g. "Cheerleader ∇") from the title.
-    var titleName = stripCreatorMark(d.name, d.creator) || d.name || 'Unnamed';
+    // Only the first credited creator can have baked their symbol into the name.
+    var titleName = stripCreatorMark(d.name, splitCreators(d.creator)[0] || '') || d.name || 'Unnamed';
     var nch = Math.max(String(titleName).replace(/\s+/g, ' ').trim().length, 4);
 
     return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
@@ -443,6 +457,7 @@
     window.setCreators = setCreators;
     window.setClassBadge = setClassBadge;
     window.creatorSymbol = creatorSymbol;
+    window.splitCreators = splitCreators;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -452,7 +467,8 @@
       findScriptJinxes: findScriptJinxes,
       setOfficialIconUrls: setOfficialIconUrls,
       setCreators: setCreators, setClassBadge: setClassBadge,
-      creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark
+      creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
+      splitCreators: splitCreators
     };
   }
 })();
