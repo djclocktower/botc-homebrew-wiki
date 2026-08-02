@@ -108,14 +108,28 @@
     return s.replace(re, '').replace(/\s+$/, '');
   }
 
+  // A page can credit several people. The stored `creator` field keeps them in
+  // one string separated by COMMAS ("Taiyi (太一), Saki") — never "&" or "and",
+  // which are part of single creator names like "Harry & Co & Bendan" and
+  // "Bhamber and Paradox". Splitting here is the single source of truth so the
+  // character page, the author pages and the browse filters all agree on who
+  // gets credit for a page.
+  function splitCreators(s) {
+    return String(s == null ? '' : s).split(',')
+      .map(function (n) { return n.trim(); })
+      .filter(Boolean);
+  }
+
   var api = {
     CREATOR_SYMBOLS: CREATOR_SYMBOLS,
     creatorSymbol: creatorSymbol,
-    stripCreatorMark: stripCreatorMark
+    stripCreatorMark: stripCreatorMark,
+    splitCreators: splitCreators
   };
   if (typeof window !== 'undefined') {
     window.CreatorSymbols = api;
     window.CREATOR_SYMBOLS = CREATOR_SYMBOLS;
+    window.splitCreators = splitCreators;
   }
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();
