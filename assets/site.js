@@ -38,18 +38,27 @@
     var CACHE_KEY = 'botc_announce';
     var DISMISS_KEY = 'botc_announce_dismissed';
     // Announcements may contain [label](url) text links. The formatter is
-    // shared with the news articles (assets/render-news.js), which escapes
-    // the text first and only lets http(s)/mailto/site-relative hrefs
-    // through — so an announcement can never inject markup. That file is not
-    // on every page, so it is pulled in on demand and only when the message
-    // actually contains a link.
-    function loadFormatter(cb) {
-      if (window.NewsRender) return cb(window.NewsRender);
+    // shared with the news articles and the wiki pages (render-wiki.js, via
+    // render-news.js), which escapes the text first and only lets
+    // http(s)/mailto/site-relative hrefs through — so an announcement can
+    // never inject markup. Neither file is on every page, so they are pulled
+    // in on demand and only when the message actually contains a link.
+    function loadScript(src, done) {
       var s = document.createElement('script');
-      s.src = ROOT + 'assets/render-news.js';
-      s.onload = function () { cb(window.NewsRender || null); };
-      s.onerror = function () { cb(null); };
+      s.src = src;
+      s.onload = done;
+      s.onerror = done;
       document.head.appendChild(s);
+    }
+    function loadFormatter(cb) {
+      if (window.NewsRender && window.WikiRender) return cb(window.NewsRender);
+      // render-news.js forwards to render-wiki.js, so that one loads first.
+      loadScript(ROOT + 'assets/render-wiki.js', function () {
+        if (window.NewsRender) return cb(window.NewsRender);
+        loadScript(ROOT + 'assets/render-news.js', function () {
+          cb(window.NewsRender || null);
+        });
+      });
     }
 
     function show(ann) {

@@ -377,12 +377,28 @@
     return JSON.stringify(arr, null, 2);
   }
 
+  /* ── custom wiki pages attached to this script/collection ──
+     The page links are rendered by render-wiki.js (the Worker passes the HTML
+     in); this only wraps them in the page's section frame and adds the
+     owner's "new page" button. These pages appear nowhere else on the wiki,
+     so this section is the only route to them. */
+  function pagesSection(pagesHTML, newPageHref) {
+    if (!pagesHTML && !newPageHref) return '';
+    return '<div class="sv-section wiki-pages-section">' +
+      sech('sec-pages', 'Pages') +
+      (pagesHTML || '<p class="wiki-pages-empty">No pages yet.</p>') +
+      (newPageHref
+        ? '<a class="cta-secondary wiki-pages-new" href="' + esc(newPageHref) + '">+ Write a page</a>'
+        : '') +
+      '</div>';
+  }
+
   /* ── shared page body ── */
   function renderPageBody(cfg) {
     /* cfg: {root, name, header, logo, tagline, author, version, difficulty,
              synopsis, gameplay, strategyGood, strategyEvil, description,
              entries, missing[], jsonText, actions[], extraInfoRows[],
-             creditsEntries} */
+             creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
       ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
@@ -404,6 +420,7 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) main += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    main += pagesSection(cfg.pagesHTML, cfg.newPageHref);
 
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
@@ -420,6 +437,7 @@
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
+    aside += cfg.boxesHTML || '';
     aside += '<div class="sv-json-wrap">' + renderJsonPanel(cfg.jsonText, cfg.actions, cfg.jsonLabel) + '</div>';
 
     return top +
@@ -464,6 +482,9 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
+    proseHTML += pagesSection(cfg.pagesHTML, cfg.newPageHref);
+    // Custom boxes sit below the prose, full width, like the character-page ones.
+    if (cfg.boxesHTML) proseHTML += '<div class="coll-boxes">' + cfg.boxesHTML + '</div>';
     var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
 
     // Optional collapsed filter box (built client-side by collection-filters.js).
@@ -509,6 +530,7 @@
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
       jsonLabel: 'Script JSON',
+      pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: starlightRow(sc)
     });
   }
@@ -543,6 +565,7 @@
       strategyEvil: coll.strategyEvil, description: coll.description,
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON',
+      pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: starlightRow(coll)
     });
   }

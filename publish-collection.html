@@ -220,6 +220,30 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- Optional custom boxes on the collection page -->
+    <details class="sb-details" id="sb-boxes-sec">
+      <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — extra boxes on your collection page, the same as the ones on character pages.</span></summary>
+      <div class="sb-details-body">
+        <div id="pc-boxes"></div>
+        <button type="button" class="th-clear" id="pc-box-add">+ Add a box</button>
+        <p class="sub" style="margin-top:10px">
+          Boxes take the same formatting as a wiki page: <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">- bullet</code>,
+          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">**bold**</code>,
+          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">[link](https://…)</code> and
+          <code style="background:#fffdf8;border:1px solid #e0d5bd;padding:1px 4px">[[Character Name]]</code>.
+        </p>
+      </div>
+    </details>
+
+    <!-- Text-first pages attached to this collection (edit mode only) -->
+    <details class="sb-details" id="sb-pages-sec" style="display:none">
+      <summary>Pages <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — full text pages (rules, lore, a storyteller guide) linked from your collection page and nowhere else.</span></summary>
+      <div class="sb-details-body">
+        <ul class="article-list" id="pc-pages-list"><li class="sub">No pages yet.</li></ul>
+        <a class="th-clear" id="pc-page-new" href="#" style="display:inline-block;margin-top:10px;text-decoration:none">+ Write a page</a>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
       <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
@@ -270,7 +294,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
+  <script src="assets/render-wiki.js"></script>
   <script src="assets/theme-editor.js"></script>
+  <script src="assets/wiki-editor.js"></script>
   <script>
   (function () {
     var allChars = [];
@@ -397,6 +423,30 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       set: function(t){ theme = t; }
     });
 
+    // ── custom boxes (shared widget — wiki-editor.js) ──
+    var boxesUI = window.WikiEditor.boxes($('pc-boxes'), $('pc-box-add'));
+
+    // ── text-first pages attached to this collection ──
+    function loadPages(key){
+      if (!key) return;
+      $('sb-pages-sec').style.display = '';
+      $('pc-page-new').href = 'publish-page?parentType=collection&parentSlug=' + encodeURIComponent(key);
+      fetch('/api/wiki-pages?parentType=collection&parentSlug=' + encodeURIComponent(key) + '&_=' + Date.now(),
+            { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var list = (d && d.pages) || [];
+          $('pc-pages-list').innerHTML = list.length ? list.map(function(p){
+            return '<li class="article-row">' +
+              '<a href="publish-page?p=' + encodeURIComponent(p.slug) + '">' + esc(p.title) + '</a>' +
+              '<span class="pill ' + (p.status === 'published' ? 'published' : 'draft') + '">' +
+                (p.status === 'published' ? 'Published' : 'Draft') + '</span></li>';
+          }).join('') : '<li class="sub">No pages yet.</li>';
+          if (list.length) $('sb-pages-sec').open = true;
+        })
+        .catch(function(){});
+    }
+
     // ── image inputs (resize to max width PNG) ──
     function wireImageInput(inputId, prevId, noteId, removeId, maxW, onReady){
       $(inputId).addEventListener('change', function(e){
@@ -497,6 +547,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           gameplay: $('pc-gameplay').value.trim(),
           strategyGood: $('pc-strat-good').value.trim(),
           strategyEvil: $('pc-strat-evil').value.trim(),
+          customBoxes: boxesUI.gather(),
           match: $('pc-match').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean),
           include: include.slice(),
           exclude: exclude.slice(),
@@ -516,7 +567,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         EDIT_KEY = id;
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
         $('pub-page-title').textContent = 'Edit Collection';
-        updateUrlPreview(); updateButtons();
+        updateUrlPreview(); updateButtons(); loadPages(id);
         var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
         if (isDraft){
           pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> Hit <strong>Publish to Wiki</strong> when it’s ready.');
@@ -588,6 +639,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-strat-good').value = c.strategyGood || '';
           $('pc-strat-evil').value = c.strategyEvil || '';
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
+          if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
+          loadPages(EDIT_KEY);
           include = (c.include || []).slice();
           exclude = (c.exclude || []).slice();
           theme = {};

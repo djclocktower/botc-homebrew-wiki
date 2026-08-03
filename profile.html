@@ -153,6 +153,19 @@
         '</div></a>';
     }
 
+    // Custom wiki pages this creator has written. They are unlisted everywhere
+    // else on the site, so this and their parent page are the only ways in.
+    function pageLink(p) {
+      var parent = p.parentName
+        ? ' <span class="wiki-pagelink-blurb" style="display:inline">· in ' + esc(p.parentName) + '</span>'
+        : '';
+      return '<a class="wiki-pagelink" href="/p/' + encodeURIComponent(p.slug) + '">' +
+        '<span class="wiki-pagelink-title">' + esc(p.title) + '</span>' +
+        (p.blurb ? '<span class="wiki-pagelink-blurb">' + esc(p.blurb) + parent + '</span>'
+                 : (parent ? '<span class="wiki-pagelink-blurb">in ' + esc(p.parentName) + '</span>' : '')) +
+        '</a>';
+    }
+
     function section(title, inner) {
       return '<section class="landing-section">' +
         '<h2 class="type-header">' + esc(title) + '</h2>' +
@@ -194,6 +207,11 @@
         if (nColls) {
           html += section('Collections', '<div class="collections-grid">' +
             data.collections.map(collectionTile).join('') + '</div>');
+        }
+        var pages = data.pages || [];
+        if (pages.length) {
+          html += section('Pages', '<div class="wiki-pagelinks wiki-pagelinks-dark">' +
+            pages.map(pageLink).join('') + '</div>');
         }
         if (!html) {
           html = '<p class="profile-empty">' + esc(p.displayName || p.username) + ' hasn’t published anything yet.</p>';
