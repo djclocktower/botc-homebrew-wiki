@@ -1,0 +1,488 @@
+[
+  {
+    "slug": "use-vote-token-give-up-vote-token",
+    "title": "Use Vote Token / Give Up Vote Token",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "use-vote-token-give-up-vote-token",
+      "title": "Use Vote Token / Give Up Vote Token",
+      "subtitle": "Odyssey glossary",
+      "blurb": "How vote tokens work in Odyssey: dead players may spend several at once, and may hand them to the Storyteller to trigger an ability.",
+      "author": "Taiyi (太一)",
+      "body": "Odyssey changes what a dead player can do with the voting marker they receive when they die, so several characters can read the town's dead as a resource. Two separate acts are defined here: **using** a vote token, which is a vote, and **giving up** vote tokens, which is not.\n\n## Definitions\n\n**Vote token:** the voting marker a player receives when they die. A player gains one vote token upon death. Dead players can only vote by using a vote token. Whether each player holds any vote tokens, and how many, is public information that anyone may check.\n\n**Use vote token:** the act of a dead player voting by using a vote token. Losing vote tokens by any other means does not count as using them. The act is public and visible to every player.\n\n**Give up vote tokens:** the act of a dead player, not counting Travellers, publicly handing the vote tokens they hold to the Storyteller during the day, in an attempt to trigger a character's ability. A player who gives up vote tokens loses every vote token they hold. A player without vote tokens cannot give any up. Giving up vote tokens is public, visible to all players, and can only happen during the day.\n\n## How this differs from the official rules\n\n- A player holding multiple vote tokens may use all of them on a single nomination to cast that many votes, or use any number of them to cast the corresponding number of votes.\n- When a player uses more than one vote token at once, they must hold up the matching number of fingers while raising their hand, so the Storyteller can tally the vote.\n- After the Storyteller tallies the votes, that many vote tokens are collected from the player.\n- As long as a character with a give up vote tokens ability is on the script, players may give up vote tokens even if that character is not in play.\n\n## Examples\n\n1. The dead [[Hanged Man]] uses a vote token to vote. When the game ends, the good win is reversed into an evil win.\n2. Dead Townsfolk publicly choose the [[Skeleton King]] and give up their vote tokens. When the game ends the Skeleton King wins, and the Townsfolk who gave up their vote tokens win with them.\n\n## Related characters\n\n[[Hanged Man]], [[Viking]], [[Pirate Cat King]], [[Skeleton King]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- **Use Vote Token / Give Up Vote Token**\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "使用投票标记 / 上交投票标记"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "from-the-storyteller",
+    "title": "From the Storyteller",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "from-the-storyteller",
+      "title": "From the Storyteller",
+      "subtitle": "Odyssey glossary",
+      "blurb": "Abilities that a player uses by walking up to the Storyteller during the day to privately learn or receive something.",
+      "author": "Taiyi (太一)",
+      "body": "Some Odyssey abilities are not run at night and are not called for. The player has to come and get them, which means anyone can pretend to have one.\n\n## Definitions\n\n**From the Storyteller:** the act of a player privately learning information, or receiving something else, from the Storyteller during the day. What is learned or received is secret and is not visible to other players.\n\nA player with a \"from the Storyteller\" ability who wishes to use it must approach the Storyteller of their own initiative. Players who do not have such an ability may also approach the Storyteller while pretending to have one, and the Storyteller will play along with the deception.\n\n## Examples\n\n1. Each day, the [[Paperboy]] approaches the Storyteller and privately receives a piece of news.\n2. Each day, the [[Witness]] approaches the Storyteller and privately learns a statement.\n3. On the first day the [[Riddler]] approaches the Storyteller and privately learns a riddle, but on later days they never visit the Storyteller again and learn no new riddles.\n4. On the first day [[Don Quixote]] approaches the Storyteller and privately learns who the [[Windmill]] is, but on later days they never visit the Storyteller again and learn no new information.\n\n## Related characters\n\n[[Paperboy]], [[Witness]], [[Riddler]], [[Don Quixote]], [[Kappa]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- **From the Storyteller**\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "从说书人处"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "other-players",
+    "title": "Other (Players)",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "other-players",
+      "title": "Other (Players)",
+      "subtitle": "Odyssey glossary",
+      "blurb": "What \"other players\" means in an ability: everyone except the player who has that ability, sometimes with a further condition attached.",
+      "author": "Taiyi (太一)",
+      "body": "## Definitions\n\n**Other (players):** players other than the player who has the ability, roughly equivalent to the official phrasing \"players other than you\". It may carry an additional condition, such as other good players, other Wolfboys, or other Ettins.\n\n## Examples\n\n1. The [[Centaur]] and the [[joker-odyssey|Joker]] can only choose players other than themselves.\n2. The [[Bug Catcher]] ability only triggers when they nominate a player other than themself.\n3. Only when a [[Wolfboy]] has died and just one Wolfboy remains alive, meaning every other Wolfboy is dead, does that Wolfboy become an evil Minion.\n4. The Townsfolk the [[FaultBot]] checks never include the FaultBot.\n\n## Related characters\n\n[[herald-odyssey|Herald]], [[FaultBot]], [[Centaur]], [[Bug Catcher]], [[Wolfboy]], [[Gargoyle]], [[Loverbound]], [[Ettin]], [[joker-odyssey|Joker]], [[Miko]], [[Arbiter]], [[Mermaid]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- **Other (Players)**\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "其他（玩家）"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "the-final-day",
+    "title": "The Final Day",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "the-final-day",
+      "title": "The Final Day",
+      "subtitle": "Odyssey glossary",
+      "blurb": "The first day on which fewer than 5 players are alive. A game has at most one final day, and several Odyssey abilities wait for it.",
+      "author": "Taiyi (太一)",
+      "body": "Several Odyssey characters hold their ability back for the endgame, so the endgame needs a definition that everyone at the table can point at. That definition is the final day, and the Storyteller announces it out loud.\n\n## Definitions\n\n**The final day:** the first day of the game on which fewer than 5 players are alive, not counting Travellers. When the final day arrives the Storyteller announces at the earliest opportunity that \"the final day has come\".\n\n**Before the final day arrives:** the period of the game before the final day comes.\n\n**When the final day arrives:** usually the exact moment the final day begins, as the Storyteller announces that the final day has come.\n\n**After the final day arrives:** the final day itself and the period of the game that follows it.\n\n## How it is called\n\n- A game has at most one final day. If the game does not end on the final day, later days with fewer than 5 players alive are not treated as the final day.\n- If the game ends early, through a special victory or the Demon's death, that game has no final day at all.\n- If players die during a day that is not the final day and this leaves fewer than 5 alive, for example through the Witch or the Golem but not through a normal execution, the Storyteller immediately announces that the final day has arrived. Abilities that trigger \"when the final day arrives\" take effect at that point, such as the [[Pirate Cat King]] and the [[Mummy]]. That final day ends at dusk, and no later period of the game can become the final day.\n- Players who are alive but register as dead count as dead players for the final day.\n\n## Related characters\n\n[[Pirate Cat King]], [[hydra-odyssey|Hydra]], [[Blood Thief]], [[Kraken]], [[Mummy]], [[Minotaur]], [[Kappa]]\n\n::: note Translation note\nThe source wiki's own subtitle for this entry reads \"Judgment Day\". Following terminology review, the English rendering of 审判日 used across every Odyssey almanac on this wiki is \"the final day\", and that is the term used here.\n:::",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- **The Final Day**\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "审判日"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "variable-x",
+    "title": "Variable X",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "variable-x",
+      "title": "Variable X",
+      "subtitle": "Odyssey glossary",
+      "blurb": "The X that appears in some Odyssey ability text: a number set by the game state, defined separately by each character that uses it.",
+      "author": "Taiyi (太一)",
+      "body": "## Definitions\n\n**Variable X:** X is a variable numeric parameter in a character's ability, an integer determined by a specific game state or condition. The exact value of X is defined individually by the rules in each character's ability text.\n\n- For some characters X changes as the game goes on, such as [[CodeX]] and the [[Crosswing]].\n- For others X is fixed once the game begins, such as the [[Venomtail]].\n- X is usually a non-negative integer.\n- The X in one player's ability never interferes with the X in another's. Each is worked out independently.\n\n## Examples\n\n1. On the first night [[CodeX]] is in play, the X in their ability is 1. On their second night in play it is 2, and so on.\n2. The X in the [[Crosswing]] ability depends on which night of the game it currently is.\n3. The X in the [[Venomtail]] ability is set at the start of the game and does not change for the rest of it.\n\n## Related characters\n\n[[CodeX]], [[Venomtail]], [[Crosswing]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- **Variable X**\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "变量 X"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "attack",
+    "title": "Attack",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "attack",
+      "title": "Attack",
+      "subtitle": "Odyssey glossary",
+      "blurb": "What it means for a Demon, or the Storyteller, to attack a player, plus \"cannot attack\", \"can only attack\", and what does and does not count.",
+      "author": "Taiyi (太一)",
+      "body": "The word attack comes from the official Fabled character the Toymaker. Odyssey defines it in full here, and it is the shortest way to say that the Demon's killing ability has selected someone.\n\n## Definitions\n\n**Attack:** the act of a player with a Demon ability, or the Storyteller, selecting a player with the Demon's lethal ability. In most cases an attack kills an alive player. In a few cases an attack does not kill, such as attacking a player who cannot die, or attacking a player who is already dead.\n\n**Cannot attack:** a player with a Demon ability is woken because of an ability, told they cannot attack, and put back to sleep. Where the Storyteller decides the Demon's target, the Storyteller likewise cannot attack any player.\n\n**Can only attack:** a player with a Demon ability is woken because of an ability and told they can only attack specific players. Where the Storyteller decides the Demon's target, the Storyteller can also only choose those players.\n\n## What counts as an attack\n\n- Whether the attacking player is poisoned or drunk makes no difference to whether their action counts as an attack.\n- Delayed death counts. The Pukka's ability is an attack, even though the death lands later.\n- Abilities that cause no death do not count. The Leech poisons, so the Leech does not attack.\n- In the vast majority of contexts, attack expresses the Demon's death dealing ability more briefly and directly, as in `Each night*, you attack a player`, because attack inherently carries the property of causing death. Out of respect for the habits players already have, Odyssey characters whose abilities are not tightly bound to the attack action still keep their ability text as close to the official wording as possible.\n\n## Examples\n\n1. At night the Storyteller uses the Yaggababble's ability to attack the Fool. The Fool is protected by their own ability and does not die.\n2. At night the Imp attacks the Noble, and the Noble dies.\n3. The Pukka attacks the Tea Lady and poisons them. The Tea Lady dies the following night.\n4. The [[Ronin]] protects the Fortune Teller. The Imp attacks the Fortune Teller that night, but because of the Ronin's ability the Baron is attacked in the Fortune Teller's place and dies, and the Ronin regains their ability.\n\n## Related characters\n\n[[witcher-odyssey|Witcher]], [[Ronin]], [[MarMonk]], [[Druid]], [[Somnmaid]], [[Nurgle]], [[Arthur]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- **Attack**\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "攻击"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "delay",
+    "title": "Delay",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "delay",
+      "title": "Delay",
+      "subtitle": "Odyssey glossary",
+      "blurb": "Delayed effects, and delayed death in particular: a death that is held back until the delay ends, keeping its original cause.",
+      "author": "Taiyi (太一)",
+      "body": "## Definitions\n\n**Delay:** usually paired with a kind of effect or state, such as delayed death. A delay effect postpones an effect or state affecting a player until the delay effect ends.\n\n**Delayed death:** when a player is about to die they temporarily do not die, and the death is postponed until the delayed death effect ends or is removed. Delayed death postpones deaths from executions as well as deaths caused by character abilities.\n\n## Cause of death\n\nFor a player whose death was postponed by a delayed death effect, the cause of death is the first cause of death they received during the delay.\n\nFor example, a player with a delayed death is first attacked by the Demon and is then executed. When the delayed death effect ends that night, the player is treated as having died from the Demon's attack, because the Demon's attack was the first cause of death.\n\n## Examples\n\n1. Players killed by the Demon have their deaths delayed until after the [[valkyrie-odyssey|Valkyrie]] acts.\n2. A player poisoned by the [[Witch Doctor]] does not die when executed. When they are no longer poisoned by the Witch Doctor, they die immediately.\n\n## Related characters\n\n[[valkyrie-odyssey|Valkyrie]], [[Witch Doctor]]",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- **Delay**\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "延迟"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "the-traveller-exclusion-principle",
+    "title": "The Traveller Exclusion Principle",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "the-traveller-exclusion-principle",
+      "title": "The Traveller Exclusion Principle",
+      "subtitle": "Odyssey glossary",
+      "blurb": "A blanket rule for the whole collection: every Odyssey ability ignores Traveller players and characters when working out what it does.",
+      "author": "Taiyi (太一)",
+      "body": "In Odyssey, all character abilities exclude Traveller characters and players when determining and resolving their effects. This is a rule for the whole collection, so it is not repeated in each character's ability text.\n\n## What the principle covers\n\n- **Abilities cannot actively choose Travellers.** The [[joker-odyssey|Joker]] and the [[Sensate]] cannot choose Traveller players.\n- **Abilities do not learn Travellers.** The [[Onmyoji]] never learns a Traveller player.\n- **Position based determinations skip Travellers.** The [[Pearl Diver]] and the [[Skipper]] abilities ignore Travellers when counting around the circle.\n- **Actions taken by Travellers are not counted.** A Traveller who nominates the [[Gargoyle]] does not die, and the Gargoyle does not treat it as \"the 1st time another player nominates you\". After a Traveller nominates and executes a player, the [[Notary]] is not woken that night.\n- **Travellers are not treated as specific players.** \"All evil players\" in the abilities of the [[Minotaur]], the [[Dretch]] and the [[Blood Thief]] does not include Traveller players.\n\nThe list above is not exhaustive. Anywhere an Odyssey ability would otherwise reach a Traveller player or a Traveller character, it does not.",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- **The Traveller Exclusion Principle**\n- [Jinxes](/p/jinxes)"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "旅行者隔绝原则"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  },
+  {
+    "slug": "jinxes",
+    "title": "Jinxes",
+    "parent_type": "collection",
+    "parent_slug": "odyssey",
+    "author": "Taiyi (太一)",
+    "owner_id": 1,
+    "status": "published",
+    "data": {
+      "slug": "jinxes",
+      "title": "Jinxes",
+      "subtitle": "Odyssey glossary",
+      "blurb": "Specific character interaction rules for Odyssey, and why the rest of the jinx design is left to the people building the scripts.",
+      "author": "Taiyi (太一)",
+      "body": "## The jinx delegation principle\n\nApart from the specific character combinations below, which could seriously break game balance and so receive unified jinx rules here, jinx design for Odyssey characters is delegated to script creators. Script authors are encouraged to design unique and imaginative custom jinxes that fit their own script's gameplay framework.\n\n## The unified jinxes\n\n**[[Hanged Man]] and [[Puck]].** When an evil player is turned into the Hanged Man, or gains the Hanged Man's ability, for example an evil Philosopher, they immediately lose that ability.\n\n**[[Hanged Man]] and [[Clone]].** No rule text has been published for this combination yet. See the note below before running it.\n\n**[[Hell's Outcast]] and [[Ettin]].** If the number of evil players in play is already one greater than the initial setup, not counting evil Travellers, then the Hell's Outcast ability text \"you turn evil & swap characters with the Demon\" becomes \"you immediately swap alignments & characters with the Demon\".\n\n::: note Translation note\nThe source wiki lists the heading \"Hanged Man & Clone\" with no rule text beneath it, apparently an unfinished entry. It is kept here so the gap is visible rather than silently dropped. Check the source page for an update before putting both characters on the same script.\n:::",
+      "header": "",
+      "images": [],
+      "boxes": [
+        {
+          "title": "Odyssey glossary",
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- **Jinxes**"
+        }
+      ],
+      "infobox": {
+        "title": "Glossary entry",
+        "rows": [
+          {
+            "label": "Chinese",
+            "value": "相克规则（特定角色交互规则）"
+          },
+          {
+            "label": "Collection",
+            "value": "[Odyssey](/collection/odyssey)"
+          },
+          {
+            "label": "Written by",
+            "value": "Taiyi (太一)"
+          },
+          {
+            "label": "Translated by",
+            "value": "DJ_DJ_DJ"
+          },
+          {
+            "label": "Applies to",
+            "value": "Odyssey characters only"
+          }
+        ]
+      },
+      "toc": true,
+      "comments": true,
+      "parentType": "collection",
+      "parentSlug": "odyssey"
+    }
+  }
+]

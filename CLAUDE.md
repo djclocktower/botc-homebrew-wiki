@@ -248,6 +248,15 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   be switched off per page.
 - Deleting one is **permanent** — unlike scripts/characters there is no soft
   delete, so the account page offers Edit only and the editor owns the rest.
+- The first set of these is the **Odyssey glossary**: nine pages (Attack,
+  Delay, The Final Day, Variable X, Other (Players), From the Storyteller,
+  Use Vote Token / Give Up Vote Token, The Traveller Exclusion Principle,
+  Jinxes) hanging off the `odyssey` collection, each carrying a fact box and
+  a nav box linking the other eight. They live in D1 like all page content;
+  `migration/odyssey-glossary-pages.json` is a copy of the rows as written,
+  kept for reference the same way the `*-import.json` files are. Their text
+  follows the Odyssey house style set by `migration/odyssey-cleanup.js`: no
+  em dashes, they/them pronouns.
 
 The **same text engine and editor kit** power news articles: `publish-news.html`
 and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and
