@@ -249,14 +249,18 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
 - Deleting one is **permanent** — unlike scripts/characters there is no soft
   delete, so the account page offers Edit only and the editor owns the rest.
 - The first set of these is the **Odyssey glossary**: nine pages (Attack,
-  Delay, The Final Day, Variable X, Other (Players), From the Storyteller,
+  Delay, The Last Day, Variable X, Other (Players), From the Storyteller,
   Use Vote Token / Give Up Vote Token, The Traveller Exclusion Principle,
   Jinxes) hanging off the `odyssey` collection, each carrying a fact box and
-  a nav box linking the other eight. They live in D1 like all page content;
+  a nav box linking the other eight. Their slugs are **collection-prefixed**
+  (`/p/odyssey-attack`, `/p/odyssey-jinxes`, …) because slugs are global and
+  a term like "attack" belongs to no one collection — prefix any future
+  glossary the same way. They live in D1 like all page content;
   `migration/odyssey-glossary-pages.json` is a copy of the rows as written,
   kept for reference the same way the `*-import.json` files are. Their text
   follows the Odyssey house style set by `migration/odyssey-cleanup.js`: no
-  em dashes, they/them pronouns.
+  em dashes, they/them pronouns. 审判日 is rendered **"the last day"**; 25 of
+  the character almanacs still say "the final day" and want a sweep.
 
 The **same text engine and editor kit** power news articles: `publish-news.html`
 and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and

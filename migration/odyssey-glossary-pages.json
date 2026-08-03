@@ -1,6 +1,6 @@
 [
   {
-    "slug": "use-vote-token-give-up-vote-token",
+    "slug": "odyssey-use-vote-token-give-up-vote-token",
     "title": "Use Vote Token / Give Up Vote Token",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -8,7 +8,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "use-vote-token-give-up-vote-token",
+      "slug": "odyssey-use-vote-token-give-up-vote-token",
       "title": "Use Vote Token / Give Up Vote Token",
       "subtitle": "Odyssey glossary",
       "blurb": "How vote tokens work in Odyssey: dead players may spend several at once, and may hand them to the Storyteller to trigger an ability.",
@@ -19,7 +19,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- **Use Vote Token / Give Up Vote Token**\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- **Use Vote Token / Give Up Vote Token**\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -54,7 +54,7 @@
     }
   },
   {
-    "slug": "from-the-storyteller",
+    "slug": "odyssey-from-the-storyteller",
     "title": "From the Storyteller",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -62,7 +62,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "from-the-storyteller",
+      "slug": "odyssey-from-the-storyteller",
       "title": "From the Storyteller",
       "subtitle": "Odyssey glossary",
       "blurb": "Abilities that a player uses by walking up to the Storyteller during the day to privately learn or receive something.",
@@ -73,7 +73,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- **From the Storyteller**\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- **From the Storyteller**\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -108,7 +108,7 @@
     }
   },
   {
-    "slug": "other-players",
+    "slug": "odyssey-other-players",
     "title": "Other (Players)",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -116,7 +116,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "other-players",
+      "slug": "odyssey-other-players",
       "title": "Other (Players)",
       "subtitle": "Odyssey glossary",
       "blurb": "What \"other players\" means in an ability: everyone except the player who has that ability, sometimes with a further condition attached.",
@@ -127,7 +127,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- **Other (Players)**\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- **Other (Players)**\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -162,26 +162,26 @@
     }
   },
   {
-    "slug": "the-final-day",
-    "title": "The Final Day",
+    "slug": "odyssey-the-last-day",
+    "title": "The Last Day",
     "parent_type": "collection",
     "parent_slug": "odyssey",
     "author": "Taiyi (太一)",
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "the-final-day",
-      "title": "The Final Day",
+      "slug": "odyssey-the-last-day",
+      "title": "The Last Day",
       "subtitle": "Odyssey glossary",
-      "blurb": "The first day on which fewer than 5 players are alive. A game has at most one final day, and several Odyssey abilities wait for it.",
+      "blurb": "The first day on which fewer than 5 players are alive. A game has at most one last day, and several Odyssey abilities wait for it.",
       "author": "Taiyi (太一)",
-      "body": "Several Odyssey characters hold their ability back for the endgame, so the endgame needs a definition that everyone at the table can point at. That definition is the final day, and the Storyteller announces it out loud.\n\n## Definitions\n\n**The final day:** the first day of the game on which fewer than 5 players are alive, not counting Travellers. When the final day arrives the Storyteller announces at the earliest opportunity that \"the final day has come\".\n\n**Before the final day arrives:** the period of the game before the final day comes.\n\n**When the final day arrives:** usually the exact moment the final day begins, as the Storyteller announces that the final day has come.\n\n**After the final day arrives:** the final day itself and the period of the game that follows it.\n\n## How it is called\n\n- A game has at most one final day. If the game does not end on the final day, later days with fewer than 5 players alive are not treated as the final day.\n- If the game ends early, through a special victory or the Demon's death, that game has no final day at all.\n- If players die during a day that is not the final day and this leaves fewer than 5 alive, for example through the Witch or the Golem but not through a normal execution, the Storyteller immediately announces that the final day has arrived. Abilities that trigger \"when the final day arrives\" take effect at that point, such as the [[Pirate Cat King]] and the [[Mummy]]. That final day ends at dusk, and no later period of the game can become the final day.\n- Players who are alive but register as dead count as dead players for the final day.\n\n## Related characters\n\n[[Pirate Cat King]], [[hydra-odyssey|Hydra]], [[Blood Thief]], [[Kraken]], [[Mummy]], [[Minotaur]], [[Kappa]]\n\n::: note Translation note\nThe source wiki's own subtitle for this entry reads \"Judgment Day\". Following terminology review, the English rendering of 审判日 used across every Odyssey almanac on this wiki is \"the final day\", and that is the term used here.\n:::",
+      "body": "Several Odyssey characters hold their ability back for the endgame, so the endgame needs a definition that everyone at the table can point at. That definition is the last day, and the Storyteller announces it out loud.\n\n## Definitions\n\n**The last day:** the first day of the game on which fewer than 5 players are alive, not counting Travellers. When the last day arrives the Storyteller announces at the earliest opportunity that \"the last day has come\".\n\n**Before the last day arrives:** the period of the game before the last day comes.\n\n**When the last day arrives:** usually the exact moment the last day begins, as the Storyteller announces that the last day has come.\n\n**After the last day arrives:** the last day itself and the period of the game that follows it.\n\n## How it is called\n\n- A game has at most one last day. If the game does not end on the last day, later days with fewer than 5 players alive are not treated as the last day.\n- If the game ends early, through a special victory or the Demon's death, that game has no last day at all.\n- If players die during a day that is not the last day and this leaves fewer than 5 alive, for example through the Witch or the Golem but not through a normal execution, the Storyteller immediately announces that the last day has arrived. Abilities that trigger \"when the last day arrives\" take effect at that point, such as the [[Pirate Cat King]] and the [[Mummy]]. That last day ends at dusk, and no later period of the game can become the last day.\n- Players who are alive but register as dead count as dead players for the last day.\n\n## Related characters\n\n[[Pirate Cat King]], [[hydra-odyssey|Hydra]], [[Blood Thief]], [[Kraken]], [[Mummy]], [[Minotaur]], [[Kappa]]\n\n::: note Translation note\nThe source wiki's own subtitle for this entry reads \"Judgment Day\", a literal rendering of 审判日. This wiki calls it the last day.\n:::",
       "header": "",
       "images": [],
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- **The Final Day**\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- **The Last Day**\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -216,7 +216,7 @@
     }
   },
   {
-    "slug": "variable-x",
+    "slug": "odyssey-variable-x",
     "title": "Variable X",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -224,7 +224,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "variable-x",
+      "slug": "odyssey-variable-x",
       "title": "Variable X",
       "subtitle": "Odyssey glossary",
       "blurb": "The X that appears in some Odyssey ability text: a number set by the game state, defined separately by each character that uses it.",
@@ -235,7 +235,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- **Variable X**\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- **Variable X**\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -270,7 +270,7 @@
     }
   },
   {
-    "slug": "attack",
+    "slug": "odyssey-attack",
     "title": "Attack",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -278,7 +278,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "attack",
+      "slug": "odyssey-attack",
       "title": "Attack",
       "subtitle": "Odyssey glossary",
       "blurb": "What it means for a Demon, or the Storyteller, to attack a player, plus \"cannot attack\", \"can only attack\", and what does and does not count.",
@@ -289,7 +289,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- **Attack**\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- **Attack**\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -324,7 +324,7 @@
     }
   },
   {
-    "slug": "delay",
+    "slug": "odyssey-delay",
     "title": "Delay",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -332,7 +332,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "delay",
+      "slug": "odyssey-delay",
       "title": "Delay",
       "subtitle": "Odyssey glossary",
       "blurb": "Delayed effects, and delayed death in particular: a death that is held back until the delay ends, keeping its original cause.",
@@ -343,7 +343,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- **Delay**\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- **Delay**\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -378,7 +378,7 @@
     }
   },
   {
-    "slug": "the-traveller-exclusion-principle",
+    "slug": "odyssey-the-traveller-exclusion-principle",
     "title": "The Traveller Exclusion Principle",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -386,7 +386,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "the-traveller-exclusion-principle",
+      "slug": "odyssey-the-traveller-exclusion-principle",
       "title": "The Traveller Exclusion Principle",
       "subtitle": "Odyssey glossary",
       "blurb": "A blanket rule for the whole collection: every Odyssey ability ignores Traveller players and characters when working out what it does.",
@@ -397,7 +397,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- **The Traveller Exclusion Principle**\n- [Jinxes](/p/jinxes)"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- **The Traveller Exclusion Principle**\n- [Jinxes](/p/odyssey-jinxes)"
         }
       ],
       "infobox": {
@@ -432,7 +432,7 @@
     }
   },
   {
-    "slug": "jinxes",
+    "slug": "odyssey-jinxes",
     "title": "Jinxes",
     "parent_type": "collection",
     "parent_slug": "odyssey",
@@ -440,7 +440,7 @@
     "owner_id": 1,
     "status": "published",
     "data": {
-      "slug": "jinxes",
+      "slug": "odyssey-jinxes",
       "title": "Jinxes",
       "subtitle": "Odyssey glossary",
       "blurb": "Specific character interaction rules for Odyssey, and why the rest of the jinx design is left to the people building the scripts.",
@@ -451,7 +451,7 @@
       "boxes": [
         {
           "title": "Odyssey glossary",
-          "content": "- [Use Vote Token / Give Up Vote Token](/p/use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/from-the-storyteller)\n- [Other (Players)](/p/other-players)\n- [The Final Day](/p/the-final-day)\n- [Variable X](/p/variable-x)\n- [Attack](/p/attack)\n- [Delay](/p/delay)\n- [The Traveller Exclusion Principle](/p/the-traveller-exclusion-principle)\n- **Jinxes**"
+          "content": "- [Use Vote Token / Give Up Vote Token](/p/odyssey-use-vote-token-give-up-vote-token)\n- [From the Storyteller](/p/odyssey-from-the-storyteller)\n- [Other (Players)](/p/odyssey-other-players)\n- [The Last Day](/p/odyssey-the-last-day)\n- [Variable X](/p/odyssey-variable-x)\n- [Attack](/p/odyssey-attack)\n- [Delay](/p/odyssey-delay)\n- [The Traveller Exclusion Principle](/p/odyssey-the-traveller-exclusion-principle)\n- **Jinxes**"
         }
       ],
       "infobox": {
