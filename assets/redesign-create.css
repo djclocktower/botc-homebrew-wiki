@@ -45,6 +45,9 @@ html.create-redesign .fld .hint {
 }
 html.create-redesign .fld label { margin-bottom: 6px; }
 
+/* the flavour quote's "(JSON flavor)" note is developer shorthand — drop it */
+html.create-redesign .fld label[for="quote"] .hint { display: none; }
+
 /* ---------- inputs & text boxes ---------- */
 html.create-redesign .fld textarea { min-height: 44px; }
 html.create-redesign .fld input[type=text],

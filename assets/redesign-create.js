@@ -45,15 +45,39 @@
   });
 
   /* ============================================================
-     2. Re-order the flat field run into titled sections:
+     2. The flavour quote and "appears in" share one two-column row,
+        but the quote belongs up in Basics. Split the row into two
+        plain fields and park the quote under the ability line, so the
+        section pass below picks each of them up on its own.
+     ============================================================ */
+  (function () {
+    var quote = document.getElementById('quote');
+    var row = quote && quote.closest ? quote.closest('.row2') : null;
+    if (!row || !row.parentNode) return;
+    var quoteFld = quote.closest('.fld') || quote.parentNode;
+    var ability = document.getElementById('ability');
+    var abilityFld = ability && ability.closest ? ability.closest('.fld') : null;
+
+    // unwrap first, so the quote is never left inside the discarded row
+    Array.prototype.slice.call(row.children).forEach(function (fld) {
+      row.parentNode.insertBefore(fld, row);
+    });
+    row.parentNode.removeChild(row);
+
+    if (abilityFld && abilityFld.parentNode)
+      abilityFld.parentNode.insertBefore(quoteFld, abilityFld.nextSibling);
+  })();
+
+  /* ============================================================
+     3. Re-order the flat field run into titled sections:
         Basics → The Page → Tags → Night Order → Advanced → actions
      ============================================================ */
   var GROUP_DEFS = [
-    { key: 'basics',   title: 'Basics',   sub: 'name, team, ability and art',
-      ids: ['name', 'team', 'ability', 'art'] },
+    { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
+      ids: ['name', 'team', 'ability', 'quote', 'art'] },
     { key: 'the-page', title: 'The Page', sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
-            'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'quote', 'appears'] },
+            'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
       ids: ['tag-picker', 'tags'] }
   ];
@@ -103,7 +127,7 @@
   buckets.nightorder.forEach(function (n) { card.appendChild(n); });
 
   /* ============================================================
-     3. Advanced Options: credit fields, alternate art, and the
+     4. Advanced Options: credit fields, alternate art, and the
         jinx / sidebar-box / custom-JSON fieldsets.
         Auto-opens when anything inside already has content.
      ============================================================ */
@@ -134,7 +158,7 @@
   }
 
   /* ============================================================
-     4. Sticky action bar: publish / draft / status
+     5. Sticky action bar: publish / draft / status
      ============================================================ */
   if (buckets.actions.length) {
     var bar = document.createElement('div');
@@ -144,7 +168,7 @@
   }
 
   /* ============================================================
-     5. Auto-expanding text boxes.
+     6. Auto-expanding text boxes.
         The pages size their own textareas on load; this adds a
         delegated handler so boxes created later (jinx rows, custom
         sidebar boxes, JSON autofill) are covered too.
@@ -189,7 +213,7 @@
   });
 
   /* ============================================================
-     6. Preview plaque: "updates as you type" with a pulse on refresh
+     7. Preview plaque: "updates as you type" with a pulse on refresh
      ============================================================ */
   var label = document.querySelector('.preview-label');
   if (label) {
