@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grimoire Forge — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Check homebrew Blood on the Clocktower ability text against official syntax — terminology, casing, numbering, structure and length — and get a clean, corrected line to paste into your character.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Grimoire Forge">
+<meta property="og:description" content="Blood on the Clocktower ability syntax checker. Paste an ability, see what breaks official style, and copy the corrected line.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* ─── Grimoire Forge ───────────────────────────────────────────────
+   Everything here is page-local. Shared colours come from styles.css:
+   --parch, --parch-frame, --maroon, --ink, --good-name, --evil. */
+
+/* Hero: the forge mark sits beside the title, not above it, so the
+   heading still reads as a page title on a phone. */
+.gf-hero { padding-bottom: 10px; }
+.gf-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 22px); }
+.gf-hero-icon { width: clamp(56px, 9vw, 92px); height: auto; flex-shrink: 0; filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
+.gf-hero h1 { margin: 0; }
+.gf-credit {
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .07em;
+  text-transform: uppercase; color: rgba(236,225,200,.62); margin: 12px 0 0;
+}
+.gf-credit a { color: rgba(236,225,200,.85); text-decoration: none; border-bottom: 1px solid rgba(236,225,200,.35); }
+.gf-credit a:hover { color: var(--parch); }
+
+/* Parchment panel — same construction as .about-card */
+.gf-card {
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  padding: 18px 20px 16px;
+  color: var(--ink);
+}
+.gf-label {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .8rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
+  display: block; margin: 0 0 8px;
+}
+.gf-hint { font-size: .86rem; line-height: 1.5; color: rgba(0,0,0,.68); margin: 0 0 12px; }
+
+/* Input */
+.gf-input-wrap { position: relative; }
+#gf-input {
+  width: 100%; min-height: 118px; resize: vertical;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: 1.02rem; line-height: 1.5; color: var(--ink);
+  background: #fffdf8; border: 2px solid var(--parch-frame); border-radius: 0;
+  padding: 12px 14px;
+}
+#gf-input:focus { outline: none; border-color: var(--maroon); box-shadow: inset 0 0 0 1px rgba(91,31,33,.25); }
+
+/* Meter row: character count on the left, buttons on the right */
+.gf-meter {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: 10px;
+}
+.gf-count {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .8rem;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--maroon);
+}
+.gf-count.warn { color: #8a5a12; }
+.gf-count.error { color: var(--evil); }
+.gf-len-note { display: block; font-size: .8rem; letter-spacing: 0; text-transform: none; font-weight: 400; font-family: inherit; opacity: .85; }
+.gf-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.gf-btns .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
+
+/* Highlighted preview */
+.gf-sub {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em;
+  text-transform: uppercase; color: rgba(91,31,33,.75);
+  margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5);
+}
+.gf-preview {
+  background: #fffdf8; border: 1px solid var(--parch-frame);
+  padding: 12px 14px; min-height: 56px;
+  font-size: 1.02rem; line-height: 1.7; color: var(--ink);
+  overflow-wrap: break-word;
+}
+.gf-preview .gf-empty { opacity: .45; font-style: italic; }
+.gf-mark {
+  cursor: pointer; padding: 1px 2px;
+  border-bottom: 2px solid currentColor;
+  transition: filter .12s;
+}
+.gf-mark:hover { filter: brightness(.92); }
+.gf-mark.warn { border-bottom-style: dashed; }
+
+/* Suggested output */
+.gf-output {
+  background: #fbfaf3; border: 1px solid var(--parch-frame);
+  border-left: 4px solid #1c5429;
+  padding: 12px 14px; min-height: 56px;
+  font-size: 1.05rem; line-height: 1.6; color: var(--ink);
+  overflow-wrap: break-word;
+}
+.gf-output .gf-empty { opacity: .45; font-style: italic; }
+
+/* Findings list */
+.gf-find {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 0; border-top: 1px solid rgba(180,160,120,.45);
+}
+.gf-find:first-child { border-top: none; padding-top: 2px; }
+.gf-dot { width: 10px; height: 10px; margin-top: 5px; flex-shrink: 0; border-radius: 50%; }
+.gf-find-body { flex: 1; min-width: 0; }
+.gf-find-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 3px; }
+.gf-cat {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--maroon);
+}
+.gf-sev {
+  font-family: 'Oswald', sans-serif; font-size: .64rem; font-weight: 600;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 1px 7px; border: 1px solid currentColor;
+}
+.gf-sev.fix { color: var(--evil); }
+.gf-sev.warn { color: #8a5a12; }
+.gf-swap { font-size: .96rem; margin-bottom: 2px; overflow-wrap: break-word; }
+.gf-swap s { color: var(--evil); }
+.gf-swap b { color: #1c5429; }
+.gf-note { font-size: .86rem; line-height: 1.45; color: rgba(0,0,0,.72); }
+.gf-find-btns { display: flex; flex-direction: column; gap: 5px; flex-shrink: 0; }
+.gf-mini {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  letter-spacing: .05em; text-transform: uppercase;
+  border: none; padding: 5px 11px; cursor: pointer; color: #f3ead4;
+  transition: filter .15s;
+}
+.gf-mini:hover { filter: brightness(1.12); }
+.gf-mini-accept { background: linear-gradient(180deg,#2f7d3e,#1c5429); }
+.gf-mini-dismiss { background: linear-gradient(180deg,#6d6355,#4a423a); }
+.gf-clean {
+  text-align: center; padding: 14px 4px; font-size: .95rem;
+  color: #1c5429; font-style: italic;
+}
+
+/* Category chips + rule list */
+.gf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.gf-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .04em;
+  background: #fffdf8; border: 2px solid var(--parch-frame);
+  color: var(--ink); padding: 5px 11px; cursor: pointer;
+  transition: background .12s, opacity .12s;
+}
+.gf-chip:hover { background: rgba(91,31,33,.06); }
+.gf-chip .gf-swatch { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.gf-chip.off { opacity: .5; text-decoration: line-through; }
+.gf-chip.mixed { border-style: dashed; }
+
+.gf-rules { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5); }
+.gf-rules > summary {
+  cursor: pointer; list-style: none;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .8rem;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--maroon);
+}
+.gf-rules > summary::-webkit-details-marker { display: none; }
+.gf-rules > summary::before { content: '▸ '; }
+.gf-rules[open] > summary::before { content: '▾ '; }
+.gf-rulegroup { margin-top: 14px; }
+.gf-rulegroup h3 {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--maroon);
+  margin: 0 0 6px; padding-bottom: 4px; border-bottom: 1px solid rgba(180,160,120,.45);
+}
+.gf-rule { display: flex; gap: 9px; align-items: flex-start; padding: 5px 0; }
+.gf-rule input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--maroon); flex-shrink: 0; }
+.gf-rule-text { min-width: 0; }
+.gf-rule-name { display: block; font-size: .9rem; }
+.gf-rule-note { display: block; font-size: .8rem; color: rgba(0,0,0,.62); line-height: 1.4; }
+.gf-rule-sev {
+  font-family: 'Oswald', sans-serif; font-size: .62rem; letter-spacing: .1em;
+  text-transform: uppercase; margin-left: 6px; color: rgba(0,0,0,.5);
+}
+
+/* Known names */
+#gf-names {
+  width: 100%; min-height: 62px; resize: vertical;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-size: .95rem;
+  color: var(--ink); background: #fffdf8;
+  border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 12px;
+}
+#gf-names:focus { outline: none; border-color: var(--maroon); }
+.gf-check { display: inline-flex; align-items: flex-start; gap: 9px; margin-top: 12px; font-size: .92rem; color: var(--ink); }
+.gf-check input { width: 17px; height: 17px; margin-top: 1px; accent-color: var(--maroon); flex-shrink: 0; }
+.gf-check-note { display: block; font-size: .82rem; color: rgba(0,0,0,.62); line-height: 1.4; }
+
+/* Tap/hover popover on a highlighted word */
+.gf-pop {
+  position: fixed; z-index: 200; width: min(310px, calc(100vw - 24px));
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg'); background-size: cover;
+  border: 2px solid var(--maroon);
+  box-shadow: 0 10px 30px rgba(20,6,16,.55);
+  padding: 12px 14px; color: var(--ink);
+}
+.gf-pop-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.gf-pop .gf-swap { margin: 6px 0 8px; }
+.gf-pop .gf-note { margin-bottom: 10px; }
+.gf-pop-btns { display: flex; gap: 8px; }
+.gf-pop-btns .gf-mini { flex: 1; text-align: center; padding: 7px 0; }
+
+.gf-foot-note {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(236,225,200,.45);
+  text-align: center; margin: 6px 0 0;
+}
+
+@media (max-width: 600px) {
+  .gf-card { padding: 15px 14px 14px; }
+  .gf-meter { justify-content: flex-start; }
+  .gf-btns { width: 100%; }
+  .gf-btns .sb-btn { flex: 1; }
+  /* Findings: give the text the full width and drop the buttons underneath,
+     rather than squeezing both into a phone-width row. */
+  .gf-find { flex-wrap: wrap; }
+  .gf-find-body { flex: 1 1 calc(100% - 20px); }
+  .gf-find-btns { flex-direction: row; width: 100%; justify-content: flex-end; margin-top: 7px; }
+}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <section class="home-hero gf-hero">
+    <div class="gf-hero-row">
+      <img class="gf-hero-icon" src="assets/grimforge.png" alt="">
+      <h1>Grimoire Forge</h1>
+    </div>
+    <p>Paste a homebrew ability. The Forge checks it against official card syntax and hands back a clean line.</p>
+    <p class="gf-credit">A tool by <a href="author?a=Ma'ayan">Ma'ayan</a></p>
+  </section>
+
+  <main class="home-panel" id="content">
+
+    <!-- ── INPUT ────────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Your Ability</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <label class="gf-label" for="gf-input">Ability text</label>
+        <div class="gf-input-wrap">
+          <textarea id="gf-input" class="no-autosize" spellcheck="true"
+            placeholder="Each night*, choose a player: they die."></textarea>
+        </div>
+        <div class="gf-meter">
+          <span class="gf-count" id="gf-count">0 characters</span>
+          <span class="gf-btns">
+            <button type="button" class="sb-btn sb-btn-export" id="gf-fix">Apply All Fixes</button>
+            <button type="button" class="sb-btn sb-btn-import" id="gf-undo">Undo</button>
+            <button type="button" class="sb-btn sb-btn-clear" id="gf-clear">Clear</button>
+          </span>
+        </div>
+
+        <div class="gf-sub" id="gf-summary">Issues will appear here as you type.</div>
+        <div class="gf-preview" id="gf-preview"><span class="gf-empty">Enter ability text above to check it.</span></div>
+      </div>
+    </section>
+
+    <!-- ── SUGGESTED OUTPUT ─────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Suggested Ability</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <p class="gf-hint">Every confident fix applied, then tidied: spacing, apostrophes, the final full stop and the setup brackets. Warnings are never rewritten for you — accept those one at a time.</p>
+        <div class="gf-output" id="gf-output"><span class="gf-empty">The corrected ability will appear here.</span></div>
+        <div class="gf-meter">
+          <span class="gf-count" id="gf-out-count">0 characters</span>
+          <span class="gf-btns">
+            <button type="button" class="sb-btn sb-btn-copy" id="gf-copy">Copy</button>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FINDINGS ─────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Findings</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <div id="gf-findings"><p class="gf-hint" style="margin:0">Nothing to report yet.</p></div>
+        <div id="gf-restore-wrap" style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(180,160,120,.5);display:none">
+          <button type="button" class="gf-mini gf-mini-dismiss" id="gf-restore">Restore dismissed</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── CHECKS ───────────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Checks</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <p class="gf-hint">Tap a category to switch its rules off. <strong>Fix</strong> rules have no counterexample anywhere in the official corpus, so they are safe to apply in bulk; <strong>warn</strong> rules are flagged only, because the official cards disagree with each other or the call is yours to make.</p>
+        <div class="gf-chips" id="gf-cats"></div>
+        <details class="gf-rules">
+          <summary>Individual rules</summary>
+          <div id="gf-rulelist"></div>
+        </details>
+      </div>
+    </section>
+
+    <!-- ── KNOWN NAMES ──────────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Your Character Names</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <p class="gf-hint">The casing check knows every official character. Add your own here — one per line, or separated by commas — and the Forge will keep their capitals straight too. Saved in this browser.</p>
+        <label class="gf-label" for="gf-names">Homebrew names</label>
+        <textarea id="gf-names" placeholder="Big Wig&#10;Zenomancer"></textarea>
+        <label class="gf-check">
+          <input type="checkbox" id="gf-wiki-names">
+          <span>Also check every character name on this wiki
+            <span class="gf-check-note">Loads the wiki roster. Catches more, but a homebrew name that is also an ordinary word will get flagged mid-sentence.</span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+  <p class="gf-foot-note">Grimoire Forge by Ma'ayan · ruleset drawn from the official corpus, the Main Rulebook and the Homebrewer's Field Guide</p>
+
+  <script src="assets/grimforge.js"></script>
+  <script>
+  (function () {
+    var G = window.Grimforge;
+    var $ = function (id) { return document.getElementById(id); };
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* One colour per category, keyed to the parchment palette rather than the
+       neon set the original tool used on its dark background. */
+    var COLOR = {
+      Terminology: '#6b3fa0', Spelling: '#9A0D12', Casing: '#a9761a',
+      Numbering: '#2f6fb8', Structure: '#8a3526', Typography: '#0f6f79',
+      Contraction: '#1c6b3a', Semantics: '#4a5b8f', Style: '#7a6a1e',
+      Design: '#5B1F21', 'May/Might': '#b25a12'
+    };
+    function color(cat) { return COLOR[cat] || '#5B1F21'; }
+    /* Highlight wash: the category colour at ~20% over the parchment. */
+    function wash(cat) { return color(cat) + '30'; }
+
+    var TEXT_KEY = 'botc_grimforge_text';
+    var RULES_KEY = 'botc_grimforge_rules';
+    var NAMES_KEY = 'botc_grimforge_names';
+    var WIKI_KEY = 'botc_grimforge_wikinames';
+
+    function load(key, fallback) {
+      try {
+        var v = localStorage.getItem(key);
+        return v === null ? fallback : JSON.parse(v);
+      } catch (e) { return fallback; }
+    }
+    function save(key, val) {
+      try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
+    }
+
+    /* ── State ─────────────────────────────────────────────── */
+    var enabled = (function () {
+      var base = G.defaultEnabled(), saved = load(RULES_KEY, null);
+      if (saved && typeof saved === 'object') {
+        G.RULES.forEach(function (r) {
+          if (Object.prototype.hasOwnProperty.call(saved, r.id)) base[r.id] = !!saved[r.id];
+        });
+      }
+      return base;
+    })();
+    var dismissed = {};        // finding key -> 1, for this visit
+    var history = [];          // previous texts, for Undo
+    var result = { issues: [], notices: [], length: G.lengthBadge('') };
+    var wikiNames = [];        // filled only when the wiki-names box is ticked
+
+    var input = $('gf-input');
+    var namesBox = $('gf-names');
+    var wikiBox = $('gf-wiki-names');
+
+    /* Text: ?a= from the character editor wins, otherwise whatever was left
+       here last time. */
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var handoff = q.get('a') || q.get('t') || '';
+      input.value = handoff || load(TEXT_KEY, '') || '';
+    })();
+    namesBox.value = (load(NAMES_KEY, []) || []).join('\n');
+    wikiBox.checked = !!load(WIKI_KEY, false);
+
+    function customNames() {
+      var typed = namesBox.value.split(/[\n,]/).map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 1; });
+      return wikiBox.checked ? typed.concat(wikiNames) : typed;
+    }
+
+    /* ── Wiki roster (opt-in) ──────────────────────────────── */
+    var wikiLoading = false;
+    function loadWikiNames() {
+      if (wikiLoading || wikiNames.length) return;
+      wikiLoading = true;
+      // Some names carry a credit mark (∇, ♊︎) in the database — strip anything
+      // that isn't a letter, digit or ordinary name punctuation before using
+      // the name as a casing target. See CLAUDE.md: don't "fix" the names.
+      var strip;
+      try { strip = new RegExp('[^\\p{L}\\p{N} \'’\\-&.]', 'gu'); }
+      catch (e) { strip = /[^A-Za-z0-9 '’\-&.]/g; }
+      fetch('characters.json?_=' + Date.now())
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          var seen = {};
+          (list || []).forEach(function (c) {
+            var n = String(c && c.name || '').replace(strip, '').trim();
+            if (n.length > 2 && !seen[n]) { seen[n] = 1; wikiNames.push(n); }
+          });
+          run();
+        })
+        .catch(function () { wikiLoading = false; });
+    }
+    if (wikiBox.checked) loadWikiNames();
+
+    /* ── Rendering ─────────────────────────────────────────── */
+
+    function liveIssues() {
+      return result.issues.filter(function (i) { return !dismissed[i.key]; });
+    }
+    function liveNotices() {
+      return result.notices.filter(function (n) { return !dismissed[n.key]; });
+    }
+    /* What "Apply All Fixes" and the suggested output will actually change:
+       confident rules only, never a warning. */
+    function bulkFixes() {
+      return liveIssues().filter(function (i) { return i.sev === 'fix' && i.suggest !== null; });
+    }
+
+    function renderPreview() {
+      var text = input.value;
+      var box = $('gf-preview');
+      if (!text.trim()) {
+        box.innerHTML = '<span class="gf-empty">Enter ability text above to check it.</span>';
+        return;
+      }
+      var marks = liveIssues().slice().sort(function (a, b) { return a.start - b.start; });
+      var html = '', at = 0;
+      marks.forEach(function (i) {
+        if (i.start > at) html += esc(text.slice(at, i.start));
+        html += '<span class="gf-mark' + (i.sev === 'warn' ? ' warn' : '') + '" data-id="' + esc(i.id) + '"' +
+          ' style="background:' + wash(i.cat) + ';color:' + color(i.cat) + '">' +
+          '<span style="color:var(--ink)">' + esc(text.slice(i.start, i.end)) + '</span></span>';
+        at = i.end;
+      });
+      if (at < text.length) html += esc(text.slice(at));
+      box.innerHTML = html;
+    }
+
+    function renderSummary() {
+      var text = input.value;
+      var el = $('gf-summary');
+      if (!text.trim()) { el.textContent = 'Issues will appear here as you type.'; return; }
+      var iss = liveIssues(), not = liveNotices();
+      var fixes = iss.filter(function (i) { return i.sev === 'fix'; }).length +
+                  not.filter(function (n) { return n.sev === 'fix'; }).length;
+      var warns = iss.length + not.length - fixes;
+      if (!fixes && !warns) { el.textContent = 'No issues found — this reads like official card text.'; return; }
+      el.textContent = fixes + ' fix' + (fixes === 1 ? '' : 'es') + ' · ' +
+        warns + ' warning' + (warns === 1 ? '' : 's') + ' — tap a highlight for detail.';
+    }
+
+    function renderCounts() {
+      var b = result.length;
+      var el = $('gf-count');
+      el.className = 'gf-count' + (b.level === 'ok' ? '' : ' ' + b.level);
+      el.innerHTML = b.n + ' character' + (b.n === 1 ? '' : 's') +
+        (b.note ? '<span class="gf-len-note">' + esc(b.note) + '</span>' : '');
+
+      var out = suggested();
+      var ob = G.lengthBadge(out);
+      var oel = $('gf-out-count');
+      oel.className = 'gf-count' + (ob.level === 'ok' ? '' : ' ' + ob.level);
+      oel.innerHTML = ob.n + ' character' + (ob.n === 1 ? '' : 's') +
+        (ob.note ? '<span class="gf-len-note">' + esc(ob.note) + '</span>' : '');
+    }
+
+    function suggested() {
+      var text = input.value;
+      if (!text.trim()) return '';
+      return G.normalise(G.applyFixes(text, bulkFixes()));
+    }
+
+    function renderOutput() {
+      var out = suggested();
+      $('gf-output').innerHTML = out
+        ? esc(out)
+        : '<span class="gf-empty">The corrected ability will appear here.</span>';
+    }
+
+    function findingRow(f, actionable) {
+      var swap = '';
+      if (f.found !== undefined) {
+        swap = '<div class="gf-swap"><s>' + esc(f.found) + '</s>' +
+          (f.suggest ? ' → <b>' + esc(f.suggest) + '</b>'
+                     : (f.suggest === '' ? ' → <b>(remove)</b>' : '')) + '</div>';
+      }
+      // A notice has nothing to swap in, so its badge says so: "fix by hand"
+      // is still a certainty, it just needs rewriting rather than a click.
+      var badge = actionable
+        ? (f.sev === 'fix' ? 'fix' : 'warn')
+        : (f.sev === 'fix' ? 'fix by hand' : 'consider');
+      return '<div class="gf-find">' +
+        '<span class="gf-dot" style="background:' + color(f.cat) + '"></span>' +
+        '<div class="gf-find-body">' +
+          '<div class="gf-find-head"><span class="gf-cat">' + esc(f.cat) + '</span>' +
+          '<span class="gf-sev ' + esc(f.sev) + '">' + badge + '</span></div>' +
+          swap +
+          '<div class="gf-note">' + esc(f.note) + '</div>' +
+        '</div>' +
+        '<div class="gf-find-btns">' +
+          (actionable && f.suggest !== null && f.suggest !== undefined
+            ? '<button type="button" class="gf-mini gf-mini-accept" data-accept="' + esc(f.id) + '">Accept</button>' : '') +
+          '<button type="button" class="gf-mini gf-mini-dismiss" data-dismiss="' + esc(f.key) + '">Dismiss</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function renderFindings() {
+      var box = $('gf-findings');
+      if (!input.value.trim()) {
+        box.innerHTML = '<p class="gf-hint" style="margin:0">Nothing to report yet.</p>';
+      } else {
+        var rows = liveIssues().map(function (i) { return findingRow(i, true); })
+          .concat(liveNotices().map(function (n) { return findingRow(n, false); }));
+        box.innerHTML = rows.length
+          ? rows.join('')
+          : '<p class="gf-clean">Clean — nothing left to flag.</p>';
+      }
+      var n = Object.keys(dismissed).length;
+      $('gf-restore-wrap').style.display = n ? 'block' : 'none';
+      $('gf-restore').textContent = 'Restore ' + n + ' dismissed';
+    }
+
+    function renderButtons() {
+      $('gf-fix').disabled = !bulkFixes().length;
+      $('gf-undo').disabled = !history.length;
+      $('gf-clear').disabled = !input.value;
+      $('gf-copy').disabled = !suggested();
+    }
+
+    function run() {
+      var text = input.value;
+      result = text.trim()
+        ? G.lint(text, { enabled: enabled, customNames: customNames() })
+        : { issues: [], notices: [], length: G.lengthBadge(text) };
+      closePop();
+      renderPreview();
+      renderSummary();
+      renderOutput();
+      renderCounts();
+      renderFindings();
+      renderButtons();
+      save(TEXT_KEY, text);
+    }
+
+    /* ── Editing ───────────────────────────────────────────── */
+    function setText(next) {
+      history.push(input.value);
+      if (history.length > 40) history.shift();
+      input.value = next;
+      run();
+    }
+    function acceptIssue(id) {
+      var i = null;
+      liveIssues().forEach(function (x) { if (x.id === id) i = x; });
+      if (!i || i.suggest === null || i.suggest === undefined) return;
+      setText(input.value.slice(0, i.start) + i.suggest + input.value.slice(i.end));
+    }
+
+    input.addEventListener('input', run);
+    $('gf-fix').addEventListener('click', function () {
+      if (!bulkFixes().length) return;
+      setText(suggested());
+    });
+    $('gf-undo').addEventListener('click', function () {
+      if (!history.length) return;
+      input.value = history.pop();
+      run();
+    });
+    $('gf-clear').addEventListener('click', function () {
+      if (!input.value) return;
+      setText('');
+      input.focus();
+    });
+    $('gf-copy').addEventListener('click', function () {
+      var out = suggested();
+      if (!out) return;
+      var btn = $('gf-copy');
+      function done() {
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = 'Copy'; }, 1600);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(out).then(done, fallback);
+      } else { fallback(); }
+      function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = out; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); done(); } catch (e) {}
+        ta.remove();
+      }
+    });
+    $('gf-restore').addEventListener('click', function () {
+      dismissed = {};
+      run();
+    });
+    $('gf-findings').addEventListener('click', function (e) {
+      var a = e.target.closest('[data-accept]');
+      if (a) { acceptIssue(a.getAttribute('data-accept')); return; }
+      var d = e.target.closest('[data-dismiss]');
+      if (d) { dismissed[d.getAttribute('data-dismiss')] = 1; run(); }
+    });
+
+    namesBox.addEventListener('input', function () {
+      save(NAMES_KEY, namesBox.value.split(/[\n,]/).map(function (s) { return s.trim(); })
+        .filter(function (s) { return s.length > 1; }));
+      run();
+    });
+    wikiBox.addEventListener('change', function () {
+      save(WIKI_KEY, wikiBox.checked);
+      if (wikiBox.checked) loadWikiNames();
+      run();
+    });
+
+    /* ── Popover on a highlighted word ─────────────────────── */
+    var pop = null;
+    function closePop() { if (pop) { pop.remove(); pop = null; } }
+    function openPop(issue, el) {
+      closePop();
+      pop = document.createElement('div');
+      pop.className = 'gf-pop';
+      pop.innerHTML =
+        '<div class="gf-pop-head"><span class="gf-dot" style="margin-top:0;background:' + color(issue.cat) + '"></span>' +
+        '<span class="gf-cat">' + esc(issue.cat) + '</span>' +
+        '<span class="gf-sev ' + esc(issue.sev) + '">' + (issue.sev === 'fix' ? 'fix' : 'warn') + '</span></div>' +
+        (issue.suggest !== null && issue.suggest !== undefined
+          ? '<div class="gf-swap"><s>' + esc(issue.found) + '</s> → <b>' +
+            (issue.suggest === '' ? '(remove)' : esc(issue.suggest)) + '</b></div>' : '') +
+        '<div class="gf-note">' + esc(issue.note) + '</div>' +
+        '<div class="gf-pop-btns">' +
+          (issue.suggest !== null && issue.suggest !== undefined
+            ? '<button type="button" class="gf-mini gf-mini-accept" data-accept="' + esc(issue.id) + '">Accept</button>' : '') +
+          '<button type="button" class="gf-mini gf-mini-dismiss" data-dismiss="' + esc(issue.key) + '">Dismiss</button>' +
+        '</div>';
+      document.body.appendChild(pop);
+      var r = el.getBoundingClientRect();
+      var w = pop.offsetWidth, h = pop.offsetHeight;
+      var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
+      var top = r.bottom + 6;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+      pop.style.left = left + 'px';
+      pop.style.top = top + 'px';
+      pop.addEventListener('click', function (e) {
+        var a = e.target.closest('[data-accept]');
+        if (a) { acceptIssue(a.getAttribute('data-accept')); return; }
+        var d = e.target.closest('[data-dismiss]');
+        if (d) { dismissed[d.getAttribute('data-dismiss')] = 1; run(); }
+      });
+    }
+    $('gf-preview').addEventListener('click', function (e) {
+      var m = e.target.closest('.gf-mark');
+      if (!m) return;
+      var id = m.getAttribute('data-id'), issue = null;
+      liveIssues().forEach(function (x) { if (x.id === id) issue = x; });
+      if (issue) openPop(issue, m);
+    });
+    document.addEventListener('click', function (e) {
+      if (!pop) return;
+      if (pop.contains(e.target) || e.target.closest('.gf-mark')) return;
+      closePop();
+    });
+    window.addEventListener('resize', closePop);
+
+    /* ── Category chips + individual rules ─────────────────── */
+    function rulesIn(cat) {
+      return G.RULES.filter(function (r) { return r.cat === cat; });
+    }
+    function catState(cat) {
+      var rs = rulesIn(cat);
+      var on = rs.filter(function (r) { return enabled[r.id]; }).length;
+      return on === 0 ? 'off' : (on === rs.length ? 'on' : 'mixed');
+    }
+    function renderChips() {
+      $('gf-cats').innerHTML = G.CATEGORIES.map(function (cat) {
+        var st = catState(cat);
+        return '<button type="button" class="gf-chip ' + (st === 'on' ? '' : st) + '" data-cat="' + esc(cat) + '">' +
+          '<span class="gf-swatch" style="background:' + color(cat) + '"></span>' + esc(cat) + '</button>';
+      }).join('');
+    }
+    function renderRuleList() {
+      $('gf-rulelist').innerHTML = G.CATEGORIES.map(function (cat) {
+        var rs = rulesIn(cat);
+        if (!rs.length) return '';
+        return '<div class="gf-rulegroup"><h3>' + esc(cat) + '</h3>' + rs.map(function (r) {
+          return '<label class="gf-rule">' +
+            '<input type="checkbox" data-rule="' + esc(r.id) + '"' + (enabled[r.id] ? ' checked' : '') + '>' +
+            '<span class="gf-rule-text">' +
+              '<span class="gf-rule-name">' + esc(r.label || r.id) +
+              '<span class="gf-rule-sev">' + esc(r.sev) + '</span></span>' +
+              '<span class="gf-rule-note">' + esc(r.note) + '</span>' +
+            '</span></label>';
+        }).join('') + '</div>';
+      }).join('');
+    }
+    $('gf-cats').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cat]');
+      if (!b) return;
+      var cat = b.getAttribute('data-cat');
+      var turnOn = catState(cat) !== 'on';
+      rulesIn(cat).forEach(function (r) { enabled[r.id] = turnOn; });
+      save(RULES_KEY, enabled);
+      renderChips(); renderRuleList(); run();
+    });
+    $('gf-rulelist').addEventListener('change', function (e) {
+      var cb = e.target.closest('[data-rule]');
+      if (!cb) return;
+      enabled[cb.getAttribute('data-rule')] = cb.checked;
+      save(RULES_KEY, enabled);
+      renderChips(); run();
+    });
+
+    renderChips();
+    renderRuleList();
+    run();
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -65,8 +65,11 @@ _headers               Cache rules for static assets (order matters; later wins)
 assets/
   styles.css           ALL shared CSS (no per-page stylesheets)
   site.js              Shared topbar behavior: search dropdown, mobile nav,
-                       script-count badge, Token Tool + Account link injection.
+                       script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
+                       The nav entry is "Tools" (→ /tools), NOT "Token Tool":
+                       change it here and every page's top bar and hamburger
+                       follow, because no page hardcodes it.
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR — must stay browser+module compatible, no DOM at
@@ -98,10 +101,19 @@ assets/
                        (edit button, JSON download).
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
                        publish-script.html and publish-collection.html.
+  grimforge.js         Grimoire Forge ruleset + linter (the ability syntax
+                       checker behind /grimforge). lint() returns span-anchored
+                       `issues` and whole-text `notices`; normalise() tidies the
+                       suggested output. Rules carry sev fix|warn|off — only
+                       `fix` rules are ever applied in bulk. Pure strings, no
+                       DOM: `node --check`-able and Worker-safe.
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
-index.html             Homepage (collections grid, scripts, browse cards, sidebar)
+index.html             Homepage (collections grid, scripts, browse cards, sidebar).
+                       Browse cards include Grimoire Forge; the old Creator Icons
+                       pill wall was removed (it lives on /creators, linked from
+                       the "By Creator" card and /tools).
 all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
 team/tag/tags/creators/author/authors.html   Browse pages
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
@@ -120,6 +132,18 @@ publish-collection.html Collection maker/editor (replaces register-/edit-collect
 news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: write/preview/publish/pin/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
+tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
+                       Grimoire Forge, Creator Icons. This is what the "Tools"
+                       nav entry points at.
+grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
+                       Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
+                       parchment styling (the original was React + Tailwind via
+                       CDN — do not reintroduce a framework here). Engine lives
+                       in assets/grimforge.js; the page owns only the UI.
+                       ?a={text} pre-fills the box — create.html/edit.html use
+                       it for their "Check with Grimforge" link. Rule toggles
+                       and homebrew names persist in localStorage
+                       (botc_grimforge_*).
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON

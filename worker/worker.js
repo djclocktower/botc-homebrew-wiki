@@ -830,7 +830,7 @@ function pageShell(o) {
   // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
   //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner}
   // The nav row is identical on every page (built into the shell below);
-  // site.js appends Token Tool + the Account/Login button, and moves the
+  // site.js appends Tools + the Account/Login button, and moves the
   // Edit button to the end of the row on editable pages.
   const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
@@ -1467,7 +1467,8 @@ export default {
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
-        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules', 'news'];
+        'authors', 'script', 'tools', 'tokens', 'grimforge', 'mass-upload',
+        'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {

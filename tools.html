@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tools — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Every tool on the BOTC HomeBrew Wiki: the Script Builder, the Token Tool, Grimoire Forge for ability syntax, and the creator icon list.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Tools">
+<meta property="og:description" content="The Script Builder, the Token Tool, Grimoire Forge and the creator icon list — everything the wiki gives you for building homebrew.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* Tool cards: the homepage browse card, given room for a bigger mark and a
+   credit line. Shared colours come from styles.css. */
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+.tool-card {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  padding: 26px 20px 18px;
+  text-decoration: none; color: var(--maroon);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.tool-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(40,12,30,.45); }
+.tool-card-sym {
+  display: flex; align-items: center; justify-content: center;
+  height: 76px; margin-bottom: 12px; color: var(--maroon);
+}
+.tool-card-sym svg { width: 64px; height: 64px; filter: drop-shadow(0 2px 3px rgba(91,31,33,.2)); }
+.tool-card-sym img { max-height: 76px; width: auto; filter: drop-shadow(0 2px 5px rgba(91,31,33,.3)); }
+.tool-card-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-size: 1.22rem; letter-spacing: .04em; color: var(--maroon);
+  margin: 0 0 8px;
+}
+.tool-card-title .beta { font-size: .66em; opacity: .6; letter-spacing: .03em; }
+.tool-card-desc { font-size: .92rem; line-height: 1.5; color: var(--ink); margin: 0 0 14px; flex: 1; }
+.tool-card-meta {
+  font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: .76rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--good-name);
+  width: 100%; padding-top: 9px;
+  border-top: 1px solid rgba(180,160,120,.45);
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+}
+.tool-card-by { color: rgba(91,31,33,.65); }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Tools</h1>
+    <p>Everything the wiki gives you for building homebrew — assemble a script, print your tokens, check your ability text, or look up a creator's mark.</p>
+  </div>
+
+  <main class="home-panel" id="content">
+
+    <section class="landing-section">
+      <div class="tool-grid">
+
+        <a class="tool-card" href="script">
+          <div class="tool-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></div>
+          <h2 class="tool-card-title">Script Builder</h2>
+          <p class="tool-card-desc">Pull characters from anywhere on the wiki into a line-up, sort it into Steven Approved Order, then export the official-schema JSON, share a link, or publish the script as its own page.</p>
+          <span class="tool-card-meta"><span>Build a script</span><span>Open →</span></span>
+        </a>
+
+        <a class="tool-card" href="tokens">
+          <div class="tool-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="22"/><line x1="2" y1="12" x2="8" y2="12"/><line x1="16" y1="12" x2="22" y2="12"/></svg></div>
+          <h2 class="tool-card-title">Token Tool <span class="beta">(beta)</span></h2>
+          <p class="tool-card-desc">Render print-ready character and reminder token sheets from wiki characters — the same renderer used for the official homebrew sets, running entirely in your browser.</p>
+          <span class="tool-card-meta"><span>Print your tokens</span><span>Open →</span></span>
+        </a>
+
+        <a class="tool-card" href="grimforge">
+          <div class="tool-card-sym"><img src="assets/grimforge.png" alt="" loading="lazy" decoding="async"></div>
+          <h2 class="tool-card-title">Grimoire Forge</h2>
+          <p class="tool-card-desc">Check an ability line against official card syntax — terminology, casing, numbering, punctuation, structure and length — then copy the corrected wording straight into your character.</p>
+          <span class="tool-card-meta"><span class="tool-card-by">By Ma'ayan</span><span>Open →</span></span>
+        </a>
+
+        <a class="tool-card" href="creators">
+          <div class="tool-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg></div>
+          <h2 class="tool-card-title">Creator Icons</h2>
+          <p class="tool-card-desc">Every creator's unique symbol, the mark that credits their characters across the wiki. Pick a sigil that isn't taken, or find who a mark belongs to.</p>
+          <span class="tool-card-meta"><span>Find a sigil</span><span>Open →</span></span>
+        </a>
+
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="type-header">Also Useful</h2>
+      <div class="type-rule"></div>
+      <div class="about-card">
+        <p>Adding a character is done in the <a href="create">character editor</a>, and a batch of them at once through <a href="mass-upload">mass upload</a>. The <a href="steven-approved-order">Steven Approved Order</a> page lists the canonical night-order prefixes the Script Builder sorts by.</p>
+        <p class="about-disclaimer">Fan-made tools. Not affiliated with The Pandemonium Institute.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>
