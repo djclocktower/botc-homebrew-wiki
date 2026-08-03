@@ -745,9 +745,11 @@
       if (type === 'character')  return 'edit?c=' + sl;
       if (type === 'collection') return 'publish-collection?c=' + sl;
       if (type === 'script')     return 'publish-script?s=' + sl;
+      if (type === 'wikipage')   return 'publish-page?p=' + sl;
+      if (type === 'news')       return 'publish-news?n=' + sl;
       return '#';
     }
-    function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }
+    function typeLabel(t){ return t === 'wikipage' ? 'Page' : (t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''); }
 
     function renderContentRow(item, tsField){
       var ts = item[tsField];
@@ -877,6 +879,7 @@
       if (type === 'script') return 's/' + sl;
       if (type === 'collection') return 'collection/' + sl;
       if (type === 'news') return 'news/' + sl;
+      if (type === 'wikipage') return 'p/' + sl;
       return 'c/' + sl;
     }
     function setToast(id, ok, text){

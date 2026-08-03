@@ -40,14 +40,24 @@ Key dynamic behavior:
 - `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
   same `pageShell()`); `/news` itself is the static `news.html` index. News
   articles are admin-written and live in their own `news` table.
-- `GET /assets/art|collections|scripts|tokens|avatars/*` is served **from R2
+- `GET /p/{slug}` is a **custom wiki page** — a text-first page (rules, lore,
+  a glossary, a storyteller guide) belonging to exactly one script or
+  collection. SSR from the `pages` table via `assets/render-wiki.js`, same
+  `pageShell()`. These are **deliberately unlisted**: `noindex`, no sitemap
+  entry, no search, no browse list, no homepage strip. The only two links in
+  are the "Pages" section on the parent script/collection page and the
+  author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
+  (or an admin) can create one; the page is then owned by whoever wrote it.
+- `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
+  **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
   pictures, uploaded via `/api/account/avatar`, never via `/api/upload`).
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
   the `/messages` page), **comments** (`/api/comments*` — the comment section on
-  every character/script/collection/news page), **news** (`/api/news*`,
+  every character/script/collection/news/wiki page), **wiki pages**
+  (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), admin tools (dashboard, full activity log, report,
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
@@ -84,11 +94,21 @@ assets/
                        badge builder, and the Starlight weighting used by
                        Featured, /random and the homepage strips. Browser+Worker.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
-                       (reads window.PAGE_TYPE + PAGE_SLUG), incl. the one-time
-                       "be respectful" agreement modal.
-  render-news.js       News article renderer + inlineFormat(), the safe
-                       [label](url) / **bold** / ## heading / - bullet subset.
-                       site.js lazy-loads it to put links in announcements.
+                       and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
+                       one-time "be respectful" agreement modal.
+  render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
+                       markup subset (headings, lists, tables, quotes, rules,
+                       images, ::: callouts, [toc], **bold**, *italic*, `code`,
+                       ~~strike~~, [label](url), [[Character Name]]) plus the
+                       /p/ page layout, the contents box, custom boxes and the
+                       fact box. Escapes first, whitelists hrefs and image
+                       paths — nothing a writer types can become raw HTML.
+                       Browser + Worker. Used by /p/, news, custom boxes and
+                       (through render-news) the announcement banner.
+  render-news.js       News article shape (head, hero, cards) around
+                       render-wiki.js; re-exports inlineFormat() because
+                       site.js lazy-loads it for links in announcements.
+                       In the Worker it gets the engine through init().
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
@@ -97,7 +117,13 @@ assets/
   pageview.js          Client enhancements for /s/ and /collection/ SSR pages
                        (edit button, JSON download).
   theme-editor.js      Shared theme-kit form controls (font + color pickers) for
-                       publish-script.html and publish-collection.html.
+                       publish-script/-collection/-page/-news.html.
+  wiki-editor.js       Shared editor widgets: the formatting toolbar, the
+                       {title, content} custom-box repeater, the fact-box row
+                       repeater, grow-with-content textareas, the image picker
+                       and loadCharLinks() (feeds [[Name]] links to previews).
+  wikipage.js          Client enhancements for /p/ pages (edit button, offset
+                       anchor scrolling from the contents box).
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
@@ -117,8 +143,15 @@ publish-collection.html Collection maker/editor (replaces register-/edit-collect
                        now redirect stubs). Same fields as publish-script + hybrid
                        membership manager (match terms + manual include/exclude).
                        Publish/Draft via /api/collection; ?c={id} edit mode.
+publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
+                       markdown-ish body with toolbar + live preview, banner and
+                       body images (R2 pages/), fact box, custom boxes, theme kit,
+                       contents + comments toggles. ?p={slug} edits,
+                       ?parentType=&parentSlug= starts a new one.
 news.html              /news index (client-rendered from /api/news)
-publish-news.html      Admin-only news editor: write/preview/publish/pin/delete
+publish-news.html      Admin-only news editor: the same kit as publish-page
+                       (toolbar, images, boxes, fact box, theme) plus
+                       summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
@@ -157,8 +190,10 @@ messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
 `/api/admin/dm-thread` — un-reported DMs are never admin-readable), `page_views` (per-page daily
-view counts, bots filtered, 180-day retention), and a lazily ALTERed
-`users.banned` column. `settings` also holds
+view counts, bots filtered, 180-day retention), `pages` (the custom wiki
+pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
+collection they belong to, author, owner_id, JSON `data`, status — see the
+section below), and a lazily ALTERed `users.banned` column. `settings` also holds
 `announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
 (admin page protection — only admins may edit/publish/delete those pages).
 Bans and admin promote/demote take effect immediately: POST requests and
@@ -176,13 +211,49 @@ optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
 strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
 membership — `match[]` (auto, normalized `appearsIn`) plus manual `include[]` /
 `exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js). Every
-one of these is length-capped and theme-validated server-side in
-`sanitizePageFields()` (worker.js). `theme` is `{font, accent, panel, text,
+Both also take `customBoxes[]` — the same `{title, content}` widget as the
+character pages, rendered through render-wiki.js so a box can hold a list, a
+link or a `[[Character Name]]`. Every one of these is length-capped and
+theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is `{font, accent, panel, text,
 link, background}` — colors must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Custom wiki pages (`/p/{slug}`)
+
+Text-first pages hanging off one script or collection — modelled on the
+official wiki's reference pages (States, Night Order and friends). The `pages`
+table holds them; `data` carries `{title, subtitle, blurb, author, body,
+header, images[], boxes[], infobox{}, theme{}, toc, comments}` — all optional
+except title and body, all capped and validated by `sanitizeWikiFields()`.
+
+- **Unlisted by design.** `/p/` sends `noindex`, is absent from
+  `sitemap.xml`, the JSON feeds, site search, `/random`, the homepage strips
+  and every browse page. Exactly two things link to one: the **Pages** section
+  on its parent script/collection page, and its author's `/author?a=` and
+  `/u/{username}` pages. If you add a new listing anywhere, do **not** add
+  wiki pages to it — being unlisted is the feature.
+- **Who may write one:** the owner of the parent script/collection (or an
+  admin). Ownership then belongs to the writer, and only they or an admin can
+  edit it afterwards. Parentage is frozen at creation — moving a page would
+  break its links.
+- **Slug** is derived from the title once and frozen, with a `-2`, `-3` …
+  suffix if that slug is taken. Slugs are global across all wiki pages.
+- Images live in R2 under `pages/{slug}-*`; the banner is
+  `pages/{slug}-header.png`, the background `pages/{slug}-bg.png`. The upload
+  route pins that prefix to the page's owner (longest matching slug wins).
+- Comments work like every other page type (`entity_type='wikipage'`), and can
+  be switched off per page.
+- Deleting one is **permanent** — unlike scripts/characters there is no soft
+  delete, so the account page offers Edit only and the editor owns the rest.
+
+The **same text engine and editor kit** power news articles: `publish-news.html`
+and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and
+`theme-editor.js`, so a formatting mark added in one place works in both (and
+in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
+`news/` uploads are admin-only, like `tokens/`.
 
 ## Page classification (Partial / Standard / Starlight)
 
@@ -299,9 +370,13 @@ live before the rule; the dashboard has a scan + one-click button for it.
    hide gracefully via onerror. Don't rename icon files.
 9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
    the static `news.html` and must stay that way, or the Worker swallows it.
-10. Announcements and news bodies go through `NewsRender.inlineFormat()`, which
-   escapes first and whitelists hrefs (http/https/mailto/site-relative only).
-   Never switch either to `innerHTML` with raw text.
+10. Announcements, news bodies, wiki pages and custom boxes all go through
+   `WikiRender` (`NewsRender.inlineFormat()` forwards to it), which escapes
+   first and whitelists hrefs (http/https/mailto/site-relative only) and image
+   paths. Never switch any of them to `innerHTML` with raw text, and never add
+   a mark that emits an attribute the writer controls.
+   `site.js` loads `render-wiki.js` **before** `render-news.js` — the news
+   renderer is a wrapper and formats nothing on its own.
 11. Worker env vars (`DISCORD_CLIENT_ID`, `RESEND_API_KEY`, …) are set in the
    Cloudflare dashboard, NOT in the repo, and MUST be type "Secret" — Git
    deploys delete dashboard vars of type "Text" (that once silently broke

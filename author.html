@@ -149,6 +149,7 @@
 
         if (!chars.length && !drafts.length) {
           panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.7);padding:30px">No characters found for <strong>' + esc(displayName) + '</strong>. <a href="authors" style="color:#7fb2e6">Browse all authors</a>.</p>';
+          loadPages(displayName);   // they may still have written pages
           return;
         }
 
@@ -167,6 +168,35 @@
             '<div class="char-grid">' + drafts.map(card).join('') + '</div></section>';
         }
         panel.innerHTML = html;
+        loadPages(displayName);
+    }
+
+    // Custom wiki pages credited to this author. They are deliberately
+    // unlisted everywhere else on the wiki — their script/collection page and
+    // this one are the only two places they appear.
+    function loadPages(displayName) {
+      fetch('/api/wiki-pages?author=' + encodeURIComponent(rawAuthor) + '&_=' + Date.now())
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var pages = (d && d.pages) || [];
+          if (!pages.length) return;
+          var panel = document.getElementById('panel');
+          if (panel.querySelector('.author-pages')) return;
+          var html = '<section class="type-section author-pages" id="pages">' +
+            '<h2 class="type-header">Pages</h2>' +
+            '<div class="type-rule"></div>' +
+            '<div class="wiki-pagelinks wiki-pagelinks-dark">' + pages.map(function(p) {
+              var where = p.parentName ? ' · in ' + esc(p.parentName) : '';
+              return '<a class="wiki-pagelink" href="p/' + encodeURIComponent(p.slug) + '">' +
+                '<span class="wiki-pagelink-title">' + esc(p.title) + '</span>' +
+                '<span class="wiki-pagelink-blurb">' + esc(p.blurb || '') + where + '</span></a>';
+            }).join('') + '</div></section>';
+          // Drafts stay last, so pages slot in above them.
+          var draftsEl = document.getElementById('drafts');
+          if (draftsEl) draftsEl.insertAdjacentHTML('beforebegin', html);
+          else panel.insertAdjacentHTML('beforeend', html);
+        })
+        .catch(function() {});
     }
   </script>
 
