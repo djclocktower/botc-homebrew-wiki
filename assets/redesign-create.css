@@ -1,0 +1,197 @@
+/* ============================================================
+   Create-a-Character layout — botchomebrew.wiki/create
+   Layered over the page's own inline CSS and scoped under
+   html.create-redesign, which assets/redesign-create.js adds only
+   after it has actually restructured the form. Palette and fonts
+   reuse the site variables: --parch, --maroon, --card-edge,
+   --parch-frame, Dumbledor2 / Oswald / TradeGothicLT.
+   ============================================================ */
+
+/* ---------- form card: let the sticky action bar work ----------
+   overflow-x must be `clip`, not the page's `hidden`: `hidden` makes the
+   card a scroll container, which would anchor the sticky action bar to the
+   card instead of the viewport. `hidden` was also zeroing the card's
+   automatic minimum size as a grid item, so `min-width:0` keeps it from
+   blowing the single-column mobile track wider than the screen. */
+html.create-redesign .formcard { overflow-x: clip; min-width: 0; padding: 22px 24px 0; }
+
+/* ---------- section wrappers (added by redesign-create.js) ---------- */
+html.create-redesign .rsec { margin: 0 0 8px; padding: 14px 0 6px; border-top: 1px dashed #c9b78f; }
+html.create-redesign .rsec:first-of-type { border-top: none; padding-top: 4px; }
+
+html.create-redesign .rsec-head {
+  display: flex; align-items: baseline; gap: 10px;
+  margin: 0 0 12px;
+}
+html.create-redesign .rsec-title {
+  font-family: 'Dumbledor2', serif; color: var(--maroon);
+  font-size: 1.08rem; letter-spacing: .02em; white-space: nowrap;
+}
+html.create-redesign h3.rsec-title { margin: 0; font-weight: 400; }
+html.create-redesign .rsec-rule {
+  flex: 1; height: 0; border-top: 1px solid var(--parch-frame);
+  opacity: .55; transform: translateY(-2px);
+}
+html.create-redesign .rsec-sub {
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: .84rem; color: #8a7a63; white-space: nowrap;
+}
+
+/* ---------- hints: small italic line under the label text ---------- */
+html.create-redesign .fld .hint {
+  display: block; margin-top: 2px;
+  font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: .84rem; color: #8a7a63; letter-spacing: 0;
+}
+html.create-redesign .fld label { margin-bottom: 6px; }
+
+/* ---------- inputs & text boxes ---------- */
+html.create-redesign .fld textarea { min-height: 44px; }
+html.create-redesign .fld input[type=text],
+html.create-redesign .fld input[type=number],
+html.create-redesign .fld textarea,
+html.create-redesign .fld select { transition: border-color .15s, box-shadow .15s; }
+
+html.create-redesign .fld input:focus,
+html.create-redesign .fld textarea:focus,
+html.create-redesign .fld select:focus {
+  outline: none; border-color: var(--maroon);
+  box-shadow: 0 0 0 2px rgba(91,31,33,.22);
+}
+html.create-redesign .fld ::placeholder { color: #b3a68c; font-style: italic; }
+
+/* JSON boxes read as code */
+html.create-redesign #jsonpaste,
+html.create-redesign #customJson {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  font-size: .82rem; line-height: 1.45; background: #fbf7ec;
+}
+
+/* the ability character counter becomes a small pill under the field */
+html.create-redesign #ability-count {
+  float: none; display: inline-block; margin: 4px 0 0 2px;
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em;
+  color: #8a7a63; background: #efe7d3; border: 1px solid #d9cba6;
+  border-radius: 999px; padding: 1px 9px;
+}
+
+/* ---------- fieldsets: one unified parchment treatment ---------- */
+html.create-redesign fieldset {
+  /* fieldsets default to min-width:min-content, which pushed the Jinxes box
+     past the right edge of the card on a phone */
+  min-width: 0;
+  border: 1px dashed #c9b78f; border-radius: 8px;
+  background: rgba(240,232,213,.45);
+  padding: 14px 16px 4px; margin: 0 0 15px;
+}
+html.create-redesign legend {
+  font-family: 'Dumbledor2', serif; text-transform: none; letter-spacing: .02em;
+  font-size: 1rem; font-weight: 400; color: var(--maroon); padding: 0 8px;
+}
+
+/* import box: parchment "utility" tone instead of the out-of-palette blue */
+html.create-redesign fieldset.import {
+  border: 1px dashed var(--parch-frame);
+  background: linear-gradient(180deg, rgba(240,232,213,.85), rgba(240,232,213,.55));
+}
+html.create-redesign fieldset.import legend { color: var(--maroon); }
+html.create-redesign fieldset.import .btn-blue {
+  background: var(--maroon); color: #f3ead4;
+}
+html.create-redesign fieldset.import .btn-blue:hover { filter: brightness(1.15); }
+
+/* ---------- tag picker: boxed, with the selected tags pinned first ---------- */
+html.create-redesign .tag-picker {
+  padding: 8px 10px;
+  background: #fbf7ec; border: 1px solid #d9cba6; border-radius: 6px;
+}
+html.create-redesign .tag-pick-btn.selected { order: -1; box-shadow: inset 0 0 0 1px rgba(243,234,212,.35); }
+html.create-redesign .tag-pick-btn.selected::before { content: '\2713\00a0'; font-size: .72rem; }
+
+/* ---------- advanced options collapsible ---------- */
+html.create-redesign details.advanced { margin: 0 0 15px; }
+html.create-redesign details.advanced > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.08rem;
+  padding: 10px 2px;
+}
+html.create-redesign details.advanced > summary::-webkit-details-marker { display: none; }
+html.create-redesign details.advanced > summary .adv-sub {
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: #8a7a63;
+}
+html.create-redesign details.advanced > summary .adv-caret {
+  margin-left: auto; font-family: 'Oswald', sans-serif; font-size: .8rem;
+  color: #8a7a63; letter-spacing: .08em; white-space: nowrap;
+}
+html.create-redesign details.advanced > summary .adv-caret::before { content: 'show'; }
+html.create-redesign details.advanced[open] > summary .adv-caret::before { content: 'hide'; }
+html.create-redesign details.advanced > summary .adv-caret::after { content: '\25b8'; margin-left: 6px; }
+html.create-redesign details.advanced[open] > summary .adv-caret::after { content: '\25be'; }
+html.create-redesign details.advanced > summary:hover .adv-caret { color: var(--maroon); }
+
+/* auto-grown rows don't need manual resize grips */
+html.create-redesign .jinx-row textarea,
+html.create-redesign .box-row textarea { resize: none; overflow-y: hidden; }
+
+/* ---------- sticky action bar ---------- */
+html.create-redesign .ractions {
+  position: sticky; bottom: 0; z-index: 20;
+  margin: 18px -24px 0; padding: 12px 24px 16px;
+  background: #f7f6f2;
+  border-top: 1px solid var(--card-edge);
+  box-shadow: 0 -8px 14px rgba(40,12,30,.08);
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+html.create-redesign .ractions .btn { margin-left: 0; }
+html.create-redesign .ractions #status { flex: 1 1 100%; margin-top: 2px; }
+
+/* ---------- live preview pane ---------- */
+html.create-redesign .preview-pane { position: sticky; top: 74px; }
+
+/* the label becomes a parchment plaque capping the preview frame */
+html.create-redesign .preview-label {
+  display: flex; align-items: baseline; gap: 10px;
+  margin: 0; padding: 10px 16px 9px;
+  background-color: var(--parch); background-image: url('parchment.jpg');
+  background-size: cover;
+  border: 3px solid var(--parch-frame); border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  font-family: 'Dumbledor2', serif; color: var(--maroon);
+  font-size: 1.05rem; letter-spacing: .04em; opacity: 1;
+}
+html.create-redesign .preview-label .pv-note {
+  margin-left: auto; display: flex; align-items: center; gap: 7px;
+  font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 600;
+  letter-spacing: .12em; text-transform: uppercase; color: #7a6a52;
+}
+html.create-redesign .pv-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #b3902f; box-shadow: 0 0 0 0 rgba(179,144,47,.55);
+}
+html.create-redesign .pv-dot.flash { animation: pvflash .7s ease-out; }
+@keyframes pvflash {
+  0%   { box-shadow: 0 0 0 0 rgba(179,144,47,.65); background: #d4af3f; }
+  100% { box-shadow: 0 0 0 9px rgba(179,144,47,0); background: #b3902f; }
+}
+
+html.create-redesign #preview {
+  height: calc(100vh - 74px - 62px); min-height: 420px;
+  border: 3px solid var(--parch-frame); border-top: none; border-radius: 0 0 10px 10px;
+  box-shadow: 0 14px 30px rgba(0,0,0,.55);
+}
+
+/* ---------- mobile ---------- */
+@media (max-width: 980px) {
+  /* The page's own `.row2 { grid-template-columns:1fr }` is declared above the
+     desktop rule it means to override, so it never applies and paired fields
+     sit in two ~150px columns on a phone. Restore the intent here. */
+  html.create-redesign .row2 { grid-template-columns: 1fr; }
+  html.create-redesign #preview { height: 70vh; min-height: 0; }
+  html.create-redesign .rsec-sub,
+  html.create-redesign details.advanced > summary .adv-sub { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.create-redesign .pv-dot.flash { animation: none; }
+}
