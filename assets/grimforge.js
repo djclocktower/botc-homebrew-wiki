@@ -428,6 +428,9 @@
 
   var TERM_RX = new RegExp('\\b(' + CAPS_TERMINOLOGY.join('|') + ')(s|’s|\'s)?\\b', 'gi');
 
+  /* `customNames` is part of the ruleset's API — extra names to hold to strict
+     casing. The page passes none today (there is no name list in the UI); it
+     is kept so a caller can supply one without touching the rules. */
   function casingIssues(text, customNames) {
     var issues = [];
     customNames = customNames || [];

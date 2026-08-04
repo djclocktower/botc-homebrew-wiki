@@ -141,9 +141,12 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        CDN — do not reintroduce a framework here). Engine lives
                        in assets/grimforge.js; the page owns only the UI.
                        ?a={text} pre-fills the box — create.html/edit.html use
-                       it for their "Check with Grimforge" link. Rule toggles
-                       and homebrew names persist in localStorage
-                       (botc_grimforge_*).
+                       it for their "Check with Grimforge" link. A counter
+                       panel (characters/words/sentences/lines + Count Spaces)
+                       sits above the input; the length badge always judges the
+                       real with-spaces length, whatever the box displays. Rule
+                       toggles, the draft text and the Count Spaces choice
+                       persist in localStorage (botc_grimforge_*).
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON

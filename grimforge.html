@@ -58,7 +58,49 @@
 }
 #gf-input:focus { outline: none; border-color: var(--maroon); box-shadow: inset 0 0 0 1px rgba(91,31,33,.25); }
 
-/* Meter row: character count on the left, buttons on the right */
+/* Counter panel above the input: one filled box per figure, in the site's
+   maroon rather than the blue of the counter tools this apes. */
+.gf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 10px 14px;
+  background: rgba(91,31,33,.05);
+  border: 1px solid rgba(180,160,120,.55);
+  padding: 12px 14px 14px;
+  /* Capped so the boxes stay compact on the wiki's wide content column
+     instead of stretching to 1180px. */
+  max-width: 720px; margin: 0 auto 16px;
+}
+/* Values sit on a common baseline even when a label wraps to two lines. */
+.gf-stat { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; min-width: 0; }
+.gf-stat-label {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  letter-spacing: .08em; text-transform: uppercase; color: rgba(91,31,33,.8);
+  text-align: center;
+}
+.gf-stat-value {
+  display: block; width: 100%; text-align: center;
+  font-family: 'Dumbledor2', serif; font-size: 1.3rem; line-height: 1;
+  color: var(--parch); background: var(--maroon);
+  border: 2px solid var(--parch-frame); padding: 8px 6px 7px;
+}
+.gf-stat-value.warn { background: #8a5a12; }
+.gf-stat-value.error { background: #9A0D12; }
+/* The checkbox rides in the last cell of the grid, as on the counter tools */
+.gf-stat-check {
+  flex-direction: row; align-items: center; justify-content: center;
+  gap: 9px; cursor: pointer; align-self: end; padding-bottom: 9px;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .8rem;
+  letter-spacing: .04em; color: var(--ink);
+}
+.gf-stat-check input { width: 18px; height: 18px; accent-color: var(--maroon); flex-shrink: 0; }
+.gf-len-note {
+  margin: -8px 0 16px; font-size: .86rem; line-height: 1.45;
+  color: #8a5a12; text-align: center;
+}
+.gf-len-note.error { color: var(--evil); font-weight: 600; }
+
+/* Meter row: buttons under the input */
 .gf-meter {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: 10px; margin-top: 10px;
@@ -69,8 +111,8 @@
 }
 .gf-count.warn { color: #8a5a12; }
 .gf-count.error { color: var(--evil); }
-.gf-len-note { display: block; font-size: .8rem; letter-spacing: 0; text-transform: none; font-weight: 400; font-family: inherit; opacity: .85; }
-.gf-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.gf-count .gf-len-note { display: block; margin: 0; text-align: left; font-size: .8rem; letter-spacing: 0; text-transform: none; font-weight: 400; font-family: inherit; opacity: .85; color: inherit; }
+.gf-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .gf-btns .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
 
 /* Highlighted preview */
@@ -183,18 +225,6 @@
   text-transform: uppercase; margin-left: 6px; color: rgba(0,0,0,.5);
 }
 
-/* Known names */
-#gf-names {
-  width: 100%; min-height: 62px; resize: vertical;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-size: .95rem;
-  color: var(--ink); background: #fffdf8;
-  border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 12px;
-}
-#gf-names:focus { outline: none; border-color: var(--maroon); }
-.gf-check { display: inline-flex; align-items: flex-start; gap: 9px; margin-top: 12px; font-size: .92rem; color: var(--ink); }
-.gf-check input { width: 17px; height: 17px; margin-top: 1px; accent-color: var(--maroon); flex-shrink: 0; }
-.gf-check-note { display: block; font-size: .82rem; color: rgba(0,0,0,.62); line-height: 1.4; }
-
 /* Tap/hover popover on a highlighted word */
 .gf-pop {
   position: fixed; z-index: 200; width: min(310px, calc(100vw - 24px));
@@ -280,13 +310,36 @@
       <h2 class="type-header">Your Ability</h2>
       <div class="type-rule"></div>
       <div class="gf-card">
+        <div class="gf-stats">
+          <div class="gf-stat">
+            <span class="gf-stat-label" id="gf-st-chars-label">Characters</span>
+            <span class="gf-stat-value" id="gf-st-chars">0</span>
+          </div>
+          <div class="gf-stat">
+            <span class="gf-stat-label">Words</span>
+            <span class="gf-stat-value" id="gf-st-words">0</span>
+          </div>
+          <div class="gf-stat">
+            <span class="gf-stat-label">Sentences</span>
+            <span class="gf-stat-value" id="gf-st-sentences">0</span>
+          </div>
+          <div class="gf-stat">
+            <span class="gf-stat-label">Lines</span>
+            <span class="gf-stat-value" id="gf-st-lines">0</span>
+          </div>
+          <label class="gf-stat gf-stat-check">
+            <input type="checkbox" id="gf-count-spaces" checked>
+            <span>Count Spaces</span>
+          </label>
+        </div>
+        <p class="gf-len-note" id="gf-len-note" hidden></p>
+
         <label class="gf-label" for="gf-input">Ability text</label>
         <div class="gf-input-wrap">
           <textarea id="gf-input" class="no-autosize" spellcheck="true"
             placeholder="Each night*, choose a player: they die."></textarea>
         </div>
         <div class="gf-meter">
-          <span class="gf-count" id="gf-count">0 characters</span>
           <span class="gf-btns">
             <button type="button" class="sb-btn sb-btn-export" id="gf-fix">Apply All Fixes</button>
             <button type="button" class="sb-btn sb-btn-import" id="gf-undo">Undo</button>
@@ -341,23 +394,6 @@
       </div>
     </section>
 
-    <!-- ── KNOWN NAMES ──────────────────────────────────────── -->
-    <section class="landing-section">
-      <h2 class="type-header">Your Character Names</h2>
-      <div class="type-rule"></div>
-      <div class="gf-card">
-        <p class="gf-hint">The casing check knows every official character. Add your own here — one per line, or separated by commas — and the Forge will keep their capitals straight too. Saved in this browser.</p>
-        <label class="gf-label" for="gf-names">Homebrew names</label>
-        <textarea id="gf-names" placeholder="Big Wig&#10;Zenomancer"></textarea>
-        <label class="gf-check">
-          <input type="checkbox" id="gf-wiki-names">
-          <span>Also check every character name on this wiki
-            <span class="gf-check-note">Loads the wiki roster. Catches more, but a homebrew name that is also an ordinary word will get flagged mid-sentence.</span>
-          </span>
-        </label>
-      </div>
-    </section>
-
   </main>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
@@ -388,8 +424,7 @@
 
     var TEXT_KEY = 'botc_grimforge_text';
     var RULES_KEY = 'botc_grimforge_rules';
-    var NAMES_KEY = 'botc_grimforge_names';
-    var WIKI_KEY = 'botc_grimforge_wikinames';
+    var SPACES_KEY = 'botc_grimforge_spaces';
 
     function load(key, fallback) {
       try {
@@ -414,11 +449,9 @@
     var dismissed = {};        // finding key -> 1, for this visit
     var history = [];          // previous texts, for Undo
     var result = { issues: [], notices: [], length: G.lengthBadge('') };
-    var wikiNames = [];        // filled only when the wiki-names box is ticked
 
     var input = $('gf-input');
-    var namesBox = $('gf-names');
-    var wikiBox = $('gf-wiki-names');
+    var spacesBox = $('gf-count-spaces');
 
     /* Text: ?a= from the character editor wins, otherwise whatever was left
        here last time. */
@@ -427,39 +460,7 @@
       var handoff = q.get('a') || q.get('t') || '';
       input.value = handoff || load(TEXT_KEY, '') || '';
     })();
-    namesBox.value = (load(NAMES_KEY, []) || []).join('\n');
-    wikiBox.checked = !!load(WIKI_KEY, false);
-
-    function customNames() {
-      var typed = namesBox.value.split(/[\n,]/).map(function (s) { return s.trim(); })
-        .filter(function (s) { return s.length > 1; });
-      return wikiBox.checked ? typed.concat(wikiNames) : typed;
-    }
-
-    /* ── Wiki roster (opt-in) ──────────────────────────────── */
-    var wikiLoading = false;
-    function loadWikiNames() {
-      if (wikiLoading || wikiNames.length) return;
-      wikiLoading = true;
-      // Some names carry a credit mark (∇, ♊︎) in the database — strip anything
-      // that isn't a letter, digit or ordinary name punctuation before using
-      // the name as a casing target. See CLAUDE.md: don't "fix" the names.
-      var strip;
-      try { strip = new RegExp('[^\\p{L}\\p{N} \'’\\-&.]', 'gu'); }
-      catch (e) { strip = /[^A-Za-z0-9 '’\-&.]/g; }
-      fetch('characters.json?_=' + Date.now())
-        .then(function (r) { return r.json(); })
-        .then(function (list) {
-          var seen = {};
-          (list || []).forEach(function (c) {
-            var n = String(c && c.name || '').replace(strip, '').trim();
-            if (n.length > 2 && !seen[n]) { seen[n] = 1; wikiNames.push(n); }
-          });
-          run();
-        })
-        .catch(function () { wikiLoading = false; });
-    }
-    if (wikiBox.checked) loadWikiNames();
+    spacesBox.checked = load(SPACES_KEY, true) !== false;
 
     /* ── Rendering ─────────────────────────────────────────── */
 
@@ -508,12 +509,29 @@
         warns + ' warning' + (warns === 1 ? '' : 's') + ' — tap a highlight for detail.';
     }
 
+    /* Counter panel. `Characters` is the figure that matters — the official
+       app's limits are measured with spaces in — so the length badge always
+       judges the real length, and says so when the box is showing the
+       without-spaces number instead. */
     function renderCounts() {
+      var text = input.value;
       var b = result.length;
-      var el = $('gf-count');
-      el.className = 'gf-count' + (b.level === 'ok' ? '' : ' ' + b.level);
-      el.innerHTML = b.n + ' character' + (b.n === 1 ? '' : 's') +
-        (b.note ? '<span class="gf-len-note">' + esc(b.note) + '</span>' : '');
+      var withSpaces = spacesBox.checked;
+      var chars = withSpaces ? text.length : text.replace(/\s/g, '').length;
+
+      $('gf-st-chars').textContent = chars;
+      $('gf-st-chars').className = 'gf-stat-value' + (b.level === 'ok' ? '' : ' ' + b.level);
+      $('gf-st-chars-label').textContent = withSpaces ? 'Characters' : 'Characters (no spaces)';
+      $('gf-st-words').textContent = text.trim() ? text.trim().split(/\s+/).length : 0;
+      $('gf-st-sentences').textContent = text.split(/[.!?]+/).filter(function (p) {
+        return p.trim().length;
+      }).length;
+      $('gf-st-lines').textContent = text ? text.split(/\n/).length : 0;
+
+      var note = $('gf-len-note');
+      note.className = 'gf-len-note' + (b.level === 'error' ? ' error' : '');
+      note.textContent = b.note ? ((withSpaces ? '' : b.n + ' with spaces — ') + b.note) : '';
+      note.hidden = !b.note;
 
       var out = suggested();
       var ob = G.lengthBadge(out);
@@ -590,7 +608,7 @@
     function run() {
       var text = input.value;
       result = text.trim()
-        ? G.lint(text, { enabled: enabled, customNames: customNames() })
+        ? G.lint(text, { enabled: enabled })
         : { issues: [], notices: [], length: G.lengthBadge(text) };
       closePop();
       renderPreview();
@@ -661,15 +679,9 @@
       if (d) { dismissed[d.getAttribute('data-dismiss')] = 1; run(); }
     });
 
-    namesBox.addEventListener('input', function () {
-      save(NAMES_KEY, namesBox.value.split(/[\n,]/).map(function (s) { return s.trim(); })
-        .filter(function (s) { return s.length > 1; }));
-      run();
-    });
-    wikiBox.addEventListener('change', function () {
-      save(WIKI_KEY, wikiBox.checked);
-      if (wikiBox.checked) loadWikiNames();
-      run();
+    spacesBox.addEventListener('change', function () {
+      save(SPACES_KEY, spacesBox.checked);
+      renderCounts();
     });
 
     /* ── Popover on a highlighted word ─────────────────────── */
