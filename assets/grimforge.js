@@ -497,10 +497,8 @@
 
   function lengthBadge(text) {
     var n = String(text).length;
-    if (n > 250) return { level: 'error', n: n, note: 'over 250 — the official app’s hard limit' };
-    if (n > 140) return { level: 'error', n: n, note: 'over 140 — hard cap' };
-    if (n > 138) return { level: 'warn', n: n, note: 'over 138 — this is a design problem; simplify rather than compress' };
-    if (n > 127) return { level: 'warn', n: n, note: 'over 127 — the longest official ability is exactly 127' };
+    if (n > 160) return { level: 'error', n: n, note: 'over 160 — hard cap' };
+    if (n >= 131) return { level: 'warn', n: n, note: '131 or more — the longest official ability is 127' };
     return { level: 'ok', n: n, note: '' };
   }
 
