@@ -47,18 +47,50 @@
 }
 .gf-hint { font-size: .86rem; line-height: 1.5; color: rgba(0,0,0,.68); margin: 0 0 12px; }
 
-/* Input */
-.gf-input-wrap { position: relative; }
+/* Input — one box. The frame lives on the wrapper; inside it a transparent
+   textarea sits over a backdrop that draws the issue marks. The two must
+   share every metric that affects where a glyph lands (font, size,
+   line-height, padding, wrapping, zero border) or the marks drift out of
+   register with the text. */
+.gf-label-row {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; margin: 0 0 8px;
+}
+.gf-label-row .gf-label { margin: 0; }
+.gf-toggle {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--maroon);
+}
+.gf-toggle input { width: 17px; height: 17px; accent-color: var(--maroon); flex-shrink: 0; }
+
+.gf-editor {
+  position: relative;
+  background: #fffdf8;
+  border: 2px solid var(--parch-frame);
+}
+.gf-editor:focus-within { border-color: var(--maroon); box-shadow: inset 0 0 0 1px rgba(91,31,33,.25); }
+.gf-backdrop, #gf-input {
+  box-sizing: border-box; width: 100%; margin: 0;
+  border: 0; border-radius: 0;
+  padding: 12px 14px;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: 1.02rem; line-height: 1.5; letter-spacing: normal;
+  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+  text-align: left;
+}
+.gf-backdrop {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  color: transparent; pointer-events: none; overflow: hidden;
+}
 #gf-input {
+  position: relative; z-index: 1; display: block;
   /* Grows with the text instead of scrolling — the box is never taller than
      it needs to be, and never hides the end of a long ability. */
-  width: 100%; min-height: 118px; resize: none; overflow-y: hidden;
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
-  font-size: 1.02rem; line-height: 1.5; color: var(--ink);
-  background: #fffdf8; border: 2px solid var(--parch-frame); border-radius: 0;
-  padding: 12px 14px;
+  min-height: 118px; resize: none; overflow-y: hidden;
+  background: transparent; color: var(--ink);
 }
-#gf-input:focus { outline: none; border-color: var(--maroon); box-shadow: inset 0 0 0 1px rgba(91,31,33,.25); }
+#gf-input:focus { outline: none; }
 
 /* Counter panel above the input: one filled box per figure, in the site's
    maroon rather than the blue of the counter tools this apes. */
@@ -117,25 +149,16 @@
 .gf-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .gf-btns .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
 
-/* Highlighted preview */
+/* Status line under the buttons */
 .gf-sub {
   font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .05em;
   text-transform: uppercase; color: rgba(91,31,33,.75);
-  margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5);
+  margin: 16px 0 0; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5);
 }
-.gf-preview {
-  background: #fffdf8; border: 1px solid var(--parch-frame);
-  padding: 12px 14px; min-height: 56px;
-  font-size: 1.02rem; line-height: 1.7; color: var(--ink);
-  overflow-wrap: break-word;
-}
-.gf-preview .gf-empty { opacity: .45; font-style: italic; }
-.gf-mark {
-  cursor: pointer; padding: 1px 2px;
-  border-bottom: 2px solid currentColor;
-  transition: filter .12s;
-}
-.gf-mark:hover { filter: brightness(.92); }
+/* Marks are drawn in the backdrop, underneath the real text. They must not
+   change the metrics of the line — background and border-bottom only, never
+   horizontal padding, or every glyph after one shifts. */
+.gf-mark { border-bottom: 2px solid currentColor; }
 .gf-mark.warn { border-bottom-style: dashed; }
 
 /* Suggested output */
@@ -336,8 +359,18 @@
         </div>
         <p class="gf-len-note" id="gf-len-note" hidden></p>
 
-        <label class="gf-label" for="gf-input">Ability text</label>
-        <div class="gf-input-wrap">
+        <div class="gf-label-row">
+          <label class="gf-label" for="gf-input">Ability text</label>
+          <label class="gf-toggle">
+            <input type="checkbox" id="gf-highlight">
+            <span>Highlight issues</span>
+          </label>
+        </div>
+        <!-- One box. The backdrop sits behind a transparent-background
+             textarea and draws the marks in register with the real text, so
+             this stays an ordinary editor you can type in. -->
+        <div class="gf-editor" id="gf-editor">
+          <div class="gf-backdrop" id="gf-backdrop" aria-hidden="true"></div>
           <textarea id="gf-input" class="no-autosize" spellcheck="true"
             placeholder="Each night*, choose a player: they die."></textarea>
         </div>
@@ -350,7 +383,6 @@
         </div>
 
         <div class="gf-sub" id="gf-summary">Issues will appear here as you type.</div>
-        <div class="gf-preview" id="gf-preview"><span class="gf-empty">Enter ability text above to check it.</span></div>
       </div>
     </section>
 
@@ -427,6 +459,7 @@
     var TEXT_KEY = 'botc_grimforge_text';
     var RULES_KEY = 'botc_grimforge_rules';
     var SPACES_KEY = 'botc_grimforge_spaces';
+    var HIGHLIGHT_KEY = 'botc_grimforge_highlight';
 
     function load(key, fallback) {
       try {
@@ -454,6 +487,7 @@
 
     var input = $('gf-input');
     var spacesBox = $('gf-count-spaces');
+    var highlightBox = $('gf-highlight');
 
     /* Text: ?a= from the character editor wins, otherwise whatever was left
        here last time. */
@@ -463,6 +497,7 @@
       input.value = handoff || load(TEXT_KEY, '') || '';
     })();
     spacesBox.checked = load(SPACES_KEY, true) !== false;
+    highlightBox.checked = load(HIGHLIGHT_KEY, false) === true;
 
     /* ── Rendering ─────────────────────────────────────────── */
 
@@ -478,23 +513,26 @@
       return liveIssues().filter(function (i) { return i.sev === 'fix' && i.suggest !== null; });
     }
 
-    function renderPreview() {
+    /* Paint the marks behind the textarea. The backdrop holds the same text
+       with the same metrics but transparent ink, so only the washes and
+       underlines show through from under the real characters. Off by default:
+       the box is an ordinary editor until you ask for the highlights. */
+    function renderBackdrop() {
+      var box = $('gf-backdrop');
       var text = input.value;
-      var box = $('gf-preview');
-      if (!text.trim()) {
-        box.innerHTML = '<span class="gf-empty">Enter ability text above to check it.</span>';
-        return;
-      }
+      if (!highlightBox.checked || !text.trim()) { box.innerHTML = ''; return; }
       var marks = liveIssues().slice().sort(function (a, b) { return a.start - b.start; });
       var html = '', at = 0;
       marks.forEach(function (i) {
         if (i.start > at) html += esc(text.slice(at, i.start));
         html += '<span class="gf-mark' + (i.sev === 'warn' ? ' warn' : '') + '" data-id="' + esc(i.id) + '"' +
           ' style="background:' + wash(i.cat) + ';color:' + color(i.cat) + '">' +
-          '<span style="color:var(--ink)">' + esc(text.slice(i.start, i.end)) + '</span></span>';
+          esc(text.slice(i.start, i.end)) + '</span>';
         at = i.end;
       });
-      if (at < text.length) html += esc(text.slice(at));
+      // A trailing newline is not rendered by a block box the way it is by a
+      // textarea; the extra space keeps the last line in register.
+      html += esc(text.slice(at)) + ' ';
       box.innerHTML = html;
     }
 
@@ -508,7 +546,8 @@
       var warns = iss.length + not.length - fixes;
       if (!fixes && !warns) { el.textContent = 'No issues found — this reads like official card text.'; return; }
       el.textContent = fixes + ' fix' + (fixes === 1 ? '' : 'es') + ' · ' +
-        warns + ' warning' + (warns === 1 ? '' : 's') + ' — tap a highlight for detail.';
+        warns + ' warning' + (warns === 1 ? '' : 's') +
+        (highlightBox.checked ? ' — tap a highlight for detail.' : ' — listed under Findings below.');
     }
 
     /* Counter panel. `Characters` is the figure that matters — the official
@@ -546,7 +585,21 @@
     function suggested() {
       var text = input.value;
       if (!text.trim()) return '';
-      return G.normalise(G.applyFixes(text, bulkFixes()));
+      var out = G.applyFixes(text, bulkFixes());
+      /* Overlapping findings can only be applied one per pass — fixing
+         "choose a player, they" uncovers the "they are killed" underneath it.
+         Re-lint until it settles, so one press of Apply All Fixes really does
+         apply all of them. */
+      for (var pass = 0; pass < 4; pass++) {
+        var more = G.lint(out, { enabled: enabled }).issues.filter(function (i) {
+          return i.sev === 'fix' && i.suggest !== null && !dismissed[i.key];
+        });
+        if (!more.length) break;
+        var next = G.applyFixes(out, more);
+        if (next === out) break;
+        out = next;
+      }
+      return G.normalise(out);
     }
 
     function renderOutput() {
@@ -628,7 +681,7 @@
         : { issues: [], notices: [], length: G.lengthBadge(text) };
       fitInput();
       closePop();
-      renderPreview();
+      renderBackdrop();
       renderSummary();
       renderOutput();
       renderCounts();
@@ -700,11 +753,19 @@
       save(SPACES_KEY, spacesBox.checked);
       renderCounts();
     });
+    highlightBox.addEventListener('change', function () {
+      save(HIGHLIGHT_KEY, highlightBox.checked);
+      closePop();
+      renderBackdrop();
+      renderSummary();
+    });
 
     /* ── Popover on a highlighted word ─────────────────────── */
     var pop = null;
     function closePop() { if (pop) { pop.remove(); pop = null; } }
-    function openPop(issue, el) {
+    /* `r` is a client rect to anchor to — a mark can wrap across lines, so the
+       caller passes the specific rect that was clicked. */
+    function openPop(issue, r) {
       closePop();
       pop = document.createElement('div');
       pop.className = 'gf-pop';
@@ -722,7 +783,6 @@
           '<button type="button" class="gf-mini gf-mini-dismiss" data-dismiss="' + esc(issue.key) + '">Dismiss</button>' +
         '</div>';
       document.body.appendChild(pop);
-      var r = el.getBoundingClientRect();
       var w = pop.offsetWidth, h = pop.offsetHeight;
       var left = Math.min(Math.max(8, r.left), window.innerWidth - w - 8);
       var top = r.bottom + 6;
@@ -736,16 +796,33 @@
         if (d) { dismissed[d.getAttribute('data-dismiss')] = 1; run(); }
       });
     }
-    $('gf-preview').addEventListener('click', function (e) {
-      var m = e.target.closest('.gf-mark');
-      if (!m) return;
-      var id = m.getAttribute('data-id'), issue = null;
+    /* The textarea sits above the marks and swallows the click, so work out
+       what was under the pointer by testing the mark rects. A mark that wraps
+       has one rect per line, hence getClientRects(). */
+    function markAt(x, y) {
+      var marks = $('gf-backdrop').querySelectorAll('.gf-mark');
+      for (var i = 0; i < marks.length; i++) {
+        var rects = marks[i].getClientRects();
+        for (var j = 0; j < rects.length; j++) {
+          var r = rects[j];
+          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+            return { el: marks[i], rect: r };
+          }
+        }
+      }
+      return null;
+    }
+    $('gf-editor').addEventListener('click', function (e) {
+      if (!highlightBox.checked) return;
+      var hit = markAt(e.clientX, e.clientY);
+      if (!hit) { closePop(); return; }
+      var id = hit.el.getAttribute('data-id'), issue = null;
       liveIssues().forEach(function (x) { if (x.id === id) issue = x; });
-      if (issue) openPop(issue, m);
+      if (issue) openPop(issue, hit.rect);
     });
     document.addEventListener('click', function (e) {
       if (!pop) return;
-      if (pop.contains(e.target) || e.target.closest('.gf-mark')) return;
+      if (pop.contains(e.target) || $('gf-editor').contains(e.target)) return;
       closePop();
     });
     window.addEventListener('resize', closePop);

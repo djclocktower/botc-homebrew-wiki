@@ -141,7 +141,12 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        CDN — do not reintroduce a framework here). Engine lives
                        in assets/grimforge.js; the page owns only the UI.
                        ?a={text} pre-fills the box — create.html/edit.html use
-                       it for their "Check with Grimforge" link. A counter
+                       it for their "Check with Grimforge" link. The editor is
+                       one box: a transparent textarea over a backdrop that
+                       paints the issue marks, behind a "Highlight issues"
+                       toggle that is OFF by default (a plain editor until
+                       asked). Both layers must keep identical font/padding/
+                       wrapping metrics or the marks drift off the text. A counter
                        panel (characters/words/sentences/lines + Count Spaces)
                        sits above the input; the length badge always judges the
                        real with-spaces length, whatever the box displays. Rule
