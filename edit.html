@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
+<link rel="stylesheet" href="assets/redesign-create.css">
 <style>
   .builder{position:relative;z-index:5;max-width:1320px;margin:0 auto;
     padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px;
@@ -36,8 +37,6 @@
   fieldset{border:1px dashed #c9b78f;border-radius:8px;padding:12px 14px;margin:0 0 15px}
   legend{font-family:'Oswald',sans-serif;font-weight:600;font-size:.82rem;letter-spacing:.04em;
     text-transform:uppercase;color:#5b4632;padding:0 6px}
-  fieldset.import{border-color:#a9c0e0;background:#f2f6fc}
-  fieldset.import legend{color:#234f74}
   .jinx-row{display:grid;grid-template-columns:1fr 86px auto;gap:8px;margin-bottom:8px;align-items:start}
   .jinx-row textarea{grid-column:1/-1;min-height:46px}
   .box-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:14px;align-items:start;
@@ -49,8 +48,6 @@
   .btn-sm{padding:6px 12px;font-size:.82rem}
   .btn-ghost{background:#ece3d2;color:#5b4632}
   .btn-ghost:hover{background:#e0d5bf}
-  .btn-blue{background:#2f6fb8;color:#fff}
-  .btn-blue:hover{filter:brightness(1.08)}
   .btn-del{background:#e7d3d3;color:#9A0D12}
   .btn-save{background:linear-gradient(180deg,#2f6fb8,#1a4a82);color:#eaf0fc;font-size:1rem;padding:12px 22px}
   .btn-save:hover{filter:brightness(1.08)}
@@ -73,10 +70,10 @@
     font-size:1rem;margin:0 0 10px;opacity:.85}
   #preview{width:100%;height:78vh;border:1px solid rgba(214,196,150,.3);
     border-radius:10px;background:#1d0a1a;box-shadow:0 10px 26px rgba(0,0,0,.5)}
-  #status,#importmsg{margin-top:10px;padding:10px 13px;border-radius:8px;font-size:.9rem;display:none}
-  #status.ok,#importmsg.ok{display:block;background:#dff0e2;color:#1c5429;border:1px solid #9bcfa9}
-  #status.err,#importmsg.err{display:block;background:#f6dede;color:#9A0D12;border:1px solid #d99}
-  #status.work,#importmsg.work{display:block;background:#e9eefb;color:#234f74;border:1px solid #aac0e6}
+  #status{margin-top:10px;padding:10px 13px;border-radius:8px;font-size:.9rem;display:none}
+  #status.ok{display:block;background:#dff0e2;color:#1c5429;border:1px solid #9bcfa9}
+  #status.err{display:block;background:#f6dede;color:#9A0D12;border:1px solid #d99}
+  #status.work{display:block;background:#e9eefb;color:#234f74;border:1px solid #aac0e6}
   #status a{color:inherit;font-weight:700}
 
   .tag-picker { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
@@ -130,15 +127,6 @@
     <div class="formcard">
       <h2>Edit Character</h2>
       <p class="sub" id="edit-sub">Loading&hellip;</p>
-
-      <fieldset class="import">
-        <legend>Import from JSON (optional)</legend>
-        <p class="sub" style="margin:0 0 8px">Paste or upload an official-schema JSON to overwrite ability, flavour, night order, reminders &amp; jinxes.</p>
-        <div class="fld" style="margin-bottom:8px"><input type="file" id="jsonfile" accept=".json,application/json"></div>
-        <div class="fld" style="margin-bottom:8px"><textarea id="jsonpaste" placeholder="&hellip;or paste JSON here"></textarea></div>
-        <button type="button" class="btn btn-blue btn-sm" id="importjson">Import &amp; Autofill</button>
-        <div id="importmsg"></div>
-      </fieldset>
 
       <div class="fld">
         <label for="name">Character name *</label>
@@ -310,7 +298,7 @@
 
       <button type="button" class="btn btn-save" id="save">Save Changes</button>
       <button type="button" class="btn btn-ghost" id="save-publish" style="display:none" title="Save your changes and make this page public">Save &amp; Publish</button>
-      <button type="button" class="btn btn-del" id="delete-char" style="display:none;margin-left:8px" title="Remove this character from the site (an admin can restore it)">Delete Character</button>
+      <button type="button" class="btn btn-del" id="delete-char" style="display:none" title="Remove this character from the site (an admin can restore it)">Delete Character</button>
       <div id="status"></div>
     </div>
 
@@ -321,6 +309,8 @@
 
   </div>
 
+  <!-- Groups the form into sections; must run before the page's own scripts. -->
+  <script src="assets/redesign-create.js"></script>
   <script src="assets/creators.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
@@ -574,65 +564,9 @@
       standardizeArt('artAltThumb', 'artAltStd', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
-    // ── JSON import ──
     function normalizeJinx(j){
       return { name: j.name||j.id||'', align: j.align||'good', text: j.text||j.reason||'' };
     }
-    function applyImport(obj){
-      // dispatch input so the ability counter + Grimoire Forge link keep up
-      function set(id,v){ if(v!=null){ $(id).value=v; $(id).dispatchEvent(new Event('input')); } }
-      set('name', obj.name||'');
-      if(obj.team && $('team').querySelector('option[value="'+obj.team+'"]')) $('team').value=obj.team;
-      set('ability', obj.ability||'');
-      set('quote', (obj.flavor||'').replace(/^["']|["']$/g,''));
-      set('edition', obj.edition||'');
-      set('firstNight', obj.firstNight!=null?obj.firstNight:0);
-      set('otherNight', obj.otherNight!=null?obj.otherNight:0);
-      set('fnReminder', obj.firstNightReminder||'');
-      set('onReminder', obj.otherNightReminder||'');
-      set('reminders', (obj.reminders||[]).join('\n'));
-      set('remindersGlobal', (obj.remindersGlobal||[]).join('\n'));
-      $('setup').checked = !!obj.setup;
-      document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
-      (obj.jinxes||[]).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
-      if(!(obj.jinxes||[]).length) addJinx();
-      var imgUrl = Array.isArray(obj.image)?obj.image[0]:obj.image;
-      var msg = $('importmsg');
-      if(imgUrl){
-        msg.className='work'; msg.textContent='Trying to load icon from '+imgUrl+' …';
-        loadImageToCanvas(imgUrl,true).then(function(url){
-          artDataURL=url; artChanged=true;
-          var th=$('artthumb'); th.src=url; th.style.display='block'; $('artStdWrap').style.display='';
-          $('arturl').textContent='';
-          msg.className='ok'; msg.textContent='Imported (icon loaded).'; update();
-        }).catch(function(){
-          artDataURL=null; artChanged=false;
-          $('arturl').innerHTML='Icon URL: <a href="'+imgUrl+'" target="_blank">'+imgUrl+'</a>';
-          msg.className='ok'; msg.textContent='Imported. Upload art manually if you want to change the icon.'; update();
-        });
-      } else {
-        msg.className='ok'; msg.textContent='Imported successfully.';
-      }
-      update();
-    }
-    $('importjson').addEventListener('click', function(){
-      var raw = $('jsonpaste').value.trim();
-      var go = function(text){
-        try{
-          var data = JSON.parse(text), obj = data;
-          if(Array.isArray(data)){
-            obj = data.filter(function(x){ return x&&typeof x==='object'&&x.id!=='_meta'&&x.ability; })[0];
-            if(!obj) throw new Error('No character with an ability found in that array.');
-          }
-          if(!obj||!obj.ability) throw new Error('No "ability" field found.');
-          applyImport(obj);
-        }catch(e){ var m=$('importmsg'); m.className='err'; m.textContent='Import failed: '+e.message; }
-      };
-      if(raw){ go(raw); return; }
-      var f=$('jsonfile').files[0];
-      if(!f){ var m=$('importmsg'); m.className='err'; m.textContent='Choose a file or paste JSON first.'; return; }
-      var fr=new FileReader(); fr.onload=function(ev){ go(ev.target.result); }; fr.readAsText(f);
-    });
 
     // ── populate form from entry ──
     function populateForm(entry){
@@ -703,6 +637,8 @@
       updatePerspectiveFields();
       update();
       if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
+      // open Advanced Options if this character has anything filed under it
+      if (window.openAdvancedIfFilled) window.openAdvancedIfFilled();
     }
 
     // ── show/hide bluffing & fighting fields based on team ──

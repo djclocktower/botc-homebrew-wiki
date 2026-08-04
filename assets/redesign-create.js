@@ -146,6 +146,8 @@
     // Textareas sized while the panel was shut measure 0; re-measure on open.
     det.addEventListener('toggle', function () { if (det.open) growAll(det); });
 
+    // Note this counts values only: the editors seed an empty jinx row on
+    // load, so the mere existence of a row means nothing.
     window.openAdvancedIfFilled = function () {
       var fields = det.querySelectorAll('input, textarea');
       for (var i = 0; i < fields.length; i++) {
@@ -153,7 +155,6 @@
           det.open = true; return;
         }
       }
-      if (det.querySelector('.jinx-row') || det.querySelector('.box-row')) det.open = true;
     };
   }
 

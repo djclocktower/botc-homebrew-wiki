@@ -146,8 +146,9 @@ html.create-redesign .ractions {
   box-shadow: 0 -8px 14px rgba(40,12,30,.08);
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
 }
-html.create-redesign .ractions .btn { margin-left: 0; }
 html.create-redesign .ractions #status { flex: 1 1 100%; margin-top: 2px; }
+/* keep Delete Character (edit page) away from the save buttons */
+html.create-redesign .ractions #delete-char { margin-left: auto; }
 
 /* ---------- live preview pane ---------- */
 html.create-redesign .preview-pane { position: sticky; top: 74px; }
