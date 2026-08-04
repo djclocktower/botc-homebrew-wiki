@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creator Icons — BOTC HomeBrew Wiki</title>
+<title>Creators — BOTC HomeBrew Wiki</title>
 <meta name="description" content="The community creators behind the BOTC HomeBrew Wiki's fan-made Blood on the Clocktower characters.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
-<meta property="og:title" content="Creator Icons">
+<meta property="og:title" content="Creators">
 <meta property="og:description" content="The community creators behind the BOTC HomeBrew Wiki's fan-made Blood on the Clocktower characters.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
@@ -50,14 +50,24 @@
   </nav>
 
   <div class="home-hero">
-    <h1>Creator Icons</h1>
-    <p>Each creator's unique symbol, used to mark their characters</p>
+    <h1>Creators</h1>
+    <p>Everyone who has made something for the wiki — their symbol, their pages, and their profile</p>
   </div>
 
   <main class="home-panel">
+    <div class="creators-filter">
+      <input type="search" id="cr-search" placeholder="Find a creator…" autocomplete="off" aria-label="Find a creator">
+      <div class="creators-sort">
+        <button type="button" class="filter-chip active" data-sort="pages">Most pages</button>
+        <button type="button" class="filter-chip" data-sort="name">A–Z</button>
+        <button type="button" class="filter-chip" data-sort="accounts">Has an account</button>
+      </div>
+    </div>
     <div class="creators-page-box">
       <div class="creators-page-grid" id="creators-grid">
+        <p style="opacity:.7">Loading creators…</p>
       </div>
+      <p id="creators-empty" class="creators-empty" hidden>No creator matches that.</p>
     </div>
   </main>
 
@@ -66,22 +76,94 @@
 
   <script src="assets/creators.js"></script>
   <script>
+    /* The single creator index: every name that has published something,
+       whether or not there is an account behind it. Counts come live from
+       /api/creators; the symbol comes from assets/creators.js, still the one
+       place a creator's mark is defined. Replaces the old symbol-only grid
+       and the separate authors list, which both linked here anyway. */
     (function () {
-      var map = (window.CreatorSymbols && window.CreatorSymbols.CREATOR_SYMBOLS) || window.CREATOR_SYMBOLS || {};
+      var SYMBOLS = (window.CreatorSymbols && window.CreatorSymbols.CREATOR_SYMBOLS) || window.CREATOR_SYMBOLS || {};
       var grid = document.getElementById('creators-grid');
+      var emptyMsg = document.getElementById('creators-empty');
+      var search = document.getElementById('cr-search');
       if (!grid) return;
+
       function esc(s) {
         return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
           .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
       }
-      var html = '';
-      for (var name in map) {
-        if (!Object.prototype.hasOwnProperty.call(map, name)) continue;
-        html += '<a class="creator-pill creator-pill-wide" href="author?a=' +
-          encodeURIComponent(name) + '"><span class="creator-sym">' + esc(map[name]) +
-          '</span><span class="creator-name">' + esc(name) + '</span></a>';
+      // Symbols are keyed by the creator's display spelling; match loosely so
+      // "the bazaar" still finds "The Bazaar".
+      var SYM_BY_KEY = {};
+      for (var k in SYMBOLS) {
+        if (Object.prototype.hasOwnProperty.call(SYMBOLS, k)) SYM_BY_KEY[k.trim().toLowerCase()] = SYMBOLS[k];
       }
-      grid.innerHTML = html;
+      function symbolFor(name) { return SYM_BY_KEY[String(name).trim().toLowerCase()] || ''; }
+
+      var ALL = [], STATE = { q: '', sort: 'pages' };
+
+      function countLabel(c) {
+        var bits = [];
+        if (c.characters) bits.push(c.characters + ' char' + (c.characters === 1 ? '' : 's'));
+        if (c.scripts) bits.push(c.scripts + ' script' + (c.scripts === 1 ? '' : 's'));
+        if (c.collections) bits.push(c.collections + ' coll' + (c.collections === 1 ? '' : 's'));
+        return bits.join(' · ');
+      }
+      function tile(c) {
+        // Claimed creators go to their profile; the rest to the creator page
+        // keyed on the name (the Worker serves both from one file).
+        var href = c.username
+          ? '/u/' + encodeURIComponent(c.username)
+          : 'author?a=' + encodeURIComponent(c.name);
+        var sym = symbolFor(c.name);
+        var badge = c.avatarUrl
+          ? '<img class="creator-av" loading="lazy" decoding="async" src="' + esc(c.avatarUrl) + '" alt="">'
+          : '<span class="creator-sym">' + esc(sym || '·') + '</span>';
+        return '<a class="creator-pill creator-pill-wide" href="' + esc(href) + '">' +
+          badge +
+          '<span class="creator-name">' + esc(c.name) +
+            (c.username ? '<span class="creator-at">@' + esc(c.username) + '</span>' : '') +
+            '<span class="creator-count">' + esc(countLabel(c)) + '</span>' +
+          '</span></a>';
+      }
+
+      function apply() {
+        var q = STATE.q.trim().toLowerCase();
+        var list = ALL.filter(function (c) {
+          if (q && String(c.name).toLowerCase().indexOf(q) === -1 &&
+              String(c.username || '').toLowerCase().indexOf(q) === -1) return false;
+          if (STATE.sort === 'accounts' && !c.username) return false;
+          return true;
+        });
+        if (STATE.sort === 'name') {
+          list.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+        } else {
+          list.sort(function (a, b) { return b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+        }
+        grid.innerHTML = list.map(tile).join('');
+        emptyMsg.hidden = !!list.length;
+      }
+
+      search.addEventListener('input', function () { STATE.q = search.value; apply(); });
+      document.querySelectorAll('.creators-sort .filter-chip').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.creators-sort .filter-chip').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          STATE.sort = btn.getAttribute('data-sort');
+          apply();
+        });
+      });
+
+      fetch('/api/creators', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          ALL = (d && d.creators) || [];
+          if (!ALL.length) { grid.innerHTML = '<p style="opacity:.7">No creators found yet.</p>'; return; }
+          apply();
+        })
+        .catch(function () {
+          grid.innerHTML = '<p style="opacity:.7">Could not load the creator list.</p>';
+        });
     })();
   </script>
   <script src="assets/site.js"></script>

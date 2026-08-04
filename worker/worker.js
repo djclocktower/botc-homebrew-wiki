@@ -83,8 +83,14 @@
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
  *
  *   -- public pages & discovery --
- *   GET  /api/user            -> public profile + published pages (?u=username)
- *   GET  /u/{username}        -> public profile page (serves profile.html)
+ *   GET  /api/user            -> creator page data (?u=username or ?a=creator
+ *                                name): owned + credited pages, drafts for the
+ *                                owner/admins
+ *   GET  /api/creators        -> every creator with counts + linked account
+ *   GET  /u/{username}        -> creator page (serves profile.html)
+ *   GET  /author?a={name}     -> same page; 302 to /u/{username} when the name
+ *                                belongs to an account
+ *   POST /api/admin/creator-alias -> admin: link a creator name to an account
  *   GET  /random              -> 302 to a random published character page
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
@@ -151,9 +157,9 @@ Render.setCreators(Creators);
 // Partial / Standard / Starlight rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
-// Lets render.js emit the Partial/Starlight badge without importing
-// classify.js itself (it is loaded standalone in the browser).
-Render.setClassBadge(Classify.classRowHTML);
+// Lets render.js emit the Starlight star without importing classify.js
+// itself (it is loaded standalone in the browser).
+Render.setStarMark(Classify.classBadgeHTML);
 // Wiki text engine: the markdown-ish formatter + the text-first page layout,
 // shared by /p/{slug} pages, news articles and the announcement banner.
 import WikiRender from '../assets/render-wiki.js';
@@ -750,6 +756,57 @@ async function ensureBanColumn(env) {
   _banReady = true;
 }
 
+// Extra profile bits (links + pinned pages) live in one JSON column rather than
+// a column each — the same hybrid design the content tables use, so adding a
+// field later never needs a migration. Created lazily like the ban column.
+let _profileColReady = false;
+async function ensureProfileColumn(env) {
+  if (_profileColReady) return;
+  try {
+    await env.DB.prepare('ALTER TABLE users ADD COLUMN profile_json TEXT').run();
+  } catch { /* column already exists */ }
+  _profileColReady = true;
+}
+
+const PROFILE_LINK_KEYS = ['website', 'discord', 'bluesky', 'other'];
+const PROFILE_URL_RE = /^https?:\/\/[^\s<>"']{3,300}$/i;
+// Validate what a user typed into their profile settings. Links are http(s)
+// only (Discord is a handle, not a URL); pinned pages are checked against what
+// the account actually owns by the caller, not here.
+function sanitizeProfileExtra(input) {
+  const out = { links: {}, pinned: [] };
+  const links = (input && typeof input.links === 'object' && input.links) || {};
+  for (const k of PROFILE_LINK_KEYS) {
+    let v = String(links[k] == null ? '' : links[k]).trim().slice(0, 300);
+    if (!v) continue;
+    if (k === 'discord') {
+      // A handle, not a link: strip a leading @ and keep it plain text.
+      v = v.replace(/^@+/, '').slice(0, 40);
+      if (v) out.links.discord = v;
+      continue;
+    }
+    if (PROFILE_URL_RE.test(v)) out.links[k] = v;
+  }
+  const pinned = Array.isArray(input && input.pinned) ? input.pinned : [];
+  for (const p of pinned.slice(0, 12)) {
+    const type = String((p && p.type) || '');
+    const slug = String((p && p.slug) || '').slice(0, 80);
+    if (!CONTENT[type] || !slug) continue;
+    if (out.pinned.some(x => x.type === type && x.slug === slug)) continue;
+    out.pinned.push({ type, slug });
+    if (out.pinned.length >= 3) break;   // three is the whole point of pinning
+  }
+  return out;
+}
+function parseProfileExtra(row) {
+  let x = null;
+  try { x = row && row.profile_json ? JSON.parse(row.profile_json) : null; } catch { x = null; }
+  return {
+    links: (x && x.links && typeof x.links === 'object') ? x.links : {},
+    pinned: Array.isArray(x && x.pinned) ? x.pinned : []
+  };
+}
+
 // Fresh admin/ban flags from D1 — session cookies cache isAdmin for 30 days,
 // but bans and demotions must apply immediately, not when the cookie expires.
 async function getAccountFlags(env, userId) {
@@ -780,6 +837,141 @@ async function isProtected(env, type, slug) {
   } catch { return false; }
 }
 const PROTECTED_MSG = 'This page has been protected by an admin and cannot be edited right now.';
+
+// ---- creator identity: which free-text "Creator" names belong to an account ----
+// A page's Creator field is free text ("Hystrex"); an account is a row in users.
+// Half the wiki was bulk-imported with a creator string and no account at all,
+// so the two can never be the same thing — but the creator page and the profile
+// page are one page now (/u/{username}, /author?a=Name), and it needs to know
+// when a name and an account are the same person.
+//
+// A name is linked to an account when EITHER:
+//   1. proof by ownership — the account already owns a page credited to that
+//      name. Publishing under a name is the proof, so registering the username
+//      "Hystrex" is not enough to inherit Hystrex's forty characters.
+//   2. an admin said so — a settings row, key creator_alias:{lower(name)}, value
+//      = the username (an empty value pins the name as deliberately unlinked).
+//      This is what covers bulk-imported pages, which have owner_id NULL and so
+//      can never prove anything. The override always wins.
+// Nothing here is stored on the pages themselves, so it all stays correct as
+// pages change hands.
+function creatorAliasKey(name) {
+  return 'creator_alias:' + String(name || '').trim().toLowerCase();
+}
+function normCreator(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+
+// A credit can name several people — "Taiyi (太一), Saki" — and each of them
+// gets their own creator page, so matching one name against the whole column
+// has to compare a single comma-separated segment at a time. Normalising the
+// spaces around the commas lets instr() do exact segment matching; instr and
+// not LIKE, because a name is free text and may contain % or _.
+function creditMatchSQL(col) {
+  return `instr(',' || replace(replace(lower(trim(${col})), ' ,', ','), ', ', ',') || ',', ',' || ? || ',') > 0`;
+}
+// The same test against a list of names: one bind per name.
+function creditAnySQL(col, n) {
+  const one = creditMatchSQL(col);
+  return '(' + new Array(n).fill(one).join(' OR ') + ')';
+}
+// Credit string -> the individual names in it, lower-cased.
+function creditNames(s) {
+  return Creators.splitCreators(s).map(normCreator).filter(Boolean);
+}
+// How a name is actually spelled on the pages that credit it, so an unclaimed
+// creator page shows "Ma'ayan" rather than whatever casing the link carried.
+function creditSpelling(name, ...rowSets) {
+  const want = normCreator(name);
+  if (!want) return '';
+  for (const rows of rowSets) {
+    for (const r of rows || []) {
+      const d = parseData(r);
+      for (const n of Creators.splitCreators(d.creator || d.author)) {
+        if (normCreator(n) === want) return n.trim();
+      }
+    }
+  }
+  return '';
+}
+
+// A creator name -> the user row that owns it, or null when nobody does.
+async function resolveCreatorAccount(env, name) {
+  const key = normCreator(name);
+  if (!key) return null;
+  try {
+    const alias = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+      .bind(creatorAliasKey(key)).first();
+    if (alias) {
+      // An alias row with an empty value means "this name has no account" —
+      // an admin's way of overruling a wrong ownership match.
+      if (!alias.value) return null;
+      return await env.DB.prepare(
+        'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
+      ).bind(alias.value).first();
+    }
+  } catch { /* settings table unreachable -> fall through to ownership */ }
+  // Proof by ownership: whoever owns the most PUBLISHED pages credited to this
+  // name. Published matters — a draft is invisible to everyone but its owner,
+  // so counting drafts would let anyone claim any name by saving an unpublished
+  // page credited to it. Ties break on the lowest user id; an admin alias is
+  // how you settle a genuine clash between two people using the same handle.
+  try {
+    const hit = await env.DB.prepare(
+      `SELECT owner_id, COUNT(*) AS n FROM characters
+        WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
+        GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
+    ).bind(key).first();
+    let ownerId = hit && hit.owner_id;
+    if (!ownerId) {
+      const s = await env.DB.prepare(
+        `SELECT owner_id, COUNT(*) AS n FROM scripts
+          WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('author')}
+          GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
+      ).bind(key).first();
+      ownerId = s && s.owner_id;
+    }
+    if (!ownerId) return null;
+    return await env.DB.prepare(
+      'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE id=?'
+    ).bind(ownerId).first();
+  } catch { return null; }
+}
+
+// An account -> every creator name it has published under (proof by ownership),
+// plus any name an admin has pointed at it. Lower-cased for comparison; the
+// display spelling comes off the pages themselves.
+async function creatorNamesFor(env, userId, username) {
+  const names = new Set();
+  try {
+    // Published only, for the same reason resolveCreatorAccount insists on it:
+    // a draft nobody else can see must not be able to claim a name.
+    const [chars, scripts] = await Promise.all([
+      env.DB.prepare(`SELECT DISTINCT creator AS n FROM characters WHERE owner_id=? AND status='published'`).bind(userId).all(),
+      env.DB.prepare(`SELECT DISTINCT author AS n FROM scripts WHERE owner_id=? AND status='published'`).bind(userId).all()
+    ]);
+    // Split each credit: co-authoring a page claims the name you were credited
+    // under, not the whole "Taiyi (太一), Saki" string.
+    for (const r of [...(chars.results || []), ...(scripts.results || [])]) {
+      for (const n of creditNames(r.n)) names.add(n);
+    }
+  } catch { /* leave whatever we got */ }
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
+    ).all();
+    for (const r of results || []) {
+      const n = String(r.key).slice('creator_alias:'.length);
+      if (!n) continue;
+      // The alias is the last word on a name, in both directions: it grants the
+      // name to the account it points at, and takes it off everyone else — an
+      // empty value ("nobody") and a different username both un-link it here,
+      // even from an account that owns published pages under it. Without this,
+      // reassigning a shared handle would leave it claimed twice.
+      if (normCreator(r.value) === normCreator(username)) names.add(n);
+      else names.delete(n);
+    }
+  } catch { /* no aliases set */ }
+  return [...names];
+}
 
 // ---- page-view counter (analytics; bots filtered, 180-day retention) ----
 const BOT_UA_RE = /bot|crawl|spider|slurp|preview|facebookexternalhit|discord|whatsapp|telegram|curl|wget|python|java|httpclient|headless|lighthouse|pingdom|uptime/i;
@@ -1087,7 +1279,36 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 </html>`;
 }
 
-function renderCharacterPage(d, origin, isDraft) {
+// The "this page is Partial" nudge. Only ever rendered for someone who can
+// edit the page (owner or admin) — a reader has no use for it, and the wiki
+// does not advertise which pages its authors haven't finished.
+function partialNoticeHTML(d) {
+  const missing = Classify.missingBits(d)
+    .map(b => b === 'almanac' ? 'almanac text or night order' : b);
+  const still = missing.length
+    ? ' Still missing: ' + escapeHtml(missing.join(', ')) + '.'
+    : '';
+  return '<div class="page-notice page-notice-partial" role="status">' +
+    '<strong>Only you and the admins can see this.</strong> ' +
+    'This page counts as <em>Partial</em> — it has an ability, but no tags, no ' +
+    'almanac text and no mechanics (night order, reminder tokens, setup, jinxes), ' +
+    'so it stays hidden from All Characters, the tag pages and the homepage unless ' +
+    'a reader turns on the “Show Partial” filter.' + still +
+    ' One tag or one line of almanac text is enough to fix it. ' +
+    '<a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
+}
+
+// The creator page is one static file (profile.html) served under two paths:
+// /u/{username} and /author?a=Name. It reads the key off location itself.
+async function serveProfileShell(env, request, url) {
+  const res = await env.ASSETS.fetch(new Request(url.origin + '/profile.html'));
+  return new Response(res.body, {
+    status: res.status,
+    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' }
+  });
+}
+
+function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
   const pageUrl = origin + '/c/' + d.slug;
@@ -1095,13 +1316,13 @@ function renderCharacterPage(d, origin, isDraft) {
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
-  // Stamped here too (not just in characters.json) so the Status row in the
-  // info box is right on a page reached directly.
+  // Stamped here too (not just in characters.json) so the Starlight star in
+  // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
-  const draftBanner = isDraft
+  const draftBanner = (isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
-    : '';
+    : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
     body, draftBanner,
@@ -1233,7 +1454,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
     scripts: isScript
       ? ['render.js', 'pageview.js', 'comments.js', 'site.js']
-      : ['render.js', 'pageview.js', 'collection-filters.js', 'comments.js', 'site.js']
+      : ['render.js', 'pageview.js', 'card-filters.js', 'comments.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -1641,18 +1862,27 @@ export default {
           // recovery happens on the admin dashboard, not the live page.
           if (row.status === 'deleted') return env.ASSETS.fetch(request);
           const isDraft = row.status === 'draft';
-          if (isDraft) {
-            const sess = await getSession(env, request);
-            if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
-          }
+          // Two things want to know whether this viewer owns the page: the
+          // draft gate and the Partial nudge. Resolve it at most once, and
+          // only when one of them asks — a logged-out reader looking at a
+          // finished page never pays for a session lookup.
+          let editable = null;
+          const canEdit = async () => {
+            if (editable === null) editable = canEditRow(await getSession(env, request), row);
+            return editable;
+          };
+          if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
           // Same Starlight inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          // "This page is Partial" is shown to the people who can act on it
+          // and to nobody else (see partialNoticeHTML).
+          const partialNotice = Classify.isPartial(d) && await canEdit();
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
-          return new Response(renderCharacterPage(d, url.origin, isDraft), {
+          return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }
@@ -1742,72 +1972,355 @@ export default {
       });
     }
 
-    // ---------- PUBLIC PROFILE PAGE (/u/{username} serves profile.html) ----------
-    if (method === 'GET' && path.startsWith('/u/')) {
-      const res = await env.ASSETS.fetch(new Request(url.origin + '/profile.html'));
-      return new Response(res.body, {
-        status: res.status,
-        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache, must-revalidate' }
-      });
+    // ---------- CREATOR PAGE (/u/{username} and /author?a=Name) ----------
+    // One page, two keys. profile.html renders both: an account profile when
+    // the name belongs to somebody, and a plain creator page when it does not
+    // (half the wiki was bulk-imported under names with no account behind them).
+    if (method === 'GET' && path.startsWith('/u/')) return serveProfileShell(env, request, url);
+
+    // /author?a=Name — the link every character info box, credits list and the
+    // homepage creator strip already points at. When the name belongs to an
+    // account it redirects to that account's canonical URL; otherwise the same
+    // page renders in place. 302 and not 301: an admin can link or unlink a
+    // name at any time, and a cached permanent redirect would outlive that.
+    if (method === 'GET' && (path === '/author' || path === '/author.html')) {
+      const who = (url.searchParams.get('a') || '').trim();
+      if (path === '/author.html') {
+        return new Response(null, {
+          status: 301,
+          headers: {
+            Location: url.origin + '/author' + (who ? '?a=' + encodeURIComponent(who) : ''),
+            'Cache-Control': 'no-store'
+          }
+        });
+      }
+      if (who) {
+        // A D1 hiccup must not 500 a page that used to be a static file:
+        // resolveCreatorAccount swallows its own errors and returns null, so
+        // the worst case here is the un-redirected creator page.
+        const acct = await resolveCreatorAccount(env, who);
+        if (acct && acct.username) {
+          return new Response(null, {
+            status: 302,
+            headers: {
+              Location: url.origin + '/u/' + encodeURIComponent(acct.username),
+              'Cache-Control': 'no-store'
+            }
+          });
+        }
+      }
+      return serveProfileShell(env, request, url);
     }
 
-    // ---------- PUBLIC PROFILE DATA ----------
+    // ---------- CREATOR PAGE DATA (?u=username or ?a=creator name) ----------
+    // Returns everything one person made: pages their account owns, UNION pages
+    // credited to any name that account has published under. An unclaimed name
+    // gets the same shape with a minimal profile and no account fields.
     if (method === 'GET' && path === '/api/user') {
       const uname = (url.searchParams.get('u') || '').trim();
-      if (!uname) return jsonResponse({ error: 'Missing username' }, { status: 400 });
-      const u = await env.DB.prepare(
-        'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
-      ).bind(uname).first();
-      if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
-      async function ownedPublished(table) {
-        let results;
-        try {
-          ({ results } = await env.DB.prepare(
-            `SELECT data FROM ${table} WHERE owner_id=? AND status='published' ORDER BY updated_at DESC`
-          ).bind(u.id).all());
-        } catch {
-          ({ results } = await env.DB.prepare(
-            `SELECT data FROM ${table} WHERE owner_id=?`
-          ).bind(u.id).all());
+      const aname = (url.searchParams.get('a') || '').trim();
+      if (!uname && !aname) return jsonResponse({ error: 'Missing username' }, { status: 400 });
+
+      let u = null;
+      if (uname) {
+        await ensureProfileColumn(env);
+        u = await env.DB.prepare(
+          'SELECT id, username, display_name, bio, avatar_url, created_at, profile_json FROM users WHERE lower(username)=lower(?)'
+        ).bind(uname).first().catch(() => null);
+        if (!u) {
+          u = await env.DB.prepare(
+            'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
+          ).bind(uname).first();
         }
-        return results.map(r => JSON.parse(r.data));
+        if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
+      } else {
+        u = await resolveCreatorAccount(env, aname);
+        if (u) {
+          await ensureProfileColumn(env);
+          const full = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
+            .bind(u.id).first().catch(() => null);
+          if (full) u.profile_json = full.profile_json;
+        }
       }
-      const [characters, collections, scripts] = await Promise.all([
-        ownedPublished('characters'), ownedPublished('collections'), ownedPublished('scripts')
+
+      // Every creator name this page covers, lower-cased for matching.
+      const names = u ? await creatorNamesFor(env, u.id, u.username) : [];
+      if (aname && !names.includes(normCreator(aname))) names.push(normCreator(aname));
+
+      // Drafts are for the people who can do something about them: the owner
+      // of the profile and the admins. Same rule the old author page used.
+      const sess = await getSession(env, request);
+      const canSeeDrafts = !!(sess && (sess.isAdmin || (u && sess.userId === u.id)));
+
+      const statusIn = canSeeDrafts ? "('published','draft')" : "('published')";
+      // owner_id OR credited-name, so a page counts either way round: one the
+      // account owns but credited to somebody else, and one credited to this
+      // name but owned by nobody (the bulk-imported case).
+      function whereFor(nameCol) {
+        const clauses = [];
+        if (u) clauses.push('owner_id=?');
+        if (names.length) clauses.push(creditAnySQL(nameCol, names.length));
+        if (!clauses.length) return null;
+        return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
+                 binds: [...(u ? [u.id] : []), ...names] };
+      }
+      // The PK slug comes off the row, not out of the JSON: legacy rows do not
+      // all carry `slug` in their data blob, and a card with no slug is a
+      // broken link.
+      async function pagesFrom(table, nameCol) {
+        const w = whereFor(nameCol);
+        if (!w) return [];
+        try {
+          const { results } = await env.DB.prepare(
+            `SELECT slug, data, status FROM ${table} WHERE ${w.sql} ORDER BY updated_at DESC`
+          ).bind(...w.binds).all();
+          return results || [];
+        } catch {
+          // status/updated_at not migrated on this row set — legacy fallback
+          const { results } = await env.DB.prepare(
+            `SELECT slug, data FROM ${table} WHERE owner_id=?`
+          ).bind(u ? u.id : -1).all().catch(() => ({ results: [] }));
+          return results || [];
+        }
+      }
+
+      const [charRows, scriptRows] = await Promise.all([
+        pagesFrom('characters', 'creator'),
+        pagesFrom('scripts', 'author')
       ]);
-      // Custom wiki pages this account has written. They are unlisted
-      // everywhere else, so their author's page is one of only two ways in.
+      // Collections keep their author in the JSON blob (no column), so they are
+      // filtered in JS — the same full-table read applyCollectionStarlight does.
+      let collRows = [];
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT slug, data, status, owner_id FROM collections WHERE status IN ${statusIn}`
+        ).all();
+        collRows = (results || []).filter(r => {
+          if (u && r.owner_id === u.id) return true;
+          if (!names.length) return false;
+          const d = parseData(r);
+          // A collection can be co-credited too.
+          return creditNames(d.author).some(n => names.includes(n));
+        });
+      } catch { collRows = []; }
+
+      // Trim to what a card needs. The old endpoint shipped every page's whole
+      // data blob — a creator with forty characters meant a megabyte of almanac
+      // prose just to draw thumbnails.
+      function card(row, type) {
+        const d = parseData(row);
+        const status = row.status || 'published';
+        const slug = row.slug || d.slug;
+        const o = {
+          slug, name: d.name || d.displayName || slug,
+          status,
+          page: typeof d.page === 'string' ? d.page.replace(/\.html$/, '') : undefined
+        };
+        if (type === 'character') {
+          o.team = d.team || '';
+          o.ability = d.ability || '';
+          o.creator = d.creator || '';
+          o.tags = d.tags || '';
+          o.art = d.art || '';
+          o.image = Array.isArray(d.image) ? d.image[0] : (d.image || '');
+          o.appearsIn = d.appearsIn || '';
+        } else if (type === 'script') {
+          o.author = d.author || '';
+          o.tagline = d.tagline || '';
+          o.header = d.header || '';
+          o.characters = Array.isArray(d.characters) ? d.characters.length : 0;
+        } else {
+          // Collection URLs use the kebab id, never the PK slug — legacy rows
+          // have display-string slugs like "The Academy".
+          o.id = d.id || slug;
+          o.displayName = d.displayName || slug;
+          o.author = d.author || '';
+          o.description = d.description || '';
+          o.header = d.header || '';
+        }
+        if (d.starlight) o.starlight = true;
+        const cls = Classify.classifyPage(d, type);
+        if (cls !== 'standard') o.classification = cls;
+        // Partial is derived per read, and the page needs the raw ingredients
+        // to explain itself in the editor's terms — but not the prose itself.
+        return o;
+      }
+
+      const characters = charRows.map(r => card(r, 'character'));
+      const scripts = scriptRows.map(r => card(r, 'script'));
+      const collections = collRows.map(r => card(r, 'collection'));
+      // A Starlight collection lends its status to its characters here too, so
+      // the star on a profile card agrees with the star on the character page.
+      await applyCollectionStarlight(env, characters);
+
+      const split = list => ({
+        live: list.filter(x => x.status !== 'draft'),
+        drafts: list.filter(x => x.status === 'draft')
+      });
+      const c = split(characters), s = split(scripts), k = split(collections);
+
+      const extra = u ? parseProfileExtra(u) : { links: {}, pinned: [] };
+      // A pinned page that has since gone draft or been deleted quietly drops
+      // out rather than 404-ing from somebody's profile.
+      const livePins = extra.pinned.filter(p => {
+        const pool = p.type === 'character' ? c.live : p.type === 'script' ? s.live : k.live;
+        return pool.some(x => x.slug === p.slug);
+      });
+
+      // Custom wiki pages by this person. They are unlisted everywhere else, so
+      // their creator page is one of only two ways in. Matched the same way the
+      // content tables are — the account that owns them, or any creator name it
+      // has claimed — so a page written under a bulk-imported credit still
+      // shows up on the page for that name.
       let pages = [];
       try {
         await ensurePagesTable(env);
-        const { results } = await env.DB.prepare(
-          `SELECT slug, title, parent_type, parent_slug, data, updated_at FROM pages
-           WHERE owner_id=? AND status='published' ORDER BY updated_at DESC LIMIT 200`
-        ).bind(u.id).all();
-        for (const r of results || []) {
-          const d = parseData(r);
-          const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
-          if (parent && parent.status === 'deleted') continue;
-          pages.push({
-            slug: r.slug, title: r.title,
-            blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
-            parentType: r.parent_type,
-            parentKey: parent ? parent.key : r.parent_slug,
-            parentName: parent ? parent.name : null,
-            updatedAt: r.updated_at
-          });
+        const where = [];
+        const binds = [];
+        if (u) { where.push('owner_id=?'); binds.push(u.id); }
+        if (names.length) { where.push(creditAnySQL('author', names.length)); binds.push(...names); }
+        if (where.length) {
+          const { results } = await env.DB.prepare(
+            `SELECT slug, title, parent_type, parent_slug, data, updated_at FROM pages
+             WHERE (${where.join(' OR ')}) AND status='published'
+             ORDER BY updated_at DESC LIMIT 200`
+          ).bind(...binds).all();
+          for (const r of results || []) {
+            const d = parseData(r);
+            const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+            if (parent && parent.status === 'deleted') continue;
+            pages.push({
+              slug: r.slug, title: r.title,
+              blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
+              parentType: r.parent_type,
+              parentKey: parent ? parent.key : r.parent_slug,
+              parentName: parent ? parent.name : null,
+              updatedAt: r.updated_at
+            });
+          }
         }
-      } catch { /* the profile still works without them */ }
+      } catch { /* the creator page still works without them */ }
+
       return jsonResponse({
-        profile: {
+        profile: u ? {
+          claimed: true,
           username: u.username,
           displayName: u.display_name || u.username,
           bio: u.bio || '',
           avatarUrl: u.avatar_url || null,
-          joined: u.created_at
+          joined: u.created_at,
+          creatorNames: names,
+          links: extra.links,
+          pinned: livePins
+        } : {
+          claimed: false,
+          username: null,
+          // Show the spelling the pages actually use, not whatever casing came
+          // in on the query string.
+          displayName: creditSpelling(aname, charRows, scriptRows) || aname,
+          creatorNames: names,
+          links: {},
+          pinned: []
         },
-        characters, collections, scripts, pages
+        characters: c.live, scripts: s.live, collections: k.live, pages,
+        drafts: canSeeDrafts
+          ? { characters: c.drafts, scripts: s.drafts, collections: k.drafts }
+          : null
       });
+    }
+
+    // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
+    if (method === 'GET' && path === '/api/creators') {
+      const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
+      // One credit string can name several people; each of them gets their own
+      // row here, the same way each of them gets their own creator page.
+      function bump(raw, kind) {
+        for (const name of Creators.splitCreators(raw)) {
+          const key = normCreator(name);
+          if (!key) continue;
+          let row = tally.get(key);
+          if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
+          row[kind]++;
+        }
+      }
+      try {
+        const [chars, scripts, colls] = await Promise.all([
+          env.DB.prepare(`SELECT creator AS n FROM characters WHERE status='published'`).all(),
+          env.DB.prepare(`SELECT author AS n FROM scripts WHERE status='published'`).all(),
+          env.DB.prepare(`SELECT data FROM collections WHERE status='published'`).all()
+        ]);
+        for (const r of chars.results || []) bump(r.n, 'characters');
+        for (const r of scripts.results || []) bump(r.n, 'scripts');
+        for (const r of colls.results || []) bump(parseData(r).author, 'collections');
+      } catch { /* partial tally is better than none */ }
+
+      // Attach accounts. One pass over the alias table and one over the users
+      // that own published pages, rather than a resolve call per name.
+      const aliases = new Map();
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT key, value FROM settings WHERE key LIKE 'creator_alias:%'`
+        ).all();
+        for (const r of results || []) {
+          aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
+        }
+      } catch { /* none set */ }
+      // lower(name) -> owner_id, the account that owns the most published
+      // pages credited to that name (proof by ownership, in bulk). Counted in
+      // JS rather than SQL because a credit can name several people.
+      const owners = new Map();
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT creator AS n, owner_id, COUNT(*) AS c FROM characters
+            WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
+            GROUP BY creator, owner_id`
+        ).all();
+        const perName = new Map();   // name -> Map(owner_id -> count)
+        for (const r of results || []) {
+          for (const key of creditNames(r.n)) {
+            if (!perName.has(key)) perName.set(key, new Map());
+            const m = perName.get(key);
+            m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
+          }
+        }
+        for (const [key, m] of perName) {
+          let best = null, bestN = 0;
+          for (const [ownerId, n] of m) {
+            if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
+          }
+          if (best != null) owners.set(key, best);
+        }
+      } catch { /* no owned pages */ }
+      let users = [];
+      try {
+        const { results } = await env.DB.prepare(
+          'SELECT id, username, display_name, avatar_url FROM users'
+        ).all();
+        users = results || [];
+      } catch { /* users unreadable */ }
+      const byId = new Map(users.map(x => [x.id, x]));
+      const byName = new Map(users.map(x => [String(x.username).toLowerCase(), x]));
+
+      const out = [];
+      for (const [key, row] of tally) {
+        let acct = null;
+        if (aliases.has(key)) {
+          const v = aliases.get(key);
+          acct = v ? byName.get(v.toLowerCase()) || null : null;
+        } else if (owners.has(key)) {
+          acct = byId.get(owners.get(key)) || null;
+        }
+        out.push({
+          name: row.name,
+          characters: row.characters, scripts: row.scripts, collections: row.collections,
+          total: row.characters + row.scripts + row.collections,
+          username: acct ? acct.username : null,
+          displayName: acct ? (acct.display_name || acct.username) : null,
+          avatarUrl: acct ? acct.avatar_url : null
+        });
+      }
+      out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+      return jsonResponse({ creators: out });
     }
 
     // ---------- SITEMAP (built live from D1) ----------
@@ -1839,7 +2352,7 @@ export default {
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
       const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
-        'authors', 'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules', 'news'];
+        'script', 'tokens', 'mass-upload', 'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -2275,8 +2788,9 @@ export default {
     if (method === 'GET' && path === '/api/account') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureProfileColumn(env);
       const batch = await env.DB.batch([
-        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
+        env.DB.prepare(`SELECT username, email, is_admin, display_name, bio, profile_json, discord_id, discord_username, avatar_url, email_verified, password_hash, created_at, last_login FROM users WHERE id=?`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, team, status, created_at, updated_at FROM characters WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, display_name AS name, status, created_at, updated_at FROM collections WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
         env.DB.prepare(`SELECT slug, name, status, created_at, updated_at FROM scripts WHERE owner_id=? AND status IS NOT 'deleted' ORDER BY updated_at DESC`).bind(sess.userId),
@@ -2312,7 +2826,9 @@ export default {
           avatarUrl: u.avatar_url || null,
           hasPassword: !!u.password_hash,
           createdAt: u.created_at,
-          lastLogin: u.last_login
+          lastLogin: u.last_login,
+          links: parseProfileExtra(u).links,
+          pinned: parseProfileExtra(u).pinned
         },
         characters: batch[1].results,
         collections: batch[2].results,
@@ -2922,6 +3438,28 @@ export default {
         const bio = String(b.bio || '').trim().slice(0, 500) || null;
         await env.DB.prepare('UPDATE users SET display_name=?, bio=? WHERE id=?')
           .bind(displayName, bio, sess.userId).run();
+        // Links + pinned pages ride in the same save. Only touched when the
+        // client sends them, so an older form that posts name+bio alone can
+        // never wipe somebody's links.
+        if (b.links !== undefined || b.pinned !== undefined) {
+          await ensureProfileColumn(env);
+          const extra = sanitizeProfileExtra(b);
+          // You can only pin your own published pages — checked here, and again
+          // on read, so a page that later goes draft quietly drops off.
+          const verified = [];
+          for (const p of extra.pinned) {
+            const t = CONTENT[p.type];
+            if (!t) continue;
+            const row = await env.DB.prepare(
+              `SELECT slug FROM ${t.table} WHERE slug=? AND owner_id=? AND status='published'`
+            ).bind(p.slug, sess.userId).first().catch(() => null);
+            if (row) verified.push(p);
+          }
+          extra.pinned = verified;
+          await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
+            .bind(JSON.stringify(extra), sess.userId).run();
+          return jsonResponse({ ok: true, links: extra.links, pinned: extra.pinned });
+        }
         return jsonResponse({ ok: true });
       }
 
@@ -3618,6 +4156,41 @@ export default {
         }
         await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || row.name);
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
+      }
+
+      // ---- admin: link a creator name to an account (or unlink it) ----
+      // Body: {name, username} to link, {name, username: null} to pin the name
+      // as deliberately unlinked, {name, clear: true} to go back to deciding by
+      // ownership. This is what covers bulk-imported pages, which have no owner
+      // and so can never prove who made them. The control lives on the creator
+      // page itself, where you notice the problem.
+      if (path === '/api/admin/creator-alias') {
+        const b = await request.json().catch(() => ({}));
+        const name = String(b.name || '').trim();
+        if (!name) return jsonResponse({ error: 'Missing creator name' }, { status: 400 });
+        const key = creatorAliasKey(name);
+        if (b.clear) {
+          await env.DB.prepare('DELETE FROM settings WHERE key=?').bind(key).run();
+          const acct = await resolveCreatorAccount(env, name);
+          return jsonResponse({ ok: true, username: acct ? acct.username : null, cleared: true });
+        }
+        const uname = String(b.username || '').trim();
+        if (uname) {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE lower(username)=lower(?)')
+            .bind(uname).first();
+          if (!u) return jsonResponse({ error: 'No account with that username.' }, { status: 404 });
+          await env.DB.prepare(
+            'INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
+          ).bind(key, u.username).run();
+          await logActivity(env, sess, 'update', 'creator', name, u.username);
+          return jsonResponse({ ok: true, username: u.username });
+        }
+        // Empty value = "this name has no account", overruling any ownership match.
+        await env.DB.prepare(
+          'INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
+        ).bind(key, '').run();
+        await logActivity(env, sess, 'update', 'creator', name, null);
+        return jsonResponse({ ok: true, username: null });
       }
 
       // ---- admin: assign (or clear) a page's owner ----

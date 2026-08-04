@@ -3,9 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Creator Profile — BOTC HomeBrew Wiki</title>
-<meta name="description" content="A creator profile on the BOTC HomeBrew Wiki — their published characters, scripts, and collections for Blood on the Clocktower.">
-<!-- Served at /u/{username}, so every path on this page is absolute. -->
+<title>Creator — BOTC HomeBrew Wiki</title>
+<meta name="description" content="A creator on the BOTC HomeBrew Wiki — their characters, scripts, and collections for Blood on the Clocktower.">
+<!--
+  ONE page for two URLs. /u/{username} is an account's creator page;
+  /author?a=Name is the same page keyed on the free-text "Creator" field that
+  every character info box, credits list and the homepage creator strip links
+  to. The Worker 302s /author?a= to /u/ when the name belongs to an account
+  (see the /author route in worker/worker.js) and serves this file directly
+  when it does not — half the wiki was bulk-imported under names with no
+  account behind them, and those creators get a page too.
+
+  Served from both paths, so every path in here is absolute.
+-->
 <link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon.png">
 <link rel="apple-touch-icon" href="/assets/favicon.png">
 <link rel="stylesheet" href="/assets/styles.css">
@@ -20,18 +30,67 @@
     border:2px solid rgba(236,225,200,.4);
   }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-  .profile-hero-text h1 { margin:0 0 2px; }
+  .profile-hero-text { min-width:0; }
+  /* .home-hero centres its text; the hero here is a two-column card, so the
+     name lines up with the details under it instead of floating over them. */
+  .profile-hero-text h1 { margin:0 0 2px; text-align:left; }
   .profile-uname { font-size:.95rem; color:rgba(236,225,200,.75); margin:0 0 6px; }
-  .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; }
+  .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; white-space:pre-wrap; }
   .profile-joined { font-size:.82rem; color:rgba(236,225,200,.6); margin:0; }
+  .profile-aka { font-size:.82rem; color:rgba(236,225,200,.6); margin:0 0 6px; }
   .profile-empty { text-align:center; color:rgba(236,225,200,.7); padding:30px; }
+  .profile-unclaimed { font-size:.88rem; color:rgba(236,225,200,.6); margin:2px 0 6px; max-width:56ch; }
+  .profile-btn-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
   .profile-msg-btn {
-    display:inline-block; margin-top:10px; padding:7px 16px;
+    display:inline-block; padding:7px 16px;
     font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-weight:700; font-size:.88rem;
     color:#f4ead2; background:linear-gradient(180deg,#7a2d2f,#5b1f21);
     border:1px solid rgba(236,225,200,.35); border-radius:6px; text-decoration:none;
   }
   .profile-msg-btn:hover { background:linear-gradient(180deg,#8a3537,#6b2527); }
+  .profile-msg-btn.ghost { background:none; color:rgba(236,225,200,.9); }
+  .profile-msg-btn.ghost:hover { background:rgba(236,225,200,.1); }
+  /* Links the creator added in their account settings. */
+  .profile-links { display:flex; flex-wrap:wrap; gap:12px; margin:6px 0 0; padding:0; list-style:none; }
+  .profile-links li { margin:0; padding:0; }
+  .profile-links li::before { display:none; }
+  .profile-links a, .profile-links span {
+    font-size:.85rem; color:rgba(236,225,200,.85); text-decoration:none;
+    border-bottom:1px solid rgba(236,225,200,.3);
+  }
+  .profile-links a:hover { color:#ffe9ad; }
+  .profile-links .plink-icon { border:none; margin-right:5px; opacity:.7; }
+  /* Admin-only box for linking a creator name to an account. */
+  .creator-link-box {
+    margin:14px auto 0; max-width:520px; padding:10px 12px; text-align:left;
+    background:rgba(0,0,0,.25); border:1px solid rgba(236,225,200,.25);
+    font-size:.84rem; color:rgba(236,225,200,.85);
+  }
+  .creator-link-box form { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+  .creator-link-box input {
+    flex:1 1 160px; min-width:0; padding:5px 8px; font-size:.85rem;
+    background:#1c1018; color:#f0e6cd; border:1px solid rgba(236,225,200,.3);
+  }
+  .creator-link-box button {
+    padding:5px 12px; font-size:.82rem; font-weight:700; cursor:pointer;
+    background:#5b1f21; color:#f4ead2; border:1px solid rgba(236,225,200,.35);
+  }
+  .creator-link-msg { margin:6px 0 0; font-size:.82rem; }
+  /* Pinned strip — one uniform card, because a pin can be any of the three types. */
+  .pin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  .pin-card {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; text-decoration:none;
+    background:var(--parch,#F0E8D5); border:2px solid var(--parch-frame,#bda89a); color:var(--maroon);
+  }
+  .pin-card:hover { background:#f7f1e2; }
+  .pin-thumb { width:40px; height:40px; object-fit:contain; flex-shrink:0; }
+  .pin-text { min-width:0; }
+  .pin-name {
+    display:block; font-family:'Dumbledor2',serif; font-size:1.05rem; letter-spacing:.04em;
+    text-transform:uppercase; line-height:1.15; overflow-wrap:anywhere;
+  }
+  .pin-kind { display:block; font-size:.74rem; font-family:'Oswald',sans-serif; letter-spacing:.06em; text-transform:uppercase; opacity:.6; }
+  .cr-chars-count { text-align:center; }
 </style>
 </head>
 <body>
@@ -71,7 +130,7 @@
 
   <div class="home-hero">
     <div class="profile-hero" id="profile-hero">
-      <h1 id="hero-loading">Loading profile…</h1>
+      <h1 id="hero-loading">Loading…</h1>
     </div>
   </div>
 
@@ -79,13 +138,12 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="/assets/render-page.js"></script>
+  <script src="/assets/card-filters.js"></script>
   <script>
   (function () {
-    var GOOD = { townsfolk: 1, outsider: 1 };
-    var TEAM_LABEL = {
-      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
-    };
+    var PR = window.PageRender;
+
     function esc(s) {
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -96,61 +154,89 @@
       if (isNaN(t)) return String(d).slice(0, 10);
       return t.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
     }
+    function plural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
 
-    // Username from /u/{name}, with ?u= as a fallback (direct profile.html visits)
+    // Two keys, one page: /u/{username} for an account, /author?a=Name for a
+    // creator credit. ?u= still works for a direct profile.html visit.
     var m = location.pathname.match(/^\/u\/([^\/]+)\/?$/);
-    var username = m ? decodeURIComponent(m[1]) : (new URLSearchParams(location.search).get('u') || '');
+    var params = new URLSearchParams(location.search);
+    var username = m ? decodeURIComponent(m[1]) : (params.get('u') || '');
+    var authorName = username ? '' : (params.get('a') || '');
 
     var hero = document.getElementById('profile-hero');
     var panel = document.getElementById('panel');
 
     function fail(msg) {
       hero.innerHTML = '<h1>Creator not found</h1>';
-      panel.innerHTML = '<p class="profile-empty">' + esc(msg) + ' <a href="/creators.html" style="color:#7fb2e6">Browse all creators</a>.</p>';
+      panel.innerHTML = '<p class="profile-empty">' + esc(msg) +
+        ' <a href="/creators" style="color:#7fb2e6">Browse all creators</a>.</p>';
     }
+    if (!username && !authorName) { fail('No creator specified.'); return; }
 
-    if (!username) { fail('No creator specified.'); return; }
-
-    function charCard(c) {
-      var typeClass = GOOD[c.team] ? ' good' : '';
-      return '<a class="char-card" href="/' + esc(c.page || ('c/' + c.slug + '.html')) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="/assets/' + esc(c.art) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'/assets/favicon.png\'">' +
-        '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + '</div>' +
-        '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
-        '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
-        '<span class="char-card-link">View Character →</span>' +
-        '</div></a>';
-    }
-
+    /* ── tiles ── */
     function scriptTile(sc) {
-      var n = (sc.characters || []).length;
+      var n = sc.characters || 0;
       var href = '/s/' + encodeURIComponent(sc.slug);
       var headerHTML = sc.header
         ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
-        '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
+        '<h3 class="collection-name">' + esc(sc.name) + starMark(sc) + draftMark(sc) + '</h3>' +
         '<div class="collection-footer">' +
-          '<span class="collection-count">' + n + ' character' + (n === 1 ? '' : 's') + '</span>' +
-          '<span class="collection-arrow">View →</span>' +
+          '<span class="collection-count">' + plural(n, 'character') + '</span>' +
+          '<span class="collection-arrow">View &rarr;</span>' +
         '</div></a>';
     }
-
     function collectionTile(coll) {
       var name = coll.displayName || coll.slug;
-      var href = '/all-characters.html?collection=' + encodeURIComponent(coll.slug);
+      // Collections live at /collection/{kebab id} — the PK slug is a display
+      // string on legacy rows, so always link the id.
+      var href = '/collection/' + encodeURIComponent(coll.id || coll.slug);
       var topHTML = coll.header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(coll.header) + '" alt="' + esc(name) + '"></div>'
         : '';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
-        '<h3 class="collection-name">' + esc(name) + '</h3>' +
+        '<h3 class="collection-name">' + esc(name) + starMark(coll) + draftMark(coll) + '</h3>' +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + esc(coll.description || 'Collection') + '</span>' +
-          '<span class="collection-arrow">Browse →</span>' +
+          '<span class="collection-arrow">Browse &rarr;</span>' +
         '</div></a>';
+    }
+    function starMark(x) {
+      return x && x.starlight
+        ? ' <span class="starlight-star" title="Awarded by the wiki admins." aria-label="Starlight">✦</span>' : '';
+    }
+    function draftMark(x) {
+      return x && x.status === 'draft'
+        ? ' <span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '';
+    }
+    function pinCard(p, data) {
+      var pool = p.type === 'character' ? data.characters
+        : p.type === 'script' ? data.scripts : data.collections;
+      var hit = null;
+      for (var i = 0; i < pool.length; i++) if (pool[i].slug === p.slug) { hit = pool[i]; break; }
+      if (!hit) return '';
+      var href, thumb, name;
+      if (p.type === 'character') {
+        href = '/' + String(hit.page || ('c/' + hit.slug)).replace(/^\//, '');
+        thumb = hit.art ? '/assets/' + hit.art : (hit.image || '/assets/favicon.png');
+        name = hit.name;
+      } else if (p.type === 'script') {
+        href = '/s/' + encodeURIComponent(hit.slug);
+        thumb = hit.header ? '/assets/' + hit.header : '/assets/favicon.png';
+        name = hit.name;
+      } else {
+        href = '/collection/' + encodeURIComponent(hit.id || hit.slug);
+        thumb = hit.header ? '/assets/' + hit.header : '/assets/favicon.png';
+        name = hit.displayName || hit.slug;
+      }
+      return '<a class="pin-card" href="' + esc(href) + '">' +
+        '<img loading="lazy" decoding="async" class="pin-thumb" src="' + esc(thumb) +
+        '" alt="" onerror="this.onerror=null;this.src=\'/assets/favicon.png\'">' +
+        '<span class="pin-text"><span class="pin-name">' + esc(name) + '</span>' +
+        '<span class="pin-kind">' + esc(p.type) + '</span></span></a>';
     }
 
     // Custom wiki pages this creator has written. They are unlisted everywhere
@@ -166,77 +252,221 @@
         '</a>';
     }
 
-    function section(title, inner) {
-      return '<section class="landing-section">' +
-        '<h2 class="type-header">' + esc(title) + '</h2>' +
+    // `title` may carry markup (the Drafts heading has a badge), so it is not
+    // escaped here — every caller passes a literal or an esc()'d value.
+    function section(title, inner, id) {
+      return '<section class="landing-section"' + (id ? ' id="' + id + '"' : '') + '>' +
+        '<h2 class="type-header">' + title + '</h2>' +
         '<div class="type-rule"></div>' + inner + '</section>';
     }
 
-    fetch('/api/user?u=' + encodeURIComponent(username))
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (!data || data.error) { fail(data && data.error || 'Could not load this profile.'); return; }
-        var p = data.profile;
-        document.title = (p.displayName || p.username) + ' — BOTC HomeBrew Wiki';
-        var nChars = data.characters.length, nScripts = data.scripts.length, nColls = data.collections.length;
-        var avatarInner = p.avatarUrl
-          ? '<img src="' + esc(p.avatarUrl) + '" alt="">'
-          : esc((p.displayName || p.username || '?').charAt(0).toUpperCase());
-        var counts = [];
-        if (nChars) counts.push(nChars + ' character' + (nChars === 1 ? '' : 's'));
-        if (nScripts) counts.push(nScripts + ' script' + (nScripts === 1 ? '' : 's'));
-        if (nColls) counts.push(nColls + ' collection' + (nColls === 1 ? '' : 's'));
-        hero.innerHTML =
-          '<div class="profile-avatar">' + avatarInner + '</div>' +
-          '<div class="profile-hero-text">' +
-            '<h1>' + esc(p.displayName || p.username) + '</h1>' +
-            '<p class="profile-uname">@' + esc(p.username) + (counts.length ? ' · ' + counts.join(' · ') : '') + '</p>' +
-            (p.bio ? '<p class="profile-bio">' + esc(p.bio) + '</p>' : '') +
-            (p.joined ? '<p class="profile-joined">Member since ' + esc(fmtDate(p.joined)) + '</p>' : '') +
-          '</div>';
+    /* ── hero ── */
+    function renderHero(p, counts, me) {
+      var claimed = !!p.claimed;
+      var title = p.displayName || p.username || 'Creator';
+      var avatarInner = p.avatarUrl
+        ? '<img src="' + esc(p.avatarUrl) + '" alt="">'
+        : esc(String(title).charAt(0).toUpperCase());
 
-        var html = '';
-        if (nChars) {
-          html += section('Characters', '<div class="type-section"><div class="char-grid">' +
-            data.characters.map(charCard).join('') + '</div></div>');
-        }
-        if (nScripts) {
-          html += section('Scripts', '<div class="collections-grid">' +
-            data.scripts.map(scriptTile).join('') + '</div>');
-        }
-        if (nColls) {
-          html += section('Collections', '<div class="collections-grid">' +
-            data.collections.map(collectionTile).join('') + '</div>');
-        }
-        var pages = data.pages || [];
-        if (pages.length) {
-          html += section('Pages', '<div class="wiki-pagelinks wiki-pagelinks-dark">' +
-            pages.map(pageLink).join('') + '</div>');
-        }
-        if (!html) {
-          html = '<p class="profile-empty">' + esc(p.displayName || p.username) + ' hasn’t published anything yet.</p>';
-        }
-        panel.innerHTML = html;
+      var bits = [];
+      if (counts.characters) bits.push(plural(counts.characters, 'character'));
+      if (counts.scripts) bits.push(plural(counts.scripts, 'script'));
+      if (counts.collections) bits.push(plural(counts.collections, 'collection'));
+      if (counts.pages) bits.push(plural(counts.pages, 'page'));
+      if (counts.drafts) bits.push(plural(counts.drafts, 'draft'));
 
-        // Logged-in visitors get a Message button (not on their own profile);
-        // admins additionally get a shortcut to the dashboard.
-        fetch('/api/me', { credentials: 'same-origin' })
-          .then(function (r) { return r.json(); })
-          .then(function (me) {
-            if (!me || !me.loggedIn) return;
-            var t = hero.querySelector('.profile-hero-text');
-            if (!t) return;
-            if ((me.username || '').toLowerCase() !== p.username.toLowerCase()) {
-              t.insertAdjacentHTML('beforeend',
-                '<p style="margin:0"><a class="profile-msg-btn" href="/messages?to=' +
-                encodeURIComponent(p.username) + '">&#9993; Message ' + esc(p.displayName || p.username) + '</a></p>');
-            }
-            if (me.isAdmin) t.insertAdjacentHTML('beforeend',
-              '<p style="margin:8px 0 0"><a href="/dashboard" style="color:#e8c46a;font-size:.85rem;font-weight:700">&#9881; Admin Dashboard &rarr;</a></p>');
-          })
-          .catch(function () {});
-      })
-      .catch(function () { fail('Could not load this profile.'); });
+      // Names this creator is credited under that are not just their profile
+      // name — worth saying out loud, since it explains why those pages are here.
+      var aka = (p.creatorNames || []).filter(function (n) {
+        return n !== String(title).toLowerCase() && n !== String(p.username || '').toLowerCase();
+      });
+
+      var linksHTML = '';
+      var L = p.links || {};
+      var linkItems = [];
+      if (L.website) linkItems.push('<li><a href="' + esc(L.website) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#127760;</span>Website</a></li>');
+      if (L.bluesky) linkItems.push('<li><a href="' + esc(L.bluesky) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#9729;</span>Bluesky</a></li>');
+      if (L.other) linkItems.push('<li><a href="' + esc(L.other) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#128279;</span>Link</a></li>');
+      if (L.discord) linkItems.push('<li><span><span class="plink-icon">&#128172;</span>' + esc(L.discord) + '</span></li>');
+      if (linkItems.length) linksHTML = '<ul class="profile-links">' + linkItems.join('') + '</ul>';
+
+      var btns = [];
+      if (me && me.loggedIn && claimed) {
+        if ((me.username || '').toLowerCase() === String(p.username || '').toLowerCase()) {
+          btns.push('<a class="profile-msg-btn ghost" href="/account">&#9998; Edit your profile</a>');
+        } else {
+          btns.push('<a class="profile-msg-btn" href="/messages?to=' + encodeURIComponent(p.username) +
+            '">&#9993; Message ' + esc(p.displayName || p.username) + '</a>');
+        }
+      }
+      if (me && me.isAdmin) {
+        btns.push('<a class="profile-msg-btn ghost" href="/dashboard">&#9881; Dashboard</a>');
+      }
+
+      hero.innerHTML =
+        '<div class="profile-avatar">' + avatarInner + '</div>' +
+        '<div class="profile-hero-text">' +
+          '<h1>' + esc(title) + '</h1>' +
+          '<p class="profile-uname">' +
+            (claimed ? '@' + esc(p.username) : 'Creator') +
+            (bits.length ? ' &middot; ' + bits.join(' &middot; ') : '') + '</p>' +
+          (aka.length ? '<p class="profile-aka">Also credited as ' + esc(aka.join(', ')) + '</p>' : '') +
+          (claimed
+            ? (p.bio ? '<p class="profile-bio">' + esc(p.bio) + '</p>' : '')
+            : '<p class="profile-unclaimed">No wiki account is linked to this name yet. If these pages are yours, sign up and an admin can attach them to your account.</p>') +
+          (claimed && p.joined ? '<p class="profile-joined">Member since ' + esc(fmtDate(p.joined)) + '</p>' : '') +
+          linksHTML +
+          (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
+        '</div>';
+
+      if (me && me.isAdmin) renderAdminLinkBox(p);
+    }
+
+    // Admins can attach a creator name to an account (or detach it) from the
+    // page where the mismatch is visible. Backed by POST /api/admin/creator-alias.
+    function renderAdminLinkBox(p) {
+      var name = (p.creatorNames && p.creatorNames[0]) || authorName || p.displayName || '';
+      if (!name) return;
+      var box = document.createElement('div');
+      box.className = 'creator-link-box';
+      box.innerHTML =
+        '<strong>Admin:</strong> creator name &ldquo;' + esc(name) + '&rdquo; is ' +
+        (p.claimed ? 'linked to <strong>@' + esc(p.username) + '</strong>.' : 'not linked to an account.') +
+        '<form id="cl-form"><input id="cl-user" type="text" placeholder="username" value="' +
+        esc(p.claimed ? p.username : '') + '" autocomplete="off">' +
+        '<button type="submit">Link</button>' +
+        '<button type="button" id="cl-clear">Decide by ownership</button></form>' +
+        '<p class="creator-link-msg" id="cl-msg"></p>';
+      hero.parentNode.appendChild(box);
+
+      function post(body) {
+        var msg = document.getElementById('cl-msg');
+        msg.textContent = 'Saving…';
+        fetch('/api/admin/creator-alias', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign({ name: name }, body))
+        }).then(function (r) { return r.json(); }).then(function (res) {
+          if (res.error) { msg.style.color = '#e6a'; msg.textContent = res.error; return; }
+          msg.style.color = '#9d9'; msg.textContent = 'Saved. Reloading…';
+          location.reload();
+        }).catch(function () { msg.style.color = '#e6a'; msg.textContent = 'Could not save.'; });
+      }
+      document.getElementById('cl-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        post({ username: document.getElementById('cl-user').value.trim() });
+      });
+      document.getElementById('cl-clear').addEventListener('click', function () { post({ clear: true }); });
+    }
+
+    /* ── body ── */
+    function renderBody(data, me) {
+      var p = data.profile;
+      var drafts = data.drafts || { characters: [], scripts: [], collections: [] };
+      var html = '';
+
+      if ((p.pinned || []).length) {
+        var pins = p.pinned.map(function (x) { return pinCard(x, data); }).filter(Boolean).join('');
+        if (pins) html += section('Pinned', '<div class="pin-grid">' + pins + '</div>');
+      }
+
+      if (data.characters.length) {
+        // Same card markup as a collection page, so card-filters.js can drive
+        // it and Partial pages stay hidden until a reader asks for them.
+        // /api/user returns newest-first, so index doubles as the "recently
+        // added" ordering the sort menu needs.
+        html += section('Characters',
+          '<p class="coll-chars-count cr-chars-count" id="cr-chars-count"></p>' +
+          PR.filterBoxHTML('cr') +
+          '<div id="cr-grid">' + PR.renderRosterCards(data.characters, '/', orderMap(data.characters)) + '</div>',
+          'sec-characters');
+      }
+      if (data.scripts.length) {
+        html += section('Scripts', '<div class="collections-grid">' +
+          data.scripts.map(scriptTile).join('') + '</div>', 'sec-scripts');
+      }
+      if (data.collections.length) {
+        html += section('Collections', '<div class="collections-grid">' +
+          data.collections.map(collectionTile).join('') + '</div>', 'sec-collections');
+      }
+      // Wiki pages are unlisted everywhere else, so this is one of only two
+      // ways to reach them (the other is their parent script/collection page).
+      if ((data.pages || []).length) {
+        html += section('Pages', '<div class="wiki-pagelinks wiki-pagelinks-dark">' +
+          data.pages.map(pageLink).join('') + '</div>', 'sec-pages');
+      }
+
+      // Drafts, for the only two people who can act on them: the owner of the
+      // profile and the admins. Clearly walled off so nobody mistakes an
+      // unpublished page for a live one.
+      var nDrafts = drafts.characters.length + drafts.scripts.length + drafts.collections.length;
+      if (nDrafts) {
+        var inner = '<p class="draft-note">Not visible to anyone but their owner and the admins.</p>';
+        if (drafts.characters.length) {
+          inner += '<div>' + PR.renderRosterCards(drafts.characters, '/') + '</div>';
+        }
+        if (drafts.scripts.length) {
+          inner += '<div class="collections-grid">' + drafts.scripts.map(scriptTile).join('') + '</div>';
+        }
+        if (drafts.collections.length) {
+          inner += '<div class="collections-grid">' + drafts.collections.map(collectionTile).join('') + '</div>';
+        }
+        html += section('Drafts <span class="draft-count">' +
+          (me && me.isAdmin ? 'admins only' : 'only you') + '</span>', inner, 'drafts');
+      }
+
+      if (!html) {
+        html = '<p class="profile-empty">' + esc(p.displayName || p.username) +
+          ' hasn’t published anything yet.</p>';
+      }
+      panel.innerHTML = html;
+
+      // Mount whenever there are characters at all, not past some threshold:
+      // the filter is also what hides Partial pages, and a reader needs the
+      // chip to bring them back however short the list is.
+      var mounted = window.mountCardFilters && window.mountCardFilters({
+        grid: 'cr-grid', bar: 'cr-filter-bar',
+        toggle: 'cr-filter-toggle', count: 'cr-chars-count',
+        // A creator page is a browse listing, so Partial pages are hidden here
+        // until the reader asks for them — as on All Characters and the tag,
+        // team and homepage listings.
+        partialChip: true, starlightChip: true
+      });
+      if (!mounted) {
+        var f = document.getElementById('cr-filters');
+        if (f) f.style.display = 'none';
+        var c = document.getElementById('cr-chars-count');
+        if (c) c.textContent = plural(data.characters.length, 'character');
+      }
+    }
+    // /api/user hands back newest-first; the sort menu wants a bigger number
+    // for a more recent page.
+    function orderMap(list) {
+      var m = {};
+      for (var i = 0; i < list.length; i++) m[list[i].slug] = list.length - i;
+      return m;
+    }
+
+    var qs = username ? 'u=' + encodeURIComponent(username) : 'a=' + encodeURIComponent(authorName);
+    Promise.all([
+      fetch('/api/user?' + qs, { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+      fetch('/api/me', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); }).catch(function () { return {}; })
+    ]).then(function (both) {
+      var data = both[0], me = both[1] || {};
+      if (!data || data.error) { fail((data && data.error) || 'Could not load this creator.'); return; }
+      var p = data.profile;
+      document.title = (p.displayName || p.username || 'Creator') + ' — BOTC HomeBrew Wiki';
+      var d = data.drafts || { characters: [], scripts: [], collections: [] };
+      renderHero(p, {
+        characters: data.characters.length,
+        scripts: data.scripts.length,
+        collections: data.collections.length,
+        pages: (data.pages || []).length,
+        drafts: d.characters.length + d.scripts.length + d.collections.length
+      }, me);
+      renderBody(data, me);
+    }).catch(function () { fail('Could not load this creator.'); });
   })();
   </script>
   <script src="/assets/site.js"></script>

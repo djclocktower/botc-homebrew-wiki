@@ -146,6 +146,17 @@
     border-radius: 6px; padding: 9px 12px;
   }
   .set-field textarea { min-height: 70px; resize: vertical; }
+  /* Pinned-pages picker */
+  .pin-hint { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: .65; font-size: .72rem; }
+  .pin-picker {
+    max-height: 190px; overflow-y: auto; padding: 8px 10px;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  }
+  .pin-opt { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: .9rem; cursor: pointer; }
+  .pin-opt input { width: auto; }
+  .pin-opt input:disabled + span { opacity: .45; }
+  .pin-type { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; opacity: .55; }
+  .pin-empty { margin: 0; font-size: .88rem; opacity: .7; }
   .set-field input:focus, .set-field textarea:focus, .set-field select:focus { outline: 2px solid #b98; border-color: #b98; }
   .msg-item { padding: 9px 2px; border-top: 1px solid rgba(0,0,0,.08); font-size: .88rem; }
   .msg-item:first-child { border-top: none; }
@@ -300,6 +311,28 @@
             <div class="set-field">
               <label for="s-bio">Bio</label>
               <textarea id="s-bio" maxlength="500" placeholder="A little about you (optional)"></textarea>
+            </div>
+            <!-- Links + pinned pages show on your public creator page
+                 (/u/{username}); both save with the button below. -->
+            <div class="set-field">
+              <label for="s-link-website">Website</label>
+              <input id="s-link-website" maxlength="300" placeholder="https://…">
+            </div>
+            <div class="set-field">
+              <label for="s-link-bluesky">Bluesky</label>
+              <input id="s-link-bluesky" maxlength="300" placeholder="https://bsky.app/profile/…">
+            </div>
+            <div class="set-field">
+              <label for="s-link-other">Other link</label>
+              <input id="s-link-other" maxlength="300" placeholder="https://… (itch.io, Discord invite, anything)">
+            </div>
+            <div class="set-field">
+              <label for="s-link-discord">Discord handle</label>
+              <input id="s-link-discord" maxlength="40" placeholder="yourname (shown as text, not a link)">
+            </div>
+            <div class="set-field">
+              <label>Pinned pages <span class="pin-hint">up to 3, shown at the top of your creator page</span></label>
+              <div id="s-pins" class="pin-picker"><p class="pin-empty">Publish a page and you can pin it here.</p></div>
             </div>
             <button class="btn" id="save-profile">Save Profile</button>
             <div class="inline-msg" id="profile-msg"></div>
@@ -482,6 +515,14 @@
       $('s-display').value = p.displayName || '';
       $('s-bio').value = p.bio || '';
       $('s-email').value = p.email || '';
+      var links = p.links || {};
+      $('s-link-website').value = links.website || '';
+      $('s-link-bluesky').value = links.bluesky || '';
+      $('s-link-other').value = links.other || '';
+      $('s-link-discord').value = links.discord || '';
+      // The picker itself is drawn by renderLists(), which is where the list
+      // of your published pages arrives.
+      PINNED = p.pinned || [];
       if (!p.hasPassword) {
         $('pw-title').textContent = 'Set a Password';
         $('cur-pw-field').style.display = 'none';
@@ -524,6 +565,44 @@
         '<td class="row-actions">' + actions + '</td></tr>';
     }
 
+    /* Pinned pages: up to three of your own published pages, shown at the top
+       of your creator page. Only published pages can be pinned — the server
+       re-checks that on save, and drops a pin if the page later goes draft. */
+    var PINNED = [];
+    function pinKey(p) { return p.type + ':' + p.slug; }
+    function renderPinPicker(pages) {
+      var box = $('s-pins');
+      if (!box) return;
+      if (!pages.length) {
+        box.innerHTML = '<p class="pin-empty">Publish a page and you can pin it here.</p>';
+        return;
+      }
+      var on = {};
+      PINNED.forEach(function (p) { on[pinKey(p)] = 1; });
+      box.innerHTML = pages.map(function (x) {
+        var k = x.type + ':' + x.r.slug;
+        return '<label class="pin-opt"><input type="checkbox" value="' + esc(k) + '"' +
+          (on[k] ? ' checked' : '') + '> <span>' + esc(x.r.name || x.r.slug) +
+          ' <span class="pin-type">' + esc(x.type) + '</span></span></label>';
+      }).join('');
+      // Three is the cap; disable the rest rather than failing on save.
+      function sync() {
+        var boxes = [].slice.call(box.querySelectorAll('input'));
+        var n = boxes.filter(function (b) { return b.checked; }).length;
+        boxes.forEach(function (b) { b.disabled = !b.checked && n >= 3; });
+      }
+      box.addEventListener('change', sync);
+      sync();
+    }
+    function pinnedFromPicker() {
+      var box = $('s-pins');
+      if (!box) return [];
+      return [].slice.call(box.querySelectorAll('input:checked')).map(function (b) {
+        var bits = String(b.value).split(':');
+        return { type: bits[0], slug: bits.slice(1).join(':') };
+      });
+    }
+
     function renderLists(data) {
       var all = [];
       var TYPE_OF = { characters: 'character', collections: 'collection', scripts: 'script', pages: 'wikipage' };
@@ -539,6 +618,7 @@
       $('pages-table').innerHTML  = pages.map(function(x){ return rowHtml(x.type, x.r, false); }).join('');
       $('drafts-empty').style.display = drafts.length ? 'none' : 'block';
       $('pages-empty').style.display  = pages.length ? 'none' : 'block';
+      renderPinPicker(pages);
 
       var edits = data.recentEdits || [];
       $('n-edits').textContent = edits.length;
@@ -583,7 +663,16 @@
     // settings handlers
     $('save-profile').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
-      postJSON('/api/account/profile', { displayName: $('s-display').value, bio: $('s-bio').value })
+      postJSON('/api/account/profile', {
+        displayName: $('s-display').value, bio: $('s-bio').value,
+        links: {
+          website: $('s-link-website').value,
+          bluesky: $('s-link-bluesky').value,
+          other: $('s-link-other').value,
+          discord: $('s-link-discord').value
+        },
+        pinned: pinnedFromPicker()
+      })
         .then(function(res){
           btn.disabled = false;
           setInline('profile-msg', res.ok ? 'ok' : 'err', res.ok ? 'Profile saved.' : (res.body.error || 'Save failed.'));
