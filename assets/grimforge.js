@@ -145,6 +145,10 @@
       to: function () { return 'executed'; },
       note: 'exile is not execution; neither is "hang"' },
 
+    { id: 'arekilled', sev: 'fix', cat: 'Terminology', label: 'they are killed → they die',
+      from: /\bthey(?:['’]re| are) killed\b/gi, to: function () { return 'they die'; },
+      note: 'official cards say "they die"' },
+
     { id: 'diffrom', sev: 'fix', cat: 'Terminology', label: 'different from → different to',
       from: /\bdifferent from\b/gi, to: function () { return 'different to'; },
       note: "Devil's Advocate precedent" },

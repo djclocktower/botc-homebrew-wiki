@@ -50,7 +50,9 @@
 /* Input */
 .gf-input-wrap { position: relative; }
 #gf-input {
-  width: 100%; min-height: 118px; resize: vertical;
+  /* Grows with the text instead of scrolling — the box is never taller than
+     it needs to be, and never hides the end of a long ability. */
+  width: 100%; min-height: 118px; resize: none; overflow-y: hidden;
   font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
   font-size: 1.02rem; line-height: 1.5; color: var(--ink);
   background: #fffdf8; border: 2px solid var(--parch-frame); border-radius: 0;
@@ -605,11 +607,26 @@
       $('gf-copy').disabled = !suggested();
     }
 
+    /* Grow the box to its content instead of scrolling. The textarea is
+       marked no-autosize so site.js leaves it alone: its shared helper adds a
+       flat 2px, which is 2px short of this box's borders and leaves a sliver
+       of scroll. The text also changes programmatically here — Apply All
+       Fixes, Undo, Accept, Clear — where no input event fires at all. */
+    function fitInput() {
+      var cs = window.getComputedStyle(input);
+      var border = cs.boxSizing === 'border-box'
+        ? (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0)
+        : 0;
+      input.style.height = 'auto';
+      input.style.height = (input.scrollHeight + border) + 'px';
+    }
+
     function run() {
       var text = input.value;
       result = text.trim()
         ? G.lint(text, { enabled: enabled })
         : { issues: [], notices: [], length: G.lengthBadge(text) };
+      fitInput();
       closePop();
       renderPreview();
       renderSummary();
@@ -784,6 +801,9 @@
     renderChips();
     renderRuleList();
     run();
+    // The first fit can measure fallback-font metrics; redo it once the real
+    // face is in.
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitInput);
   })();
   </script>
   <script src="assets/site.js"></script>
