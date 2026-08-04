@@ -171,6 +171,10 @@
       from: /\bfrom then on\b/gi, to: function () { return 'from now on'; },
       note: 'Sweetheart precedent' },
 
+    { id: 'midnight', sev: 'fix', cat: 'Terminology', label: 'midnight → night',
+      from: /\bmidnight\b/gi, to: function () { return 'night'; },
+      note: 'the game has no midnight — the night phase is just "night"' },
+
     { id: 'duskorder', sev: 'fix', cat: 'Terminology', label: 'until tomorrow dusk → until dusk tomorrow',
       from: /\buntil tomorrow dusk\b/gi, to: function () { return 'until dusk tomorrow'; },
       note: 'Minstrel is canonical' },
