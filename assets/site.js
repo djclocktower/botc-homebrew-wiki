@@ -130,22 +130,24 @@
   updateScriptBadge();
   window.addEventListener('storage', function (e) { if (e.key === SCRIPT_KEY) updateScriptBadge(); });
 
-  /* ── Token Tool link in the crumb nav, mirroring Script Builder (desktop top bar) ── */
+  /* ── Tools link in the crumb nav, mirroring Script Builder (desktop top bar) ──
+     One nav entry for the whole toolbox: the Token Tool, Grimoire Forge, the
+     Script Builder and the creator icons all live on /tools. */
   (function () {
     document.querySelectorAll('.crumb').forEach(function (crumb) {
-      if (findLinks('tokens', crumb).length) return;
+      if (findLinks('tools', crumb).length) return;
       var sb = findLinks('script', crumb)[0];
       if (!sb) return;
       var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u00b7';
-      var link = document.createElement('a'); link.href = ROOT + 'tokens'; link.textContent = 'Token Tool';
+      var link = document.createElement('a'); link.href = ROOT + 'tools'; link.textContent = 'Tools';
       crumb.insertBefore(sep, sb.nextSibling);
       crumb.insertBefore(link, sep.nextSibling);
     });
   })();
 
   /* ── "Create a Character" link in the crumb nav (desktop top bar) ──
-     Injected after Script Builder, i.e. BEFORE Token Tool, so the Account
-     link (added later, anchored on Token Tool) stays the last child —
+     Injected after Script Builder, i.e. BEFORE Tools, so the Account
+     link (added later, anchored on Tools) stays the last child —
      header-redesign.css styles .crumb a:last-child as the outlined button. */
   (function () {
     document.querySelectorAll('.crumb').forEach(function (crumb) {
@@ -221,10 +223,10 @@
         var navAcct = findLinks('account', drop)[0];
         if (navAcct) flagAccountLink(navAcct);
       }
-      // desktop crumb bar (after Token Tool, like the Token Tool injection)
+      // desktop crumb bar (after Tools, like the Tools injection)
       document.querySelectorAll('.crumb').forEach(function (crumb) {
         if (findLinks('account', crumb).length || findLinks('login', crumb).length) return;
-        var anchor = findLinks('tokens', crumb)[0] || findLinks('script', crumb)[0];
+        var anchor = findLinks('tools', crumb)[0] || findLinks('script', crumb)[0];
         if (!anchor) return;
         var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '·';
         var link = document.createElement('a'); link.href = href; link.textContent = label;
@@ -404,15 +406,15 @@
     var btn = document.getElementById('hamburger');
     var drop = document.getElementById('nav-dropdown');
     if (!btn || !drop) return;
-    // Inject the Token Tool link into the nav once, on every page (root-aware).
-    if (!findLinks('tokens', drop).length) {
+    // Inject the Tools link into the nav once, on every page (root-aware).
+    if (!findLinks('tools', drop).length) {
       var ttLink = document.createElement('a');
-      ttLink.href = ROOT + 'tokens';
-      ttLink.textContent = 'Token Tool';
+      ttLink.href = ROOT + 'tools';
+      ttLink.textContent = 'Tools';
       var sb = findLinks('script', drop)[0];
       if (sb) drop.insertBefore(ttLink, sb.nextSibling); else drop.appendChild(ttLink);
     }
-    // "Create a Character" sits between Script Builder and Token Tool, matching
+    // "Create a Character" sits between Script Builder and Tools, matching
     // the desktop crumb order.
     if (!findLinks('create', drop).length) {
       var ccLink = document.createElement('a');
@@ -426,7 +428,7 @@
       var rcLink = document.createElement('a');
       rcLink.href = '/random';
       rcLink.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px"><rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></svg>Random Character';
-      var tt = findLinks('tokens', drop)[0];
+      var tt = findLinks('tools', drop)[0];
       if (tt) drop.insertBefore(rcLink, tt.nextSibling); else drop.appendChild(rcLink);
     }
     var here = (location.pathname.split('/').pop() || 'index').replace(/\.html$/, '');

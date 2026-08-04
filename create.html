@@ -66,6 +66,10 @@
   .ck { display:flex; align-items:center; gap:8px; }
   .ck input { width:auto; }
   #ability-count { font-size:.78rem; color:#8a7a63; float:right; margin-top:3px; }
+  /* Hands the ability line to the Grimoire Forge syntax checker (/grimforge). */
+  .gf-check-link { font-size:.78rem; color:#2f6fb8; text-decoration:none;
+    border-bottom:1px solid rgba(47,111,184,.35); }
+  .gf-check-link:hover { color:var(--maroon); border-bottom-color:var(--maroon); }
   .preview-pane { position:sticky; top:74px; }
   .preview-label { font-family:'Dumbledor2',serif; color:var(--parch); letter-spacing:.06em;
     font-size:1rem; margin:0 0 10px; opacity:.85; }
@@ -163,6 +167,7 @@
       <div class="fld">
         <label for="ability">Ability line * <span class="hint">(bold line at top of Summary; also the JSON ability)</span></label>
         <textarea id="ability" placeholder="Each night, choose a player: &hellip;"></textarea>
+        <a class="gf-check-link" id="gf-check" href="grimforge" target="_blank" rel="noopener">Check with Grimforge ↗</a>
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
@@ -608,7 +613,8 @@
 
     // ── import from JSON ───────────────────────────────────────────
     function applyImport(obj) {
-      function set(id, v) { if (v != null) $(id).value = v; }
+      // dispatch input so the ability counter + Grimoire Forge link keep up
+      function set(id, v) { if (v != null) { $(id).value = v; $(id).dispatchEvent(new Event('input')); } }
       set('name',    obj.name    || '');
       if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) $('team').value = obj.team;
       set('ability', obj.ability || '');
@@ -780,8 +786,18 @@
     // ── ability character counter ──
     (function() {
       var ta = $('ability'), ct = document.getElementById('ability-count');
+      var gf = document.getElementById('gf-check');
       if (!ta || !ct) return;
-      function update() { var n = ta.value.length; ct.textContent = n + ' character' + (n === 1 ? '' : 's'); }
+      function update() {
+        var n = ta.value.length;
+        ct.textContent = n + ' character' + (n === 1 ? '' : 's');
+        // Hand the current line to the Forge, so the checker opens on THIS
+        // ability instead of an empty box.
+        if (gf) {
+          var t = ta.value.trim();
+          gf.href = 'grimforge' + (t ? '?a=' + encodeURIComponent(t) : '');
+        }
+      }
       ta.addEventListener('input', update);
       update();
     })();
