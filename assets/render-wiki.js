@@ -1,0 +1,480 @@
+/* Wiki text renderer — the shared engine behind the text-first pages
+   (/p/{slug}), the news articles and the site-wide announcement banner.
+
+   Everything a writer types is PLAIN TEXT. It is escaped first and then a
+   deliberately small, whitelisted set of marks is turned back into markup, so
+   nothing anyone writes can ever become raw HTML on a page other people read.
+
+   Block marks (one per line, blank line separates blocks):
+
+     # / ## / ### / #### Heading   headings (anchored, feed the contents box)
+     - item  /  * item             bullet list
+     1. item                       numbered list
+     > quoted line                 pull quote
+     ---                           horizontal rule
+     [toc]                         insert the table of contents here
+     | a | b |                     table (an all-dashes row marks the header)
+     ![caption](image.png|right)   image — |left |right |wide are optional
+     ::: note Title                callout box (note/tip/warning/example/lore)
+     …text…
+     :::
+
+   Inline marks:
+
+     **bold**   *italic*   `code`   ~~strike~~
+     [label](https://…)            link (href whitelisted, see safeHref)
+     [[Character Name]]            links to that character's page if the wiki
+                                   has one, otherwise renders as a reminder
+                                   token pill — the same [[TOKEN]] convention
+                                   used on character pages.
+     [[Character Name|as written]] same, with your own label.
+
+   Browser + Worker, like render.js and render-page.js: no DOM access at
+   module top level. The Worker imports it for SSR; the editors load it in the
+   browser so the live preview is byte-identical to the published page. */
+(function () {
+  'use strict';
+
+  /* Character-name -> slug map, so [[Snake Charmer]] can become a real link.
+     The Worker fills it per render from D1; the editors fill it from
+     characters.json. Unknown names fall back to a reminder-token pill. */
+  var charLinks = {};
+  function setCharLinks(map) { charLinks = map || {}; }
+  function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function kebab(s) {
+    return String(s || '').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  }
+
+  /* Placeholders use NUL, which a <textarea> cannot produce, so they can
+     never collide with something the writer actually typed. */
+  var CODE_MARK = '\u0000c';
+  var TOC_MARK = '\u0000toc\u0000';
+
+  /* Only these can ever come out the other side of a [label](href). */
+  function safeHref(raw) {
+    var href = String(raw || '').trim();
+    if (!href) return '';
+    if (/^https?:\/\//i.test(href)) return href;
+    if (/^mailto:[^\s<>]+@[^\s<>]+$/i.test(href)) return href;
+    // '//evil.example' is protocol-relative, i.e. off-site in disguise.
+    if (href.indexOf('//') === 0) return '';
+    // Site-relative: '/scripts', 'c/slug', '#sec-x'. Reject anything with a
+    // scheme (a colon before the first slash) — that's how javascript: hides.
+    if (/^[#/]/.test(href) || !/^[a-z0-9+.-]*:/i.test(href)) return href;
+    return '';
+  }
+
+  /* Image sources are tighter than links: a remote https image, or one of the
+     wiki's own asset folders. Anything else is dropped. */
+  var IMG_PATH_RE = /^(pages|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
+  function safeImg(raw, root) {
+    var src = String(raw || '').trim();
+    if (!src) return '';
+    if (/^https:\/\//i.test(src)) return src;
+    src = src.replace(/^\/?assets\//, '');
+    if (IMG_PATH_RE.test(src)) return (root || '') + 'assets/' + src;
+    return '';
+  }
+
+  /* ── inline marks ──────────────────────────────────────────────
+     Order matters: code spans are pulled out first so their contents are
+     never re-formatted, then links (whose labels are plain text), then the
+     symmetrical marks. */
+  function inlineFormat(text, opts) {
+    opts = opts || {};
+    var root = opts.linkRoot || '';
+    var out = esc(text);
+
+    // `code` — stashed behind a placeholder so **bold** inside it stays literal
+    var codes = [];
+    out = out.replace(/`([^`\n]{1,300})`/g, function (m, code) {
+      codes.push('<code class="wiki-code">' + code + '</code>');
+      return CODE_MARK + (codes.length - 1) + '\u0000';
+    });
+
+    // ![caption](src) inline — only reached when an image is not on its own
+    // line; block images are handled in renderBody.
+    out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
+      function (m, alt, src) {
+        var url = safeImg(src.replace(/&amp;/g, '&'), root);
+        if (!url) return alt;
+        return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+      });
+
+    // [label](href)
+    out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, function (m, label, href) {
+      // esc() already ran, so &amp; inside a URL has to be put back.
+      var url = safeHref(href.replace(/&amp;/g, '&'));
+      if (!url) return label;
+      var external = /^https?:\/\//i.test(url);
+      return '<a href="' + esc(url) + '"' +
+        (external ? ' target="_blank" rel="noopener noreferrer"' : '') +
+        '>' + label + '</a>';
+    });
+
+    // [[Character Name]] / [[Character Name|label]] — a link when the wiki has
+    // that character, otherwise the reminder-token pill used across the site.
+    out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
+      var slug = charLinks[normName(target)];
+      var shown = (label != null && label !== '') ? label : target;
+      if (!slug) return '<span class="tok">' + shown + '</span>';
+      return '<a class="wiki-charlink" href="' + esc(root + 'c/' + slug) + '">' + shown + '</a>';
+    });
+
+    out = out.replace(/~~([^~\n]{1,200})~~/g, '<s>$1</s>');
+    out = out.replace(/\*\*([^*\n]{1,300})\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/(^|[^*])\*([^*\n]{1,300})\*(?!\*)/g, '$1<em>$2</em>');
+
+    return out.replace(/\u0000c(\d+)\u0000/g, function (m, i) { return codes[+i]; });
+  }
+
+  /* ── table of contents ── */
+  function tocHTML(headings, opts) {
+    opts = opts || {};
+    var items = headings.filter(function (h) { return h.level <= 3; });
+    if (items.length < (opts.min || 2)) return '';
+    var top = Math.min.apply(null, items.map(function (h) { return h.level; }));
+    return '<nav class="wiki-toc" aria-label="Contents">' +
+      '<div class="wiki-toc-head">Contents</div>' +
+      '<ol class="wiki-toc-list">' + items.map(function (h) {
+        return '<li class="wiki-toc-l' + (h.level - top) + '">' +
+          '<a href="#' + esc(h.id) + '">' + esc(h.text) + '</a></li>';
+      }).join('') + '</ol></nav>';
+  }
+
+  /* ── blocks ── */
+  var CALLOUT_KINDS = { note: 'Note', tip: 'Tip', warning: 'Warning', example: 'Example', lore: 'Lore' };
+
+  function listBlock(lines, ordered, opts) {
+    var tag = ordered ? 'ol' : 'ul';
+    var cls = ordered ? 'wiki-ol' : 'wiki-ul';
+    return '<' + tag + ' class="' + cls + '">' + lines.map(function (l) {
+      return '<li>' + inlineFormat(l.replace(ordered ? /^\s*\d+[.)]\s+/ : /^\s*[-*]\s+/, ''), opts) + '</li>';
+    }).join('') + '</' + tag + '>';
+  }
+
+  function tableBlock(lines, opts) {
+    var rows = lines.map(function (l) {
+      return l.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(function (c) { return c.trim(); });
+    });
+    // A row of dashes right under the first row marks it as the header.
+    var hasHead = rows.length > 1 && rows[1].every(function (c) { return /^:?-{2,}:?$/.test(c); });
+    var head = hasHead ? rows[0] : null;
+    var body = hasHead ? rows.slice(2) : rows;
+    var html = '<div class="wiki-table-wrap"><table class="wiki-table">';
+    if (head) {
+      html += '<thead><tr>' + head.map(function (c) {
+        return '<th>' + inlineFormat(c, opts) + '</th>';
+      }).join('') + '</tr></thead>';
+    }
+    html += '<tbody>' + body.map(function (r) {
+      return '<tr>' + r.map(function (c) { return '<td>' + inlineFormat(c, opts) + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+    return html;
+  }
+
+  function imageBlock(line, opts) {
+    var m = line.match(/^!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(?:\|(left|right|wide))?\)\s*$/);
+    if (!m) return null;
+    var url = safeImg(m[2], (opts && opts.linkRoot) || '');
+    if (!url) return '';
+    var align = m[3] || '';
+    var caption = m[1] || '';
+    return '<figure class="wiki-figure' + (align ? ' wiki-figure-' + align : '') + '">' +
+      '<img src="' + esc(url) + '" alt="' + esc(caption) + '" loading="lazy" decoding="async">' +
+      (caption ? '<figcaption>' + inlineFormat(caption, opts) + '</figcaption>' : '') +
+      '</figure>';
+  }
+
+  /* Turn a whole body of text into HTML.
+     opts: {linkRoot, headings[] (filled in), toc:'auto'|false} */
+  function renderBody(text, opts) {
+    opts = opts || {};
+    var headings = opts.headings || [];
+    var seen = {};
+    var src = String(text || '').replace(/\r\n/g, '\n').replace(/\t/g, '    ');
+    var lines = src.split('\n');
+    var html = '';
+    var i = 0;
+
+    function headingId(txt) {
+      var base = 'sec-' + (kebab(txt) || 'section');
+      var id = base, n = 2;
+      while (seen[id]) { id = base + '-' + (n++); }
+      seen[id] = 1;
+      return id;
+    }
+
+    function flushPara(buf) {
+      if (!buf.length) return '';
+      return '<p>' + buf.map(function (l) { return inlineFormat(l, opts); }).join('<br>') + '</p>';
+    }
+
+    var para = [];
+    function closePara() { html += flushPara(para); para = []; }
+
+    while (i < lines.length) {
+      var line = lines[i];
+      var trimmed = line.trim();
+
+      // blank line -> paragraph break
+      if (!trimmed) { closePara(); i++; continue; }
+
+      // ::: callout … :::
+      var call = trimmed.match(/^:::\s*([a-z]+)?\s*(.*)$/i);
+      if (call && trimmed.indexOf(':::') === 0 && !/^:::\s*$/.test(trimmed)) {
+        closePara();
+        var kind = String(call[1] || 'note').toLowerCase();
+        if (!CALLOUT_KINDS[kind]) kind = 'note';
+        var label = call[2].trim() || CALLOUT_KINDS[kind];
+        var inner = [];
+        i++;
+        while (i < lines.length && !/^\s*:::\s*$/.test(lines[i])) { inner.push(lines[i]); i++; }
+        i++; // skip the closing :::
+        html += '<div class="wiki-callout wiki-callout-' + kind + '">' +
+          '<div class="wiki-callout-head">' + esc(label) + '</div>' +
+          '<div class="wiki-callout-body">' + renderBody(inner.join('\n'), {
+            linkRoot: opts.linkRoot, headings: headings, nested: true
+          }) + '</div></div>';
+        continue;
+      }
+
+      // heading
+      var h = trimmed.match(/^(#{1,4})\s+(.+?)\s*#*$/);
+      if (h) {
+        closePara();
+        var level = h[1].length;
+        var htext = h[2].trim();
+        var id = headingId(htext);
+        headings.push({ level: level, id: id, text: htext.replace(/[*`~]/g, '') });
+        var tag = 'h' + Math.min(level + 1, 5);   // # -> h2, the page title is the h1
+        html += '<' + tag + ' class="wiki-h wiki-h' + level + '" id="' + id + '">' +
+          '<a class="sec-anchor" href="#' + id + '">' + inlineFormat(htext, opts) + '</a></' + tag + '>';
+        i++; continue;
+      }
+
+      // [toc]
+      if (/^\[toc\]$/i.test(trimmed)) {
+        closePara();
+        html += TOC_MARK;
+        i++; continue;
+      }
+
+      // horizontal rule
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+        closePara();
+        html += '<hr class="wiki-rule">';
+        i++; continue;
+      }
+
+      // block image on its own line
+      if (/^!\[/.test(trimmed)) {
+        var fig = imageBlock(trimmed, opts);
+        if (fig !== null) { closePara(); html += fig; i++; continue; }
+      }
+
+      // table
+      if (/^\|.*\|\s*$/.test(trimmed)) {
+        closePara();
+        var trows = [];
+        while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { trows.push(lines[i].trim()); i++; }
+        html += tableBlock(trows, opts);
+        continue;
+      }
+
+      // blockquote
+      if (/^>\s?/.test(trimmed)) {
+        closePara();
+        var quote = [];
+        while (i < lines.length && /^\s*>\s?/.test(lines[i])) {
+          quote.push(lines[i].trim().replace(/^>\s?/, '')); i++;
+        }
+        html += '<blockquote class="wiki-quote">' +
+          renderBody(quote.join('\n'), { linkRoot: opts.linkRoot, headings: headings, nested: true }) +
+          '</blockquote>';
+        continue;
+      }
+
+      // bullet / numbered list
+      var bullet = /^[-*]\s+/.test(trimmed);
+      var numbered = /^\d+[.)]\s+/.test(trimmed);
+      if (bullet || numbered) {
+        closePara();
+        var items = [];
+        var re = bullet ? /^\s*[-*]\s+/ : /^\s*\d+[.)]\s+/;
+        while (i < lines.length && re.test(lines[i])) { items.push(lines[i].trim()); i++; }
+        html += listBlock(items, numbered, opts);
+        continue;
+      }
+
+      para.push(trimmed);
+      i++;
+    }
+    closePara();
+
+    // The contents box is built last, once every heading is known — including
+    // headings inside callouts and quotes, which render through a nested call.
+    // A nested call leaves the [toc] marker alone so the outer one fills it.
+    if (opts.nested) return html;
+    if (html.indexOf(TOC_MARK) !== -1) {
+      html = html.split(TOC_MARK).join(tocHTML(headings, { min: 2 }));
+    } else if (opts.toc === 'auto') {
+      var auto = tocHTML(headings, { min: 3 });
+      if (auto) html = auto + html;
+    }
+    return html;
+  }
+
+  /* First ~200 characters of the body, marks stripped — used for card
+     summaries and the meta description when the author didn't write one. */
+  function autoSummary(text, max) {
+    var flat = String(text || '')
+      .replace(/\r\n/g, '\n')
+      .replace(/^\s*:::.*$/gm, '')
+      .replace(/^\s*\|.*$/gm, '')
+      .replace(/^\s*#{1,4}\s+/gm, '')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/^\s*\d+[.)]\s+/gm, '')
+      .replace(/^\s*>\s?/gm, '')
+      .replace(/!\[([^\]\n]*)\]\([^)\s]*\)/g, '')
+      .replace(/\[\[([^\]|\n]*)(?:\|([^\]\n]*))?\]\]/g, function (m, a, b) { return b || a; })
+      .replace(/\[([^\]\n]*)\]\([^)\s]*\)/g, '$1')
+      .replace(/[*`~]/g, '')
+      .replace(/\[toc\]/gi, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    var n = max || 200;
+    return flat.length > n ? flat.slice(0, n - 1).replace(/\s+\S*$/, '') + '…' : flat;
+  }
+
+  function formatDate(ts) {
+    if (!ts) return '';
+    var d = new Date(String(ts).replace(' ', 'T') + (/[Z+]/.test(String(ts)) ? '' : 'Z'));
+    if (isNaN(d)) return String(ts).slice(0, 10);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  /* ── side boxes ──
+     The same {title, content} shape as the custom boxes on character pages,
+     so one editor widget serves character, script, collection, wiki and news
+     pages. Content goes through the full renderer, so a box can hold a list
+     or a small table. */
+  function renderBoxes(boxes, opts) {
+    return (boxes || []).map(function (b) {
+      var title = String((b && b.title) || '').trim();
+      var content = String((b && b.content) || '');
+      if (!title && !content.trim()) return '';
+      return '<div class="card custom-box">' +
+        (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +
+        '<div class="custom-box-body">' + renderBody(content, { linkRoot: (opts || {}).linkRoot }) + '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  /* Fact box: a title, an optional image and any number of Label / value
+     rows. Reuses the character info-card styling. */
+  function renderInfobox(info, opts) {
+    if (!info) return '';
+    var rows = (info.rows || []).filter(function (r) { return r && (r.label || r.value); });
+    var img = safeImg(info.image, (opts || {}).linkRoot);
+    if (!rows.length && !img && !info.title) return '';
+    return '<div class="card char-infocard wiki-infobox">' +
+      (img ? '<img class="wiki-info-img" src="' + esc(img) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      '<h2 class="info-h">' + esc(info.title || 'Information') + '</h2>' +
+      (rows.length ? '<dl class="info">' + rows.map(function (r) {
+        return '<dt>' + esc(r.label || '') + '</dt><dd>' + inlineFormat(r.value || '', opts) + '</dd>';
+      }).join('') + '</dl>' : '') +
+      '</div>';
+  }
+
+  /* ── the /p/{slug} page body ──
+     p: {slug, title, subtitle, body, author, header, infobox, boxes[], toc,
+         parentType, parentSlug, parentName, updatedAt}
+     opts: {linkRoot, isDraft} */
+  function renderWikiPage(p, opts) {
+    opts = opts || {};
+    var root = opts.linkRoot || '';
+    var io = { linkRoot: root };
+
+    var parentHref = p.parentType === 'collection'
+      ? root + 'collection/' + encodeURIComponent(p.parentKey || p.parentSlug || '')
+      : root + 's/' + encodeURIComponent(p.parentKey || p.parentSlug || '');
+    var crumb = p.parentName
+      ? '<p class="wiki-crumb"><a href="' + esc(parentHref) + '">&larr; ' + esc(p.parentName) + '</a></p>'
+      : '';
+
+    var banner = p.header
+      ? (function () {
+          var url = safeImg(p.header, root);
+          return url ? '<div class="wiki-banner-wrap"><img class="wiki-banner" src="' + esc(url) + '" alt=""></div>' : '';
+        })()
+      : '';
+
+    var metaParts = [];
+    if (p.author) {
+      metaParts.push('by <a class="author-link" href="' + esc(root) + 'author?a=' +
+        encodeURIComponent(p.author) + '">' + esc(p.author) + '</a>');
+    }
+    if (p.updatedAt) metaParts.push('updated ' + esc(formatDate(p.updatedAt)));
+    if (opts.isDraft) metaParts.push('DRAFT');
+
+    var headings = [];
+    var bodyHTML = renderBody(p.body, {
+      linkRoot: root, headings: headings, toc: p.toc === false ? false : 'auto'
+    });
+
+    var side = renderInfobox(p.infobox, io) + renderBoxes(p.boxes, io);
+
+    return '<article class="wiki-page">' +
+      crumb + banner +
+      '<header class="wiki-page-head">' +
+        '<h1 class="wiki-title">' + esc(p.title || 'Untitled') + '</h1>' +
+        (p.subtitle ? '<p class="wiki-subtitle">' + esc(p.subtitle) + '</p>' : '') +
+        (metaParts.length ? '<p class="wiki-meta">' + metaParts.join(' &middot; ') + '</p>' : '') +
+      '</header>' +
+      '<div class="wiki-layout' + (side ? '' : ' wiki-layout-full') + '">' +
+        '<div class="wiki-body">' + bodyHTML + '</div>' +
+        (side ? '<aside class="wiki-side">' + side + '</aside>' : '') +
+      '</div>' +
+    '</article>';
+  }
+
+  /* ── the "Pages" list shown on the parent script/collection page ──
+     Each entry is a link with the author's own blurb underneath. Drafts are
+     only ever passed in for someone who may see them. */
+  function renderPageLinks(pages, opts) {
+    opts = opts || {};
+    var root = opts.linkRoot || '';
+    if (!pages || !pages.length) return '';
+    return '<div class="wiki-pagelinks">' + pages.map(function (p) {
+      return '<a class="wiki-pagelink" href="' + esc(root + 'p/' + encodeURIComponent(p.slug)) + '">' +
+        '<span class="wiki-pagelink-title">' + esc(p.title || 'Untitled') +
+          (p.status === 'draft' ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
+        '</span>' +
+        (p.blurb ? '<span class="wiki-pagelink-blurb">' + esc(p.blurb) + '</span>' : '') +
+      '</a>';
+    }).join('') + '</div>';
+  }
+
+  var API = {
+    setCharLinks: setCharLinks,
+    esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
+    inlineFormat: inlineFormat, renderBody: renderBody, tocHTML: tocHTML,
+    autoSummary: autoSummary, formatDate: formatDate,
+    renderBoxes: renderBoxes, renderInfobox: renderInfobox,
+    renderWikiPage: renderWikiPage, renderPageLinks: renderPageLinks,
+    CALLOUT_KINDS: CALLOUT_KINDS
+  };
+
+  if (typeof window !== 'undefined') window.WikiRender = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})();

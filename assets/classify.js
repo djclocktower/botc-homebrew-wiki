@@ -190,19 +190,6 @@
     return '';
   }
 
-  /* The same status spelled out, for the Information tables on character,
-     script and collection pages. A lone glyph in a data table reads as a
-     typo; next to its own label it reads as a field. */
-  function classRowHTML(cls, opts) {
-    if (cls === 'starlight') {
-      return classBadgeHTML('starlight', opts) + ' Starlight' +
-        ((opts && opts.from) ? ' <span class="starlight-from">(via ' +
-          String(opts.from).replace(/&/g, '&amp;').replace(/</g, '&lt;') + ')</span>' : '');
-    }
-    if (cls === 'partial') return classBadgeHTML('partial');
-    return '';
-  }
-
   /* Weighted pick used by Featured / random rotations. Starlight entries get
      STARLIGHT_WEIGHT tickets in the hat instead of one; Partial entries are
      not in the hat at all. `rand` defaults to Math.random so the Worker can
@@ -250,7 +237,6 @@
     hasIcon: hasIcon, hasAlmanac: hasAlmanac, hasTags: hasTags,
     hasMechanics: hasMechanics,
     needsIcon: needsIcon, isRulesPage: isRulesPage, RULES_TEAMS: RULES_TEAMS,
-    classRowHTML: classRowHTML,
     isPartial: isPartial, isStarlight: isStarlight,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,

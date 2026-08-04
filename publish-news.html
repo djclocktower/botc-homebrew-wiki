@@ -38,12 +38,29 @@
 #n-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
 #n-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
 #n-status a { color:inherit; font-weight:700; }
-.fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.6; margin:6px 0 0; }
+.fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.7; margin:8px 0 0; }
 .fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
 /* Live preview reuses the real article styles so what you see is what ships. */
 .news-preview { background:var(--parch); border:2px solid var(--parch-frame); padding:14px 16px; margin-bottom:18px; }
 .news-preview > h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 10px; font-size:1.2rem; }
 .news-preview .news-article { border-width:2px; padding:16px 18px; }
+/* Collapsible optional sections, same as the script/collection editors. */
+details.sb-details { padding:0; }
+details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.15rem; }
+details.sb-details > summary::-webkit-details-marker { display:none; }
+details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
+details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > .sb-details-body { padding:4px 20px 18px; }
+.sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.th-row:last-child { border-bottom:none; }
+.th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:150px; border:1px solid #cdbfa0; display:none; }
+#n-body { border-top:none; }
 .article-list { list-style:none; margin:0; padding:0; }
 .article-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(180,160,120,.35); }
 .article-row:last-child { border-bottom:none; }
@@ -121,7 +138,7 @@
           </div>
           <div class="sb-fld">
             <label for="n-image">Hero image <span class="opt">(optional path or URL)</span></label>
-            <input type="text" id="n-image" placeholder="scripts/my-banner.png">
+            <input type="text" id="n-image" placeholder="news/my-banner.png">
           </div>
         </div>
 
@@ -132,20 +149,94 @@
 
         <div class="sb-fld">
           <label for="n-body">Article <span class="req">*</span></label>
+          <div id="n-toolbar"></div>
           <textarea id="n-body" placeholder="Write your article here…"></textarea>
           <p class="fmt-help">
             Blank line = new paragraph &middot;
-            <code>## Heading</code> &middot;
-            <code>- bullet</code> &middot;
-            <code>**bold**</code> &middot;
-            <code>*italic*</code> &middot;
+            <code># Heading</code> <code>## Smaller</code> &middot;
+            <code>- bullet</code> &middot; <code>1. numbered</code> &middot;
+            <code>**bold**</code> <code>*italic*</code> <code>`code`</code> <code>~~strike~~</code> &middot;
+            <code>&gt; quote</code> &middot; <code>---</code> rule &middot;
             <code>[link text](https://example.com)</code> — internal links work too,
-            e.g. <code>[the Cartographer](/c/cartographer)</code>.
+            e.g. <code>[the Cartographer](/c/cartographer)</code> &middot;
+            <code>[[Cartographer]]</code> links straight to a character &middot;
+            <code>| a | b |</code> table rows &middot;
+            <code>![caption](news/my-image.png|right)</code> image &middot;
+            <code>::: note Title</code> … <code>:::</code> callout box &middot;
+            <code>[toc]</code> places the contents box.
           </p>
         </div>
 
+        <label class="sb-check"><input type="checkbox" id="n-toc"> Add a contents box to long articles</label>
         <label class="sb-check"><input type="checkbox" id="n-pinned"> Pin this article to the top of the news list</label>
       </div>
+
+      <details class="sb-details" id="n-images-sec">
+        <summary>Images <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — upload the hero image, plus any images you want to drop into the article.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld">
+            <label for="n-hero-file">Hero image upload</label>
+            <input type="file" id="n-hero-file" accept="image/*">
+            <img id="n-hero-prev" class="sb-header-prev" alt="hero preview">
+            <div id="n-hero-note" class="sub" style="margin-top:6px">Save the article once first — uploads are filed under its name.</div>
+          </div>
+          <div class="sb-fld">
+            <label for="n-image-add">Images for the article body</label>
+            <input type="file" id="n-image-add" accept="image/*">
+            <ul class="article-list" id="n-image-list"></ul>
+          </div>
+        </div>
+      </details>
+
+      <details class="sb-details" id="n-side-sec">
+        <summary>Side boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — a fact box and custom boxes alongside the article text.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld-row">
+            <div class="sb-fld">
+              <label for="n-info-title">Fact box title</label>
+              <input type="text" id="n-info-title" maxlength="80" placeholder="e.g. At a glance">
+            </div>
+            <div class="sb-fld">
+              <label for="n-info-image">Fact box image <span class="opt">(an uploaded path)</span></label>
+              <input type="text" id="n-info-image" maxlength="300" placeholder="news/my-article-1.png">
+            </div>
+          </div>
+          <div class="sb-fld">
+            <label>Fact box rows</label>
+            <div id="n-info-rows"></div>
+            <button type="button" class="th-clear" id="n-info-add">+ Add row</button>
+          </div>
+          <div class="sb-fld" style="margin-top:16px">
+            <label>Custom boxes</label>
+            <div id="n-boxes"></div>
+            <button type="button" class="th-clear" id="n-box-add">+ Add a box</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="sb-details" id="n-appearance">
+        <summary>Article appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — background image, heading font and colors, same kit as the script and collection pages.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld">
+            <label for="n-bg">Page background <span class="opt">(large image, shown behind the article)</span></label>
+            <input type="file" id="n-bg" accept="image/*">
+            <img id="n-bg-prev" class="sb-header-prev" alt="background preview">
+            <div id="n-bg-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="n-bg-remove" style="display:none;margin-top:6px">Remove background</button>
+          </div>
+          <div class="sb-fld">
+            <label for="th-font">Heading font</label>
+            <select id="th-font"></select>
+          </div>
+          <div class="sb-fld">
+            <label>Colors <span class="opt">(leave unset to keep the wiki look)</span></label>
+            <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
+            <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
+            <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
+            <div class="th-row"><label for="th-link">Links</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
+          </div>
+        </div>
+      </details>
 
       <div class="news-preview">
         <h2>Preview</h2>
@@ -171,7 +262,12 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/render-wiki.js"></script>
   <script src="assets/render-news.js"></script>
+  <script src="assets/theme-editor.js"></script>
+  <script src="assets/wiki-editor.js"></script>
   <script>
   (function(){
     function $(id){ return document.getElementById(id); }
@@ -182,6 +278,10 @@
       try { return new URLSearchParams(location.search).get('n') || ''; } catch(e){ return ''; }
     })();
     var currentStatus = 'draft';
+    var theme = {};
+    var images = [];
+    var heroData = null, bgData = null, bgPath = '', removeBg = false;
+    var boxesUI = null, infoUI = null;
 
     function say(cls, html){
       var el = $('n-status');
@@ -189,7 +289,24 @@
       el.innerHTML = html || '';
     }
 
+    function api(url, body){
+      return fetch(url, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function(r){ return r.json(); }).then(function(j){
+        if (!j || j.error) throw new Error((j && j.error) || 'Something went wrong.');
+        return j;
+      });
+    }
+    function upload(key, dataUrl){ return api('/api/upload', { key: key, data: dataUrl }); }
+
     function collect(){
+      var t = {};
+      Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
+      if (bgData && editingSlug) t.background = 'news/' + editingSlug + '-bg.png';
+      else if (!removeBg && bgPath) t.background = bgPath;
+      else delete t.background;
       return {
         slug: editingSlug || undefined,
         title: $('n-title').value.trim(),
@@ -197,7 +314,11 @@
         summary: $('n-summary').value.trim(),
         image: $('n-image').value.trim(),
         body: $('n-body').value,
-        pinned: $('n-pinned').checked
+        pinned: $('n-pinned').checked,
+        toc: $('n-toc').checked,
+        boxes: boxesUI ? boxesUI.gather() : [],
+        infobox: infoUI ? infoUI.gather($('n-info-title').value, $('n-info-image').value) : null,
+        theme: window.PageRender.sanitizeTheme(t, 'news/' + (editingSlug || 'new'))
       };
     }
 
@@ -205,7 +326,89 @@
       var a = collect();
       a.publishedAt = new Date().toISOString();
       $('n-preview').innerHTML = window.NewsRender.renderArticle(a, { linkRoot: '' });
+      if (heroData) {
+        var img = $('n-preview').querySelector('.news-hero');
+        if (img) img.src = heroData;
+      }
     }
+
+    // ── images (uploaded under news/{slug}-*, so an article owns its files) ──
+    function renderImages(){
+      $('n-image-list').innerHTML = images.map(function(path){
+        return '<li class="article-row">' +
+          '<code style="font-size:.78rem">' + esc(path) + '</code>' +
+          '<button type="button" class="th-clear" data-insert="' + esc(path) + '">Insert into text</button>' +
+        '</li>';
+      }).join('');
+    }
+    $('n-image-list').addEventListener('click', function(e){
+      var ins = e.target.getAttribute('data-insert');
+      if (!ins) return;
+      var ta = $('n-body'), at = ta.selectionStart;
+      var mark = '![caption](' + ins + '|right)';
+      ta.value = ta.value.slice(0, at) + (at && ta.value[at-1] !== '\n' ? '\n\n' : '') + mark + '\n' + ta.value.slice(at);
+      ta.dispatchEvent(new Event('input', { bubbles: true }));
+      ta.focus();
+    });
+
+    function pickImage(file, maxW, done){
+      var rd = new FileReader();
+      rd.onload = function(ev){
+        var img = new Image();
+        img.onload = function(){
+          var w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          done(cv.toDataURL('image/png'));
+        };
+        img.src = ev.target.result;
+      };
+      rd.readAsDataURL(file);
+    }
+
+    $('n-hero-file').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      pickImage(f, 1400, function(d){
+        heroData = d;
+        var pv = $('n-hero-prev'); pv.src = d; pv.style.display = 'block';
+        $('n-hero-note').textContent = 'New hero image ready — it uploads when you save.';
+        preview();
+      });
+    });
+    $('n-bg').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      pickImage(f, 1600, function(d){
+        bgData = d; removeBg = false;
+        var pv = $('n-bg-prev'); pv.src = d; pv.style.display = 'block';
+        $('n-bg-note').textContent = 'New background ready — it uploads when you save.';
+        $('n-bg-remove').style.display = '';
+      });
+    });
+    $('n-bg-remove').addEventListener('click', function(){
+      bgData = null; removeBg = true; bgPath = '';
+      $('n-bg-prev').style.display = 'none';
+      $('n-bg-note').textContent = 'Background removed — save to apply.';
+      this.style.display = 'none';
+    });
+    $('n-image-add').addEventListener('change', function(e){
+      var f = e.target.files[0]; if (!f) return;
+      if (!editingSlug) {
+        say('err', 'Save the article once (Save as Draft is fine) before uploading body images — they are filed under its name.');
+        e.target.value = '';
+        return;
+      }
+      pickImage(f, 1200, function(d){
+        var key = 'news/' + editingSlug + '-' + (images.length + 1) + '-' + Date.now().toString(36) + '.png';
+        say('work', 'Uploading image…');
+        upload(key, d).then(function(){
+          images.push(key); renderImages();
+          say('ok', 'Image uploaded. Use <strong>Insert into text</strong> to place it.');
+        }).catch(function(err){ say('err', esc(err.message)); });
+      });
+      e.target.value = '';
+    });
 
     function setPill(status){
       currentStatus = status;
@@ -223,27 +426,43 @@
       $('page-title').textContent = 'Edit News Article';
     }
 
+    // A brand-new article is saved first so the server hands back its slug;
+    // only then do the hero image and background have a slot to upload into,
+    // which needs a second save to record the paths.
     function save(status){
       var a = collect();
       if (!a.title) { say('err', 'Give the article a title first.'); return; }
       if (!a.body.trim()) { say('err', 'Write the article body first.'); return; }
       a.status = status;
+      a.images = images.slice();
       say('work', 'Saving…');
-      fetch('/api/admin/news', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(a)
-      }).then(function(r){ return r.json(); }).then(function(d){
-        if (d.error) { say('err', esc(d.error)); return; }
+      api('/api/admin/news', a).then(function(d){
         editingSlug = d.slug;
+        var jobs = [];
+        if (heroData) jobs.push(upload('news/' + d.slug + '.png', heroData));
+        if (bgData) jobs.push(upload('news/' + d.slug + '-bg.png', bgData));
+        if (!jobs.length) return d;
+        say('work', 'Uploading images…');
+        return Promise.all(jobs).then(function(){
+          if (heroData) { $('n-image').value = 'news/' + d.slug + '.png'; heroData = null; }
+          if (bgData) { theme.background = 'news/' + d.slug + '-bg.png'; bgPath = theme.background; bgData = null; }
+          var again = collect();
+          again.status = status;
+          again.slug = d.slug;
+          again.images = images.slice();
+          return api('/api/admin/news', again);
+        });
+      }).then(function(d){
         setPill(d.status);
         showUrl();
+        preview();
         // Keep the address bar in step so a refresh reopens the same article.
         try { history.replaceState(null, '', 'publish-news?n=' + encodeURIComponent(d.slug)); } catch(e){}
         say('ok', d.status === 'published'
           ? 'Published. <a href="news/' + encodeURIComponent(d.slug) + '">View the article →</a>'
           : 'Saved as a draft. Only admins can see it.');
         loadList();
-      }).catch(function(){ say('err', 'Could not reach the server. Try again.'); });
+      }).catch(function(err){ say('err', esc(err.message || 'Could not reach the server. Try again.')); });
     }
 
     function del(){
@@ -287,6 +506,30 @@
           $('n-image').value = a.image || '';
           $('n-body').value = a.body || '';
           $('n-pinned').checked = !!a.pinned;
+          $('n-toc').checked = !!a.toc;
+          images = (a.images || []).slice();
+          theme = a.theme || {};
+          if (theme.background) {
+            bgPath = theme.background;
+            var bv = $('n-bg-prev'); bv.src = 'assets/' + bgPath; bv.style.display = 'block';
+            $('n-bg-note').textContent = 'Current background — choose a file to replace it.';
+            $('n-bg-remove').style.display = '';
+          }
+          if (a.image) {
+            var hv = $('n-hero-prev');
+            hv.src = /^https?:\/\//i.test(a.image) ? a.image : 'assets/' + a.image;
+            hv.style.display = 'block';
+            $('n-hero-note').textContent = 'Current hero image — choose a file to replace it.';
+          }
+          if (a.infobox) {
+            $('n-info-title').value = a.infobox.title || '';
+            $('n-info-image').value = a.infobox.image || '';
+            infoUI.load(a.infobox);
+            $('n-side-sec').open = true;
+          }
+          if (a.boxes && a.boxes.length) { boxesUI.load(a.boxes); $('n-side-sec').open = true; }
+          if (window.ThemeEditor.prime(theme)) $('n-appearance').open = true;
+          renderImages();
           setPill(a.status);
           showUrl();
           preview();
@@ -297,13 +540,23 @@
     fetch('/api/me').then(function(r){ return r.json(); }).then(function(me){
       if (!me || !me.isAdmin) { $('gate').style.display = ''; return; }
       $('editor').style.display = '';
-      ['n-title','n-author','n-summary','n-image','n-body'].forEach(function(id){
+      window.WikiEditor.toolbar($('n-body'), $('n-toolbar'));
+      boxesUI = window.WikiEditor.boxes($('n-boxes'), $('n-box-add'), { onChange: preview });
+      infoUI = window.WikiEditor.infobox($('n-info-rows'), $('n-info-add'), { onChange: preview });
+      window.ThemeEditor.wire({
+        get: function(){ return theme; },
+        set: function(t){ theme = t; }
+      });
+      ['n-title','n-author','n-summary','n-image','n-body','n-info-title','n-info-image'].forEach(function(id){
         $(id).addEventListener('input', preview);
       });
+      ['n-toc','n-pinned'].forEach(function(id){ $(id).addEventListener('change', preview); });
       $('n-publish').addEventListener('click', function(){ save('published'); });
       $('n-draft').addEventListener('click', function(){ save('draft'); });
       $('n-delete').addEventListener('click', del);
       setPill('draft');
+      // [[Character Name]] resolves in the preview the same way it does live.
+      window.WikiEditor.loadCharLinks().then(preview);
       loadArticle();
       loadList();
     }).catch(function(){ $('gate').style.display = ''; });
