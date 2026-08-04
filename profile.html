@@ -239,6 +239,21 @@
         '<span class="pin-kind">' + esc(p.type) + '</span></span></a>';
     }
 
+    // Custom wiki pages this creator has written. They are unlisted everywhere
+    // else on the site, so this and their parent page are the only ways in.
+    function pageLink(p) {
+      var parent = p.parentName
+        ? ' <span class="wiki-pagelink-blurb" style="display:inline">· in ' + esc(p.parentName) + '</span>'
+        : '';
+      return '<a class="wiki-pagelink" href="/p/' + encodeURIComponent(p.slug) + '">' +
+        '<span class="wiki-pagelink-title">' + esc(p.title) + '</span>' +
+        (p.blurb ? '<span class="wiki-pagelink-blurb">' + esc(p.blurb) + parent + '</span>'
+                 : (parent ? '<span class="wiki-pagelink-blurb">in ' + esc(p.parentName) + '</span>' : '')) +
+        '</a>';
+    }
+
+    // `title` may carry markup (the Drafts heading has a badge), so it is not
+    // escaped here — every caller passes a literal or an esc()'d value.
     function section(title, inner, id) {
       return '<section class="landing-section"' + (id ? ' id="' + id + '"' : '') + '>' +
         '<h2 class="type-header">' + title + '</h2>' +
@@ -257,6 +272,7 @@
       if (counts.characters) bits.push(plural(counts.characters, 'character'));
       if (counts.scripts) bits.push(plural(counts.scripts, 'script'));
       if (counts.collections) bits.push(plural(counts.collections, 'collection'));
+      if (counts.pages) bits.push(plural(counts.pages, 'page'));
       if (counts.drafts) bits.push(plural(counts.drafts, 'draft'));
 
       // Names this creator is credited under that are not just their profile
@@ -373,6 +389,12 @@
         html += section('Collections', '<div class="collections-grid">' +
           data.collections.map(collectionTile).join('') + '</div>', 'sec-collections');
       }
+      // Wiki pages are unlisted everywhere else, so this is one of only two
+      // ways to reach them (the other is their parent script/collection page).
+      if ((data.pages || []).length) {
+        html += section('Pages', '<div class="wiki-pagelinks wiki-pagelinks-dark">' +
+          data.pages.map(pageLink).join('') + '</div>', 'sec-pages');
+      }
 
       // Drafts, for the only two people who can act on them: the owner of the
       // profile and the admins. Clearly walled off so nobody mistakes an
@@ -440,6 +462,7 @@
         characters: data.characters.length,
         scripts: data.scripts.length,
         collections: data.collections.length,
+        pages: (data.pages || []).length,
         drafts: d.characters.length + d.scripts.length + d.collections.length
       }, me);
       renderBody(data, me);

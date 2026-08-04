@@ -1,0 +1,592 @@
+{
+  "collection": {
+    "id": "megalomania",
+    "slug": "megalomania",
+    "displayName": "Megalomania",
+    "author": "Ma'ayan",
+    "description": "Megalomania (Ω) is Ma'ayan's collection of homebrew characters that they believe are of an adequate quality to be included in custom scripts.",
+    "tagline": "Homebrew characters of an adequate quality for any custom script.",
+    "version": "",
+    "difficulty": "",
+    "synopsis": "",
+    "gameplay": "",
+    "strategyGood": "",
+    "strategyEvil": "",
+    "match": [
+      "megalomania"
+    ],
+    "include": [],
+    "exclude": [],
+    "header": "",
+    "logo": "",
+    "starlight": true
+  },
+  "characters": [
+    {
+      "slug": "middleman",
+      "name": "Middleman",
+      "team": "townsfolk",
+      "ability": "Each day, you may visit the Storyteller to learn a statement you should make to another player to help your team win (you don't know who).",
+      "art": "art/middleman.png",
+      "page": "c/middleman",
+      "image": "https://botchomebrew.wiki/assets/art/middleman.png",
+      "creator": "Ma'ayan",
+      "lede": "The Middleman learns key information, but doesn't know who needs to hear it.",
+      "summaryBullets": [],
+      "howToRun": [
+        "Each day, when the Middleman visits you to receive their statement, give them a useful statement they should say to another player, without telling them who.",
+        "This statement can be information that can be publicly outed, or a statement that they should keep to themselves."
+      ],
+      "callout": "",
+      "examples": [
+        "Jai visits the Storyteller and learns \"Don't protect that player\". This is because Seb, the Monk, protected the Banshee last night.",
+        "Katie visits the Storyteller and learns \"Use your ability on Will\". This is because Will is the Damsel, and the Huntsman hasn't used their ability yet.",
+        "Astra was turned evil by the Bounty Hunter and learns \"Don't guess Seb as the Damsel\"."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "So looking at it bro, we gotta go ahead and get at least 10,000.",
+      "appearsIn": "Megalomania",
+      "tags": "Consult, Information, Social",
+      "translatedBy": "",
+      "iconBy": "",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "purifier",
+      "name": "Purifier",
+      "team": "townsfolk",
+      "ability": "Once per game, you may publicly choose a Demon character. If it is in play, 1 good player learns this tonight.",
+      "art": "art/purifier.png",
+      "page": "c/purifier",
+      "image": "https://botchomebrew.wiki/assets/art/purifier.png",
+      "creator": "Ma'ayan",
+      "lede": "The Purifier can find the Demon and purify them.",
+      "summaryBullets": [
+        "During the day, the Purifier may claim to be the Purifier and choose any Demon character.",
+        "If the Purifier chose an in-play Demon, a good player is told that Demon is in play that night."
+      ],
+      "howToRun": [
+        "If the Purifier uses their ability during the day and names a Demon character & it is in play, mark that Demon with the [[PURIFIED]] reminder token. That night, mark a good player with the [[KNOWS]] reminder token. Wake them and show them the Purifier character token, then the marked Demon character token. Put them to sleep."
+      ],
+      "callout": "",
+      "examples": [
+        "The Purifier publicly chooses the No Dashii. That night, the Empath is woken and told there is a No Dashii in play because the No Dashii is the in-play Demon.",
+        "The Purifier publicly chooses the Vortox, which is in play. That night, the Gloof is woken and told there is a Fang Gu in play.",
+        "The Purifier publicly chooses the Imp, which is not in play. Nothing happens."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "The most professional curse ever snarled or croaked or thundered can have no effect on a pure heart.",
+      "appearsIn": "Megalomania",
+      "tags": "Once Per Game, Public, Information",
+      "translatedBy": "",
+      "iconBy": "Adapted from Gianna Calisi",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Knows",
+        "Purified"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "duokro",
+      "name": "Duokro",
+      "team": "outsider",
+      "ability": "If a Minion dies at night, you become their character and alignment.",
+      "art": "art/duokro.png",
+      "page": "c/duokro",
+      "image": "https://botchomebrew.wiki/assets/art/duokro.png",
+      "creator": "Ma'ayan",
+      "lede": "The Duokro gives the evil team the option to sacrifice themselves for additional power.",
+      "summaryBullets": [
+        "If a Minion dies at night, by any means, the Duokro takes over their role and joins their team.",
+        "The Duokro does not learn who the Minion or Demon are when they become an evil Minion."
+      ],
+      "howToRun": [
+        "If a Minion died tonight, place the [[IMITATED]] reminder token on them. Wake the Duokro and show them the YOU ARE info token, then the character token of the Minion that died and show them a thumbs down. Put the Duokro (now a Minion) back to sleep."
+      ],
+      "callout": "",
+      "examples": [
+        "The Imp chooses to kill the Poisoner on the 2nd night. The Duokro becomes the evil Poisoner but cannot use their ability tonight.",
+        "Squ4ll, the Assassin, chooses to kill themselves with their ability. Barch, the Duokro, immediately becomes the evil Assassin and uses their ability to kill Luis, the Savant.",
+        "It is the final day with 3 players remaining, and Chal, the Duokro, has not changed characters. They declare to the town that no Minions were killed in the night."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "Tomorrow when the farm boys find this freak of nature, they will wrap his body in newspaper and carry him to the museum. But tonight he is alive and in the north field with his mother. It is a perfect summer evening: the moon rising over the orchard, the wind in the grass. And as he stares into the sky, there are twice as many stars as usual.",
+      "appearsIn": "Megalomania",
+      "tags": "Character Change, Alignment Change, Death",
+      "translatedBy": "",
+      "iconBy": "Adapted from _abbyswurld",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Imitated"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "gloof",
+      "name": "Gloof",
+      "team": "outsider",
+      "ability": "When you learn that you died, publicly choose a Demon character: if it is in play, your team loses.",
+      "art": "art/gloof.png",
+      "page": "c/gloof",
+      "image": "https://botchomebrew.wiki/assets/art/gloof.png",
+      "creator": "Ma'ayan",
+      "lede": "The Gloof might lose the game if they don't carefully pay attention to the Demon.",
+      "summaryBullets": [
+        "When the Gloof dies, they must declare a Demon character on the script.",
+        "If the Demon character is in play, the Gloof's team immediately loses.",
+        "It is not the Storyteller's responsibility to prompt the Gloof, and not claiming to be the Gloof after dying is considered cheating."
+      ],
+      "howToRun": [
+        "When the Gloof player is declared dead, they must declare they are the Gloof and name a Demon character. They should be given sufficient time to make this decision. If they chose a Demon that is in play, declare that the game is over and the evil team has won (if the Gloof is evil, declare that the good team has won instead)."
+      ],
+      "callout": "",
+      "examples": [
+        "The Gloof is executed and claims to be the Gloof. They publicly choose the Vortox. The Demon in play is the Fang Gu. The game continues and night falls.",
+        "The Gloof is killed at night and is announced as dead in the morning. They claim to be the Gloof and choose the Zombuul. The Demon in play is the Zombuul, and the good teams loses immediately."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "What does the Gloof say?",
+      "appearsIn": "Megalomania",
+      "tags": "Loss Condition, On Death, Public",
+      "translatedBy": "",
+      "iconBy": "Adapted from Marinda Zimmerman",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "phantom",
+      "name": "Phantom",
+      "team": "outsider",
+      "ability": "You think you are another Outsider. If you died today or tonight, 1 of your living neighbors might die.",
+      "art": "art/phantom.png",
+      "page": "c/phantom",
+      "image": "https://botchomebrew.wiki/assets/art/phantom.png",
+      "creator": "Ma'ayan",
+      "lede": "The Phantom spreads paranoia among the Outsiders.",
+      "summaryBullets": [
+        "The Phantom receives a different Outsider token, and believe they have that Outsider's ability.",
+        "When the Phantom dies, one of their living neighbors might die as a signal that they may not be causing damage to the town as they believe.",
+        "If the Phantom believes their ability chooses or gains information, they will wake as if they have that ability."
+      ],
+      "howToRun": [
+        "When setting up the game, before putting character tokens in the bag, remove the Phantom token and replace it with another Outsider character token. Add the Phantom's [[IS THE PHANTOM]] reminder token to the Grimoire.",
+        "Once character tokens have been distributed, place the [[IS THE PHANTOM]] reminder token on one of the Outsiders. They are not that Outsider and do not have their ability, but think they do.",
+        "During the game, act as if the Phantom has their Outsider ability. If they should wake at night, wake them at night. If they should learn information, you may give them any information they could receive.",
+        "Alternate setup: If the script allows for 4 Outsiders to be in-play, instead set up the game by including a blank token for each in-play Outsider. On the 1st night, wake all Outsiders and inform them of their characters (telling the Phantom they are one of the in-play Outsiders).",
+        "If the Phantom dies, you may also choose to kill 1 of their living neighbors, mark them with the [[DEAD]] reminder token."
+      ],
+      "callout": "",
+      "examples": [
+        "Hystrex is the Phantom but received the Klutz token. When they die at night, Luis, their living neighbor, also dies. Tomorrow, the Storyteller announces that Hystrex and Luis died in the night. Hystrex claims Klutz and choose Tir-Far, the evil Lifeblood, and the game continues.",
+        "Squ4ll is the Phantom but received the Puzzlemaster token. On the 3rd day, they privately visit the Storyteller and guess that Palsonny was made drunk by their ability. They incorrectly learn that Legitch is the Demon."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "For I do not exist: there exist but the thousands of mirrors that reflect me.",
+      "appearsIn": "Megalomania",
+      "tags": "Think, On Death, Neighbor, Death",
+      "translatedBy": "",
+      "iconBy": "SketchSkirmish",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [],
+      "remindersGlobal": [
+        "Is The Phantom",
+        "Dead"
+      ],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "false-giant",
+      "name": "False Giant",
+      "team": "minion",
+      "ability": "Minions might register as Demons.",
+      "art": "art/false-giant.png",
+      "page": "c/false-giant",
+      "image": "https://botchomebrew.wiki/assets/art/false-giant.png",
+      "creator": "Ma'ayan",
+      "lede": "The False Giant fools the town into believing it is a much larger threat.",
+      "summaryBullets": [],
+      "howToRun": [
+        "Each time a Minion is chosen by an ability that detects characters or Demons, you may choose to register the Minion as a Demon instead."
+      ],
+      "callout": "",
+      "examples": [
+        "The Fortune Teller chooses the False Giant and the Saint and learns a yes because the False Giant registered as the Imp.",
+        "The Dreamer chooses the Witch at night and learns they are either the Sweetheart or the Vigormortis.",
+        "Jai, the Fang-Gu, kills Ethan, the Sage, at night. Ethan is woken and told that either Seb or Oliver is the Demon. This is because Seb, the Cerenovous, registered as the Vigormortis."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "Pray, look better, sir... those things yonder are no giants, but windmills.",
+      "appearsIn": "Megalomania",
+      "tags": "Misregistration, Passive",
+      "translatedBy": "",
+      "iconBy": "Adapted from https://uk.pinterest.com/pin/246431410845699497/",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "illusionist-megalomania",
+      "name": "Illusionist",
+      "team": "minion",
+      "ability": "Outsiders might think they are a Townsfolk. Each night, choose if they learn their character tonight or when you die. [+1 Outsider]",
+      "art": "art/illusionist-megalomania.png",
+      "page": "c/illusionist-megalomania",
+      "image": "https://botchomebrew.wiki/assets/art/illusionist-megalomania.png",
+      "creator": "Ma'ayan",
+      "lede": "The Illusionist deludes the Outsiders into believing they are Townsfolk.",
+      "summaryBullets": [
+        "When the Illusionist chooses that Outsiders learn their characters, they stop waking.",
+        "The Illusionist only lets Outsiders learn their character if they were affected by the Illusionist.",
+        "If an Outsider ability clashes with thinking they are a Townsfolk, it is up to the Storyteller to create a ruling and inform their players."
+      ],
+      "howToRun": [
+        "When setting up the game, add an additional Outsider character token in the bag, then remember the correct number of Outsiders that should be in-play before removing any number of Outsiders and replacing them with Townsfolk character tokens. Once character tokens have been distributed, mark as many Townsfolk as needed with the [[IS AN OUTSIDER]] reminder tokens, and place the correct Outsider token beside their character token.",
+        "Each night, wake the Illusionist. If they shake their head, put them back to sleep. If they nod, mark them with the [[ILLUSION DISPELLED]] reminder token and wake all Outsiders affected by the Illusionist ability. Show them the YOU ARE info token and then the correct Outsider token that was placed by their Townsfolk character token.",
+        "If the Illusionist is killed before being marked [[ILLUSION DISPELLED]], inform the affected Outsiders in the same way."
+      ],
+      "callout": "",
+      "examples": [
+        "Jai is the Damsel but believes they are the Fortune Teller. Minions learn that there is a Damsel in play, and Jai can receive either correct or incorrect information with the ability they believe they have. When the Illusionist is executed on day 2, Jai learns that they are the Damsel.",
+        "Hystrex is the Sweetheart but believes they are the Fisherman. When they ask the Storyteller for advice, the Storyteller lies and tells them they should execute Lady Mist, the Oracle. That night, Hystrex is killed by the Demon (drunking a player) & the Illusionist chooses that Outsiders learn their character. Hystrex is woken and told they are the Sweetheart."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "In the beginning there was faith - which is childish; trust - which is vain; and illusion - which is dangerous.",
+      "appearsIn": "Megalomania",
+      "tags": "Think, Outsider Modification, Setup, Hidden",
+      "translatedBy": "",
+      "iconBy": "",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Illusion Dispelled",
+        "Is An Outsider",
+        "Is An Outsider",
+        "Is An Outsider",
+        "Is An Outsider"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": "",
+      "jsonId": "illusionistmegalomania"
+    },
+    {
+      "slug": "shrew",
+      "name": "Shrew",
+      "team": "minion",
+      "ability": "Players that are mad about being an Outsider might die. [+1 Outsider]",
+      "art": "art/shrew.png",
+      "page": "c/shrew",
+      "image": "https://botchomebrew.wiki/assets/art/shrew.png",
+      "creator": "Ma'ayan",
+      "lede": "The Shrew instills fear in the heart of Outsiders.",
+      "summaryBullets": [
+        "Any player who is mad about being an Outsider might die at any time.",
+        "The Shrew can kill players at night or during the day."
+      ],
+      "howToRun": [
+        "While setting up the game, put 1 additional Outsider character token in the bag.",
+        "During the game, if any players were mad about being an Outsider, you may kill them during the day or night. Mark them with the [[DEAD]] reminder token if they died at night."
+      ],
+      "callout": "",
+      "examples": [
+        "Ben, the Puzzlemaster, guesses that they have made Jams drunk with their ability. They learn that Alejo is the Demon, and declare this in the town square. That night, Jams is killed by the Demon, and Ben is killed by the Shrew.",
+        "Paradox, the Sweetheart, privately tells Navean, the Shrew, that they are an Outsider. Navean privately tells the Storyteller of this. During the day, Paradox nominates a player and immediately dies to the Shrew ability.",
+        "Patters, the Oracle, was poisoned for 2 nights in a row. Due to getting bad information, they declare in the town square that they may be the Drunk. They die immediately."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "You shall rue the day you messed with me!!!",
+      "appearsIn": "Megalomania",
+      "tags": "Madness, Death, Outsider Modification, Setup",
+      "translatedBy": "",
+      "iconBy": "Adapted from https://uk.pinterest.com/pin/10062799162367237/",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Dead",
+        "Dead",
+        "Dead",
+        "Dead"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "bakunawa",
+      "name": "Bakunawa",
+      "team": "demon",
+      "ability": "Each night*, choose a player: they die. If an Outsider dies this way, you may choose another Demon character to be. [+1 Outsider]",
+      "art": "art/bakunawa.png",
+      "page": "c/bakunawa",
+      "image": "https://botchomebrew.wiki/assets/art/bakunawa.png",
+      "creator": "Ma'ayan",
+      "lede": "The Bakunawa can transform into other Demons.",
+      "summaryBullets": [
+        "Each night, except the first, the Bakunawa chooses a player to kill.",
+        "If they choose an Outsider and kill them, they can choose any other Demon on the script to become."
+      ],
+      "howToRun": [
+        "Each night, except the first, wake the Bakunawa. Ask them to point at a player, then mark them with the [[DEAD]] reminder token. If they were an Outsider, prompt the Bakunawa to choose a Demon by pointing at the script, or put them to sleep otherwise. If the Bakunawa shakes their head, put them to sleep. If they choose a Demon character, put them to sleep and change their token to the new Demon character they chose."
+      ],
+      "callout": "",
+      "examples": [
+        "The Bakunawa kills the Saint. The Storyteller asks them to choose a Demon. They shake their head and do not change characters.",
+        "The Bakunawa kills the Spy, which registers as an Outsider. The Bakunawa chooses to become the Vortox.",
+        "The Bakunawa adds the Damsel into play, with no other Outsiders in play. When the Bakunawa kills the Damsel, they choose to become the No Dashii and warn their minions not to guess anyone as the Damsel."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "I know how the birds fly, how the fishes swim, how animals run. But there is the Dragon. I cannot tell how it mounts on the winds through the clouds and flies through heaven. Today I have seen the Dragon.",
+      "appearsIn": "Megalomania",
+      "tags": "Character Change, Single-Kill, Outsider Modification, Setup",
+      "translatedBy": "",
+      "iconBy": "Adapted from @anka.iimura (Instagram)",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 2,
+      "otherNightReminder": "The Bakunawa chooses a player. If this kills an Outsider, the Bakunawa may choose to become a different Demon.",
+      "reminders": [
+        "Dead"
+      ],
+      "remindersGlobal": [],
+      "setup": true,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "lifeblood",
+      "name": "Lifeblood",
+      "team": "demon",
+      "ability": "Each night*, choose a player: they die. If your last choice was your living neighbor, choose 2 players tonight.",
+      "art": "art/lifeblood.png",
+      "page": "c/lifeblood",
+      "image": "https://botchomebrew.wiki/assets/art/lifeblood.png",
+      "creator": "Ma'ayan",
+      "lede": "The Lifeblood spreads death from the core of the town square -- itself.",
+      "summaryBullets": [
+        "The Lifeblood may choose to kill additional players at the risk of outing its own position.",
+        "If the last player the Lifeblood chose was their living neighbor (even if they killed twice that night) they choose 2 players to kill tonight."
+      ],
+      "howToRun": [
+        "Each night except the first, wake the Lifeblood. The Lifeblood points at a player. Mark that player with the [[DEAD]] reminder token. If that player was their living neighbor, mark the Lifeblood with the [[PUMPED]] reminder token.",
+        "If the Lifeblood wakes to act while marked with the [[PUMPED]] reminder token, they point at 2 players instead. Mark those players with the [[DEAD]] reminder token. If their 2nd choice was their living neighbor, keep the [[PUMPED]] reminder on the Lifeblood. Otherwise, remove it."
+      ],
+      "callout": "",
+      "examples": [
+        "Jai is the Lifeblood, whose living neighbors are Seb and Katie. On the 2nd night, Jai chooses to kill Seb. The following night, Jai kills Oliver & Katie (in that order). The night after that, he kills 2 more players.",
+        "Astra is the Lifeblood who killed their living neighbor, Lily, last night. The town did not execute anyone today with 4 living players. That night, Astra kills 2 players and evil wins the game,"
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "The world may know my words, but it has no such privileges with my heart.",
+      "appearsIn": "Megalomania",
+      "tags": "Multi-Kill, Neighbor",
+      "translatedBy": "",
+      "iconBy": "Adapted from Aura_94",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Dead",
+        "Dead",
+        "Pumped"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "prisoner",
+      "name": "Prisoner",
+      "team": "demon",
+      "ability": "Each night*, choose a player: they die. You start knowing a good player. If they are executed, you choose twice from now on.",
+      "art": "art/prisoner.png",
+      "page": "c/prisoner",
+      "image": "https://botchomebrew.wiki/assets/art/prisoner.png",
+      "creator": "Ma'ayan",
+      "lede": "The Prisoner seeks to break free of their chains and unleash their true power.",
+      "summaryBullets": [
+        "The Prisoner learns a good player they want to execute on the 1st night.",
+        "If that player is executed by any means, the Prisoner can kill twice per night instead."
+      ],
+      "howToRun": [
+        "On the 1st night, mark a good player with the [[WARDEN]] reminder token. Wake the Prisoner and point at the player marked [[WARDEN]]. Put the Prisoner back to sleep.",
+        "If the player marked [[WARDEN]] is executed, mark the Prisoner with the [[FREE]] reminder token.",
+        "On each consecutive night, wake the Prisoner and ask them to point to a player. If the Prisoner is marked [[FREE]], instead ask them to point at 2 players. Mark the players the Prisoner pointed at with the [[DEAD]] reminder token(s)."
+      ],
+      "callout": "",
+      "examples": [
+        "On the 1st night, the Prisoner is shown Luis, the noble. On the 1st day, Luis nominates themselves and are executed. For the rest of the game, the Prisoner kills 2 players each night.",
+        "On the 1st night, the Prisoner is shown Dan, the Mutant. Dan is bluffing Fortune Teller, but does not deny it when another player claims Dan is the Mutant. Dan is executed on the 3rd day and the Prisoner kills 2 players each night from now on."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "If we kill them all... does that mean... we'll be free?",
+      "appearsIn": "Megalomania",
+      "tags": "Multi-Kill, You Start Knowing, Execution",
+      "translatedBy": "",
+      "iconBy": "",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "Dead",
+        "Dead",
+        "Free"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    },
+    {
+      "slug": "jewel-collector",
+      "name": "Jewel Collector",
+      "team": "traveller",
+      "ability": "Once per game, at night, choose a player (not Travellers): they choose a different character of their character type to be.",
+      "art": "art/jewel-collector.png",
+      "page": "c/jewel-collector",
+      "image": "https://botchomebrew.wiki/assets/art/jewel-collector.png",
+      "creator": "Ma'ayan",
+      "lede": "The Jewel Collector provides flexibility to both the good and the evil team.",
+      "summaryBullets": [
+        "If the Jewel Collector chooses a Minion, they must choose a different Minion to become.",
+        "The Jewel Collector can create a duplicate character if the new character is already in-play.",
+        "If the Jewel Collector is exiled, the chosen player continues to be their new character."
+      ],
+      "howToRun": [
+        "Each night, wake the Jewel Collector and ask them if they'd like to use their ability. They either shake their head or they nod and point at a player. Put them to sleep. Mark the Jewel Collector with the [[NO ABILITY]] reminder token if they pointed at a player & mark the chosen player with the [[CHOSEN]] reminder token. Wake the chosen player and show them the Jewel Collector character token. The chosen player points to another character on the script. Put them to sleep and replace their character token with the chosen character's token. If the character token is already in-play, mark that token with the [[DUPLICATE]] reminder token instead."
+      ],
+      "callout": "",
+      "examples": [
+        "The Jewel Collector chooses Blood-Drinker, the Mezepheles, who had already used their ability. Blood-Drinker is woken and chooses to become the Shrew. Cursed Relic, the Hatter, is killed by the Shrew ability that night and Blood-Drinker chooses to become the Witch.",
+        "The Jewel Collector chooses Katie, the Fisherman, who received their advice today. Katie chooses to become the Philosopher and uses their ability to gain the Fisherman ability. Tomorrow, they receive another piece of advice from the Storyteller.",
+        "The Jewel Collector chooses Hystrex, the Imp. Hystrex chooses to become the Legion. No-one else becomes Legion."
+      ],
+      "tips": [],
+      "bluffing": [],
+      "fighting": [],
+      "quote": "I adore wearing gems, but not because they are mine. You can't possess radiance, you can only admire it.",
+      "appearsIn": "Megalomania",
+      "tags": "Character Change, Once Per Game",
+      "translatedBy": "",
+      "iconBy": "",
+      "edition": "",
+      "firstNight": 0,
+      "firstNightReminder": "",
+      "otherNight": 0,
+      "otherNightReminder": "",
+      "reminders": [
+        "No Ability",
+        "Chosen",
+        "Duplicate"
+      ],
+      "remindersGlobal": [],
+      "setup": false,
+      "jinxes": [],
+      "jinxDisplay": "sidebar",
+      "customBoxes": [],
+      "customJson": ""
+    }
+  ]
+}

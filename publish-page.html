@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write a Page — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+.pub-main { padding: 0 clamp(12px,3vw,40px) 64px; max-width: 940px; margin: 0 auto; }
+.sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
+.sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+.sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+.sb-fld { margin-bottom:12px; }
+.sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
+.sb-fld .req { color:var(--evil); }
+.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:#8a7a63; }
+.sb-fld input[type=text], .sb-fld textarea, .sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
+.sb-fld textarea { resize:vertical; min-height:54px; }
+#p-body { min-height:420px; font-family:'Libre Franklin',sans-serif; line-height:1.55; border-top:none; }
+.sb-fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:560px){ .sb-fld-row { grid-template-columns:1fr; } }
+.sb-check { display:flex; align-items:center; gap:8px; font-size:.9rem; color:#241a12; margin:6px 0 12px; cursor:pointer; }
+.sb-check input { width:17px; height:17px; }
+.sb-btn-publish { background:linear-gradient(180deg,#2f7d3e,#1c5429); }
+.sb-btn-draft { background:linear-gradient(180deg,#7a5c18,#5a4310); }
+.sb-btn-delete { background:linear-gradient(180deg,#8a3526,#5B1F21); }
+.pub-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; }
+.pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
+.pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+.pub-back { display:inline-block; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+.pub-back:hover { color:#fff; text-decoration:underline; }
+#p-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
+#p-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+#p-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+#p-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+#p-status a { color:inherit; font-weight:700; }
+.fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.7; margin:8px 0 0; }
+.fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
+details.sb-details { padding:0; }
+details.sb-details > summary { cursor:pointer; list-style:none; padding:14px 20px; font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.15rem; }
+details.sb-details > summary::-webkit-details-marker { display:none; }
+details.sb-details > summary .sb-sum-arrow { float:right; transition:transform .15s; }
+details.sb-details[open] > summary .sb-sum-arrow { transform:rotate(180deg); }
+details.sb-details > summary .sb-sum-sub { display:block; font-family:'Libre Franklin',sans-serif; font-size:.8rem; color:#6b5d49; margin-top:2px; }
+details.sb-details > .sb-details-body { padding:4px 20px 18px; }
+.th-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.25); }
+.th-row:last-child { border-bottom:none; }
+.th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
+.th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
+.th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
+.th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
+.sb-header-prev { margin-top:8px; max-width:100%; max-height:150px; border:1px solid #cdbfa0; display:none; }
+.pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
+.pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
+.img-list { list-style:none; margin:10px 0 0; padding:0; }
+.img-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(180,160,120,.3); }
+.img-row:last-child { border-bottom:none; }
+.img-row img { width:54px; height:40px; object-fit:cover; border:1px solid #cdbfa0; }
+.img-row code { font-size:.78rem; background:#fffdf8; border:1px solid #e0d5bd; padding:1px 5px; word-break:break-all; }
+.img-row button { font-family:'Oswald',sans-serif; font-size:.74rem; background:#fffdf8; border:1px solid #cdbfa0; color:#5b4632; padding:3px 9px; cursor:pointer; }
+.page-list { list-style:none; margin:0; padding:0; }
+.page-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(180,160,120,.35); }
+.page-row:last-child { border-bottom:none; }
+.page-row a { color:var(--maroon); font-weight:600; font-size:.94rem; text-decoration:none; }
+.page-row a:hover { text-decoration:underline; }
+.page-row .pill { font-family:'Oswald',sans-serif; font-size:.68rem; letter-spacing:.05em; text-transform:uppercase; padding:2px 8px; border-radius:999px; }
+.page-row .pill.draft { background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
+.page-row .pill.published { background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <main class="pub-main">
+    <div class="home-hero" style="padding-bottom:14px">
+      <h1 id="page-title">Write a Page</h1>
+      <p id="page-sub">A text-first page for your script or collection — rules, lore, a glossary, a storyteller guide. It appears only on that page and on your author page: never in search, on the homepage or in the browse lists.</p>
+    </div>
+
+    <div id="gate" style="display:none">
+      <div class="sb-details">
+        <h2 id="gate-title">Not available</h2>
+        <p class="sub" id="gate-msg">Pages are added from the script or collection they belong to.</p>
+      </div>
+    </div>
+
+    <div id="editor" style="display:none">
+      <div class="sb-details">
+        <h2>Page</h2>
+        <p class="sub" id="p-parent">Loading…</p>
+
+        <div class="sb-fld">
+          <label for="p-title">Title <span class="req">*</span></label>
+          <input type="text" id="p-title" maxlength="160" placeholder="e.g. States &amp; Conditions">
+        </div>
+        <p class="pub-url" id="p-url" style="display:none"></p>
+
+        <div class="sb-fld-row">
+          <div class="sb-fld">
+            <label for="p-subtitle">Subtitle <span class="opt">(optional — one line under the title)</span></label>
+            <input type="text" id="p-subtitle" maxlength="200" placeholder="e.g. Every state a player can be in.">
+          </div>
+          <div class="sb-fld">
+            <label for="p-author">Author <span class="opt">(shown on the page and links to your author page)</span></label>
+            <input type="text" id="p-author" maxlength="80" placeholder="Your name">
+          </div>
+        </div>
+
+        <div class="sb-fld">
+          <label for="p-blurb">Blurb <span class="opt">(the line under the link on your script/collection page — auto-written if you leave it blank)</span></label>
+          <textarea id="p-blurb" rows="2" maxlength="300"></textarea>
+        </div>
+
+        <div class="sb-fld">
+          <label for="p-body">Page text <span class="req">*</span></label>
+          <div id="p-toolbar"></div>
+          <textarea id="p-body" placeholder="Write your page here…"></textarea>
+          <p class="fmt-help">
+            Blank line = new paragraph &middot;
+            <code># Heading</code> <code>## Smaller</code> &middot;
+            <code>- bullet</code> &middot; <code>1. numbered</code> &middot;
+            <code>**bold**</code> <code>*italic*</code> <code>`code`</code> &middot;
+            <code>&gt; quote</code> &middot; <code>---</code> rule &middot;
+            <code>[text](https://example.com)</code> &middot;
+            <code>[[Snake Charmer]]</code> links to a character on this wiki
+            (a name the wiki doesn't have shows as a reminder token instead) &middot;
+            <code>| a | b |</code> table rows &middot;
+            <code>![caption](pages/my-image.png|right)</code> image &middot;
+            <code>::: note Title</code> … <code>:::</code> callout box
+            (note, tip, warning, example, lore) &middot;
+            <code>[toc]</code> puts the contents box exactly where you want it.
+          </p>
+        </div>
+
+        <label class="sb-check"><input type="checkbox" id="p-toc" checked> Show a contents box (automatic once the page has three or more headings)</label>
+        <label class="sb-check"><input type="checkbox" id="p-comments" checked> Let readers comment on this page</label>
+      </div>
+
+      <details class="sb-details" id="p-images-sec">
+        <summary>Images <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — a banner across the top, plus any images you want to drop into the text.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld">
+            <label for="p-header">Banner <span class="opt">(wide image across the top of the page)</span></label>
+            <input type="file" id="p-header" accept="image/*">
+            <img id="p-header-prev" class="sb-header-prev" alt="banner preview">
+            <div id="p-header-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="p-header-remove" style="display:none;margin-top:6px">Remove banner</button>
+          </div>
+          <div class="sb-fld">
+            <label for="p-image-add">Images for the text</label>
+            <input type="file" id="p-image-add" accept="image/*">
+            <p class="sub" id="p-image-note" style="margin:6px 0 0">Save the page once first — then uploads get a home under this page's name.</p>
+            <ul class="img-list" id="p-image-list"></ul>
+          </div>
+        </div>
+      </details>
+
+      <details class="sb-details" id="p-side-sec">
+        <summary>Side boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — a fact box and any number of custom boxes down the right-hand side.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld-row">
+            <div class="sb-fld">
+              <label for="p-info-title">Fact box title</label>
+              <input type="text" id="p-info-title" maxlength="80" placeholder="e.g. Quick facts">
+            </div>
+            <div class="sb-fld">
+              <label for="p-info-image">Fact box image <span class="opt">(a path from the Images section)</span></label>
+              <input type="text" id="p-info-image" maxlength="300" placeholder="pages/my-page-1.png">
+            </div>
+          </div>
+          <div class="sb-fld">
+            <label>Fact box rows</label>
+            <div id="p-info-rows"></div>
+            <button type="button" class="th-clear" id="p-info-add">+ Add row</button>
+          </div>
+          <div class="sb-fld" style="margin-top:16px">
+            <label>Custom boxes</label>
+            <div id="p-boxes"></div>
+            <button type="button" class="th-clear" id="p-box-add">+ Add a box</button>
+          </div>
+        </div>
+      </details>
+
+      <details class="sb-details" id="p-appearance">
+        <summary>Page appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — background image, heading font and colors, exactly like the script and collection pages.</span></summary>
+        <div class="sb-details-body">
+          <div class="sb-fld">
+            <label for="p-bg">Page background <span class="opt">(large image, shown behind the page)</span></label>
+            <input type="file" id="p-bg" accept="image/*">
+            <img id="p-bg-prev" class="sb-header-prev" alt="background preview">
+            <div id="p-bg-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="p-bg-remove" style="display:none;margin-top:6px">Remove background</button>
+          </div>
+          <div class="sb-fld">
+            <label for="th-font">Heading font</label>
+            <select id="th-font"></select>
+          </div>
+          <div class="sb-fld">
+            <label>Colors <span class="opt">(leave unset to keep the wiki look)</span></label>
+            <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
+            <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
+            <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
+            <div class="th-row"><label for="th-link">Links</label><span class="th-state" id="th-link-state">not set</span><input type="color" id="th-link" data-k="link" value="#2f6fb8"><button type="button" class="th-clear" data-k="link">reset</button></div>
+          </div>
+        </div>
+      </details>
+
+      <div class="we-preview">
+        <h2>Preview</h2>
+        <div id="p-preview"></div>
+      </div>
+
+      <div class="pub-actions">
+        <button type="button" class="sb-btn sb-btn-publish" id="p-publish">★ Publish Page</button>
+        <button type="button" class="sb-btn sb-btn-draft" id="p-draft">Save as Draft</button>
+        <button type="button" class="sb-btn sb-btn-delete" id="p-delete" style="display:none">Delete Page</button>
+        <span class="pub-status-pill" id="p-pill"></span>
+        <a class="pub-back" id="p-parent-link" href="#">← Back to the page it belongs to</a>
+      </div>
+      <p class="sb-publish-blurb" style="font-size:.82rem;color:var(--ink);opacity:.82;margin:4px 0 0;line-height:1.5">
+        Published pages are linked from your script or collection page and from your author page — and nowhere else.
+        They never appear in search, on the homepage, in the browse lists or in the sitemap.
+      </p>
+      <div id="p-status"></div>
+
+      <div class="sb-details" id="p-sibling-wrap" style="margin-top:22px;display:none">
+        <h2>Other pages here</h2>
+        <p class="sub">Every page attached to this script or collection. Click one to edit it.</p>
+        <ul class="page-list" id="p-siblings"></ul>
+      </div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/render-wiki.js"></script>
+  <script src="assets/theme-editor.js"></script>
+  <script src="assets/wiki-editor.js"></script>
+  <script>
+  (function(){
+    function $(id){ return document.getElementById(id); }
+    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    var SITE_ROOT = new URL('.', location.href).href;
+    var qs = new URLSearchParams(location.search);
+
+    var slug = qs.get('p') || '';            // set once the page has been saved
+    var parentType = qs.get('parentType') || '';
+    var parentKey = qs.get('parentSlug') || '';
+    var parentName = '';
+    var currentStatus = null;
+    var theme = {};
+    var images = [];                          // paths already uploaded
+    var headerPath = '', headerData = null, removeHeader = false;
+    var bgPath = '', bgData = null, removeBg = false;
+    var boxesUI = null, infoUI = null;
+
+    function say(cls, html){ var el = $('p-status'); el.className = cls || ''; el.innerHTML = html || ''; }
+    function gate(title, msg){
+      $('editor').style.display = 'none';
+      $('gate').style.display = '';
+      $('gate-title').textContent = title;
+      $('gate-msg').innerHTML = msg;
+    }
+
+    function api(url, body){
+      return fetch(url, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function(r){ return r.json(); }).then(function(j){
+        if (!j || j.error) throw new Error((j && j.error) || 'Something went wrong.');
+        return j;
+      });
+    }
+    function upload(key, dataUrl){ return api('/api/upload', { key: key, data: dataUrl }); }
+
+    // ── what gets sent, and what the preview shows ──
+    function collect(){
+      var t = {};
+      Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
+      if (bgData && slug) t.background = 'pages/' + slug + '-bg.png';
+      else if (!removeBg && bgPath) t.background = bgPath;
+      else delete t.background;
+      return {
+        slug: slug || undefined,
+        parentType: parentType, parentSlug: parentKey,
+        title: $('p-title').value.trim(),
+        subtitle: $('p-subtitle').value.trim(),
+        blurb: $('p-blurb').value.trim(),
+        author: $('p-author').value.trim(),
+        body: $('p-body').value,
+        header: removeHeader ? '' : headerPath,
+        images: images.slice(),
+        boxes: boxesUI ? boxesUI.gather() : [],
+        infobox: infoUI ? infoUI.gather($('p-info-title').value, $('p-info-image').value) : null,
+        theme: window.PageRender.sanitizeTheme(t, 'pages/' + (slug || 'new')),
+        toc: $('p-toc').checked,
+        comments: $('p-comments').checked
+      };
+    }
+
+    function preview(){
+      var p = collect();
+      p.parentName = parentName;
+      p.parentKey = parentKey;
+      p.updatedAt = new Date().toISOString();
+      // A banner chosen but not yet uploaded previews from the data URL.
+      var shown = {};
+      Object.keys(p).forEach(function(k){ shown[k] = p[k]; });
+      $('p-preview').innerHTML = window.WikiRender.renderWikiPage(shown, { linkRoot: '' });
+      if (headerData) {
+        var img = $('p-preview').querySelector('.wiki-banner');
+        if (img) img.src = headerData;
+      }
+    }
+
+    function setPill(status){
+      currentStatus = status;
+      var pill = $('p-pill');
+      pill.className = 'pub-status-pill ' + (status === 'published' ? 'published' : 'draft');
+      pill.textContent = status === 'published' ? 'Published' : 'Draft';
+      $('p-publish').textContent = status === 'published' ? '★ Save Changes' : '★ Publish Page';
+      $('p-draft').textContent = status === 'published' ? 'Move to Draft' : 'Save as Draft';
+    }
+
+    function parentHref(){
+      return (parentType === 'collection' ? 'collection/' : 's/') + encodeURIComponent(parentKey);
+    }
+
+    function showParent(){
+      $('p-parent').innerHTML = parentName
+        ? 'This page belongs to <a href="' + parentHref() + '" style="color:var(--maroon);font-weight:600">' + esc(parentName) + '</a>. It is linked from there and from your author page — nowhere else on the wiki.'
+        : 'Loading…';
+      $('p-parent-link').href = parentHref();
+      $('p-parent-link').textContent = '← Back to ' + (parentName || 'the page it belongs to');
+    }
+
+    function showUrl(){
+      if (!slug) return;
+      $('p-url').style.display = '';
+      $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> — <a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>';
+      $('p-delete').style.display = '';
+      $('page-title').textContent = 'Edit Page';
+      $('p-image-note').textContent = 'Uploads are stored under this page and can be dropped straight into the text.';
+      try { history.replaceState(null, '', 'publish-page?p=' + encodeURIComponent(slug)); } catch(e){}
+    }
+
+    // ── images ──
+    function renderImages(){
+      var list = $('p-image-list');
+      if (!images.length) { list.innerHTML = ''; return; }
+      list.innerHTML = images.map(function(path){
+        return '<li class="img-row">' +
+          '<img src="assets/' + esc(path) + '" alt="">' +
+          '<code>' + esc(path) + '</code>' +
+          '<button type="button" data-insert="' + esc(path) + '">Insert into text</button>' +
+          '<button type="button" data-drop="' + esc(path) + '">Forget</button>' +
+        '</li>';
+      }).join('');
+    }
+    $('p-image-list').addEventListener('click', function(e){
+      var ins = e.target.getAttribute('data-insert');
+      if (ins) {
+        var ta = $('p-body');
+        var at = ta.selectionStart;
+        var mark = '![caption](' + ins + '|right)';
+        ta.value = ta.value.slice(0, at) + (at && ta.value[at-1] !== '\n' ? '\n\n' : '') + mark + '\n' + ta.value.slice(at);
+        ta.dispatchEvent(new Event('input', { bubbles: true }));
+        ta.focus();
+        return;
+      }
+      var drop = e.target.getAttribute('data-drop');
+      if (drop) {
+        // Only forgets the reference — the file itself stays in storage.
+        images = images.filter(function(p){ return p !== drop; });
+        renderImages();
+      }
+    });
+
+    window.WikiEditor.imageInput({
+      input: 'p-header', preview: 'p-header-prev', note: 'p-header-note', maxWidth: 1400,
+      onReady: function(d){ headerData = d; removeHeader = false; $('p-header-remove').style.display = ''; preview(); }
+    });
+    window.WikiEditor.imageInput({
+      input: 'p-bg', preview: 'p-bg-prev', note: 'p-bg-note', maxWidth: 1600,
+      onReady: function(d){ bgData = d; removeBg = false; $('p-bg-remove').style.display = ''; }
+    });
+    $('p-header-remove').addEventListener('click', function(){
+      headerData = null; removeHeader = true; headerPath = '';
+      $('p-header-prev').style.display = 'none';
+      $('p-header-note').textContent = 'Banner removed — save to apply.';
+      this.style.display = 'none';
+      preview();
+    });
+    $('p-bg-remove').addEventListener('click', function(){
+      bgData = null; removeBg = true;
+      $('p-bg-prev').style.display = 'none';
+      $('p-bg-note').textContent = 'Background removed — save to apply.';
+      this.style.display = 'none';
+    });
+
+    // Body images can only be filed once the page has a name of its own.
+    $('p-image-add').addEventListener('change', function(e){
+      var f = e.target.files[0];
+      if (!f) return;
+      if (!slug) {
+        say('err', 'Save the page once (Save as Draft is fine) and then upload images — they need the page’s name to be filed under.');
+        e.target.value = '';
+        return;
+      }
+      var rd = new FileReader();
+      rd.onload = function(ev){
+        var img = new Image();
+        img.onload = function(){
+          var w = img.width, h = img.height;
+          if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200; }
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          var key = 'pages/' + slug + '-' + (images.length + 1) + '-' + Date.now().toString(36) + '.png';
+          say('work', 'Uploading image…');
+          upload(key, cv.toDataURL('image/png')).then(function(){
+            images.push(key);
+            renderImages();
+            say('ok', 'Image uploaded. Use <strong>Insert into text</strong> to place it, then save the page.');
+          }).catch(function(err){ say('err', esc(err.message)); });
+        };
+        img.src = ev.target.result;
+      };
+      rd.readAsDataURL(f);
+      e.target.value = '';
+    });
+
+    // ── saving ──
+    // A brand-new page is saved first so the server can hand back its slug;
+    // only then do the banner/background have a slot to upload into, which
+    // needs a second save to record the paths.
+    function save(status){
+      var p = collect();
+      if (!p.title) { say('err', 'Give the page a title first.'); return; }
+      if (!p.body.trim()) { say('err', 'Write something in the page body first.'); return; }
+      if (!slug && !parentType) { say('err', 'This page has nothing to attach to.'); return; }
+      p.status = status;
+      $('p-publish').disabled = true; $('p-draft').disabled = true;
+      say('work', status === 'published' ? 'Publishing…' : 'Saving draft…');
+
+      api('/api/wiki-page', p).then(function(res){
+        slug = res.slug;
+        parentName = res.parentName || parentName;
+        parentKey = res.parentKey || parentKey;
+        parentType = res.parentType || parentType;
+        var jobs = [];
+        if (headerData) jobs.push(upload('pages/' + slug + '-header.png', headerData));
+        if (bgData) jobs.push(upload('pages/' + slug + '-bg.png', bgData));
+        if (!jobs.length) return res;
+        say('work', 'Uploading images…');
+        return Promise.all(jobs).then(function(){
+          if (headerData) { headerPath = 'pages/' + slug + '-header.png'; headerData = null; }
+          if (bgData) { theme.background = 'pages/' + slug + '-bg.png'; bgData = null; }
+          var again = collect();
+          again.status = status;
+          again.slug = slug;
+          return api('/api/wiki-page', again);
+        });
+      }).then(function(res){
+        setPill(res.status);
+        showParent(); showUrl(); preview(); loadSiblings();
+        var url = 'p/' + encodeURIComponent(slug);
+        say('ok', res.status === 'published'
+          ? '✓ Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
+          : '✓ Draft saved — only you (and admins) can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+        $('p-publish').disabled = false; $('p-draft').disabled = false;
+      }).catch(function(err){
+        say('err', '✗ ' + esc(err.message));
+        $('p-publish').disabled = false; $('p-draft').disabled = false;
+      });
+    }
+    $('p-publish').addEventListener('click', function(){ save('published'); });
+    $('p-draft').addEventListener('click', function(){ save('draft'); });
+
+    $('p-delete').addEventListener('click', function(){
+      if (!slug) return;
+      if (!confirm('Delete "' + ($('p-title').value.trim() || slug) + '" for good?\n\nIts comments go with it. This one cannot be restored from the dashboard.')) return;
+      api('/api/wiki-page', { action: 'delete', slug: slug }).then(function(){
+        location.href = parentHref();
+      }).catch(function(err){ say('err', '✗ ' + esc(err.message)); });
+    });
+
+    // ── the other pages on the same script/collection ──
+    function loadSiblings(){
+      if (!parentType || !parentKey) return;
+      fetch('/api/wiki-pages?parentType=' + encodeURIComponent(parentType) +
+            '&parentSlug=' + encodeURIComponent(parentKey) + '&_=' + Date.now(),
+            { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          var list = (d && d.pages) || [];
+          if (d && d.parent) { parentName = d.parent.name; showParent(); }
+          // Say so up front rather than at the end of a long write-up.
+          if (d && d.canEdit === false && !slug) {
+            gate('That page isn’t yours',
+              'Only the owner of <strong>' + esc((d.parent && d.parent.name) || 'that script or collection') +
+              '</strong> can add pages to it.');
+            return;
+          }
+          if (!list.length) { $('p-sibling-wrap').style.display = 'none'; return; }
+          $('p-sibling-wrap').style.display = '';
+          $('p-siblings').innerHTML = list.map(function(p){
+            return '<li class="page-row">' +
+              '<a href="publish-page?p=' + encodeURIComponent(p.slug) + '">' + esc(p.title) + '</a>' +
+              '<span class="pill ' + (p.status === 'published' ? 'published' : 'draft') + '">' +
+                (p.status === 'published' ? 'Published' : 'Draft') + '</span>' +
+            '</li>';
+          }).join('');
+        })
+        .catch(function(){});
+    }
+
+    // ── wire everything up ──
+    function wire(){
+      window.WikiEditor.toolbar($('p-body'), $('p-toolbar'));
+      boxesUI = window.WikiEditor.boxes($('p-boxes'), $('p-box-add'), { onChange: preview });
+      infoUI = window.WikiEditor.infobox($('p-info-rows'), $('p-info-add'), { onChange: preview });
+      window.ThemeEditor.wire({
+        get: function(){ return theme; },
+        set: function(t){ theme = t; }
+      });
+      ['p-title','p-subtitle','p-blurb','p-author','p-body','p-info-title','p-info-image'].forEach(function(id){
+        $(id).addEventListener('input', preview);
+      });
+      ['p-toc','p-comments'].forEach(function(id){ $(id).addEventListener('change', preview); });
+      window.WikiEditor.loadCharLinks().then(preview);
+    }
+
+    function loadPage(){
+      return fetch('/api/wiki-page?slug=' + encodeURIComponent(slug) + '&_=' + Date.now(),
+                   { credentials: 'same-origin' })
+        .then(function(r){ if (!r.ok) throw new Error('not found'); return r.json(); })
+        .then(function(res){
+          var p = res.page;
+          parentType = p.parentType; parentKey = p.parentKey; parentName = p.parentName || '';
+          $('p-title').value = p.title || '';
+          $('p-subtitle').value = p.subtitle || '';
+          $('p-blurb').value = p.blurb || '';
+          $('p-author').value = p.author || '';
+          $('p-body').value = p.body || '';
+          $('p-toc').checked = p.toc !== false;
+          $('p-comments').checked = p.comments !== false;
+          images = (p.images || []).slice();
+          headerPath = p.header || '';
+          theme = p.theme || {};
+          if (headerPath) {
+            var hv = $('p-header-prev'); hv.src = 'assets/' + headerPath; hv.style.display = 'block';
+            $('p-header-note').textContent = 'Current banner — choose a file to replace it.';
+            $('p-header-remove').style.display = '';
+            $('p-images-sec').open = true;
+          }
+          if (theme.background) {
+            bgPath = theme.background;
+            var bv = $('p-bg-prev'); bv.src = 'assets/' + bgPath; bv.style.display = 'block';
+            $('p-bg-note').textContent = 'Current background — choose a file to replace it.';
+            $('p-bg-remove').style.display = '';
+          }
+          if (p.infobox) {
+            $('p-info-title').value = p.infobox.title || '';
+            $('p-info-image').value = p.infobox.image || '';
+            infoUI.load(p.infobox);
+            $('p-side-sec').open = true;
+          }
+          if (p.boxes && p.boxes.length) { boxesUI.load(p.boxes); $('p-side-sec').open = true; }
+          if (window.ThemeEditor.prime(theme)) $('p-appearance').open = true;
+          renderImages();
+          setPill(res.status);
+          showParent(); showUrl();
+          if (res.canEdit === false) {
+            say('err', 'This page belongs to another account, so you cannot save changes to it.');
+            $('p-publish').disabled = true; $('p-draft').disabled = true;
+            $('p-delete').style.display = 'none';
+          }
+        });
+    }
+
+    // Logged-in check first: everything here writes.
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function(r){ return r.json(); })
+      .then(function(me){
+        if (!me || !me.username) {
+          gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="login" style="color:var(--maroon);font-weight:600">Log in →</a>');
+          return;
+        }
+        $('editor').style.display = '';
+        wire();
+        if (!$('p-author').value) $('p-author').value = me.displayName || me.username || '';
+        if (slug) {
+          loadPage().then(function(){ loadSiblings(); preview(); })
+            .catch(function(){ gate('Page not found', 'That page does not exist, or it is a draft on another account.'); });
+        } else if (parentType && parentKey) {
+          window.WikiEditor.autoGrow($('p-body'));
+          loadSiblings();
+          preview();
+        } else {
+          gate('Nothing to attach to',
+            'Open a script or collection you own and use <strong>+ Write a page</strong> in its Pages section — a page always belongs to one of them. ' +
+            '<a href="account" style="color:var(--maroon);font-weight:600">Your pages →</a>');
+        }
+      })
+      .catch(function(){
+        gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="login" style="color:var(--maroon);font-weight:600">Log in →</a>');
+      });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

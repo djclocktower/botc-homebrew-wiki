@@ -481,6 +481,18 @@
         <div class="toast" id="noicon-toast"></div>
       </section>
 
+      <!-- ODYSSEY TEXT CLEANUP (one-time; remove this card once it has been run) -->
+      <section class="panel">
+        <h3>Clean up Odyssey text <span class="count-pill" id="odyc-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          One-time tidy of the 119 Odyssey almanacs: removes the translation's em dashes (commas instead) and rewrites he/him/his and she/her to they/them/their. Character abilities are never touched, and the flavour quotes keep their wording apart from the dashes. Every page it edits is saved to revisions first. Check first, then run.
+        </p>
+        <button type="button" class="small-btn" id="odyc-check">Check what will change</button>
+        <button type="button" class="small-btn alt" id="odyc-run" style="display:none">Clean them up</button>
+        <div id="odyc-list"></div>
+        <div class="toast" id="odyc-toast"></div>
+      </section>
+
       <!-- NEWS -->
       <section class="panel">
         <h3>News <span class="count-pill" id="news-count"></span></h3>
@@ -733,9 +745,11 @@
       if (type === 'character')  return 'edit?c=' + sl;
       if (type === 'collection') return 'publish-collection?c=' + sl;
       if (type === 'script')     return 'publish-script?s=' + sl;
+      if (type === 'wikipage')   return 'publish-page?p=' + sl;
+      if (type === 'news')       return 'publish-news?n=' + sl;
       return '#';
     }
-    function typeLabel(t){ return t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''; }
+    function typeLabel(t){ return t === 'wikipage' ? 'Page' : (t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''); }
 
     function renderContentRow(item, tsField){
       var ts = item[tsField];
@@ -865,6 +879,7 @@
       if (type === 'script') return 's/' + sl;
       if (type === 'collection') return 'collection/' + sl;
       if (type === 'news') return 'news/' + sl;
+      if (type === 'wikipage') return 'p/' + sl;
       return 'c/' + sl;
     }
     function setToast(id, ok, text){
@@ -1246,6 +1261,40 @@
         if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }
         setToast('noicon-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' moved to drafts.');
         $('noicon-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- Odyssey text cleanup (one-time; remove with the card above) ---- */
+    $('odyc-check').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('odyc-list').innerHTML = '<p class="note">Checking…</p>';
+      postJSON('/api/admin/cleanup-odyssey', { dryRun: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('odyc-list').innerHTML = '<p class="note">' + esc(d.error || 'Check failed.') + '</p>'; return; }
+        $('odyc-count').textContent = d.pages + ' pages';
+        var msg = '<p class="note">' + d.pages + ' of ' + d.scanned + ' pages would change, ' +
+          d.fields + ' blocks of text in total.';
+        if (d.flags && d.flags.length) {
+          msg += '<br><strong>' + d.flags.length + ' flagged — nothing will run until these are sorted:</strong><br>' +
+            d.flags.slice(0, 20).map(function(f){ return esc(f.slug + ' · ' + f.field + ' · ' + f.flag); }).join('<br>');
+        } else {
+          msg += ' No problems flagged.';
+          $('odyc-run').style.display = '';
+        }
+        $('odyc-list').innerHTML = msg + '</p>';
+      });
+    });
+    $('odyc-run').addEventListener('click', function(){
+      if (!confirm('Clean up the text on all 119 Odyssey pages?\n\nEvery page it edits is saved to revisions first, so any of them can be rolled back.')) return;
+      var btn = this; btn.disabled = true;
+      setToast('odyc-toast', true, 'Cleaning up… this takes a few seconds.');
+      postJSON('/api/admin/cleanup-odyssey', {}).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('odyc-toast', false, d.error || 'Cleanup failed.'); return; }
+        setToast('odyc-toast', true, d.pages + ' pages cleaned, ' + d.fields + ' blocks of text rewritten.');
         loadActivity(true);
       });
     });

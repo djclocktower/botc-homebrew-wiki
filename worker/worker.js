@@ -62,6 +62,17 @@
  *   GET  /news/{slug}         -> article page (server-side rendered, comments)
  *   POST /api/admin/news      -> create/update/delete an article
  *
+ *   -- custom wiki pages (text-first pages under a script/collection) --
+ *   GET  /api/wiki-pages      -> pages under one parent (?parentType=&parentSlug=)
+ *                                or everything one author wrote (?author=)
+ *   GET  /api/wiki-page       -> one page for editing (?slug=; drafts incl.)
+ *   POST /api/wiki-page       -> create/update/delete one ({action:'delete'})
+ *   GET  /p/{slug}            -> the page itself (SSR, noindex, comments).
+ *                                Deliberately unlisted: no sitemap entry, no
+ *                                search, no browse list — only the parent
+ *                                script/collection page and its author's page
+ *                                link to it.
+ *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
  *   POST /api/character       -> create/update a character
@@ -116,6 +127,8 @@
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
  *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
+ *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
+ *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -147,14 +160,23 @@ import Classify from '../assets/classify.js';
 // Lets render.js emit the Starlight star without importing classify.js
 // itself (it is loaded standalone in the browser).
 Render.setStarMark(Classify.classBadgeHTML);
+// Wiki text engine: the markdown-ish formatter + the text-first page layout,
+// shared by /p/{slug} pages, news articles and the announcement banner.
+import WikiRender from '../assets/render-wiki.js';
 // News article renderer (also used by the /news index and the admin editor
-// preview in the browser).
+// preview in the browser). It formats text through render-wiki.js.
 import NewsRender from '../assets/render-news.js';
+NewsRender.init(WikiRender);
+// One-time text cleanup for the Odyssey almanacs, driving
+// POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
+// Lives in migration/ (in .assetsignore) so it is never served as a static file.
+// Delete this import, the route and the card once the cleanup has been run.
+import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
 
-const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/'];
+const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/', 'pages/', 'news/'];
 // avatars/ is servable from R2 but NOT uploadable through the generic
 // /api/upload — profile pictures only go through /api/account/avatar,
 // which pins the key to the logged-in user's own slot.
@@ -170,9 +192,10 @@ const CONTENT = {
   collection: { table: 'collections', nameCol: 'display_name' },
   script:     { table: 'scripts',     nameCol: 'name' }
 };
-// Every content type that can carry comments. `news` is not in CONTENT (it is
-// not user-editable content) but readers can comment on articles.
-const COMMENTABLE = ['character', 'collection', 'script', 'news'];
+// Every content type that can carry comments. `news` and `wikipage` are not
+// in CONTENT (they have their own tables and handlers) but readers can comment
+// on both.
+const COMMENTABLE = ['character', 'collection', 'script', 'news', 'wikipage'];
 
 // ---- password hashing (PBKDF2, matches the seeded admin hash) ----
 const PBKDF2_ITERATIONS = 100000;
@@ -577,10 +600,133 @@ async function ensureNewsTable(env) {
   _newsReady = true;
 }
 
+// ---- custom wiki pages (text-first pages hanging off a script/collection) ----
+// A page belongs to exactly one script or collection and is reachable ONLY
+// from that parent page and from its author's page — never from search, the
+// homepage, the browse lists or the sitemap. Same hybrid shape as everything
+// else: indexed columns for the lookups plus the whole page as JSON in `data`.
+let _pagesReady = false;
+async function ensurePagesTable(env) {
+  if (_pagesReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS pages (
+       slug        TEXT PRIMARY KEY,
+       title       TEXT NOT NULL,
+       parent_type TEXT NOT NULL,
+       parent_slug TEXT NOT NULL,
+       author      TEXT,
+       owner_id    INTEGER,
+       data        TEXT NOT NULL,
+       status      TEXT NOT NULL DEFAULT 'draft',
+       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_pages_parent ON pages(parent_type, parent_slug, status)'
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_pages_owner ON pages(owner_id)'
+  ).run();
+  _pagesReady = true;
+}
+
+// The parent script/collection row a wiki page hangs off, resolved the same
+// way the SSR routes resolve it (collections may be addressed by kebab id).
+async function wikiParentRow(env, type, key) {
+  if (type === 'collection') {
+    const row = await findCollectionRow(env, key);
+    if (!row) return null;
+    const d = parseData(row);
+    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status };
+  }
+  if (type !== 'script') return null;
+  const row = await getEntityRow(env, 'script', key);
+  if (!row) return null;
+  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status };
+}
+
+// Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
+// Only the indexed columns are read, so this stays cheap even at 1000 rows.
+async function loadCharLinks(env) {
+  const map = {};
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, name FROM characters WHERE status='published'"
+    ).all();
+    const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    for (const r of results || []) {
+      if (r.slug) map[norm(r.slug)] = r.slug;
+      if (r.name) map[norm(r.name)] = r.slug;
+    }
+  } catch { /* links just fall back to token pills */ }
+  return map;
+}
+
+// Custom side boxes — the {title, content} widget shared by character,
+// script, collection, wiki and news pages. Text only; the renderer escapes it.
+const BOX_MAX = 24;
+function sanitizeBoxes(boxes) {
+  if (!Array.isArray(boxes)) return [];
+  return boxes.slice(0, BOX_MAX).map(b => ({
+    title: String((b && b.title) || '').slice(0, 120),
+    content: String((b && b.content) || '').slice(0, 4000)
+  })).filter(b => b.title.trim() || b.content.trim());
+}
+
+// The fact box on a wiki page / news article: a title, an image and rows.
+function sanitizeInfobox(info) {
+  if (!info || typeof info !== 'object') return null;
+  const out = {
+    title: String(info.title || '').slice(0, 80),
+    image: typeof info.image === 'string' ? info.image.slice(0, 300) : '',
+    rows: Array.isArray(info.rows)
+      ? info.rows.slice(0, 20).map(r => ({
+          label: String((r && r.label) || '').slice(0, 60),
+          value: String((r && r.value) || '').slice(0, 300)
+        })).filter(r => r.label.trim() || r.value.trim())
+      : []
+  };
+  if (out.image && !WikiRender.safeImg(out.image, '')) out.image = '';
+  if (!out.title && !out.image && !out.rows.length) return null;
+  return out;
+}
+
+// Pages a parent script/collection carries. Drafts are only ever included
+// for someone allowed to see them (the owner, or an admin).
+async function listWikiPages(env, parentType, parentSlug, opts = {}) {
+  await ensurePagesTable(env);
+  const where = opts.includeDrafts
+    ? "status IN ('published','draft')"
+    : "status='published'";
+  const { results } = await env.DB.prepare(
+    `SELECT slug, title, status, author, data, updated_at FROM pages
+     WHERE parent_type=? AND parent_slug=? AND ${where}
+     ORDER BY status='draft', created_at`
+  ).bind(parentType, parentSlug).all().catch(() => ({ results: [] }));
+  return (results || []).map(r => {
+    const d = parseData(r);
+    return {
+      slug: r.slug, title: r.title, status: r.status,
+      author: r.author || d.author || null,
+      blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
+      updatedAt: r.updated_at
+    };
+  });
+}
+
 // Find the page a comment is aimed at and work out who may moderate it.
 // Returns null when the page doesn't exist or isn't publicly visible.
 async function commentTarget(env, type, slug) {
   if (!COMMENTABLE.includes(type) || !slug) return null;
+  if (type === 'wikipage') {
+    await ensurePagesTable(env);
+    const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id, data FROM pages WHERE slug=?')
+      .bind(slug).first().catch(() => null);
+    if (!row || row.status !== 'published') return null;
+    if (parseData(row).comments === false) return null;
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+  }
   if (type === 'news') {
     await ensureNewsTable(env);
     const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
@@ -714,6 +860,39 @@ function creatorAliasKey(name) {
 }
 function normCreator(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
 
+// A credit can name several people — "Taiyi (太一), Saki" — and each of them
+// gets their own creator page, so matching one name against the whole column
+// has to compare a single comma-separated segment at a time. Normalising the
+// spaces around the commas lets instr() do exact segment matching; instr and
+// not LIKE, because a name is free text and may contain % or _.
+function creditMatchSQL(col) {
+  return `instr(',' || replace(replace(lower(trim(${col})), ' ,', ','), ', ', ',') || ',', ',' || ? || ',') > 0`;
+}
+// The same test against a list of names: one bind per name.
+function creditAnySQL(col, n) {
+  const one = creditMatchSQL(col);
+  return '(' + new Array(n).fill(one).join(' OR ') + ')';
+}
+// Credit string -> the individual names in it, lower-cased.
+function creditNames(s) {
+  return Creators.splitCreators(s).map(normCreator).filter(Boolean);
+}
+// How a name is actually spelled on the pages that credit it, so an unclaimed
+// creator page shows "Ma'ayan" rather than whatever casing the link carried.
+function creditSpelling(name, ...rowSets) {
+  const want = normCreator(name);
+  if (!want) return '';
+  for (const rows of rowSets) {
+    for (const r of rows || []) {
+      const d = parseData(r);
+      for (const n of Creators.splitCreators(d.creator || d.author)) {
+        if (normCreator(n) === want) return n.trim();
+      }
+    }
+  }
+  return '';
+}
+
 // A creator name -> the user row that owns it, or null when nobody does.
 async function resolveCreatorAccount(env, name) {
   const key = normCreator(name);
@@ -738,14 +917,14 @@ async function resolveCreatorAccount(env, name) {
   try {
     const hit = await env.DB.prepare(
       `SELECT owner_id, COUNT(*) AS n FROM characters
-        WHERE owner_id IS NOT NULL AND status='published' AND lower(trim(creator))=?
+        WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
         GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
     ).bind(key).first();
     let ownerId = hit && hit.owner_id;
     if (!ownerId) {
       const s = await env.DB.prepare(
         `SELECT owner_id, COUNT(*) AS n FROM scripts
-          WHERE owner_id IS NOT NULL AND status='published' AND lower(trim(author))=?
+          WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('author')}
           GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
       ).bind(key).first();
       ownerId = s && s.owner_id;
@@ -769,9 +948,10 @@ async function creatorNamesFor(env, userId, username) {
       env.DB.prepare(`SELECT DISTINCT creator AS n FROM characters WHERE owner_id=? AND status='published'`).bind(userId).all(),
       env.DB.prepare(`SELECT DISTINCT author AS n FROM scripts WHERE owner_id=? AND status='published'`).bind(userId).all()
     ]);
+    // Split each credit: co-authoring a page claims the name you were credited
+    // under, not the whole "Taiyi (太一), Saki" string.
     for (const r of [...(chars.results || []), ...(scripts.results || [])]) {
-      const n = normCreator(r.n);
-      if (n) names.add(n);
+      for (const n of creditNames(r.n)) names.add(n);
     }
   } catch { /* leave whatever we got */ }
   try {
@@ -878,6 +1058,46 @@ function sanitizePageFields(o, themeBase) {
       o[k] = '';
     }
   }
+  // Custom side boxes, same widget as the character editor's.
+  if (o.customBoxes != null) {
+    const boxes = sanitizeBoxes(o.customBoxes);
+    if (boxes.length) o.customBoxes = boxes; else delete o.customBoxes;
+  }
+  const theme = PageRender.sanitizeTheme(o.theme, themeBase);
+  if (theme) o.theme = theme; else delete o.theme;
+}
+
+// ---- validation for wiki pages (/p/{slug}) and news articles ----
+// Same idea as sanitizePageFields: cap every text field, constrain images to
+// the page's own R2 area, and run boxes/infobox/theme through the shared
+// sanitizers. `imgBase` is the folder a page may put its own images in.
+const WIKI_FIELD_CAPS = {
+  title: 160, subtitle: 200, blurb: 300, author: 80, body: 60000
+};
+function sanitizeWikiFields(o, imgBase, themeBase) {
+  for (const k of Object.keys(WIKI_FIELD_CAPS)) {
+    if (o[k] != null) o[k] = String(o[k]).slice(0, WIKI_FIELD_CAPS[k]);
+  }
+  if (o.body != null) o.body = String(o.body).replace(/\r\n/g, '\n');
+  // The banner sits in this page's own image slot, or nowhere.
+  if (o.header != null) {
+    const h = String(o.header);
+    const ok = h === '' || (h.indexOf(imgBase) === 0 && h.indexOf('..') === -1 &&
+      /^[a-z0-9/._ -]+\.(png|jpe?g|webp)$/i.test(h));
+    o.header = ok ? h : '';
+  }
+  // Images the author uploaded for this page, so the editor can list them
+  // again. Only this page's own slots, never someone else's.
+  o.images = Array.isArray(o.images)
+    ? o.images.slice(0, 40).map(x => String(x))
+        .filter(s => s.indexOf(imgBase) === 0 && s.indexOf('..') === -1 &&
+                     /^[a-z0-9/._ -]+\.(png|jpe?g|webp)$/i.test(s))
+    : [];
+  o.boxes = sanitizeBoxes(o.boxes);
+  const info = sanitizeInfobox(o.infobox);
+  if (info) o.infobox = info; else delete o.infobox;
+  o.toc = o.toc !== false;
+  o.comments = o.comments !== false;
   const theme = PageRender.sanitizeTheme(o.theme, themeBase);
   if (theme) o.theme = theme; else delete o.theme;
 }
@@ -929,7 +1149,7 @@ async function buildPublicJSON(env, table, opts = {}) {
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
-  const tables = ['characters', 'collections', 'scripts', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
+  const tables = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
   const saved = {};
   for (const t of tables) {
     try {
@@ -979,7 +1199,10 @@ function attr(s) {
 // The topbar/nav markup mirrors the static pages (scripts.html is canonical).
 function pageShell(o) {
   // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
-  //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner}
+  //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner,
+  //     noindex}
+  // `noindex` keeps a page out of search engines — used by the custom wiki
+  // pages, which are reachable only from their parent page and their author's.
   // The nav row is identical on every page (built into the shell below);
   // site.js appends Token Tool + the Account/Login button, and moves the
   // Edit button to the end of the row on editable pages.
@@ -994,7 +1217,7 @@ function pageShell(o) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${attr(o.title)} — BOTC HomeBrew Wiki</title>
 <meta name="description" content="${attr(o.desc)}">
-<link rel="canonical" href="${attr(o.canonicalUrl)}">
+${o.noindex ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link rel="canonical" href="${attr(o.canonicalUrl)}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="${attr(o.title)}">
@@ -1163,11 +1386,12 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
   if (row.status === 'deleted') return env.ASSETS.fetch(request);
 
+  // One session read serves both the draft check and the "may this reader see
+  // draft wiki pages / the new-page button" check further down.
+  const pageSess = await getSession(env, request);
+  const mayEditParent = canEditRow(pageSess, row);
   const isDraft = row.status === 'draft';
-  if (isDraft) {
-    const sess = await getSession(env, request);
-    if (!canEditRow(sess, row)) return env.ASSETS.fetch(request); // 404 for everyone else
-  }
+  if (isDraft && !mayEditParent) return env.ASSETS.fetch(request); // 404 for everyone else
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   const d = JSON.parse(row.data);
   if (!d.slug) d.slug = row.slug || slug;
@@ -1183,9 +1407,29 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const ta = PageRender.themeAttrs(theme, '../');
 
   const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+
+  // Custom wiki pages hanging off this script/collection. They live nowhere
+  // else on the site, so this list is the only way in (besides the author's
+  // page). Drafts show only to whoever may edit them.
+  const wikiPages = await listWikiPages(env, type, row.slug || slug, { includeDrafts: mayEditParent });
+  const pagesHTML = WikiRender.renderPageLinks(wikiPages, { linkRoot: '../' });
+  // [[Character Name]] inside a custom box links to that character.
+  const linkMap = {};
+  const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  for (const c of chars) {
+    if (c.slug) linkMap[nkey(c.slug)] = c.slug;
+    if (c.name) linkMap[nkey(c.name)] = c.slug;
+  }
+  WikiRender.setCharLinks(linkMap);
+  const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
+  const pageKey = isScript ? d.slug : (d.id || d.slug);
+  const newPageHref = mayEditParent
+    ? '../publish-page?parentType=' + encodeURIComponent(type) + '&parentSlug=' + encodeURIComponent(pageKey)
+    : '';
+
   const body = isScript
-    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft })
-    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft });
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref });
 
   const nChars = isScript
     ? (d.characters || []).length
@@ -1377,10 +1621,15 @@ export default {
       const img = a.image
         ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
         : url.origin + '/assets/logo_skull.png';
+      // [[Character Name]] in an article links to that character's page.
+      WikiRender.setCharLinks(await loadCharLinks(env));
+      const newsTheme = PageRender.sanitizeTheme(a.theme, 'news/' + a.slug);
+      const newsThemeAttrs = PageRender.themeAttrs(newsTheme, '../');
       const html = pageShell({
         title: (isDraft ? 'Draft: ' : '') + (a.title || 'News'),
         desc, canonicalUrl: url.origin + '/news/' + encodeURIComponent(a.slug),
         ogImage: img, ogCard: a.image ? 'summary_large_image' : 'summary',
+        bodyClass: newsThemeAttrs.cls, bodyStyle: newsThemeAttrs.style,
         body: '<p class="news-back"><a href="../news">← All news</a></p>' +
           NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
@@ -1388,6 +1637,147 @@ export default {
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
         scripts: ['comments.js', 'site.js']
+      });
+      return new Response(html, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      });
+    }
+
+    // ---------- CUSTOM WIKI PAGES ----------
+    // List the pages hanging off one script/collection, or everything one
+    // author has written. These pages are deliberately invisible everywhere
+    // else on the wiki, so there is no "all pages" feed.
+    if (method === 'GET' && path === '/api/wiki-pages') {
+      await ensurePagesTable(env);
+      const author = (url.searchParams.get('author') || '').trim();
+      if (author) {
+        // Published only — an author page is public.
+        const { results } = await env.DB.prepare(
+          `SELECT slug, title, parent_type, parent_slug, author, data, updated_at
+           FROM pages WHERE status='published' AND lower(author)=lower(?)
+           ORDER BY updated_at DESC LIMIT 200`
+        ).bind(author).all().catch(() => ({ results: [] }));
+        const pages = [];
+        for (const r of results || []) {
+          const d = parseData(r);
+          const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+          // A page whose script/collection has been deleted drops out of the
+          // public listings with it.
+          if (parent && parent.status === 'deleted') continue;
+          pages.push({
+            slug: r.slug, title: r.title, author: r.author,
+            blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
+            parentType: r.parent_type,
+            parentKey: parent ? parent.key : r.parent_slug,
+            parentName: parent ? parent.name : null,
+            updatedAt: r.updated_at
+          });
+        }
+        return jsonResponse({ pages });
+      }
+      const parentType = url.searchParams.get('parentType') || '';
+      const parentKey = url.searchParams.get('parentSlug') || '';
+      const parent = await wikiParentRow(env, parentType, parentKey);
+      if (!parent) return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const mayEdit = canEditRow(sess, { owner_id: parent.ownerId });
+      return jsonResponse({
+        parent: { type: parent.type, key: parent.key, name: parent.name },
+        canEdit: mayEdit,
+        pages: await listWikiPages(env, parent.type, parent.slug, { includeDrafts: mayEdit })
+      });
+    }
+
+    // One wiki page as JSON — what the editor loads. Drafts are visible to
+    // their owner and to admins only.
+    if (method === 'GET' && path === '/api/wiki-page') {
+      await ensurePagesTable(env);
+      const slug = url.searchParams.get('slug') || '';
+      const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
+        .bind(slug).first().catch(() => null);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const editable = canEditRow(sess, row);
+      if (row.status !== 'published' && !editable) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+      return jsonResponse({
+        page: {
+          ...parseData(row), slug: row.slug, title: row.title,
+          parentType: row.parent_type, parentSlug: row.parent_slug,
+          parentKey: parent ? parent.key : row.parent_slug,
+          parentName: parent ? parent.name : null,
+          author: row.author || null,
+          updatedAt: row.updated_at
+        },
+        status: row.status, canEdit: editable
+      });
+    }
+
+    // ---------- CUSTOM WIKI PAGE (server-side rendered, noindex) ----------
+    if (method === 'GET' && path.startsWith('/p/')) {
+      let slug = decodeURIComponent(path.slice(3));
+      if (slug.endsWith('.html')) {
+        slug = slug.slice(0, -5);
+        return new Response(null, {
+          status: 301,
+          headers: { Location: url.origin + '/p/' + encodeURIComponent(slug) + url.search, 'Cache-Control': 'no-store' }
+        });
+      }
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      await ensurePagesTable(env);
+      const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
+        .bind(slug).first().catch(() => null);
+      if (!row) return env.ASSETS.fetch(request);
+      const isDraft = row.status !== 'published';
+      if (isDraft) {
+        const sess = await getSession(env, request);
+        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+      }
+      if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
+
+      const d = parseData(row);
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+      // A page goes down with its parent: if the script/collection it belongs
+      // to has been deleted, nothing links here any more and the public
+      // shouldn't reach it either. Its owner still can, so restoring the
+      // parent brings everything back.
+      if (parent && parent.status === 'deleted') {
+        const sess = await getSession(env, request);
+        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+      }
+      WikiRender.setCharLinks(await loadCharLinks(env));
+      const page = {
+        ...d, slug: row.slug, title: row.title,
+        author: row.author || d.author || null,
+        parentType: row.parent_type,
+        parentKey: parent ? parent.key : row.parent_slug,
+        parentName: parent ? parent.name : null,
+        updatedAt: row.updated_at
+      };
+      const theme = PageRender.sanitizeTheme(d.theme, 'pages/' + row.slug);
+      const ta = PageRender.themeAttrs(theme, '../');
+      const desc = (d.blurb || d.subtitle || WikiRender.autoSummary(d.body, 180) ||
+        'A page from the BOTC Homebrew Wiki.');
+      const bannerImg = d.header ? WikiRender.safeImg(d.header, url.origin + '/') : '';
+
+      const html = pageShell({
+        title: (isDraft ? 'Draft: ' : '') + (row.title || 'Page'),
+        desc, canonicalUrl: url.origin + '/p/' + encodeURIComponent(row.slug),
+        ogImage: bannerImg || (url.origin + '/assets/logo_skull.png'),
+        ogCard: bannerImg ? 'summary_large_image' : 'summary',
+        // These pages are intentionally unlisted: no search engines, no
+        // sitemap entry, no site search — only their parent page links here.
+        noindex: true,
+        bodyClass: ta.cls, bodyStyle: ta.style,
+        body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
+        draftBanner: isDraft
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the page editor</a>.</div>'
+          : '',
+        bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
+          (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
+        scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'comments.js', 'site.js']
       });
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -1662,7 +2052,6 @@ export default {
       const sess = await getSession(env, request);
       const canSeeDrafts = !!(sess && (sess.isAdmin || (u && sess.userId === u.id)));
 
-      const marks = names.map(() => '?').join(',');
       const statusIn = canSeeDrafts ? "('published','draft')" : "('published')";
       // owner_id OR credited-name, so a page counts either way round: one the
       // account owns but credited to somebody else, and one credited to this
@@ -1670,7 +2059,7 @@ export default {
       function whereFor(nameCol) {
         const clauses = [];
         if (u) clauses.push('owner_id=?');
-        if (names.length) clauses.push(`lower(trim(${nameCol})) IN (${marks})`);
+        if (names.length) clauses.push(creditAnySQL(nameCol, names.length));
         if (!clauses.length) return null;
         return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
                  binds: [...(u ? [u.id] : []), ...names] };
@@ -1710,7 +2099,8 @@ export default {
           if (u && r.owner_id === u.id) return true;
           if (!names.length) return false;
           const d = parseData(r);
-          return names.includes(normCreator(d.author));
+          // A collection can be co-credited too.
+          return creditNames(d.author).some(n => names.includes(n));
         });
       } catch { collRows = []; }
 
@@ -1777,6 +2167,40 @@ export default {
         return pool.some(x => x.slug === p.slug);
       });
 
+      // Custom wiki pages by this person. They are unlisted everywhere else, so
+      // their creator page is one of only two ways in. Matched the same way the
+      // content tables are — the account that owns them, or any creator name it
+      // has claimed — so a page written under a bulk-imported credit still
+      // shows up on the page for that name.
+      let pages = [];
+      try {
+        await ensurePagesTable(env);
+        const where = [];
+        const binds = [];
+        if (u) { where.push('owner_id=?'); binds.push(u.id); }
+        if (names.length) { where.push(creditAnySQL('author', names.length)); binds.push(...names); }
+        if (where.length) {
+          const { results } = await env.DB.prepare(
+            `SELECT slug, title, parent_type, parent_slug, data, updated_at FROM pages
+             WHERE (${where.join(' OR ')}) AND status='published'
+             ORDER BY updated_at DESC LIMIT 200`
+          ).bind(...binds).all();
+          for (const r of results || []) {
+            const d = parseData(r);
+            const parent = await wikiParentRow(env, r.parent_type, r.parent_slug);
+            if (parent && parent.status === 'deleted') continue;
+            pages.push({
+              slug: r.slug, title: r.title,
+              blurb: d.blurb || WikiRender.autoSummary(d.body, 140),
+              parentType: r.parent_type,
+              parentKey: parent ? parent.key : r.parent_slug,
+              parentName: parent ? parent.name : null,
+              updatedAt: r.updated_at
+            });
+          }
+        }
+      } catch { /* the creator page still works without them */ }
+
       return jsonResponse({
         profile: u ? {
           claimed: true,
@@ -1791,12 +2215,14 @@ export default {
         } : {
           claimed: false,
           username: null,
-          displayName: aname,
+          // Show the spelling the pages actually use, not whatever casing came
+          // in on the query string.
+          displayName: creditSpelling(aname, charRows, scriptRows) || aname,
           creatorNames: names,
           links: {},
           pinned: []
         },
-        characters: c.live, scripts: s.live, collections: k.live,
+        characters: c.live, scripts: s.live, collections: k.live, pages,
         drafts: canSeeDrafts
           ? { characters: c.drafts, scripts: s.drafts, collections: k.drafts }
           : null
@@ -1806,12 +2232,16 @@ export default {
     // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
     if (method === 'GET' && path === '/api/creators') {
       const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
+      // One credit string can name several people; each of them gets their own
+      // row here, the same way each of them gets their own creator page.
       function bump(raw, kind) {
-        const key = normCreator(raw);
-        if (!key) return;
-        let row = tally.get(key);
-        if (!row) { row = { name: String(raw).trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
-        row[kind]++;
+        for (const name of Creators.splitCreators(raw)) {
+          const key = normCreator(name);
+          if (!key) continue;
+          let row = tally.get(key);
+          if (!row) { row = { name: name.trim(), characters: 0, scripts: 0, collections: 0 }; tally.set(key, row); }
+          row[kind]++;
+        }
       }
       try {
         const [chars, scripts, colls] = await Promise.all([
@@ -1835,14 +2265,31 @@ export default {
           aliases.set(String(r.key).slice('creator_alias:'.length), String(r.value || ''));
         }
       } catch { /* none set */ }
-      const owners = new Map();  // lower(name) -> owner_id (most pages wins)
+      // lower(name) -> owner_id, the account that owns the most published
+      // pages credited to that name (proof by ownership, in bulk). Counted in
+      // JS rather than SQL because a credit can name several people.
+      const owners = new Map();
       try {
         const { results } = await env.DB.prepare(
-          `SELECT lower(trim(creator)) AS n, owner_id, COUNT(*) AS c FROM characters
+          `SELECT creator AS n, owner_id, COUNT(*) AS c FROM characters
             WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
-            GROUP BY n, owner_id ORDER BY c DESC`
+            GROUP BY creator, owner_id`
         ).all();
-        for (const r of results || []) if (!owners.has(r.n)) owners.set(r.n, r.owner_id);
+        const perName = new Map();   // name -> Map(owner_id -> count)
+        for (const r of results || []) {
+          for (const key of creditNames(r.n)) {
+            if (!perName.has(key)) perName.set(key, new Map());
+            const m = perName.get(key);
+            m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
+          }
+        }
+        for (const [key, m] of perName) {
+          let best = null, bestN = 0;
+          for (const [ownerId, n] of m) {
+            if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
+          }
+          if (best != null) owners.set(key, best);
+        }
       } catch { /* no owned pages */ }
       let users = [];
       try {
@@ -2351,6 +2798,21 @@ export default {
       ]);
       const u = batch[0].results[0];
       if (!u) return jsonResponse({ error: 'Not logged in' }, { status: 401, 'Set-Cookie': clearCookie() });
+      // Custom wiki pages this account owns, drafts included — the account
+      // page is where their author manages them.
+      let myPages = [];
+      try {
+        await ensurePagesTable(env);
+        const { results } = await env.DB.prepare(
+          `SELECT slug, title, parent_type, parent_slug, status, created_at, updated_at
+           FROM pages WHERE owner_id=? ORDER BY updated_at DESC`
+        ).bind(sess.userId).all();
+        myPages = (results || []).map(r => ({
+          slug: r.slug, name: r.title, status: r.status,
+          parentType: r.parent_type, parentSlug: r.parent_slug,
+          created_at: r.created_at, updated_at: r.updated_at
+        }));
+      } catch { /* non-fatal */ }
       return jsonResponse({
         profile: {
           username: u.username,
@@ -2371,6 +2833,7 @@ export default {
         characters: batch[1].results,
         collections: batch[2].results,
         scripts: batch[3].results,
+        pages: myPages,
         recentEdits: batch[4].results
       });
     }
@@ -2914,12 +3377,14 @@ export default {
       const days = Math.min(Math.max(parseInt(url.searchParams.get('days') || '7', 10) || 7, 1), 365);
       const since = '-' + days + ' day';
       await ensureViewsTable(env);
-      await ensureNewsTable(env); // the name lookup below UNIONs it in
+      await ensureNewsTable(env);  // the name lookup below UNIONs both of
+      await ensurePagesTable(env); // these in
       const names =
         `(SELECT 'character' AS t, slug, name FROM characters
           UNION ALL SELECT 'script', slug, name FROM scripts
           UNION ALL SELECT 'collection', slug, display_name FROM collections
-          UNION ALL SELECT 'news', slug, title FROM news)`;
+          UNION ALL SELECT 'news', slug, title FROM news
+          UNION ALL SELECT 'wikipage', slug, title FROM pages)`;
       const [top, totals] = await Promise.all([
         env.DB.prepare(
           `SELECT pv.entity_type, pv.slug, SUM(pv.n) AS views, MAX(p.name) AS name
@@ -2956,7 +3421,7 @@ export default {
       // Posting a comment counts as a content write: a wiki locked because of
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
       // Suspended accounts can still use account settings and the contact
       // form (to appeal), but cannot touch content.
       if (isContentWrite && acctFlags.banned) {
@@ -3107,8 +3572,25 @@ export default {
         }
 
         if (!sess.isAdmin) {
-          // tokens/ is reserved for admin tooling.
-          if (key.startsWith('tokens/')) return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+          // tokens/ is reserved for admin tooling; news/ for the news editor,
+          // which is admin-only anyway.
+          if (key.startsWith('tokens/') || key.startsWith('news/')) {
+            return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+          }
+          // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
+          // exists, only its owner may put images in its slot.
+          if (key.startsWith('pages/')) {
+            await ensurePagesTable(env);
+            const base = key.slice(6).replace(/\.[a-z0-9]+$/i, '');
+            // Longest matching slug wins: "my-page-header.png" belongs to the
+            // page "my-page", not to a page that happens to be called "my".
+            const row = await env.DB.prepare(
+              "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
+            ).bind(base, base).first().catch(() => null);
+            if (row && !canEditRow(sess, row)) {
+              return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
+            }
+          }
           // Character art follows art/{slug}.png — if that character exists,
           // only its owner may replace the art.
           if (key.startsWith('art/')) {
@@ -3425,6 +3907,103 @@ export default {
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
         return jsonResponse({ ok: true, slug: s.slug, status });
+      }
+
+      // ---- custom wiki pages (text-first pages under a script/collection) ----
+      // Who may write one: the owner of the parent script/collection, or an
+      // admin. The page is then owned by whoever created it, and only they (or
+      // an admin) can edit it afterwards.
+      if (path === '/api/wiki-page') {
+        await ensurePagesTable(env);
+        const b = await request.json().catch(() => ({}));
+        const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 70);
+
+        if (b.action === 'delete') {
+          const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
+            .bind(String(b.slug || '')).first().catch(() => null);
+          if (!row) return jsonResponse({ error: 'Page not found.' }, { status: 404 });
+          if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+          await saveRevision(env, sess, 'wikipage', row);
+          await env.DB.prepare('DELETE FROM pages WHERE slug=?').bind(row.slug).run();
+          await ensureCommentTables(env);
+          await env.DB.prepare("DELETE FROM comments WHERE entity_type='wikipage' AND slug=?").bind(row.slug).run();
+          await logActivity(env, sess, 'delete', 'wikipage', row.slug, row.title);
+          return jsonResponse({ ok: true, deleted: row.slug });
+        }
+
+        const title = String(b.title || '').trim().slice(0, 160);
+        if (!title) return jsonResponse({ error: 'Give the page a title.' }, { status: 400 });
+        if (!String(b.body || '').trim()) {
+          return jsonResponse({ error: 'Write something in the page body first.' }, { status: 400 });
+        }
+
+        const existing = b.slug
+          ? await env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(String(b.slug)).first().catch(() => null)
+          : null;
+        if (b.slug && !existing) return jsonResponse({ error: 'That page no longer exists.' }, { status: 404 });
+        if (existing && !canEditRow(sess, existing)) {
+          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        }
+
+        // The parent never changes once a page is created — its URL and the
+        // link back to it would both break.
+        const parent = existing
+          ? await wikiParentRow(env, existing.parent_type, existing.parent_slug)
+          : await wikiParentRow(env, String(b.parentType || ''), String(b.parentSlug || ''));
+        if (!parent) return jsonResponse({ error: 'That script or collection could not be found.' }, { status: 404 });
+        if (!existing && !canEditRow(sess, { owner_id: parent.ownerId })) {
+          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" can add pages to it.' }, { status: 403 });
+        }
+        if (!sess.isAdmin && await isProtected(env, parent.type, parent.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+
+        // Slug is derived from the title once, then frozen so links keep
+        // working. A clash with someone else's page gets a numeric suffix.
+        let slug = existing ? existing.slug : kebab(title);
+        if (!slug) return jsonResponse({ error: 'Could not build a URL from that title.' }, { status: 400 });
+        if (!existing) {
+          const taken = async s => !!(await env.DB.prepare('SELECT 1 FROM pages WHERE slug=?')
+            .bind(s).first().catch(() => null));
+          let candidate = slug;
+          for (let i = 2; i < 60 && await taken(candidate); i++) candidate = slug + '-' + i;
+          // The upsert below would overwrite an existing page, so never save
+          // onto a slug that is still taken — ask for a different title first.
+          if (await taken(candidate)) {
+            return jsonResponse({ error: 'Too many pages already use that title. Give this one a different name.' }, { status: 409 });
+          }
+          slug = candidate;
+        }
+
+        const page = {
+          slug, title,
+          subtitle: b.subtitle, blurb: b.blurb, author: b.author,
+          body: b.body, header: b.header, images: b.images,
+          boxes: b.boxes, infobox: b.infobox, theme: b.theme,
+          toc: b.toc, comments: b.comments
+        };
+        sanitizeWikiFields(page, 'pages/' + slug + '-', 'pages/' + slug);
+        page.parentType = parent.type;
+        page.parentSlug = parent.slug;
+        if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
+
+        const status = b.status === 'published' ? 'published' : 'draft';
+        if (existing) await saveRevision(env, sess, 'wikipage', existing);
+        await env.DB.prepare(
+          `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+           ON CONFLICT(slug) DO UPDATE SET
+             title=excluded.title, author=excluded.author, data=excluded.data,
+             status=excluded.status, updated_at=datetime('now')`
+        ).bind(slug, title, parent.type, parent.slug, page.author || null,
+               existing ? existing.owner_id : sess.userId, JSON.stringify(page), status).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
+        return jsonResponse({
+          ok: true, slug, status,
+          parentType: parent.type, parentKey: parent.key, parentName: parent.name
+        });
       }
 
       // ---- publish / unpublish a page ----
@@ -3958,12 +4537,26 @@ export default {
           author: String(b.author || '').trim().slice(0, 80) || null,
           summary: String(b.summary || '').trim().slice(0, 300) || null,
           body,
-          // Hero images live in the R2 scripts/collections areas or are remote
-          // URLs; anything else is dropped rather than half-trusted.
-          image: (/^https?:\/\//i.test(image) || /^(scripts|collections|art)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i.test(image))
+          // Hero images live in the R2 news/scripts/collections areas or are
+          // remote URLs; anything else is dropped rather than half-trusted.
+          image: (/^https?:\/\//i.test(image) || /^(news|scripts|collections|art)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i.test(image))
             ? image : null,
-          pinned: !!b.pinned
+          pinned: !!b.pinned,
+          // Images uploaded for this article, so the editor can list them again.
+          images: Array.isArray(b.images)
+            ? b.images.slice(0, 40).map(x => String(x))
+                .filter(s => s.indexOf('news/' + slug + '-') === 0 && s.indexOf('..') === -1 &&
+                             /^[a-z0-9/._ -]+\.(png|jpe?g|webp)$/i.test(s))
+            : [],
+          // Same page furniture the custom wiki pages get: contents box,
+          // side boxes, fact box and the theme kit.
+          toc: !!b.toc,
+          boxes: sanitizeBoxes(b.boxes),
+          infobox: sanitizeInfobox(b.infobox),
+          theme: PageRender.sanitizeTheme(b.theme, 'news/' + slug)
         };
+        if (!article.infobox) delete article.infobox;
+        if (!article.theme) delete article.theme;
         const status = b.status === 'published' ? 'published' : 'draft';
         // published_at is stamped once, the first time it goes live, so
         // editing an old article doesn't jump it to the top of the list.
@@ -4077,6 +4670,52 @@ export default {
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' page(s) with no icon moved to draft');
         return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+      }
+
+      // ---- admin: one-time Odyssey text cleanup ----
+      // Strips the translation's em dashes and rewrites its gendered pronouns
+      // to they/them/their across the Odyssey almanacs, leaving `ability` and
+      // the flavour quote's pronouns alone. The rules live in
+      // migration/odyssey-cleanup.js so the same code can be dry-run locally.
+      // Remove this block, the import at the top and the dashboard card once
+      // it has been run.
+      if (path === '/api/admin/cleanup-odyssey') {
+        const b = await request.json().catch(() => ({}));
+        // translatedBy is the Odyssey import's own marker: it matches those 119
+        // rows and nothing else on the wiki.
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, status, data FROM characters WHERE json_extract(data,'$.translatedBy')='DJ_DJ_DJ'"
+        ).all();
+        const rows = results || [];
+        const plan = [], flags = [];
+        for (const row of rows) {
+          const res = OdysseyCleanup.cleanCharacter(parseData(row));
+          res.flags.forEach(f => flags.push({ slug: row.slug, field: f.field, flag: f.flag }));
+          if (res.changed) plan.push({ row, data: res.data, n: res.changed });
+        }
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, scanned: rows.length,
+            pages: plan.length, fields: plan.reduce((a, p) => a + p.n, 0),
+            flags
+          });
+        }
+        // A flagged case means the rules met something they were not built for.
+        // Refuse rather than write half-checked prose.
+        if (flags.length) {
+          return jsonResponse({ error: flags.length + ' flagged case(s); nothing was changed.', flags }, { status: 400 });
+        }
+        for (const p of plan) {
+          await saveRevision(env, sess, 'character', p.row);
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(p.data), p.row.slug).run();
+        }
+        await logActivity(env, sess, 'update', 'character', null,
+          'Odyssey text cleanup: ' + plan.length + ' page(s)');
+        return jsonResponse({
+          ok: true, scanned: rows.length, pages: plan.length,
+          fields: plan.reduce((a, p) => a + p.n, 0), flags: []
+        });
       }
 
       // ---- admin: site-wide announcement banner ----

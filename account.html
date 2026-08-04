@@ -418,15 +418,17 @@
     function $(id){ return document.getElementById(id); }
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-    var TYPE_LABEL = { character: 'Character', collection: 'Collection', script: 'Script' };
+    var TYPE_LABEL = { character: 'Character', collection: 'Collection', script: 'Script', wikipage: 'Page' };
     function viewUrl(type, slug) {
       if (type === 'character')  return 'c/' + encodeURIComponent(slug);
       if (type === 'collection') return 'collection/' + encodeURIComponent(slug);
+      if (type === 'wikipage')   return 'p/' + encodeURIComponent(slug);
       return 's/' + encodeURIComponent(slug);
     }
     function editUrl(type, slug) {
       if (type === 'character')  return 'edit?c=' + encodeURIComponent(slug);
       if (type === 'collection') return 'publish-collection?c=' + encodeURIComponent(slug);
+      if (type === 'wikipage')   return 'publish-page?p=' + encodeURIComponent(slug);
       return 'publish-script?s=' + encodeURIComponent(slug);
     }
     function fmtDate(s) {
@@ -541,6 +543,15 @@
         ? '<span class="row-name"><a href="' + editUrl(type, r.slug) + '">' + name + '</a></span>'
         : '<span class="row-name"><a href="' + viewUrl(type, r.slug) + '">' + name + '</a></span>';
       var actions = '<button class="mini-btn edit" data-act="edit" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Edit</button>';
+      // Custom wiki pages are published, drafted and deleted from their own
+      // editor (they are not part of the shared /api/publish + /api/delete
+      // content types), so the row only offers Edit.
+      if (type === 'wikipage') {
+        return '<tr><td>' + nameCell + '</td>' +
+          '<td class="row-type">' + TYPE_LABEL[type] + '</td>' +
+          '<td class="row-date">updated ' + fmtDate(r.updated_at) + '</td>' +
+          '<td class="row-actions">' + actions + '</td></tr>';
+      }
       if (isDraft) {
         actions += '<button class="mini-btn publish" data-act="publish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Publish</button>';
       } else {
@@ -594,9 +605,9 @@
 
     function renderLists(data) {
       var all = [];
-      ['characters', 'collections', 'scripts'].forEach(function(k){
-        var type = k === 'characters' ? 'character' : k === 'collections' ? 'collection' : 'script';
-        (data[k] || []).forEach(function(r){ all.push({ type: type, r: r }); });
+      var TYPE_OF = { characters: 'character', collections: 'collection', scripts: 'script', pages: 'wikipage' };
+      ['characters', 'collections', 'scripts', 'pages'].forEach(function(k){
+        (data[k] || []).forEach(function(r){ all.push({ type: TYPE_OF[k], r: r }); });
       });
       var drafts = all.filter(function(x){ return x.r.status === 'draft'; });
       var pages  = all.filter(function(x){ return x.r.status !== 'draft'; });

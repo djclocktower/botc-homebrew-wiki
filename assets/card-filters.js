@@ -32,6 +32,11 @@
     return (card.getAttribute('data-tags') || '').split(',')
       .map(function (t) { return titleCase(t); }).filter(Boolean);
   }
+  // data-creator holds the whole credit string, which may name several people.
+  function cardCredits(card) {
+    return (card.getAttribute('data-creator') || '').split(',')
+      .map(function (n) { return n.trim(); }).filter(Boolean);
+  }
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
   /* opts: {grid, bar, toggle, count} — elements or element ids — plus optional
@@ -76,8 +81,8 @@
     var tagSet = {}, creatorSet = {}, nPartial = 0, nStar = 0;
     cards.forEach(function (c) {
       cardTags(c).forEach(function (t) { tagSet[t] = 1; });
-      var cr = (c.getAttribute('data-creator') || '').trim();
-      if (cr) creatorSet[cr] = 1;
+      // Co-credited cards offer each of their creators as its own option.
+      cardCredits(c).forEach(function (n) { if (n) creatorSet[n] = 1; });
       if (c.getAttribute('data-partial') === '1') nPartial++;
       if (c.getAttribute('data-starlight') === '1') nStar++;
     });
@@ -192,7 +197,8 @@
       var ctags = cardTags(card);
       if (STATE.inTags.length && !STATE.inTags.every(function (t) { return ctags.indexOf(t) !== -1; })) return false;
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
-      if (STATE.creator && (card.getAttribute('data-creator') || '').trim() !== STATE.creator) return false;
+      // A filter on one name matches any card that credits them.
+      if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
       return true;
     }
 

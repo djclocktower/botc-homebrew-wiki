@@ -2276,3 +2276,300 @@ a:hover .starlight-star { opacity: .9; }
   font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .03em;
   color: rgba(236,225,200,.6); text-align: center; margin: 0 0 14px;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   CUSTOM WIKI PAGES (/p/{slug}) — text-first pages hanging off a
+   script or collection. The markup comes from assets/render-wiki.js,
+   which is shared by these pages, news articles and the custom boxes,
+   so every rule below styles all three at once.
+   ════════════════════════════════════════════════════════════════ */
+.wiki-page { max-width: 1080px; margin: 0 auto; }
+.wiki-crumb { margin: 0 0 10px; }
+.wiki-crumb a {
+  font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.8); text-decoration: none;
+}
+.wiki-crumb a:hover { color: #fff; text-decoration: underline; }
+.wiki-banner-wrap { margin: 0 0 14px; }
+.wiki-banner { display: block; width: 100%; height: auto; border: 3px solid var(--parch-frame); }
+
+.wiki-page-head {
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 3px solid var(--parch-frame);
+  padding: 18px 24px; margin-bottom: 16px;
+}
+.wiki-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-size: clamp(1.7rem, 4.6vw, 2.6rem); line-height: 1.1;
+  color: var(--maroon); margin: 0;
+}
+.wiki-subtitle {
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: 1.02rem; font-style: italic; color: var(--ink);
+  opacity: .85; margin: 6px 0 0;
+}
+.wiki-meta {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .05em;
+  color: #8a7a5e; margin: 8px 0 0;
+}
+.wiki-meta a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Text column + optional side column. One column on phones, always. */
+.wiki-layout { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 18px; align-items: start; }
+.wiki-layout-full { grid-template-columns: minmax(0,1fr); }
+@media (max-width: 900px) { .wiki-layout { grid-template-columns: minmax(0,1fr); } }
+.wiki-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.wiki-side .card { margin: 0; }
+
+.wiki-body {
+  background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover;
+  border: 3px solid var(--parch-frame);
+  padding: 20px 26px;
+  color: var(--ink); font-size: 1.02rem; line-height: 1.62;
+  overflow-wrap: anywhere; min-width: 0;
+}
+.wiki-body > :first-child { margin-top: 0; }
+/* The contents box and |left / |right images float, so the panel has to
+   contain them or they spill past its border. */
+.wiki-body::after, .wiki-callout-body::after, .news-body::after,
+.custom-box-body::after { content: ''; display: block; clear: both; }
+.wiki-body p { margin: 0 0 14px; }
+.wiki-body a { color: var(--good-name); text-decoration: underline; text-underline-offset: 2px; }
+.wiki-charlink { font-weight: 600; }
+
+/* Headings. # is the biggest a writer can use — the page title is the h1. */
+.wiki-h {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  letter-spacing: .02em; line-height: 1.2;
+}
+.wiki-h a.sec-anchor { color: inherit; text-decoration: none; }
+.wiki-h a.sec-anchor:hover { text-decoration: underline; }
+.wiki-h1 { font-size: 1.6rem; margin: 26px 0 10px; padding-bottom: 5px; border-bottom: 2px solid var(--parch-frame); }
+.wiki-h2 { font-size: 1.3rem; margin: 22px 0 8px; }
+.wiki-h3 { font-size: 1.08rem; margin: 18px 0 6px; }
+.wiki-h4 { font-size: .98rem; margin: 16px 0 5px; text-transform: uppercase; letter-spacing: .05em; }
+
+/* The site puts a red bullet on every <li> (see the global li::before near
+   the top). Numbered lists and the contents box supply their own markers, so
+   the global one is switched off there instead of doubling up. */
+.wiki-ul { margin: 0 0 14px; padding-left: 8px; }
+.wiki-ol { margin: 0 0 14px; padding-left: 26px; list-style: decimal; }
+.wiki-ul li, .wiki-ol li { margin-bottom: 6px; }
+.wiki-ol li, .wiki-toc-list li { padding-left: 0; }
+.wiki-ol li::before, .wiki-toc-list li::before { content: none; }
+.wiki-rule { border: none; border-top: 1px solid var(--parch-frame); margin: 20px 0; }
+.wiki-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .9em; background: rgba(91,31,33,.08); padding: 1px 5px;
+}
+.wiki-quote {
+  margin: 0 0 14px; padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--maroon);
+  font-style: italic; color: var(--ink); opacity: .92;
+}
+.wiki-quote p:last-child { margin-bottom: 0; }
+
+/* Contents box — the numbered list at the top of a long page. */
+.wiki-toc {
+  float: right; max-width: 300px; margin: 0 0 14px 18px;
+  background: rgba(91,31,33,.05);
+  border: 1px solid var(--parch-frame); padding: 10px 16px 12px;
+}
+@media (max-width: 620px) { .wiki-toc { float: none; max-width: none; margin-left: 0; } }
+.wiki-toc-head {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
+  margin-bottom: 6px;
+}
+.wiki-toc-list { margin: 0; padding-left: 20px; font-size: .92rem; }
+.wiki-toc-list li { margin-bottom: 3px; }
+.wiki-toc-l1 { margin-left: 12px; list-style-type: lower-alpha; }
+.wiki-toc-l2 { margin-left: 24px; list-style-type: lower-roman; }
+.wiki-toc a { color: var(--maroon); text-decoration: none; }
+.wiki-toc a:hover { text-decoration: underline; }
+
+/* Tables scroll inside their own box so a wide one never pushes the page. */
+.wiki-table-wrap { overflow-x: auto; margin: 0 0 16px; }
+/* width:auto + min-width:100% means a wide table scrolls inside its wrapper
+   on a phone instead of squeezing its columns down to one word each. */
+.wiki-table { border-collapse: collapse; width: auto; min-width: 100%; font-size: .95rem; }
+.wiki-table td, .wiki-table th { min-width: 90px; }
+.wiki-table th, .wiki-table td {
+  border: 1px solid var(--parch-frame); padding: 6px 10px; text-align: left; vertical-align: top;
+}
+.wiki-table th {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem;
+  letter-spacing: .04em; text-transform: uppercase;
+  background: rgba(91,31,33,.08); color: var(--maroon);
+}
+.wiki-table tbody tr:nth-child(even) { background: rgba(0,0,0,.03); }
+
+/* Images: full width by default, floated with |left / |right, edge-to-edge
+   with |wide. Floats drop to full width on phones. */
+.wiki-figure { margin: 0 0 16px; }
+.wiki-figure img { display: block; max-width: 100%; height: auto; border: 2px solid var(--parch-frame); }
+.wiki-figure figcaption {
+  font-size: .84rem; font-style: italic; color: var(--ink); opacity: .75;
+  margin-top: 5px; line-height: 1.35;
+}
+.wiki-figure-right { float: right; max-width: 46%; margin: 0 0 12px 18px; }
+.wiki-figure-left { float: left; max-width: 46%; margin: 0 18px 12px 0; }
+.wiki-figure-wide img { width: 100%; }
+@media (max-width: 620px) {
+  .wiki-figure-right, .wiki-figure-left { float: none; max-width: none; margin: 0 0 16px; }
+}
+.wiki-inline-img { max-width: 100%; height: auto; vertical-align: middle; }
+
+/* Callout boxes: ::: note / tip / warning / example / lore */
+.wiki-callout {
+  border: 1px solid var(--parch-frame); border-left-width: 4px;
+  background: rgba(255,255,255,.28);
+  padding: 10px 14px; margin: 0 0 16px;
+}
+.wiki-callout-head {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  letter-spacing: .09em; text-transform: uppercase; margin-bottom: 5px;
+  color: var(--maroon);
+}
+.wiki-callout-body > :last-child { margin-bottom: 0; }
+.wiki-callout-note    { border-left-color: #4a6b8a; }
+.wiki-callout-note .wiki-callout-head { color: #2f4f6e; }
+.wiki-callout-tip     { border-left-color: #2f7d3e; }
+.wiki-callout-tip .wiki-callout-head { color: #1c5429; }
+.wiki-callout-warning { border-left-color: #8a3526; }
+.wiki-callout-warning .wiki-callout-head { color: #8a3526; }
+.wiki-callout-example { border-left-color: #7a5c18; background: rgba(154,110,20,.07); }
+.wiki-callout-example .wiki-callout-head { color: #7a5c18; }
+.wiki-callout-lore    { border-left-color: #5B1F21; background: rgba(91,31,33,.06); }
+
+/* Fact box in the side column */
+.wiki-infobox { margin: 0; }
+.wiki-info-img { display: block; width: 100%; height: auto; margin-bottom: 10px; border: 1px solid var(--parch-frame); }
+
+/* ── "Pages" section on the parent script/collection page ── */
+.wiki-pages-section { margin-bottom: 8px; }
+.wiki-pagelinks { display: flex; flex-direction: column; gap: 8px; }
+.wiki-pagelink {
+  display: block; text-decoration: none;
+  border: 1px solid var(--parch-frame); border-left: 4px solid var(--maroon);
+  background: rgba(255,255,255,.3); padding: 9px 13px;
+}
+.wiki-pagelink:hover { background: rgba(255,255,255,.55); }
+.wiki-pagelink-title {
+  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: 1rem; letter-spacing: .02em; color: var(--maroon);
+}
+.wiki-pagelink-blurb {
+  display: block; color: var(--ink); font-size: .9rem; line-height: 1.4;
+  margin-top: 3px; opacity: .85;
+}
+.wiki-pages-empty { color: var(--ink); opacity: .7; font-size: .94rem; margin: 0 0 8px; }
+.wiki-pages-new { display: inline-block; margin-top: 10px; }
+.coll-boxes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
+
+/* Themed wiki/news pages pick up the same --pg-* custom properties the
+   script and collection pages use (render-page.js emits them on <body>). */
+.page-themed .wiki-title,
+.page-themed .wiki-h,
+.page-themed .wiki-toc-head,
+.page-themed .wiki-callout-head,
+.page-themed .wiki-pagelink-title,
+.page-themed .news-article h1 { font-family: var(--pg-font, 'Dumbledor2', serif); }
+.theme-accent .wiki-title,
+.theme-accent .wiki-h a.sec-anchor,
+.theme-accent .wiki-toc a,
+.theme-accent .wiki-pagelink-title,
+.theme-accent .news-article h1 { color: var(--pg-accent); }
+.theme-panel .wiki-body,
+.theme-panel .wiki-page-head,
+.theme-panel .news-article {
+  background-image: none; background-color: var(--pg-panel);
+}
+.theme-text .wiki-body,
+.theme-text .wiki-body p,
+.theme-text .wiki-body li,
+.theme-text .news-body,
+.theme-text .news-body p { color: var(--pg-text); }
+.theme-link .wiki-body a,
+.theme-link .news-body a { color: var(--pg-link); }
+
+/* ════════════════════════════════════════════════════════════════
+   WIKI TEXT EDITOR WIDGETS (assets/wiki-editor.js)
+   Used by publish-page, publish-news, publish-script, publish-collection.
+   ════════════════════════════════════════════════════════════════ */
+.we-toolbar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  border: 1px solid #cdbfa0; border-bottom: none;
+  background: #f6efdf; padding: 5px 6px;
+}
+.we-btn {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  background: #fffdf8; border: 1px solid #cdbfa0; color: #5b4632;
+  padding: 3px 8px; cursor: pointer; line-height: 1.5;
+}
+.we-btn:hover { background: #fff; color: var(--maroon); border-color: var(--maroon); }
+.we-btn.we-b { font-weight: 700; }
+.we-btn.we-i { font-style: italic; }
+.we-btn.we-s { text-decoration: line-through; }
+.we-box-row { border: 1px solid #cdbfa0; background: #fffdf8; padding: 8px; margin-bottom: 8px; }
+.we-box-head { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.we-box-title { flex: 1; }
+.we-box-row input[type=text], .we-box-row textarea {
+  font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: #241a12;
+  background: #fff; border: 1px solid #cdbfa0; padding: 6px 8px; box-sizing: border-box; width: 100%;
+}
+.we-box-content { min-height: 60px; resize: vertical; }
+.we-box-del {
+  background: #f6dede; border: 1px solid #d99; color: #9A0D12;
+  font-size: .8rem; padding: 3px 9px; cursor: pointer; line-height: 1.4;
+}
+.we-box-del:hover { background: #f0caca; }
+.we-info-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; margin-bottom: 6px; }
+.we-info-row input[type=text] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: #241a12;
+  background: #fffdf8; border: 1px solid #cdbfa0; padding: 6px 8px; box-sizing: border-box; width: 100%;
+}
+@media (max-width: 560px) { .we-info-row { grid-template-columns: 1fr 1fr auto; } }
+/* The live preview frame in the editors. */
+.we-preview {
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  padding: 14px 16px; margin-bottom: 18px;
+}
+.we-preview > h2 {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  margin: 0 0 10px; font-size: 1.2rem;
+}
+/* Scale the real page styles down a little inside the preview frame. */
+.we-preview .wiki-page-head, .we-preview .wiki-body { border-width: 2px; }
+.we-preview .wiki-title { font-size: 1.5rem; }
+
+/* Shared editor list rows (publish-news / publish-page / publish-script /
+   publish-collection). Each editor may still override them locally. */
+.article-list { list-style: none; margin: 0; padding: 0; }
+.article-row {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  justify-content: space-between; padding: 8px 0;
+  border-bottom: 1px solid rgba(180,160,120,.35);
+}
+.article-row:last-child { border-bottom: none; }
+.article-row a { color: var(--maroon); font-weight: 600; font-size: .94rem; text-decoration: none; }
+.article-row a:hover { text-decoration: underline; }
+.article-row .meta { font-size: .8rem; color: #6b5d49; }
+.article-row .pill {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+}
+.article-row .pill.draft { background: rgba(154,110,20,.14); color: #7a5c18; border: 1px solid rgba(154,110,20,.4); }
+.article-row .pill.published { background: rgba(42,110,42,.12); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+
+/* Page links on the dark list pages (author + /u/ profile). Same markup as
+   the parchment version, inverted for the dark panel behind it. */
+.wiki-pagelinks-dark .wiki-pagelink {
+  background: rgba(0,0,0,.28); border-color: rgba(180,160,120,.45);
+  border-left-color: #c9a227;
+}
+.wiki-pagelinks-dark .wiki-pagelink:hover { background: rgba(0,0,0,.42); }
+.wiki-pagelinks-dark .wiki-pagelink-title { color: #ecd9a8; }
+.wiki-pagelinks-dark .wiki-pagelink-blurb { color: rgba(236,225,200,.78); }
