@@ -90,7 +90,10 @@
 
      `from` is matched against the whole text; `to(match, capture)` returns the
      replacement, '' to delete, or null when there is nothing to suggest and
-     the rule is purely advisory. `label` is what the rules panel shows. */
+     the rule is purely advisory. `anchor(match)` is optional: it returns an
+     offset into the match, and only the text from there on is flagged and
+     replaced — for rules that need leading context to be sure of themselves.
+     `label` is what the rules panel shows. */
 
   var WORD_RULES = [
     /* ── clean autofixes: zero hits in the official corpus ── */
@@ -148,6 +151,17 @@
     { id: 'arekilled', sev: 'fix', cat: 'Terminology', label: 'they are killed → they die',
       from: /\bthey(?:['’]re| are) killed\b/gi, to: function () { return 'they die'; },
       note: 'official cards say "they die"' },
+
+    /* The regex has to start at "choose" to know a choice clause is what it is
+       looking at, but the fix is only the comma. `anchor` trims the reported
+       span back to ", they" so the highlight is precise and, more importantly,
+       so a long match can't swallow other findings sitting inside it
+       (e.g. person → player earlier in the same clause). */
+    { id: 'colonchoice', sev: 'fix', cat: 'Structure', label: 'choice clause takes a colon',
+      from: /\bchoose[^:.]{0,45}?,\s*(?:they|you|it)\b/gi,
+      anchor: function (m) { return m.lastIndexOf(','); },
+      to: function (m) { return m.replace(/^,/, ':'); },
+      note: '"choose a player: they die", never "choose a player, they die"' },
 
     { id: 'diffrom', sev: 'fix', cat: 'Terminology', label: 'different from → different to',
       from: /\bdifferent from\b/gi, to: function () { return 'different to'; },
@@ -346,15 +360,6 @@
         return sentences(t).some(function (s) { return (s.match(/:/g) || []).length > 1; });
       },
       note: 'two colons in one sentence is unparsable — restructure into separate sentences' },
-
-    { id: 'colonchoice', sev: 'fix', cat: 'Structure', label: 'choice clause takes a colon',
-      note: '"choose a player: they die", never "choose a player, they die"',
-      scan: function (t) {
-        var m = t.match(/\bchoose[^:.]{0,45}?,\s*(they|you|it)\b/gi);
-        return m ? m.map(function (x) {
-          return '"' + x.trim() + '" — a choice clause takes a colon, not a comma';
-        }) : [];
-      } },
 
     { id: 'timingcomma', sev: 'fix', cat: 'Structure', label: 'comma after the timing prefix',
       test: function (t) { return /^(Each night\*?|Each day|Once per game)\s+[a-z]/.test(t); },
@@ -567,14 +572,22 @@
       if (!isOn(enabled, r)) return;
       var rx = new RegExp(r.from.source, r.from.flags), m;
       while ((m = rx.exec(text)) !== null) {
-        var sug = r.to ? r.to(m[0], m[1]) : null;
-        if (sug !== null && sug !== undefined && String(sug).toLowerCase() === m[0].toLowerCase()) {
+        // A rule may need context to match but only want to flag part of what
+        // it matched; `anchor` returns where the reported span starts inside
+        // the match. Everything before it is left alone.
+        var found = m[0], start = m.index;
+        if (r.anchor) {
+          var off = r.anchor(m[0]);
+          if (off > 0) { found = m[0].slice(off); start = m.index + off; }
+        }
+        var sug = r.to ? r.to(found, m[1]) : null;
+        if (sug !== null && sug !== undefined && String(sug).toLowerCase() === found.toLowerCase()) {
           if (rx.lastIndex === m.index) rx.lastIndex++;
           continue;
         }
         issues.push({ sev: r.sev, cat: r.cat, rule: r.id, prio: 0,
-                      found: m[0], suggest: (sug === undefined ? null : sug), note: r.note,
-                      start: m.index, end: m.index + m[0].length });
+                      found: found, suggest: (sug === undefined ? null : sug), note: r.note,
+                      start: start, end: start + found.length });
         if (rx.lastIndex === m.index) rx.lastIndex++;
       }
     });
