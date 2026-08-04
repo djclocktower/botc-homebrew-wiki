@@ -92,6 +92,45 @@
 }
 #gf-input:focus { outline: none; }
 
+/* Name form — sits above the counters, so the page reads name, then the
+   ability and its figures. */
+.gf-name-block { margin: 0 0 16px; }
+.gf-name-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+#gf-name {
+  flex: 1 1 220px; min-width: 0;
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; font-size: 1.02rem;
+  color: var(--ink); background: #fffdf8;
+  border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 12px;
+}
+#gf-name:focus { outline: none; border-color: var(--maroon); }
+.gf-name-row .sb-btn { flex: 0 0 auto; }
+.gf-name-result {
+  margin-top: 9px; padding: 9px 12px; font-size: .9rem; line-height: 1.45;
+  background: #fffdf8; border-left: 4px solid var(--parch-frame); color: var(--ink);
+}
+.gf-name-result p { margin: 0; }
+.gf-name-result p + p { margin-top: 6px; }
+.gf-name-result.ok { border-left-color: #1c5429; }
+.gf-name-result.taken { border-left-color: #8a5a12; }
+/* An official name is the one outcome that is simply wrong, so it shouts. */
+.gf-name-result.official { border-left-color: var(--evil); background: #fbeceb; }
+.gf-name-result .gf-official {
+  color: var(--evil); font-weight: 600;
+}
+.gf-name-result a { color: var(--good-name); text-decoration: underline; text-underline-offset: 2px; }
+.gf-name-result a:hover { color: var(--maroon); }
+
+/* Save-as-draft row under the editor */
+.gf-draft-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5);
+}
+.gf-draft-row .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
+.gf-draft-msg { font-size: .88rem; line-height: 1.45; color: rgba(0,0,0,.68); flex: 1 1 220px; }
+.gf-draft-msg.err { color: var(--evil); }
+.gf-draft-msg.ok { color: #1c5429; }
+.gf-draft-msg a { color: var(--good-name); text-decoration: underline; text-underline-offset: 2px; }
+
 /* Counter panel above the input: one filled box per figure, in the site's
    maroon rather than the blue of the counter tools this apes. */
 .gf-stats {
@@ -335,6 +374,16 @@
       <h2 class="type-header">Your Ability</h2>
       <div class="type-rule"></div>
       <div class="gf-card">
+        <div class="gf-name-block">
+          <label class="gf-label" for="gf-name">Character name</label>
+          <div class="gf-name-row">
+            <input type="text" id="gf-name" maxlength="80" autocomplete="off" spellcheck="false"
+              placeholder="Cartographer">
+            <button type="button" class="sb-btn sb-btn-import" id="gf-name-check">Check Name</button>
+          </div>
+          <div class="gf-name-result" id="gf-name-result" hidden></div>
+        </div>
+
         <div class="gf-stats">
           <div class="gf-stat">
             <span class="gf-stat-label" id="gf-st-chars-label">Characters</span>
@@ -383,6 +432,12 @@
         </div>
 
         <div class="gf-sub" id="gf-summary">Issues will appear here as you type.</div>
+
+        <div class="gf-draft-row">
+          <button type="button" class="sb-btn sb-btn-export" id="gf-draft" disabled
+            title="Give the character a name first">+ Add to Drafts</button>
+          <span class="gf-draft-msg" id="gf-draft-msg">Saves the text above as a draft character page on the wiki.</span>
+        </div>
       </div>
     </section>
 
@@ -488,6 +543,7 @@
     var input = $('gf-input');
     var spacesBox = $('gf-count-spaces');
     var highlightBox = $('gf-highlight');
+    var nameBox = $('gf-name');
 
     /* Text: ?a= from the character editor wins, otherwise whatever was left
        here last time. */
@@ -658,6 +714,12 @@
       $('gf-undo').disabled = !history.length;
       $('gf-clear').disabled = !input.value;
       $('gf-copy').disabled = !suggested();
+      // "Add to Drafts" needs a name and something to save.
+      var name = nameBox.value.trim(), ability = input.value.trim();
+      var btn = $('gf-draft');
+      btn.disabled = !name || !ability;
+      btn.title = !name ? 'Give the character a name first'
+                : (!ability ? 'Write the ability first' : 'Save this as a draft character page');
     }
 
     /* Grow the box to its content instead of scrolling. The textarea is
@@ -758,6 +820,152 @@
       closePop();
       renderBackdrop();
       renderSummary();
+    });
+
+    /* ── Character name: wiki + official-roster check ──────── */
+
+    var nameResult = $('gf-name-result');
+    var wikiChars = null;                 // characters.json, fetched on demand
+
+    // Credit marks (∇, ♊︎) live in the stored names — strip them for
+    // comparison only. See CLAUDE.md: don't "fix" the names themselves.
+    var STRIP = (function () {
+      try { return new RegExp('[^\\p{L}\\p{N} \'’\\-&.]', 'gu'); }
+      catch (e) { return /[^A-Za-z0-9 '’\-&.]/g; }
+    })();
+    function normName(n) {
+      return String(n == null ? '' : n).replace(STRIP, '')
+        .replace(/’/g, "'").replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function officialMatch(name) {
+      var want = normName(name), hit = null;
+      G.OFFICIAL_NAMES.forEach(function (n) { if (!hit && normName(n) === want) hit = n; });
+      return hit;
+    }
+    function wikiMatches(name) {
+      var want = normName(name);
+      return (wikiChars || []).filter(function (c) { return normName(c.name) === want; });
+    }
+
+    function loadWikiChars() {
+      if (wikiChars) return Promise.resolve(wikiChars);
+      // ?drafts=1 only returns drafts to a logged-in admin; everyone else
+      // silently gets the published-only feed, which is the point.
+      return fetch('characters.json?drafts=1&_=' + Date.now(), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (list) { wikiChars = list || []; return wikiChars; });
+    }
+
+    function showNameResult(cls, html) {
+      nameResult.className = 'gf-name-result' + (cls ? ' ' + cls : '');
+      nameResult.innerHTML = html;
+      nameResult.hidden = false;
+    }
+
+    function checkName() {
+      var name = nameBox.value.trim();
+      if (!name) { showNameResult('', '<p>Type a name to check it.</p>'); return Promise.resolve(null); }
+      showNameResult('', '<p>Checking…</p>');
+      return loadWikiChars().then(function () {
+        var official = officialMatch(name);
+        var taken = wikiMatches(name);
+        var lines = [];
+        if (official) {
+          lines.push('<p class="gf-official">⚠ ' + esc(official) +
+            ' is an official Blood on the Clocktower character. Homebrew should not reuse an official name — pick another.</p>');
+        }
+        if (taken.length) {
+          lines.push('<p>Already on the wiki: ' + taken.map(function (c) {
+            var href = c.page ? String(c.page).replace(/\.html$/, '') : ('c/' + c.slug);
+            return '<a href="' + esc(href) + '">' + esc(c.name) + '</a>' +
+              (c.creator ? ' <span style="opacity:.7">by ' + esc(c.creator) + '</span>' : '') +
+              (c.status === 'draft' ? ' <span style="opacity:.7">(draft)</span>' : '');
+          }).join(', ') + '</p>');
+        }
+        if (!lines.length) {
+          lines.push('<p>No character on the wiki uses that name. It is free.</p>');
+        }
+        showNameResult(official ? 'official' : (taken.length ? 'taken' : 'ok'), lines.join(''));
+        return { official: official, taken: taken };
+      }).catch(function () {
+        showNameResult('', '<p>Could not reach the wiki to check that name.</p>');
+        return null;
+      });
+    }
+
+    $('gf-name-check').addEventListener('click', checkName);
+    nameBox.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); checkName(); }
+    });
+    nameBox.addEventListener('input', function () {
+      nameResult.hidden = true;      // the old verdict is about the old name
+      renderButtons();
+    });
+
+    /* ── Save as a draft character page ────────────────────── */
+
+    function slugify(s) {
+      return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+    function draftMsg(cls, html) {
+      var el = $('gf-draft-msg');
+      el.className = 'gf-draft-msg' + (cls ? ' ' + cls : '');
+      el.innerHTML = html;
+    }
+
+    $('gf-draft').addEventListener('click', function () {
+      var name = nameBox.value.trim();
+      var ability = input.value.trim();
+      if (!name || !ability) return;
+      var slug = slugify(name);
+      if (!slug) { draftMsg('err', 'That name has no letters or digits to build a page address from.'); return; }
+
+      draftMsg('', 'Checking the name…');
+      checkName().then(function (found) {
+        // Saving over an existing page replaces its whole record — art,
+        // almanac, everything — so a known collision always asks first. (The
+        // Worker snapshots a revision on every overwrite, so an accident is
+        // recoverable by an admin, but it should not be silent.)
+        if (found && (found.taken.length || found.official)) {
+          var what = found.taken.length
+            ? 'A character called "' + found.taken[0].name + '" already exists on the wiki. Saving will overwrite that page.'
+            : '"' + name + '" is an official character name.';
+          if (!window.confirm(what + '\n\nSave anyway?')) {
+            draftMsg('', 'Nothing saved.');
+            return;
+          }
+        }
+        draftMsg('', 'Saving draft…');
+        $('gf-draft').disabled = true;
+        return fetch('/api/character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            slug: slug, name: name, team: 'townsfolk', ability: ability,
+            page: 'c/' + slug + '.html', status: 'draft'
+          })
+        }).then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (r.status === 401) throw new Error('LOGIN');
+            if (!r.ok) throw new Error(j.error || 'Save failed.');
+            return j;
+          });
+        }).then(function () {
+          draftMsg('ok', 'Saved as a draft. <a href="edit?c=' + encodeURIComponent(slug) +
+            '">Finish it in the editor</a> — it needs a team, an icon and almanac text before it can be published.');
+        });
+      }).catch(function (err) {
+        if (err && err.message === 'LOGIN') {
+          draftMsg('err', 'You need to be logged in to save a draft. <a href="login">Log in</a> and try again.');
+        } else {
+          draftMsg('err', esc((err && err.message) || 'Save failed.'));
+        }
+      }).then(function () {
+        renderButtons();
+      });
     });
 
     /* ── Popover on a highlighted word ─────────────────────── */
