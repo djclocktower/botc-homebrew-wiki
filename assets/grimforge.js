@@ -17,7 +17,7 @@
    Two kinds of finding come out of lint():
      issues   anchored to a span of the text — highlighted inline, and
               individually acceptable.
-     notices  whole-text observations (structure, typography, design). There
+     notices  whole-text observations (structure, typography, style). There
               is nothing to swap in, so they are listed, not highlighted.
 
    No DOM access anywhere in this file: it is plain data + string work, so it
@@ -344,11 +344,11 @@
       note: 'no official card mixes "&" and "and" — pick one' },
 
     { id: 'flavour', sev: 'warn', cat: 'Style', label: 'flavour words',
-      note: 'atmosphere words belong in the almanac quote, not on the card',
+      note: 'flavour belongs in the almanac quote, not in the ability.',
       scan: function (t) {
         var m = t.match(/\b(mysterious|shadowy|ancient|terrible|dark|cursed|wicked|sinister|eerie)\b/gi);
         return m ? m.map(function (x) {
-          return '"' + x + '" — flavour belongs in the almanac quote, not on the card';
+          return '"' + x + '" — flavour belongs in the almanac quote, not in the ability.';
         }) : [];
       } },
 
@@ -362,24 +362,8 @@
         if (/[“”]/.test(t)) out.push('curly quotes — normalised to straight ones');
         if (/[–—]/.test(t)) out.push('en/em dash — official text uses neither');
         if (/…/.test(t)) out.push('ellipsis glyph — spell it out or cut it');
-        if (/ /.test(t)) out.push('non-breaking space');
         return out;
       } }
-  ];
-
-  /* Design lint — the Field Guide's Four Physical Laws. Warnings only: these
-     are judgement calls about what an ability does, not how it is written. */
-  var DESIGN_LINT = [
-    { id: 'design-selfconfirm', rx: /learn that you are|\bprove\b|\bconfirm\b/i,
-      note: 'possible self-confirmation — a Townsfolk must look identical to the Drunk' },
-    { id: 'design-memory', rx: /\bforget\b|thinks they already know/i,
-      note: 'memory editing — corrupt at the source instead (droison, madness)' },
-    { id: 'design-hidden', rx: /without them knowing/i,
-      note: 'hiding an event from its subject — a player always experiences what happens to them' },
-    { id: 'design-speech', rx: /must say|cannot say|can’t say|can't say|may not speak/i,
-      note: 'speech control — only madness can enforce silence' },
-    { id: 'design-publicinfo', rx: /vote tally is secret|votes are hidden/i,
-      note: 'public-info tampering — legal but rare (the Organ Grinder is the sanctioned exception)' }
   ];
 
   /* ══ 4. Casing (case-sensitive, multi-word aware) ═════════════════ */
@@ -479,12 +463,11 @@
   })).concat([
     { id: 'casing-term', sev: 'fix', cat: 'Casing', label: 'Demon, Minion, Storyteller…', note: 'team and rules words are proper nouns' },
     { id: 'casing-name', sev: 'fix', cat: 'Casing', label: 'character name casing', note: 'official (and your own) character names keep their capitals' },
-    { id: 'casing-sentence', sev: 'fix', cat: 'Casing', label: 'sentence capitalisation', note: 'every sentence starts with a capital' },
-    { id: 'design', sev: 'warn', cat: 'Design', label: 'the Four Physical Laws', note: 'flags abilities that fight the game’s design rules' }
+    { id: 'casing-sentence', sev: 'fix', cat: 'Casing', label: 'sentence capitalisation', note: 'every sentence starts with a capital' }
   ]);
 
   var CATEGORIES = ['Terminology', 'Spelling', 'Casing', 'Numbering', 'Structure',
-                    'Typography', 'Contraction', 'Style', 'Design', 'May/Might'];
+                    'Typography', 'Contraction', 'Style', 'May/Might'];
 
   function defaultEnabled() {
     var out = {};
@@ -564,12 +547,6 @@
       }
     });
 
-    if (isOn(enabled, { id: 'design', sev: 'warn' })) {
-      DESIGN_LINT.forEach(function (d) {
-        if (d.rx.test(text)) notices.push({ sev: 'warn', cat: 'Design', rule: 'design', note: d.note });
-      });
-    }
-
     casingIssues(text, opts.customNames).forEach(function (i) {
       if (isOn(enabled, { id: i.rule, sev: 'fix' })) issues.push(i);
     });
@@ -641,7 +618,6 @@
     defaultEnabled: defaultEnabled,
     WORD_RULES: WORD_RULES,
     STRUCTURAL: STRUCTURAL,
-    DESIGN_LINT: DESIGN_LINT,
     OFFICIAL_NAMES: OFFICIAL_NAMES,
     CAPS_TERMINOLOGY: CAPS_TERMINOLOGY
   };

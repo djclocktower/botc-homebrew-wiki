@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Grimoire Forge — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Check homebrew Blood on the Clocktower ability text against official syntax — terminology, casing, numbering, structure and length — and get a clean, corrected line to paste into your character.">
+<meta name="description" content="Check homebrew Blood on the Clocktower ability syntax. Terminology, casing, numbering, structure and length and get a corrected ability.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Grimoire Forge">
-<meta property="og:description" content="Blood on the Clocktower ability syntax checker. Paste an ability, see what breaks official style, and copy the corrected line.">
+<meta property="og:description" content="Blood on the Clocktower ability syntax checker. Paste an ability, see what breaks official style.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -384,8 +384,7 @@
         <div class="gf-name-block">
           <label class="gf-label" for="gf-name">Character name</label>
           <div class="gf-name-row">
-            <input type="text" id="gf-name" maxlength="80" autocomplete="off" spellcheck="false"
-              placeholder="Cartographer">
+            <input type="text" id="gf-name" maxlength="80" autocomplete="off" spellcheck="false">
             <!-- Teams, in the site's fixed order. One more hand-kept copy of
                  the list — see the teams note in CLAUDE.md. -->
             <select id="gf-team" aria-label="Character type">
@@ -522,8 +521,7 @@
     var COLOR = {
       Terminology: '#6b3fa0', Spelling: '#9A0D12', Casing: '#a9761a',
       Numbering: '#2f6fb8', Structure: '#8a3526', Typography: '#0f6f79',
-      Contraction: '#1c6b3a', Style: '#7a6a1e',
-      Design: '#5B1F21', 'May/Might': '#b25a12'
+      Contraction: '#1c6b3a', Style: '#7a6a1e', 'May/Might': '#b25a12'
     };
     function color(cat) { return COLOR[cat] || '#5B1F21'; }
     /* Highlight wash: the category colour at ~20% over the parchment. */
@@ -619,7 +617,7 @@
       var fixes = iss.filter(function (i) { return i.sev === 'fix'; }).length +
                   not.filter(function (n) { return n.sev === 'fix'; }).length;
       var warns = iss.length + not.length - fixes;
-      if (!fixes && !warns) { el.textContent = 'No issues found — this reads like official card text.'; return; }
+      if (!fixes && !warns) { el.textContent = 'No issues found'; return; }
       el.textContent = fixes + ' fix' + (fixes === 1 ? '' : 'es') + ' · ' +
         warns + ' warning' + (warns === 1 ? '' : 's') +
         (highlightBox.checked ? ' — tap a highlight for detail.' : ' — listed under Findings below.');
@@ -915,7 +913,7 @@
         }
         if (sameType.length) {
           lines.push('<p>A ' + esc(teamLabel(team)) + ' called ' +
-            sameType.map(charLink).join(', ') + ' already exists on the wiki.</p>');
+            sameType.map(charLink).join(', ') + ' is on the wiki.</p>');
         }
         if (otherType.length) {
           lines.push('<p>' + (sameType.length ? 'Also on' : 'On') + ' the wiki with that name: ' +
@@ -926,7 +924,7 @@
         // The red official line says enough on its own; "no wiki character
         // uses that name" underneath it just muddies the verdict.
         if (!taken.length && !official) {
-          lines.push('<p>No character on the wiki uses that name. It is free.</p>');
+          lines.push('<p>No character on the wiki uses that name.</p>');
         }
         showNameResult(official ? 'official' : (taken.length ? 'taken' : 'ok'), lines.join(''));
         return { official: official, taken: taken, sameType: sameType, otherType: otherType };
