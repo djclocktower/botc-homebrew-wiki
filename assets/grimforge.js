@@ -213,6 +213,16 @@
       from: /\bthe Storyteller tells you\b/gi, to: function () { return 'you learn'; },
       note: 'Storyteller-voice leakage' },
 
+    /* The only asterisk on a card is the one in "night*". `(\w+)?` grabs the
+       word in front of it so `to` can wave that case through — returning the
+       matched text unchanged is how a rule opts out of a hit. `anchor` keeps
+       the flag on the asterisk itself rather than the word before it. */
+    { id: 'asterisk', sev: 'warn', cat: 'Structure', label: 'stray asterisk',
+      from: /(\w+)?\*/gi,
+      anchor: function (m) { return m.length - 1; },
+      to: function (found, word) { return /^night$/i.test(word || '') ? found : null; },
+      note: 'the only asterisk in card text is the one in "night*", marking an ability that skips the first night' },
+
     { id: 'onceever', sev: 'fix', cat: 'Structure', label: 'once ever → Once per game',
       from: /\b(once ever|1 time per game|one time per game)\b/gi,
       to: function () { return 'Once per game'; },

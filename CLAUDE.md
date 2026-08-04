@@ -288,7 +288,7 @@ live before the rule; the dashboard has a scan + one-click button for it.
   `render-page.js`, `collection-filters.js`, `render.js`, `site.js`,
   `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
-  `create.html`/`edit.html`, the `normTeam()` whitelist in `mass-upload.html`
+  `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
   and `TEAM_COLORS` in `dashboard.html`. **Adding a team means editing every
   one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
   (drives the blue `.good` class) — Traveller/Fabled/Loric are in neither.

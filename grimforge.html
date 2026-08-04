@@ -103,6 +103,13 @@
   border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 12px;
 }
 #gf-name:focus { outline: none; border-color: var(--maroon); }
+#gf-team {
+  flex: 0 1 155px; min-width: 0;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .9rem;
+  color: var(--ink); background: #fffdf8;
+  border: 2px solid var(--parch-frame); border-radius: 0; padding: 9px 10px;
+}
+#gf-team:focus { outline: none; border-color: var(--maroon); }
 .gf-name-row .sb-btn { flex: 0 0 auto; }
 .gf-name-result {
   margin-top: 9px; padding: 9px 12px; font-size: .9rem; line-height: 1.45;
@@ -379,6 +386,17 @@
           <div class="gf-name-row">
             <input type="text" id="gf-name" maxlength="80" autocomplete="off" spellcheck="false"
               placeholder="Cartographer">
+            <!-- Teams, in the site's fixed order. One more hand-kept copy of
+                 the list — see the teams note in CLAUDE.md. -->
+            <select id="gf-team" aria-label="Character type">
+              <option value="townsfolk">Townsfolk</option>
+              <option value="outsider">Outsider</option>
+              <option value="minion">Minion</option>
+              <option value="demon">Demon</option>
+              <option value="traveller">Traveller</option>
+              <option value="fabled">Fabled</option>
+              <option value="loric">Loric</option>
+            </select>
             <button type="button" class="sb-btn sb-btn-import" id="gf-name-check">Check Name</button>
           </div>
           <div class="gf-name-result" id="gf-name-result" hidden></div>
@@ -873,7 +891,7 @@
         var lines = [];
         if (official) {
           lines.push('<p class="gf-official">⚠ ' + esc(official) +
-            ' is an official Blood on the Clocktower character. Homebrew should not reuse an official name — pick another.</p>');
+            ' is an official Blood on the Clocktower character.</p>');
         }
         if (taken.length) {
           lines.push('<p>Already on the wiki: ' + taken.map(function (c) {
@@ -944,7 +962,7 @@
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           body: JSON.stringify({
-            slug: slug, name: name, team: 'townsfolk', ability: ability,
+            slug: slug, name: name, team: $('gf-team').value, ability: ability,
             page: 'c/' + slug + '.html', status: 'draft'
           })
         }).then(function (r) {
@@ -955,7 +973,7 @@
           });
         }).then(function () {
           draftMsg('ok', 'Saved as a draft. <a href="edit?c=' + encodeURIComponent(slug) +
-            '">Finish it in the editor</a> — it needs a team, an icon and almanac text before it can be published.');
+            '">Finish it in the editor</a> — it needs an icon and almanac text before it can be published.');
         });
       }).catch(function (err) {
         if (err && err.message === 'LOGIN') {
