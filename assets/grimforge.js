@@ -188,23 +188,6 @@
       to: function () { return 'the final day'; },
       note: 'the corpus is unanimous on "the final day"' },
 
-    { id: 'feign', sev: 'fix', cat: 'Terminology', label: 'feign death → live but register as dead',
-      from: /\bfeign(s|ed|ing)? death\b/gi,
-      to: function () { return 'live but register as dead'; },
-      note: 'Zombuul is the only fake-death wording' },
-
-    { id: 'handin', sev: 'fix', cat: 'Terminology', label: 'hand in → give up',
-      from: /\bhand(s|ed)? in\b/gi, to: function () { return 'give up'; },
-      note: 'coined ritual term' },
-
-    { id: 'interrogate', sev: 'fix', cat: 'Terminology', label: 'interrogate → ask their character',
-      from: /\binterrogate(s|d)?\b/gi, to: function () { return 'ask their character'; },
-      note: 'coined mechanic term' },
-
-    { id: 'enthrone', sev: 'fix', cat: 'Terminology', label: 'enthrone → publicly name',
-      from: /\benthrone(s|d)?\b/gi, to: function () { return 'publicly name'; },
-      note: 'coined mechanic term' },
-
     { id: 'noone', sev: 'fix', cat: 'Spelling', label: 'no one → no-one',
       from: /\bno one\b/gi, to: function () { return 'no-one'; },
       note: 'Vortox precedent' },
@@ -217,10 +200,6 @@
       from: /\b(the cardholder|the holder|the player with this ability)\b/gi,
       to: function () { return 'you'; },
       note: 'card text is always second person' },
-
-    { id: 'designer', sev: 'fix', cat: 'Terminology', label: 'definitely / permanently / (stackable)',
-      from: /\s*\b(definitely|permanently|\(stackable\))\b/gi, to: function () { return ''; },
-      note: 'designer-speak; certainty is implied by the absence of "might"' },
 
     { id: 'droisoned', sev: 'fix', cat: 'Terminology', label: 'droisoned → drunk or poisoned',
       from: /\bdroisoned\b/gi, to: function () { return 'drunk or poisoned'; },
@@ -244,10 +223,10 @@
       to: function (m, s) { return s ? 'abilities' : 'ability'; },
       note: 'cards say ability, never power' },
 
-    { id: 'revive', sev: 'warn', cat: 'Terminology', label: 'revive / resurrect → rise',
-      from: /\b(revive|revived|revival|resurrect|resurrects)\b/gi,
+    { id: 'revive', sev: 'warn', cat: 'Terminology', label: 'revive → rise',
+      from: /\b(revive|revived|revival)\b/gi,
       to: function () { return 'rise'; },
-      note: '"rise" is corpus standard, but the Professor says "resurrected"' },
+      note: '"rise" is corpus standard; resurrected, regurgitated, reborn and raised are official too and are left alone' },
 
     /* ── numbers: split by sense ── */
     { id: 'cardinal', sev: 'fix', cat: 'Numbering', label: 'two, three, four… → 2, 3, 4…',
@@ -296,10 +275,6 @@
     { id: 'ampersand', sev: 'warn', cat: 'Typography', label: 'and → &',
       from: /\band\b/gi, to: function () { return '&'; },
       note: '35 official cards use &, 8 use "and", none mix. Suggestion only — "sober and healthy" and "1 and only 1" are official' },
-
-    { id: 'bluffs', sev: 'warn', cat: 'Terminology', label: 'bluffs → not-in-play characters',
-      from: /\bbluffs\b/gi, to: function () { return 'not-in-play characters'; },
-      note: 'official on Snitch/Summoner/Pope; prefer the long form where space allows' },
 
     { id: 'another', sev: 'warn', cat: 'Semantics', label: '"another player" is a different player',
       from: /\banother player\b/gi, to: function () { return null; },
