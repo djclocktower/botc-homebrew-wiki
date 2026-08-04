@@ -276,18 +276,6 @@
       from: /\band\b/gi, to: function () { return '&'; },
       note: '35 official cards use &, 8 use "and", none mix. Suggestion only — "sober and healthy" and "1 and only 1" are official' },
 
-    { id: 'another', sev: 'warn', cat: 'Semantics', label: '"another player" is a different player',
-      from: /\banother player\b/gi, to: function () { return null; },
-      note: '"another player" means a DIFFERENT player. If re-choosing the same target is legal, write "& choose again"' },
-
-    { id: 'wouldkill', sev: 'warn', cat: 'Semantics', label: 'kills vs would kill',
-      from: /\bif the Demon kills\b/gi, to: function () { return null; },
-      note: '"kills" is a successful kill; "would kill" is the attempt. Confirm which you mean' },
-
-    { id: 'evenifdead', sev: 'warn', cat: 'Semantics', label: '"even if dead" — whose death?',
-      from: /\beven if dead\b/gi, to: function () { return null; },
-      note: '"even if dead" refers to the subject; "even if you are dead" refers to the cardholder' },
-
     { id: 'maymight', sev: 'off', cat: 'May/Might', label: 'may vs might',
       from: /\b(may|might)\b/gi, to: function () { return null; },
       note: 'may = a player decides; might = the Storyteller or chance decides' }
@@ -500,7 +488,7 @@
   ]);
 
   var CATEGORIES = ['Terminology', 'Spelling', 'Casing', 'Numbering', 'Structure',
-                    'Typography', 'Contraction', 'Semantics', 'Style', 'Design', 'May/Might'];
+                    'Typography', 'Contraction', 'Style', 'Design', 'May/Might'];
 
   function defaultEnabled() {
     var out = {};
