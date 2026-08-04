@@ -72,20 +72,6 @@
     'Big Wig', 'God of Ug', 'Knaves', 'Tor', 'Zenomancer', 'Hindu', 'Ug'
   ];
 
-  /* Canonical opening clauses (Ability Writing Guide §2.1). Anything else
-     opens with a soft warning, never a fix. */
-  var TIMING_PREFIXES = [
-    /^You start knowing\b/, /^You do not know\b/, /^You think\b/, /^You have\b/, /^You are\b/,
-    /^You may\b/, /^You get\b/, /^You must\b/, /^You win\b/, /^You & \b/,
-    /^On your 1st (night|day)\b/, /^Each night\*/, /^Each night\b/, /^Each day\b/,
-    /^Each dusk\b/, /^At dusk\b/, /^Each (nominee|Minion|player)\b/,
-    /^Once per game\b/, /^Once per day\b/, /^The 1st time\b/, /^On the \d/,
-    /^If\b/, /^When\b/, /^While\b/, /^All (players|Minions|evil|good)\b/,
-    /^Only\b/, /^Minions\b/, /^There (is|are)\b/, /^This script\b/, /^Something\b/,
-    /^The (Demon|Storyteller|1st|final)\b/, /^Evil players\b/, /^Good players\b/,
-    /^For the first\b/, /^One or more\b/, /^Use\b/, /^Whoever\b/
-  ];
-
   /* ══ 2. Token-level word rules ════════════════════════════════════
 
      `from` is matched against the whole text; `to(match, capture)` returns the
@@ -353,12 +339,6 @@
       test: function (t) { return /\][^\]]*[a-zA-Z]{3}/.test(t) && !/\]\s*$/.test(t.trim()); },
       note: 'setup brackets belong at the very end of the text' },
 
-    { id: 'timingprefix', sev: 'warn', cat: 'Structure', label: 'canonical opening clause',
-      test: function (t) {
-        return !TIMING_PREFIXES.some(function (p) { return p.test(t); });
-      },
-      note: 'does not open with a canonical timing or passive clause (Guide §2.1)' },
-
     { id: 'ampmix', sev: 'warn', cat: 'Typography', label: 'mixing & and "and"',
       test: function (t) { return t.indexOf('&') !== -1 && /\band\b/i.test(t); },
       note: 'no official card mixes "&" and "and" — pick one' },
@@ -484,7 +464,9 @@
   function lengthBadge(text) {
     var n = String(text).length;
     if (n > 160) return { level: 'error', n: n, note: 'over 160 — hard cap' };
-    if (n >= 131) return { level: 'warn', n: n, note: '131 or more — the longest official ability is 127' };
+    // The amber box says it; a sentence repeating it under every long ability
+    // was noise. The hard cap still explains itself.
+    if (n >= 131) return { level: 'warn', n: n, note: '' };
     return { level: 'ok', n: n, note: '' };
   }
 

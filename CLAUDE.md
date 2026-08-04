@@ -148,12 +148,12 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        asked). Both layers must keep identical font/padding/
                        wrapping metrics or the marks drift off the text. A name
                        field with a Check Name button looks the name up in
-                       characters.json and against the official roster (red
-                       warning — reusing an official name is a mistake), and
+                       characters.json against the picked type (same-type
+                       clash first, other types listed after) and against the
+                       official roster (red warning — reusing an official name
+                       is a mistake), and
                        "+ Add to Drafts" POSTs name + ability to /api/character
-                       as status=draft (team defaults to townsfolk; a known
-                       name collision confirms first, because a save replaces
-                       the whole row). A counter
+                       as status=draft, using the picked type. A counter
                        panel (characters/words/sentences/lines + Count Spaces)
                        sits above the input; the length badge always judges the
                        real with-spaces length, whatever the box displays. Rule

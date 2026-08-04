@@ -562,6 +562,7 @@
     var spacesBox = $('gf-count-spaces');
     var highlightBox = $('gf-highlight');
     var nameBox = $('gf-name');
+    var teamBox = $('gf-team');
 
     /* Text: ?a= from the character editor wins, otherwise whatever was left
        here last time. */
@@ -865,6 +866,19 @@
       var want = normName(name);
       return (wikiChars || []).filter(function (c) { return normName(c.name) === want; });
     }
+    /* Team labels come off the picker's own options, so this doesn't become
+       yet another hand-kept copy of the team list. */
+    function teamLabel(v) {
+      var out = String(v || 'unknown');
+      Array.prototype.forEach.call(teamBox.options, function (o) { if (o.value === v) out = o.text; });
+      return out;
+    }
+    function charLink(c) {
+      var href = c.page ? String(c.page).replace(/\.html$/, '') : ('c/' + c.slug);
+      return '<a href="' + esc(href) + '">' + esc(c.name) + '</a>' +
+        (c.creator ? ' <span style="opacity:.7">by ' + esc(c.creator) + '</span>' : '') +
+        (c.status === 'draft' ? ' <span style="opacity:.7">(draft)</span>' : '');
+    }
 
     function loadWikiChars() {
       if (wikiChars) return Promise.resolve(wikiChars);
@@ -888,24 +902,34 @@
       return loadWikiChars().then(function () {
         var official = officialMatch(name);
         var taken = wikiMatches(name);
+        var team = teamBox.value;
+        // The name and the type are checked together: a clash of both is the
+        // one worth leading with, but the same name on another team still
+        // takes the same page address, so it gets said too.
+        var sameType = taken.filter(function (c) { return c.team === team; });
+        var otherType = taken.filter(function (c) { return c.team !== team; });
         var lines = [];
         if (official) {
           lines.push('<p class="gf-official">⚠ ' + esc(official) +
             ' is an official Blood on the Clocktower character.</p>');
         }
-        if (taken.length) {
-          lines.push('<p>Already on the wiki: ' + taken.map(function (c) {
-            var href = c.page ? String(c.page).replace(/\.html$/, '') : ('c/' + c.slug);
-            return '<a href="' + esc(href) + '">' + esc(c.name) + '</a>' +
-              (c.creator ? ' <span style="opacity:.7">by ' + esc(c.creator) + '</span>' : '') +
-              (c.status === 'draft' ? ' <span style="opacity:.7">(draft)</span>' : '');
-          }).join(', ') + '</p>');
+        if (sameType.length) {
+          lines.push('<p>A ' + esc(teamLabel(team)) + ' called ' +
+            sameType.map(charLink).join(', ') + ' already exists on the wiki.</p>');
         }
-        if (!lines.length) {
+        if (otherType.length) {
+          lines.push('<p>' + (sameType.length ? 'Also on' : 'On') + ' the wiki with that name: ' +
+            otherType.map(function (c) {
+              return charLink(c) + ' <span style="opacity:.7">(' + esc(teamLabel(c.team)) + ')</span>';
+            }).join(', ') + '</p>');
+        }
+        // The red official line says enough on its own; "no wiki character
+        // uses that name" underneath it just muddies the verdict.
+        if (!taken.length && !official) {
           lines.push('<p>No character on the wiki uses that name. It is free.</p>');
         }
         showNameResult(official ? 'official' : (taken.length ? 'taken' : 'ok'), lines.join(''));
-        return { official: official, taken: taken };
+        return { official: official, taken: taken, sameType: sameType, otherType: otherType };
       }).catch(function () {
         showNameResult('', '<p>Could not reach the wiki to check that name.</p>');
         return null;
@@ -919,6 +943,10 @@
     nameBox.addEventListener('input', function () {
       nameResult.hidden = true;      // the old verdict is about the old name
       renderButtons();
+    });
+    // The verdict depends on the type too, so re-run it when that changes.
+    teamBox.addEventListener('change', function () {
+      if (!nameResult.hidden && nameBox.value.trim()) checkName();
     });
 
     /* ── Save as a draft character page ────────────────────── */
@@ -940,21 +968,12 @@
       var slug = slugify(name);
       if (!slug) { draftMsg('err', 'That name has no letters or digits to build a page address from.'); return; }
 
+      // The check runs first so any clash is reported in the panel above, but
+      // it no longer interrupts: the save goes ahead either way. The Worker
+      // refuses a page owned by someone else, and snapshots a revision before
+      // overwriting one of your own.
       draftMsg('', 'Checking the name…');
-      checkName().then(function (found) {
-        // Saving over an existing page replaces its whole record — art,
-        // almanac, everything — so a known collision always asks first. (The
-        // Worker snapshots a revision on every overwrite, so an accident is
-        // recoverable by an admin, but it should not be silent.)
-        if (found && (found.taken.length || found.official)) {
-          var what = found.taken.length
-            ? 'A character called "' + found.taken[0].name + '" already exists on the wiki. Saving will overwrite that page.'
-            : '"' + name + '" is an official character name.';
-          if (!window.confirm(what + '\n\nSave anyway?')) {
-            draftMsg('', 'Nothing saved.');
-            return;
-          }
-        }
+      checkName().then(function () {
         draftMsg('', 'Saving draft…');
         $('gf-draft').disabled = true;
         return fetch('/api/character', {
@@ -962,7 +981,7 @@
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           body: JSON.stringify({
-            slug: slug, name: name, team: $('gf-team').value, ability: ability,
+            slug: slug, name: name, team: teamBox.value, ability: ability,
             page: 'c/' + slug + '.html', status: 'draft'
           })
         }).then(function (r) {
