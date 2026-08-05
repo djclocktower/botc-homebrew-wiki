@@ -46,3 +46,7 @@
 # refreshed roles list shows without a long cache wait
 /assets/roles.json
   Cache-Control: no-cache, must-revalidate
+
+# Official night-order positions (the "acts directly after" picker): same
+/assets/night-order.json
+  Cache-Control: no-cache, must-revalidate

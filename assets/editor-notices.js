@@ -63,10 +63,9 @@
     if (result.iconBlocked) {
       modal('Saved as a draft — no icon yet',
         '<p class="rules-modal-intro">A character page needs an icon before it can go ' +
-        'live on the wiki, so this was saved as a <strong>draft</strong> instead. ' +
-        'Nothing is lost.</p>' +
+        'live on the wiki, so this was saved as a <strong>draft</strong>.</p>' +
         '<ul class="rules-list"><li>Upload character art in the editor above.</li>' +
-        '<li>Then press Publish again — it will go live straight away.</li></ul>' +
+        '<li>Then press Publish again, it will go live straight away.</li></ul>' +
         '<p class="rules-modal-intro" style="margin-top:14px">Drafts are visible ' +
         'only to you and the wiki admins. You can find yours any time on your ' +
         '<a href="account">account page</a>.</p>',

@@ -75,13 +75,13 @@
   var GROUP_DEFS = [
     { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
       ids: ['name', 'team', 'ability', 'quote', 'art'] },
-    { key: 'the-page', title: 'The Page', sub: 'what readers see on the wiki page',
+    { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
       ids: ['tag-picker', 'tags'] }
   ];
-  var ADVANCED_FIELD_IDS = ['translatedBy', 'iconBy', 'artAlt'];
+  var ADVANCED_FIELD_IDS = ['pronunciation', 'translatedBy', 'iconBy', 'artAlt'];
   var NIGHTORDER_ID = 'edition'; // first id inside the Night Order fieldset
   // create.html and edit.html between them: publish / draft / save / delete.
   var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'delete-char', 'status'];
@@ -146,6 +146,8 @@
     // Textareas sized while the panel was shut measure 0; re-measure on open.
     det.addEventListener('toggle', function () { if (det.open) growAll(det); });
 
+    // Note this counts values only: the editors seed an empty jinx row on
+    // load, so the mere existence of a row means nothing.
     window.openAdvancedIfFilled = function () {
       var fields = det.querySelectorAll('input, textarea');
       for (var i = 0; i < fields.length; i++) {
@@ -153,7 +155,6 @@
           det.open = true; return;
         }
       }
-      if (det.querySelector('.jinx-row') || det.querySelector('.box-row')) det.open = true;
     };
   }
 

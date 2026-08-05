@@ -129,7 +129,7 @@
 
     <div class="formcard">
       <h2>Create a Character</h2>
-      <p class="sub">Fill this out, watch the live preview, then publish straight to the wiki.</p>
+      <p class="sub">Fill this out, then publish straight to the wiki.</p>
 
       <!-- import from JSON -->
       <fieldset class="import">
@@ -144,7 +144,7 @@
 
       <div class="fld">
         <label for="name">Character name *</label>
-        <input type="text" id="name" placeholder="e.g. The Cartographer">
+        <input type="text" id="name" placeholder="The Cartographer">
       </div>
       <div class="row2">
         <div class="fld">
@@ -171,7 +171,7 @@
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
-        <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
+        <label for="lede">Lede</label>
         <input type="text" id="lede" placeholder="The Cartographer maps the unseen.">
       </div>
       <div class="fld">
@@ -218,12 +218,16 @@
         <input type="hidden" id="tags">
       </div>
       <div class="fld">
+        <label for="pronunciation">Pronunciation <span class="hint">(optional &mdash; a quiet line under the flavour quote; **bold** and *italic* work)</span></label>
+        <input type="text" id="pronunciation">
+      </div>
+      <div class="fld">
         <label for="translatedBy">Translated by <span class="hint">(optional)</span></label>
-        <input type="text" id="translatedBy" placeholder="e.g. Eliderad">
+        <input type="text" id="translatedBy">
       </div>
       <div class="fld">
         <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
-        <input type="text" id="iconBy" placeholder="e.g. Luo Tianlei">
+        <input type="text" id="iconBy">
       </div>
       <div class="fld">
         <label for="art">Character art *</label>
@@ -236,7 +240,7 @@
         <div id="arturl" class="sub" style="margin-top:6px"></div>
       </div>
       <div class="fld">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON and shown on the page)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -247,19 +251,19 @@
 
       <!-- night order & tokens for JSON -->
       <fieldset>
-        <legend>Night Order &amp; Tokens (for JSON export)</legend>
+        <legend>Night Order &amp; Tokens</legend>
         <div class="fld">
-          <label for="edition">Edition <span class="hint">(optional id, e.g. experimental)</span></label>
+          <label for="edition">Edition</label>
           <input type="text" id="edition">
         </div>
         <div class="row2">
           <div class="fld">
             <label for="firstNight">First-night wake priority <span class="hint">(0 = doesn't wake; higher = later)</span></label>
-            <input type="number" id="firstNight" value="0" min="0" step="0.01">
+            <input type="number" id="firstNight" value="0" min="0" step="0.0001">
           </div>
           <div class="fld">
             <label for="otherNight">Other-nights wake priority <span class="hint">(0 = doesn't wake)</span></label>
-            <input type="number" id="otherNight" value="0" min="0" step="0.01">
+            <input type="number" id="otherNight" value="0" min="0" step="0.0001">
           </div>
         </div>
         <div class="fld">
@@ -299,7 +303,7 @@
 
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
-        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar &mdash; call them whatever you like and fill them with whatever you want. Blank a line for a paragraph break; wrap tokens like [[POISONED]].</p>
+        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
         <div id="customboxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
@@ -324,7 +328,10 @@
 
   <!-- Groups the form into sections; must run before the page's own scripts. -->
   <script src="assets/redesign-create.js"></script>
+  <!-- "acts directly after" search over the official night order -->
+  <script src="assets/night-order-picker.js"></script>
   <script src="assets/creators.js"></script>
+  <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/art-normalize.js"></script>
@@ -380,7 +387,7 @@
       var row = document.createElement('div');
       row.className = 'box-row';
       row.innerHTML =
-        '<input type="text" class="bx-title" placeholder="Box title (e.g. Lore)">' +
+        '<input type="text" class="bx-title" placeholder="Box title">' +
         '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);
@@ -433,6 +440,7 @@
         quote: $('quote').value.trim(),
         appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
+        pronunciation: $('pronunciation').value.trim(),
         translatedBy: $('translatedBy').value.trim(),
         iconBy: $('iconBy').value.trim(),
         edition: $('edition').value.trim(),
@@ -491,7 +499,7 @@
     var deb;
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
-     'quote','appears','tags','edition','firstNight','otherNight','fnReminder','onReminder',
+     'quote','appears','tags','pronunciation','edition','firstNight','otherNight','fnReminder','onReminder',
      'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
@@ -718,7 +726,7 @@
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
-            translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
+            pronunciation: d.pronunciation, translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,

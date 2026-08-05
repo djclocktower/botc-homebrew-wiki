@@ -167,6 +167,9 @@ import WikiRender from '../assets/render-wiki.js';
 // preview in the browser). It formats text through render-wiki.js.
 import NewsRender from '../assets/render-news.js';
 NewsRender.init(WikiRender);
+// The character renderer formats one field (the pronunciation line) through
+// the same engine, so **bold** there means what it means everywhere else.
+Render.init(WikiRender);
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.

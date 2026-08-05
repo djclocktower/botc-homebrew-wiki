@@ -25,6 +25,18 @@
      tells them in a banner instead (renderCharacterPage in worker.js). */
   var starMarkFn = null;
   function setStarMark(fn) { starMarkFn = fn; }
+
+  /* The wiki markup engine (assets/render-wiki.js), used for the one field
+     that takes formatting: the pronunciation line. The Worker hands it over
+     with init(); in the browser it is picked up off the global if the page
+     loaded it. Resolved per call, so load order does not matter. Without it
+     the text still renders — escaped and unformatted, never raw. */
+  var wiki = null;
+  function init(w) { wiki = w || null; }
+  function inlineText(str) {
+    var W = wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
+    return (W && W.inlineFormat) ? W.inlineFormat(str, { linkRoot: R() }) : esc(str);
+  }
   function starlightMark(d) {
     if (!d || !(d.starlight || d.classification === 'starlight')) return '';
     var fn = starMarkFn ||
@@ -275,6 +287,8 @@
       '<div class="card-actions">' + copyBtn + '</div>' +
       emblem +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
+      (String(d.pronunciation || '').trim()
+        ? '<p class="pronounce">' + inlineText(String(d.pronunciation).trim()) + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
@@ -457,6 +471,7 @@
 
   if (typeof window !== 'undefined') {
     window.renderCharacter = renderCharacter;
+    window.initCharacterRender = init;
     window.fitCharTitle = fitCharTitle;
     window.renderJsonBox = renderJsonBox;
     window.buildSchema = buildSchema;
@@ -472,6 +487,7 @@
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
+      init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
