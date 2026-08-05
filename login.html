@@ -310,6 +310,13 @@
         : which === 'forgot' ? 'Reset Password' : 'Log In';
       setMsg('', '');
     }
+    // #signup / #forgot open the matching panel — the comment sections and a
+    // few other pages link straight to login#signup, which used to land
+    // everyone on the Log In tab instead.
+    (function(){
+      var h = (location.hash || '').replace('#', '');
+      if (h === 'signup' || h === 'forgot') showPanel(h);
+    })();
     $('tab-login').addEventListener('click', function(){ showPanel('login'); });
     $('tab-signup').addEventListener('click', function(){ showPanel('signup'); });
     $('forgot-link').addEventListener('click', function(){ showPanel('forgot'); });

@@ -43,6 +43,14 @@
   fieldset.import legend { color:#234f74; }
   .jinx-row { display:grid; grid-template-columns:1fr 86px auto; gap:8px; margin-bottom:8px; align-items:start; }
   .jinx-row textarea { grid-column:1 / -1; min-height:46px; }
+  /* The @media block near the top of this file sits ABOVE these two rules, so
+     its overrides lose on source order and the phone layout never applied —
+     the 86px column pushed the ✕ button clean off a 320px screen. Same
+     breakpoint, declared where it can win. */
+  @media (max-width:980px){
+    .row2 { grid-template-columns:1fr; }
+    .jinx-row { grid-template-columns:minmax(0,1fr) minmax(64px,auto) auto; }
+  }
   .box-row { display:grid; grid-template-columns:1fr auto; gap:8px; margin-bottom:14px;
     align-items:start; padding-bottom:12px; border-bottom:1px dashed #d8caa8; }
   .box-row:last-of-type { border-bottom:none; }

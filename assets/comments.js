@@ -127,8 +127,11 @@
 
   function formHTML() {
     if (!state.me) {
-      return '<p class="cmt-login"><a href="' + ROOT + 'login">Log in</a> or ' +
-        '<a href="' + ROOT + 'login#signup">create an account</a> to join the conversation.</p>';
+      // Come back to this page after logging in, not to the account page.
+      var back = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
+      var login = ROOT + 'login?next=' + back;
+      return '<p class="cmt-login"><a href="' + login + '">Log in</a> or ' +
+        '<a href="' + login + '#signup">create an account</a> to join the conversation.</p>';
     }
     if (!state.me.canComment) {
       return '<p class="cmt-login">This account is suspended and cannot post comments. ' +
