@@ -17,7 +17,7 @@
 .sb-fld { margin-bottom:12px; }
 .sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
-.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:#8a7a63; }
+.sb-fld .opt { font-weight:400; text-transform:none; letter-spacing:0; color:#726348; }
 .sb-fld input[type=text], .sb-fld textarea, .sb-fld select { width:100%; font-family:'Libre Franklin',sans-serif; font-size:.92rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:8px 10px; box-sizing:border-box; }
 .sb-fld textarea { resize:vertical; min-height:54px; }
 #p-body { min-height:420px; font-family:'Libre Franklin',sans-serif; line-height:1.55; border-top:none; }
@@ -254,7 +254,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <span class="pub-status-pill" id="p-pill"></span>
         <a class="pub-back" id="p-parent-link" href="#">← Back to the page it belongs to</a>
       </div>
-      <p class="sb-publish-blurb" style="font-size:.82rem;color:var(--ink);opacity:.82;margin:4px 0 0;line-height:1.5">
+      <p class="sb-publish-blurb" style="font-size:.82rem;color:rgba(236,225,200,.82);margin:4px 0 0;line-height:1.5">
         Published pages are linked from your script or collection page and from your author page — and nowhere else.
         They never appear in search, on the homepage, in the browse lists or in the sitemap.
       </p>
@@ -293,6 +293,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var bgPath = '', bgData = null, removeBg = false;
     var boxesUI = null, infoUI = null;
 
+    // Send people back to this editor (with its ?p= / ?parentType= intact)
+    // after they log in, instead of dumping them on the account page.
+    function loginHref(){
+      return 'login?next=' + encodeURIComponent('publish-page' + location.search);
+    }
     function say(cls, html){ var el = $('p-status'); el.className = cls || ''; el.innerHTML = html || ''; }
     function gate(title, msg){
       $('editor').style.display = 'none';
@@ -624,7 +629,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .then(function(r){ return r.json(); })
       .then(function(me){
         if (!me || !me.username) {
-          gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="login" style="color:var(--maroon);font-weight:600">Log in →</a>');
+          gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
           return;
         }
         $('editor').style.display = '';
@@ -644,7 +649,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         }
       })
       .catch(function(){
-        gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="login" style="color:var(--maroon);font-weight:600">Log in →</a>');
+        gate('Log in first', 'Pages are written by the owner of a script or collection. <a href="' + loginHref() + '" style="color:var(--maroon);font-weight:600">Log in →</a>');
       });
   })();
   </script>

@@ -17,16 +17,19 @@
     position: relative;
     z-index: 5;
   }
+  /* On the dark page background, not on parchment — light text, like the
+     .home-hero headers everywhere else. */
   .dash-h2 {
     font-family: 'Dumbledor2', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
-    color: var(--maroon);
+    color: var(--parch);
+    text-shadow: 0 3px 12px rgba(0,0,0,.5);
     letter-spacing: .05em;
     margin: 0 0 4px;
   }
   .dash-sub {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
-    color: var(--ink); opacity: .8;
+    color: rgba(236,225,200,.8);
     margin: 0 0 22px; font-size: .95rem;
   }
   .panel {

@@ -34,7 +34,9 @@
 .pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
 .pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
 .pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
-.sb-publish-blurb { font-size:.82rem; color:var(--ink); opacity:.82; margin:4px 0 0; line-height:1.5; }
+/* Sits on the dark page background, next to .pub-back (which is already
+   parchment-coloured) — ink here was unreadable. */
+.sb-publish-blurb { font-size:.82rem; color:rgba(236,225,200,.82); margin:4px 0 0; line-height:1.5; }
 #sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
 #sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
 #sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
@@ -144,16 +146,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <input type="text" id="pc-author" placeholder="Your name">
       </div>
       <div class="sb-fld">
-        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional — one line shown under the title)</span></label>
+        <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
         <input type="text" id="pc-tagline" maxlength="140" placeholder="e.g. Class is in session.">
       </div>
       <div class="sb-fld-row">
         <div class="sb-fld">
-          <label for="pc-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <label for="pc-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
           <input type="text" id="pc-version" maxlength="32" placeholder="e.g. 2.0">
         </div>
         <div class="sb-fld">
-          <label for="pc-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <label for="pc-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
           <select id="pc-difficulty">
             <option value="">— not set —</option>
             <option value="beginner">Beginner</option>
@@ -167,7 +169,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <textarea id="pc-desc" placeholder="A short blurb about this collection."></textarea>
       </div>
       <div class="sb-fld">
-        <label for="pc-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional PNG, wide banner works best)</span></label>
+        <label for="pc-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional PNG, wide banner works best)</span></label>
         <input type="file" id="pc-header" accept="image/*">
         <img id="pc-header-prev" class="sb-header-prev" alt="header preview">
         <div id="pc-header-note" class="sub" style="margin-top:6px"></div>
@@ -180,11 +182,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <h2>Characters</h2>
       <p class="sub">Characters whose <em>Appears in</em> matches one of the match terms join automatically. You can also add or remove characters by hand.</p>
       <div class="sb-fld">
-        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(comma-separated — e.g. "The Academy, Academy")</span></label>
+        <label for="pc-match">Match terms <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(comma-separated — e.g. "The Academy, Academy")</span></label>
         <input type="text" id="pc-match" placeholder="The Academy">
       </div>
       <div class="sb-fld pc-add-wrap">
-        <label for="pc-add">Add one of your characters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(searches characters you created)</span></label>
+        <label for="pc-add">Add one of your characters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(searches characters you created)</span></label>
         <input type="text" id="pc-add" placeholder="Search your characters…" autocomplete="off">
         <div class="pc-add-results" id="pc-add-results"></div>
       </div>
@@ -200,7 +202,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on the collection page like the official wiki.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(flavor intro — blank line = new paragraph)</span></label>
+          <label for="pc-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro — blank line = new paragraph)</span></label>
           <textarea id="pc-synopsis" rows="4" maxlength="4000"></textarea>
         </div>
         <div class="sb-fld">
@@ -250,14 +252,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
-            <label for="pc-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(square-ish works best)</span></label>
+            <label for="pc-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(square-ish works best)</span></label>
             <input type="file" id="pc-logo" accept="image/*">
             <img id="pc-logo-prev" class="sb-header-prev" alt="logo preview">
             <div id="pc-logo-note" class="sub" style="margin-top:6px"></div>
             <button type="button" class="th-clear" id="pc-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
           <div class="sb-fld">
-            <label for="pc-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(large image, shown behind the page)</span></label>
+            <label for="pc-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image, shown behind the page)</span></label>
             <input type="file" id="pc-bg" accept="image/*">
             <img id="pc-bg-prev" class="sb-header-prev" alt="background preview">
             <div id="pc-bg-note" class="sub" style="margin-top:6px"></div>
@@ -269,7 +271,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <select id="th-font"></select>
         </div>
         <div class="sb-fld">
-          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(leave unset to keep the wiki look)</span></label>
+          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(leave unset to keep the wiki look)</span></label>
           <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
           <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
           <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
@@ -487,7 +489,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     }
     wireRemove('pc-header-remove', 'pc-header-prev', 'pc-header-note', 'pc-header', function(){ headerDataURL = null; existingHeader = null; removeHeader = true; });
     wireRemove('pc-logo-remove', 'pc-logo-prev', 'pc-logo-note', 'pc-logo', function(){ logoDataURL = null; existingLogo = null; removeLogo = true; });
-    wireRemove('pc-bg-remove', 'pc-bg-prev', 'pc-bg-note', 'pc-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; });
+    wireRemove('pc-bg-remove', 'pc-bg-prev', 'pc-bg-note', 'pc-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; delete theme.background; });
 
     // ── name → id preview ──
     function updateUrlPreview(){
@@ -531,8 +533,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         pubStatus('work', verb + '… saving collection');
         var t = {};
         Object.keys(theme).forEach(function(k){ t[k] = theme[k]; });
+        // `theme` still carries the background that was loaded with the page,
+        // so the removal has to clear it explicitly — without the else the old
+        // path was copied straight back in and "Remove background" did nothing.
         if (bgDataURL) t.background = 'collections/' + id + '-bg.png';
         else if (!removeBg && existingBg) t.background = existingBg;
+        else delete t.background;
         t = window.PageRender.sanitizeTheme(t, 'collections/' + id);
         var entry = {
           id: id,

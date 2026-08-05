@@ -34,14 +34,14 @@ html.create-redesign .rsec-rule {
 }
 html.create-redesign .rsec-sub {
   font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: .84rem; color: #8a7a63; white-space: nowrap;
+  font-size: .84rem; color: #726348; white-space: nowrap;
 }
 
 /* ---------- hints: small italic line under the label text ---------- */
 html.create-redesign .fld .hint {
   display: block; margin-top: 2px;
   font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: .84rem; color: #8a7a63; letter-spacing: 0;
+  font-size: .84rem; color: #726348; letter-spacing: 0;
 }
 html.create-redesign .fld label { margin-bottom: 6px; }
 
@@ -74,7 +74,7 @@ html.create-redesign #customJson {
 html.create-redesign #ability-count {
   float: none; display: inline-block; margin: 4px 0 0 2px;
   font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em;
-  color: #8a7a63; background: #efe7d3; border: 1px solid #d9cba6;
+  color: #726348; background: #efe7d3; border: 1px solid #d9cba6;
   border-radius: 999px; padding: 1px 9px;
 }
 
@@ -121,11 +121,11 @@ html.create-redesign details.advanced > summary {
 }
 html.create-redesign details.advanced > summary::-webkit-details-marker { display: none; }
 html.create-redesign details.advanced > summary .adv-sub {
-  font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: #8a7a63;
+  font-family: 'EB Garamond', serif; font-style: italic; font-size: .84rem; color: #726348;
 }
 html.create-redesign details.advanced > summary .adv-caret {
   margin-left: auto; font-family: 'Oswald', sans-serif; font-size: .8rem;
-  color: #8a7a63; letter-spacing: .08em; white-space: nowrap;
+  color: #726348; letter-spacing: .08em; white-space: nowrap;
 }
 html.create-redesign details.advanced > summary .adv-caret::before { content: 'show'; }
 html.create-redesign details.advanced[open] > summary .adv-caret::before { content: 'hide'; }
@@ -237,15 +237,15 @@ html.create-redesign #preview {
 .no-opt-name {
   font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
 }
-.no-opt-meta { font-size: .76rem; color: #8a7a63; white-space: nowrap; }
+.no-opt-meta { font-size: .76rem; color: #726348; white-space: nowrap; }
 .no-empty {
-  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #8a7a63;
+  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #726348;
 }
 
 .no-result { margin: 6px 0 8px; font-size: .82rem; color: #5b4632; }
 .no-result b { color: var(--maroon); }
 .no-clear {
   background: none; border: 0; padding: 0; cursor: pointer;
-  font: inherit; color: #8a7a63; text-decoration: underline;
+  font: inherit; color: #726348; text-decoration: underline;
 }
 .no-clear:hover { color: var(--maroon); }

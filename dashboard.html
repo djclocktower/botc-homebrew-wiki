@@ -16,17 +16,19 @@
     position: relative;
     z-index: 5;
   }
+  /* On the dark page background, not on parchment — light text, like the
+     .home-hero headers everywhere else. */
   .dash-h2 {
     font-family: 'Dumbledor2', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
-    color: var(--maroon);
+    color: var(--parch);
+    text-shadow: 0 3px 12px rgba(0,0,0,.5);
     letter-spacing: .05em;
     margin: 0 0 4px;
   }
   .dash-sub {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
-    color: var(--ink);
-    opacity: .8;
+    color: rgba(236,225,200,.8);
     margin: 0 0 22px;
     font-size: .95rem;
   }
@@ -240,10 +242,12 @@
   .del-btn:disabled { opacity: .6; cursor: default; }
   .del-status { font-size: .82rem; min-width: 56px; flex: 0 0 auto; }
 
-  /* ---- gate / loading ---- */
-  .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: var(--ink); }
-  .gate a { color: var(--good-name, #2c5b9a); }
-  .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; opacity: .7; }
+  /* ---- gate / loading ----
+     Both sit on the dark page background (no parchment panel behind them),
+     so they need light text — ink/maroon here was unreadable. */
+  .gate { text-align: center; padding: 60px 20px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.9); }
+  .gate a { color: #9fc4ee; }
+  .loading { text-align: center; padding: 50px; font-family: 'TradeGothicLT','Libre Franklin',sans-serif; color: rgba(236,225,200,.75); }
   .toast { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
   .toast.ok  { color: #2a6e2a; }
   .toast.err { color: #9a2c2c; }
@@ -290,7 +294,7 @@
     <!-- shown if not an admin -->
     <div id="gate" class="gate" style="display:none">
       <p>This page is for administrators only.</p>
-      <p><a href="login">Log in as admin</a> to continue.</p>
+      <p><a href="login?next=dashboard">Log in as admin</a> to continue.</p>
     </div>
 
     <!-- the dashboard itself -->

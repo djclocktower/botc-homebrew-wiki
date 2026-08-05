@@ -2354,7 +2354,7 @@ export default {
       const [chars, scripts, colls, news] = await Promise.all([
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
-      const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
+      const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'mass-upload',
         'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
@@ -3156,9 +3156,15 @@ export default {
       if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
       // Every image path mentioned anywhere in any page's JSON (all statuses:
       // drafts and trashed pages still need their art if restored).
+      // Wiki pages and news articles can embed any assets/ path in their body
+      // text, so their tables count as references too — without them an image
+      // a /p/ page uses looks orphaned and could be purged out from under it.
+      await ensurePagesTable(env);
+      await ensureNewsTable(env);
       const refs = new Set();
-      for (const tbl of ['characters', 'collections', 'scripts']) {
-        const { results } = await env.DB.prepare(`SELECT data FROM ${tbl}`).all();
+      for (const tbl of ['characters', 'collections', 'scripts', 'pages', 'news']) {
+        const { results } = await env.DB.prepare(`SELECT data FROM ${tbl}`).all()
+          .catch(() => ({ results: [] }));
         for (const r of results || []) {
           const found = String(r.data).match(/(?:art|scripts|collections)\/[A-Za-z0-9._ -]+\.(?:png|jpe?g|webp|gif|svg)/gi) || [];
           for (const f of found) refs.add(f.toLowerCase());
@@ -3785,6 +3791,11 @@ export default {
         const c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // The slug IS the URL (/c/{slug}), and that route only matches
+        // [a-z0-9-]. Anything else saves a page nobody can ever open.
+        if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
+          return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
+        }
         const existing = await getEntityRow(env, 'character', c.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
@@ -4016,7 +4027,9 @@ export default {
         const type = String(b.type || 'character');
         const t = CONTENT[type];
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-        const row = await getEntityRow(env, type, String(b.slug || ''));
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        // Legacy collections have display-string PK slugs; the URL uses the id.
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
         if (row.status === 'deleted') return jsonResponse({ error: 'That page is deleted. An admin can restore it from the dashboard.' }, { status: 400 });

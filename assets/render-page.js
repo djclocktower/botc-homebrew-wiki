@@ -203,7 +203,9 @@
      character list, for the "recently added" sort. */
   function renderRosterCards(entries, root, orderMap) {
     if (!entries.length) {
-      return '<p style="color:var(--ink);opacity:.7;padding:8px 0">No characters on this page yet.</p>';
+      // This grid hangs on the dark page background (no parchment behind it),
+      // unlike renderRoster's list — so the empty note needs light text.
+      return '<p class="roster-empty">No characters on this page yet.</p>';
     }
     orderMap = orderMap || {};
     function cardHTML(c) {

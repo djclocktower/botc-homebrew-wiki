@@ -409,7 +409,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .empty-card {
   background: rgba(243,239,229,.08); border: 2px dashed rgba(183,156,111,.35);
   border-radius: 0; padding: 28px 18px;
-  text-align: center; color: rgba(236,225,200,.4);
+  text-align: center; color: rgba(236,225,200,.62);
   font-size: .92rem; letter-spacing: .04em;
 }
 
@@ -859,7 +859,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-overflow: unset;
 }
 .creator-at { font-size: .72rem; opacity: .7; }
-.creator-count { font-size: .7rem; opacity: .6; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
+.creator-count { font-size: .7rem; opacity: .78; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
 
 /* ════════════════════════════════════════════════════════════════
    SCRIPT BUILDER
@@ -925,7 +925,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sb-add-name { flex: 1; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* .sb-add-plus removed — replaced by chevron button */
 .sb-add-item.on .sb-add-plus { color: var(--good-name); }
-.sb-loading { color: #8a7a63; font-size: .9rem; text-align: center; padding: 20px; }
+.sb-loading { color: #726348; font-size: .9rem; text-align: center; padding: 20px; }
 
 /* Main script area */
 .sb-main { padding: 0 clamp(12px,3vw,40px) 64px; }
@@ -1625,7 +1625,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(180,160,120,.45);
 }
 .script-team-head.good { color: var(--good-name); }
-.script-team-count { font-size: .8rem; opacity: .7; }
+.script-team-count { font-size: .8rem; opacity: .85; }
 .script-char-list { display: flex; flex-direction: column; }
 .script-char-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 6px;
@@ -1685,6 +1685,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: rgba(236,225,200,.72); margin: 0 0 20px;
 }
 .coll-team-count { font-size: .8rem; opacity: .7; }
+/* Empty state for the card grid on a collection / creator page. That grid sits
+   straight on the dark page background, so this can't use --ink. */
+.roster-empty {
+  color: rgba(236,225,200,.75); padding: 8px 0;
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+}
 .coll-prose { margin-bottom: 22px; }
 .coll-jinx { margin-top: 22px; }
 .coll-meta-row {
@@ -1712,6 +1718,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* Themed pages recolor the count + author lines to match the chosen text color */
 .theme-text .coll-chars-count { color: var(--pg-text); opacity: .85; }
+.theme-text .roster-empty { color: var(--pg-text); opacity: .85; }
 .theme-text .sv-info-author { color: var(--pg-text); }
 .theme-accent .coll-title { color: var(--pg-accent); }
 
