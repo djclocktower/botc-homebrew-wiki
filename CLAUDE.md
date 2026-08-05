@@ -127,6 +127,26 @@ assets/
                        In the Worker it gets the engine through init().
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
+  redesign-create.css/.js  The shared layout of the two character editors
+                       (create.html + edit.html). The JS groups the flat field
+                       run into Basics / The Page / Tags sections, folds credits,
+                       alt art, jinxes, sidebar boxes and custom JSON into an
+                       "Advanced Options" panel, and puts the save buttons in a
+                       sticky bar; the CSS is scoped to html.create-redesign,
+                       which the JS adds only after it has actually restructured
+                       the form, so a failed load leaves the plain form behind.
+                       Both editors are the same form — change one, change both.
+  night-order-picker.js  The "I want the X to act directly after…" search on the
+                       wake-priority fields. Picking an official character fills
+                       the field with that character's night position plus a
+                       random four-digit fraction (Poisoner is 33 → 33.5691), so
+                       homebrew pages that chose the same anchor still sort
+                       apart. Reads assets/night-order.json; pages that fill the
+                       fields after load call window.refreshNightOrderPickers().
+  night-order.json     Official night-order positions, only characters that wake.
+                       Generated from GrayPockets/Released-as-Homebrew (the
+                       `source` field inside the file says where); roles.json has
+                       no night order, which is why this is separate.
   sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.

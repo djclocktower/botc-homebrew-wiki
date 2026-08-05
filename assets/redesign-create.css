@@ -199,3 +199,53 @@ html.create-redesign #preview {
 @media (prefers-reduced-motion: reduce) {
   html.create-redesign .pv-dot.flash { animation: none; }
 }
+
+/* ============================================================
+   Night-order "acts directly after" picker
+   (assets/night-order-picker.js — create.html and edit.html)
+
+   This is a feature, not part of the layout overlay, so it is
+   deliberately NOT scoped to html.create-redesign: it has to look
+   right even if the layout script never ran. The search box itself
+   is a plain text input inside a .fld, so it already inherits the
+   page's field styling.
+   ============================================================ */
+.no-pick { margin: 0 0 8px; }
+
+.no-sentence {
+  margin: 0 0 6px;
+  font-family: 'EB Garamond', serif; font-size: .95rem; color: #5b4632;
+}
+.no-sentence b { color: var(--maroon); font-weight: 600; }
+
+.no-combo { position: relative; }
+
+.no-drop {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+  max-height: 250px; overflow-y: auto;
+  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  box-shadow: 0 10px 22px rgba(40,12,30,.28);
+}
+.no-opt {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid #f0e8d5;
+  padding: 7px 10px;
+}
+.no-opt:last-child { border-bottom: none; }
+.no-opt:hover, .no-opt.on { background: #efe7d3; }
+.no-opt-name {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+}
+.no-opt-meta { font-size: .76rem; color: #8a7a63; white-space: nowrap; }
+.no-empty {
+  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #8a7a63;
+}
+
+.no-result { margin: 6px 0 8px; font-size: .82rem; color: #5b4632; }
+.no-result b { color: var(--maroon); }
+.no-clear {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font: inherit; color: #8a7a63; text-decoration: underline;
+}
+.no-clear:hover { color: var(--maroon); }
