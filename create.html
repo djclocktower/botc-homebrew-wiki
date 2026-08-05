@@ -129,7 +129,7 @@
 
     <div class="formcard">
       <h2>Create a Character</h2>
-      <p class="sub">Fill this out, watch the live preview, then publish straight to the wiki.</p>
+      <p class="sub">Fill this out, then publish straight to the wiki.</p>
 
       <!-- import from JSON -->
       <fieldset class="import">
@@ -144,7 +144,7 @@
 
       <div class="fld">
         <label for="name">Character name *</label>
-        <input type="text" id="name" placeholder="e.g. The Cartographer">
+        <input type="text" id="name" placeholder="The Cartographer">
       </div>
       <div class="row2">
         <div class="fld">
@@ -171,7 +171,7 @@
         <span id="ability-count">0 characters</span>
       </div>
       <div class="fld">
-        <label for="lede">Lede <span class="hint">(one flavour sentence under the ability)</span></label>
+        <label for="lede">Lede</label>
         <input type="text" id="lede" placeholder="The Cartographer maps the unseen.">
       </div>
       <div class="fld">
@@ -219,11 +219,11 @@
       </div>
       <div class="fld">
         <label for="translatedBy">Translated by <span class="hint">(optional)</span></label>
-        <input type="text" id="translatedBy" placeholder="e.g. Eliderad">
+        <input type="text" id="translatedBy">
       </div>
       <div class="fld">
         <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
-        <input type="text" id="iconBy" placeholder="e.g. Luo Tianlei">
+        <input type="text" id="iconBy">
       </div>
       <div class="fld">
         <label for="art">Character art *</label>
@@ -236,7 +236,7 @@
         <div id="arturl" class="sub" style="margin-top:6px"></div>
       </div>
       <div class="fld">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON and shown on the page)</span></label>
+        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -247,9 +247,9 @@
 
       <!-- night order & tokens for JSON -->
       <fieldset>
-        <legend>Night Order &amp; Tokens (for JSON export)</legend>
+        <legend>Night Order &amp; Tokens</legend>
         <div class="fld">
-          <label for="edition">Edition <span class="hint">(optional id, e.g. experimental)</span></label>
+          <label for="edition">Edition</label>
           <input type="text" id="edition">
         </div>
         <div class="row2">
@@ -299,7 +299,7 @@
 
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
-        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar &mdash; call them whatever you like and fill them with whatever you want. Blank a line for a paragraph break; wrap tokens like [[POISONED]].</p>
+        <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
         <div id="customboxes"></div>
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
@@ -382,7 +382,7 @@
       var row = document.createElement('div');
       row.className = 'box-row';
       row.innerHTML =
-        '<input type="text" class="bx-title" placeholder="Box title (e.g. Lore)">' +
+        '<input type="text" class="bx-title" placeholder="Box title">' +
         '<button type="button" class="btn btn-del btn-sm bx-del">&#10005;</button>' +
         '<textarea class="bx-content" placeholder="Box contents&hellip;"></textarea>';
       $('customboxes').appendChild(row);

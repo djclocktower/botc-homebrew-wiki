@@ -28,7 +28,7 @@
     },
     {
       title: 'All characters must have icons.',
-      body: 'We recommend using Ravenswood Studio for creating character icons.'
+      body: 'We recommend using Iconforge for creating character icons.'
     }
   ];
 

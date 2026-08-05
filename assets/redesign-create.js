@@ -75,7 +75,7 @@
   var GROUP_DEFS = [
     { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
       ids: ['name', 'team', 'ability', 'quote', 'art'] },
-    { key: 'the-page', title: 'The Page', sub: 'what readers see on the wiki page',
+    { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
