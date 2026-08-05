@@ -88,7 +88,11 @@ assets/
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR — must stay browser+module compatible, no DOM at
-                       top level.
+                       top level. Takes the wiki text engine through
+                       init(WikiRender) for the one formatted character field,
+                       `pronunciation` — the quiet line under the flavour quote
+                       (**bold**/*italic*); without it that text still renders,
+                       escaped and unformatted.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.

@@ -81,7 +81,7 @@
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
       ids: ['tag-picker', 'tags'] }
   ];
-  var ADVANCED_FIELD_IDS = ['translatedBy', 'iconBy', 'artAlt'];
+  var ADVANCED_FIELD_IDS = ['pronunciation', 'translatedBy', 'iconBy', 'artAlt'];
   var NIGHTORDER_ID = 'edition'; // first id inside the Night Order fieldset
   // create.html and edit.html between them: publish / draft / save / delete.
   var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'delete-char', 'status'];
