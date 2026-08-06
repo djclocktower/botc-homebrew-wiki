@@ -115,7 +115,11 @@ assets/
                        Featured, /random and the homepage strips. Browser+Worker.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
-                       one-time "be respectful" agreement modal.
+                       one-time "be respectful" agreement modal and the
+                       "new since you last looked" dot (per page, per browser,
+                       localStorage botc_cmt_seen; nothing is new on a first
+                       visit, your own comments never are, and the mark
+                       advances once the section has been on screen).
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
                        images, ::: callouts, [toc], **bold**, *italic*, `code`,
