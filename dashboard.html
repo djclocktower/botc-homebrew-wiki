@@ -476,13 +476,13 @@
         <div class="toast" id="star-toast"></div>
       </section>
 
-      <!-- CHARACTERS WITH NO ICON -->
+      <!-- PUBLISHED PAGES THAT MISS THE PUBLISH BAR -->
       <section class="panel">
-        <h3>Characters with no icon <span class="count-pill" id="noicon-count"></span></h3>
+        <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          A character can no longer be published without an icon — the editor saves it as a draft and explains why. This finds pages that went live <em>before</em> that rule existed. Moving them to drafts hides them from the site until their owner adds art; nothing is deleted, and re-publishing is one click.
+          A character now needs a <strong>name, an icon, an ability and tags</strong> before it can be published — the editor saves it as a draft and says what is missing. This finds pages that went live <em>before</em> that bar existed. <strong>Scan first:</strong> it tells you how many, and what they are short of, before anything moves. Moving them to drafts hides them from the site until their owner fills the gap; nothing is deleted, and re-publishing is one click from Bulk actions. Fabled rules pages (States, Conditions, Calls) are exempt and never appear here.
         </p>
-        <button type="button" class="small-btn" id="noicon-scan">Find them</button>
+        <button type="button" class="small-btn" id="noicon-scan">Scan</button>
         <button type="button" class="small-btn alt" id="noicon-fix" style="display:none">Move all to drafts</button>
         <div id="noicon-list"></div>
         <div class="toast" id="noicon-toast"></div>
@@ -1283,31 +1283,43 @@
     $('star-add').addEventListener('click', function(){ setStarlight(true); });
     $('star-remove').addEventListener('click', function(){ setStarlight(false); });
 
-    /* ---- characters with no icon ---- */
+    /* ---- published pages that no longer meet the publish bar ---- */
     $('noicon-scan').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
       $('noicon-list').innerHTML = '<p class="note">Scanning…</p>';
-      postJSON('/api/admin/demote-no-icon', { dryRun: true }).then(function(res){
+      postJSON('/api/admin/demote-incomplete', { dryRun: true }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { $('noicon-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; return; }
         $('noicon-count').textContent = d.count ? d.count + ' published' : '';
         if (!d.count) {
-          $('noicon-list').innerHTML = '<p class="note">Every published character has an icon. Nothing to do.</p>';
+          $('noicon-list').innerHTML = '<p class="note">Every published character meets the bar. Nothing to do.</p>';
           $('noicon-fix').style.display = 'none';
           return;
         }
-        $('noicon-list').innerHTML = d.pages.map(function(p){
-          return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
-            '" target="_blank">' + esc(p.name || p.slug) + '</a></span></div>';
-        }).join('');
+        // Lead with the tally: "231 pages, 231 of them only missing tags" is
+        // the number worth reading before pressing the button.
+        var reasons = Object.keys(d.byReason || {}).sort(function(a,b){ return d.byReason[b] - d.byReason[a]; });
+        $('noicon-list').innerHTML =
+          '<p class="note"><strong>' + d.count + '</strong> published page' + (d.count === 1 ? '' : 's') +
+          ' would move to drafts' +
+          (reasons.length ? ' — ' + reasons.map(function(k){ return d.byReason[k] + ' missing ' + esc(k); }).join(', ') : '') +
+          '.</p>' +
+          d.pages.map(function(p){
+            return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+              '" target="_blank">' + esc(p.name || p.slug) + '</a></span>' +
+              '<span class="dim">missing ' + esc((p.missing || []).join(', ')) + '</span></div>';
+          }).join('') +
+          (d.count > d.pages.length ? '<p class="note">(showing the first ' + d.pages.length + ')</p>' : '');
         $('noicon-fix').style.display = '';
       });
     });
     $('noicon-fix').addEventListener('click', function(){
-      if (!confirm('Move every published character with no icon to drafts?\n\nThey disappear from the site until their owner adds art. Nothing is deleted, and you can publish any of them again from Bulk actions.')) return;
+      var n = ($('noicon-count').textContent || '').replace(/\D+/g, '') || 'every';
+      if (!confirm('Move ' + n + ' published character' + (n === '1' ? '' : 's') +
+                   ' that miss the publish bar to drafts?\n\nThey disappear from the public wiki until their owner fills the gap. Nothing is deleted, and you can publish any of them again from Bulk actions.')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/demote-no-icon', {}).then(function(res){
+      postJSON('/api/admin/demote-incomplete', {}).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('noicon-toast', false, d.error || 'Failed.'); return; }

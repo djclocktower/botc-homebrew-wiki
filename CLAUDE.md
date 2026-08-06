@@ -240,6 +240,14 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, reset-password.html
+drafts.html            /drafts — your own unpublished pages as cards (the same
+                       renderRosterCards markup the browse and collection pages
+                       use, with the shared filter box). Characters come from
+                       /api/account, enriched from characters.json?drafts=1 when
+                       the reader is an admin; scripts/collections/wiki pages
+                       have no card art so they get a plain tile. Linked from
+                       the Your Drafts panel on the account page, which keeps
+                       its own table — the two are deliberately both there.
 profile.html           The creator page, served at BOTH /u/{username} and
                        /author?a={name} (there is no author.html any more).
                        Hero + pinned strip + characters (shared filter bar) +
@@ -404,15 +412,21 @@ in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
 and the Worker (which stamps `classification` + `starlight` onto every row in
 `/characters.json`, `/collections.json`, `/scripts.json`).
 
-- **Partial** — characters only: an ability and nothing else — no tags, no
-  almanac prose, **and no mechanics** (night order, reminder tokens, setup,
-  jinxes). Hidden from All Characters, the tag/team/creator pages, Featured
-  and the homepage unless the *reader* ticks the "Show Partial" chip. Adding
-  a tag, a line of almanac text, or night-order info upgrades it instantly.
-  Counting mechanics is **load-bearing**: much of this wiki was bulk-imported
-  with full night order but no tags or prose, and judging on prose alone made
-  193 of 456 published characters (42%) read as unfinished. With mechanics
-  counted it is 9. Do not "simplify" `hasMechanics()` away.
+- **Two bars, both in `classify.js`.** `PUBLISH_REQUIREMENTS` is what a page
+  needs to leave drafts at all — **name, icon, ability, tags**. 
+  `STANDARD_REQUIREMENTS` is that plus **a flavour line (`lede`), a summary
+  (`summaryBullets`), how-to-run text (`howToRun`) and at least one example**.
+  Both are `[label, test]` tables; the labels carry their own articles ("an
+  icon", "tags") because they are read straight into "Add ___ to fix." on the
+  Partial banner and "needs ___" in the editor. `missingForPublish()` /
+  `missingBits()` return the failing labels, `listPhrase()` joins them.
+- **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
+  Hidden from All Characters, the tag/team/creator pages, Featured and the
+  homepage unless the *reader* ticks the "Show Partial" chip. Filling the gap
+  upgrades it instantly — nothing is stored.
+  `hasMechanics()` no longer gates Partial (night order alone is not a
+  finished almanac entry) but is still exported and still used to describe a
+  page; don't delete it.
 - **Fabled are exempt** from both the Partial tier and the icon requirement
   (`RULES_TEAMS` in classify.js). On this wiki Fabled is where States,
   Conditions, Calls, Alignments and Properties live — rules constructs that
@@ -453,10 +467,13 @@ a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `isPartial()` self-guards on `d.ability` so a collection or script can never
 be flagged Partial — do not remove that check.
 
-**Characters with no icon cannot be published** (Fabled excepted, above). `/api/character` silently
-saves them as drafts (and says so, via `editor-notices.js`), and
-`/api/publish` refuses. `POST /api/admin/demote-no-icon` sweeps pages that went
-live before the rule; the dashboard has a scan + one-click button for it.
+**A character that misses `PUBLISH_REQUIREMENTS` cannot be published** (Fabled
+excepted, above). `/api/character` silently saves it as a draft (and says what
+is missing, via `editor-notices.js`), and `/api/publish` refuses.
+`POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
+that went live before the bar was raised; the dashboard card scans first and
+reports the count and the reasons before anything moves. **Always dry-run it** —
+raising the bar to include tags put 231 of 619 published characters in scope.
 
 ## Frontend conventions
 

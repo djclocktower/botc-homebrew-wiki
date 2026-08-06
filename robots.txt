@@ -20,5 +20,7 @@ Disallow: /messages
 Disallow: /messages.html
 Disallow: /normalize-icons
 Disallow: /normalize-icons.html
+Disallow: /drafts
+Disallow: /drafts.html
 
 Sitemap: https://botchomebrew.wiki/sitemap.xml

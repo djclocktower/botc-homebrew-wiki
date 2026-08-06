@@ -126,7 +126,9 @@
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
- *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
+ *   POST /api/admin/demote-incomplete -> sweep published characters that no
+ *                                longer meet the publish bar into drafts
+ *                                (alias: /api/admin/demote-no-icon)
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/lock            -> lock/unlock the wiki
@@ -1334,19 +1336,12 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 // edit the page (owner or admin) — a reader has no use for it, and the wiki
 // does not advertise which pages its authors haven't finished.
 function partialNoticeHTML(d) {
-  const missing = Classify.missingBits(d)
-    .map(b => b === 'almanac' ? 'almanac text or night order' : b);
-  const still = missing.length
-    ? ' Still missing: ' + escapeHtml(missing.join(', ')) + '.'
-    : '';
+  const missing = Classify.listPhrase(Classify.missingBits(d));
   return '<div class="page-notice page-notice-partial" role="status">' +
-    '<strong>Only you and the admins can see this.</strong> ' +
-    'This page counts as <em>Partial</em> — it has an ability, but no tags, no ' +
-    'almanac text and no mechanics (night order, reminder tokens, setup, jinxes), ' +
-    'so it stays hidden from All Characters, the tag pages and the homepage unless ' +
-    'a reader turns on the “Show Partial” filter.' + still +
-    ' One tag or one line of almanac text is enough to fix it. ' +
-    '<a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
+    '<strong>PARTIAL</strong> — This page doesn\u2019t show on the homepage or ' +
+    'All Characters search.' +
+    (missing ? ' Add ' + escapeHtml(missing) + ' to fix.' : '') +
+    ' <a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
 }
 
 // The creator page is one static file (profile.html) served under two paths:
@@ -3869,10 +3864,12 @@ export default {
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
-        // A character with no icon cannot go live. Publishing attempts are
-        // saved as drafts instead so nothing is lost — the editor shows why.
+        // An incomplete character cannot go live: it needs a name, an icon,
+        // an ability and tags. Publishing attempts are saved as drafts
+        // instead so nothing is lost — the editor shows what is missing.
+        const needed = Classify.missingForPublish(c);
         let iconBlocked = false;
-        if (status === 'published' && Classify.needsIcon(c) && !Classify.hasIcon(c)) {
+        if (status === 'published' && needed.length) {
           status = 'draft';
           iconBlocked = true;
         }
@@ -3892,8 +3889,10 @@ export default {
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
           iconBlocked,
+          missingForPublish: needed,
           notice: iconBlocked
-            ? 'Saved as a draft: a character needs an icon before it can be published. Add one and publish again.'
+            ? 'Saved as a draft: a character needs ' + Classify.listPhrase(needed) +
+              ' before it can be published. Add that and publish again.'
             : undefined
         });
       }
@@ -4098,13 +4097,14 @@ export default {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         const status = b.status === 'draft' ? 'draft' : 'published';
-        // Same rule as /api/character: no icon, no publishing.
+        // Same rule as /api/character: a name, an icon, an ability and tags.
         const pubData = type === 'character' ? parseData(row) : null;
-        if (status === 'published' && type === 'character' &&
-            Classify.needsIcon(pubData) && !Classify.hasIcon(pubData)) {
+        const pubMissing = type === 'character' ? Classify.missingForPublish(pubData) : [];
+        if (status === 'published' && pubMissing.length) {
           return jsonResponse({
-            error: 'This character needs an icon before it can be published. Open the editor and add one.',
-            needsIcon: true
+            error: 'This character needs ' + Classify.listPhrase(pubMissing) +
+                   ' before it can be published. Open the editor and add that.',
+            needsIcon: true, missingForPublish: pubMissing
           }, { status: 400 });
         }
         await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
@@ -4719,35 +4719,43 @@ export default {
         return jsonResponse({ ok: true, slug: row.slug, starlight: on });
       }
 
-      // ---- admin: one-click cleanup of published characters with no icon ----
-      // The icon rule only bites on save/publish, so this sweeps the pages
-      // that went live before the rule existed. Every affected page becomes a
-      // draft — nothing is deleted, and re-publishing is one click once the
-      // owner adds art. Pass {dryRun:true} to just count them.
-      if (path === '/api/admin/demote-no-icon') {
+      // ---- admin: sweep published characters that miss the publish bar ----
+      // The bar (name, icon, ability, tags — Classify.missingForPublish) only
+      // bites on save/publish, so this catches the pages that went live before
+      // it existed or before it was raised. Every affected page becomes a
+      // draft — nothing is deleted, and re-publishing is one click once its
+      // owner fills the gap. ALWAYS dry-run it first: {dryRun:true} returns
+      // the count and the reasons without touching anything.
+      // The old /api/admin/demote-no-icon path still works.
+      if (path === '/api/admin/demote-incomplete' || path === '/api/admin/demote-no-icon') {
         const b = await request.json().catch(() => ({}));
         const { results } = await env.DB.prepare(
           "SELECT slug, name, data FROM characters WHERE status='published'"
         ).all();
-        // Fabled rules pages (States/Conditions/Calls) never had icons and
-        // are not supposed to — Classify.needsIcon() keeps them out of this.
-        const hits = (results || []).filter(r => {
-          const d = parseData(r);
-          return Classify.needsIcon(d) && !Classify.hasIcon(d);
-        });
+        // Fabled rules pages (States/Conditions/Calls) have no icon and no
+        // tags by nature — missingForPublish() keeps them out of this.
+        const hits = [];
+        for (const r of results || []) {
+          const missing = Classify.missingForPublish(parseData(r));
+          if (missing.length) hits.push({ slug: r.slug, name: r.name, missing });
+        }
+        // How many pages each requirement accounts for, so the dashboard can
+        // say "231 of these are only missing tags" before anything is moved.
+        const byReason = {};
+        for (const h of hits) for (const m of h.missing) byReason[m] = (byReason[m] || 0) + 1;
         if (b.dryRun) {
           return jsonResponse({
-            ok: true, dryRun: true, count: hits.length,
-            pages: hits.slice(0, 300).map(r => ({ slug: r.slug, name: r.name }))
+            ok: true, dryRun: true, count: hits.length, byReason,
+            pages: hits.slice(0, 300)
           });
         }
-        for (const r of hits) {
+        for (const h of hits) {
           await env.DB.prepare("UPDATE characters SET status='draft', updated_at=datetime('now') WHERE slug=?")
-            .bind(r.slug).run();
+            .bind(h.slug).run();
         }
         await logActivity(env, sess, 'unpublish', 'character', null,
-          hits.length + ' page(s) with no icon moved to draft');
-        return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+          hits.length + ' incomplete page(s) moved to draft');
+        return jsonResponse({ ok: true, count: hits.length, byReason, pages: hits.map(h => h.slug) });
       }
 
       // ---- admin: one-time Odyssey text cleanup ----
