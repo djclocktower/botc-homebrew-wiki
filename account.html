@@ -543,9 +543,11 @@
 
     function rowHtml(type, r, isDraft) {
       var name = esc(r.name || r.slug);
-      var nameCell = isDraft
-        ? '<span class="row-name"><a href="' + editUrl(type, r.slug) + '">' + name + '</a></span>'
-        : '<span class="row-name"><a href="' + viewUrl(type, r.slug) + '">' + name + '</a></span>';
+      // Draft or not, the name goes to the page itself. A draft page renders
+      // for its owner (and admins) with the DRAFT banner on it, so this is a
+      // preview — which is what you want when you click a name. The editor is
+      // the Edit button next to it.
+      var nameCell = '<span class="row-name"><a href="' + viewUrl(type, r.slug) + '">' + name + '</a></span>';
       var actions = '<button class="mini-btn edit" data-act="edit" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Edit</button>';
       // Custom wiki pages are published, drafted and deleted from their own
       // editor (they are not part of the shared /api/publish + /api/delete

@@ -181,6 +181,8 @@
   .pv-bar-track { flex: 1 1 90px; height: 9px; background: rgba(0,0,0,.10); border-radius: 999px; overflow: hidden; min-width: 60px; }
   .pv-bar-fill { height: 100%; border-radius: 999px; background: var(--maroon); }
   .hist-link { font-size: .74rem; color: #5a3c8c; cursor: pointer; text-decoration: underline dotted; flex: 0 0 auto; }
+  /* The name in a row goes to the page; this sits beside it for the editor. */
+  .row-edit { font-size: .74rem; color: #5a3c8c; text-decoration: underline dotted; flex: 0 0 auto; }
 
   /* ---- activity log filters ---- */
   .act-filters {
@@ -755,12 +757,28 @@
       return '#';
     }
     function typeLabel(t){ return t === 'wikipage' ? 'Page' : (t ? (t.charAt(0).toUpperCase() + t.slice(1)) : ''); }
+    // The page itself, for the types that have one. Drafts render for admins
+    // with the DRAFT banner, so this previews them rather than opening the
+    // editor — clicking a name should show you the page, not the form.
+    // Types with no page of their own (user, comment, wiki, dm, …) get ''.
+    var PAGE_TYPES = { character: 'c/', script: 's/', collection: 'collection/', wikipage: 'p/', news: 'news/' };
+    function pageUrl(type, slug){
+      var pre = PAGE_TYPES[type];
+      return (pre && slug) ? pre + encodeURIComponent(slug) : '';
+    }
+    // Small "edit" link that follows a name, so the editor stays one click
+    // away now that the name goes to the page.
+    function editLink(type, slug){
+      var href = editorUrl(type, slug);
+      return href === '#' ? '' : ' <a class="row-edit" href="' + href + '">edit</a>';
+    }
 
     function renderContentRow(item, tsField){
       var ts = item[tsField];
       return '<li><div class="row-line">' +
         '<span class="tag tag-type">' + esc(typeLabel(item.type)) + '</span>' +
-        '<a href="' + editorUrl(item.type, item.slug) + '">' + esc(item.name || item.slug) + '</a>' +
+        '<a href="' + (pageUrl(item.type, item.slug) || editorUrl(item.type, item.slug)) + '">' +
+          esc(item.name || item.slug) + '</a>' + editLink(item.type, item.slug) +
         '</div><span class="when" title="' + esc(absTime(ts)) + '">' + esc(relTime(ts)) + '</span></li>';
     }
 
@@ -773,8 +791,14 @@
       if (a.entity_type === 'wiki') {
         subject = 'the wiki';
       } else if (a.entity_slug) {
-        subject = '<a href="' + editorUrl(a.entity_type, a.entity_slug) + '">' +
-                  esc(a.entity_name || a.entity_slug) + '</a>' +
+        var aHref = pageUrl(a.entity_type, a.entity_slug);
+        // Types with neither a page nor an editor (a creator alias, say) stay
+        // plain text instead of becoming a link to '#'.
+        var aEdit = editorUrl(a.entity_type, a.entity_slug);
+        var aName = esc(a.entity_name || a.entity_slug);
+        subject = (aHref || aEdit !== '#'
+                    ? '<a href="' + (aHref || aEdit) + '">' + aName + '</a>' + (aHref ? editLink(a.entity_type, a.entity_slug) : '')
+                    : aName) +
                   ' <span class="tag tag-type">' + esc(typeLabel(a.entity_type)) + '</span>';
         if (CONTENT_TYPES[a.entity_type]) {
           subject += ' <span class="hist-link" data-hist-type="' + esc(a.entity_type) +
