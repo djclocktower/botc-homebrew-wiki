@@ -30,9 +30,12 @@
     border:2px solid rgba(236,225,200,.4);
   }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-  .profile-hero-text { min-width:0; }
+  .profile-hero-text { min-width:0; max-width:100%; }
   /* .home-hero centres its text; the hero here is a two-column card, so the
-     name lines up with the details under it instead of floating over them. */
+     name lines up with the details under it instead of floating over them.
+     Size comes from .home-hero h1; fitHeroName() below shrinks it when the
+     name is too long for the width, and styles.css lets it wrap if even that
+     is not enough. */
   .profile-hero-text h1 { margin:0 0 2px; text-align:left; }
   .profile-uname { font-size:.95rem; color:rgba(236,225,200,.75); margin:0 0 6px; }
   .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; white-space:pre-wrap; }
@@ -148,6 +151,39 @@
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    /* Fit the creator name to one line, then stop. Creator names are
+       user-supplied and some are a single unbroken word, which at hero size
+       ran off the side of a phone and dragged the page with it. Measured
+       rather than computed, the way fitCharTitle does it for character
+       titles. Below MIN_NAME_PX shrinking stops being readable, so it wraps
+       instead — styles.css allows the break. */
+    var MIN_NAME_PX = 22;
+    function fitHeroName() {
+      var el = document.querySelector('.profile-hero-text h1');
+      if (!el) return;
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize = '';                        // back to the CSS clamp
+      var avail = el.clientWidth;
+      if (!avail) return;
+      if (el.scrollWidth > avail) {
+        var cur = parseFloat(getComputedStyle(el).fontSize) || 24;
+        var size = cur * (avail * 0.98) / el.scrollWidth;
+        el.style.fontSize = Math.max(size, MIN_NAME_PX).toFixed(1) + 'px';
+      }
+      // Whatever the arithmetic said, never leave it overflowing: if one line
+      // still does not fit at the smallest size worth reading, let it wrap.
+      // (styles.css allows the break; that is the safety net under all of this.)
+      el.style.whiteSpace = el.scrollWidth > el.clientWidth + 1 ? 'normal' : 'nowrap';
+    }
+    // Dumbledor2's glyphs are wider than the fallback and it arrives after
+    // first paint, so the first measurement is always against the wrong font.
+    // Re-fit when it lands — unconditionally, because fonts.status can already
+    // read "loaded" at this point and still repaint wider afterwards.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitHeroName).catch(function () {});
+    }
+    window.addEventListener('resize', fitHeroName);
+
     function fmtDate(d) {
       if (!d) return '';
       var t = new Date(String(d).replace(' ', 'T') + (String(d).indexOf('Z') === -1 ? 'Z' : ''));
@@ -318,6 +354,7 @@
           linksHTML +
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
         '</div>';
+      fitHeroName();
 
       if (me && me.isAdmin) renderAdminLinkBox(p);
     }

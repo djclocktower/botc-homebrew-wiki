@@ -2621,3 +2621,28 @@ a:hover .starlight-star { opacity: .9; }
 .wiki-pagelinks-dark .wiki-pagelink:hover { background: rgba(0,0,0,.42); }
 .wiki-pagelinks-dark .wiki-pagelink-title { color: #ecd9a8; }
 .wiki-pagelinks-dark .wiki-pagelink-blurb { color: rgba(236,225,200,.78); }
+
+/* ─── Long names must wrap, not widen the page ──────────────────
+   Names on this wiki are user-supplied and some are one long unbroken word
+   ("UnknownHumanBean"). Wherever one is displayed large, the default
+   `overflow-wrap: normal` refuses to break it, so it pushed past the viewport
+   and dragged the whole page sideways on a phone — the top bar included.
+   `anywhere` (not `break-word`) because several of these are flex/grid items,
+   and only `anywhere` also shrinks their min-content width so the container
+   stops being stretched. Same idiom as .info dt/dd and .cmt-body above. */
+.home-hero h1, .home-hero p,
+.landing-hero h1, .landing-hero p,
+.gen-title, .title-row,
+.type-header,
+.coll-title, .coll-chars-count,
+.char-card-name, .char-card-ability,
+.creator-pill, .creator-name,
+.script-char-name, .script-char-ability,
+.sv-info-author,
+.wiki-title, .wiki-pagelink-title, .wiki-pagelink-blurb,
+.news-card-title,
+.cmt-who {
+  overflow-wrap: anywhere; word-break: break-word;
+}
+/* flex containers holding one of those need to be allowed to shrink too */
+.creator-pill, .creator-name, .title-row, .wiki-pagelink { min-width: 0; }
