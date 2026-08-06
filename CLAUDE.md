@@ -178,6 +178,8 @@ assets/
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
+                       Featured Character rotates **Starlight pages only**,
+                       seeded by the day number so it is stable for 24 h.
                        Browse cards include Grimoire Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
@@ -413,9 +415,12 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
 `/characters.json`, `/collections.json`, `/scripts.json`).
 
 - **Two bars, both in `classify.js`.** `PUBLISH_REQUIREMENTS` is what a page
-  needs to leave drafts at all — **name, icon, ability, tags**. 
-  `STANDARD_REQUIREMENTS` is that plus **a flavour line (`lede`), a summary
-  (`summaryBullets`), how-to-run text (`howToRun`) and at least one example**.
+  needs to leave drafts at all — **name, icon, ability**. Tags are
+  deliberately NOT in it: no tags makes a page Partial, never unpublished
+  (tags were the sole reason 231 of 619 published pages failed the old bar).
+  `STANDARD_REQUIREMENTS` is that plus **tags, a flavour line (`lede`), a
+  summary (`summaryBullets`), how-to-run text (`howToRun`) and at least one
+  example**.
   Both are `[label, test]` tables; the labels carry their own articles ("an
   icon", "tags") because they are read straight into "Add ___ to fix." on the
   Partial banner and "needs ___" in the editor. `missingForPublish()` /
@@ -472,8 +477,10 @@ excepted, above). `/api/character` silently saves it as a draft (and says what
 is missing, via `editor-notices.js`), and `/api/publish` refuses.
 `POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
 that went live before the bar was raised; the dashboard card scans first and
-reports the count and the reasons before anything moves. **Always dry-run it** —
-raising the bar to include tags put 231 of 619 published characters in scope.
+reports the count and the reasons before anything moves. Always dry-run it.
+`POST /api/admin/starlight-owner` ({username, dryRun}) grants Starlight to
+every character one account owns. Starlight lifts a page out of Partial, so
+this is how admin-written pages stop being hidden for want of a tag.
 
 ## Frontend conventions
 
