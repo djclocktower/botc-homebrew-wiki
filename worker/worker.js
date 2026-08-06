@@ -1372,7 +1372,7 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">the editor</a>.</div>'
     : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
@@ -1494,7 +1494,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-script?s=' + encodeURIComponent(d.slug)
     : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a> or <a href="../account" style="color:#ffe9ad">your account</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a>.</div>'
     : '';
 
   const html = pageShell({
@@ -1684,7 +1684,7 @@ export default {
         body: '<p class="news-back"><a href="../news">← All news</a></p>' +
           NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only admins can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the news editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
         scripts: ['comments.js', 'site.js']
@@ -1824,7 +1824,7 @@ export default {
         bodyClass: ta.cls, bodyStyle: ta.style,
         body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the page editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
           (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
