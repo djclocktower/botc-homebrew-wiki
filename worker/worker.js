@@ -127,6 +127,10 @@
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/collect-creator -> put every character by one creator into
+ *                                a collection (creates it if needed)
+ *   POST /api/admin/concepts-to-pages -> turn rules-construct characters into
+ *                                wiki pages under a collection and retire them
  *   POST /api/admin/starlight-owner -> grant Starlight to every character one
  *                                account owns (?dryRun to count first)
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
@@ -4741,6 +4745,164 @@ export default {
           .bind(JSON.stringify(d), row.slug).run();
         await logActivity(env, sess, on ? 'starlight' : 'unstarlight', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+      }
+
+      // ---- admin: gather one creator's characters into a collection ----
+      // Membership is normally auto-matched on the character's "Appears in"
+      // text, but a creator's back catalogue does not share one — so this
+      // writes the roster into the collection's explicit include[] list.
+      // Creates the collection when it does not exist yet. {dryRun:true}
+      // reports what it would gather without writing anything.
+      if (path === '/api/admin/collect-creator') {
+        const b = await request.json().catch(() => ({}));
+        const creator = String(b.creator || '').trim();
+        const collName = String(b.collection || '').trim();
+        if (!creator || !collName) {
+          return jsonResponse({ error: 'Need both a creator and a collection name.' }, { status: 400 });
+        }
+        // One credit can name several people, so match a comma-separated
+        // segment rather than the whole column (see creditMatchSQL).
+        const { results } = await env.DB.prepare(
+          `SELECT slug, name FROM characters
+            WHERE status IS NOT 'deleted' AND ${creditMatchSQL('creator')}
+            ORDER BY name`
+        ).bind(normCreator(creator)).all().catch(() => ({ results: [] }));
+        const slugs = (results || []).map(r => r.slug);
+        const existing = await findCollectionRow(env, collName);
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, creator, collection: collName,
+            exists: !!existing, count: slugs.length,
+            pages: (results || []).slice(0, 300)
+          });
+        }
+        if (!slugs.length) return jsonResponse({ error: 'That creator has no pages.' }, { status: 404 });
+        const kebab = x => String(x || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 80);
+        const d = existing ? parseData(existing) : {};
+        const id = d.id || kebab(collName);
+        const pk = existing ? existing.slug : id;
+        d.id = id;
+        d.slug = pk;
+        d.displayName = d.displayName || collName;
+        d.author = d.author || creator;
+        d.description = d.description || ('Everything ' + creator + ' has made for the wiki.');
+        d.match = Array.isArray(d.match) ? d.match : [];
+        d.exclude = Array.isArray(d.exclude) ? d.exclude : [];
+        // include[] is capped at 500 by sanitizePageFields; 258 fits today.
+        d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
+        d.starlight = existing ? !!parseData(existing).starlight : false;
+        sanitizePageFields(d, 'collections/' + id);
+        if (existing) await saveRevision(env, sess, 'collection', existing);
+        await env.DB.prepare(
+          `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
+           VALUES (?,?,?,?, 'published', datetime('now'), datetime('now'))
+           ON CONFLICT(slug) DO UPDATE SET
+             display_name=excluded.display_name, data=excluded.data, updated_at=datetime('now')`
+        ).bind(pk, d.displayName, sess.userId, JSON.stringify(d)).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pk,
+          d.displayName + ' (' + slugs.length + ' from ' + creator + ')');
+        return jsonResponse({ ok: true, id, slug: pk, count: d.include.length, added: slugs.length });
+      }
+
+      // ---- admin: rules constructs stop being characters ----
+      // States, Conditions, Calls, Alignments and Properties were imported as
+      // Fabled characters, but they are reference text, not people you can
+      // put on a script. This rewrites each one as a wiki page under a parent
+      // collection and soft-deletes the character it came from (recoverable
+      // from Deleted Content, and its last version is in revisions).
+      // {dryRun:true} shows exactly what it would write.
+      if (path === '/api/admin/concepts-to-pages') {
+        await ensurePagesTable(env);
+        const b = await request.json().catch(() => ({}));
+        const from = String(b.from || '').trim();          // an "Appears in" value
+        const parentKey = String(b.parent || '').trim();   // collection id/slug
+        if (!from || !parentKey) {
+          return jsonResponse({ error: 'Need both the source “Appears in” value and the parent collection.' }, { status: 400 });
+        }
+        const parent = await wikiParentRow(env, 'collection', parentKey);
+        if (!parent) return jsonResponse({ error: 'No collection called “' + parentKey + '”.' }, { status: 404 });
+        const norm = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE status IS NOT 'deleted'"
+        ).all().catch(() => ({ results: [] }));
+        const hits = (results || []).filter(r => norm(parseData(r).appearsIn) === norm(from));
+
+        // A character's almanac, rewritten as wiki-page markup. Only the
+        // fields that hold anything; the order matches how /c/ reads.
+        const bodyFor = d => {
+          const out = [];
+          const lines = v => (Array.isArray(v) ? v : [v]).filter(x => typeof x === 'string' && x.trim());
+          if (d.quote && String(d.quote).trim()) out.push('> ' + String(d.quote).trim());
+          if (d.lede && String(d.lede).trim()) out.push('*' + String(d.lede).trim() + '*');
+          if (d.ability && String(d.ability).trim()) out.push('**' + String(d.ability).trim() + '**');
+          const section = (title, v) => {
+            const l = lines(v);
+            if (l.length) out.push('## ' + title + '\n' + l.map(x => '- ' + x.trim()).join('\n'));
+          };
+          section('Summary', d.summaryBullets);
+          const how = lines(d.howToRun);
+          if (how.length) out.push('## How to Run\n' + how.map(x => x.trim()).join('\n\n'));
+          section('Examples', d.examples);
+          section('Tips', d.tips);
+          if (d.callout && String(d.callout).trim()) out.push('::: ' + String(d.callout).trim());
+          return out.join('\n\n');
+        };
+        const kebab = x => String(x || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 70);
+
+        const plan = [];
+        for (const r of hits) {
+          const d = parseData(r);
+          const body = bodyFor(d);
+          let slug = kebab(r.name) || kebab(r.slug);
+          plan.push({ from: r.slug, name: r.name, slug, body, hasBody: !!body.trim(), author: d.creator || null });
+        }
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, parent: parent.name, count: plan.length,
+            pages: plan.map(p => ({ from: p.from, name: p.name, slug: p.slug, hasBody: p.hasBody,
+                                    preview: p.body.slice(0, 220) }))
+          });
+        }
+        if (!plan.length) return jsonResponse({ error: 'Nothing matched that “Appears in” value.' }, { status: 404 });
+        let made = 0;
+        const skipped = [];
+        for (const p of plan) {
+          // Never write over a page that already exists on that slug.
+          const taken = await env.DB.prepare('SELECT 1 FROM pages WHERE slug=?').bind(p.slug).first().catch(() => null);
+          if (taken) { skipped.push(p.slug); continue; }
+          if (!p.hasBody) { skipped.push(p.slug + ' (nothing to write)'); continue; }
+          const page = {
+            slug: p.slug, title: p.name, subtitle: '', blurb: '', author: p.author,
+            body: p.body, header: '', images: [], boxes: [], toc: true, comments: true
+          };
+          sanitizeWikiFields(page, 'pages/' + p.slug + '-', 'pages/' + p.slug);
+          page.parentType = 'collection';
+          page.parentSlug = parent.slug;
+          if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
+          await env.DB.prepare(
+            `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?, 'published', datetime('now'), datetime('now'))`
+          ).bind(p.slug, p.name, 'collection', parent.slug, p.author, sess.userId, JSON.stringify(page)).run();
+          // Retire the character it came from — soft, so Deleted Content can
+          // put it back if any of this turns out wrong.
+          const row = await getEntityRow(env, 'character', p.from);
+          if (row) {
+            await saveRevision(env, sess, 'character', row);
+            const cd = parseData(row);
+            cd._deleted = { at: new Date().toISOString(), by: null, from: row.status || 'published',
+                            note: 'converted to wiki page /p/' + p.slug };
+            await env.DB.prepare("UPDATE characters SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?")
+              .bind(JSON.stringify(cd), row.slug).run();
+          }
+          made++;
+        }
+        await logActivity(env, sess, 'create', 'wikipage', null,
+          made + ' rules page(s) converted from characters');
+        return jsonResponse({ ok: true, made, skipped, parent: parent.name });
       }
 
       // ---- admin: grant Starlight to everything one account owns ----

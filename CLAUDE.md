@@ -432,11 +432,14 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
   `hasMechanics()` no longer gates Partial (night order alone is not a
   finished almanac entry) but is still exported and still used to describe a
   page; don't delete it.
-- **Fabled are exempt** from both the Partial tier and the icon requirement
-  (`RULES_TEAMS` in classify.js). On this wiki Fabled is where States,
-  Conditions, Calls, Alignments and Properties live — rules constructs that
-  are complete at one line and never had token art. Without the exemption 18
-  reference pages get swept into drafts and hidden.
+- **No team is exempt any more.** Fabled used to be, because it held this
+  wiki's rules constructs (States, Conditions, Calls, Alignments, Properties).
+  Those 18 pages are now wiki pages under Imppreposterous Syncretastrophy
+  (`POST /api/admin/concepts-to-pages`), and all 31 Fabled characters left
+  have icons — so the exemption was only letting real characters skip the bar.
+  `isRulesPage()`/`needsIcon()` survive as functions (the Worker calls them,
+  and a future "this team is different" belongs there) but no longer exempt
+  anything.
 - **Standard** — the default. No badge, nothing to earn.
 - **Starlight** — admin-only, on characters, collections **and** scripts.
   Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage

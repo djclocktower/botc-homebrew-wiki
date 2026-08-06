@@ -15,8 +15,11 @@
              example. Partial pages are hidden from browse/search listings,
              the tag pages, Featured and the homepage, unless the *reader*
              ticks the "Partial" filter chip.
-             Fabled are exempt: on this wiki they are rules constructs
-             (States, Conditions, Calls) that are complete at one line.
+             No team is exempt. Fabled used to be, on the grounds that it
+             held the wiki's rules constructs (States, Conditions, Calls) —
+             but those became wiki pages under Imppreposterous
+             Syncretastrophy, and the 31 Fabled left are ordinary characters
+             with icons and almanacs like any other.
    standard  Every requirement met. No badge, nothing to earn.
    starlight Admin-awarded, on characters, collections or scripts. Weighted
              higher in Featured / random picks and filterable on its own.
@@ -57,23 +60,18 @@
     return Array.isArray(v) && v.some(nonEmpty);
   }
 
-  /* Teams whose pages are rules constructs rather than player characters.
-     On this wiki Fabled is where States, Conditions, Calls, Alignments and
-     Properties live — "Muted (Condition)", "Guessing the Demon (Call)" — and
-     those have no token art and no almanac by nature. They are complete as
-     they are, so they are exempt from BOTH the icon requirement and the
-     Partial classification. Without this, 18 of the wiki's reference pages
-     would be swept into drafts and hidden from browsing. */
-  var RULES_TEAMS = { fabled: 1 };
+  /* No team is exempt from the rules any more.
+     Fabled was, because it held this wiki's rules constructs — "Muted
+     (Condition)", "Guessing the Demon (Call)" — which have no token art and
+     no almanac by nature. Those 18 pages are wiki pages under Imppreposterous
+     Syncretastrophy now, and every one of the 31 Fabled characters left has
+     an icon, so the exemption was only ever letting real characters skip the
+     bar. Kept as a function (not deleted) because the Worker asks it, and a
+     future "this team is different" would land here. */
+  function isRulesPage() { return false; }
 
-  function isRulesPage(d) {
-    return !!(d && RULES_TEAMS[String(d.team || '').toLowerCase()]);
-  }
-
-  /* Must this page have an icon before it can be published? */
-  function needsIcon(d) {
-    return !isRulesPage(d);
-  }
+  /* Must this page have an icon before it can be published? Always. */
+  function needsIcon() { return true; }
 
   /* Does this character have an icon? `art` is a repo/R2 path
      (assets/art/x.png); `image` is a remote URL from a bulk import, and may
@@ -124,8 +122,7 @@
   ]);
 
   function unmet(d, reqs) {
-    // A rules page (Fabled) is complete as it is — see RULES_TEAMS.
-    if (!d || isRulesPage(d)) return [];
+    if (!d) return [];
     var out = [];
     for (var i = 0; i < reqs.length; i++) {
       if (!reqs[i][1](d)) out.push(reqs[i][0]);
@@ -183,8 +180,6 @@
   function isPartial(d) {
     if (!d || isStarlight(d)) return false;
     if (!nonEmpty(d.ability)) return false;
-    // Rules pages (Fabled) are finished at one line of text — see RULES_TEAMS.
-    if (isRulesPage(d)) return false;
     return unmet(d, STANDARD_REQUIREMENTS).length > 0;
   }
 
@@ -287,7 +282,7 @@
   var API = {
     hasIcon: hasIcon, hasAlmanac: hasAlmanac, hasTags: hasTags,
     hasMechanics: hasMechanics,
-    needsIcon: needsIcon, isRulesPage: isRulesPage, RULES_TEAMS: RULES_TEAMS,
+    needsIcon: needsIcon, isRulesPage: isRulesPage,
     listHasText: listHasText, listPhrase: listPhrase,
     canPublish: canPublish, missingForPublish: missingForPublish,
     PUBLISH_REQUIREMENTS: PUBLISH_REQUIREMENTS,

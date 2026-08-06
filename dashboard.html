@@ -476,6 +476,37 @@
         <div class="toast" id="star-toast"></div>
       </section>
 
+      <!-- ONE-TIME MIGRATIONS: creator collection + rules pages -->
+      <section class="panel">
+        <h3>Gather a creator into a collection <span class="count-pill" id="cc-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Puts every character credited to one creator into a collection, writing them into its <em>include</em> list (a back catalogue has no shared “Appears in” to match on). Creates the collection if it doesn’t exist. Safe to re-run — it merges rather than replaces. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="cc-creator" placeholder="creator name" value="christoph-ehm">
+          <input type="text" id="cc-coll" placeholder="collection name" value="Imppreposterous Syncretastrophy">
+          <button type="button" class="small-btn" id="cc-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="cc-go" style="display:none">Gather them</button>
+        </div>
+        <div id="cc-list"></div>
+        <div class="toast" id="cc-toast"></div>
+      </section>
+
+      <section class="panel">
+        <h3>Rules pages → wiki pages <span class="count-pill" id="c2p-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          States, Conditions, Calls, Alignments and Properties were imported as Fabled characters, but they are reference text, not people you can put on a script. This rewrites each one as a <strong>wiki page</strong> under a parent collection and retires the character it came from. Retiring is a <em>soft</em> delete — Deleted Content can put any of them back, and the last version is in revisions. Scan first: the preview shows the exact text each page will get.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="c2p-from" placeholder="“Appears in” value" value="Homebrew Concepts">
+          <input type="text" id="c2p-parent" placeholder="parent collection id" value="imppreposterous-syncretastrophy">
+          <button type="button" class="small-btn" id="c2p-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="c2p-go" style="display:none">Convert them</button>
+        </div>
+        <div id="c2p-list"></div>
+        <div class="toast" id="c2p-toast"></div>
+      </section>
+
       <!-- STARLIGHT EVERYTHING ONE ACCOUNT OWNS -->
       <section class="panel">
         <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
@@ -1298,6 +1329,79 @@
     }
     $('star-add').addEventListener('click', function(){ setStarlight(true); });
     $('star-remove').addEventListener('click', function(){ setStarlight(false); });
+
+    /* ---- gather a creator's characters into a collection ---- */
+    $('cc-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('cc-list').innerHTML = '<p class="note">Scanning…</p>';
+      postJSON('/api/admin/collect-creator', {
+        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim(), dryRun: true
+      }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('cc-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('cc-go').style.display = 'none'; return; }
+        $('cc-count').textContent = d.count ? d.count + ' characters' : '';
+        $('cc-list').innerHTML = '<p class="note"><strong>' + d.count + '</strong> character' +
+          (d.count === 1 ? '' : 's') + ' by ' + esc(d.creator) + ' would go into “' + esc(d.collection) + '”' +
+          (d.exists ? ' (which already exists — they are added to it).' : ' (a new collection).') + '</p>' +
+          d.pages.map(function(p){
+            return '<div class="adm-row"><span class="grow">' + esc(p.name || p.slug) + '</span></div>';
+          }).join('') +
+          (d.count > d.pages.length ? '<p class="note">(showing the first ' + d.pages.length + ')</p>' : '');
+        $('cc-go').style.display = d.count ? '' : 'none';
+      });
+    });
+    $('cc-go').addEventListener('click', function(){
+      if (!confirm('Gather every character by ' + $('cc-creator').value.trim() + ' into “' + $('cc-coll').value.trim() + '”?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/collect-creator', {
+        creator: $('cc-creator').value.trim(), collection: $('cc-coll').value.trim()
+      }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('cc-toast', false, d.error || 'Failed.'); return; }
+        setToast('cc-toast', true, d.added + ' added — the collection now holds ' + d.count + ' (/collection/' + d.id + ').');
+        loadActivity(true);
+      });
+    });
+
+    /* ---- rules-construct characters become wiki pages ---- */
+    $('c2p-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('c2p-list').innerHTML = '<p class="note">Scanning…</p>';
+      postJSON('/api/admin/concepts-to-pages', {
+        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim(), dryRun: true
+      }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('c2p-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('c2p-go').style.display = 'none'; return; }
+        $('c2p-count').textContent = d.count ? d.count + ' pages' : '';
+        $('c2p-list').innerHTML = '<p class="note"><strong>' + d.count + '</strong> character' +
+          (d.count === 1 ? '' : 's') + ' would become wiki pages under “' + esc(d.parent) + '”.</p>' +
+          d.pages.map(function(p){
+            return '<div class="adm-row"><span class="grow">' + esc(p.name) +
+              ' <span class="dim">→ /p/' + esc(p.slug) + '</span></span>' +
+              (p.hasBody ? '' : '<span class="dim" style="color:#9a2c2c">nothing to write — skipped</span>') +
+              '<div class="adm-body">' + esc(p.preview || '') + '</div></div>';
+          }).join('');
+        $('c2p-go').style.display = d.count ? '' : 'none';
+      });
+    });
+    $('c2p-go').addEventListener('click', function(){
+      if (!confirm('Convert these to wiki pages and retire the characters?\n\nThe characters are soft-deleted, so Deleted Content can restore any of them.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/concepts-to-pages', {
+        from: $('c2p-from').value.trim(), parent: $('c2p-parent').value.trim()
+      }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('c2p-toast', false, d.error || 'Failed.'); return; }
+        setToast('c2p-toast', true, d.made + ' page' + (d.made === 1 ? '' : 's') + ' created' +
+          ((d.skipped || []).length ? ' — skipped: ' + d.skipped.join(', ') : '.'));
+        $('c2p-scan').click();
+        loadActivity(true);
+      });
+    });
 
     /* ---- Starlight everything one account owns ---- */
     $('sto-scan').addEventListener('click', function(){
