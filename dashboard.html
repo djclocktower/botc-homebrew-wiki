@@ -661,20 +661,43 @@
           <input type="text" id="act-user" placeholder="username">
           <select id="act-action">
             <option value="">all actions</option>
-            <option>create</option><option>update</option><option>delete</option>
-            <option>publish</option><option>unpublish</option>
-            <option>restore</option><option>purge</option><option>rollback</option>
-            <option>signup</option><option>assign-owner</option>
-            <option>lock</option><option>unlock</option><option>backup</option>
-            <option>ban</option><option>unban</option><option>promote</option><option>demote</option>
-            <option>protect</option><option>unprotect</option><option>announce</option>
-            <option>contact</option><option>restore-backup</option><option>clean-refs</option>
-            <option>purge-images</option>
+            <optgroup label="Comments">
+              <!-- the trailing * asks the API for every action starting
+                   "comment", so this one entry covers the whole group -->
+              <option value="comment*">all comment actions</option>
+              <option value="comment">comment posted</option>
+              <option value="comment-reply">comment reply</option>
+              <option value="comment-remove">comment removed</option>
+              <option value="comment-restore">comment restored</option>
+              <option value="comment-purge">comment purged</option>
+              <option value="comment-pin">comment pinned</option>
+              <option value="comment-unpin">comment unpinned</option>
+            </optgroup>
+            <optgroup label="Pages">
+              <option>create</option><option>update</option><option>delete</option>
+              <option>publish</option><option>unpublish</option>
+              <option>restore</option><option>purge</option><option>rollback</option>
+              <option>starlight</option><option>unstarlight</option>
+              <option>protect</option><option>unprotect</option>
+              <option>assign-owner</option><option>clean-refs</option>
+              <option value="bulk-*">any bulk action</option>
+            </optgroup>
+            <optgroup label="People">
+              <option>signup</option><option>contact</option><option>report</option>
+              <option>ban</option><option>unban</option><option>promote</option><option>demote</option>
+              <option>reset-link</option>
+            </optgroup>
+            <optgroup label="Site">
+              <option>lock</option><option>unlock</option><option>announce</option>
+              <option>backup</option><option>restore-backup</option><option>purge-images</option>
+            </optgroup>
           </select>
           <select id="act-type">
             <option value="">all types</option>
             <option>character</option><option>script</option><option>collection</option>
-            <option>user</option><option>wiki</option>
+            <option value="wikipage">wiki page</option><option>news</option>
+            <option>user</option><option>creator</option>
+            <option>message</option><option>dm</option><option>wiki</option>
           </select>
           <select id="act-days">
             <option value="">all time</option>

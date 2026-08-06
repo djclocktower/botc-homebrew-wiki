@@ -274,7 +274,14 @@ inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
-`/api/admin/dm-thread` — un-reported DMs are never admin-readable), `page_views` (per-page daily
+`/api/admin/dm-thread` — un-reported DMs are never admin-readable. **Comment
+notifications ride this table**: commenting on a page inserts a `dms` row from
+the commenter to the page's owner — and to the author of the comment being
+replied to — so the notification is the one the site already has, the unread
+count on `/api/me` and the mail flag site.js puts on "My Account". The row is
+written with `sender_deleted=1`, which keeps it out of the *commenter's* own
+conversation list: they wrote a comment, not a message. See `notifyComment()`
+in worker.js; a block stops the notification too), `page_views` (per-page daily
 view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the

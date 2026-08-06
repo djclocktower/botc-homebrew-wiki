@@ -728,19 +728,67 @@ async function commentTarget(env, type, slug) {
       .bind(slug).first().catch(() => null);
     if (!row || row.status !== 'published') return null;
     if (parseData(row).comments === false) return null;
-    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/p/' + row.slug };
   }
   if (type === 'news') {
     await ensureNewsTable(env);
     const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
       .bind(slug).first().catch(() => null);
     if (!row || row.status !== 'published') return null;
-    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/news/' + row.slug };
   }
   let row = await getEntityRow(env, type, slug);
   if (!row && type === 'collection') row = await findCollectionRow(env, slug);
   if (!row || row.status !== 'published') return null;
-  return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+  // Collection URLs use the kebab id from the JSON, never the PK slug —
+  // legacy rows have display-string slugs like "The Academy".
+  const path = type === 'character' ? '/c/' + row.slug
+    : type === 'script' ? '/s/' + row.slug
+    : '/collection/' + (parseData(row).id || row.slug);
+  return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path };
+}
+
+// ---- comment notifications ----
+// Someone commenting on your page (or answering your comment) lands in your
+// message inbox, so it rides the notification the site already has: the unread
+// count on /api/me and the mail flag site.js puts on "My Account".
+//
+// The row is a real DM from the commenter, so you can just reply to them — but
+// it is inserted with sender_deleted=1, which keeps it out of the COMMENTER's
+// own conversation list. They wrote a comment, not a message, and shouldn't
+// see one in their sent mail.
+async function notifyComment(env, opts) {
+  // opts: {fromId, target, body, origin, parentAuthorId}
+  try {
+    const { fromId, target, body, origin } = opts;
+    const seen = new Set([fromId]);
+    const to = [];
+    // The page's owner, and whoever wrote the comment being answered.
+    for (const id of [target.ownerId, opts.parentAuthorId]) {
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      to.push(id);
+    }
+    if (!to.length) return;
+    await ensureDmTables(env);
+    const quote = String(body || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+    const link = (origin || '') + target.path + '#sec-comments';
+    for (const id of to) {
+      // A block means they don't want to hear from this person at all.
+      const blocked = await env.DB.prepare(
+        'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+      ).bind(id, fromId).first().catch(() => null);
+      if (blocked) continue;
+      const what = id === opts.parentAuthorId && id !== target.ownerId
+        ? 'replied to your comment on'
+        : 'commented on';
+      const text = what + ' \u201c' + (target.name || target.slug) + '\u201d:\n\n\u201c' +
+        quote + '\u201d\n\n' + link;
+      await env.DB.prepare(
+        'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+      ).bind(fromId, id, text).run();
+    }
+  } catch { /* a failed notification must never fail the comment */ }
 }
 
 async function findUserByUsername(env, username) {
@@ -2947,7 +2995,15 @@ export default {
       const uname = (q.get('user') || '').trim();
       if (uname) { filters.push('lower(username)=lower(?)'); fBinds.push(uname); }
       const action = (q.get('action') || '').trim();
-      if (action) { filters.push('action=?'); fBinds.push(action); }
+      if (action.endsWith('*')) {
+        // "comment*" -> every comment action in one filter (comment,
+        // comment-reply, comment-remove, comment-pin, …). LIKE is safe here:
+        // the prefix is matched literally and % / _ are stripped first.
+        const stem = action.slice(0, -1).replace(/[%_\\]/g, '');
+        if (stem) { filters.push("action LIKE ?"); fBinds.push(stem + '%'); }
+      } else if (action) {
+        filters.push('action=?'); fBinds.push(action);
+      }
       const etype = (q.get('type') || '').trim();
       if (etype) { filters.push('entity_type=?'); fBinds.push(etype); }
       const days = parseInt(q.get('days') || '0', 10) || 0;
@@ -3699,22 +3755,27 @@ export default {
         // Replying: the parent must be a visible comment on this same page.
         // Threads stay one level deep — replying to a reply attaches to that
         // reply's parent instead of nesting further.
-        let parentId = null;
+        let parentId = null, parentAuthorId = null;
         if (b.parentId) {
           const parent = await env.DB.prepare(
-            "SELECT id, parent_id, entity_type, slug, status FROM comments WHERE id=?"
+            "SELECT id, parent_id, entity_type, slug, status, user_id FROM comments WHERE id=?"
           ).bind(parseInt(b.parentId, 10) || 0).first().catch(() => null);
           if (!parent || parent.status !== 'visible' ||
               parent.entity_type !== type || parent.slug !== target.slug) {
             return jsonResponse({ error: 'The comment you replied to is no longer there.' }, { status: 404 });
           }
           parentId = parent.parent_id || parent.id;
+          parentAuthorId = parent.user_id;   // told about the reply
         }
         const res = await env.DB.prepare(
           'INSERT INTO comments (entity_type, slug, user_id, body, parent_id) VALUES (?,?,?,?,?)'
         ).bind(type, target.slug, sess.userId, body, parentId).run();
         await logActivity(env, sess, parentId ? 'comment-reply' : 'comment',
           type, target.slug, body.slice(0, 60));
+        // Tell the page's owner (and whoever is being replied to) about it.
+        ctx.waitUntil(notifyComment(env, {
+          fromId: sess.userId, target, body, origin: url.origin, parentAuthorId
+        }));
         return jsonResponse({
           ok: true, id: (res.meta && res.meta.last_row_id) || null, parentId
         });

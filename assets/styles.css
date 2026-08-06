@@ -1472,10 +1472,18 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   vertical-align: middle;
 }
 
-/* ─── Unread-mail flag on the "My Account" link (site.js) ── */
-.mail-flag { display: inline-block; margin-left: 7px; white-space: nowrap; cursor: pointer; }
-.mail-flag svg { opacity: .85; }
-.mail-flag .script-badge { margin-left: 3px; }
+/* ─── Unread-mail flag on the "My Account" link (site.js) ──
+   inline-flex, not inline-block: with baseline alignment the count pill sat
+   ~3px below the envelope and the label next to it. Centring the icon and the
+   pill on each other, then middle-aligning the whole flag to the text, puts
+   the red count where it looks attached to the word. */
+.mail-flag {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 7px; vertical-align: middle;
+  white-space: nowrap; cursor: pointer; line-height: 1;
+}
+.mail-flag svg { opacity: .85; display: block; vertical-align: middle; flex: 0 0 auto; }
+.mail-flag .script-badge { margin-left: 0; vertical-align: middle; }
 
 /* ─── Search "matched field" tag ─────────────────────────── */
 .search-match {
