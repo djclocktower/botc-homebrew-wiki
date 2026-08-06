@@ -255,7 +255,11 @@ profile.html           The creator page, served at BOTH /u/{username} and
                        Hero + pinned strip + characters (shared filter bar) +
                        scripts + collections + a drafts section for the owner
                        and admins, plus an admin box for linking a creator name
-                       to an account.
+                       to an account. Every section heading is a collapse
+                       toggle carrying its own count — a creator with 300+
+                       characters put Scripts a very long scroll away. All
+                       start open; what you collapse is remembered per browser
+                       in localStorage botc_prof_sections.
 messages.html         Direct messages (/messages): conversation list + thread UI
                       over /api/messages*; ?to={username} opens/starts a thread.
                       Message buttons live on /u/ profiles + dashboard user rows;
