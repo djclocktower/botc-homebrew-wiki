@@ -120,7 +120,8 @@
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
- *                                (?type=&q=&owner=&status=&flag=no-icon|partial|starlight|no-owner)
+ *                                (?type=&q=&owner=&status=&collection=
+ *                                 &flag=no-icon|partial|starlight|no-owner)
  *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
@@ -3392,6 +3393,9 @@ export default {
       const q = (url.searchParams.get('q') || '').trim();
       const owner = (url.searchParams.get('owner') || '').trim();
       const status = (url.searchParams.get('status') || '').trim();
+      // Membership lives in the collection's own match/include/exclude, not on
+      // the character, so it can't be a WHERE clause — resolved below.
+      const collKey = (url.searchParams.get('collection') || '').trim();
       const wh = [];
       const binds = [];
       if (q) {
@@ -3426,6 +3430,24 @@ export default {
           missing: type === 'character' ? Classify.missingBits(d) : []
         };
       });
+      // Narrow to one collection's roster. Composes with everything above, so
+      // "collection X + owner none" is the list of that collection's unowned
+      // pages — which, with the assign-owner bulk action, is how a whole
+      // collection gets handed to an account.
+      if (collKey) {
+        if (type !== 'character') {
+          return jsonResponse({ error: 'The collection filter only applies to characters.' }, { status: 400 });
+        }
+        const crow = await findCollectionRow(env, collKey);
+        if (!crow) return jsonResponse({ error: 'No collection called “' + collKey + '”.' }, { status: 404 });
+        const { results: all } = await env.DB.prepare(
+          "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+        ).all().catch(() => ({ results: [] }));
+        const members = new Set(
+          PageRender.resolveCollectionMembers(parseData(crow), all || []).map(x => x.slug)
+        );
+        pages = pages.filter(p => members.has(p.slug));
+      }
       if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
       else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
       else if (flag === 'starlight') pages = pages.filter(p => p.starlight);

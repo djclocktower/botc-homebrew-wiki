@@ -479,7 +479,10 @@ is missing, via `editor-notices.js`), and `/api/publish` refuses.
 that went live before the bar was raised; the dashboard card scans first and
 reports the count and the reasons before anything moves. Always dry-run it.
 `POST /api/admin/starlight-owner` ({username, dryRun}) grants Starlight to
-every character one account owns. Starlight lifts a page out of Partial, so
+every character one account owns. `GET /api/admin/pages` also takes
+`?collection={id}`, resolved through `resolveCollectionMembers()` — combined
+with `?owner=none` and the `assign-owner` bulk action, that is how a whole
+collection's unowned pages get handed to an account. Starlight lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
 
 ## Frontend conventions

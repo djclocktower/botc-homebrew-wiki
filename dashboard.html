@@ -542,6 +542,7 @@
           </select>
           <input type="text" id="bulk-q" placeholder="filter by name">
           <input type="text" id="bulk-owner" placeholder="owner (or 'none')">
+          <input type="text" id="bulk-collection" placeholder="in collection (id)">
           <select id="bulk-status">
             <option value="">not deleted</option>
             <option value="published">published</option>
@@ -1450,6 +1451,7 @@
       var p = new URLSearchParams({ type: $('bulk-type').value });
       if ($('bulk-q').value.trim()) p.set('q', $('bulk-q').value.trim());
       if ($('bulk-owner').value.trim()) p.set('owner', $('bulk-owner').value.trim());
+      if ($('bulk-collection').value.trim()) p.set('collection', $('bulk-collection').value.trim());
       if ($('bulk-status').value) p.set('status', $('bulk-status').value);
       if ($('bulk-flag').value) p.set('flag', $('bulk-flag').value);
       getJSON('/api/admin/pages?' + p.toString()).then(function(d){
