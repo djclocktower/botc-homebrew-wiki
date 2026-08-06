@@ -17,16 +17,19 @@
     position: relative;
     z-index: 5;
   }
+  /* On the dark page background, not on parchment — light text, like the
+     .home-hero headers everywhere else. */
   .dash-h2 {
     font-family: 'Dumbledor2', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
-    color: var(--maroon);
+    color: var(--parch);
+    text-shadow: 0 3px 12px rgba(0,0,0,.5);
     letter-spacing: .05em;
     margin: 0 0 4px;
   }
   .dash-sub {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
-    color: var(--ink); opacity: .8;
+    color: rgba(236,225,200,.8);
     margin: 0 0 22px; font-size: .95rem;
   }
   .panel {
@@ -193,6 +196,8 @@
     background: #fffdf8; border: 1px solid #cdbfa0; color: #241a12;
     border-bottom-left-radius: 3px;
   }
+  .bubble a { color: inherit; text-decoration: underline; overflow-wrap: anywhere; }
+  .bubble.them a { color: #234f74; }
   .bubble .b-when { display: block; font-size: .68rem; opacity: .65; margin-top: 3px; text-align: right; }
   .load-older { align-self: center; margin: 2px 0 6px; }
   .composer { display: flex; gap: 8px; align-items: flex-end; }
@@ -417,8 +422,23 @@
     }
 
     /* ---- thread ---- */
+    // Message bodies are plain text — escaped first, then the links in them
+    // are made clickable. Only https:// and paths on this site, so nothing a
+    // sender types can become anything else. Comment notifications carry a
+    // link to the page they are about, and a link you can't click is no use.
+    function linkify(escaped){
+      return escaped
+        .replace(/https:\/\/[^\s<"']+/g, function(u){
+          var href = u.replace(/&amp;/g, '&');
+          return '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + u + '</a>';
+        })
+        .replace(/(^|[\s(])(\/[A-Za-z0-9][A-Za-z0-9\/_.~%#?=&;-]*)/g, function(m, pre, path){
+          var href = path.replace(/&amp;/g, '&');
+          return pre + '<a href="' + esc(href) + '">' + path + '</a>';
+        });
+    }
     function bubbleHtml(m){
-      return '<div class="bubble ' + (m.fromMe ? 'me' : 'them') + '">' + esc(m.body) +
+      return '<div class="bubble ' + (m.fromMe ? 'me' : 'them') + '">' + linkify(esc(m.body)) +
         '<span class="b-when">' + esc(fmtTime(m.ts)) + '</span></div>';
     }
     function threadHtml(messages){

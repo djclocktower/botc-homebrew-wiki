@@ -266,12 +266,17 @@
     }
 
     // Returns {type, item, field} entries — characters first, then scripts,
-    // then collections. Caps at 8 results total.
+    // then collections. Caps at 8 results total, but scripts and collections
+    // keep up to PAGE_SLOTS of them: every character on "Fall of Rome" matches
+    // the words "fall of rome" through its Appears-in field, and filling the
+    // list with characters first meant the script's own page — the thing being
+    // searched for — never appeared at all.
+    var MAX_RESULTS = 8, PAGE_SLOTS = 3;
     function search(q) {
       q = q.trim().toLowerCase();
       if (!q || !allChars) return [];
       var out = [];
-      for (var i = 0; i < allChars.length && out.length < 8; i++) {
+      for (var i = 0; i < allChars.length && out.length < MAX_RESULTS; i++) {
         var c = allChars[i];
         var field = null;
         if ((c.name || '').toLowerCase().indexOf(q) !== -1) field = 'name';
@@ -288,13 +293,17 @@
                (p.description || '').toLowerCase().indexOf(q) !== -1 ||
                (p.author || '').toLowerCase().indexOf(q) !== -1;
       }
-      for (var s = 0; s < allScripts.length && out.length < 8; s++) {
-        if (matchPage(allScripts[s])) out.push({ type: 'script', c: allScripts[s] });
+      var pages = [];
+      for (var s = 0; s < allScripts.length && pages.length < PAGE_SLOTS; s++) {
+        if (matchPage(allScripts[s])) pages.push({ type: 'script', c: allScripts[s] });
       }
-      for (var k = 0; k < allCollections.length && out.length < 8; k++) {
-        if (matchPage(allCollections[k])) out.push({ type: 'collection', c: allCollections[k] });
+      for (var k = 0; k < allCollections.length && pages.length < PAGE_SLOTS; k++) {
+        if (matchPage(allCollections[k])) pages.push({ type: 'collection', c: allCollections[k] });
       }
-      return out;
+      // Give the pages their slots back by trimming characters, never the
+      // other way round.
+      if (pages.length) out = out.slice(0, Math.max(0, MAX_RESULTS - pages.length));
+      return out.concat(pages);
     }
 
     // On mobile the topbar dropdown (.search-wrap) is display:none, so the

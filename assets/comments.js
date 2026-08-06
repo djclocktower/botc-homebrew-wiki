@@ -24,6 +24,51 @@
   var ROOT = window.LINK_ROOT || '';
   var state = { comments: [], me: null, loaded: false };
 
+  /* ── "new since you last looked" marker ──
+     Per reader, per page, in this browser: the highest comment id they had
+     already seen here. Anything newer than that gets a dot; opening the page
+     and letting the comments sit on screen for a moment marks them seen, so
+     the dots are gone next visit. On a first visit nothing is marked new —
+     lighting up a three-year-old thread helps nobody. */
+  var SEEN_KEY = 'botc_cmt_seen';
+  var SEEN_ID = TYPE + ':' + SLUG;
+  var SEEN_KEEP = 200;          // pages remembered before the oldest drop off
+
+  function readSeen() {
+    try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; }
+    catch (e) { return {}; }
+  }
+  function lastSeenId() {
+    var v = readSeen()[SEEN_ID];
+    return typeof v === 'number' ? v : null;
+  }
+  function markSeen(id) {
+    if (!id) return;
+    try {
+      var all = readSeen();
+      if (all[SEEN_ID] === id) return;
+      all[SEEN_ID] = id;
+      // Newest entries win when the map is trimmed; insertion order is enough.
+      var keys = Object.keys(all);
+      if (keys.length > SEEN_KEEP) {
+        var trimmed = {};
+        keys.slice(keys.length - SEEN_KEEP).forEach(function (k) { trimmed[k] = all[k]; });
+        all = trimmed;
+      }
+      localStorage.setItem(SEEN_KEY, JSON.stringify(all));
+    } catch (e) { /* private mode: the dots just never persist */ }
+  }
+  function newestId() {
+    var max = 0;
+    state.comments.forEach(function (c) { if (c.id > max) max = c.id; });
+    return max;
+  }
+  // Your own comment is never "new" to you.
+  function isUnseen(c) {
+    var seen = lastSeenId();
+    return seen !== null && !c.mine && c.id > seen;
+  }
+
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -84,7 +129,9 @@
     } else if (state.me) {
       actions.push('<button type="button" class="cmt-action" data-report="' + c.id + '">Report</button>');
     }
-    return '<li class="cmt' + (c.pinned ? ' cmt-is-pinned' : '') + '" id="cmt-' + c.id + '">' +
+    return '<li class="cmt' + (c.pinned ? ' cmt-is-pinned' : '') +
+      (isUnseen(c) ? ' cmt-unseen' : '') + '" id="cmt-' + c.id + '"' +
+      (isUnseen(c) ? ' title="New since you last looked at this page"' : '') + '>' +
       avatarHTML(c) +
       '<div class="cmt-main">' +
         '<div class="cmt-head">' +
@@ -127,8 +174,11 @@
 
   function formHTML() {
     if (!state.me) {
-      return '<p class="cmt-login"><a href="' + ROOT + 'login">Log in</a> or ' +
-        '<a href="' + ROOT + 'login#signup">create an account</a> to join the conversation.</p>';
+      // Come back to this page after logging in, not to the account page.
+      var back = encodeURIComponent(location.pathname.replace(/^\//, '') + location.search);
+      var login = ROOT + 'login?next=' + back;
+      return '<p class="cmt-login"><a href="' + login + '">Log in</a> or ' +
+        '<a href="' + login + '#signup">create an account</a> to join the conversation.</p>';
     }
     if (!state.me.canComment) {
       return '<p class="cmt-login">This account is suspended and cannot post comments. ' +
@@ -405,9 +455,34 @@
         state.comments = d.comments || [];
         state.me = d.me || null;
         state.loaded = true;
+        var first = lastSeenId() === null;
         render();
+        if (first) markSeen(newestId());   // nothing is new on a first visit
+        else scheduleMarkSeen();
       })
       .catch(function () { root.hidden = true; });
+  }
+
+  /* The dots stay put for this visit — you should be able to see what is new
+     — and are marked seen once the comments have been on screen for a moment,
+     so they are gone next time. No IntersectionObserver, no dots cleared: the
+     reader never reached them. */
+  var seenTimer = null;
+  function scheduleMarkSeen() {
+    var newest = newestId();
+    if (!newest || newest === lastSeenId()) return;
+    if (typeof IntersectionObserver !== 'function') { markSeen(newest); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          clearTimeout(seenTimer);
+          seenTimer = setTimeout(function () { markSeen(newest); io.disconnect(); }, 1500);
+        } else {
+          clearTimeout(seenTimer);
+        }
+      });
+    }, { threshold: 0.15 });
+    io.observe(root);
   }
 
   load();

@@ -16,5 +16,11 @@ Disallow: /reset-password
 Disallow: /reset-password.html
 Disallow: /register-collection
 Disallow: /register-collection.html
+Disallow: /messages
+Disallow: /messages.html
+Disallow: /normalize-icons
+Disallow: /normalize-icons.html
+Disallow: /drafts
+Disallow: /drafts.html
 
 Sitemap: https://botchomebrew.wiki/sitemap.xml

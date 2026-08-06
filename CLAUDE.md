@@ -115,7 +115,11 @@ assets/
                        Featured, /random and the homepage strips. Browser+Worker.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
-                       one-time "be respectful" agreement modal.
+                       one-time "be respectful" agreement modal and the
+                       "new since you last looked" dot (per page, per browser,
+                       localStorage botc_cmt_seen; nothing is new on a first
+                       visit, your own comments never are, and the mark
+                       advances once the section has been on screen).
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
                        images, ::: callouts, [toc], **bold**, *italic*, `code`,
@@ -174,6 +178,8 @@ assets/
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
+                       Featured Character rotates **Starlight pages only**,
+                       seeded by the day number so it is stable for 24 h.
                        Browse cards include Grimoire Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
@@ -236,12 +242,24 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, reset-password.html
+drafts.html            /drafts — your own unpublished pages as cards (the same
+                       renderRosterCards markup the browse and collection pages
+                       use, with the shared filter box). Characters come from
+                       /api/account, enriched from characters.json?drafts=1 when
+                       the reader is an admin; scripts/collections/wiki pages
+                       have no card art so they get a plain tile. Linked from
+                       the Your Drafts panel on the account page, which keeps
+                       its own table — the two are deliberately both there.
 profile.html           The creator page, served at BOTH /u/{username} and
                        /author?a={name} (there is no author.html any more).
                        Hero + pinned strip + characters (shared filter bar) +
                        scripts + collections + a drafts section for the owner
                        and admins, plus an admin box for linking a creator name
-                       to an account.
+                       to an account. Every section heading is a collapse
+                       toggle carrying its own count — a creator with 300+
+                       characters put Scripts a very long scroll away. All
+                       start open; what you collapse is remembered per browser
+                       in localStorage botc_prof_sections.
 messages.html         Direct messages (/messages): conversation list + thread UI
                       over /api/messages*; ?to={username} opens/starts a thread.
                       Message buttons live on /u/ profiles + dashboard user rows;
@@ -274,7 +292,14 @@ inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
-`/api/admin/dm-thread` — un-reported DMs are never admin-readable), `page_views` (per-page daily
+`/api/admin/dm-thread` — un-reported DMs are never admin-readable. **Comment
+notifications ride this table**: commenting on a page inserts a `dms` row from
+the commenter to the page's owner — and to the author of the comment being
+replied to — so the notification is the one the site already has, the unread
+count on `/api/me` and the mail flag site.js puts on "My Account". The row is
+written with `sender_deleted=1`, which keeps it out of the *commenter's* own
+conversation list: they wrote a comment, not a message. See `notifyComment()`
+in worker.js; a block stops the notification too), `page_views` (per-page daily
 view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the
@@ -393,20 +418,32 @@ in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
 and the Worker (which stamps `classification` + `starlight` onto every row in
 `/characters.json`, `/collections.json`, `/scripts.json`).
 
-- **Partial** — characters only: an ability and nothing else — no tags, no
-  almanac prose, **and no mechanics** (night order, reminder tokens, setup,
-  jinxes). Hidden from All Characters, the tag/team/creator pages, Featured
-  and the homepage unless the *reader* ticks the "Show Partial" chip. Adding
-  a tag, a line of almanac text, or night-order info upgrades it instantly.
-  Counting mechanics is **load-bearing**: much of this wiki was bulk-imported
-  with full night order but no tags or prose, and judging on prose alone made
-  193 of 456 published characters (42%) read as unfinished. With mechanics
-  counted it is 9. Do not "simplify" `hasMechanics()` away.
-- **Fabled are exempt** from both the Partial tier and the icon requirement
-  (`RULES_TEAMS` in classify.js). On this wiki Fabled is where States,
-  Conditions, Calls, Alignments and Properties live — rules constructs that
-  are complete at one line and never had token art. Without the exemption 18
-  reference pages get swept into drafts and hidden.
+- **Two bars, both in `classify.js`.** `PUBLISH_REQUIREMENTS` is what a page
+  needs to leave drafts at all — **name, icon, ability**. Tags are
+  deliberately NOT in it: no tags makes a page Partial, never unpublished
+  (tags were the sole reason 231 of 619 published pages failed the old bar).
+  `STANDARD_REQUIREMENTS` is that plus **tags, a flavour line (`lede`), a
+  summary (`summaryBullets`), how-to-run text (`howToRun`) and at least one
+  example**.
+  Both are `[label, test]` tables; the labels carry their own articles ("an
+  icon", "tags") because they are read straight into "Add ___ to fix." on the
+  Partial banner and "needs ___" in the editor. `missingForPublish()` /
+  `missingBits()` return the failing labels, `listPhrase()` joins them.
+- **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
+  Hidden from All Characters, the tag/team/creator pages, Featured and the
+  homepage unless the *reader* ticks the "Show Partial" chip. Filling the gap
+  upgrades it instantly — nothing is stored.
+  `hasMechanics()` no longer gates Partial (night order alone is not a
+  finished almanac entry) but is still exported and still used to describe a
+  page; don't delete it.
+- **No team is exempt any more.** Fabled used to be, because it held this
+  wiki's rules constructs (States, Conditions, Calls, Alignments, Properties).
+  Those 18 pages are now wiki pages under Imppreposterous Syncretastrophy
+  (`POST /api/admin/concepts-to-pages`), and all 31 Fabled characters left
+  have icons — so the exemption was only letting real characters skip the bar.
+  `isRulesPage()`/`needsIcon()` survive as functions (the Worker calls them,
+  and a future "this team is different" belongs there) but no longer exempt
+  anything.
 - **Standard** — the default. No badge, nothing to earn.
 - **Starlight** — admin-only, on characters, collections **and** scripts.
   Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage
@@ -442,10 +479,18 @@ a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `isPartial()` self-guards on `d.ability` so a collection or script can never
 be flagged Partial — do not remove that check.
 
-**Characters with no icon cannot be published** (Fabled excepted, above). `/api/character` silently
-saves them as drafts (and says so, via `editor-notices.js`), and
-`/api/publish` refuses. `POST /api/admin/demote-no-icon` sweeps pages that went
-live before the rule; the dashboard has a scan + one-click button for it.
+**A character that misses `PUBLISH_REQUIREMENTS` cannot be published** (Fabled
+excepted, above). `/api/character` silently saves it as a draft (and says what
+is missing, via `editor-notices.js`), and `/api/publish` refuses.
+`POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
+that went live before the bar was raised; the dashboard card scans first and
+reports the count and the reasons before anything moves. Always dry-run it.
+`POST /api/admin/starlight-owner` ({username, dryRun}) grants Starlight to
+every character one account owns. `GET /api/admin/pages` also takes
+`?collection={id}`, resolved through `resolveCollectionMembers()` — combined
+with `?owner=none` and the `assign-owner` bulk action, that is how a whole
+collection's unowned pages get handed to an account. Starlight lifts a page out of Partial, so
+this is how admin-written pages stop being hidden for want of a tag.
 
 ## Frontend conventions
 

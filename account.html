@@ -17,16 +17,20 @@
     position: relative;
     z-index: 5;
   }
+  /* The page title sits on the dark page background, not on parchment, so it
+     takes the light .home-hero treatment every other page header uses.
+     Maroon/ink here read as almost-invisible on the purple. */
   .dash-h2 {
     font-family: 'Dumbledor2', serif;
     font-size: clamp(1.5rem, 5vw, 2.2rem);
-    color: var(--maroon);
+    color: var(--parch);
+    text-shadow: 0 3px 12px rgba(0,0,0,.5);
     letter-spacing: .05em;
     margin: 0 0 4px;
   }
   .dash-sub {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
-    color: var(--ink); opacity: .8;
+    color: rgba(236,225,200,.8);
     margin: 0 0 22px; font-size: .95rem;
   }
   .panel {
@@ -267,7 +271,7 @@
       <!-- drafts -->
       <div class="panel">
         <h3>Your Drafts <span class="count-pill" id="n-drafts">0</span></h3>
-        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">Drafts are hidden from the public wiki until you publish them. Only you (and admins) can view or edit them.</p>
+        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">Drafts are hidden from the public wiki until you publish them. Only you (and admins) can view or edit them. <a href="drafts" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a></p>
         <table class="row-list" id="drafts-table"></table>
         <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
       </div>
@@ -539,9 +543,11 @@
 
     function rowHtml(type, r, isDraft) {
       var name = esc(r.name || r.slug);
-      var nameCell = isDraft
-        ? '<span class="row-name"><a href="' + editUrl(type, r.slug) + '">' + name + '</a></span>'
-        : '<span class="row-name"><a href="' + viewUrl(type, r.slug) + '">' + name + '</a></span>';
+      // Draft or not, the name goes to the page itself. A draft page renders
+      // for its owner (and admins) with the DRAFT banner on it, so this is a
+      // preview — which is what you want when you click a name. The editor is
+      // the Edit button next to it.
+      var nameCell = '<span class="row-name"><a href="' + viewUrl(type, r.slug) + '">' + name + '</a></span>';
       var actions = '<button class="mini-btn edit" data-act="edit" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Edit</button>';
       // Custom wiki pages are published, drafted and deleted from their own
       // editor (they are not part of the shared /api/publish + /api/delete

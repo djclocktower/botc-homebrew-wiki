@@ -120,13 +120,22 @@
  *   GET  /api/admin/backup-file  -> download one backup table (?date=&table=)
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
- *                                (?type=&q=&owner=&status=&flag=no-icon|partial|starlight|no-owner)
+ *                                (?type=&q=&owner=&status=&collection=
+ *                                 &flag=no-icon|partial|starlight|no-owner)
  *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
- *   POST /api/admin/demote-no-icon -> sweep published no-icon characters to draft
+ *   POST /api/admin/collect-creator -> put every character by one creator into
+ *                                a collection (creates it if needed)
+ *   POST /api/admin/concepts-to-pages -> turn rules-construct characters into
+ *                                wiki pages under a collection and retire them
+ *   POST /api/admin/starlight-owner -> grant Starlight to every character one
+ *                                account owns (?dryRun to count first)
+ *   POST /api/admin/demote-incomplete -> sweep published characters that no
+ *                                longer meet the publish bar into drafts
+ *                                (alias: /api/admin/demote-no-icon)
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/lock            -> lock/unlock the wiki
@@ -728,19 +737,67 @@ async function commentTarget(env, type, slug) {
       .bind(slug).first().catch(() => null);
     if (!row || row.status !== 'published') return null;
     if (parseData(row).comments === false) return null;
-    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/p/' + row.slug };
   }
   if (type === 'news') {
     await ensureNewsTable(env);
     const row = await env.DB.prepare('SELECT slug, title AS name, status, owner_id FROM news WHERE slug=?')
       .bind(slug).first().catch(() => null);
     if (!row || row.status !== 'published') return null;
-    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+    return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path: '/news/' + row.slug };
   }
   let row = await getEntityRow(env, type, slug);
   if (!row && type === 'collection') row = await findCollectionRow(env, slug);
   if (!row || row.status !== 'published') return null;
-  return { slug: row.slug, name: row.name, ownerId: row.owner_id, type };
+  // Collection URLs use the kebab id from the JSON, never the PK slug —
+  // legacy rows have display-string slugs like "The Academy".
+  const path = type === 'character' ? '/c/' + row.slug
+    : type === 'script' ? '/s/' + row.slug
+    : '/collection/' + (parseData(row).id || row.slug);
+  return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path };
+}
+
+// ---- comment notifications ----
+// Someone commenting on your page (or answering your comment) lands in your
+// message inbox, so it rides the notification the site already has: the unread
+// count on /api/me and the mail flag site.js puts on "My Account".
+//
+// The row is a real DM from the commenter, so you can just reply to them — but
+// it is inserted with sender_deleted=1, which keeps it out of the COMMENTER's
+// own conversation list. They wrote a comment, not a message, and shouldn't
+// see one in their sent mail.
+async function notifyComment(env, opts) {
+  // opts: {fromId, target, body, origin, parentAuthorId}
+  try {
+    const { fromId, target, body, origin } = opts;
+    const seen = new Set([fromId]);
+    const to = [];
+    // The page's owner, and whoever wrote the comment being answered.
+    for (const id of [target.ownerId, opts.parentAuthorId]) {
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      to.push(id);
+    }
+    if (!to.length) return;
+    await ensureDmTables(env);
+    const quote = String(body || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+    const link = (origin || '') + target.path + '#sec-comments';
+    for (const id of to) {
+      // A block means they don't want to hear from this person at all.
+      const blocked = await env.DB.prepare(
+        'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+      ).bind(id, fromId).first().catch(() => null);
+      if (blocked) continue;
+      const what = id === opts.parentAuthorId && id !== target.ownerId
+        ? 'replied to your comment on'
+        : 'commented on';
+      const text = what + ' \u201c' + (target.name || target.slug) + '\u201d:\n\n\u201c' +
+        quote + '\u201d\n\n' + link;
+      await env.DB.prepare(
+        'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+      ).bind(fromId, id, text).run();
+    }
+  } catch { /* a failed notification must never fail the comment */ }
 }
 
 async function findUserByUsername(env, username) {
@@ -1286,19 +1343,12 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 // edit the page (owner or admin) — a reader has no use for it, and the wiki
 // does not advertise which pages its authors haven't finished.
 function partialNoticeHTML(d) {
-  const missing = Classify.missingBits(d)
-    .map(b => b === 'almanac' ? 'almanac text or night order' : b);
-  const still = missing.length
-    ? ' Still missing: ' + escapeHtml(missing.join(', ')) + '.'
-    : '';
+  const missing = Classify.listPhrase(Classify.missingBits(d));
   return '<div class="page-notice page-notice-partial" role="status">' +
-    '<strong>Only you and the admins can see this.</strong> ' +
-    'This page counts as <em>Partial</em> — it has an ability, but no tags, no ' +
-    'almanac text and no mechanics (night order, reminder tokens, setup, jinxes), ' +
-    'so it stays hidden from All Characters, the tag pages and the homepage unless ' +
-    'a reader turns on the “Show Partial” filter.' + still +
-    ' One tag or one line of almanac text is enough to fix it. ' +
-    '<a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
+    '<strong>PARTIAL</strong> — This page doesn\u2019t show on the homepage or ' +
+    'All Characters search.' +
+    (missing ? ' Add ' + escapeHtml(missing) + ' to fix.' : '') +
+    ' <a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
 }
 
 // The creator page is one static file (profile.html) served under two paths:
@@ -1324,7 +1374,7 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from your <a href="../account" style="color:#ffe9ad">account page</a> or the editor.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">the editor</a>.</div>'
     : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
@@ -1446,7 +1496,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-script?s=' + encodeURIComponent(d.slug)
     : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a> or <a href="../account" style="color:#ffe9ad">your account</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a>.</div>'
     : '';
 
   const html = pageShell({
@@ -1636,7 +1686,7 @@ export default {
         body: '<p class="news-back"><a href="../news">← All news</a></p>' +
           NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only admins can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the news editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
         scripts: ['comments.js', 'site.js']
@@ -1776,7 +1826,7 @@ export default {
         bodyClass: ta.cls, bodyStyle: ta.style,
         body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you (and admins) can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the page editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
           (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
@@ -2354,7 +2404,7 @@ export default {
       const [chars, scripts, colls, news] = await Promise.all([
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
-      const staticPages = ['', 'all-characters', 'scripts', 'tags', 'creators',
+      const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'mass-upload',
         'steven-approved-order', 'rules', 'news'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
@@ -2947,7 +2997,15 @@ export default {
       const uname = (q.get('user') || '').trim();
       if (uname) { filters.push('lower(username)=lower(?)'); fBinds.push(uname); }
       const action = (q.get('action') || '').trim();
-      if (action) { filters.push('action=?'); fBinds.push(action); }
+      if (action.endsWith('*')) {
+        // "comment*" -> every comment action in one filter (comment,
+        // comment-reply, comment-remove, comment-pin, …). LIKE is safe here:
+        // the prefix is matched literally and % / _ are stripped first.
+        const stem = action.slice(0, -1).replace(/[%_\\]/g, '');
+        if (stem) { filters.push("action LIKE ?"); fBinds.push(stem + '%'); }
+      } else if (action) {
+        filters.push('action=?'); fBinds.push(action);
+      }
       const etype = (q.get('type') || '').trim();
       if (etype) { filters.push('entity_type=?'); fBinds.push(etype); }
       const days = parseInt(q.get('days') || '0', 10) || 0;
@@ -3156,9 +3214,15 @@ export default {
       if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
       // Every image path mentioned anywhere in any page's JSON (all statuses:
       // drafts and trashed pages still need their art if restored).
+      // Wiki pages and news articles can embed any assets/ path in their body
+      // text, so their tables count as references too — without them an image
+      // a /p/ page uses looks orphaned and could be purged out from under it.
+      await ensurePagesTable(env);
+      await ensureNewsTable(env);
       const refs = new Set();
-      for (const tbl of ['characters', 'collections', 'scripts']) {
-        const { results } = await env.DB.prepare(`SELECT data FROM ${tbl}`).all();
+      for (const tbl of ['characters', 'collections', 'scripts', 'pages', 'news']) {
+        const { results } = await env.DB.prepare(`SELECT data FROM ${tbl}`).all()
+          .catch(() => ({ results: [] }));
         for (const r of results || []) {
           const found = String(r.data).match(/(?:art|scripts|collections)\/[A-Za-z0-9._ -]+\.(?:png|jpe?g|webp|gif|svg)/gi) || [];
           for (const f of found) refs.add(f.toLowerCase());
@@ -3333,6 +3397,9 @@ export default {
       const q = (url.searchParams.get('q') || '').trim();
       const owner = (url.searchParams.get('owner') || '').trim();
       const status = (url.searchParams.get('status') || '').trim();
+      // Membership lives in the collection's own match/include/exclude, not on
+      // the character, so it can't be a WHERE clause — resolved below.
+      const collKey = (url.searchParams.get('collection') || '').trim();
       const wh = [];
       const binds = [];
       if (q) {
@@ -3367,6 +3434,24 @@ export default {
           missing: type === 'character' ? Classify.missingBits(d) : []
         };
       });
+      // Narrow to one collection's roster. Composes with everything above, so
+      // "collection X + owner none" is the list of that collection's unowned
+      // pages — which, with the assign-owner bulk action, is how a whole
+      // collection gets handed to an account.
+      if (collKey) {
+        if (type !== 'character') {
+          return jsonResponse({ error: 'The collection filter only applies to characters.' }, { status: 400 });
+        }
+        const crow = await findCollectionRow(env, collKey);
+        if (!crow) return jsonResponse({ error: 'No collection called “' + collKey + '”.' }, { status: 404 });
+        const { results: all } = await env.DB.prepare(
+          "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+        ).all().catch(() => ({ results: [] }));
+        const members = new Set(
+          PageRender.resolveCollectionMembers(parseData(crow), all || []).map(x => x.slug)
+        );
+        pages = pages.filter(p => members.has(p.slug));
+      }
       if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
       else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
       else if (flag === 'starlight') pages = pages.filter(p => p.starlight);
@@ -3693,22 +3778,27 @@ export default {
         // Replying: the parent must be a visible comment on this same page.
         // Threads stay one level deep — replying to a reply attaches to that
         // reply's parent instead of nesting further.
-        let parentId = null;
+        let parentId = null, parentAuthorId = null;
         if (b.parentId) {
           const parent = await env.DB.prepare(
-            "SELECT id, parent_id, entity_type, slug, status FROM comments WHERE id=?"
+            "SELECT id, parent_id, entity_type, slug, status, user_id FROM comments WHERE id=?"
           ).bind(parseInt(b.parentId, 10) || 0).first().catch(() => null);
           if (!parent || parent.status !== 'visible' ||
               parent.entity_type !== type || parent.slug !== target.slug) {
             return jsonResponse({ error: 'The comment you replied to is no longer there.' }, { status: 404 });
           }
           parentId = parent.parent_id || parent.id;
+          parentAuthorId = parent.user_id;   // told about the reply
         }
         const res = await env.DB.prepare(
           'INSERT INTO comments (entity_type, slug, user_id, body, parent_id) VALUES (?,?,?,?,?)'
         ).bind(type, target.slug, sess.userId, body, parentId).run();
         await logActivity(env, sess, parentId ? 'comment-reply' : 'comment',
           type, target.slug, body.slice(0, 60));
+        // Tell the page's owner (and whoever is being replied to) about it.
+        ctx.waitUntil(notifyComment(env, {
+          fromId: sess.userId, target, body, origin: url.origin, parentAuthorId
+        }));
         return jsonResponse({
           ok: true, id: (res.meta && res.meta.last_row_id) || null, parentId
         });
@@ -3785,6 +3875,11 @@ export default {
         const c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
+        // The slug IS the URL (/c/{slug}), and that route only matches
+        // [a-z0-9-]. Anything else saves a page nobody can ever open.
+        if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
+          return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
+        }
         const existing = await getEntityRow(env, 'character', c.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
@@ -3797,10 +3892,12 @@ export default {
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
-        // A character with no icon cannot go live. Publishing attempts are
-        // saved as drafts instead so nothing is lost — the editor shows why.
+        // An incomplete character cannot go live: it needs a name, an icon,
+        // an ability and tags. Publishing attempts are saved as drafts
+        // instead so nothing is lost — the editor shows what is missing.
+        const needed = Classify.missingForPublish(c);
         let iconBlocked = false;
-        if (status === 'published' && Classify.needsIcon(c) && !Classify.hasIcon(c)) {
+        if (status === 'published' && needed.length) {
           status = 'draft';
           iconBlocked = true;
         }
@@ -3820,8 +3917,10 @@ export default {
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
           iconBlocked,
+          missingForPublish: needed,
           notice: iconBlocked
-            ? 'Saved as a draft: a character needs an icon before it can be published. Add one and publish again.'
+            ? 'Saved as a draft: a character needs ' + Classify.listPhrase(needed) +
+              ' before it can be published. Add that and publish again.'
             : undefined
         });
       }
@@ -4016,7 +4115,9 @@ export default {
         const type = String(b.type || 'character');
         const t = CONTENT[type];
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-        const row = await getEntityRow(env, type, String(b.slug || ''));
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        // Legacy collections have display-string PK slugs; the URL uses the id.
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
         if (row.status === 'deleted') return jsonResponse({ error: 'That page is deleted. An admin can restore it from the dashboard.' }, { status: 400 });
@@ -4024,13 +4125,14 @@ export default {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         const status = b.status === 'draft' ? 'draft' : 'published';
-        // Same rule as /api/character: no icon, no publishing.
+        // Same rule as /api/character: a name, an icon, an ability and tags.
         const pubData = type === 'character' ? parseData(row) : null;
-        if (status === 'published' && type === 'character' &&
-            Classify.needsIcon(pubData) && !Classify.hasIcon(pubData)) {
+        const pubMissing = type === 'character' ? Classify.missingForPublish(pubData) : [];
+        if (status === 'published' && pubMissing.length) {
           return jsonResponse({
-            error: 'This character needs an icon before it can be published. Open the editor and add one.',
-            needsIcon: true
+            error: 'This character needs ' + Classify.listPhrase(pubMissing) +
+                   ' before it can be published. Open the editor and add that.',
+            needsIcon: true, missingForPublish: pubMissing
           }, { status: 400 });
         }
         await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
@@ -4645,35 +4747,236 @@ export default {
         return jsonResponse({ ok: true, slug: row.slug, starlight: on });
       }
 
-      // ---- admin: one-click cleanup of published characters with no icon ----
-      // The icon rule only bites on save/publish, so this sweeps the pages
-      // that went live before the rule existed. Every affected page becomes a
-      // draft — nothing is deleted, and re-publishing is one click once the
-      // owner adds art. Pass {dryRun:true} to just count them.
-      if (path === '/api/admin/demote-no-icon') {
+      // ---- admin: gather one creator's characters into a collection ----
+      // Membership is normally auto-matched on the character's "Appears in"
+      // text, but a creator's back catalogue does not share one — so this
+      // writes the roster into the collection's explicit include[] list.
+      // Creates the collection when it does not exist yet. {dryRun:true}
+      // reports what it would gather without writing anything.
+      if (path === '/api/admin/collect-creator') {
         const b = await request.json().catch(() => ({}));
+        const creator = String(b.creator || '').trim();
+        const collName = String(b.collection || '').trim();
+        if (!creator || !collName) {
+          return jsonResponse({ error: 'Need both a creator and a collection name.' }, { status: 400 });
+        }
+        // One credit can name several people, so match a comma-separated
+        // segment rather than the whole column (see creditMatchSQL).
         const { results } = await env.DB.prepare(
-          "SELECT slug, name, data FROM characters WHERE status='published'"
-        ).all();
-        // Fabled rules pages (States/Conditions/Calls) never had icons and
-        // are not supposed to — Classify.needsIcon() keeps them out of this.
-        const hits = (results || []).filter(r => {
-          const d = parseData(r);
-          return Classify.needsIcon(d) && !Classify.hasIcon(d);
-        });
+          `SELECT slug, name FROM characters
+            WHERE status IS NOT 'deleted' AND ${creditMatchSQL('creator')}
+            ORDER BY name`
+        ).bind(normCreator(creator)).all().catch(() => ({ results: [] }));
+        const slugs = (results || []).map(r => r.slug);
+        const existing = await findCollectionRow(env, collName);
         if (b.dryRun) {
           return jsonResponse({
-            ok: true, dryRun: true, count: hits.length,
+            ok: true, dryRun: true, creator, collection: collName,
+            exists: !!existing, count: slugs.length,
+            pages: (results || []).slice(0, 300)
+          });
+        }
+        if (!slugs.length) return jsonResponse({ error: 'That creator has no pages.' }, { status: 404 });
+        const kebab = x => String(x || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 80);
+        const d = existing ? parseData(existing) : {};
+        const id = d.id || kebab(collName);
+        const pk = existing ? existing.slug : id;
+        d.id = id;
+        d.slug = pk;
+        d.displayName = d.displayName || collName;
+        d.author = d.author || creator;
+        d.description = d.description || ('Everything ' + creator + ' has made for the wiki.');
+        d.match = Array.isArray(d.match) ? d.match : [];
+        d.exclude = Array.isArray(d.exclude) ? d.exclude : [];
+        // include[] is capped at 500 by sanitizePageFields; 258 fits today.
+        d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
+        d.starlight = existing ? !!parseData(existing).starlight : false;
+        sanitizePageFields(d, 'collections/' + id);
+        if (existing) await saveRevision(env, sess, 'collection', existing);
+        await env.DB.prepare(
+          `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
+           VALUES (?,?,?,?, 'published', datetime('now'), datetime('now'))
+           ON CONFLICT(slug) DO UPDATE SET
+             display_name=excluded.display_name, data=excluded.data, updated_at=datetime('now')`
+        ).bind(pk, d.displayName, sess.userId, JSON.stringify(d)).run();
+        await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pk,
+          d.displayName + ' (' + slugs.length + ' from ' + creator + ')');
+        return jsonResponse({ ok: true, id, slug: pk, count: d.include.length, added: slugs.length });
+      }
+
+      // ---- admin: rules constructs stop being characters ----
+      // States, Conditions, Calls, Alignments and Properties were imported as
+      // Fabled characters, but they are reference text, not people you can
+      // put on a script. This rewrites each one as a wiki page under a parent
+      // collection and soft-deletes the character it came from (recoverable
+      // from Deleted Content, and its last version is in revisions).
+      // {dryRun:true} shows exactly what it would write.
+      if (path === '/api/admin/concepts-to-pages') {
+        await ensurePagesTable(env);
+        const b = await request.json().catch(() => ({}));
+        const from = String(b.from || '').trim();          // an "Appears in" value
+        const parentKey = String(b.parent || '').trim();   // collection id/slug
+        if (!from || !parentKey) {
+          return jsonResponse({ error: 'Need both the source “Appears in” value and the parent collection.' }, { status: 400 });
+        }
+        const parent = await wikiParentRow(env, 'collection', parentKey);
+        if (!parent) return jsonResponse({ error: 'No collection called “' + parentKey + '”.' }, { status: 404 });
+        const norm = x => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE status IS NOT 'deleted'"
+        ).all().catch(() => ({ results: [] }));
+        const hits = (results || []).filter(r => norm(parseData(r).appearsIn) === norm(from));
+
+        // A character's almanac, rewritten as wiki-page markup. Only the
+        // fields that hold anything; the order matches how /c/ reads.
+        const bodyFor = d => {
+          const out = [];
+          const lines = v => (Array.isArray(v) ? v : [v]).filter(x => typeof x === 'string' && x.trim());
+          if (d.quote && String(d.quote).trim()) out.push('> ' + String(d.quote).trim());
+          if (d.lede && String(d.lede).trim()) out.push('*' + String(d.lede).trim() + '*');
+          if (d.ability && String(d.ability).trim()) out.push('**' + String(d.ability).trim() + '**');
+          const section = (title, v) => {
+            const l = lines(v);
+            if (l.length) out.push('## ' + title + '\n' + l.map(x => '- ' + x.trim()).join('\n'));
+          };
+          section('Summary', d.summaryBullets);
+          const how = lines(d.howToRun);
+          if (how.length) out.push('## How to Run\n' + how.map(x => x.trim()).join('\n\n'));
+          section('Examples', d.examples);
+          section('Tips', d.tips);
+          if (d.callout && String(d.callout).trim()) out.push('::: ' + String(d.callout).trim());
+          return out.join('\n\n');
+        };
+        const kebab = x => String(x || '').toLowerCase().normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '').slice(0, 70);
+
+        const plan = [];
+        for (const r of hits) {
+          const d = parseData(r);
+          const body = bodyFor(d);
+          let slug = kebab(r.name) || kebab(r.slug);
+          plan.push({ from: r.slug, name: r.name, slug, body, hasBody: !!body.trim(), author: d.creator || null });
+        }
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, parent: parent.name, count: plan.length,
+            pages: plan.map(p => ({ from: p.from, name: p.name, slug: p.slug, hasBody: p.hasBody,
+                                    preview: p.body.slice(0, 220) }))
+          });
+        }
+        if (!plan.length) return jsonResponse({ error: 'Nothing matched that “Appears in” value.' }, { status: 404 });
+        let made = 0;
+        const skipped = [];
+        for (const p of plan) {
+          // Never write over a page that already exists on that slug.
+          const taken = await env.DB.prepare('SELECT 1 FROM pages WHERE slug=?').bind(p.slug).first().catch(() => null);
+          if (taken) { skipped.push(p.slug); continue; }
+          if (!p.hasBody) { skipped.push(p.slug + ' (nothing to write)'); continue; }
+          const page = {
+            slug: p.slug, title: p.name, subtitle: '', blurb: '', author: p.author,
+            body: p.body, header: '', images: [], boxes: [], toc: true, comments: true
+          };
+          sanitizeWikiFields(page, 'pages/' + p.slug + '-', 'pages/' + p.slug);
+          page.parentType = 'collection';
+          page.parentSlug = parent.slug;
+          if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
+          await env.DB.prepare(
+            `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?, 'published', datetime('now'), datetime('now'))`
+          ).bind(p.slug, p.name, 'collection', parent.slug, p.author, sess.userId, JSON.stringify(page)).run();
+          // Retire the character it came from — soft, so Deleted Content can
+          // put it back if any of this turns out wrong.
+          const row = await getEntityRow(env, 'character', p.from);
+          if (row) {
+            await saveRevision(env, sess, 'character', row);
+            const cd = parseData(row);
+            cd._deleted = { at: new Date().toISOString(), by: null, from: row.status || 'published',
+                            note: 'converted to wiki page /p/' + p.slug };
+            await env.DB.prepare("UPDATE characters SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?")
+              .bind(JSON.stringify(cd), row.slug).run();
+          }
+          made++;
+        }
+        await logActivity(env, sess, 'create', 'wikipage', null,
+          made + ' rules page(s) converted from characters');
+        return jsonResponse({ ok: true, made, skipped, parent: parent.name });
+      }
+
+      // ---- admin: grant Starlight to everything one account owns ----
+      // Starlight is what says "an admin has looked at this", and it also
+      // lifts a page out of Partial. Doing that one page at a time through
+      // Bulk actions is 200 tick-boxes at a time; this is the same write in
+      // one press. Idempotent — pages that already have it are skipped — so
+      // it can be re-run after adding more. {dryRun:true} just counts.
+      if (path === '/api/admin/starlight-owner') {
+        const b = await request.json().catch(() => ({}));
+        const uname = String(b.username || '').trim();
+        if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
+        const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
+          .bind(uname).first();
+        if (!u) return jsonResponse({ error: 'No account named "' + uname + '".' }, { status: 404 });
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
+        ).bind(u.id).all();
+        const hits = (results || []).filter(r => !parseData(r).starlight);
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, username: u.username,
+            owned: (results || []).length, count: hits.length,
             pages: hits.slice(0, 300).map(r => ({ slug: r.slug, name: r.name }))
           });
         }
         for (const r of hits) {
+          const d = parseData(r);
+          d.starlight = true;
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(d), r.slug).run();
+        }
+        await logActivity(env, sess, 'starlight', 'character', null,
+          hits.length + ' page(s) owned by ' + u.username);
+        return jsonResponse({ ok: true, username: u.username, count: hits.length });
+      }
+
+      // ---- admin: sweep published characters that miss the publish bar ----
+      // The bar (name, icon, ability, tags — Classify.missingForPublish) only
+      // bites on save/publish, so this catches the pages that went live before
+      // it existed or before it was raised. Every affected page becomes a
+      // draft — nothing is deleted, and re-publishing is one click once its
+      // owner fills the gap. ALWAYS dry-run it first: {dryRun:true} returns
+      // the count and the reasons without touching anything.
+      // The old /api/admin/demote-no-icon path still works.
+      if (path === '/api/admin/demote-incomplete' || path === '/api/admin/demote-no-icon') {
+        const b = await request.json().catch(() => ({}));
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE status='published'"
+        ).all();
+        // Fabled rules pages (States/Conditions/Calls) have no icon and no
+        // tags by nature — missingForPublish() keeps them out of this.
+        const hits = [];
+        for (const r of results || []) {
+          const missing = Classify.missingForPublish(parseData(r));
+          if (missing.length) hits.push({ slug: r.slug, name: r.name, missing });
+        }
+        // How many pages each requirement accounts for, so the dashboard can
+        // say "231 of these are only missing tags" before anything is moved.
+        const byReason = {};
+        for (const h of hits) for (const m of h.missing) byReason[m] = (byReason[m] || 0) + 1;
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, count: hits.length, byReason,
+            pages: hits.slice(0, 300)
+          });
+        }
+        for (const h of hits) {
           await env.DB.prepare("UPDATE characters SET status='draft', updated_at=datetime('now') WHERE slug=?")
-            .bind(r.slug).run();
+            .bind(h.slug).run();
         }
         await logActivity(env, sess, 'unpublish', 'character', null,
-          hits.length + ' page(s) with no icon moved to draft');
-        return jsonResponse({ ok: true, count: hits.length, pages: hits.map(r => r.slug) });
+          hits.length + ' incomplete page(s) moved to draft');
+        return jsonResponse({ ok: true, count: hits.length, byReason, pages: hits.map(h => h.slug) });
       }
 
       // ---- admin: one-time Odyssey text cleanup ----

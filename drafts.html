@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Drafts — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  /* Sits on the dark page background, not on parchment — light text, like the
+     .home-hero headers everywhere else. */
+  .drafts-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
+  .drafts-back { display:block; text-align:center; margin:10px 0 0;
+    font-family:'Oswald',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+  .drafts-back:hover { color:#fff; text-decoration:underline; }
+  .drafts-count { text-align:center; font-family:'Oswald',sans-serif;
+    letter-spacing:.07em; text-transform:uppercase; font-size:.9rem;
+    color:rgba(236,225,200,.72); margin:0 0 20px; }
+  .drafts-gate, .drafts-empty {
+    text-align:center; color:rgba(236,225,200,.85); padding:40px 20px;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .drafts-gate a, .drafts-empty a { color:#9fc4ee; }
+  /* Non-character drafts have no card art, so they get the same tile the
+     creator page uses for scripts and collections. */
+  .draft-tiles { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); }
+  .draft-tile {
+    display:block; padding:12px 14px; text-decoration:none;
+    background:rgba(20,7,18,.42); border:1px solid rgba(236,225,200,.22);
+    color:rgba(236,225,200,.92); min-width:0;
+  }
+  .draft-tile:hover { background:rgba(20,7,18,.6); border-color:rgba(236,225,200,.4); }
+  .draft-tile-name { display:block; font-family:'Dumbledor2',serif; font-size:1.05rem;
+    color:var(--parch); overflow-wrap:anywhere; }
+  .draft-tile-meta { display:block; font-size:.78rem; color:rgba(236,225,200,.65); margin-top:3px; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>My Drafts</h1>
+    <p class="drafts-sub">Not visible to anyone but you and the wiki admins.</p>
+    <a class="drafts-back" href="account">← Back to my account</a>
+  </div>
+
+  <main class="home-panel" id="panel">
+    <div class="drafts-gate" id="loading">Loading your drafts…</div>
+    <div class="drafts-gate" id="gate" style="display:none">
+      <p>Log in to see your drafts.</p>
+      <p><a href="login?next=drafts">Log in or create an account</a></p>
+    </div>
+    <div id="drafts" style="display:none">
+      <p class="drafts-count" id="draft-count"></p>
+      <div id="char-filters"></div>
+      <p class="drafts-count" id="char-count" style="margin:-12px 0 14px"></p>
+      <div id="char-grid"></div>
+      <div id="other-drafts"></div>
+    </div>
+    <div class="drafts-empty" id="empty" style="display:none">
+      <p>No drafts yet.</p>
+      <p>When you create a character you can choose <em>Save as Draft</em> instead of publishing —
+         and anything that isn’t finished enough to publish is saved here automatically.</p>
+      <p><a href="create">Create a character →</a></p>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/card-filters.js"></script>
+  <script>
+  /* My Drafts — every unpublished page this account owns, as the same cards
+     the browse pages and collection pages use.
+
+     Character drafts come back from /api/account without their art path (the
+     account endpoint only selects the indexed columns), so the full rows are
+     read from characters.json?drafts=1 where that is available — an admin
+     feed — and otherwise the cards fall back to the account rows and the
+     placeholder icon. Scripts, collections and wiki pages have no card art at
+     all, so they get a simple tile instead. */
+  (function () {
+    var PR = window.PageRender;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function show(id) { var e = $(id); if (e) e.style.display = ''; }
+    function hide(id) { var e = $(id); if (e) e.style.display = 'none'; }
+
+    function tile(d, href, kind) {
+      return '<a class="draft-tile" href="' + esc(href) + '">' +
+        '<span class="draft-tile-name">' + esc(d.name || d.slug) + '</span>' +
+        '<span class="draft-tile-meta">' + esc(kind) + '</span></a>';
+    }
+
+    fetch('/api/account', { credentials: 'same-origin' })
+      .then(function (r) {
+        if (r.status === 401) { hide('loading'); show('gate'); return null; }
+        return r.json();
+      })
+      .then(function (acct) {
+        if (!acct) return;
+        if (acct.error) { hide('loading'); show('gate'); return; }
+
+        var isDraft = function (x) { return x.status === 'draft'; };
+        var chars = (acct.characters || []).filter(isDraft);
+        var scripts = (acct.scripts || []).filter(isDraft);
+        var colls = (acct.collections || []).filter(isDraft);
+        var pages = (acct.pages || []).filter(isDraft);
+        var total = chars.length + scripts.length + colls.length + pages.length;
+
+        hide('loading');
+        if (!total) { show('empty'); return; }
+        show('drafts');
+        $('draft-count').textContent = total + ' draft' + (total === 1 ? '' : 's');
+
+        // Character cards want the whole row (art, ability, tags). The drafts
+        // feed has it for admins; everyone else gets what the account page
+        // knows, which is enough for a readable card.
+        fetch('characters.json?drafts=1&_=' + Date.now())
+          .then(function (r) { return r.json(); })
+          .catch(function () { return []; })
+          .then(function (all) {
+            var bySlug = {};
+            (all || []).forEach(function (c) { if (c.slug) bySlug[c.slug] = c; });
+            var full = chars.map(function (c) {
+              var hit = bySlug[c.slug];
+              // Only trust the feed row when it really is this draft.
+              var base = (hit && hit.status === 'draft') ? hit : c;
+              var out = {};
+              Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+              out.slug = c.slug; out.name = c.name || out.name;
+              out.team = c.team || out.team; out.status = 'draft';
+              return out;
+            });
+
+            if (full.length) {
+              var order = {};
+              full.forEach(function (c, i) { order[c.slug] = full.length - i; });
+              $('char-filters').innerHTML = PR.filterBoxHTML('dr', 'Filter drafts');
+              $('char-grid').innerHTML = PR.renderRosterCards(full, '', order);
+              if (window.mountCardFilters) {
+                var ok = window.mountCardFilters({
+                  grid: 'char-grid', bar: 'dr-filter-bar',
+                  toggle: 'dr-filter-toggle', count: 'char-count',
+                  label: 'Filter drafts', noun: 'character', minCards: 2
+                });
+                if (!ok) $('char-filters').style.display = 'none';
+              }
+            }
+
+            var others = scripts.map(function (d) { return tile(d, 's/' + encodeURIComponent(d.slug), 'Script'); })
+              .concat(colls.map(function (d) { return tile(d, 'collection/' + encodeURIComponent(d.slug), 'Collection'); }))
+              .concat(pages.map(function (d) { return tile(d, 'p/' + encodeURIComponent(d.slug), 'Page'); }));
+            if (others.length) {
+              $('other-drafts').innerHTML =
+                '<h2 class="type-header">Scripts, collections &amp; pages</h2>' +
+                '<div class="type-rule"></div>' +
+                '<div class="draft-tiles">' + others.join('') + '</div>';
+            }
+          });
+      })
+      .catch(function () { hide('loading'); show('gate'); });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

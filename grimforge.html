@@ -215,7 +215,7 @@
   font-size: 1.05rem; line-height: 1.6; color: var(--ink);
   overflow-wrap: break-word;
 }
-.gf-output .gf-empty { opacity: .45; font-style: italic; }
+.gf-output .gf-empty { opacity: .62; font-style: italic; }
 
 /* Findings list */
 .gf-find {
@@ -994,7 +994,7 @@
         });
       }).catch(function (err) {
         if (err && err.message === 'LOGIN') {
-          draftMsg('err', 'You need to be logged in to save a draft. <a href="login">Log in</a> and try again.');
+          draftMsg('err', 'You need to be logged in to save a draft. <a href="login?next=grimforge">Log in</a> and try again.');
         } else {
           draftMsg('err', esc((err && err.message) || 'Save failed.'));
         }

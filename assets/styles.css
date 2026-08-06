@@ -409,7 +409,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .empty-card {
   background: rgba(243,239,229,.08); border: 2px dashed rgba(183,156,111,.35);
   border-radius: 0; padding: 28px 18px;
-  text-align: center; color: rgba(236,225,200,.4);
+  text-align: center; color: rgba(236,225,200,.62);
   font-size: .92rem; letter-spacing: .04em;
 }
 
@@ -859,7 +859,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   text-overflow: unset;
 }
 .creator-at { font-size: .72rem; opacity: .7; }
-.creator-count { font-size: .7rem; opacity: .6; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
+.creator-count { font-size: .7rem; opacity: .78; font-family: 'Oswald', sans-serif; letter-spacing: .03em; }
 
 /* ════════════════════════════════════════════════════════════════
    SCRIPT BUILDER
@@ -925,7 +925,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sb-add-name { flex: 1; font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* .sb-add-plus removed — replaced by chevron button */
 .sb-add-item.on .sb-add-plus { color: var(--good-name); }
-.sb-loading { color: #8a7a63; font-size: .9rem; text-align: center; padding: 20px; }
+.sb-loading { color: #726348; font-size: .9rem; text-align: center; padding: 20px; }
 
 /* Main script area */
 .sb-main { padding: 0 clamp(12px,3vw,40px) 64px; }
@@ -1472,10 +1472,18 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   vertical-align: middle;
 }
 
-/* ─── Unread-mail flag on the "My Account" link (site.js) ── */
-.mail-flag { display: inline-block; margin-left: 7px; white-space: nowrap; cursor: pointer; }
-.mail-flag svg { opacity: .85; }
-.mail-flag .script-badge { margin-left: 3px; }
+/* ─── Unread-mail flag on the "My Account" link (site.js) ──
+   inline-flex, not inline-block: with baseline alignment the count pill sat
+   ~3px below the envelope and the label next to it. Centring the icon and the
+   pill on each other, then middle-aligning the whole flag to the text, puts
+   the red count where it looks attached to the word. */
+.mail-flag {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 7px; vertical-align: middle;
+  white-space: nowrap; cursor: pointer; line-height: 1;
+}
+.mail-flag svg { opacity: .85; display: block; vertical-align: middle; flex: 0 0 auto; }
+.mail-flag .script-badge { margin-left: 0; vertical-align: middle; }
 
 /* ─── Search "matched field" tag ─────────────────────────── */
 .search-match {
@@ -1625,7 +1633,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   margin: 0 0 8px; padding-bottom: 4px; border-bottom: 1px solid rgba(180,160,120,.45);
 }
 .script-team-head.good { color: var(--good-name); }
-.script-team-count { font-size: .8rem; opacity: .7; }
+.script-team-count { font-size: .8rem; opacity: .85; }
 .script-char-list { display: flex; flex-direction: column; }
 .script-char-row {
   display: flex; align-items: center; gap: 12px; padding: 8px 6px;
@@ -1685,6 +1693,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: rgba(236,225,200,.72); margin: 0 0 20px;
 }
 .coll-team-count { font-size: .8rem; opacity: .7; }
+/* Empty state for the card grid on a collection / creator page. That grid sits
+   straight on the dark page background, so this can't use --ink. */
+.roster-empty {
+  color: rgba(236,225,200,.75); padding: 8px 0;
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+}
 .coll-prose { margin-bottom: 22px; }
 .coll-jinx { margin-top: 22px; }
 .coll-meta-row {
@@ -1712,6 +1726,7 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 
 /* Themed pages recolor the count + author lines to match the chosen text color */
 .theme-text .coll-chars-count { color: var(--pg-text); opacity: .85; }
+.theme-text .roster-empty { color: var(--pg-text); opacity: .85; }
 .theme-text .sv-info-author { color: var(--pg-text); }
 .theme-accent .coll-title { color: var(--pg-accent); }
 
@@ -2071,16 +2086,42 @@ a:hover .starlight-star { opacity: .9; }
 .comments-section .gen-sech { color: var(--cmt-cream); }
 .cmt-list { list-style: none; margin: 0 0 22px; padding: 0; }
 .cmt {
+  --cmt-pad: 12px;      /* box padding — the dot's vertical origin */
+  --cmt-avatar: 38px;   /* avatar size — the dot centres on its middle */
   display: flex; gap: 12px;
   background: rgba(20,7,18,.42);
   border: 1px solid rgba(236,225,200,.22);
-  padding: 12px 14px; margin: 0 0 10px;
+  padding: var(--cmt-pad) 14px; margin: 0 0 10px;
 }
 .cmt-avatar {
-  width: 38px; height: 38px; flex: none; border-radius: 50%;
+  width: var(--cmt-avatar); height: var(--cmt-avatar);
+  flex: none; border-radius: 50%;
   object-fit: cover; border: 1px solid rgba(236,225,200,.35);
   background: rgba(236,225,200,.12);
 }
+/* The global `li::before` bullet (near the top of this file) was landing on
+   every comment as a stray red dot pinned to the top-left corner. Comments
+   are list items for structure, not a bulleted list — switch it off, the way
+   .wiki-ol and .sv-credits-list already do, and reuse the slot for something
+   that means something. */
+.cmt-list .cmt::before, .cmt-replies .cmt::before { content: none; }
+/* "New since you last looked" — comments.js keeps the seen mark per page, in
+   this browser, and drops the class once the comments have been on screen.
+   Centred on the avatar (top border + padding + half the avatar) rather than
+   pinned to the top of a comment that might be twenty lines long, and it sits
+   inside the box's own left padding so nothing clips it. The selector matches
+   the content:none rule above on specificity, and comes after it. */
+.cmt-list .cmt-unseen::before, .cmt-replies .cmt-unseen::before {
+  content: ""; position: absolute;
+  left: 4px; transform: translateY(-50%);
+  top: calc(1px + var(--cmt-pad) + var(--cmt-avatar) / 2);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--evil); box-shadow: 0 0 0 2px rgba(20,7,18,.6);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cmt-unseen::before { animation: cmtNewIn .35s ease-out; }
+}
+@keyframes cmtNewIn { from { transform: translateY(-50%) scale(0); } }
 .cmt-avatar-letter {
   display: flex; align-items: center; justify-content: center;
   font-family: 'Dumbledor2', serif; font-size: 1.1rem;
@@ -2151,7 +2192,7 @@ a:hover .starlight-star { opacity: .9; }
 .cmt-replies { list-style: none; margin: 10px 0 0; padding: 0 0 0 14px; border-left: 2px solid rgba(236,225,200,.22); }
 .cmt-replies .cmt { background: rgba(20,7,18,.3); margin-bottom: 8px; }
 .cmt-replies .cmt:last-child { margin-bottom: 0; }
-.cmt-replies .cmt-avatar { width: 30px; height: 30px; }
+.cmt-replies .cmt { --cmt-avatar: 30px; }
 /* A pinned thread's replies keep the plain reply look — only the top comment
    carries the pin styling. */
 .cmt-is-pinned .cmt-replies .cmt { background: rgba(20,7,18,.32); border-color: rgba(236,225,200,.2); }
@@ -2166,8 +2207,7 @@ a:hover .starlight-star { opacity: .9; }
   .cmt-form-reply .cmt-submit { width: auto; }
 }
 @media (max-width: 640px) {
-  .cmt { padding: 10px; gap: 9px; }
-  .cmt-avatar { width: 32px; height: 32px; }
+  .cmt { --cmt-pad: 10px; --cmt-avatar: 32px; padding: var(--cmt-pad); gap: 9px; }
   .cmt-form-row { flex-direction: column-reverse; align-items: stretch; }
   .cmt-submit { width: 100%; }
   .cmt-count { text-align: right; }
@@ -2581,3 +2621,28 @@ a:hover .starlight-star { opacity: .9; }
 .wiki-pagelinks-dark .wiki-pagelink:hover { background: rgba(0,0,0,.42); }
 .wiki-pagelinks-dark .wiki-pagelink-title { color: #ecd9a8; }
 .wiki-pagelinks-dark .wiki-pagelink-blurb { color: rgba(236,225,200,.78); }
+
+/* ─── Long names must wrap, not widen the page ──────────────────
+   Names on this wiki are user-supplied and some are one long unbroken word
+   ("UnknownHumanBean"). Wherever one is displayed large, the default
+   `overflow-wrap: normal` refuses to break it, so it pushed past the viewport
+   and dragged the whole page sideways on a phone — the top bar included.
+   `anywhere` (not `break-word`) because several of these are flex/grid items,
+   and only `anywhere` also shrinks their min-content width so the container
+   stops being stretched. Same idiom as .info dt/dd and .cmt-body above. */
+.home-hero h1, .home-hero p,
+.landing-hero h1, .landing-hero p,
+.gen-title, .title-row,
+.type-header,
+.coll-title, .coll-chars-count,
+.char-card-name, .char-card-ability,
+.creator-pill, .creator-name,
+.script-char-name, .script-char-ability,
+.sv-info-author,
+.wiki-title, .wiki-pagelink-title, .wiki-pagelink-blurb,
+.news-card-title,
+.cmt-who {
+  overflow-wrap: anywhere; word-break: break-word;
+}
+/* flex containers holding one of those need to be allowed to shrink too */
+.creator-pill, .creator-name, .title-row, .wiki-pagelink { min-width: 0; }

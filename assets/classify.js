@@ -9,17 +9,31 @@
 
    The three tiers
    ---------------
-   partial   Characters only. The page has an ability and nothing else — no
-             tags, no almanac text, and no mechanics either (night order,
-             reminder tokens, setup, jinxes). Partial pages are hidden from
-             browse/search listings, the tag pages, Featured and the homepage,
-             unless the *reader* ticks the "Partial" filter chip.
-             Fabled are exempt: on this wiki they are rules constructs
-             (States, Conditions, Calls) that are complete at one line.
-   standard  The default. Anything with an icon, plus at least one tag or at
-             least one scrap of almanac text. No badge, nothing to earn.
+   partial   Characters only. A page that is missing any part of a finished
+             almanac entry (STANDARD_REQUIREMENTS below): name, icon, tags, a
+             flavour line, a summary, how-to-run text and at least one
+             example. Partial pages are hidden from browse/search listings,
+             the tag pages, Featured and the homepage, unless the *reader*
+             ticks the "Partial" filter chip.
+             No team is exempt. Fabled used to be, on the grounds that it
+             held the wiki's rules constructs (States, Conditions, Calls) —
+             but those became wiki pages under Imppreposterous
+             Syncretastrophy, and the 31 Fabled left are ordinary characters
+             with icons and almanacs like any other.
+   standard  Every requirement met. No badge, nothing to earn.
    starlight Admin-awarded, on characters, collections or scripts. Weighted
              higher in Featured / random picks and filterable on its own.
+             Starlight OVERRIDES Partial: an admin has looked at the page, so
+             it is never also flagged unfinished.
+
+   Two different bars
+   ------------------
+   PUBLISH_REQUIREMENTS  what a page needs before it can leave drafts at all:
+                         name, icon, ability, tags. Enforced by the Worker on
+                         /api/character and /api/publish.
+   STANDARD_REQUIREMENTS what it needs on top of that to stop being Partial.
+   Everything in the publish bar is also in the standard bar, so a published
+   page can only ever be missing the almanac half.
 
    Nothing here is stored except `starlight` (a boolean in the page's data
    JSON, writable only through /api/admin/starlight). partial vs standard is
@@ -41,24 +55,23 @@
   function nonEmpty(v) {
     return typeof v === 'string' && v.trim() !== '';
   }
-
-  /* Teams whose pages are rules constructs rather than player characters.
-     On this wiki Fabled is where States, Conditions, Calls, Alignments and
-     Properties live — "Muted (Condition)", "Guessing the Demon (Call)" — and
-     those have no token art and no almanac by nature. They are complete as
-     they are, so they are exempt from BOTH the icon requirement and the
-     Partial classification. Without this, 18 of the wiki's reference pages
-     would be swept into drafts and hidden from browsing. */
-  var RULES_TEAMS = { fabled: 1 };
-
-  function isRulesPage(d) {
-    return !!(d && RULES_TEAMS[String(d.team || '').toLowerCase()]);
+  /* A list field counts when it holds at least one line with words in it. */
+  function listHasText(v) {
+    return Array.isArray(v) && v.some(nonEmpty);
   }
 
-  /* Must this page have an icon before it can be published? */
-  function needsIcon(d) {
-    return !isRulesPage(d);
-  }
+  /* No team is exempt from the rules any more.
+     Fabled was, because it held this wiki's rules constructs — "Muted
+     (Condition)", "Guessing the Demon (Call)" — which have no token art and
+     no almanac by nature. Those 18 pages are wiki pages under Imppreposterous
+     Syncretastrophy now, and every one of the 31 Fabled characters left has
+     an icon, so the exemption was only ever letting real characters skip the
+     bar. Kept as a function (not deleted) because the Worker asks it, and a
+     future "this team is different" would land here. */
+  function isRulesPage() { return false; }
+
+  /* Must this page have an icon before it can be published? Always. */
+  function needsIcon() { return true; }
 
   /* Does this character have an icon? `art` is a repo/R2 path
      (assets/art/x.png); `image` is a remote URL from a bulk import, and may
@@ -88,6 +101,47 @@
       String(d.tags).split(',').some(function (t) { return t.trim(); }));
   }
 
+  /* ── the two bars ──
+     Each entry is [what to call it in a sentence, test]. The labels are
+     written to read inside "Add ___ to fix." on the Partial banner and
+     "needs ___" in the editor, so they carry their own articles. */
+  // Missing tags does NOT hold a page back from publishing — it only makes it
+  // Partial. Tags were the sole reason 231 of 619 published pages failed this
+  // bar, and hiding them behind the "Show Partial" chip is the softer answer.
+  var PUBLISH_REQUIREMENTS = [
+    ['a name',     function (d) { return nonEmpty(d.name); }],
+    ['an icon',    hasIcon],
+    ['an ability', function (d) { return nonEmpty(d.ability); }]
+  ];
+  var STANDARD_REQUIREMENTS = PUBLISH_REQUIREMENTS.concat([
+    ['tags',           hasTags],
+    ['a flavour line', function (d) { return nonEmpty(d.lede); }],
+    ['a summary',      function (d) { return listHasText(d.summaryBullets); }],
+    ['how to run',     function (d) { return listHasText(d.howToRun); }],
+    ['an example',     function (d) { return listHasText(d.examples); }]
+  ]);
+
+  function unmet(d, reqs) {
+    if (!d) return [];
+    var out = [];
+    for (var i = 0; i < reqs.length; i++) {
+      if (!reqs[i][1](d)) out.push(reqs[i][0]);
+    }
+    return out;
+  }
+
+  /* What still stops this page being published. Empty = it can go live. */
+  function missingForPublish(d) { return unmet(d, PUBLISH_REQUIREMENTS); }
+  function canPublish(d) { return missingForPublish(d).length === 0; }
+
+  /* Join labels the way a person would say them: "a, b and c". */
+  function listPhrase(items) {
+    var a = (items || []).slice();
+    if (!a.length) return '';
+    if (a.length === 1) return a[0];
+    return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+  }
+
   /* Mechanical content that is not almanac prose: night order, Storyteller
      reminder text, reminder tokens, setup effects, jinxes.
 
@@ -113,9 +167,9 @@
     return !!(d && d.starlight);
   }
 
-  /* Partial = finished enough to publish (it has an icon) but empty of
-     everything else. Starlight always wins: an admin has looked at the page,
-     so it is never also flagged unfinished.
+  /* Partial = any part of a finished almanac entry is still missing.
+     Starlight always wins: an admin has looked at the page, so it is never
+     also flagged unfinished.
 
      Only characters can be Partial. The `ability` check is what enforces
      that: every character has one (the API rejects a save without it) and no
@@ -126,9 +180,7 @@
   function isPartial(d) {
     if (!d || isStarlight(d)) return false;
     if (!nonEmpty(d.ability)) return false;
-    // Rules pages (Fabled) are finished at one line of text — see RULES_TEAMS.
-    if (isRulesPage(d)) return false;
-    return !hasTags(d) && !hasAlmanac(d) && !hasMechanics(d);
+    return unmet(d, STANDARD_REQUIREMENTS).length > 0;
   }
 
   /* 'starlight' | 'partial' | 'standard' for a character. */
@@ -146,15 +198,9 @@
   }
 
   /* What still needs doing before a page counts as Standard. Drives the
-     editor's "this page is unfinished" popup and the admin page list. */
-  function missingBits(d) {
-    var out = [];
-    if (isRulesPage(d)) return out;   // nothing is missing from a rules page
-    if (!hasIcon(d)) out.push('icon');
-    if (!hasTags(d)) out.push('tags');
-    if (!hasAlmanac(d) && !hasMechanics(d)) out.push('almanac');
-    return out;
-  }
+     Partial banner, the editor's "this page is unfinished" popup and the
+     admin page list. */
+  function missingBits(d) { return unmet(d, STANDARD_REQUIREMENTS); }
 
   var LABELS = {
     partial: 'Partial',
@@ -162,8 +208,8 @@
     starlight: 'Starlight'
   };
   var DESCRIPTIONS = {
-    partial: 'Unfinished — an ability and an icon, but no tags and no almanac ' +
-             'text yet. Hidden from browsing unless the “Partial” filter is on.',
+    partial: 'Unfinished — still missing part of its almanac entry. Hidden ' +
+             'from browsing unless the “Partial” filter is on.',
     standard: 'A normal, complete page.',
     starlight: 'Awarded by the wiki admins. Shown more often on the homepage ' +
                'and in Featured picks.'
@@ -236,7 +282,11 @@
   var API = {
     hasIcon: hasIcon, hasAlmanac: hasAlmanac, hasTags: hasTags,
     hasMechanics: hasMechanics,
-    needsIcon: needsIcon, isRulesPage: isRulesPage, RULES_TEAMS: RULES_TEAMS,
+    needsIcon: needsIcon, isRulesPage: isRulesPage,
+    listHasText: listHasText, listPhrase: listPhrase,
+    canPublish: canPublish, missingForPublish: missingForPublish,
+    PUBLISH_REQUIREMENTS: PUBLISH_REQUIREMENTS,
+    STANDARD_REQUIREMENTS: STANDARD_REQUIREMENTS,
     isPartial: isPartial, isStarlight: isStarlight,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,

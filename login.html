@@ -310,10 +310,27 @@
         : which === 'forgot' ? 'Reset Password' : 'Log In';
       setMsg('', '');
     }
+    // #signup / #forgot open the matching panel — the comment sections and a
+    // few other pages link straight to login#signup, which used to land
+    // everyone on the Log In tab instead.
+    (function(){
+      var h = (location.hash || '').replace('#', '');
+      if (h === 'signup' || h === 'forgot') showPanel(h);
+    })();
     $('tab-login').addEventListener('click', function(){ showPanel('login'); });
     $('tab-signup').addEventListener('click', function(){ showPanel('signup'); });
     $('forgot-link').addEventListener('click', function(){ showPanel('forgot'); });
     $('back-to-login').addEventListener('click', function(){ showPanel('login'); });
+
+    // Where to go after a successful log-in. ?next= is a page on THIS site and
+    // nothing else: a bare "next=https://…" (or a "javascript:" URL) on a
+    // log-in page is how people get bounced somewhere they didn't expect.
+    function safeNext() {
+      var raw = new URLSearchParams(location.search).get('next') || '';
+      // no scheme, no protocol-relative "//host", no backslash tricks
+      if (!raw || /^[a-z][a-z0-9+.-]*:/i.test(raw) || /^[/\\]{2}/.test(raw)) return 'account';
+      return raw.replace(/^\/+/, '');
+    }
 
     function postJSON(path, body) {
       return fetch(path, {
@@ -336,8 +353,7 @@
           if (res.ok && res.body.ok) {
             try { sessionStorage.removeItem('botc_me'); } catch(e){}
             setMsg('success', 'Logged in! Redirecting…');
-            var dest = new URLSearchParams(location.search).get('next') || 'account';
-            setTimeout(function(){ location.href = dest; }, 700);
+            setTimeout(function(){ location.href = safeNext(); }, 700);
           } else {
             setMsg('error', res.body.error || 'Login failed.');
             btn.disabled = false; btn.textContent = 'Log In';

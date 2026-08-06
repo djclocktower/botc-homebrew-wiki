@@ -36,7 +36,9 @@
 .pub-status-pill { display:none; font-family:'Oswald',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; }
 .pub-status-pill.draft { display:inline-block; background:rgba(154,110,20,.14); color:#7a5c18; border:1px solid rgba(154,110,20,.4); }
 .pub-status-pill.published { display:inline-block; background:rgba(42,110,42,.12); color:#2a6e2a; border:1px solid rgba(42,110,42,.4); }
-.sb-publish-blurb { font-size:.82rem; color:var(--ink); opacity:.82; margin:4px 0 0; line-height:1.5; }
+/* Sits on the dark page background, next to .pub-back (which is already
+   parchment-coloured) — ink here was unreadable. */
+.sb-publish-blurb { font-size:.82rem; color:rgba(236,225,200,.82); margin:4px 0 0; line-height:1.5; }
 #sb-publish-status { margin-top:12px; padding:9px 12px; font-size:.88rem; display:none; }
 #sb-publish-status.ok { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
 #sb-publish-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
@@ -151,16 +153,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <input type="text" id="sb-author" placeholder="Your name">
       </div>
       <div class="sb-fld">
-        <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional — one line shown under the title)</span></label>
+        <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
         <input type="text" id="sb-tagline" maxlength="140" placeholder="e.g. Nothing is as it seems in Ravenswood Bluff.">
       </div>
       <div class="sb-fld-row">
         <div class="sb-fld">
-          <label for="sb-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <label for="sb-version">Version <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
           <input type="text" id="sb-version" maxlength="32" placeholder="e.g. 1.2">
         </div>
         <div class="sb-fld">
-          <label for="sb-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional)</span></label>
+          <label for="sb-difficulty">Difficulty <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
           <select id="sb-difficulty">
             <option value="">— not set —</option>
             <option value="beginner">Beginner</option>
@@ -174,10 +176,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <textarea id="sb-desc" placeholder="A short blurb about the script."></textarea>
       </div>
       <div class="sb-fld">
-        <label for="sb-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(optional PNG, wide banner works best)</span></label>
+        <label for="sb-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional PNG, wide banner works best)</span></label>
         <input type="file" id="sb-header" accept="image/*">
         <img id="sb-header-prev" class="sb-header-prev" alt="header preview">
         <div id="sb-header-note" class="sub" style="margin-top:6px"></div>
+        <button type="button" class="th-clear" id="sb-header-remove" style="display:none;margin-top:6px">Remove header</button>
       </div>
     </div>
 
@@ -186,7 +189,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <summary>Wiki Page Sections <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — synopsis, gameplay overview and strategy notes, shown on your script page like the official wiki.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
-          <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(flavor intro — blank line = new paragraph)</span></label>
+          <label for="sb-synopsis">Synopsis <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(flavor intro — blank line = new paragraph)</span></label>
           <textarea id="sb-synopsis" rows="4" maxlength="4000" placeholder="Clouds roll in over Ravenswood Bluff…"></textarea>
         </div>
         <div class="sb-fld">
@@ -236,16 +239,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-details-body">
         <div class="sb-fld-row">
           <div class="sb-fld">
-            <label for="sb-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(square-ish works best)</span></label>
+            <label for="sb-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(square-ish works best)</span></label>
             <input type="file" id="sb-logo" accept="image/*">
             <img id="sb-logo-prev" class="sb-header-prev" alt="logo preview">
             <div id="sb-logo-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="sb-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
           <div class="sb-fld">
-            <label for="sb-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(large image, shown behind the page)</span></label>
+            <label for="sb-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image, shown behind the page)</span></label>
             <input type="file" id="sb-bg" accept="image/*">
             <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
             <div id="sb-bg-note" class="sub" style="margin-top:6px"></div>
+            <button type="button" class="th-clear" id="sb-bg-remove" style="display:none;margin-top:6px">Remove background</button>
           </div>
         </div>
         <div class="sb-fld">
@@ -253,7 +258,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <select id="th-font"></select>
         </div>
         <div class="sb-fld">
-          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#8a7a63">(leave unset to keep the wiki look)</span></label>
+          <label>Colors <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(leave unset to keep the wiki look)</span></label>
           <div class="th-row"><label for="th-accent">Accent / headings</label><span class="th-state" id="th-accent-state">not set</span><input type="color" id="th-accent" data-k="accent" value="#5b1f21"><button type="button" class="th-clear" data-k="accent">reset</button></div>
           <div class="th-row"><label for="th-panel">Panel tint</label><span class="th-state" id="th-panel-state">not set</span><input type="color" id="th-panel" data-k="panel" value="#f0e8d5"><button type="button" class="th-clear" data-k="panel">reset</button></div>
           <div class="th-row"><label for="th-text">Text</label><span class="th-state" id="th-text-state">not set</span><input type="color" id="th-text" data-k="text" value="#000000"><button type="button" class="th-clear" data-k="text">reset</button></div>
@@ -292,10 +297,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var currentStatus = null;      // 'draft' | 'published' | null (brand-new, unsaved)
     var headerDataURL = null;      // set when a new header file is chosen
     var existingHeader = null;     // path of an already-published header
+    var removeHeader = false;      // "Remove header" was pressed
     var logoDataURL = null;        // set when a new logo file is chosen
     var existingLogo = null;       // path of an already-published logo
+    var removeLogo = false;
     var bgDataURL = null;          // set when a new background file is chosen
     var existingBg = null;         // path of an already-published background
+    var removeBg = false;
 
     var SITE_ROOT = new URL('.', location.href).href;
     function $(id){ return document.getElementById(id); }
@@ -410,18 +418,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
-        $('sb-header-note').textContent = 'Current header — choose a file to replace it.';
+        $('sb-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
+        $('sb-header-remove').style.display = '';
       }
       if (m.logo){
         existingLogo = m.logo;
         var lv = $('sb-logo-prev'); lv.src = 'assets/' + m.logo; lv.style.display = 'block';
-        $('sb-logo-note').textContent = 'Current logo — choose a file to replace it.';
+        $('sb-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
+        $('sb-logo-remove').style.display = '';
         $('sb-appearance').open = true;
       }
       if (m.theme && m.theme.background){
         existingBg = m.theme.background;
         var bv = $('sb-bg-prev'); bv.src = 'assets/' + m.theme.background; bv.style.display = 'block';
-        $('sb-bg-note').textContent = 'Current background — choose a file to replace it.';
+        $('sb-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
+        $('sb-bg-remove').style.display = '';
       }
       primeTheme(m.theme);
       if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
@@ -450,7 +461,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     }
 
     // Image upload → resize to a max width PNG → preview + remember
-    function wireImageInput(inputId, prevId, noteId, maxW, onReady){
+    function wireImageInput(inputId, prevId, noteId, removeId, maxW, onReady){
       $(inputId).addEventListener('change', function(e){
         var f = e.target.files[0]; if (!f) return;
         var rd = new FileReader();
@@ -464,6 +475,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             var dataURL = cv.toDataURL('image/png');
             var pv = $(prevId); pv.src = dataURL; pv.style.display = 'block';
             $(noteId).textContent = 'New image ready — will be uploaded when you save.';
+            if (removeId) $(removeId).style.display = '';
             onReady(dataURL);
           };
           img.src = ev.target.result;
@@ -471,9 +483,24 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         rd.readAsDataURL(f);
       });
     }
-    wireImageInput('sb-header', 'sb-header-prev', 'sb-header-note', 900, function(d){ headerDataURL = d; });
-    wireImageInput('sb-logo', 'sb-logo-prev', 'sb-logo-note', 400, function(d){ logoDataURL = d; });
-    wireImageInput('sb-bg', 'sb-bg-prev', 'sb-bg-note', 1600, function(d){ bgDataURL = d; });
+    // Picking a new file cancels any pending removal, so the file wins.
+    wireImageInput('sb-header', 'sb-header-prev', 'sb-header-note', 'sb-header-remove', 900, function(d){ headerDataURL = d; removeHeader = false; });
+    wireImageInput('sb-logo', 'sb-logo-prev', 'sb-logo-note', 'sb-logo-remove', 400, function(d){ logoDataURL = d; removeLogo = false; });
+    wireImageInput('sb-bg', 'sb-bg-prev', 'sb-bg-note', 'sb-bg-remove', 1600, function(d){ bgDataURL = d; removeBg = false; });
+
+    // ── remove buttons (clear header / logo / background on save) ──
+    function wireRemove(btnId, prevId, noteId, fileId, onRemove){
+      $(btnId).addEventListener('click', function(){
+        onRemove();
+        var pv = $(prevId); pv.src = ''; pv.style.display = 'none';
+        $(fileId).value = '';
+        $(noteId).textContent = 'Removed — will be cleared when you save.';
+        this.style.display = 'none';
+      });
+    }
+    wireRemove('sb-header-remove', 'sb-header-prev', 'sb-header-note', 'sb-header', function(){ headerDataURL = null; existingHeader = null; removeHeader = true; });
+    wireRemove('sb-logo-remove', 'sb-logo-prev', 'sb-logo-note', 'sb-logo', function(){ logoDataURL = null; existingLogo = null; removeLogo = true; });
+    wireRemove('sb-bg-remove', 'sb-bg-prev', 'sb-bg-note', 'sb-bg', function(){ bgDataURL = null; existingBg = null; removeBg = true; });
 
     // ── SAO sort of the roster (shared logic in assets/sao.js) ──
     $('sb-sao-sort').addEventListener('click', function(){
@@ -521,13 +548,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       }
       chain.then(function(){
         pubStatus('work', verb + '… saving script');
-        var header = headerDataURL ? ('scripts/' + slug + '.png') : (existingHeader || '');
-        var logo = logoDataURL ? ('scripts/' + slug + '-logo.png') : (existingLogo || '');
+        var header = headerDataURL ? ('scripts/' + slug + '.png') : (removeHeader ? '' : (existingHeader || ''));
+        var logo = logoDataURL ? ('scripts/' + slug + '-logo.png') : (removeLogo ? '' : (existingLogo || ''));
         var m0 = getMeta();
         var theme = {};
         Object.keys(m0.theme || {}).forEach(function(k){ theme[k] = m0.theme[k]; });
+        // The saved meta still carries the old background path, so a removal
+        // has to clear it explicitly or it gets copied straight back in.
         if (bgDataURL) theme.background = 'scripts/' + slug + '-bg.png';
-        else if (existingBg) theme.background = existingBg;
+        else if (!removeBg && existingBg) theme.background = existingBg;
+        else delete theme.background;
         theme = window.PageRender ? window.PageRender.sanitizeTheme(theme, 'scripts/' + slug) : theme;
         var entry = {
           slug: slug, name: name, header: header, author: author, description: desc,
@@ -541,7 +571,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           strategyEvil: $('sb-strat-evil').value.trim(),
           customBoxes: boxesUI.gather()
         };
-        if (logo) entry.logo = logo;
+        entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
         return apiSaveScript(entry);
       }).then(function(){
@@ -550,10 +580,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         if (bgDataURL){
           existingBg = 'scripts/' + slug + '-bg.png'; bgDataURL = null;
           var m2 = getMeta(); m2.theme = m2.theme || {}; m2.theme.background = existingBg; setMeta(m2);
+        } else if (removeBg){
+          var m3 = getMeta(); if (m3.theme) delete m3.theme.background; setMeta(m3);
         }
         currentStatus = saveStatus;
         setEditMode(slug);
-        var m = getMeta(); m.header = existingHeader || m.header; m.logo = existingLogo || m.logo; m.editSlug = slug; setMeta(m);
+        var m = getMeta();
+        m.header = removeHeader ? '' : (existingHeader || m.header);
+        m.logo = removeLogo ? '' : (existingLogo || m.logo);
+        m.editSlug = slug; setMeta(m);
+        removeHeader = removeLogo = removeBg = false;   // removals are now persisted
         var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
         if (isDraft) {
           pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.');

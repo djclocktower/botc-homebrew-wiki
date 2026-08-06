@@ -30,14 +30,42 @@
     border:2px solid rgba(236,225,200,.4);
   }
   .profile-avatar img { width:100%; height:100%; object-fit:cover; }
-  .profile-hero-text { min-width:0; }
+  .profile-hero-text { min-width:0; max-width:100%; }
   /* .home-hero centres its text; the hero here is a two-column card, so the
-     name lines up with the details under it instead of floating over them. */
+     name lines up with the details under it instead of floating over them.
+     Size comes from .home-hero h1; fitHeroName() below shrinks it when the
+     name is too long for the width, and styles.css lets it wrap if even that
+     is not enough. */
   .profile-hero-text h1 { margin:0 0 2px; text-align:left; }
   .profile-uname { font-size:.95rem; color:rgba(236,225,200,.75); margin:0 0 6px; }
   .profile-bio { font-size:.95rem; color:rgba(236,225,200,.9); max-width:60ch; margin:0 0 6px; white-space:pre-wrap; }
   .profile-joined { font-size:.82rem; color:rgba(236,225,200,.6); margin:0; }
   .profile-aka { font-size:.82rem; color:rgba(236,225,200,.6); margin:0 0 6px; }
+  /* Collapsible sections. A creator with 258 characters made Scripts and
+     Collections a very long scroll away; the heading is a toggle now.
+     Everything starts open, so the page reads exactly as it did before
+     anyone touches it. */
+  .prof-sec-toggle {
+    display:flex; align-items:center; gap:10px; width:100%;
+    background:none; border:none; padding:0; margin:0; cursor:pointer;
+    font:inherit; color:inherit; letter-spacing:inherit;
+    text-transform:inherit; text-align:left;
+  }
+  .prof-sec-toggle:hover { color:#fff; }
+  .prof-sec-toggle:focus-visible { outline:2px solid rgba(236,225,200,.6); outline-offset:3px; }
+  .prof-sec-caret {
+    flex:0 0 auto; font-size:.7em; line-height:1;
+    color:rgba(236,225,200,.65); transition:transform .15s ease;
+  }
+  .prof-sec-count {
+    flex:0 0 auto; margin-left:auto;
+    font-family:'Oswald',sans-serif; font-size:.62em; letter-spacing:.06em;
+    color:rgba(236,225,200,.55); text-transform:uppercase;
+  }
+  .prof-section.collapsed .prof-sec-caret { transform:rotate(-90deg); }
+  .prof-section.collapsed .prof-sec-body { display:none; }
+  .prof-section.collapsed .type-rule { margin-bottom:10px; }
+  @media (prefers-reduced-motion: reduce) { .prof-sec-caret { transition:none; } }
   .profile-empty { text-align:center; color:rgba(236,225,200,.7); padding:30px; }
   .profile-unclaimed { font-size:.88rem; color:rgba(236,225,200,.6); margin:2px 0 6px; max-width:56ch; }
   .profile-btn-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
@@ -148,6 +176,39 @@
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    /* Fit the creator name to one line, then stop. Creator names are
+       user-supplied and some are a single unbroken word, which at hero size
+       ran off the side of a phone and dragged the page with it. Measured
+       rather than computed, the way fitCharTitle does it for character
+       titles. Below MIN_NAME_PX shrinking stops being readable, so it wraps
+       instead — styles.css allows the break. */
+    var MIN_NAME_PX = 22;
+    function fitHeroName() {
+      var el = document.querySelector('.profile-hero-text h1');
+      if (!el) return;
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize = '';                        // back to the CSS clamp
+      var avail = el.clientWidth;
+      if (!avail) return;
+      if (el.scrollWidth > avail) {
+        var cur = parseFloat(getComputedStyle(el).fontSize) || 24;
+        var size = cur * (avail * 0.98) / el.scrollWidth;
+        el.style.fontSize = Math.max(size, MIN_NAME_PX).toFixed(1) + 'px';
+      }
+      // Whatever the arithmetic said, never leave it overflowing: if one line
+      // still does not fit at the smallest size worth reading, let it wrap.
+      // (styles.css allows the break; that is the safety net under all of this.)
+      el.style.whiteSpace = el.scrollWidth > el.clientWidth + 1 ? 'normal' : 'nowrap';
+    }
+    // Dumbledor2's glyphs are wider than the fallback and it arrives after
+    // first paint, so the first measurement is always against the wrong font.
+    // Re-fit when it lands — unconditionally, because fonts.status can already
+    // read "loaded" at this point and still repaint wider afterwards.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitHeroName).catch(function () {});
+    }
+    window.addEventListener('resize', fitHeroName);
+
     function fmtDate(d) {
       if (!d) return '';
       var t = new Date(String(d).replace(' ', 'T') + (String(d).indexOf('Z') === -1 ? 'Z' : ''));
@@ -254,11 +315,50 @@
 
     // `title` may carry markup (the Drafts heading has a badge), so it is not
     // escaped here — every caller passes a literal or an esc()'d value.
-    function section(title, inner, id) {
-      return '<section class="landing-section"' + (id ? ' id="' + id + '"' : '') + '>' +
-        '<h2 class="type-header">' + title + '</h2>' +
-        '<div class="type-rule"></div>' + inner + '</section>';
+    /* `title` may carry markup (the Drafts heading has a pill in it), so the
+       storage key is taken from the plain text. `count` is shown on the
+       heading so a collapsed section still says how much is inside. */
+    function section(title, inner, id, count) {
+      var key = String(title).replace(/<[^>]*>/g, '').trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || (id || 'section');
+      var collapsed = sectionCollapsed(key);
+      return '<section class="landing-section prof-section' + (collapsed ? ' collapsed' : '') + '"' +
+        ' data-sec="' + esc(key) + '"' + (id ? ' id="' + id + '"' : '') + '>' +
+        '<h2 class="type-header">' +
+          '<button type="button" class="prof-sec-toggle" aria-expanded="' + (collapsed ? 'false' : 'true') + '">' +
+            '<span class="prof-sec-caret" aria-hidden="true">\u25be</span>' +
+            '<span>' + title + '</span>' +
+            (count ? '<span class="prof-sec-count">' + esc(count) + '</span>' : '') +
+          '</button>' +
+        '</h2>' +
+        '<div class="type-rule"></div>' +
+        '<div class="prof-sec-body">' + inner + '</div></section>';
     }
+
+    /* Which sections this reader has collapsed, per browser. Nothing is
+       collapsed until they say so. */
+    var SEC_KEY = 'botc_prof_sections';
+    function readSections() {
+      try { return JSON.parse(localStorage.getItem(SEC_KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function sectionCollapsed(key) { return readSections()[key] === 1; }
+    function setSectionCollapsed(key, on) {
+      try {
+        var all = readSections();
+        if (on) all[key] = 1; else delete all[key];
+        localStorage.setItem(SEC_KEY, JSON.stringify(all));
+      } catch (e) { /* private mode: it just won't be remembered */ }
+    }
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('.prof-sec-toggle');
+      if (!btn) return;
+      var sec = btn.closest('.prof-section');
+      if (!sec) return;
+      var nowCollapsed = sec.classList.toggle('collapsed');
+      btn.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
+      setSectionCollapsed(sec.getAttribute('data-sec'), nowCollapsed);
+    });
 
     /* ── hero ── */
     function renderHero(p, counts, me) {
@@ -318,6 +418,7 @@
           linksHTML +
           (btns.length ? '<div class="profile-btn-row">' + btns.join('') + '</div>' : '') +
         '</div>';
+      fitHeroName();
 
       if (me && me.isAdmin) renderAdminLinkBox(p);
     }
@@ -379,21 +480,21 @@
           '<p class="coll-chars-count cr-chars-count" id="cr-chars-count"></p>' +
           PR.filterBoxHTML('cr') +
           '<div id="cr-grid">' + PR.renderRosterCards(data.characters, '/', orderMap(data.characters)) + '</div>',
-          'sec-characters');
+          'sec-characters', data.characters.length);
       }
       if (data.scripts.length) {
         html += section('Scripts', '<div class="collections-grid">' +
-          data.scripts.map(scriptTile).join('') + '</div>', 'sec-scripts');
+          data.scripts.map(scriptTile).join('') + '</div>', 'sec-scripts', data.scripts.length);
       }
       if (data.collections.length) {
         html += section('Collections', '<div class="collections-grid">' +
-          data.collections.map(collectionTile).join('') + '</div>', 'sec-collections');
+          data.collections.map(collectionTile).join('') + '</div>', 'sec-collections', data.collections.length);
       }
       // Wiki pages are unlisted everywhere else, so this is one of only two
       // ways to reach them (the other is their parent script/collection page).
       if ((data.pages || []).length) {
         html += section('Pages', '<div class="wiki-pagelinks wiki-pagelinks-dark">' +
-          data.pages.map(pageLink).join('') + '</div>', 'sec-pages');
+          data.pages.map(pageLink).join('') + '</div>', 'sec-pages', data.pages.length);
       }
 
       // Drafts, for the only two people who can act on them: the owner of the
@@ -412,7 +513,7 @@
           inner += '<div class="collections-grid">' + drafts.collections.map(collectionTile).join('') + '</div>';
         }
         html += section('Drafts <span class="draft-count">' +
-          (me && me.isAdmin ? 'admins only' : 'only you') + '</span>', inner, 'drafts');
+          (me && me.isAdmin ? 'admins only' : 'only you') + '</span>', inner, 'drafts', nDrafts);
       }
 
       if (!html) {
