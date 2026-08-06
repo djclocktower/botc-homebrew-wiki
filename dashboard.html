@@ -476,6 +476,21 @@
         <div class="toast" id="star-toast"></div>
       </section>
 
+      <!-- STARLIGHT EVERYTHING ONE ACCOUNT OWNS -->
+      <section class="panel">
+        <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Gives <strong>Starlight ✦</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="sto-user" placeholder="username" value="admin">
+          <button type="button" class="small-btn" id="sto-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="sto-go" style="display:none">Give Starlight to all</button>
+        </div>
+        <div id="sto-list"></div>
+        <div class="toast" id="sto-toast"></div>
+      </section>
+
       <!-- PUBLISHED PAGES THAT MISS THE PUBLISH BAR -->
       <section class="panel">
         <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
@@ -1282,6 +1297,47 @@
     }
     $('star-add').addEventListener('click', function(){ setStarlight(true); });
     $('star-remove').addEventListener('click', function(){ setStarlight(false); });
+
+    /* ---- Starlight everything one account owns ---- */
+    $('sto-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('sto-list').innerHTML = '<p class="note">Scanning…</p>';
+      postJSON('/api/admin/starlight-owner', { username: $('sto-user').value.trim(), dryRun: true })
+        .then(function(res){
+          btn.disabled = false;
+          var d = res.body || {};
+          if (!d.ok) { $('sto-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('sto-go').style.display = 'none'; return; }
+          $('sto-count').textContent = d.count ? d.count + ' to star' : '';
+          if (!d.count) {
+            $('sto-list').innerHTML = '<p class="note">' + esc(d.username) + ' owns ' + d.owned +
+              ' character' + (d.owned === 1 ? '' : 's') + ', all of them already Starlight.</p>';
+            $('sto-go').style.display = 'none';
+            return;
+          }
+          $('sto-list').innerHTML =
+            '<p class="note"><strong>' + d.count + '</strong> of ' + esc(d.username) + '\u2019s ' + d.owned +
+            ' character' + (d.owned === 1 ? '' : 's') + ' would get Starlight.</p>' +
+            d.pages.map(function(p){
+              return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+                '" target="_blank">' + esc(p.name || p.slug) + '</a></span></div>';
+            }).join('') +
+            (d.count > d.pages.length ? '<p class="note">(showing the first ' + d.pages.length + ')</p>' : '');
+          $('sto-go').style.display = '';
+        });
+    });
+    $('sto-go').addEventListener('click', function(){
+      var who = $('sto-user').value.trim();
+      if (!confirm('Give Starlight to every character owned by ' + who + '?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/starlight-owner', { username: who }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('sto-toast', false, d.error || 'Failed.'); return; }
+        setToast('sto-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' given Starlight.');
+        $('sto-scan').click();
+        loadActivity(true);
+      });
+    });
 
     /* ---- published pages that no longer meet the publish bar ---- */
     $('noicon-scan').addEventListener('click', function(){

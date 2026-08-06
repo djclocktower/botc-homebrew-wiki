@@ -107,13 +107,16 @@
      Each entry is [what to call it in a sentence, test]. The labels are
      written to read inside "Add ___ to fix." on the Partial banner and
      "needs ___" in the editor, so they carry their own articles. */
+  // Missing tags does NOT hold a page back from publishing — it only makes it
+  // Partial. Tags were the sole reason 231 of 619 published pages failed this
+  // bar, and hiding them behind the "Show Partial" chip is the softer answer.
   var PUBLISH_REQUIREMENTS = [
-    ['a name',    function (d) { return nonEmpty(d.name); }],
-    ['an icon',   hasIcon],
-    ['an ability', function (d) { return nonEmpty(d.ability); }],
-    ['tags',      hasTags]
+    ['a name',     function (d) { return nonEmpty(d.name); }],
+    ['an icon',    hasIcon],
+    ['an ability', function (d) { return nonEmpty(d.ability); }]
   ];
   var STANDARD_REQUIREMENTS = PUBLISH_REQUIREMENTS.concat([
+    ['tags',           hasTags],
     ['a flavour line', function (d) { return nonEmpty(d.lede); }],
     ['a summary',      function (d) { return listHasText(d.summaryBullets); }],
     ['how to run',     function (d) { return listHasText(d.howToRun); }],

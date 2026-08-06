@@ -430,12 +430,13 @@
         document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
 
         // ── Featured (rotates daily) ──────────────────────────
-        // Needs real content to be worth featuring; Partial pages are
-        // filtered out by weightedPick and Starlight pages come up more often.
-        // The RNG is seeded from the day number so the pick is stable for
-        // everyone for 24 hours instead of changing on every refresh.
+        // Starlight only: Featured is the wiki's shop window, so it shows
+        // pages the admins have actually picked out rather than whatever the
+        // weighting happened to land on. Still needs art and something to
+        // read. The RNG is seeded from the day number so the pick is stable
+        // for everyone for 24 hours instead of changing on every refresh.
         var featureable = list.filter(function(c){
-          return c.art && (c.lede || c.ability) && c.name;
+          return c.starlight && c.art && (c.lede || c.ability) && c.name;
         });
         var picked = window.weightedPick(featureable, (function(){
           var s = (Math.floor(Date.now() / 86400000) * 2654435761) % 4294967296;

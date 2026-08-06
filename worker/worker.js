@@ -126,6 +126,8 @@
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/starlight-owner -> grant Starlight to every character one
+ *                                account owns (?dryRun to count first)
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
@@ -4717,6 +4719,41 @@ export default {
           .bind(JSON.stringify(d), row.slug).run();
         await logActivity(env, sess, on ? 'starlight' : 'unstarlight', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+      }
+
+      // ---- admin: grant Starlight to everything one account owns ----
+      // Starlight is what says "an admin has looked at this", and it also
+      // lifts a page out of Partial. Doing that one page at a time through
+      // Bulk actions is 200 tick-boxes at a time; this is the same write in
+      // one press. Idempotent — pages that already have it are skipped — so
+      // it can be re-run after adding more. {dryRun:true} just counts.
+      if (path === '/api/admin/starlight-owner') {
+        const b = await request.json().catch(() => ({}));
+        const uname = String(b.username || '').trim();
+        if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
+        const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
+          .bind(uname).first();
+        if (!u) return jsonResponse({ error: 'No account named "' + uname + '".' }, { status: 404 });
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
+        ).bind(u.id).all();
+        const hits = (results || []).filter(r => !parseData(r).starlight);
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, username: u.username,
+            owned: (results || []).length, count: hits.length,
+            pages: hits.slice(0, 300).map(r => ({ slug: r.slug, name: r.name }))
+          });
+        }
+        for (const r of hits) {
+          const d = parseData(r);
+          d.starlight = true;
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(d), r.slug).run();
+        }
+        await logActivity(env, sess, 'starlight', 'character', null,
+          hits.length + ' page(s) owned by ' + u.username);
+        return jsonResponse({ ok: true, username: u.username, count: hits.length });
       }
 
       // ---- admin: sweep published characters that miss the publish bar ----
