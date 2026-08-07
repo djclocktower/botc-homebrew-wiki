@@ -23,8 +23,32 @@ import { openEditor } from './editor.js';
 
 const $ = (id) => document.getElementById(id);
 
+/* The wiki's starting point. engine.js keeps the original tool's defaults so
+   it stays a clean port; these are the settings the wiki opens on, chosen by
+   djclocktower for icons that sit next to the official ones. In short: much
+   sharper edges, slightly bolder ink, a tighter margin, a wider texture crop,
+   and the procedural extras (rim light, line detection, colour edges) off —
+   so what you see is your own drawing until you ask for more. "Reset every
+   setting" comes back here, not to the engine's defaults. */
+const WIKI_DEFAULTS = {
+  threshold: 151,
+  edgeOuter: 0.2,
+  edgeInner: 0.2,
+  lineThicken: 1,
+  padding: 0.05,
+  highlights: 0,
+  lineDetails: 0,
+  colorEdges: 0,
+  texScale: 0.5,
+  borderEdge: 0
+};
+
+function startingOptions() {
+  return Object.assign({}, DEFAULT_OPTIONS, WIKI_DEFAULTS, { bucketFills: [] });
+}
+
 /* ── state ──────────────────────────────────────────────────────── */
-let opts = Object.assign({}, DEFAULT_OPTIONS, { bucketFills: [] });
+let opts = startingOptions();
 let source = null; // the artwork as loaded (HTMLImageElement)
 let sourceKind = 'raster';
 let sourceName = '';
@@ -715,7 +739,7 @@ $('if-tex-reset').addEventListener('click', () =>
   setOpts({ texScale: 1, texRotation: 0, texOffsetX: 0, texOffsetY: 0 })
 );
 $('if-reset-all').addEventListener('click', () => {
-  opts = Object.assign({}, DEFAULT_OPTIONS, { bucketFills: [] });
+  opts = startingOptions();
   bucketMode = 'off';
   setBgMode('keep');
 });
