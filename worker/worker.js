@@ -78,7 +78,11 @@
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
- *   POST /api/character       -> create/update a character
+ *   GET  /api/slug-check      -> is this page URL free? (?type=&name=&appearsIn=)
+ *                                returns {taken, mine, suggestion} so an editor
+ *                                can pick a free URL before uploading art
+ *   POST /api/character       -> create/update a character; {renameFrom} moves
+ *                                a page to a new URL and 301s the old one
  *   POST /api/collection      -> create/update a collection
  *   POST /api/script          -> create/update a script
  *   POST /api/publish         -> flip a page between draft and published
@@ -1121,6 +1125,200 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- renaming a page (old URL keeps working) ----
+// A character's URL is built from its name, so renaming one has to move the
+// page. Every old link — bookmarks, Discord posts, the official wiki's forum
+// threads — must keep working, so the slug it used to live at is remembered
+// here and 301s to the new one.
+let _redirectsReady = false;
+async function ensureRedirectsTable(env) {
+  if (_redirectsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS redirects (
+       entity_type TEXT NOT NULL,
+       from_slug   TEXT NOT NULL,
+       to_slug     TEXT NOT NULL,
+       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+       PRIMARY KEY (entity_type, from_slug)
+     )`
+  ).run();
+  _redirectsReady = true;
+}
+
+// Read side: never creates the table (a wiki that has never renamed anything
+// has none), never throws — a missing redirect is just a 404 like before.
+async function lookupRedirect(env, type, slug) {
+  if (!slug) return null;
+  try {
+    const r = await env.DB.prepare(
+      'SELECT to_slug FROM redirects WHERE entity_type=? AND from_slug=?'
+    ).bind(type, slug).first();
+    return r ? r.to_slug : null;
+  } catch { return null; }
+}
+
+// Move one R2 object. Returns false when there was nothing there (art that
+// still lives in the committed assets/art/ folder, for instance).
+async function moveR2Object(env, fromKey, toKey) {
+  if (!env.ART) return false;
+  const obj = await env.ART.get(fromKey).catch(() => null);
+  if (!obj) return false;
+  const body = await obj.arrayBuffer();
+  await env.ART.put(toKey, body, {
+    httpMetadata: obj.httpMetadata,
+    customMetadata: obj.customMetadata
+  });
+  await env.ART.delete(fromKey).catch(() => { /* the copy is what matters */ });
+  return true;
+}
+
+// Rewrite art paths that carry the old slug: 'art/old.png',
+// 'art/old-alt.png' and the absolute image URLs built from them. Anchored on
+// the character's own slug so 'art/oldest.png' is never touched.
+function retargetArtPaths(obj, from, to) {
+  const re = new RegExp('art/' + from + '(?=[-.])', 'g');
+  for (const k of ['art', 'image', 'artAlt', 'imageAlt']) {
+    if (typeof obj[k] === 'string') obj[k] = obj[k].replace(re, 'art/' + to);
+  }
+}
+
+// Move a character from one slug to another, taking everything that points at
+// it along: comments, view counts, revisions, the activity log, admin page
+// protection, its art in R2, and the slug lists inside scripts, collections
+// and profile pins. Callers must have checked ownership and that `to` is free.
+// Reports whether the art actually moved — art that is not in R2 (the
+// bulk-imported pages point at committed files) keeps its old path.
+async function renameCharacter(env, from, to) {
+  let artMoved = false;
+  await env.DB.prepare('UPDATE characters SET slug=? WHERE slug=?').bind(to, from).run();
+
+  // Per-page satellite tables. Each is optional (created on first use), and a
+  // missing one must not strand a rename that already moved the page.
+  const moves = [
+    ['UPDATE comments SET slug=? WHERE entity_type=? AND slug=?', ['character']],
+    ['UPDATE OR REPLACE page_views SET slug=? WHERE entity_type=? AND slug=?', ['character']],
+    ['UPDATE revisions SET slug=? WHERE entity_type=? AND slug=?', ['character']],
+    ['UPDATE activity_log SET entity_slug=? WHERE entity_type=? AND entity_slug=?', ['character']]
+  ];
+  for (const [sql, extra] of moves) {
+    try { await env.DB.prepare(sql).bind(to, ...extra, from).run(); }
+    catch { /* table not created yet, or column absent on an old row set */ }
+  }
+  // Admin page protection follows the page.
+  try {
+    await env.DB.prepare('UPDATE OR REPLACE settings SET key=? WHERE key=?')
+      .bind(protectKey('character', to), protectKey('character', from)).run();
+  } catch { /* not protected */ }
+
+  // Art: move the R2 objects so /assets/art/{new}.png resolves, then point
+  // the stored paths at them. Art that is not in R2 (committed files) stays
+  // where it is and keeps its old path.
+  const d = await env.DB.prepare('SELECT data FROM characters WHERE slug=?').bind(to).first().catch(() => null);
+  let entry = d ? parseData(d) : null;
+  if (entry) {
+    // The editors always write .png, but an imported page may carry another
+    // extension, so try what the row actually points at as well.
+    const keys = new Set(['art/' + from + '.png', 'art/' + from + '-alt.png']);
+    for (const k of ['art', 'artAlt']) {
+      const v = typeof entry[k] === 'string'
+        ? entry[k].replace(/^\/+/, '').replace(/^assets\//, '') : '';
+      if (v.startsWith('art/' + from + '.') || v.startsWith('art/' + from + '-alt.')) keys.add(v);
+    }
+    for (const key of keys) {
+      if (await moveR2Object(env, key, key.replace('art/' + from, 'art/' + to))) artMoved = true;
+    }
+    entry.slug = to;
+    entry.page = 'c/' + to + '.html';
+    if (artMoved) retargetArtPaths(entry, from, to);
+    await env.DB.prepare('UPDATE characters SET data=? WHERE slug=?')
+      .bind(JSON.stringify(entry), to).run();
+  }
+
+  // Scripts list their roster by slug; collections keep manual include/exclude
+  // slug lists. Rewrite the ones that named this page, or it silently drops
+  // out of every script it was on.
+  await rewriteSlugRefs(env, from, to);
+  await rewriteProfilePins(env, from, to);
+
+  // Remember the old address. Renaming A->B->C leaves both A and B pointing
+  // at C rather than a chain, and a slug that is now a live page again can no
+  // longer be a redirect.
+  await ensureRedirectsTable(env);
+  await env.DB.prepare(
+    `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+     ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+  ).bind(from, to).run();
+  await env.DB.prepare(
+    "UPDATE redirects SET to_slug=? WHERE entity_type='character' AND to_slug=?"
+  ).bind(to, from).run();
+  await env.DB.prepare(
+    "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
+  ).bind(to).run();
+  return { artMoved };
+}
+
+// Rewrite a character slug wherever another page stores it as a reference.
+async function rewriteSlugRefs(env, from, to) {
+  const swap = list => {
+    if (!Array.isArray(list)) return { list, changed: false };
+    let changed = false;
+    const out = list.map(x => {
+      if (String(x) !== from) return x;
+      changed = true;
+      return to;
+    });
+    return { list: out, changed };
+  };
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, data FROM scripts WHERE data LIKE ?"
+    ).bind('%"' + from + '"%').all();
+    for (const row of results || []) {
+      const d = parseData(row);
+      const r = swap(d.characters);
+      if (!r.changed) continue;
+      d.characters = r.list;
+      await env.DB.prepare('UPDATE scripts SET data=? WHERE slug=?')
+        .bind(JSON.stringify(d), row.slug).run();
+    }
+  } catch { /* leave scripts alone rather than fail the rename */ }
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, data FROM collections WHERE data LIKE ?"
+    ).bind('%"' + from + '"%').all();
+    for (const row of results || []) {
+      const d = parseData(row);
+      let changed = false;
+      for (const k of ['include', 'exclude']) {
+        const r = swap(d[k]);
+        if (r.changed) { d[k] = r.list; changed = true; }
+      }
+      if (!changed) continue;
+      await env.DB.prepare('UPDATE collections SET data=? WHERE slug=?')
+        .bind(JSON.stringify(d), row.slug).run();
+    }
+  } catch { /* same */ }
+}
+
+// Pinned pages on a creator profile are {type, slug} pairs.
+async function rewriteProfilePins(env, from, to) {
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id, profile_json FROM users WHERE profile_json LIKE ?'
+    ).bind('%"' + from + '"%').all();
+    for (const u of results || []) {
+      const extra = parseProfileExtra(u);
+      let changed = false;
+      for (const p of extra.pinned) {
+        if (p && p.type === 'character' && p.slug === from) { p.slug = to; changed = true; }
+      }
+      if (!changed) continue;
+      await env.DB.prepare('UPDATE users SET profile_json=? WHERE id=?')
+        .bind(JSON.stringify(extra), u.id).run();
+    }
+  } catch { /* pins are cosmetic; never fail a rename over them */ }
+}
+
 // ---- Starlight inheritance ----
 // A Starlight collection lends the status to every character in it: awarding
 // it to "Ravenswood Chronicle" marks all of Ravenswood's characters too, so
@@ -2007,6 +2205,15 @@ export default {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }
+        // No page here — but this may be the address a renamed character used
+        // to live at, and every link out in the world still points at it.
+        const moved = await lookupRedirect(env, 'character', slug);
+        if (moved) {
+          return new Response(null, {
+            status: 301,
+            headers: { Location: url.origin + '/c/' + moved + url.search, 'Cache-Control': 'no-store' }
+          });
+        }
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
       return env.ASSETS.fetch(request);
@@ -2609,6 +2816,60 @@ export default {
       });
     }
 
+    // ---- is this page URL still free? (editor helper) ----
+    // The create page builds a character's URL from its name, uploads the art
+    // to art/{slug}.png and only then writes the row — so a name another
+    // account already used failed at the *upload* step with a confusing "that
+    // art slot belongs to a character owned by another account". This lets an
+    // editor find that out before it uploads anything, and offers a free URL
+    // in the style the wiki already uses for duplicate names
+    // (witcher-odyssey, sculptor-fall-of-rome, illusionist-megalomania).
+    // Login required: whether a slug is taken can betray someone's draft.
+    if (method === 'GET' && path === '/api/slug-check') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const type = url.searchParams.get('type') || 'character';
+      const t = CONTENT[type];
+      if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '').slice(0, 80);
+      const base = kebab(url.searchParams.get('name') || url.searchParams.get('slug'));
+      if (!base) return jsonResponse({ error: 'Nothing to check.' }, { status: 400 });
+      const row = await getEntityRow(env, type, base);
+      // A URL a renamed page still redirects from is taken too: building a new
+      // page there would quietly hijack every old link to the moved one.
+      const parked = !row && !!(await lookupRedirect(env, type, base));
+      if (!row && !parked) return jsonResponse({ base, taken: false, mine: false, suggestion: base });
+      // `mine` says a save on this URL would update that page rather than
+      // collide with it — which is what the create page wants, and what a
+      // rename must still avoid (it would move a page onto a live one).
+      const mine = !!row && canEditRow(sess, row);
+      // Find the first free variant either way.
+      let used;
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT slug FROM ${t.table} WHERE slug=? OR slug LIKE ?`
+        ).bind(base, base + '-%').all();
+        used = new Set((results || []).map(r => String(r.slug)));
+      } catch { used = new Set(); }
+      try {
+        const { results } = await env.DB.prepare(
+          'SELECT from_slug FROM redirects WHERE entity_type=? AND (from_slug=? OR from_slug LIKE ?)'
+        ).bind(type, base, base + '-%').all();
+        for (const r of results || []) used.add(String(r.from_slug));
+      } catch { /* nothing has ever been renamed */ }
+      used.add(base);
+      const candidates = [];
+      const appears = kebab(String(url.searchParams.get('appearsIn') || '').split(',')[0]);
+      if (appears) candidates.push(base + '-' + appears);
+      for (let i = 2; i < 60; i++) candidates.push(base + '-' + i);
+      const suggestion = candidates.find(s => s.length <= 80 && !used.has(s)) || null;
+      // Nothing about the page sitting on that URL is returned: it may be
+      // somebody's draft, and the site never reveals that drafts exist.
+      return jsonResponse({ base, taken: true, mine, suggestion });
+    }
+
     // ---------- AUTH: FORGOT / RESET PASSWORD ----------
     if (method === 'POST' && path === '/api/forgot-password') {
       if (await rateLimited(env, request, 'forgot', 5, 3600)) {
@@ -2968,13 +3229,19 @@ export default {
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+      // A renamed page answers on its old slug here too, so an editor opened
+      // from a stale link (edit?c={old}) still finds it.
+      if (!row) {
+        const moved = await lookupRedirect(env, type, slug);
+        if (moved) row = await getEntityRow(env, type, moved);
+      }
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const editable = canEditRow(sess, row);
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
       if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
-      return jsonResponse({ data: JSON.parse(row.data), status: row.status || 'published', canEdit: editable });
+      return jsonResponse({ slug: row.slug, data: JSON.parse(row.data), status: row.status || 'published', canEdit: editable });
     }
 
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
@@ -3769,7 +4036,10 @@ export default {
             const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
             const row = await getEntityRow(env, 'character', slug);
             if (row && !canEditRow(sess, row)) {
-              return jsonResponse({ error: 'That art slot belongs to a character owned by another account.' }, { status: 403 });
+              // Almost always a name clash on a brand-new character: the art
+              // slot is named after the URL, and /c/{slug} is already someone
+              // else's page. Say so, so the fix (a different name) is obvious.
+              return jsonResponse({ error: 'The URL /c/' + slug + ' already belongs to a character on another account, and its art slot goes with it. Give your character a different name and save again.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'character', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -3963,6 +4233,42 @@ export default {
         if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
           return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
         }
+        // Renaming: the editor sends the page's current URL in renameFrom and
+        // the one its new name asks for in slug. The page moves — with its
+        // comments, views, history and art — and /c/{old} 301s to it forever,
+        // so links that are already out in the world keep working.
+        const renameFrom = String(c.renameFrom || '');
+        delete c.renameFrom;
+        let renamedFrom = null, renamedArt = false;
+        if (renameFrom && renameFrom !== c.slug) {
+          // Slugs only, same shape as the URL — this string is also built into
+          // the art-path pattern below.
+          if (!/^[a-z0-9-]{1,80}$/.test(renameFrom)) {
+            return jsonResponse({ error: 'Invalid page URL to rename from.' }, { status: 400 });
+          }
+          const src = await getEntityRow(env, 'character', renameFrom);
+          if (!src) {
+            return jsonResponse({ error: 'The page being renamed no longer exists at /c/' + renameFrom + '.' }, { status: 404 });
+          }
+          if (!canEditRow(sess, src)) {
+            return jsonResponse({ error: 'That character belongs to another account.' }, { status: 403 });
+          }
+          if (!sess.isAdmin && await isProtected(env, 'character', renameFrom)) {
+            return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+          }
+          // Never rename onto a live page — that would overwrite it.
+          if (await getEntityRow(env, 'character', c.slug)) {
+            return jsonResponse({ error: 'The URL /c/' + c.slug + ' is already in use. Try a slightly different name.' }, { status: 409 });
+          }
+          const move = await renameCharacter(env, renameFrom, c.slug);
+          renamedFrom = renameFrom;
+          // The editor posts the whole page back, including the art paths it
+          // loaded before the move; point them at where the art now lives.
+          // Art that stayed put (a committed file) keeps the path it had.
+          renamedArt = move.artMoved;
+          if (renamedArt) retargetArtPaths(c, renameFrom, c.slug);
+          c.page = 'c/' + c.slug + '.html';
+        }
         const existing = await getEntityRow(env, 'character', c.slug);
         if (existing && !canEditRow(sess, existing)) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
@@ -3995,8 +4301,11 @@ export default {
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (renamedFrom) {
+          await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
+        }
         return jsonResponse({
-          ok: true, slug: c.slug, status,
+          ok: true, slug: c.slug, status, renamedFrom, renamedArt,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
           iconBlocked,
