@@ -181,6 +181,31 @@ assets/
                        suggested output. Rules carry sev fix|warn|off — only
                        `fix` rules are ever applied in bulk. Pure strings, no
                        DOM: `node --check`-able and Worker-safe.
+  system-text.js       The prose the WORKER prints into pages (the Partial
+                       banner, the draft bars). It lives in assets/ because the
+                       text editor builds its list by fetching the site's own
+                       files in the browser, and worker.js is not one of them
+                       (.assetsignore). New server-rendered wording goes here,
+                       not inline in worker.js, or it cannot be edited.
+                       {placeholder} marks a slot the site fills in.
+  text-live.js         Live text editing: browse the wiki and double-click any
+                       of its own wording to rewrite it in place. Lazy-loaded
+                       by site.js ONLY when localStorage botc_text_edit=1 and
+                       /api/me says admin. Its guard is the catalogue —
+                       text nothing in the site's files produced is never
+                       offered — plus a rule that a short string is only
+                       editable when it IS the text you clicked ("Each night"
+                       is a sort rule in sao.js *and* the opening of half the
+                       abilities on the wiki). Styles live in styles.css under
+                       html.textedit-on.
+  text-scan.js         The scanner behind /text-editor: fetches every static
+                       page and assets/*.js, pulls the human-readable strings
+                       out (a small JS lexer, not a regex — comments,
+                       apostrophes and regex literals would fool one), and
+                       merges identical text into one entry. Browser only
+                       (DOMParser). SEED_PAGES/SEED_ASSETS are the known
+                       files; anything newer is found by crawling <a href>
+                       and <script src>.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
@@ -266,6 +291,11 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, reset-password.html
+text-editor.html       /text-editor — admin-only. Every string the SITE writes
+                       about itself, in one searchable list: filter to the em
+                       dashes / curly quotes / any character you type, sort by
+                       page or by length, rewrite any of it. See "System text"
+                       below. Linked from a dashboard card; not in any nav.
 drafts.html            /drafts — your own unpublished pages as cards (the same
                        renderRosterCards markup the browse and collection pages
                        use, with the shared filter box). Characters come from
@@ -328,7 +358,9 @@ view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
-a renamed page used to live at — see "Renaming a character" below), and a
+a renamed page used to live at — see "Renaming a character" below),
+`site_text` (the rewrites made on /text-editor — only strings that were
+actually CHANGED, keyed `(scope, original)`; see "System text" below), and a
 lazily ALTERed `users.banned` column. `settings` also holds
 `announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
 (admin page protection — only admins may edit/publish/delete those pages).
@@ -470,6 +502,80 @@ and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and
 in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
 `news/` uploads are admin-only, like `tokens/`.
 
+## System text (`/text-editor`)
+
+The wiki's own wording — page copy, buttons, labels, notices, the banners the
+Worker prints — listed in one admin-only page so it can be searched, filtered
+and rewritten without a deploy. **Not** anything anyone typed into an editor:
+characters, scripts, collections, wiki pages, news and comments belong to
+whoever wrote them (the admin account included) and are edited on their own
+pages. The tool never fetches D1 content.
+
+How the three pieces fit:
+
+1. **The catalogue is derived, never stored.** `assets/text-scan.js` runs in
+   the admin's browser, fetches every static page and every `assets/*.js`, and
+   pulls the human-readable strings out. Nothing is written to the database
+   until something is actually changed, and every visit re-scans, so text
+   added by a later deploy is simply there — that is what keeps the list
+   current with no upkeep. New pages/assets are found by crawling `<a href>`
+   and `<script src>` on top of the seed lists.
+2. **Only the changes are stored.** `POST /api/admin/site-text` writes one row
+   per rewritten string into `site_text` (`scope`, `original`, `replacement`).
+   Saving a replacement equal to the original — or Undo — deletes the row and
+   hands control back to the source file. The public `GET /api/site-text`
+   serves the map; it is usually empty, is cached per isolate for a minute and
+   sent `max-age=120`.
+3. **`site.js` applies them in the browser.** It rewrites text nodes and the
+   reader-visible attributes only — never `innerHTML`, never markup — with a
+   MutationObserver so client-rendered content is covered too, and a
+   localStorage cache so a repeat visit never flashes the old wording. Put
+   `data-no-text-override` on anything that must show text verbatim (the text
+   editor's own results list does).
+
+**Live mode** (`assets/text-live.js`) is the same three pieces worn differently:
+switched on from /text-editor, it lets the owner browse the wiki normally and
+double-click (double-tap) any of the site's own wording to rewrite it where it
+stands. The catalogue is cached in localStorage (`botc_text_catalog`, text +
+scope only, ~100 KB, rescanned in the background after 12 h) so every page
+knows instantly what is editable. Two things keep it honest:
+
+- **Nothing outside the catalogue is offered.** That is what stops anyone's
+  ability text or comment being rewritten from the page it sits on.
+- **A short string is only editable when it IS the text that was clicked.**
+  "Each night" is genuinely in `sao.js` *and* opens half the abilities on the
+  wiki; a site-wide override of it from a character page would be a disaster.
+  Anything the guard turns away is still in the list on /text-editor, where
+  the source file is shown beside it.
+
+A click on an editable link or button is held ~320 ms and replayed if no
+second click follows, so double-click can reach a nav label without the first
+click navigating away. Anything NOT editable is never intercepted, so ordinary
+browsing keeps its normal speed. `SiteText.setItems()` also builds **undo
+rules** (replacement → original) from what the page currently shows, so
+pressing Undo — or editing the same words twice — repaints instead of leaving
+the old wording behind.
+
+Two rules worth knowing before changing any of this:
+
+- **Scope.** A string found in a shared `assets/*.js`, or on more than one
+  page (the topbar and footer are hand-copied into every page), is edited
+  **once** and applies site-wide. A string found on exactly one page is scoped
+  to that page, so a short label can be changed without touching a page that
+  happens to use the same word. Matching is by substring inside a text node —
+  a whole node is not required, because the site builds a lot of its sentences
+  by concatenation.
+- **`{placeholder}`** in an original marks a slot the site fills in
+  ("Add {missing} to fix."). It compiles to a capture group, so the filled-in
+  value survives; a replacement must keep the placeholder.
+
+**The Worker's own page text lives in `assets/system-text.js`**, not inline in
+worker.js — the scanner fetches the site's files as static assets and
+`worker/worker.js` is excluded from the asset upload. Add new server-rendered
+wording there and reference it, or the owner cannot edit it. API error
+messages are deliberately out of scope: they come back as JSON, usually into
+an `alert()`, and there is no DOM to patch.
+
 ## Icon Forge (`/iconforge`)
 
 A client-side icon maker: line art, a scan or a photo in, an official-style
@@ -535,6 +641,7 @@ uploaded — except for the one opt-in save described below.
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
+
 
 ## Page classification (Partial / Standard / Starlight)
 
