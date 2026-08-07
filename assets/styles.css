@@ -2646,3 +2646,102 @@ a:hover .starlight-star { opacity: .9; }
 }
 /* flex containers holding one of those need to be allowed to shrink too */
 .creator-pill, .creator-name, .title-row, .wiki-pagelink { min-width: 0; }
+
+/* ── Live text editing (admin only, opt-in from /text-editor) ──────────────
+   Nothing here applies until text-live.js puts .textedit-on on <html>, and
+   that file is only ever fetched for a logged-in admin who turned the mode
+   on. It lives in the shared stylesheet like every other rule on the site
+   rather than being injected by the script that uses it. */
+html.textedit-on { touch-action: manipulation; }  /* so double-tap edits, not zooms */
+
+html.textedit-on .te-live-hit {
+  outline: 1px dashed rgba(122,45,47,.75);
+  outline-offset: 2px;
+  background: rgba(255,214,120,.22);
+  border-radius: 3px;
+  cursor: text;
+}
+
+.te-live-bar {
+  position: fixed; z-index: 9999;
+  left: 12px; bottom: 12px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(29,20,14,.94);
+  border: 1px solid #6b4f2a;
+  box-shadow: 0 10px 28px -12px rgba(0,0,0,.8);
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-size: .82rem;
+  color: #f2e6cc;
+}
+.te-live-bar .te-live-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #d8b24a; box-shadow: 0 0 0 3px rgba(216,178,74,.25);
+  flex: 0 0 auto;
+}
+.te-live-bar .te-live-title { font-weight: 700; letter-spacing: .04em; }
+.te-live-bar .te-live-note { opacity: .72; }
+.te-live-bar .te-live-link { color: #e8c98a; text-decoration: underline; }
+.te-live-bar .te-live-off {
+  font-family: inherit; font-size: .78rem;
+  color: #f2e6cc; background: #7a2d2f;
+  border: 1px solid #4a1719; border-radius: 999px;
+  padding: 4px 12px; cursor: pointer;
+}
+.te-live-bar .te-live-off:hover { background: #8a3537; }
+
+.te-live-pop {
+  position: fixed; z-index: 10000;
+  width: min(440px, calc(100vw - 24px));
+  padding: 14px;
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  border-radius: 6px;
+  box-shadow: 0 20px 44px -16px rgba(0,0,0,.7);
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  color: var(--ink);
+}
+.te-live-pop-head {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.te-live-pop-head strong { font-family: 'Dumbledor2', serif; color: var(--maroon); letter-spacing: .04em; }
+.te-live-scope {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+  border: 1px solid rgba(122,45,47,.35); border-radius: 999px; padding: 1px 9px;
+}
+.te-live-ta {
+  width: 100%; box-sizing: border-box;
+  font-family: ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  font-size: .9rem; line-height: 1.5;
+  padding: 9px; min-height: 74px; resize: vertical;
+  border: 1px solid var(--parch-frame); border-radius: 5px;
+  background: rgba(255,255,255,.62); color: var(--ink);
+}
+.te-live-hint { font-size: .76rem; opacity: .78; margin: 7px 0 9px; }
+.te-live-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.te-live-btn {
+  font-family: 'Dumbledor2', serif; font-size: .92rem; letter-spacing: .03em;
+  color: #f4ead2; background: var(--maroon);
+  border: 1px solid #4a1719; border-radius: 6px;
+  padding: 7px 15px; cursor: pointer;
+}
+.te-live-btn.ghost { background: transparent; color: var(--maroon); }
+.te-live-btn:disabled { opacity: .5; cursor: default; }
+.te-live-say { font-size: .78rem; font-weight: 700; }
+.te-live-say.err { color: #9a2c2c; }
+
+@media (max-width: 620px) {
+  /* A bottom sheet on a phone: a popover anchored to a fingertip would sit
+     under the keyboard as soon as the textarea takes focus. */
+  .te-live-pop {
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: auto; border-radius: 10px 10px 0 0;
+    max-height: 70vh; overflow-y: auto;
+  }
+  .te-live-bar { left: 8px; right: 8px; bottom: 8px; justify-content: center; }
+}
