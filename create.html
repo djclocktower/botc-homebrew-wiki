@@ -703,12 +703,12 @@
 
     // ── which URL will this page get? ──────────────────────────────
     // A character's URL comes from its name (/c/{slug}) and so does its art
-    // slot in R2 (art/{slug}.png). When another account already has that URL
-    // the art upload is refused, which used to be the first thing the writer
-    // heard about it. Ask the Worker before uploading anything, and offer the
-    // free URL it suggests — the same shape the wiki already uses for
-    // duplicate names (witcher-odyssey, illusionist-megalomania).
-    var okToReplace = {};   // URLs the writer has already agreed to overwrite
+    // slot in R2 (art/{slug}.png). When another account already holds that URL
+    // the art upload is refused — which used to be the first thing the writer
+    // heard about it. Ask the Worker first and just take the next free URL:
+    // the character keeps its name, its page gets its own address, in the
+    // shape the wiki already uses for duplicate names (witcher-odyssey,
+    // illusionist-megalomania). Nothing to read, nothing to confirm.
     function resolveSlug(d) {
       var base = slugify(d.name);
       var q = '/api/slug-check?type=character&name=' + encodeURIComponent(d.name) +
@@ -720,29 +720,10 @@
           // If the check itself fails, carry on and let the save decide: the
           // Worker never lets anyone write over a page that isn't theirs.
           if (!j || j.error || !j.taken) return base;
-          if (j.mine) {
-            if (okToReplace[base]) return base;
-            var mineName = j.name ? '“' + j.name + '”' : 'a character';
-            if (!confirm('You already have ' + mineName + ' at /c/' + base + '.\n\n' +
-                         'Saving will update that page rather than create a new one. Continue?')) {
-              setStatus('err', 'Nothing was saved. Give this character a different name to make a separate page.');
-              return null;
-            }
-            okToReplace[base] = true;
-            return base;
-          }
-          if (!j.suggestion) {
-            setStatus('err', 'The URL /c/' + base + ' is already taken. Please give this character a different name.');
-            return null;
-          }
-          var theirs = j.name ? '“' + j.name + '”' + (j.creator ? ' by ' + j.creator : '') : 'Another character';
-          if (!confirm(theirs + ' already uses /c/' + base + ' on this wiki.\n\n' +
-                       'Your character can keep its name, but its page needs its own URL:\n' +
-                       '/c/' + j.suggestion + '\n\nSave it there?')) {
-            setStatus('err', 'Nothing was saved. Rename the character (or accept the suggested URL) and try again.');
-            return null;
-          }
-          return j.suggestion;
+          // `mine` means this URL is one of your own pages, so saving updates
+          // it — which is what re-publishing from this tab should do.
+          if (j.mine) return base;
+          return j.suggestion || base;
         });
     }
 
@@ -752,14 +733,12 @@
       if (!d.ability) return setStatus('err', 'An ability line is required.');
       if (!artDataURL) return setStatus('err', 'Please upload character art (or import a JSON whose icon can be loaded).');
 
+      var verb = saveStatus === 'draft' ? 'Saving draft' : 'Publishing';
       $('publish').disabled = true;
       $('save-draft').disabled = true;
-      setStatus('work', 'Checking the page URL&hellip;');
+      setStatus('work', verb + '&hellip;');
       resolveSlug(d).then(function (slug) {
-        if (slug) return saveCharacter(d, slug, saveStatus);
-        // Cancelled or blocked: resolveSlug has already said why.
-        $('publish').disabled = false;
-        $('save-draft').disabled = false;
+        saveCharacter(d, slug, saveStatus);
       });
     }
 

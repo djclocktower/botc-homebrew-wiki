@@ -715,6 +715,46 @@
     }
     function setStatus(cls,html){ var s=$('status'); s.className=cls; s.innerHTML=html; }
 
+    // ── renaming ──
+    // A character's URL is built from its name, so a renamed character should
+    // move to a URL that matches — /c/soul-eater, not /c/soulkeeper forever.
+    // The Worker does the move and leaves a 301 behind, so every old link
+    // still works; here we only work out which URL to ask for.
+    function slugify(s){
+      return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    }
+    // Pages that had to disambiguate keep their suffix: "Sculptor" at
+    // /c/sculptor-fall-of-rome renamed to "Stonecutter" becomes
+    // /c/stonecutter-fall-of-rome, not /c/stonecutter.
+    function wantedSlug(newName){
+      var oldBase = slugify((originalEntry && originalEntry.name) || '');
+      var newBase = slugify(newName);
+      // A name that slugifies to nothing (a fully non-Latin name) keeps the
+      // URL it was given by hand.
+      if(!oldBase || !newBase) return originalSlug;
+      var suffix = originalSlug.indexOf(oldBase + '-') === 0 ? originalSlug.slice(oldBase.length) : '';
+      return (newBase + suffix).slice(0, 80);
+    }
+    // Resolves to the slug this save should use: the current one when nothing
+    // was renamed, otherwise the first free URL for the new name.
+    function resolveSlug(d){
+      var wanted = wantedSlug(d.name);
+      if(!wanted || wanted === originalSlug) return Promise.resolve(originalSlug);
+      var q = '/api/slug-check?type=character&slug=' + encodeURIComponent(wanted) +
+              '&appearsIn=' + encodeURIComponent(d.appearsIn || '');
+      return fetch(q, { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+        .then(function(j){
+          if(!j || j.error) return originalSlug;      // check unavailable: stay put
+          if(!j.taken) return wanted;
+          // Taken — including by another page of your own, which a rename must
+          // never move onto. Take the next free URL instead.
+          return j.suggestion || originalSlug;
+        });
+    }
+
     // ── save ──
     var currentStatus = 'published';
     function saveCharacter(newStatus){
@@ -725,27 +765,37 @@
 
       $('save').disabled = true;
       $('save-publish').disabled = true;
-      var p = Promise.resolve();
+      setStatus('work','Saving&hellip;');
 
-      if(artChanged && artDataURL){
-        setStatus('work','Saving&hellip; uploading new art');
-        p = p.then(function(){
-          return apiUpload('art/'+originalSlug+'.png', artDataURL);
-        });
-      }
-      if(artAltDataURL){
-        p = p.then(function(){
-          setStatus('work','Saving&hellip; uploading alternate art');
-          return apiUpload('art/'+originalSlug+'-alt.png', artAltDataURL);
-        });
+      resolveSlug(d).then(function(slug){ writeCharacter(d, slug, saveStatus); });
+    }
+
+    function writeCharacter(d, slug, saveStatus){
+      var renamed = slug !== originalSlug;
+
+      function uploadArt(){
+        var p = Promise.resolve();
+        if(artChanged && artDataURL){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading new art');
+            return apiUpload('art/'+slug+'.png', artDataURL);
+          });
+        }
+        if(artAltDataURL){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading alternate art');
+            return apiUpload('art/'+slug+'-alt.png', artAltDataURL);
+          });
+        }
+        return p;
       }
 
-      p = p.then(function(){
+      function writeRow(){
         setStatus('work','Saving&hellip; updating database');
         // Build the full character entry, preserving any fields from the original
         var base = originalEntry || {};
         var entry = Object.assign({}, base, {
-          slug: originalSlug,
+          slug: slug,
           name: d.name, team: d.team, ability: d.ability,
           creator: d.creator, lede: d.lede, summaryBullets: d.summaryBullets,
           howToRun: d.howToRun, callout: d.callout, examples: d.examples,
@@ -759,16 +809,19 @@
           customJson: d.customJson,
           status: saveStatus
         });
+        // Renaming: the Worker moves the page (and its art, comments, views
+        // and history) from here, and leaves /c/{old} redirecting to it.
+        if(renamed) entry.renameFrom = originalSlug;
         if(artAltDataURL){
-          entry.artAlt   = 'art/'+originalSlug+'-alt.png';
-          entry.imageAlt = ART_BASE+originalSlug+'-alt.png';
+          entry.artAlt   = 'art/'+slug+'-alt.png';
+          entry.imageAlt = ART_BASE+slug+'-alt.png';
         } else if(artAltRemoved){
           delete entry.artAlt;
           delete entry.imageAlt;
         }
         if(artChanged){
-          entry.art   = 'art/'+originalSlug+'.png';
-          entry.image = ART_BASE+originalSlug+'.png';
+          entry.art   = 'art/'+slug+'.png';
+          entry.image = ART_BASE+slug+'.png';
         }
         // Write to D1 via the Worker (instant; requires login + ownership)
         return fetch('/api/character', {
@@ -783,17 +836,51 @@
             return j;
           });
         });
-      }).then(function(saved){
+      }
+
+      // A rename moves the page's art with it, so when the URL is changing the
+      // row has to move BEFORE new art is uploaded — otherwise the move would
+      // drop the old icon on top of the one just uploaded. Nothing moving:
+      // upload first, exactly as before, so a failed upload saves nothing.
+      var p = renamed
+        ? writeRow().then(function(saved){ return uploadArt().then(function(){ return saved; }); })
+        : uploadArt().then(writeRow);
+
+      p.then(function(saved){
         // The Worker forces a draft when the page has no icon, so take the
         // status it actually stored rather than the one we requested.
         currentStatus = (saved && saved.status) || saveStatus;
         updatePublishButton();
+        // The page may have just moved: carry on editing the new URL, and
+        // leave the address bar on it so a refresh finds the right page.
+        var movedFrom = (saved && saved.renamedFrom) || null;
+        originalSlug = (saved && saved.slug) || slug;
+        if (originalEntry) {
+          originalEntry.name = d.name;
+          // The art moved with the page; keep the copy this form saves from
+          // in step with it, or the next save would write the old paths back.
+          // Art that stayed put (a committed file) keeps its old path.
+          if (movedFrom && saved.renamedArt) {
+            var re = new RegExp('art/' + movedFrom + '(?=[-.])', 'g');
+            ['art','image','artAlt','imageAlt'].forEach(function(k){
+              if (typeof originalEntry[k] === 'string') {
+                originalEntry[k] = originalEntry[k].replace(re, 'art/' + originalSlug);
+              }
+            });
+          }
+        }
+        if (movedFrom && window.history && history.replaceState) {
+          history.replaceState(null, '', 'edit?c=' + encodeURIComponent(originalSlug));
+        }
         if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
         var url = SITE_ROOT + 'c/' + originalSlug;
+        var movedNote = movedFrom
+          ? ' This page moved to <strong>/c/' + originalSlug + '</strong>; the old link still redirects here.'
+          : '';
         if (currentStatus === 'draft') {
-          setStatus('ok','&#10003; Draft saved (not public). <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
+          setStatus('ok','&#10003; Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
         } else {
-          setStatus('ok','&#10003; Saved! Live now. <a href="'+url+'" target="_blank">View character &rarr;</a>');
+          setStatus('ok','&#10003; Saved! Live now.' + movedNote + ' <a href="'+url+'" target="_blank">View character &rarr;</a>');
         }
         $('save').disabled = false;
         $('save-publish').disabled = false;
