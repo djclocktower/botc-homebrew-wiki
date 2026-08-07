@@ -13,12 +13,6 @@
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
-<!-- Smart AI background removal only: the vendored @imgly library imports the
-     bare specifier "onnxruntime-web", and there is no bundler to resolve it.
-     Nothing here is fetched unless someone actually picks Smart AI. -->
-<script type="importmap">
-{ "imports": { "onnxruntime-web": "/assets/iconforge/vendor/ort.wasm.min.js" } }
-</script>
 <style>
 /* ─── Icon Forge ──────────────────────────────────────────────────
    Everything here is page-local. Shared colours come from styles.css:
@@ -171,8 +165,12 @@ details.if-sec > summary:hover { color: #8a3526; }
   border: 1px solid var(--parch-frame);
   transition: background .15s, color .15s;
 }
-.if-seg button:hover:not([disabled]) { background: #fffdf8; }
+/* :not() carries the specificity of its argument, so a plain :hover rule
+   outweighs [aria-pressed=true] and repaints the chosen chip cream-on-white.
+   Hover has to exclude the pressed one explicitly. */
+.if-seg button:hover:not([disabled]):not([aria-pressed=true]) { background: #fffdf8; }
 .if-seg button[aria-pressed=true] { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
+.if-seg button[aria-pressed=true]:hover { filter: brightness(1.12); }
 .if-seg button[disabled] { opacity: .35; cursor: default; }
 
 /* Mode cards: two bigger choices with a line of explanation each. */
@@ -284,14 +282,26 @@ details.if-sec > summary:hover { color: #8a3526; }
   box-shadow: 0 1px 3px rgba(0,0,0,.5); pointer-events: none; z-index: 3;
 }
 
+/* The Smart AI progress card: fixed to the bottom of the viewport, so it is
+   in sight wherever the page is scrolled, and non-blocking — the work runs in
+   a worker now, so the rest of the tool keeps going. */
 .if-busy {
-  position: absolute; inset: 0; z-index: 5;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: rgba(20,6,24,.78); text-align: center; padding: 20px;
+  position: fixed; z-index: 1250; left: 50%; bottom: 18px; transform: translateX(-50%);
+  width: min(460px, calc(100vw - 24px));
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #2c1333, #1a0820);
+  border: 2px solid var(--parch-frame); box-shadow: 0 6px 24px rgba(0,0,0,.55);
 }
-.if-busy p { margin: 0; font-family: 'Oswald', sans-serif; font-size: .86rem; letter-spacing: .05em; color: rgba(236,225,200,.9); }
-.if-busy-bar { width: min(230px, 80%); height: 6px; background: rgba(240,232,213,.14); }
+.if-busy-text { flex: 1; min-width: 0; }
+.if-busy p { margin: 0; font-family: 'Oswald', sans-serif; font-size: .84rem; letter-spacing: .04em; color: rgba(236,225,200,.92); }
+.if-busy .if-busy-sub {
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif; letter-spacing: 0;
+  font-size: .78rem; color: rgba(236,225,200,.5); margin-top: 3px;
+}
+.if-busy-bar { width: 100%; height: 6px; margin-top: 6px; background: rgba(240,232,213,.14); }
 .if-busy-bar i { display: block; height: 100%; width: 0; background: #d6c496; transition: width .25s; }
+.if-busy .sb-btn { flex: 0 0 auto; }
 .if-spin {
   width: 26px; height: 26px; border: 2px solid rgba(214,196,150,.25);
   border-top-color: #d6c496; border-radius: 50%; animation: if-spin 1s linear infinite;
@@ -302,7 +312,7 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-stage-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
 .if-stage-bar .if-seg { margin: 0; }
 .if-stage-bar .if-seg button { min-width: 0; color: rgba(236,225,200,.65); background: rgba(240,232,213,.06); border-color: rgba(214,196,150,.3); }
-.if-stage-bar .if-seg button:hover:not([disabled]) { background: rgba(240,232,213,.13); color: var(--parch); }
+.if-stage-bar .if-seg button:hover:not([disabled]):not([aria-pressed=true]) { background: rgba(240,232,213,.13); color: var(--parch); }
 .if-stage-bar .if-seg button[aria-pressed=true] { background: rgba(214,196,150,.2); border-color: rgba(214,196,150,.6); color: #ffe9ad; }
 .if-zoom { display: flex; align-items: center; gap: 8px; width: 190px; }
 .if-zoom .if-label { color: rgba(236,225,200,.6); }
@@ -529,7 +539,7 @@ details.if-sec > summary:hover { color: #8a3526; }
               </div>
 
               <div id="if-bg-ai" hidden>
-                <p class="if-hint">Neural segmentation handles any background — photos, coloured paper, messy scans. One-time ~45&nbsp;MB model download from the library's CDN, then it runs entirely in your browser.</p>
+                <p class="if-hint">Neural segmentation handles any background — photos, coloured paper, messy scans. The first run downloads about 45&nbsp;MB and can take a minute; your browser keeps it for next time. It works away in the background, so the page stays usable and you can stop it at any point.</p>
                 <label class="if-row" data-opt="aiTolerance">
                   <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
                   <input type="range" min="0" max="100" step="1">
@@ -851,11 +861,6 @@ details.if-sec > summary:hover { color: #8a3526; }
           <div class="if-stage-inner" id="if-stage-inner" hidden>
             <canvas id="if-canvas" width="591" height="591" aria-label="Icon preview"></canvas>
           </div>
-          <div class="if-busy" id="if-busy" hidden>
-            <div class="if-spin"></div>
-            <p id="if-busy-label">Working…</p>
-            <div class="if-busy-bar"><i id="if-busy-bar"></i></div>
-          </div>
         </div>
 
         <div class="if-stage-bar">
@@ -901,6 +906,20 @@ details.if-sec > summary:hover { color: #8a3526; }
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <div class="if-toast" id="if-toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Smart AI progress. Fixed to the viewport, because the work takes real
+       time and the person watching may be anywhere on the page — the old
+       indicator sat inside the preview stage, which on a phone is scrolled
+       far off screen while you are using the Background controls. -->
+  <div class="if-busy" id="if-busy" role="status" aria-live="polite" hidden>
+    <div class="if-spin"></div>
+    <div class="if-busy-text">
+      <p id="if-busy-label">Working…</p>
+      <div class="if-busy-bar"><i id="if-busy-bar"></i></div>
+      <p class="if-busy-sub" id="if-busy-sub">The page stays usable while this runs.</p>
+    </div>
+    <button type="button" class="sb-btn if-btn-quiet" id="if-busy-stop">Stop</button>
+  </div>
 
   <script src="assets/site.js"></script>
   <script type="module" src="assets/iconforge/app.js"></script>

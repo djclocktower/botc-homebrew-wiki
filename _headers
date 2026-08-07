@@ -51,17 +51,20 @@
 /assets/night-order.json
   Cache-Control: no-cache, must-revalidate
 
-# Icon Forge's fixed payload: the texture sheets, the sample artwork, the
-# vendored editor and the vendored AI libraries. All pinned content that only
-# changes when it is deliberately replaced, and heavy (the editor bundle alone
-# is 1.4 MB), so cache it hard. The tool's own modules (assets/iconforge/*.js)
-# are NOT listed here — they keep the revalidate-every-load rule above, so an
-# edit shows on a normal refresh like every other script on the site.
+# Icon Forge's fixed payload: the texture sheets, the sample artwork and the
+# vendored editor. Pinned content that only changes when it is deliberately
+# replaced, and heavy (the editor bundle alone is 1.4 MB), so cache it hard.
+#
+# Two things are deliberately NOT here. The tool's own modules
+# (assets/iconforge/*.js) keep the revalidate-every-load rule above, so an
+# edit shows on a normal refresh like every other script on the site. And
+# assets/iconforge/vendor/* is left on that rule too: those files carry a
+# small local patch (see vendor/README.md), and a year-long immutable cache
+# would strand anyone who already has the old copy if that patch ever
+# changes. They are ~220 KB and only load for Smart AI.
 /assets/iconforge/textures/*
   Cache-Control: public, max-age=31536000, immutable
 /assets/iconforge/samples/*
   Cache-Control: public, max-age=31536000, immutable
 /assets/iconforge/minipaint/*
-  Cache-Control: public, max-age=31536000, immutable
-/assets/iconforge/vendor/*
   Cache-Control: public, max-age=31536000, immutable

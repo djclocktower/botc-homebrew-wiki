@@ -499,15 +499,28 @@ uploaded — except for the one opt-in save described below.
   supersample 1 immediately, then a crisp pass at 2 after 220 ms idle. Export
   always renders one-shot at full quality. Do not "simplify" that into a
   single render — a full pipeline run is ~750 ms.
-- **`assets/iconforge/vendor/` is third-party and sealed** (see its README):
+- **Smart AI runs in a Web Worker** (`bg-worker.js`) and must stay there. The
+  segmentation is one uninterruptible burst of CPU: on the main thread it
+  froze the whole tab — no scrolling, no clicking, and the progress bar could
+  not even repaint, so it read as a crash. `bgremoval.js` keeps a main-thread
+  fallback **only** for browsers without module workers (Firefox < 114,
+  Safari < 15); it is chosen solely when the worker fails to start, and it
+  still freezes. The progress card (`#if-busy`) is fixed to the viewport, not
+  parked in the preview stage, because on a phone the stage is scrolled far
+  off screen while you are using the Background controls — and it carries a
+  Stop button, which terminates the worker (an abandoned one keeps a core
+  busy).
+- **`assets/iconforge/vendor/` is third-party** (see its README):
   `@imgly/background-removal` and the `onnxruntime-web` wasm build, both
-  vendored from npm because there is no bundler. The import map in
-  `iconforge.html` resolves the bare specifier `onnxruntime-web` for the
-  library's own dynamic import — **if that map is dropped, Smart AI dies.**
-  The ONNX wasm (~12 MB) and the model (~44 MB) are fetched from imgly's CDN
-  on first use; they can never be committed (the model alone exceeds
-  Cloudflare's 25 MiB per-asset limit and would fail the whole deploy). If
-  that fetch fails the tool toasts and falls back to "Keep".
+  vendored from npm because there is no bundler. The imgly file carries a
+  documented two-line patch pointing its ONNX imports at the vendored file
+  instead of the bare specifier `onnxruntime-web` — **import maps do not
+  apply inside workers**, so a bare specifier there is unresolvable. Re-apply
+  that patch on any upgrade or Smart AI dies. The ONNX wasm (~12 MB) and the
+  model (~44 MB) are fetched from imgly's CDN on first use; they can never be
+  committed (the model alone exceeds Cloudflare's 25 MiB per-asset limit and
+  would fail the whole deploy). If that fetch fails the tool toasts and falls
+  back to "Keep".
   `minipaint/` is likewise sealed — a prebuilt, minified miniPaint bundle with
   a custom lasso tool. It is only re-skinned (CSS variables injected into the
   same-origin iframe by `editor.js`); never hand-patch `js/bundle.js`.
@@ -518,10 +531,10 @@ uploaded — except for the one opt-in save described below.
   Worker is the enforcer on both calls (`canEditRow`); the page only decides
   what to ask for. It sends the row's existing `status` back so saving an icon
   never publishes a draft.
-- Textures, samples, the editor and the vendored libraries are pinned content
-  and cached `immutable` in `_headers`; the tool's own `.js` modules are
-  deliberately left on the site-wide revalidate rule so an edit shows on a
-  normal refresh.
+- Textures, samples and the editor are pinned content and cached `immutable`
+  in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
+  that local patch — are deliberately left on the site-wide revalidate rule so
+  a change shows on a normal refresh.
 
 ## Page classification (Partial / Standard / Starlight)
 

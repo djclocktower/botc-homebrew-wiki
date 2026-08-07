@@ -2,12 +2,19 @@
  * AI background removal — wraps @imgly/background-removal (in-browser ISNet
  * segmentation via ONNX runtime). The model is fetched from the imgly CDN on
  * first use (~44 MB, quantized "small" model) and cached by the browser, then
- * everything runs locally. The library is dynamically imported so it only
- * loads when the feature is actually used.
+ * everything runs locally.
  *
- * The expensive part (the neural segmentation) runs once per source image and
- * the RAW cutout is cached. The cleanup pass (alpha floor + residue filter)
- * is cheap and re-applied on demand, so the tolerance slider is live.
+ * **The segmentation runs in a Web Worker** (bg-worker.js). It is one long
+ * uninterruptible burst of CPU, and on the main thread it froze the whole tab
+ * — the page could not be scrolled or clicked and the progress bar could not
+ * even repaint, so it read as a crash. Keep it off the main thread. The
+ * fallback below exists only for browsers without module workers (Firefox
+ * before 114, Safari before 15); it still freezes, so it is a last resort,
+ * not a simplification to fall back on.
+ *
+ * The expensive part runs once per source image and the RAW cutout is cached.
+ * The cleanup pass (alpha floor + residue filter) is cheap and re-applied on
+ * demand, so the tolerance slider stays live.
  */
 /** Cache: one RAW model cutout per source object (re-selects are instant). */
 const cache = new WeakMap();
@@ -176,26 +183,7 @@ export function applyCleanup(raw, tolerance) {
   ctx.drawImage(raw, 0, 0);
   return cleanCutout(c, cleanupFor(tolerance));
 }
-async function runRemoval(source, onProgress) {
-  // The library is vendored under vendor/ rather than bundled — the wiki has
-  // no build step. It dynamically imports the bare specifier
-  // "onnxruntime-web", which the import map in iconforge.html points at our
-  // vendored copy; the ONNX wasm and the model itself still come from imgly's
-  // CDN at run time (the model is ~44 MB, far too big to commit).
-  const { removeBackground } = await import('./vendor/imgly-bg-removal.js');
-  const blob = await canvasToBlob(toCanvasSized(source));
-  const resultBlob = await removeBackground(blob, {
-    // Quantized small model: ~4x smaller download than the default, and for
-    // bold line-art shapes the segmentation difference is negligible.
-    model: 'isnet_quint8',
-    output: { format: 'image/png' },
-    progress: (key, current, total) => {
-      const fraction = total > 0 ? current / total : 0;
-      const label = key.startsWith('fetch:') ? 'Downloading AI model…' : 'Removing background…';
-      onProgress?.(fraction, label);
-    },
-  });
-  const bitmap = await createImageBitmap(resultBlob);
+function bitmapToCanvas(bitmap) {
   const out = document.createElement('canvas');
   out.width = bitmap.width;
   out.height = bitmap.height;
@@ -205,18 +193,112 @@ async function runRemoval(source, onProgress) {
   bitmap.close();
   return out;
 }
+
+/** The worker path. `onCancel` is handed a function that kills the run. */
+function runInWorker(source, onProgress, onCancel) {
+  return new Promise((resolve, reject) => {
+    let worker;
+    try {
+      worker = new Worker(new URL('./bg-worker.js', import.meta.url), { type: 'module' });
+    } catch (e) {
+      // No module workers in this browser — the caller falls back.
+      reject(Object.assign(new Error('worker-unavailable'), { workerUnavailable: true }));
+      return;
+    }
+    let started = false; // has the worker got as far as loading the library?
+    let settled = false;
+    const finish = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      worker.terminate();
+      fn(arg);
+    };
+    if (onCancel) {
+      onCancel(() => {
+        if (settled) return;
+        settled = true;
+        worker.terminate();
+        reject(Object.assign(new Error('cancelled'), { cancelled: true }));
+      });
+    }
+    worker.onmessage = (e) => {
+      const m = e.data || {};
+      if (m.type === 'progress') {
+        started = true;
+        if (onProgress) onProgress(m.fraction, m.label);
+      } else if (m.type === 'done') {
+        finish(resolve, bitmapToCanvas(m.bitmap));
+      } else if (m.type === 'error') {
+        // Failing at the very first step usually means the worker itself
+        // cannot run this code; anything later is a real failure to report.
+        const err = new Error(m.message || 'Background removal failed');
+        if (m.stage === 'load' && !started) err.workerUnavailable = true;
+        finish(reject, err);
+      }
+    };
+    worker.onerror = (e) => {
+      const err = new Error((e && e.message) || 'The background-removal worker could not start');
+      if (!started) err.workerUnavailable = true;
+      finish(reject, err);
+    };
+    createImageBitmap(source)
+      .then((bitmap) => {
+        if (settled) {
+          bitmap.close();
+          return;
+        }
+        worker.postMessage({ bitmap }, [bitmap]);
+      })
+      .catch((e) => finish(reject, e));
+  });
+}
+
+/** Last-resort path for browsers without module workers. Identical work, on
+ *  the main thread, which means the tab stops responding while it runs. */
+async function runOnMainThread(source, onProgress) {
+  const { removeBackground } = await import('./vendor/imgly-bg-removal.js');
+  const blob = await canvasToBlob(toCanvasSized(source));
+  const resultBlob = await removeBackground(blob, {
+    model: 'isnet_quint8',
+    output: { format: 'image/png' },
+    progress: (key, current, total) => {
+      const fraction = total > 0 ? current / total : 0;
+      const label = String(key).startsWith('fetch:')
+        ? 'Downloading the AI model…'
+        : 'Cutting out the background…';
+      if (onProgress) onProgress(fraction, label);
+    }
+  });
+  return bitmapToCanvas(await createImageBitmap(resultBlob));
+}
+
+async function runRemoval(source, onProgress, onCancel) {
+  try {
+    return await runInWorker(source, onProgress, onCancel);
+  } catch (e) {
+    if (e && e.cancelled) throw e;
+    if (!e || !e.workerUnavailable) throw e;
+    if (onProgress) onProgress(0, 'Preparing…');
+    return runOnMainThread(source, onProgress);
+  }
+}
+
 /**
  * Remove the background from a raster source image. Returns the RAW model
  * cutout (no cleanup applied) — pass it through applyCleanup() with the
  * current tolerance. Results are cached per source image, so repeat calls
  * are free.
+ *
+ * @param {(fraction: number, label: string) => void} [onProgress]
+ * @param {(cancel: () => void) => void} [onCancel] receives a function that
+ *        abandons the run (used by the Stop button).
  */
-export function removeImageBackground(source, onProgress) {
+export function removeImageBackground(source, onProgress, onCancel) {
   let p = cache.get(source);
   if (!p) {
-    p = runRemoval(source, onProgress);
+    p = runRemoval(source, onProgress, onCancel);
     cache.set(source, p);
-    // A failure should not poison the cache — allow retry.
+    // A failure (or a cancellation) should not poison the cache — allow retry.
     p.catch(() => cache.delete(source));
   } else if (onProgress) {
     onProgress(1, 'Ready');

@@ -45,6 +45,16 @@ let texReq = 0;
 /** Raw (uncleaned) AI cutout for the current source, so the cleanup slider
  *  re-applies instantly instead of re-running the model. */
 let rawCutout = null;
+/** Kills a Smart AI run in flight (the Stop button, and anything that makes
+ *  the run pointless: new artwork, leaving the mode). Terminating the worker
+ *  matters — an abandoned one keeps a core busy until it finishes. */
+let cancelAI = null;
+function stopAI() {
+  if (!cancelAI) return;
+  const cancel = cancelAI;
+  cancelAI = null;
+  cancel();
+}
 
 /** What the engine actually reads: the AI cutout when Smart AI produced one. */
 function effectiveSource() {
@@ -104,6 +114,8 @@ const FORMAT = {
 let toastTimer = 0;
 function toast(text, kind) {
   const box = $('if-toast');
+  // Both live at the bottom of the viewport; stack rather than overlap.
+  box.style.bottom = $('if-busy').hidden ? '18px' : '110px';
   box.textContent = text;
   box.className = 'if-toast' + (kind ? ' ' + kind : '');
   box.hidden = false;
@@ -358,17 +370,22 @@ function draw(supersample) {
   }
 }
 
-function busy(on, fraction, label) {
+/** The Smart AI progress card. `sub` explains what the wait is for; the Stop
+ *  button is wired per run by maybeRunAI. */
+function busy(on, fraction, label, sub) {
   $('if-busy').hidden = !on;
-  if (on) {
-    $('if-busy-label').textContent = label || 'Working…';
-    $('if-busy-bar').style.width = Math.round((fraction || 0) * 100) + '%';
-  }
+  if (!on) return;
+  const f = Math.max(0, Math.min(1, fraction || 0));
+  $('if-busy-label').textContent =
+    (label || 'Working…') + (f > 0 && f < 1 ? '  ' + Math.round(f * 100) + '%' : '');
+  $('if-busy-bar').style.width = Math.round(f * 100) + '%';
+  if (sub != null) $('if-busy-sub').textContent = sub;
 }
 
 /* ── loading artwork ────────────────────────────────────────────── */
 function setSource(img, name, kind) {
   aiReq++;
+  stopAI();
   rawCutout = null;
   aiCanvas = null;
   aiBusy = false;
@@ -477,6 +494,7 @@ function setBgMode(mode) {
   });
   if (mode !== 'ai') {
     aiReq++;
+    stopAI();
     aiCanvas = null;
     aiBusy = false;
     busy(false);
@@ -485,6 +503,8 @@ function setBgMode(mode) {
   scheduleRender();
   maybeRunAI();
 }
+
+$('if-busy-stop').addEventListener('click', stopAI);
 
 function maybeRunAI() {
   if (bgMode !== 'ai' || !source || sourceKind !== 'raster') return;
@@ -496,15 +516,32 @@ function maybeRunAI() {
   const req = ++aiReq;
   aiBusy = true;
   syncControls();
-  busy(true, 0, 'Preparing…');
-  removeImageBackground(source, (fraction, label) => {
-    if (aiReq === req) busy(true, fraction, label);
-  })
+  busy(true, 0, 'Starting the background remover…', 'Keep using the page — this runs in the background.');
+  removeImageBackground(
+    source,
+    (fraction, label) => {
+      if (aiReq !== req) return;
+      // The download only happens the first time; say so, because it is the
+      // long part and it looks like nothing is happening.
+      busy(
+        true,
+        fraction,
+        label,
+        /download/i.test(label)
+          ? 'About 45 MB, once per browser. It is kept for next time.'
+          : 'Keep using the page — this runs in the background.'
+      );
+    },
+    (cancel) => {
+      if (aiReq === req) cancelAI = cancel;
+    }
+  )
     .then((raw) => {
       if (aiReq !== req) return;
       rawCutout = { src: source, canvas: raw };
       aiCanvas = applyCleanup(raw, opts.aiTolerance);
       aiBusy = false;
+      cancelAI = null;
       busy(false);
       syncControls();
       scheduleRender();
@@ -512,8 +549,13 @@ function maybeRunAI() {
     .catch((e) => {
       if (aiReq !== req) return;
       aiBusy = false;
+      cancelAI = null;
       busy(false);
       setBgMode('keep');
+      if (e && e.cancelled) {
+        toast('Stopped. Background left as it was.');
+        return;
+      }
       toast(
         'Smart AI could not run: ' +
           (e && e.message ? e.message : 'the model could not be downloaded') +
