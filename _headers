@@ -50,3 +50,18 @@
 # Official night-order positions (the "acts directly after" picker): same
 /assets/night-order.json
   Cache-Control: no-cache, must-revalidate
+
+# Icon Forge's fixed payload: the texture sheets, the sample artwork, the
+# vendored editor and the vendored AI libraries. All pinned content that only
+# changes when it is deliberately replaced, and heavy (the editor bundle alone
+# is 1.4 MB), so cache it hard. The tool's own modules (assets/iconforge/*.js)
+# are NOT listed here — they keep the revalidate-every-load rule above, so an
+# edit shows on a normal refresh like every other script on the site.
+/assets/iconforge/textures/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/iconforge/samples/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/iconforge/minipaint/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/iconforge/vendor/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon Forge — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Turn your own line art into a Blood on the Clocktower character icon: official-style textures, white border, parchment details and a transparent PNG, all in your browser.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Icon Forge">
+<meta property="og:description" content="Turn line art, a scan or a photo into a Blood on the Clocktower character icon — official textures, borders and details, entirely in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<!-- Smart AI background removal only: the vendored @imgly library imports the
+     bare specifier "onnxruntime-web", and there is no bundler to resolve it.
+     Nothing here is fetched unless someone actually picks Smart AI. -->
+<script type="importmap">
+{ "imports": { "onnxruntime-web": "/assets/iconforge/vendor/ort.wasm.min.js" } }
+</script>
+<style>
+/* ─── Icon Forge ──────────────────────────────────────────────────
+   Everything here is page-local. Shared colours come from styles.css:
+   --parch, --parch-frame, --maroon, --ink, --good-name, --evil, --rule.
+   The controls live on parchment; the preview stage stays on the deep
+   purple, like the token sheets and the script pages. */
+
+/* Several panels here are laid out with flex/grid AND toggled with the
+   hidden attribute, which a display rule would otherwise win against. */
+[hidden] { display: none !important; }
+
+/* Hero: the forge mark beside the title, as on Grimoire Forge, so the
+   heading still reads as a page title on a phone. */
+.if-hero { padding-bottom: 10px; }
+.if-hero-row { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 2vw, 22px); }
+.if-hero-mark { width: clamp(52px, 8vw, 84px); height: auto; flex-shrink: 0; color: var(--parch); filter: drop-shadow(0 3px 10px rgba(0,0,0,.55)); }
+.if-hero h1 { margin: 0; }
+.if-credit {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .06em;
+  text-transform: uppercase; color: rgba(236,225,200,.55); margin: 14px 0 0;
+}
+.if-credit a { color: rgba(236,225,200,.82); text-decoration: none; border-bottom: 1px solid rgba(236,225,200,.3); }
+.if-credit a:hover { color: var(--parch); }
+
+/* ── Layout: controls column + preview column ───────────────────── */
+.if-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.if-stage-col { position: sticky; top: 14px; }
+@media (max-width: 1000px) {
+  .if-layout { grid-template-columns: minmax(0, 1fr); }
+  /* On a phone the icon comes first — it is the thing being judged. */
+  .if-stage-col { position: static; order: -1; }
+}
+
+/* ── Parchment panels ───────────────────────────────────────────── */
+.if-card {
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  color: var(--ink);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.if-card > :last-child { margin-bottom: 0; }
+.if-card-title {
+  font-family: 'Dumbledor2', serif; font-size: 1.12rem; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--maroon); margin: 0 0 12px;
+}
+
+/* Collapsible control groups. All the knobs at once is a wall on a phone, so
+   each group folds; the ones people touch first start open. */
+details.if-sec { border-bottom: 1px solid rgba(180,160,120,.55); }
+details.if-sec:last-of-type { border-bottom: 0; }
+details.if-sec > summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 0;
+  font-family: 'Dumbledor2', serif; font-size: 1.05rem; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--maroon);
+}
+details.if-sec > summary::-webkit-details-marker { display: none; }
+details.if-sec > summary::after {
+  content: '▾'; font-family: 'Oswald', sans-serif; font-size: .9rem;
+  color: rgba(91,31,33,.55); transition: transform .15s ease;
+}
+details.if-sec[open] > summary::after { transform: rotate(180deg); }
+details.if-sec > summary:hover { color: #8a3526; }
+.if-sec-body { padding: 0 0 16px; }
+.if-sec-body > :last-child { margin-bottom: 0; }
+
+/* ── Controls ───────────────────────────────────────────────────── */
+.if-label {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--maroon);
+}
+.if-hint { display: block; font-size: .84rem; line-height: 1.45; color: rgba(0,0,0,.62); margin: 0 0 12px; }
+.if-hint:last-child { margin-bottom: 0; }
+.if-hint a { color: var(--good-name); }
+
+.if-row { display: block; margin: 0 0 13px; }
+.if-row-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.if-val {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  color: rgba(91,31,33,.72); white-space: nowrap;
+}
+.if-row.is-off { opacity: .38; pointer-events: none; }
+
+/* Range inputs, rebuilt in wiki furniture: a parchment groove with a maroon
+   seal for a thumb. Both vendor prefixes are needed — a shared selector list
+   is invalid CSS in this one place, so the rules are deliberately duplicated. */
+.if-row input[type=range] {
+  -webkit-appearance: none; appearance: none;
+  display: block; width: 100%; height: 20px; margin: 0; padding: 0;
+  background: transparent; cursor: pointer;
+}
+.if-row input[type=range]::-webkit-slider-runnable-track {
+  height: 7px; background: #efe6cf; border: 1px solid var(--parch-frame);
+  box-shadow: inset 0 1px 2px rgba(91,31,33,.22);
+}
+.if-row input[type=range]::-moz-range-track {
+  height: 7px; background: #efe6cf; border: 1px solid var(--parch-frame);
+  box-shadow: inset 0 1px 2px rgba(91,31,33,.22);
+}
+.if-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 17px; height: 17px; margin-top: -6px;
+  background: linear-gradient(180deg, #8a3526, var(--maroon));
+  border: 2px solid #e8ddc2; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.if-row input[type=range]::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 0;
+  background: linear-gradient(180deg, #8a3526, var(--maroon));
+  border: 2px solid #e8ddc2; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.if-row input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid #8a5a12; outline-offset: 1px; }
+.if-row input[type=range]:focus-visible::-moz-range-thumb { outline: 2px solid #8a5a12; outline-offset: 1px; }
+
+/* Switches: a parchment track with a maroon seal that slides. */
+.if-switch { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin: 0 0 13px; cursor: pointer; }
+.if-switch-text { flex: 1; min-width: 0; }
+.if-switch-text .if-hint { margin: 2px 0 0; }
+.if-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.if-track {
+  flex: 0 0 auto; position: relative; width: 42px; height: 22px; margin-top: 1px;
+  background: #efe6cf; border: 1px solid var(--parch-frame);
+  box-shadow: inset 0 1px 2px rgba(91,31,33,.2); transition: background .15s;
+}
+.if-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  background: linear-gradient(180deg, #b0977a, #8a7457);
+  transition: transform .15s ease, background .15s;
+}
+.if-switch input:checked + .if-track { background: #d8c9a4; }
+.if-switch input:checked + .if-track::after { transform: translateX(20px); background: linear-gradient(180deg, #8a3526, var(--maroon)); }
+.if-switch input:focus-visible + .if-track { outline: 2px solid #8a5a12; outline-offset: 2px; }
+
+/* Segmented pickers — the wiki's chip row, one choice at a time. */
+.if-seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.if-seg button {
+  flex: 1 1 auto; min-width: 74px;
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .78rem;
+  letter-spacing: .05em; text-transform: uppercase;
+  padding: 8px 10px; cursor: pointer;
+  color: var(--maroon); background: rgba(255,253,248,.62);
+  border: 1px solid var(--parch-frame);
+  transition: background .15s, color .15s;
+}
+.if-seg button:hover:not([disabled]) { background: #fffdf8; }
+.if-seg button[aria-pressed=true] { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
+.if-seg button[disabled] { opacity: .35; cursor: default; }
+
+/* Mode cards: two bigger choices with a line of explanation each. */
+.if-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 13px; }
+.if-mode {
+  text-align: left; cursor: pointer; padding: 9px 10px;
+  background: rgba(255,253,248,.62); border: 1px solid var(--parch-frame); color: var(--ink);
+}
+.if-mode:hover { background: #fffdf8; }
+.if-mode[aria-pressed=true] { border-color: var(--maroon); box-shadow: inset 0 0 0 1px var(--maroon); background: rgba(91,31,33,.07); }
+.if-mode b { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .82rem; letter-spacing: .04em; color: var(--maroon); }
+.if-mode span { display: block; font-size: .78rem; line-height: 1.35; color: rgba(0,0,0,.6); margin-top: 2px; }
+
+/* Character type tiles: the texture itself is the swatch. */
+.if-tex-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 13px; }
+.if-tex { padding: 0; cursor: pointer; overflow: hidden; background: none; border: 1px solid var(--parch-frame); }
+.if-tex:hover { border-color: #8a7457; }
+.if-tex[aria-pressed=true] { border-color: var(--maroon); box-shadow: 0 0 0 2px rgba(183,156,111,.75); }
+.if-tex-swatch { display: flex; height: 38px; background-size: cover; background-position: center; }
+.if-tex-swatch > i { flex: 1 1 50%; background-size: cover; background-position: center; }
+.if-tex-swatch > i + i { border-left: 1px solid #fff; }
+.if-tex-cap { background: #3a1420; padding: 4px 5px 5px; }
+.if-tex-cap b { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem; letter-spacing: .04em; color: var(--parch); }
+.if-tex-cap span { display: block; font-size: .64rem; line-height: 1.2; color: rgba(214,196,150,.75); }
+
+/* Texture placement: the nudge pad beside its two sliders. */
+.if-place { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 13px; }
+.if-pad { display: grid; grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); gap: 3px; flex: 0 0 auto; }
+.if-pad button {
+  cursor: pointer; font-size: .8rem; line-height: 1;
+  color: var(--maroon); background: rgba(255,253,248,.62);
+  border: 1px solid var(--parch-frame);
+}
+.if-pad button:hover { background: #fffdf8; }
+.if-pad .if-pad-mid { background: var(--maroon); color: var(--parch); border-color: var(--maroon); }
+.if-pad .if-pad-mid:hover { filter: brightness(1.15); background: var(--maroon); }
+.if-place-sliders { flex: 1 1 auto; min-width: 0; }
+.if-place-sliders .if-row:last-child { margin-bottom: 0; }
+
+/* ── Source card ────────────────────────────────────────────────── */
+.if-drop {
+  display: block; width: 100%; cursor: pointer; text-align: center;
+  padding: 20px 14px; margin: 0 0 10px;
+  background: rgba(255,253,248,.5); border: 2px dashed var(--parch-frame); color: var(--ink);
+  transition: background .15s, border-color .15s;
+}
+.if-drop:hover, .if-drop.is-over { background: #fffdf8; border-color: var(--maroon); }
+.if-drop b { display: block; font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em; color: var(--maroon); font-size: .95rem; }
+.if-drop span { display: block; font-size: .82rem; color: rgba(0,0,0,.6); margin-top: 3px; }
+.if-drop.is-compact { padding: 10px; }
+.if-drop.is-compact span { display: none; }
+
+.if-loaded { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; padding: 8px; background: rgba(255,253,248,.55); border: 1px solid var(--parch-frame); }
+.if-loaded img { width: 58px; height: 58px; object-fit: contain; flex: 0 0 auto; background: #241028; border: 1px solid var(--parch-frame); }
+.if-loaded-meta { min-width: 0; flex: 1; }
+.if-loaded-name { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .86rem; color: var(--maroon); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.if-loaded-sub { font-size: .76rem; color: rgba(0,0,0,.55); }
+
+.if-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.if-btn-row .sb-btn { flex: 1 1 auto; }
+/* The export dialog's Save button is an <a download>, not a <button>. */
+.if-btn-row a.sb-btn { text-decoration: none; }
+.if-btn-row .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
+.sb-btn.if-btn-quiet { background: linear-gradient(180deg, #6b573d, #4a3c2a); }
+.sb-btn.if-btn-go { background: linear-gradient(180deg, #8a3526, #5B1F21); }
+.if-samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.if-samples button {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
+  letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
+  padding: 6px 9px; color: var(--maroon);
+  background: rgba(255,253,248,.62); border: 1px solid var(--parch-frame);
+}
+.if-samples button:hover { background: #fffdf8; }
+
+/* ── Preview stage ──────────────────────────────────────────────── */
+.if-stage {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  min-height: 380px; padding: 18px;
+  border: 2px solid var(--parch-frame);
+  background: radial-gradient(circle at 50% 35%, #3a1d42, #170a1c 78%);
+}
+.if-stage.is-checker {
+  background-color: #ded3bd;
+  background-image:
+    linear-gradient(45deg, #c9bda3 25%, transparent 25%, transparent 75%, #c9bda3 75%),
+    linear-gradient(45deg, #c9bda3 25%, transparent 25%, transparent 75%, #c9bda3 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}
+.if-stage canvas { display: block; width: 100%; height: auto; max-width: 100%; }
+.if-stage-inner { position: relative; z-index: 2; line-height: 0; }
+.if-stage.is-bucket .if-stage-inner { cursor: crosshair; }
+.if-token-ring {
+  position: absolute; z-index: 1; border-radius: 50%;
+  border: 2px dashed rgba(214,196,150,.45);
+  background: radial-gradient(circle, rgba(240,232,213,.09), transparent 70%);
+  pointer-events: none;
+}
+.if-stage-empty { text-align: center; color: rgba(236,225,200,.6); padding: 30px 16px; }
+.if-stage-empty b { display: block; font-family: 'Dumbledor2', serif; font-size: 1.25rem; letter-spacing: .05em; text-transform: uppercase; color: rgba(236,225,200,.72); margin-bottom: 6px; }
+.if-stage-empty span { font-size: .9rem; }
+
+/* Bucket pins: numbered so the list in the Paint bucket section matches. */
+.if-pin {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif; font-size: .62rem; font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0,0,0,.5); pointer-events: none; z-index: 3;
+}
+
+.if-busy {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(20,6,24,.78); text-align: center; padding: 20px;
+}
+.if-busy p { margin: 0; font-family: 'Oswald', sans-serif; font-size: .86rem; letter-spacing: .05em; color: rgba(236,225,200,.9); }
+.if-busy-bar { width: min(230px, 80%); height: 6px; background: rgba(240,232,213,.14); }
+.if-busy-bar i { display: block; height: 100%; width: 0; background: #d6c496; transition: width .25s; }
+.if-spin {
+  width: 26px; height: 26px; border: 2px solid rgba(214,196,150,.25);
+  border-top-color: #d6c496; border-radius: 50%; animation: if-spin 1s linear infinite;
+}
+@keyframes if-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .if-spin { animation: none; } }
+
+.if-stage-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+.if-stage-bar .if-seg { margin: 0; }
+.if-stage-bar .if-seg button { min-width: 0; color: rgba(236,225,200,.65); background: rgba(240,232,213,.06); border-color: rgba(214,196,150,.3); }
+.if-stage-bar .if-seg button:hover:not([disabled]) { background: rgba(240,232,213,.13); color: var(--parch); }
+.if-stage-bar .if-seg button[aria-pressed=true] { background: rgba(214,196,150,.2); border-color: rgba(214,196,150,.6); color: #ffe9ad; }
+.if-zoom { display: flex; align-items: center; gap: 8px; width: 190px; }
+.if-zoom .if-label { color: rgba(236,225,200,.6); }
+.if-zoom input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 20px; background: transparent; cursor: pointer; margin: 0; }
+.if-zoom input[type=range]::-webkit-slider-runnable-track { height: 5px; background: rgba(240,232,213,.18); }
+.if-zoom input[type=range]::-moz-range-track { height: 5px; background: rgba(240,232,213,.18); }
+.if-zoom input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; background: #d6c496; border: 0; }
+.if-zoom input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 0; background: #d6c496; }
+
+.if-stage-note {
+  margin: 12px 0 0; text-align: center; font-size: .8rem; line-height: 1.5;
+  color: rgba(236,225,200,.42);
+}
+.if-stage-note a { color: rgba(236,225,200,.62); }
+
+/* ── Fills list (paint bucket) ──────────────────────────────────── */
+.if-fills { list-style: none; margin: 0 0 10px; padding: 0; }
+.if-fills li { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin-bottom: 4px; background: rgba(255,253,248,.55); border: 1px solid var(--parch-frame); font-size: .84rem; }
+.if-fills i { width: 13px; height: 13px; flex: 0 0 auto; border: 1px solid var(--parch-frame); }
+.if-fills span { flex: 1; }
+.if-fills button { cursor: pointer; border: 0; background: none; color: rgba(91,31,33,.6); font-size: 1.05rem; line-height: 1; padding: 0 3px; }
+.if-fills button:hover { color: var(--evil); }
+
+/* ── Export + save ──────────────────────────────────────────────── */
+.if-export-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.if-export-row select, .if-save-row select {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem;
+  color: var(--ink); background: #fffdf8; border: 2px solid var(--parch-frame);
+  border-radius: 0; padding: 8px 9px; min-width: 0; flex: 1 1 130px;
+}
+.if-export-row select:focus, .if-save-row select:focus { outline: none; border-color: var(--maroon); }
+.if-export-row .sb-btn { flex: 2 1 170px; }
+.if-save-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 10px; }
+.if-save-row .sb-btn { flex: 1 1 150px; }
+.if-msg { font-size: .86rem; line-height: 1.5; color: rgba(0,0,0,.68); margin: 0; }
+.if-msg.err { color: var(--evil); }
+.if-msg.ok { color: #1c5429; }
+.if-msg a { color: var(--good-name); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── Editor overlay (miniPaint) ─────────────────────────────────── */
+.if-editor { position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column; background: #140618; }
+.if-editor-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(214,196,150,.25);
+}
+.if-editor-bar h2 { font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.1rem; letter-spacing: .05em; color: var(--parch); margin: 0; }
+.if-editor-bar p { margin: 2px 0 0; font-size: .8rem; color: rgba(236,225,200,.55); }
+.if-editor-bar .if-btn-row { flex: 0 0 auto; }
+.if-editor-frame { position: relative; flex: 1; min-height: 0; }
+.if-editor-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.if-editor-load {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px;
+  background: #140618; color: rgba(236,225,200,.7);
+}
+.if-editor-load p { margin: 0; max-width: 32em; font-size: .88rem; line-height: 1.5; }
+.if-editor-load .err { color: #e8a79b; font-weight: 600; }
+
+/* ── Export dialog ──────────────────────────────────────────────── */
+.if-modal { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(16,6,20,.8); }
+.if-modal-card { max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; }
+.if-modal-card .if-shot {
+  display: flex; align-items: center; justify-content: center; padding: 12px; margin-bottom: 12px;
+  border: 1px solid var(--parch-frame);
+  background-color: #ded3bd;
+  background-image:
+    linear-gradient(45deg, #c9bda3 25%, transparent 25%, transparent 75%, #c9bda3 75%),
+    linear-gradient(45deg, #c9bda3 25%, transparent 25%, transparent 75%, #c9bda3 75%);
+  background-size: 22px 22px; background-position: 0 0, 11px 11px;
+}
+.if-modal-card .if-shot img { max-width: 100%; max-height: 260px; }
+
+/* Tips block at the foot of the page, on parchment like the About cards. */
+.if-tips ul { margin: 0 0 12px; padding-left: 20px; }
+.if-tips li { margin-bottom: 6px; line-height: 1.5; }
+
+/* Toast: the one place the tool talks back (a tap that cannot be filled, a
+   file it cannot read). Bottom-centre so it never covers the controls. */
+.if-toast {
+  position: fixed; z-index: 1300; left: 50%; bottom: 18px; transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 11px 16px; font-size: .9rem; line-height: 1.45;
+  color: var(--ink); background-color: var(--parch);
+  background-image: url('assets/parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); box-shadow: 0 6px 24px rgba(0,0,0,.5);
+}
+.if-toast.err { border-color: var(--evil); color: #6b1210; }
+
+/* The chroma-key swatch beside its picker button. */
+.if-swatch {
+  flex: 0 0 auto; width: 38px; align-self: stretch;
+  border: 1px solid var(--parch-frame);
+}
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero if-hero">
+    <div class="if-hero-row">
+      <svg class="if-hero-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.6 20.2 6v6.1c0 4.6-3.3 8-8.2 9.3-4.9-1.3-8.2-4.7-8.2-9.3V6z"/><circle cx="12" cy="11" r="3.4"/><path d="M12 4.6v3M12 14.4v3M5.6 11h3M15.4 11h3"/></svg>
+      <h1>Icon Forge</h1>
+    </div>
+    <p>Turn your own line art, a scan or a photo into a character icon in the official style — textured body, parchment details, white border, transparent PNG.</p>
+    <p class="if-credit">Everything runs in your browser · Nothing is uploaded unless you choose to save it</p>
+  </div>
+
+  <main class="home-panel" id="content">
+    <div class="if-layout">
+
+      <!-- ══ CONTROLS ══════════════════════════════════════════ -->
+      <div class="if-controls-col">
+
+        <!-- Source -->
+        <section class="if-card">
+          <h2 class="if-card-title">Your artwork</h2>
+
+          <div id="if-loaded" class="if-loaded" hidden>
+            <img id="if-loaded-thumb" alt="Your artwork before the forge">
+            <div class="if-loaded-meta">
+              <div class="if-loaded-name" id="if-loaded-name">—</div>
+              <div class="if-loaded-sub" id="if-loaded-sub">—</div>
+            </div>
+          </div>
+
+          <button type="button" class="if-drop" id="if-drop">
+            <b>Drop artwork here, or tap to browse</b>
+            <span>SVG, PNG, JPG or WebP · black line art on white works best</span>
+          </button>
+          <input type="file" id="if-file" accept="image/*,.svg" hidden>
+
+          <div class="if-btn-row">
+            <button type="button" class="sb-btn if-btn-quiet" id="if-edit" hidden>Edit artwork</button>
+            <button type="button" class="sb-btn if-btn-quiet" id="if-draw">Draw your own</button>
+          </div>
+
+          <div class="if-samples" id="if-samples" aria-label="Sample artwork"></div>
+        </section>
+
+        <!-- Knobs -->
+        <section class="if-card">
+          <h2 class="if-card-title">The forge</h2>
+
+          <details class="if-sec" open>
+            <summary>Artwork</summary>
+            <div class="if-sec-body">
+              <div class="if-modes" role="group" aria-label="How to read the artwork">
+                <button type="button" class="if-mode" data-mode="auto" aria-pressed="true">
+                  <b>Ink &amp; paper</b><span>Dark ink becomes the colour fill, light areas become white details.</span>
+                </button>
+                <button type="button" class="if-mode" data-mode="silhouette" aria-pressed="false">
+                  <b>Silhouette</b><span>The whole shape becomes one solid colour fill.</span>
+                </button>
+              </div>
+
+              <label class="if-row" data-opt="threshold" data-only-mode="auto">
+                <span class="if-row-head"><span class="if-label">Ink threshold</span><output class="if-val"></output></span>
+                <input type="range" min="40" max="220" step="1">
+              </label>
+              <label class="if-row" data-opt="edgeOuter">
+                <span class="if-row-head"><span class="if-label">Outer edge</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="3" step="0.1">
+              </label>
+              <label class="if-row" data-opt="edgeInner">
+                <span class="if-row-head"><span class="if-label">Inner edge</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="3" step="0.1">
+              </label>
+              <p class="if-hint">0px is razor sharp. The outer edge shapes the silhouette; the inner edge shapes the white detail lines inside it.</p>
+              <label class="if-row" data-opt="lineThicken">
+                <span class="if-row-head"><span class="if-label">Colour line thickness</span><output class="if-val"></output></span>
+                <input type="range" min="-10" max="10" step="0.5">
+              </label>
+              <label class="if-row" data-opt="padding">
+                <span class="if-row-head"><span class="if-label">Canvas margin</span><output class="if-val"></output></span>
+                <input type="range" min="0.02" max="0.3" step="0.01">
+              </label>
+              <label class="if-switch" data-opt="invert">
+                <span class="if-switch-text"><span class="if-label">Invert ink</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+            </div>
+          </details>
+
+          <details class="if-sec" open>
+            <summary>Background</summary>
+            <div class="if-sec-body">
+              <div class="if-seg" id="if-bgmode" role="group" aria-label="Background removal">
+                <button type="button" data-value="keep" aria-pressed="true">Keep</button>
+                <button type="button" data-value="ai" aria-pressed="false">Smart AI</button>
+                <button type="button" data-value="key" aria-pressed="false">White key</button>
+                <button type="button" data-value="chroma" aria-pressed="false">Chroma</button>
+              </div>
+
+              <div id="if-bg-ai" hidden>
+                <p class="if-hint">Neural segmentation handles any background — photos, coloured paper, messy scans. One-time ~45&nbsp;MB model download from the library's CDN, then it runs entirely in your browser.</p>
+                <label class="if-row" data-opt="aiTolerance">
+                  <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
+                  <input type="range" min="0" max="100" step="1">
+                </label>
+                <p class="if-hint">Lower keeps faint lines and small detached parts; higher strips more leftover smudges.</p>
+              </div>
+
+              <div id="if-bg-key" hidden>
+                <p class="if-hint">Instant brightness key — best for clean black line art on white paper.</p>
+              </div>
+
+              <div id="if-bg-chroma" hidden>
+                <p class="if-hint">Pick the background colour straight from your artwork — anything near it becomes transparent. Works for black, white, green screen or coloured paper.</p>
+                <div class="if-btn-row" style="margin-bottom:10px">
+                  <button type="button" class="sb-btn if-btn-quiet" id="if-chroma-pick">Pick colour from artwork</button>
+                  <span id="if-chroma-swatch" class="if-swatch" hidden></span>
+                </div>
+              </div>
+
+              <label class="if-row" data-opt="bgTolerance" hidden>
+                <span class="if-row-head"><span class="if-label">Background tolerance</span><output class="if-val"></output></span>
+                <input type="range" min="5" max="100" step="1">
+              </label>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Detail &amp; depth</summary>
+            <div class="if-sec-body">
+              <label class="if-switch" data-opt="innerDetails">
+                <span class="if-switch-text"><span class="if-label">Keep enclosed whites</span>
+                  <span class="if-hint">White areas fully surrounded by ink (hands, cuffs, swooshes) become white detail instead of holes — like the official icons.</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+              <label class="if-switch" data-opt="fillHoles">
+                <span class="if-switch-text"><span class="if-label">Fill enclosed spaces</span>
+                  <span class="if-hint">Every fully enclosed space (handle loops, rings, eyes) is filled with the parchment texture, whatever colour it was in your art.</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+              <label class="if-switch" data-opt="whiteUnderlay">
+                <span class="if-switch-text"><span class="if-label">White underlay</span>
+                  <span class="if-hint">Parchment under the entire silhouette with the colour ink on top, so soft edges always have white behind them.</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+
+              <label class="if-row" data-opt="highlights">
+                <span class="if-row-head"><span class="if-label">Rim highlights</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">White swoosh strokes along the lit edges of the shape — the hand-drawn look, worked out from the silhouette itself.</p>
+              <label class="if-row" data-opt="highlightAngle" data-needs="highlights">
+                <span class="if-row-head"><span class="if-label">Highlight angle</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="360" step="5">
+              </label>
+              <label class="if-row" data-opt="highlightWidth" data-needs="highlights">
+                <span class="if-row-head"><span class="if-label">Highlight width</span><output class="if-val"></output></span>
+                <input type="range" min="1" max="10" step="0.5">
+              </label>
+
+              <label class="if-row" data-opt="bevel">
+                <span class="if-row-head"><span class="if-label">Auto shading (3D)</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">Lights the silhouette like a rounded shape — depth for completely flat art. Follows the highlight angle.</p>
+              <label class="if-row" data-opt="bevelSize" data-needs="bevel">
+                <span class="if-row-head"><span class="if-label">Shading width</span><output class="if-val"></output></span>
+                <input type="range" min="2" max="40" step="1">
+              </label>
+
+              <label class="if-row" data-opt="lineDetails">
+                <span class="if-row-head"><span class="if-label">Line details</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">Finds anything much darker or brighter than its surroundings — handle wraps, stitching, hatching — and draws it as a white detail line. Works in Silhouette, White key and Smart AI modes.</p>
+              <div class="if-seg" id="if-linemode" data-opt="lineMode" data-needs="lineDetails" role="group" aria-label="Which lines to catch">
+                <button type="button" data-value="dark" aria-pressed="true">Dark lines</button>
+                <button type="button" data-value="both" aria-pressed="false">Both</button>
+                <button type="button" data-value="bright" aria-pressed="false">Bright lines</button>
+              </div>
+              <label class="if-row" data-opt="lineRadius" data-needs="lineDetails">
+                <span class="if-row-head"><span class="if-label">Line scale</span><output class="if-val"></output></span>
+                <input type="range" min="2" max="20" step="1">
+              </label>
+
+              <label class="if-row" data-opt="colorEdges">
+                <span class="if-row-head"><span class="if-label">Colour edges</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">Draws a thin white line where neighbouring colours differ — handle against cord, sleeve against skin — even when they are equally bright.</p>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Character type</summary>
+            <div class="if-sec-body">
+              <div class="if-tex-grid" id="if-textures" role="group" aria-label="Character type"></div>
+              <div id="if-split" hidden>
+                <label class="if-row" data-opt="splitPosition">
+                  <span class="if-row-head"><span class="if-label">Divider position</span><output class="if-val"></output></span>
+                  <input type="range" min="0" max="100" step="1">
+                </label>
+                <label class="if-row" data-opt="splitThickness">
+                  <span class="if-row-head"><span class="if-label">Divider thickness</span><output class="if-val"></output></span>
+                  <input type="range" min="0" max="30" step="0.5">
+                </label>
+                <p class="if-hint">Good texture left of the white divider, evil right of it — the official Traveller look.</p>
+              </div>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Paint bucket</summary>
+            <div class="if-sec-body">
+              <div class="if-seg" id="if-bucket" role="group" aria-label="Paint bucket">
+                <button type="button" data-value="off" aria-pressed="true">Off</button>
+                <button type="button" data-value="color" aria-pressed="false">Colour</button>
+                <button type="button" data-value="white" aria-pressed="false">Parchment</button>
+                <button type="button" data-value="hatch" aria-pressed="false">Hatch</button>
+              </div>
+              <p class="if-hint" id="if-bucket-hint">Fill enclosed spaces by hand: pick Colour or Parchment, then tap a space in the preview. Unlike “Fill enclosed spaces”, you choose each region and its fill. Hatch adds shading lines to whatever you tap instead.</p>
+              <ul class="if-fills" id="if-fills"></ul>
+              <button type="button" class="sb-btn if-btn-quiet" id="if-fills-clear" hidden>Clear all fills</button>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Hatching</summary>
+            <div class="if-sec-body">
+              <label class="if-row" data-opt="hatchIntensity">
+                <span class="if-row-head"><span class="if-label">Intensity</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <label class="if-row" data-opt="hatchAngle" data-needs="hatchIntensity">
+                <span class="if-row-head"><span class="if-label">Line angle</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="180" step="1">
+              </label>
+              <p class="if-hint">Hand-drawn shading lines, like the ink hatching on the official icons. With no regions picked in the paint bucket, the whole colour body is hatched.</p>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Texture grade</summary>
+            <div class="if-sec-body">
+              <p class="if-label" style="display:block;margin-bottom:8px">Colour texture</p>
+              <label class="if-row" data-opt="colorSat">
+                <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="2" step="0.05">
+              </label>
+              <label class="if-row" data-opt="colorBright">
+                <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
+                <input type="range" min="0.4" max="1.6" step="0.05">
+              </label>
+              <label class="if-row" data-opt="colorVib">
+                <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <label class="if-row" data-opt="colorGrad">
+                <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">Vibrance lifts dull tones without blowing out vivid ones; gradient darkens toward the bottom for extra weight.</p>
+
+              <p class="if-label" style="display:block;margin:16px 0 8px">Parchment texture</p>
+              <label class="if-row" data-opt="whiteSat">
+                <span class="if-row-head"><span class="if-label">Saturation</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="2" step="0.05">
+              </label>
+              <label class="if-row" data-opt="whiteBright">
+                <span class="if-row-head"><span class="if-label">Brightness</span><output class="if-val"></output></span>
+                <input type="range" min="0.4" max="1.6" step="0.05">
+              </label>
+              <label class="if-row" data-opt="whiteVib">
+                <span class="if-row-head"><span class="if-label">Vibrance</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <label class="if-row" data-opt="whiteGrad">
+                <span class="if-row-head"><span class="if-label">Gradient</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <p class="if-hint">Grades the parchment used for detail regions, and for the border when it is set to cream.</p>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Texture placement</summary>
+            <div class="if-sec-body">
+              <p class="if-hint">Official icons are each a random crop of one big texture sheet — pan, zoom and spin until the grain sits right. The dice take a fresh crop.</p>
+              <div class="if-place">
+                <div class="if-pad">
+                  <span></span>
+                  <button type="button" data-nudge="0,-0.03" aria-label="Pan texture up">▲</button>
+                  <span></span>
+                  <button type="button" data-nudge="-0.03,0" aria-label="Pan texture left">◀</button>
+                  <button type="button" class="if-pad-mid" id="if-tex-random" aria-label="Random crop">⚄</button>
+                  <button type="button" data-nudge="0.03,0" aria-label="Pan texture right">▶</button>
+                  <span></span>
+                  <button type="button" data-nudge="0,0.03" aria-label="Pan texture down">▼</button>
+                  <span></span>
+                </div>
+                <div class="if-place-sliders">
+                  <label class="if-row" data-opt="texScale">
+                    <span class="if-row-head"><span class="if-label">Zoom</span><output class="if-val"></output></span>
+                    <input type="range" min="0.4" max="2.6" step="0.01">
+                  </label>
+                  <label class="if-row" data-opt="texRotation">
+                    <span class="if-row-head"><span class="if-label">Rotation</span><output class="if-val"></output></span>
+                    <input type="range" min="-180" max="180" step="1">
+                  </label>
+                </div>
+              </div>
+              <label class="if-row" data-opt="texOffsetX">
+                <span class="if-row-head"><span class="if-label">Horizontal pan</span><output class="if-val"></output></span>
+                <input type="range" min="-1" max="1" step="0.005">
+              </label>
+              <label class="if-row" data-opt="texOffsetY">
+                <span class="if-row-head"><span class="if-label">Vertical pan</span><output class="if-val"></output></span>
+                <input type="range" min="-1" max="1" step="0.005">
+              </label>
+              <button type="button" class="sb-btn if-btn-quiet" id="if-tex-reset">Reset placement</button>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Border &amp; shadow</summary>
+            <div class="if-sec-body">
+              <label class="if-switch" data-opt="borderStyle" data-on="white" data-off="cream">
+                <span class="if-switch-text"><span class="if-label">Pure white border</span>
+                  <span class="if-hint">The official clean white stroke. Turn it off for a cream, paper-textured border.</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+              <label class="if-row" data-opt="borderWidth">
+                <span class="if-row-head"><span class="if-label">Border width</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="32" step="0.5">
+              </label>
+              <label class="if-row" data-opt="borderEdge">
+                <span class="if-row-head"><span class="if-label">Border edge</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="3" step="0.1">
+              </label>
+
+              <label class="if-row" data-opt="shadowOpacity">
+                <span class="if-row-head"><span class="if-label">Shadow opacity</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="1" step="0.05">
+              </label>
+              <label class="if-row" data-opt="shadowAngle" data-needs="shadowOpacity">
+                <span class="if-row-head"><span class="if-label">Shadow angle</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="360" step="5">
+              </label>
+              <label class="if-row" data-opt="shadowDistance" data-needs="shadowOpacity">
+                <span class="if-row-head"><span class="if-label">Shadow distance</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="40" step="1">
+              </label>
+              <label class="if-row" data-opt="shadowBlur" data-needs="shadowOpacity">
+                <span class="if-row-head"><span class="if-label">Shadow blur</span><output class="if-val"></output></span>
+                <input type="range" min="0" max="40" step="1">
+              </label>
+              <p class="if-hint">A soft shadow behind the whole sticker. Wiki icons are usually flat, so leave it low unless you are making a preview image.</p>
+            </div>
+          </details>
+
+          <details class="if-sec">
+            <summary>Orientation</summary>
+            <div class="if-sec-body">
+              <label class="if-switch" data-opt="flipH">
+                <span class="if-switch-text"><span class="if-label">Flip horizontally</span></span>
+                <input type="checkbox"><span class="if-track"></span>
+              </label>
+              <label class="if-row" data-opt="rotate">
+                <span class="if-row-head"><span class="if-label">Rotate</span><output class="if-val"></output></span>
+                <input type="range" min="-180" max="180" step="1">
+              </label>
+              <p class="if-hint">Applied to the finished icon. It shrinks a little when rotated so the corners never get cropped.</p>
+            </div>
+          </details>
+
+          <div style="padding-top:14px;border-top:1px solid rgba(180,160,120,.55)">
+            <button type="button" class="sb-btn if-btn-quiet" id="if-reset-all">Reset every setting</button>
+          </div>
+        </section>
+
+        <!-- Export -->
+        <section class="if-card">
+          <h2 class="if-card-title">Download</h2>
+          <div class="if-export-row">
+            <select id="if-size" aria-label="Icon size">
+              <option value="591">591 px — wiki size</option>
+              <option value="0">Match my artwork</option>
+              <option value="400">400 px</option>
+              <option value="1024">1024 px</option>
+              <option value="2048">2048 px</option>
+            </select>
+            <button type="button" class="sb-btn if-btn-go" id="if-export" disabled>Download PNG</button>
+          </div>
+          <p class="if-hint">591&nbsp;px matches the official icons exactly, and is what the character editor expects. The background stays transparent.</p>
+        </section>
+
+        <!-- Save straight to one of your characters -->
+        <section class="if-card" id="if-save-card">
+          <h2 class="if-card-title">Save to a character</h2>
+          <div id="if-save-body" hidden>
+            <p class="if-hint">Put this icon straight onto one of your own character pages — no download, no re-upload. It replaces that page's current art.</p>
+            <div class="if-save-row">
+              <select id="if-save-pick" aria-label="Which of your characters"><option value="">Loading your characters…</option></select>
+              <button type="button" class="sb-btn if-btn-go" id="if-save" disabled>Save as its icon</button>
+            </div>
+          </div>
+          <p class="if-msg" id="if-save-msg">Checking whether you are signed in…</p>
+        </section>
+
+      </div>
+
+      <!-- ══ PREVIEW ═══════════════════════════════════════════ -->
+      <div class="if-stage-col">
+        <div class="if-stage" id="if-stage">
+          <div class="if-token-ring" id="if-ring" hidden></div>
+          <div class="if-stage-empty" id="if-stage-empty">
+            <b>The forge is cold</b>
+            <span>Drop in artwork or try a sample — your icon appears here.</span>
+          </div>
+          <div class="if-stage-inner" id="if-stage-inner" hidden>
+            <canvas id="if-canvas" width="591" height="591" aria-label="Icon preview"></canvas>
+          </div>
+          <div class="if-busy" id="if-busy" hidden>
+            <div class="if-spin"></div>
+            <p id="if-busy-label">Working…</p>
+            <div class="if-busy-bar"><i id="if-busy-bar"></i></div>
+          </div>
+        </div>
+
+        <div class="if-stage-bar">
+          <div class="if-seg" id="if-backdrop" role="group" aria-label="Preview backdrop">
+            <button type="button" data-value="dark" aria-pressed="true">Night</button>
+            <button type="button" data-value="checker" aria-pressed="false">Transparency</button>
+            <button type="button" data-value="token" aria-pressed="false">Token</button>
+          </div>
+          <label class="if-zoom">
+            <span class="if-label">Zoom</span>
+            <input type="range" id="if-zoom" min="0.5" max="1" step="0.02" value="0.86" aria-label="Preview zoom">
+          </label>
+        </div>
+
+        <p class="if-stage-note" id="if-stage-note">
+          Textures reverse-engineered from the official icons by
+          <a href="https://github.com/matteipis/Reverse-engineered-BotC-textures" target="_blank" rel="noopener">matteipis</a>,
+          in the spirit of JohnForster's original generator. Drawing surface:
+          <a href="https://github.com/viliusle/miniPaint" target="_blank" rel="noopener">miniPaint</a> (MIT) by Vilius L.
+          Fan-made, like the rest of the wiki.
+        </p>
+      </div>
+
+    </div>
+
+    <section class="landing-section" style="margin-top:34px">
+      <h2 class="type-header">Getting a good icon</h2>
+      <div class="type-rule"></div>
+      <div class="about-card if-tips">
+        <ul>
+          <li><b>Bold, closed shapes read best.</b> The forge decides what is body and what is detail — thin grey pencil lines give it nothing to hold onto.</li>
+          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart AI</em>, which cuts the subject out for you.</li>
+          <li><b>Something filled that should be hollow</b> (or the other way round)? Turn off <em>Fill enclosed spaces</em>, then use the paint bucket to choose each region yourself.</li>
+          <li><b>Every icon is a different crop</b> of the same texture sheet — roll the dice under Texture placement so yours does not look identical to the last one.</li>
+          <li><b>Save at 591&nbsp;px</b> for the wiki, then add it in the <a href="create">character editor</a> — or use “Save to a character” above if the page already exists.</li>
+        </ul>
+        <p class="about-disclaimer">Fan-made tools. Not affiliated with The Pandemonium Institute.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <div class="if-toast" id="if-toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="assets/site.js"></script>
+  <script type="module" src="assets/iconforge/app.js"></script>
+</body>
+</html>

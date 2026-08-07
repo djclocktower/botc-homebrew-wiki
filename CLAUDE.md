@@ -181,13 +181,22 @@ assets/
                        suggested output. Rules carry sev fix|warn|off — only
                        `fix` rules are ever applied in bulk. Pure strings, no
                        DOM: `node --check`-able and Worker-safe.
+  iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
+                       engine.js is the handoff's iconEngine.ts with the types
+                       stripped; app.js is the wiki's own UI controller (the
+                       React app's Home/ControlPanel/PreviewStage rebuilt in
+                       vanilla JS); editor.js frames the vendored miniPaint;
+                       textures.js, source.js, bgremoval.js are the small libs.
+                       Subfolders textures/ samples/ minipaint/ vendor/ are the
+                       sealed payload — see the section below, and
+                       migration/icon-forge-guide.md for the engine reference.
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
                        Featured Character rotates **Starlight pages only**,
                        seeded by the day number so it is stable for 24 h.
-                       Browse cards include Grimoire Forge; the old Creator Icons
+                       Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
 all-characters.html    Browse/filter (3-state team+tag chips; ?collection= view)
@@ -219,8 +228,8 @@ publish-news.html      Admin-only news editor: the same kit as publish-page
                        summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Creator Icons. This is what the "Tools"
-                       nav entry points at.
+                       Grimoire Forge, Icon Forge, Creator Icons. This is what
+                       the "Tools" nav entry points at.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -245,6 +254,14 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        real with-spaces length, whatever the box displays. Rule
                        toggles, the draft text and the Count Spaces choice
                        persist in localStorage (botc_grimforge_*).
+iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
+                       photo into an official-style character icon. Same
+                       treatment as Grimoire Forge: the handoff shipped a React
+                       + Tailwind + shadcn app, and it was rebuilt in vanilla JS
+                       on the wiki's parchment/purple styling — do not
+                       reintroduce a framework. The page owns the UI and its
+                       page-local CSS; everything else is in assets/iconforge/.
+                       See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
@@ -452,6 +469,59 @@ and `publish-page.html` share `render-wiki.js`, `wiki-editor.js` and
 `theme-editor.js`, so a formatting mark added in one place works in both (and
 in custom boxes). News backgrounds live in R2 under `news/{slug}-bg.png`;
 `news/` uploads are admin-only, like `tokens/`.
+
+## Icon Forge (`/iconforge`)
+
+A client-side icon maker: line art, a scan or a photo in, an official-style
+character icon out (textured body, parchment details, white border,
+transparent PNG). It is a **static page** — no Worker route, no D1, nothing
+uploaded — except for the one opt-in save described below.
+
+- **The engine is ported, not rewritten.** `assets/iconforge/engine.js` is the
+  handoff's `iconEngine.ts` with its types stripped by `tsc` (comments kept).
+  Two rules from its design are load-bearing and easy to break:
+  1. Any new option read by `prepSource`/`buildMasks`/`buildLighting`/
+     `buildBevel` **must be added to `MASK_OPTS`**, or the mask cache goes
+     stale and the control appears to do nothing intermittently.
+  2. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
+     stages are `cloneCanvas()`d before being fed to them — keep the clones.
+     Also: any helper that sets a canvas transform resets it before returning.
+  The full reasoning is in `migration/icon-forge-guide.md` (§2, §3, §7), which
+  is the reference for the pipeline. Its §1 and §8 describe the original React
+  project and do **not** apply to this repo.
+- **The page owns the UI.** `iconforge.html` carries the markup and all
+  page-local CSS (sliders, switches, segmented pickers and the preview stage,
+  all rebuilt in wiki furniture). Every control declares
+  `data-opt="<option name>"` and `assets/iconforge/app.js` binds them
+  generically — state is the truth, the DOM is a view of it, so a new knob is
+  one markup block plus (if it needs one) a formatter in `FORMAT`.
+- **The preview keeps one cached renderer** and draws a fast pass at
+  supersample 1 immediately, then a crisp pass at 2 after 220 ms idle. Export
+  always renders one-shot at full quality. Do not "simplify" that into a
+  single render — a full pipeline run is ~750 ms.
+- **`assets/iconforge/vendor/` is third-party and sealed** (see its README):
+  `@imgly/background-removal` and the `onnxruntime-web` wasm build, both
+  vendored from npm because there is no bundler. The import map in
+  `iconforge.html` resolves the bare specifier `onnxruntime-web` for the
+  library's own dynamic import — **if that map is dropped, Smart AI dies.**
+  The ONNX wasm (~12 MB) and the model (~44 MB) are fetched from imgly's CDN
+  on first use; they can never be committed (the model alone exceeds
+  Cloudflare's 25 MiB per-asset limit and would fail the whole deploy). If
+  that fetch fails the tool toasts and falls back to "Keep".
+  `minipaint/` is likewise sealed — a prebuilt, minified miniPaint bundle with
+  a custom lasso tool. It is only re-skinned (CSS variables injected into the
+  same-origin iframe by `editor.js`); never hand-patch `js/bundle.js`.
+- **Save to a character** is the only server call. It uploads the 591 px
+  render to `art/{slug}.png` — the same R2 slot the character editor uses —
+  and then re-saves the row through `/api/character` with `art`/`image`
+  pointing at it, so a page whose art lived elsewhere still picks it up. The
+  Worker is the enforcer on both calls (`canEditRow`); the page only decides
+  what to ask for. It sends the row's existing `status` back so saving an icon
+  never publishes a draft.
+- Textures, samples, the editor and the vendored libraries are pinned content
+  and cached `immutable` in `_headers`; the tool's own `.js` modules are
+  deliberately left on the site-wide revalidate rule so an edit shows on a
+  normal refresh.
 
 ## Page classification (Partial / Standard / Starlight)
 
