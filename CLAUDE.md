@@ -61,6 +61,13 @@ Key dynamic behavior:
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
+  A character's URL **and its R2 art slot** are both derived from its name, so
+  both editors ask `GET /api/slug-check` before uploading anything and take the
+  first free URL automatically, in the wiki's existing duplicate style
+  (`illusionist-megalomania`, `witcher-odyssey`, then `-2`, `-3`). No prompt,
+  no dialog — the character keeps its name, the page just gets its own address.
+  A URL that is only *parked* by a redirect counts as taken. The Worker is
+  still the enforcer — the check only decides which slug the editor asks for.
 - **Creator pages are one page on two keys.** `/u/{username}` (an account) and
   `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
   which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account
@@ -303,7 +310,9 @@ in worker.js; a block stops the notification too), `page_views` (per-page daily
 view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the
-section below), and a lazily ALTERed `users.banned` column. `settings` also holds
+section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
+a renamed page used to live at — see "Renaming a character" below), and a
+lazily ALTERed `users.banned` column. `settings` also holds
 `announcement` (site-wide banner JSON) and `protected:{type}:{slug}` keys
 (admin page protection — only admins may edit/publish/delete those pages).
 Bans and admin promote/demote take effect immediately: POST requests and
@@ -330,6 +339,38 @@ background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Renaming a character (the old link keeps working)
+
+A character's URL is built from its name, so `edit.html` renames the page when
+the name changes: it works out the URL the new name wants, asks
+`/api/slug-check` for a free one, and posts `renameFrom` alongside the save.
+`renameCharacter()` in worker.js does the move, and **everything that points at
+the page moves with it** — comments, `page_views`, `revisions`, the activity
+log, admin protection, the art objects in R2 (and the `art`/`image` paths in
+the row), the roster slugs inside `scripts.data.characters`, collection
+`include[]`/`exclude[]`, and profile pins. Add any new place a character slug
+is stored to `rewriteSlugRefs()`, or a rename will silently drop the page out
+of it.
+
+The old slug is kept in the `redirects` table and `/c/{old}` **301s** to the
+new page forever — bookmarks, Discord posts and forum links must not rot.
+`/api/page` follows a redirect too, so `edit?c={old}` still opens the editor.
+Renaming A→B→C leaves A *and* B pointing straight at C (no chains), and a slug
+that becomes a live page again stops being a redirect. Details worth keeping:
+
+- Rename only fires when the **name actually changed** in that editing session
+  (compared against the loaded row, not against the slug) — otherwise every
+  save of `sculptor-fall-of-rome` would try to move it to `sculptor`.
+- A disambiguating suffix is **preserved**: "Sculptor" at
+  `/c/sculptor-fall-of-rome` renamed to "Stonecutter" becomes
+  `/c/stonecutter-fall-of-rome`.
+- A name that slugifies to nothing (a fully non-Latin name) never renames.
+- A rename never moves a page onto a live URL, **including one of your own**
+  (`mine` from slug-check is not a free pass here, unlike on the create page).
+- When a rename and an art upload happen in the same save, the **row moves
+  first** — the move carries the old art to the new slot, so new art has to
+  land after it or it gets overwritten. `edit.html` orders it that way.
 
 ## Creator identity (which names belong to which account)
 

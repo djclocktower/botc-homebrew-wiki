@@ -701,21 +701,54 @@
         }
       }).catch(function(){});
 
+    // ── which URL will this page get? ──────────────────────────────
+    // A character's URL comes from its name (/c/{slug}) and so does its art
+    // slot in R2 (art/{slug}.png). When another account already holds that URL
+    // the art upload is refused — which used to be the first thing the writer
+    // heard about it. Ask the Worker first and just take the next free URL:
+    // the character keeps its name, its page gets its own address, in the
+    // shape the wiki already uses for duplicate names (witcher-odyssey,
+    // illusionist-megalomania). Nothing to read, nothing to confirm.
+    function resolveSlug(d) {
+      var base = slugify(d.name);
+      var q = '/api/slug-check?type=character&name=' + encodeURIComponent(d.name) +
+              '&appearsIn=' + encodeURIComponent(d.appearsIn || '');
+      return fetch(q, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .catch(function () { return null; })
+        .then(function (j) {
+          // If the check itself fails, carry on and let the save decide: the
+          // Worker never lets anyone write over a page that isn't theirs.
+          if (!j || j.error || !j.taken) return base;
+          // `mine` means this URL is one of your own pages, so saving updates
+          // it — which is what re-publishing from this tab should do.
+          if (j.mine) return base;
+          return j.suggestion || base;
+        });
+    }
+
     function submitCharacter(saveStatus) {
       var d = gather();
       if (!d.name)    return setStatus('err', 'A character name is required.');
       if (!d.ability) return setStatus('err', 'An ability line is required.');
       if (!artDataURL) return setStatus('err', 'Please upload character art (or import a JSON whose icon can be loaded).');
 
-      var slug    = slugify(d.name);
+      var verb = saveStatus === 'draft' ? 'Saving draft' : 'Publishing';
+      $('publish').disabled = true;
+      $('save-draft').disabled = true;
+      setStatus('work', verb + '&hellip;');
+      resolveSlug(d).then(function (slug) {
+        saveCharacter(d, slug, saveStatus);
+      });
+    }
+
+    function saveCharacter(d, slug, saveStatus) {
       d.art   = 'art/' + slug + '.png';
       d.page  = 'c/' + slug + '.html';
       d.image = ART_BASE + slug + '.png';
 
       var isDraft = saveStatus === 'draft';
       var verb = isDraft ? 'Saving draft' : 'Publishing';
-      $('publish').disabled = true;
-      $('save-draft').disabled = true;
       setStatus('work', verb + '&hellip; uploading art');
 
       // Step 1: upload art to R2 (instant, no rebuild)
