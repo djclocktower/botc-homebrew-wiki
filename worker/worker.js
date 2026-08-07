@@ -658,11 +658,17 @@ async function ensureSiteTextTable(env) {
   _siteTextReady = true;
 }
 
-// The public map, cached per isolate: every page on the site asks for this,
-// and it changes only when an admin saves an edit.
+// The public map. Every page on the site asks for this, so it is held in
+// memory to absorb bursts — but only for a few seconds. A save clears the
+// cache in the isolate that handled it and NOT in any other, so this window
+// is exactly how long an edit can take to reach a reader. Keep it short: the
+// whole point of the text editor is that a change shows up straight away, and
+// the read behind it is one indexed query against a table with a handful of
+// rows in it.
+const SITE_TEXT_CACHE_MS = 5000;
 let _siteTextCache = null;
 async function siteTextItems(env) {
-  if (_siteTextCache && (Date.now() - _siteTextCache.at) < 60000) return _siteTextCache.items;
+  if (_siteTextCache && (Date.now() - _siteTextCache.at) < SITE_TEXT_CACHE_MS) return _siteTextCache.items;
   let items = [];
   try {
     await ensureSiteTextTable(env);
@@ -1851,12 +1857,16 @@ export default {
 
     // ---------- SYSTEM TEXT OVERRIDES (public; site.js applies them) ----------
     // Every page asks for this, so it must stay small and cheap: only the
-    // strings an admin has actually rewritten are in the table, and the
-    // Worker holds the list in memory for a minute. Empty on a site with no
+    // strings an admin has actually rewritten are in the table, and the Worker
+    // holds the list in memory for a few seconds. Empty on a site with no
     // edits, which is the normal case.
+    // `no-store`, like every other JSON endpoint here. It was briefly sent
+    // with max-age=120, which put a two-minute copy in the browser AND at the
+    // edge on top of the isolate cache — an edit could take minutes to show,
+    // which defeats the entire feature.
     if (method === 'GET' && path === '/api/site-text') {
       const items = await siteTextItems(env);
-      return jsonResponse({ items }, { 'Cache-Control': 'public, max-age=120' });
+      return jsonResponse({ items });
     }
 
     // ---------- NEWS ----------
