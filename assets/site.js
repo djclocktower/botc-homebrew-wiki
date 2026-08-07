@@ -18,13 +18,13 @@
      - opt-out. Anything inside [data-no-text-override] or a contenteditable
        is left alone.
 
-   The map is cached in localStorage so a repeat visit applies it immediately
-   instead of flashing the original wording, and refreshed at most every two
-   minutes. This runs first in the file on purpose: the sooner it goes, the
-   less there is to see. */
+   The map is kept in localStorage so a repeat visit applies it immediately
+   instead of flashing the original wording, but it is re-fetched on every
+   page load all the same — the stored copy buys the first paint, never a
+   skipped request, or an edit would outlive several reloads. This runs first
+   in the file on purpose: the sooner it goes, the less there is to see. */
 (function () {
   var KEY = 'botc_site_text';
-  var TTL = 2 * 60 * 1000;
   var ATTRS = ['placeholder', 'title', 'alt', 'aria-label'];
   var ATTR_SEL = '[placeholder],[title],[alt],[aria-label]';
   var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TEMPLATE: 1 };
@@ -218,7 +218,9 @@
   }
 
   function refresh() {
-    return fetch('/api/site-text', { credentials: 'same-origin' })
+    // cache:'no-store' matters as much as the header does — without it a
+    // refresh right after a save can be answered from the browser's own copy.
+    return fetch('/api/site-text', { credentials: 'same-origin', cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         var items = (d && d.items) || [];
@@ -230,10 +232,15 @@
       .catch(function () { return null; });
   }
 
+  // The stored copy is for PAINT SPEED, not for saving requests: it goes on
+  // immediately so a repeat visit never flashes the old wording, and then the
+  // real map is fetched on every single page load. An earlier version treated
+  // it as a two-minute cache and skipped the fetch, which meant an edit could
+  // survive several reloads — worse than a flash by a long way.
   var cached = null;
   try { cached = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
   if (cached && cached.items) { setItems(cached.items); run(); }
-  if (!cached || (Date.now() - cached.ts) > TTL) refresh();
+  refresh();
 
   // /text-editor calls refresh() after a save so the change shows at once;
   // text-live.js reads items()/inScope() to know what a piece of text on the
