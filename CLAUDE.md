@@ -212,7 +212,7 @@ assets/
                        React app's Home/ControlPanel/PreviewStage rebuilt in
                        vanilla JS); editor.js frames the vendored miniPaint;
                        textures.js, source.js, bgremoval.js are the small libs.
-                       Subfolders textures/ samples/ minipaint/ vendor/ are the
+                       Subfolders textures/ minipaint/ vendor/ are the
                        sealed payload — see the section below, and
                        migration/icon-forge-guide.md for the engine reference.
   icons/               Official BotC role icons (never change; long-cached)
@@ -639,7 +639,7 @@ uploaded — except for the one opt-in save described below.
   Worker is the enforcer on both calls (`canEditRow`); the page only decides
   what to ask for. It sends the row's existing `status` back so saving an icon
   never publishes a draft.
-- Textures, samples and the editor are pinned content and cached `immutable`
+- Textures and the editor are pinned content and cached `immutable`
   in `_headers`; the tool's own `.js` modules — and `vendor/`, which carries
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.

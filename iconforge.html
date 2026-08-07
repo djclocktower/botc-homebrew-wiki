@@ -236,14 +236,6 @@ details.if-sec > summary:hover { color: #8a3526; }
 .if-btn-row .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
 .sb-btn.if-btn-quiet { background: linear-gradient(180deg, #6b573d, #4a3c2a); }
 .sb-btn.if-btn-go { background: linear-gradient(180deg, #8a3526, #5B1F21); }
-.if-samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.if-samples button {
-  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .74rem;
-  letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
-  padding: 6px 9px; color: var(--maroon);
-  background: rgba(255,253,248,.62); border: 1px solid var(--parch-frame);
-}
-.if-samples button:hover { background: #fffdf8; }
 
 /* ── Preview stage ──────────────────────────────────────────────── */
 .if-stage {
@@ -481,7 +473,6 @@ details.if-sec > summary:hover { color: #8a3526; }
             <button type="button" class="sb-btn if-btn-quiet" id="if-draw">Draw your own</button>
           </div>
 
-          <div class="if-samples" id="if-samples" aria-label="Sample artwork"></div>
         </section>
 
         <!-- Knobs -->
@@ -856,7 +847,7 @@ details.if-sec > summary:hover { color: #8a3526; }
           <div class="if-token-ring" id="if-ring" hidden></div>
           <div class="if-stage-empty" id="if-stage-empty">
             <b>The forge is cold</b>
-            <span>Drop in artwork or try a sample — your icon appears here.</span>
+            <span>Drop in a drawing, or start one yourself — your icon appears here.</span>
           </div>
           <div class="if-stage-inner" id="if-stage-inner" hidden>
             <canvas id="if-canvas" width="591" height="591" aria-label="Icon preview"></canvas>

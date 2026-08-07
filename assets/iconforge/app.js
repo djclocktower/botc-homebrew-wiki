@@ -17,7 +17,7 @@
 
 import { DEFAULT_OPTIONS, createIconRenderer, probeBucket, renderIcon } from './engine.js';
 import { COLOR_TEXTURES, TRAVELLER_SPLIT_ID, loadTexturesFor } from './textures.js';
-import { SAMPLES, loadSourceFile, loadSourceUrl, loadSvgString, thumbDataUrl } from './source.js';
+import { loadSourceFile, thumbDataUrl } from './source.js';
 import { applyCleanup, removeImageBackground } from './bgremoval.js';
 import { openEditor } from './editor.js';
 
@@ -465,27 +465,6 @@ $('if-drop').addEventListener('drop', (e) => {
   e.preventDefault();
   const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
   if (f) onFile(f);
-});
-
-/* Samples */
-SAMPLES.forEach((s) => {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = s.label;
-  b.addEventListener('click', async () => {
-    try {
-      const img = s.file ? await loadSourceUrl(s.file) : await loadSvgString(s.svg);
-      setBgMode(s.whiteKey ? 'key' : 'keep');
-      opts = Object.assign({}, opts, {
-        mode: s.silhouette ? 'silhouette' : 'auto',
-        chromaKey: null
-      });
-      setSource(img, s.label, s.file ? 'raster' : 'svg');
-    } catch (e) {
-      toast('Could not load that sample: ' + (e && e.message ? e.message : e), 'err');
-    }
-  });
-  $('if-samples').appendChild(b);
 });
 
 /* Editor */

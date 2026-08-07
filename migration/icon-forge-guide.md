@@ -16,9 +16,10 @@
 > - `assets/iconforge/{app,editor,textures,source,bgremoval}.js` — the wiki's
 >   own replacements for `Home.tsx`, `ControlPanel.tsx`, `PreviewStage.tsx`,
 >   `EditorOverlay.tsx`, `Dropzone.tsx`, `ChromaPicker.tsx` and the small libs.
-> - `assets/iconforge/{textures,samples,minipaint,vendor}/` — the sealed
->   payload: texture sheets, sample art, the miniPaint build, and the two
->   vendored AI modules (see `vendor/README.md`).
+> - `assets/iconforge/{textures,minipaint,vendor}/` — the sealed payload:
+>   texture sheets, the miniPaint build, and the two vendored
+>   background-removal modules (see `vendor/README.md`). The sample artwork
+>   buttons of §1/§8 are not part of the wiki build.
 >
 > There is no React, no Tailwind, no router and no `dist/`. The three unused
 > texture sheets mentioned in §7 were not copied over.
