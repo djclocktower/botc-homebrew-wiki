@@ -250,6 +250,21 @@
       </div>
 
       <div id="ui" style="display:none">
+        <section class="panel" aria-label="Live editing">
+          <h3>Edit as you browse</h3>
+          <p style="font-size:.9rem;margin:0 0 10px;opacity:.85">
+            Turn this on and the wiki looks and works exactly as it always does —
+            except that any wording the site wrote itself lights up as you pass
+            over it, and a double-click (double-tap on a phone) opens a box to
+            rewrite it on the spot. Nobody else sees any of this, and text that
+            belongs to whoever wrote the page is never offered.
+          </p>
+          <div class="te-row">
+            <button class="btn" id="live-toggle" type="button">Turn on live editing</button>
+            <span id="live-state" style="font-size:.85rem;opacity:.8"></span>
+          </div>
+        </section>
+
         <section class="panel" aria-label="Filters">
           <div class="te-row">
             <span class="te-label">Search the text</span>
@@ -701,6 +716,33 @@
       });
     }
 
+    /* ---- live editing (the browse-and-double-click mode) ------------- */
+    var LIVE_FLAG = 'botc_text_edit';
+    function liveOn() {
+      try { return localStorage.getItem(LIVE_FLAG) === '1'; } catch (e) { return false; }
+    }
+    function paintLive() {
+      var on = liveOn();
+      $('live-toggle').textContent = on ? 'Turn off live editing' : 'Turn on live editing';
+      $('live-state').textContent = on
+        ? 'On — go to any page and double-click the wording you want to change.'
+        : 'Off — wording can still be changed from the list below.';
+    }
+    if ($('live-toggle')) $('live-toggle').addEventListener('click', function () {
+      var next = !liveOn();
+      try { localStorage.setItem(LIVE_FLAG, next ? '1' : '0'); } catch (e) {}
+      paintLive();
+      // Turning it on mid-visit: load the overlay now rather than making the
+      // owner navigate before anything happens.
+      if (next && !window.TextLive) {
+        var s = document.createElement('script');
+        s.src = '/assets/text-live.js';
+        document.head.appendChild(s);
+      } else if (!next && window.TextLive) {
+        window.TextLive.off();
+      }
+    });
+
     /* ---- the scan --------------------------------------------------- */
     function loadOverrides() {
       return fetch('/api/admin/site-text', { credentials: 'same-origin' })
@@ -729,11 +771,15 @@
         var res = both[1];
         catalog = res.entries;
         filesScanned = res.files.length;
+        // Hand the same list to live editing, so turning it on here means the
+        // first page browsed to already knows what is editable.
+        window.TextScan.saveCatalog(catalog);
         buildSourceList();
         updateStats();
         render();
         $('scanning').style.display = 'none';
         $('ui').style.display = '';
+        paintLive();
       }).catch(function (err) {
         $('scanning').innerHTML = '<p>Could not read the site’s files: ' + esc(err && err.message) + '</p>';
       });

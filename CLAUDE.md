@@ -181,6 +181,16 @@ assets/
                        (.assetsignore). New server-rendered wording goes here,
                        not inline in worker.js, or it cannot be edited.
                        {placeholder} marks a slot the site fills in.
+  text-live.js         Live text editing: browse the wiki and double-click any
+                       of its own wording to rewrite it in place. Lazy-loaded
+                       by site.js ONLY when localStorage botc_text_edit=1 and
+                       /api/me says admin. Its guard is the catalogue —
+                       text nothing in the site's files produced is never
+                       offered — plus a rule that a short string is only
+                       editable when it IS the text you clicked ("Each night"
+                       is a sort rule in sao.js *and* the opening of half the
+                       abilities on the wiki). Styles live in styles.css under
+                       html.textedit-on.
   text-scan.js         The scanner behind /text-editor: fetches every static
                        page and assets/*.js, pulls the human-readable strings
                        out (a small JS lexer, not a regex — comments,
@@ -464,6 +474,29 @@ How the three pieces fit:
    localStorage cache so a repeat visit never flashes the old wording. Put
    `data-no-text-override` on anything that must show text verbatim (the text
    editor's own results list does).
+
+**Live mode** (`assets/text-live.js`) is the same three pieces worn differently:
+switched on from /text-editor, it lets the owner browse the wiki normally and
+double-click (double-tap) any of the site's own wording to rewrite it where it
+stands. The catalogue is cached in localStorage (`botc_text_catalog`, text +
+scope only, ~100 KB, rescanned in the background after 12 h) so every page
+knows instantly what is editable. Two things keep it honest:
+
+- **Nothing outside the catalogue is offered.** That is what stops anyone's
+  ability text or comment being rewritten from the page it sits on.
+- **A short string is only editable when it IS the text that was clicked.**
+  "Each night" is genuinely in `sao.js` *and* opens half the abilities on the
+  wiki; a site-wide override of it from a character page would be a disaster.
+  Anything the guard turns away is still in the list on /text-editor, where
+  the source file is shown beside it.
+
+A click on an editable link or button is held ~320 ms and replayed if no
+second click follows, so double-click can reach a nav label without the first
+click navigating away. Anything NOT editable is never intercepted, so ordinary
+browsing keeps its normal speed. `SiteText.setItems()` also builds **undo
+rules** (replacement → original) from what the page currently shows, so
+pressing Undo — or editing the same words twice — repaints instead of leaving
+the old wording behind.
 
 Two rules worth knowing before changing any of this:
 

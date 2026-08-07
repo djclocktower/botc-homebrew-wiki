@@ -30,6 +30,9 @@
   var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TEMPLATE: 1 };
   var OBS = { childList: true, subtree: true, characterData: true };
   var rules = [];
+  var undoRules = [];     // reverses what is already on the page; one pass only
+  var allItems = [];      // the map as it stands
+  var appliedItems = [];  // the map the page currently reflects
   var minLen = 0;
   var observer = null;
 
@@ -75,9 +78,16 @@
 
   function rewrite(text) {
     if (!text || text.length < minLen) return text;
+    // Undo first, then the current wording. The undo pass puts back what the
+    // source file says before the new rules go on, so an override that was
+    // deleted or rewritten does not leave the old words sitting on the page.
+    return pass(pass(text, undoRules), rules);
+  }
+
+  function pass(text, list) {
     var out = text;
-    for (var i = 0; i < rules.length; i++) {
-      var rule = rules[i];
+    for (var i = 0; i < list.length; i++) {
+      var rule = list[i];
       if (rule.re) {
         rule.re.lastIndex = 0;
         if (!rule.re.test(out)) continue;
@@ -144,7 +154,7 @@
   }
 
   function applyAll() {
-    if (!rules.length) return;
+    if (!rules.length && !undoRules.length) return;
     if (observer) observer.disconnect();
     walk(document.body || document.documentElement);
     var t = rewrite(document.title);
@@ -171,31 +181,40 @@
     observer.observe(document.body, OBS);
   }
 
+  function usable(it) {
+    return it && it.o && typeof it.r === 'string' && it.r && it.o !== it.r && inScope(it.s);
+  }
+  var bylen = function (a, b) { return b.o.length - a.o.length; };
+
   function setItems(items) {
-    rules = [];
-    minLen = 0;
-    if (!items || !items.length) return;
-    var live = [];
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      if (!it || !it.o || typeof it.r !== 'string' || it.o === it.r) continue;
-      if (!inScope(it.s)) continue;
-      live.push(it);
-    }
+    allItems = items || [];
+
+    // Everything already painted onto this page, backwards. Rebuilt on every
+    // change, because "undo" and "change it again" both need the source
+    // wording back before the new wording can go on.
+    undoRules = appliedItems.filter(usable)
+      .map(function (it) { return { o: it.r, r: it.o, s: it.s }; })
+      .sort(bylen).map(compile);
+
     // Longest first, so an override of a whole sentence wins over one of a
     // phrase inside it.
-    live.sort(function (a, b) { return b.o.length - a.o.length; });
-    rules = live.map(compile);
-    minLen = rules.length ? Math.min.apply(null, rules.map(function (r) {
+    rules = allItems.filter(usable).sort(bylen).map(compile);
+
+    var all = rules.concat(undoRules);
+    minLen = all.length ? Math.min.apply(null, all.map(function (r) {
       // a rule with a {placeholder} can match something shorter than itself
       return r.re ? 1 : r.from.length;
     })) : 0;
   }
 
   function run() {
-    if (!rules.length) return;
+    if (!rules.length && !undoRules.length) return;
     applyAll();
     startObserver();
+    // The page now reflects the current map, and the undo pass is spent —
+    // content rendered from here on only needs the forward rules.
+    appliedItems = allItems.slice();
+    undoRules = [];
   }
 
   function refresh() {
@@ -216,8 +235,45 @@
   if (cached && cached.items) { setItems(cached.items); run(); }
   if (!cached || (Date.now() - cached.ts) > TTL) refresh();
 
-  // /text-editor calls refresh() after a save so the change shows at once.
-  window.SiteText = { refresh: refresh, apply: applyAll };
+  // /text-editor calls refresh() after a save so the change shows at once;
+  // text-live.js reads items()/inScope() to know what a piece of text on the
+  // page was called in the source file before it was rewritten.
+  window.SiteText = {
+    refresh: refresh,
+    apply: applyAll,
+    items: function () { return allItems.slice(); },
+    inScope: inScope,
+    here: here
+  };
+})();
+
+/* ── Live text editing (admin, opt-in) ────────────────────────────────────
+   The switch on /text-editor turns on a mode where the admin browses the
+   wiki normally and double-clicks any of the site's own wording to rewrite
+   it in place. Everything it needs lives in assets/text-live.js, which is
+   fetched only when the flag is set AND the reader really is an admin — a
+   reader who sets the flag by hand gets nothing, and every save is checked
+   again on the server. */
+(function () {
+  var FLAG = 'botc_text_edit';
+  var on = false;
+  try { on = localStorage.getItem(FLAG) === '1'; } catch (e) {}
+  if (!on || window.TextLive) return;
+
+  function me() {
+    try {
+      var raw = JSON.parse(sessionStorage.getItem('botc_me'));
+      if (raw && (Date.now() - raw.ts) < 60 * 1000) return Promise.resolve(raw.me);
+    } catch (e) {}
+    return fetch('/api/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); });
+  }
+
+  me().then(function (u) {
+    if (!u || !u.loggedIn || !u.isAdmin) return;
+    var s = document.createElement('script');
+    s.src = '/assets/text-live.js';   // absolute: this also runs under /c/, /s/, /p/
+    document.head.appendChild(s);
+  }).catch(function () {});
 })();
 
 /* Shared site behaviours: search, mobile nav, script-count badge.

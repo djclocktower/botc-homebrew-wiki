@@ -521,7 +521,47 @@
     return out;
   }
 
+  /* ================================================================
+     The cached catalogue
+     ================================================================
+     Live editing (text-live.js) has to answer one question on every
+     double-click: is this piece of text something the SITE wrote, and how
+     widely does an override of it apply? That is exactly what a scan
+     produces, so the answer is cached rather than re-derived on every page.
+     Only the text and its scope are kept — the file list is for the editor's
+     list view, not for this — which keeps a whole site's worth of strings
+     comfortably inside localStorage. /text-editor refreshes it every time it
+     scans; text-live.js rescans in the background when it goes stale. */
+  var CACHE_KEY = 'botc_text_catalog';
+  var CACHE_TTL = 12 * 60 * 60 * 1000;
+
+  function saveCatalog(entries) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        ts: Date.now(),
+        e: entries.map(function (x) { return [x.text, x.scope]; })
+      }));
+      return true;
+    } catch (e) { return false; }   // quota: live editing just rescans instead
+  }
+
+  function loadCatalog() {
+    var raw;
+    try { raw = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) { return null; }
+    if (!raw || !raw.e || !raw.e.length) return null;
+    return {
+      stale: (Date.now() - raw.ts) > CACHE_TTL,
+      ts: raw.ts,
+      entries: raw.e.map(function (p) {
+        return { text: p[0], scope: p[1], len: p[0].length, files: [], kindList: [] };
+      })
+    };
+  }
+
   var API = {
+    saveCatalog: saveCatalog,
+    loadCatalog: loadCatalog,
+    CACHE_KEY: CACHE_KEY,
     scan: scan,
     scanHTML: scanHTML,
     scanJS: scanJS,
