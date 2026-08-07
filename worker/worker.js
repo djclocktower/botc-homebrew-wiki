@@ -75,6 +75,9 @@
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
+ *   GET  /api/slug-check      -> is this page URL free? (?type=&name=&appearsIn=)
+ *                                returns {taken, mine, suggestion} so an editor
+ *                                can pick a free URL before uploading art
  *   POST /api/character       -> create/update a character
  *   POST /api/collection      -> create/update a collection
  *   POST /api/script          -> create/update a script
@@ -2541,6 +2544,59 @@ export default {
       });
     }
 
+    // ---- is this page URL still free? (editor helper) ----
+    // The create page builds a character's URL from its name, uploads the art
+    // to art/{slug}.png and only then writes the row — so a name another
+    // account already used failed at the *upload* step with a confusing "that
+    // art slot belongs to a character owned by another account". This lets an
+    // editor find that out before it uploads anything, and offers a free URL
+    // in the style the wiki already uses for duplicate names
+    // (witcher-odyssey, sculptor-fall-of-rome, illusionist-megalomania).
+    // Login required: whether a slug is taken can betray someone's draft.
+    if (method === 'GET' && path === '/api/slug-check') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const type = url.searchParams.get('type') || 'character';
+      const t = CONTENT[type];
+      if (!t) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+      const kebab = s => String(s || '').toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '').slice(0, 80);
+      const base = kebab(url.searchParams.get('name') || url.searchParams.get('slug'));
+      if (!base) return jsonResponse({ error: 'Nothing to check.' }, { status: 400 });
+      const row = await getEntityRow(env, type, base);
+      if (!row) return jsonResponse({ base, slug: base, taken: false, mine: false });
+      if (canEditRow(sess, row)) {
+        // Your own page (or any page, for an admin): saving would replace it.
+        return jsonResponse({
+          base, slug: base, taken: true, mine: true,
+          name: row.name, status: row.status
+        });
+      }
+      // Taken by another account: find the first free variant.
+      let used;
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT slug FROM ${t.table} WHERE slug=? OR slug LIKE ?`
+        ).bind(base, base + '-%').all();
+        used = new Set((results || []).map(r => String(r.slug)));
+      } catch { used = new Set(); }
+      used.add(base);
+      const candidates = [];
+      const appears = kebab(String(url.searchParams.get('appearsIn') || '').split(',')[0]);
+      if (appears) candidates.push(base + '-' + appears);
+      for (let i = 2; i < 60; i++) candidates.push(base + '-' + i);
+      const suggestion = candidates.find(s => s.length <= 80 && !used.has(s)) || null;
+      const published = row.status === 'published';
+      return jsonResponse({
+        base, slug: suggestion, suggestion, taken: true, mine: false,
+        // Only published pages are public knowledge — never confirm that
+        // somebody's unpublished draft is sitting on this URL.
+        name: published ? row.name : null,
+        creator: published ? (parseData(row).creator || null) : null
+      });
+    }
+
     // ---------- AUTH: FORGOT / RESET PASSWORD ----------
     if (method === 'POST' && path === '/api/forgot-password') {
       if (await rateLimited(env, request, 'forgot', 5, 3600)) {
@@ -3686,7 +3742,10 @@ export default {
             const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
             const row = await getEntityRow(env, 'character', slug);
             if (row && !canEditRow(sess, row)) {
-              return jsonResponse({ error: 'That art slot belongs to a character owned by another account.' }, { status: 403 });
+              // Almost always a name clash on a brand-new character: the art
+              // slot is named after the URL, and /c/{slug} is already someone
+              // else's page. Say so, so the fix (a different name) is obvious.
+              return jsonResponse({ error: 'The URL /c/' + slug + ' already belongs to a character on another account, and its art slot goes with it. Give your character a different name and save again.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'character', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });

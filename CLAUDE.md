@@ -61,6 +61,13 @@ Key dynamic behavior:
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
+  A character's URL **and its R2 art slot** are both derived from its name, so
+  `create.html` asks `GET /api/slug-check` before it uploads anything: a name
+  another account already used gets offered a free URL in the wiki's existing
+  duplicate style (`illusionist-megalomania`, `witcher-odyssey`) instead of
+  failing at the art upload, and re-using one of your own names warns that the
+  save will replace that page. The Worker is still the enforcer — the check
+  only decides *which* slug the editor asks for.
 - **Creator pages are one page on two keys.** `/u/{username}` (an account) and
   `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
   which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account
