@@ -409,8 +409,8 @@
   window.addEventListener('storage', function (e) { if (e.key === SCRIPT_KEY) updateScriptBadge(); });
 
   /* ── Tools link in the crumb nav, mirroring Script Builder (desktop top bar) ──
-     One nav entry for the whole toolbox: the Token Tool, Grimoire Forge, the
-     Script Builder and the creator icons all live on /tools. */
+     One nav entry for the whole toolbox: the Token Tool, Grimoire Forge,
+     Icon Forge, the Script Builder and the creator icons all live on /tools. */
   (function () {
     document.querySelectorAll('.crumb').forEach(function (crumb) {
       if (findLinks('tools', crumb).length) return;
