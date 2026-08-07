@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Editor — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  /* Page-local styling, like the dashboard: this is an admin tool, not part
+     of the wiki's shared look, so it keeps its CSS to itself. */
+  .te-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: clamp(18px,4vw,40px) clamp(12px,3vw,32px) 72px;
+    position: relative;
+    z-index: 5;
+  }
+  .te-h2 {
+    font-family: 'Dumbledor2', serif;
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
+    color: var(--parch);
+    text-shadow: 0 3px 12px rgba(0,0,0,.5);
+    letter-spacing: .05em;
+    margin: 0 0 4px;
+  }
+  .te-sub {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    color: rgba(236,225,200,.8);
+    margin: 0 0 22px;
+    font-size: .95rem;
+    max-width: 70ch;
+  }
+  .te-sub a { color: #e8c98a; }
+
+  .panel {
+    background-color: var(--parch);
+    background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 2px solid var(--parch-frame);
+    padding: clamp(14px,3vw,22px);
+    color: var(--ink);
+    box-shadow: 0 16px 36px -18px rgba(0,0,0,.55),
+                inset 0 0 0 3px rgba(255,255,255,.28),
+                inset 0 0 0 4px var(--parch-frame);
+    margin-bottom: 18px;
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .panel h3 {
+    font-family: 'Dumbledor2', serif;
+    font-size: 1.1rem;
+    color: var(--maroon);
+    letter-spacing: .05em;
+    margin: 0 0 10px;
+  }
+
+  /* ---- controls ---- */
+  .te-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .te-row:last-child { margin-bottom: 0; }
+  .te-label {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .09em;
+    font-weight: 700; color: var(--maroon); flex: 0 0 100%;
+    margin-bottom: -2px;
+  }
+  .te-input, .te-select {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .95rem;
+    padding: 9px 11px;
+    border: 1px solid var(--parch-frame);
+    border-radius: 5px;
+    background: rgba(255,255,255,.5);
+    color: var(--ink);
+    min-width: 0;
+  }
+  .te-input { flex: 1 1 240px; }
+  .te-select { flex: 0 1 auto; }
+  .te-input:focus, .te-select:focus { outline: 2px solid rgba(122,45,47,.45); outline-offset: 1px; }
+
+  .chip {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .82rem;
+    border: 1px solid var(--parch-frame);
+    background: rgba(255,255,255,.42);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 6px 13px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .chip:hover { background: rgba(255,255,255,.7); }
+  .chip.on {
+    background: var(--maroon); color: #f6ead2;
+    border-color: #4a1719; font-weight: 600;
+  }
+  .chip .cnt { opacity: .65; font-size: .74rem; margin-left: 5px; }
+  .chip.on .cnt { opacity: .85; }
+
+  .btn {
+    font-family: 'Dumbledor2', serif;
+    font-size: .98rem; letter-spacing: .04em;
+    color: #f4ead2;
+    background: var(--maroon);
+    border-radius: 6px; padding: 9px 18px;
+    cursor: pointer; border: 1px solid #4a1719;
+  }
+  .btn:hover { filter: brightness(1.12); }
+  .btn:disabled { opacity: .5; cursor: default; filter: none; }
+  .btn.ghost { background: transparent; color: var(--maroon); }
+
+  /* ---- summary strip ---- */
+  .te-stats {
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    font-size: .88rem; margin-bottom: 14px;
+  }
+  .te-stats b { font-family: 'Dumbledor2', serif; font-size: 1.05rem; }
+
+  /* ---- results ---- */
+  .te-item {
+    border-top: 1px solid rgba(122,45,47,.22);
+    padding: 12px 2px;
+  }
+  .te-item:first-child { border-top: none; }
+  .te-item.edited { background: rgba(122,45,47,.06); }
+  .te-text {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: .9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    cursor: pointer;
+    margin: 0 0 5px;
+  }
+  .te-text mark { background: #ffe07a; color: inherit; padding: 0 1px; border-radius: 2px; }
+  .te-text .hit { background: #d8b6ff; color: #2a0a3a; border-radius: 2px; padding: 0 1px; }
+  .te-meta {
+    font-size: .75rem; opacity: .78;
+    display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline;
+  }
+  .te-meta .tag {
+    border: 1px solid rgba(122,45,47,.3);
+    border-radius: 999px; padding: 0 8px;
+    font-size: .68rem; letter-spacing: .05em; text-transform: uppercase;
+  }
+  .te-meta .was { font-style: italic; }
+  .te-badge {
+    background: var(--maroon); color: #f6ead2;
+    border-radius: 999px; padding: 1px 9px;
+    font-size: .68rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 700;
+  }
+  .te-edit { margin-top: 10px; display: none; }
+  .te-item.open .te-edit { display: block; }
+  .te-edit textarea {
+    width: 100%;
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: .9rem; line-height: 1.5;
+    padding: 10px;
+    border: 1px solid var(--parch-frame);
+    border-radius: 5px;
+    background: rgba(255,255,255,.62);
+    color: var(--ink);
+    min-height: 76px;
+    resize: vertical;
+    box-sizing: border-box;
+  }
+  .te-edit .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+  .te-edit .hint { font-size: .75rem; opacity: .75; flex: 1 1 200px; }
+  .te-edit .say { font-size: .8rem; font-weight: 700; }
+  .te-edit .say.ok { color: #2a6e2a; }
+  .te-edit .say.err { color: #9a2c2c; }
+
+  .te-empty { padding: 26px 4px; text-align: center; opacity: .75; }
+  .te-more { text-align: center; padding-top: 14px; }
+
+  .te-progress {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    color: rgba(236,225,200,.85);
+    padding: 20px 0;
+  }
+  .te-bar { height: 6px; background: rgba(0,0,0,.35); border-radius: 999px; overflow: hidden; margin-top: 8px; max-width: 420px; }
+  .te-bar span { display: block; height: 100%; width: 0; background: #c8a24a; transition: width .15s linear; }
+  .gate { color: rgba(236,225,200,.9); font-family: 'TradeGothicLT','Libre Franklin',sans-serif; padding: 20px 0; }
+  .gate a { color: #e8c98a; }
+
+  @media (max-width: 620px) {
+    .te-input { flex: 1 1 100%; }
+    .te-select { flex: 1 1 100%; }
+    .te-edit .acts .btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <main class="te-wrap">
+    <div id="loading" class="te-progress">Checking credentials…</div>
+
+    <div id="gate" class="gate" style="display:none">
+      <p>This page is for administrators only.</p>
+      <p><a href="login?next=text-editor">Log in as admin</a> to continue.</p>
+    </div>
+
+    <div id="tool" style="display:none">
+      <h2 class="te-h2">Text Editor</h2>
+      <p class="te-sub">
+        Every piece of wording the site itself writes — page copy, buttons, labels,
+        notices, the banners the server prints. Change one here and it changes
+        everywhere it appears, straight away, with no deploy. What people wrote in
+        the editors — characters, scripts, collections, wiki pages, news, comments —
+        is <em>not</em> listed: that is their text, and it is edited on its own page.
+      </p>
+
+      <div id="scanning" class="te-progress">
+        Reading the site’s files…
+        <div class="te-bar"><span id="scan-bar"></span></div>
+        <div id="scan-note" style="font-size:.8rem;opacity:.75;margin-top:6px"></div>
+      </div>
+
+      <div id="ui" style="display:none">
+        <section class="panel" aria-label="Filters">
+          <div class="te-row">
+            <span class="te-label">Search the text</span>
+            <input class="te-input" id="q" type="search" placeholder="Words to look for…" autocomplete="off">
+            <select class="te-select" id="sort" aria-label="Sort by">
+              <option value="source">Sort: by page</option>
+              <option value="long">Sort: longest first</option>
+              <option value="short">Sort: shortest first</option>
+              <option value="text">Sort: A → Z</option>
+              <option value="edited">Sort: recently edited</option>
+            </select>
+          </div>
+
+          <div class="te-row">
+            <span class="te-label">Contains — pick any (matches text with at least one of them)</span>
+            <div id="charchips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+          </div>
+
+          <div class="te-row">
+            <span class="te-label">Contains any of these characters</span>
+            <input class="te-input" id="chars" type="text" placeholder="e.g. —’…  (one or more characters)" autocomplete="off" spellcheck="false">
+          </div>
+
+          <div class="te-row">
+            <span class="te-label">Narrow it down</span>
+            <select class="te-select" id="source" aria-label="Source file"><option value="">Every page and script</option></select>
+            <div id="kindchips" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+            <button class="chip" id="only-edited" type="button">Edited only</button>
+            <button class="chip" id="only-prose" type="button">Sentences only</button>
+            <button class="btn ghost" id="reset" type="button">Clear filters</button>
+            <button class="btn ghost" id="rescan" type="button">Rescan</button>
+          </div>
+        </section>
+
+        <div class="te-stats" style="color:rgba(236,225,200,.88)">
+          <span><b id="stat-shown">0</b> matching</span>
+          <span><b id="stat-total">0</b> strings found</span>
+          <span><b id="stat-edited">0</b> edited</span>
+          <span><b id="stat-files">0</b> files scanned</span>
+        </div>
+
+        <!-- data-no-text-override: this list SHOWS the site's text, so the
+             live override pass in site.js must not rewrite what it displays. -->
+        <section class="panel" id="results" data-no-text-override></section>
+      </div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/text-scan.js"></script>
+  <script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ---- state ---------------------------------------------------- */
+    var catalog = [];          // {text, files[], kindList[], scope, len}
+    var overrides = {};        // scope + '\n' + original -> row
+    var filesScanned = 0;
+    var shown = 0;
+    var PAGE = 100;
+
+    var state = {
+      q: '', chars: '', source: '', sort: 'source',
+      marks: {}, kinds: {}, editedOnly: false, proseOnly: false
+    };
+
+    function key(entry) { return entry.scope + '\n' + entry.text; }
+
+    /* ---- the character filters ------------------------------------
+       These are the reason the page exists: the AI-written copy is full of
+       em dashes and curly punctuation, and the owner wants to see all of it
+       in one list rather than hunting page by page. */
+    var MARKS = [
+      { id: 'emdash',   label: 'Em dash —',        test: function (s) { return s.indexOf('—') >= 0; } },
+      { id: 'endash',   label: 'En dash –',        test: function (s) { return s.indexOf('–') >= 0; } },
+      { id: 'apos',     label: 'Curly ’',      test: function (s) { return /[‘’]/.test(s); } },
+      { id: 'quotes',   label: 'Curly “ ”', test: function (s) { return /[“”]/.test(s); } },
+      { id: 'ellipsis', label: 'Ellipsis …',   test: function (s) { return s.indexOf('…') >= 0; } },
+      { id: 'arrows',   label: 'Arrows → ←',        test: function (s) { return /[←-⇿]/.test(s); } },
+      { id: 'nbsp',     label: 'Hard space',        test: function (s) { return s.indexOf(' ') >= 0; } },
+      { id: 'dbl',      label: 'Double space',      test: function (s) { return s.indexOf('  ') >= 0; } },
+      { id: 'nonascii', label: 'Any non-ASCII',     test: function (s) { return /[^\x00-\x7f]/.test(s); } }
+    ];
+
+    var KINDS = [
+      { id: 'page',   label: 'Page copy' },
+      { id: 'attr',   label: 'Labels & tooltips' },
+      { id: 'script', label: 'In scripts' }
+    ];
+
+    /* ---- filtering + sorting -------------------------------------- */
+    function activeMarks() {
+      return MARKS.filter(function (m) { return state.marks[m.id]; });
+    }
+
+    function matches(entry) {
+      var t = entry.text;
+      if (state.q && t.toLowerCase().indexOf(state.q) < 0) return false;
+      if (state.source && entry.files.indexOf(state.source) < 0) return false;
+      if (state.editedOnly && !overrides[key(entry)]) return false;
+      if (state.proseOnly && t.split(/\s+/).length < 3) return false;
+
+      var kinds = Object.keys(state.kinds).filter(function (k) { return state.kinds[k]; });
+      if (kinds.length) {
+        var any = entry.kindList.some(function (k) { return state.kinds[k]; });
+        if (!any) return false;
+      }
+
+      var marks = activeMarks();
+      if (marks.length && !marks.some(function (m) { return m.test(t); })) return false;
+
+      if (state.chars) {
+        var hit = false;
+        for (var i = 0; i < state.chars.length; i++) {
+          if (t.indexOf(state.chars.charAt(i)) >= 0) { hit = true; break; }
+        }
+        if (!hit) return false;
+      }
+      return true;
+    }
+
+    function sortRows(rows) {
+      var by = state.sort;
+      return rows.sort(function (a, b) {
+        if (by === 'long') return b.len - a.len || a.text.localeCompare(b.text);
+        if (by === 'short') return a.len - b.len || a.text.localeCompare(b.text);
+        if (by === 'text') return a.text.localeCompare(b.text);
+        if (by === 'edited') {
+          var oa = overrides[key(a)], ob = overrides[key(b)];
+          if (!!oa !== !!ob) return oa ? -1 : 1;
+          if (oa && ob) return String(ob.updated_at).localeCompare(String(oa.updated_at));
+          return a.text.localeCompare(b.text);
+        }
+        // by page: group by where it comes from, sentences first within a file
+        var fa = a.files[0] || '', fb = b.files[0] || '';
+        if (fa !== fb) return fa.localeCompare(fb);
+        return a.text.localeCompare(b.text);
+      });
+    }
+
+    /* ---- rendering ------------------------------------------------- */
+    /* Which single characters are being hunted right now — the punctuation
+       chips plus whatever was typed into the "contains any of these" box. */
+    var MARK_CHARS = {
+      emdash: '—', endash: '–', apos: '‘’',
+      quotes: '“”', ellipsis: '…', nbsp: ' ',
+      arrows: '→←↑↓⇒⇐'
+    };
+    function huntChars() {
+      var chars = '';
+      activeMarks().forEach(function (m) { chars += MARK_CHARS[m.id] || ''; });
+      return chars + state.chars;
+    }
+
+    /* Two highlights, worked out on the RAW text and escaped only as the
+       markup is emitted, so a hunted character can never land inside the
+       markup this builds: yellow for what was typed in the search box, purple
+       for the characters being hunted, which is what makes a wall of em
+       dashes readable. */
+    function highlight(text) {
+      var flags = new Array(text.length);
+      var i, j;
+
+      if (state.q) {
+        var low = text.toLowerCase(), q = state.q, at = low.indexOf(q);
+        while (at >= 0) {
+          for (j = at; j < at + q.length; j++) flags[j] = 1;
+          at = low.indexOf(q, at + q.length);
+        }
+      }
+      var chars = huntChars();
+      if (chars) {
+        for (i = 0; i < text.length; i++) {
+          if (chars.indexOf(text.charAt(i)) >= 0) flags[i] = 2;
+        }
+      }
+
+      var out = '', run = 0, buf = '';
+      function flush() {
+        if (!buf) return;
+        if (run === 1) out += '<mark>' + esc(buf) + '</mark>';
+        else if (run === 2) out += '<span class="hit">' + esc(buf) + '</span>';
+        else out += esc(buf);
+        buf = '';
+      }
+      for (i = 0; i < text.length; i++) {
+        var f = flags[i] || 0;
+        if (f !== run) { flush(); run = f; }
+        buf += text.charAt(i);
+      }
+      flush();
+      return out;
+    }
+
+    function whereLabel(entry) {
+      if (entry.scope === '*') {
+        return entry.files.length > 3
+          ? entry.files.length + ' files · site-wide'
+          : entry.files.join(', ') + ' · site-wide';
+      }
+      return entry.files[0] + ' · this page only';
+    }
+
+    function rowHTML(entry, idx) {
+      var ov = overrides[key(entry)];
+      var kinds = entry.kindList.map(function (k) {
+        var found = KINDS.filter(function (x) { return x.id === k; })[0];
+        return '<span class="tag">' + esc(found ? found.label : k) + '</span>';
+      }).join(' ');
+      var placeholder = /\{[A-Za-z][\w-]*\}/.test(entry.text);
+      return '<div class="te-item' + (ov ? ' edited' : '') + '" data-i="' + idx + '">' +
+        '<p class="te-text">' + highlight(ov ? ov.replacement : entry.text) + '</p>' +
+        '<div class="te-meta">' +
+          (ov ? '<span class="te-badge">Edited</span>' : '') +
+          '<span>' + esc(whereLabel(entry)) + '</span>' +
+          '<span>' + entry.len + ' characters</span>' +
+          kinds +
+          (ov ? '<span class="was">was: ' + esc(entry.text) + '</span>' : '') +
+        '</div>' +
+        '<div class="te-edit">' +
+          '<textarea rows="3" spellcheck="true"></textarea>' +
+          '<div class="acts">' +
+            '<button class="btn" data-act="save" type="button">Save</button>' +
+            (ov ? '<button class="btn ghost" data-act="revert" type="button">Undo</button>' : '') +
+            '<span class="hint">' +
+              (placeholder
+                ? 'Keep the {…} exactly as it is — the site fills it in.'
+                : 'Saved straight away; the wording changes everywhere it appears.') +
+            '</span>' +
+            '<span class="say"></span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    var filtered = [];
+
+    /* render()          -> re-filter and start again at the first page
+       render(true)      -> keep what is on screen and add the next page
+       render(0, true)   -> re-filter but keep the same number of rows on
+                            screen, which is what a save needs so the list
+                            does not jump back to the top under your thumb */
+    function render(more, keepCount) {
+      var was = shown;
+      if (!more) {
+        filtered = sortRows(catalog.filter(matches));
+        shown = 0;
+      }
+      shown = keepCount
+        ? Math.min(filtered.length, Math.max(was, PAGE))
+        : Math.min(filtered.length, shown + PAGE);
+      var html = '';
+      for (var i = 0; i < shown; i++) html += rowHTML(filtered[i], i);
+      if (!filtered.length) {
+        html = '<div class="te-empty">Nothing matches those filters.</div>';
+      } else if (shown < filtered.length) {
+        html += '<div class="te-more"><button class="btn ghost" id="more" type="button">' +
+                'Show more (' + (filtered.length - shown) + ' to go)</button></div>';
+      }
+      $('results').innerHTML = html;
+      $('stat-shown').textContent = filtered.length;
+      var m = $('more');
+      if (m) m.addEventListener('click', function () { render(true); });
+      updateChipCounts();
+    }
+
+    function updateStats() {
+      $('stat-total').textContent = catalog.length;
+      $('stat-edited').textContent = Object.keys(overrides).length;
+      $('stat-files').textContent = filesScanned;
+    }
+
+    /* Counts on the punctuation chips answer the question before it is asked:
+       how much em-dash text is there at all? Counted against everything else
+       currently filtered, so they narrow as you narrow. */
+    function updateChipCounts() {
+      // Count against every OTHER filter, with the punctuation filters
+      // themselves lifted — otherwise picking "em dash" would zero the count
+      // on every chip beside it.
+      var savedMarks = state.marks, savedChars = state.chars;
+      state.marks = {}; state.chars = '';
+      var base = catalog.filter(matches);
+      state.marks = savedMarks; state.chars = savedChars;
+      MARKS.forEach(function (mk) {
+        var el = document.querySelector('[data-mark="' + mk.id + '"] .cnt');
+        if (!el) return;
+        var n = 0;
+        for (var i = 0; i < base.length; i++) if (mk.test(base[i].text)) n++;
+        el.textContent = n;
+      });
+    }
+
+    /* ---- controls -------------------------------------------------- */
+    function buildChips() {
+      $('charchips').innerHTML = MARKS.map(function (m) {
+        return '<button class="chip" type="button" data-mark="' + m.id + '">' +
+               esc(m.label) + '<span class="cnt">0</span></button>';
+      }).join('');
+      $('kindchips').innerHTML = KINDS.map(function (k) {
+        return '<button class="chip" type="button" data-kind="' + k.id + '">' + esc(k.label) + '</button>';
+      }).join('');
+
+      $('charchips').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-mark]');
+        if (!b) return;
+        var id = b.getAttribute('data-mark');
+        state.marks[id] = !state.marks[id];
+        b.classList.toggle('on', !!state.marks[id]);
+        render();
+      });
+      $('kindchips').addEventListener('click', function (e) {
+        var b = e.target.closest('[data-kind]');
+        if (!b) return;
+        var id = b.getAttribute('data-kind');
+        state.kinds[id] = !state.kinds[id];
+        b.classList.toggle('on', !!state.kinds[id]);
+        render();
+      });
+    }
+
+    function buildSourceList() {
+      var seen = {};
+      catalog.forEach(function (e) { e.files.forEach(function (f) { seen[f] = (seen[f] || 0) + 1; }); });
+      var names = Object.keys(seen).sort();
+      var sel = $('source');
+      sel.innerHTML = '<option value="">Every page and script</option>' +
+        names.map(function (f) {
+          return '<option value="' + esc(f) + '">' + esc(f) + ' (' + seen[f] + ')</option>';
+        }).join('');
+    }
+
+    var debounce = null;
+    function onFilterInput() {
+      clearTimeout(debounce);
+      debounce = setTimeout(function () {
+        state.q = $('q').value.trim().toLowerCase();
+        state.chars = $('chars').value;
+        render();
+      }, 160);
+    }
+
+    function wireControls() {
+      $('q').addEventListener('input', onFilterInput);
+      $('chars').addEventListener('input', onFilterInput);
+      $('sort').addEventListener('change', function () { state.sort = this.value; render(); });
+      $('source').addEventListener('change', function () { state.source = this.value; render(); });
+      $('only-edited').addEventListener('click', function () {
+        state.editedOnly = !state.editedOnly;
+        this.classList.toggle('on', state.editedOnly);
+        render();
+      });
+      $('only-prose').addEventListener('click', function () {
+        state.proseOnly = !state.proseOnly;
+        this.classList.toggle('on', state.proseOnly);
+        render();
+      });
+      $('reset').addEventListener('click', function () {
+        state.q = ''; state.chars = ''; state.source = '';
+        state.marks = {}; state.kinds = {};
+        state.editedOnly = false; state.proseOnly = false;
+        $('q').value = ''; $('chars').value = ''; $('source').value = '';
+        document.querySelectorAll('.chip.on').forEach(function (c) { c.classList.remove('on'); });
+        render();
+      });
+      $('rescan').addEventListener('click', function () {
+        $('ui').style.display = 'none';
+        $('scanning').style.display = '';
+        start();
+      });
+    }
+
+    /* ---- saving ----------------------------------------------------- */
+    function post(body) {
+      return fetch('/api/admin/site-text', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, body: j }; });
+      });
+    }
+
+    function wireResults() {
+      $('results').addEventListener('click', function (e) {
+        var item = e.target.closest('.te-item');
+        if (!item) return;
+        var entry = filtered[parseInt(item.getAttribute('data-i'), 10)];
+        if (!entry) return;
+
+        if (e.target.closest('.te-text')) {
+          var open = item.classList.toggle('open');
+          if (open) {
+            var ta = item.querySelector('textarea');
+            var ov = overrides[key(entry)];
+            ta.value = ov ? ov.replacement : entry.text;
+            ta.style.height = 'auto';
+            ta.style.height = Math.min(ta.scrollHeight + 4, 420) + 'px';
+            ta.focus();
+          }
+          return;
+        }
+
+        var act = e.target.getAttribute('data-act');
+        if (!act) return;
+        var say = item.querySelector('.say');
+        var buttons = item.querySelectorAll('.te-edit .btn');
+        var value = act === 'revert' ? entry.text : item.querySelector('textarea').value;
+
+        for (var i = 0; i < buttons.length; i++) buttons[i].disabled = true;
+        say.className = 'say';
+        say.textContent = 'Saving…';
+
+        post({
+          scope: entry.scope,
+          source: entry.files.join(', '),
+          original: entry.text,
+          replacement: value,
+          action: act === 'revert' ? 'revert' : 'save'
+        }).then(function (res) {
+          for (var j = 0; j < buttons.length; j++) buttons[j].disabled = false;
+          if (!res.ok) {
+            say.className = 'say err';
+            say.textContent = (res.body && res.body.error) || 'Could not save.';
+            return;
+          }
+          if (res.body.reverted || value === entry.text) delete overrides[key(entry)];
+          else overrides[key(entry)] = {
+            scope: entry.scope, original: entry.text, replacement: value,
+            updated_at: new Date().toISOString()
+          };
+          updateStats();
+          // Push the new wording into this page's own live copy too, so the
+          // change is visible without a reload anywhere on the site.
+          if (window.SiteText && window.SiteText.refresh) window.SiteText.refresh();
+          render(0, true);
+        }).catch(function () {
+          for (var k = 0; k < buttons.length; k++) buttons[k].disabled = false;
+          say.className = 'say err';
+          say.textContent = 'Could not reach the server.';
+        });
+      });
+    }
+
+    /* ---- the scan --------------------------------------------------- */
+    function loadOverrides() {
+      return fetch('/api/admin/site-text', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          overrides = {};
+          (d.overrides || []).forEach(function (row) {
+            overrides[(row.scope || '*') + '\n' + row.original] = row;
+          });
+        })
+        .catch(function () { overrides = {}; });
+    }
+
+    function start() {
+      var bar = $('scan-bar'), note = $('scan-note');
+      return Promise.all([
+        loadOverrides(),
+        window.TextScan.scan({
+          onProgress: function (done, total, label) {
+            var pct = total ? Math.round((done / total) * 100) : 0;
+            bar.style.width = pct + '%';
+            note.textContent = label ? (done + ' of ' + total + ' · ' + label) : (done + ' files read');
+          }
+        })
+      ]).then(function (both) {
+        var res = both[1];
+        catalog = res.entries;
+        filesScanned = res.files.length;
+        buildSourceList();
+        updateStats();
+        render();
+        $('scanning').style.display = 'none';
+        $('ui').style.display = '';
+      }).catch(function (err) {
+        $('scanning').innerHTML = '<p>Could not read the site’s files: ' + esc(err && err.message) + '</p>';
+      });
+    }
+
+    function showGate() {
+      $('loading').style.display = 'none';
+      $('tool').style.display = 'none';
+      $('gate').style.display = 'block';
+    }
+
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.loggedIn || !d.isAdmin) return showGate();
+        $('loading').style.display = 'none';
+        $('tool').style.display = '';
+        buildChips();
+        wireControls();
+        wireResults();
+        start();
+      })
+      .catch(showGate);
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

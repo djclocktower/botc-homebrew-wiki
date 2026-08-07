@@ -35,6 +35,9 @@
  *   GET  /api/contact         -> your own messages to the admins
  *   POST /api/contact         -> send a message to the admins (bug/suggestion/…)
  *   GET  /api/announcement    -> current site-wide announcement (public)
+ *   GET  /api/site-text       -> the site's rewritten system text, as a map
+ *                                site.js applies in the browser (public,
+ *                                empty unless an admin has edited something)
  *
  *   -- direct messages (user <-> user, incl. admins; /messages page) --
  *   GET  /api/messages        -> conversation list + unread counts + block list
@@ -112,6 +115,10 @@
  *   POST /api/admin/message   -> resolve/reopen/delete an inbox message
  *   POST /api/admin/protect   -> protect/unprotect one page from edits
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
+ *   GET  /api/admin/site-text -> every saved system-text override, with who
+ *                                changed it and when (/text-editor)
+ *   POST /api/admin/site-text -> rewrite one of the site's own strings, or
+ *                                revert it to whatever the source file says
  *   GET  /api/admin/orphans   -> R2 images no page references any more
  *   POST /api/admin/purge-images -> delete selected orphaned images
  *   GET  /api/admin/broken-refs  -> scripts/collections pointing at missing chars
@@ -179,6 +186,12 @@ NewsRender.init(WikiRender);
 // The character renderer formats one field (the pronunciation line) through
 // the same engine, so **bold** there means what it means everywhere else.
 Render.init(WikiRender);
+// The prose this Worker prints into pages (the Partial banner, the draft
+// bars). It lives in assets/ because /text-editor builds its catalogue by
+// fetching the site's own files in the browser, and worker.js is not one of
+// them — it is excluded from the asset upload. Put new server-rendered
+// wording there, not inline here, or the owner cannot edit it.
+import SYS from '../assets/system-text.js';
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
@@ -610,6 +623,52 @@ async function ensureNewsTable(env) {
     'CREATE INDEX IF NOT EXISTS idx_news_status ON news(status, published_at)'
   ).run();
   _newsReady = true;
+}
+
+// ---- system text overrides (the /text-editor admin page) ----
+// Rewritten wording for the site's own copy — the strings baked into the HTML
+// pages, assets/*.js and assets/system-text.js, NOT anything anyone wrote in
+// an editor. Only the strings that were actually changed are stored, so this
+// table is normally tiny (and usually empty). `original` is matched against
+// the page text in the browser, so it holds exactly what the source file
+// holds; `scope` is '*' for site-wide or a page path like '/tools'.
+const SITE_TEXT_MAX = 4000;      // per string, original and replacement alike
+const SITE_TEXT_ROWS = 2000;     // a ceiling on how many overrides can exist
+let _siteTextReady = false;
+async function ensureSiteTextTable(env) {
+  if (_siteTextReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS site_text (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       scope       TEXT NOT NULL DEFAULT '*',
+       source      TEXT,
+       original    TEXT NOT NULL,
+       replacement TEXT NOT NULL,
+       updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+       updated_by  TEXT
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_site_text_key ON site_text(scope, original)'
+  ).run();
+  _siteTextReady = true;
+}
+
+// The public map, cached per isolate: every page on the site asks for this,
+// and it changes only when an admin saves an edit.
+let _siteTextCache = null;
+async function siteTextItems(env) {
+  if (_siteTextCache && (Date.now() - _siteTextCache.at) < 60000) return _siteTextCache.items;
+  let items = [];
+  try {
+    await ensureSiteTextTable(env);
+    const rows = await env.DB.prepare(
+      'SELECT scope, original, replacement FROM site_text ORDER BY length(original) DESC'
+    ).all();
+    items = (rows.results || []).map(r => ({ o: r.original, r: r.replacement, s: r.scope || '*' }));
+  } catch { items = []; }
+  _siteTextCache = { at: Date.now(), items };
+  return items;
 }
 
 // ---- custom wiki pages (text-first pages hanging off a script/collection) ----
@@ -1345,10 +1404,9 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 function partialNoticeHTML(d) {
   const missing = Classify.listPhrase(Classify.missingBits(d));
   return '<div class="page-notice page-notice-partial" role="status">' +
-    '<strong>PARTIAL</strong> — This page doesn\u2019t show on the homepage or ' +
-    'All Characters search.' +
-    (missing ? ' Add ' + escapeHtml(missing) + ' to fix.' : '') +
-    ' <a href="../edit?c=' + attr(d.slug) + '">Edit this page &rarr;</a></div>';
+    '<strong>' + SYS.partialLabel + '</strong> ' + SYS.partialBody +
+    (missing ? ' ' + SYS.partialFix.replace('{missing}', escapeHtml(missing)) : '') +
+    ' <a href="../edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a></div>';
 }
 
 // The creator page is one static file (profile.html) served under two paths:
@@ -1374,7 +1432,7 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">the editor</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
     : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
@@ -1496,7 +1554,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-script?s=' + encodeURIComponent(d.slug)
     : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="' + attr(editHref) + '" style="color:#ffe9ad">the editor</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
     : '';
 
   const html = pageShell({
@@ -1593,6 +1651,16 @@ export default {
       return jsonResponse({ announcement: ann && ann.text ? ann : null });
     }
 
+    // ---------- SYSTEM TEXT OVERRIDES (public; site.js applies them) ----------
+    // Every page asks for this, so it must stay small and cheap: only the
+    // strings an admin has actually rewritten are in the table, and the
+    // Worker holds the list in memory for a minute. Empty on a site with no
+    // edits, which is the normal case.
+    if (method === 'GET' && path === '/api/site-text') {
+      const items = await siteTextItems(env);
+      return jsonResponse({ items }, { 'Cache-Control': 'public, max-age=120' });
+    }
+
     // ---------- NEWS ----------
     // Public list. ?limit=N for the homepage panel; admins can add
     // ?drafts=1 to see unpublished articles in the editor's list.
@@ -1686,7 +1754,7 @@ export default {
         body: '<p class="news-back"><a href="../news">← All news</a></p>' +
           NewsRender.renderArticle(a, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this article. Publish it from <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftArticle + ' <a href="../publish-news?n=' + attr(encodeURIComponent(a.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
         scripts: ['comments.js', 'site.js']
@@ -1826,7 +1894,7 @@ export default {
         bodyClass: ta.cls, bodyStyle: ta.style,
         body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
         draftBanner: isDraft
-          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">DRAFT — only you can see this page. Publish it from <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">the editor</a>.</div>'
+          ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../publish-page?p=' + attr(encodeURIComponent(row.slug)) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
           (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
@@ -3489,6 +3557,21 @@ export default {
       return jsonResponse({ days, totals: totals || { views: 0, pages: 0 }, top: top.results || [] });
     }
 
+    // ---------- ADMIN: SYSTEM TEXT OVERRIDES ----------
+    // The full rows, with who changed what and when. The catalogue of every
+    // editable string is NOT built here — /text-editor scans the site's own
+    // files in the browser, so nothing is stored until something is changed.
+    if (method === 'GET' && path === '/api/admin/site-text') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureSiteTextTable(env);
+      const rows = await env.DB.prepare(
+        `SELECT id, scope, source, original, replacement, updated_at, updated_by
+           FROM site_text ORDER BY updated_at DESC`
+      ).all();
+      return jsonResponse({ overrides: rows.results || [] });
+    }
+
     // ---------- WRITES (logged-in users; ownership enforced) ----------
     if (method === 'POST' && path.startsWith('/api/')) {
       const sess = await getSession(env, request);
@@ -5048,6 +5131,63 @@ export default {
         ).bind(JSON.stringify(ann)).run();
         await logActivity(env, sess, 'announce', 'wiki', null, text.slice(0, 60));
         return jsonResponse({ ok: true, announcement: ann });
+      }
+
+      // ---- admin: rewrite one of the site's own strings (/text-editor) ----
+      // {original, replacement, scope, source}. A replacement equal to the
+      // original — or an empty one, or {action:'revert'} — drops the row and
+      // puts the wording in the source file back in charge. Nothing is ever
+      // written to a page: this is a lookup site.js applies in the browser,
+      // so an override can always be undone by deleting the row.
+      if (path === '/api/admin/site-text') {
+        await ensureSiteTextTable(env);
+        const b = await request.json().catch(() => ({}));
+        const original = String(b.original || '');
+        const scope = String(b.scope || '*').slice(0, 200) || '*';
+        if (!original) return jsonResponse({ error: 'Nothing to change: no original text.' }, { status: 400 });
+        if (original.length > SITE_TEXT_MAX) {
+          return jsonResponse({ error: 'That string is too long to override.' }, { status: 400 });
+        }
+        if (scope !== '*' && !/^\/[\w./-]*$/.test(scope)) {
+          return jsonResponse({ error: 'Bad scope.' }, { status: 400 });
+        }
+        const replacement = String(b.replacement == null ? '' : b.replacement).slice(0, SITE_TEXT_MAX);
+        const revert = b.action === 'revert' || !replacement.trim() || replacement === original;
+
+        if (revert) {
+          await env.DB.prepare('DELETE FROM site_text WHERE scope=? AND original=?')
+            .bind(scope, original).run();
+          _siteTextCache = null;
+          await logActivity(env, sess, 'site-text', 'wiki', null, 'reverted: ' + original.slice(0, 50));
+          return jsonResponse({ ok: true, reverted: true, items: await siteTextItems(env) });
+        }
+
+        const existing = await env.DB.prepare(
+          'SELECT id FROM site_text WHERE scope=? AND original=?'
+        ).bind(scope, original).first();
+        if (!existing) {
+          const c = await env.DB.prepare('SELECT COUNT(*) AS n FROM site_text').first();
+          if (c && c.n >= SITE_TEXT_ROWS) {
+            return jsonResponse({ error: 'Too many text overrides already saved.' }, { status: 400 });
+          }
+        }
+        let by = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          by = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        await env.DB.prepare(
+          `INSERT INTO site_text (scope, source, original, replacement, updated_at, updated_by)
+           VALUES (?,?,?,?,datetime('now'),?)
+           ON CONFLICT(scope, original) DO UPDATE SET
+             replacement=excluded.replacement,
+             source=excluded.source,
+             updated_at=excluded.updated_at,
+             updated_by=excluded.updated_by`
+        ).bind(scope, String(b.source || '').slice(0, 500) || null, original, replacement, by).run();
+        _siteTextCache = null;
+        await logActivity(env, sess, 'site-text', 'wiki', null, original.slice(0, 60));
+        return jsonResponse({ ok: true, items: await siteTextItems(env) });
       }
 
       // ---- admin: delete orphaned images picked from /api/admin/orphans ----

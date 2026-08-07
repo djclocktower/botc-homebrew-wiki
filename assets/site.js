@@ -1,3 +1,225 @@
+/* ── System text overrides (the /text-editor page) ─────────────────────────
+   Wording the owner has rewritten on /text-editor, applied to this page as it
+   renders. The catalogue of editable strings is built in the browser by
+   text-scan.js; only the strings that were actually CHANGED are stored, and
+   only those come down here, so this whole block does nothing on a site with
+   no edits.
+
+   It rewrites text nodes and the handful of reader-visible attributes —
+   never markup, never innerHTML — so an override can change words and
+   nothing else. A MutationObserver re-runs it on anything rendered later,
+   which is what covers the client-rendered pages (browse lists, comments,
+   editor previews) and content that loads after the first paint.
+
+   Two things decide what is safe to touch:
+     - scope. An override made from a string found on exactly one page only
+       applies on that page; one from a shared assets/*.js file (or found on
+       several pages, like the topbar and footer) applies site-wide.
+     - opt-out. Anything inside [data-no-text-override] or a contenteditable
+       is left alone.
+
+   The map is cached in localStorage so a repeat visit applies it immediately
+   instead of flashing the original wording, and refreshed at most every two
+   minutes. This runs first in the file on purpose: the sooner it goes, the
+   less there is to see. */
+(function () {
+  var KEY = 'botc_site_text';
+  var TTL = 2 * 60 * 1000;
+  var ATTRS = ['placeholder', 'title', 'alt', 'aria-label'];
+  var ATTR_SEL = '[placeholder],[title],[alt],[aria-label]';
+  var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, NOSCRIPT: 1, TEXTAREA: 1, TEMPLATE: 1 };
+  var OBS = { childList: true, subtree: true, characterData: true };
+  var rules = [];
+  var minLen = 0;
+  var observer = null;
+
+  function here() {
+    var p = location.pathname.replace(/\.html$/, '');
+    if (p.length > 1) p = p.replace(/\/+$/, '');
+    return (p === '' || p === '/index') ? '/' : p;
+  }
+  function inScope(scope) {
+    if (!scope || scope === '*') return true;
+    var want = scope.replace(/\.html$/, '');
+    if (want.length > 1) want = want.replace(/\/+$/, '');
+    if (want === '' || want === '/index') want = '/';
+    return here() === want;
+  }
+
+  function escRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  /* A {placeholder} in the original marks a slot the site fills in (the list
+     of missing bits in the Partial banner, say). Those become a capture group
+     so the filled-in value survives into the replacement. */
+  function compile(item) {
+    if (/\{[A-Za-z][\w-]*\}/.test(item.o)) {
+      var names = [];
+      var pattern = escRe(item.o).replace(/\\\{([A-Za-z][\w-]*)\\\}/g, function (m, n) {
+        names.push(n);
+        return '([\\s\\S]{0,300}?)';
+      });
+      return { re: new RegExp(pattern, 'g'), names: names, from: item.o, to: item.r };
+    }
+    return { from: item.o, to: item.r };
+  }
+
+  function filler(rule) {
+    return function () {
+      var args = arguments;
+      return rule.to.replace(/\{([A-Za-z][\w-]*)\}/g, function (m, n) {
+        var i = rule.names.indexOf(n);
+        return i >= 0 ? (args[i + 1] == null ? '' : args[i + 1]) : m;
+      });
+    };
+  }
+
+  function rewrite(text) {
+    if (!text || text.length < minLen) return text;
+    var out = text;
+    for (var i = 0; i < rules.length; i++) {
+      var rule = rules[i];
+      if (rule.re) {
+        rule.re.lastIndex = 0;
+        if (!rule.re.test(out)) continue;
+        rule.re.lastIndex = 0;
+        out = out.replace(rule.re, filler(rule));
+      } else if (out.indexOf(rule.from) >= 0) {
+        out = out.split(rule.from).join(rule.to);
+      }
+    }
+    return out;
+  }
+
+  function patchAttrs(root, anyOptOut) {
+    if (!root || !root.querySelectorAll) return;
+    var list = Array.prototype.slice.call(root.querySelectorAll(ATTR_SEL));
+    if (root.nodeType === 1 && root.matches && root.matches(ATTR_SEL)) list.push(root);
+    for (var i = 0; i < list.length; i++) {
+      if (anyOptOut && optedOut(list[i])) continue;
+      for (var a = 0; a < ATTRS.length; a++) {
+        var el = list[i], name = ATTRS[a];
+        if (!el.hasAttribute(name)) continue;
+        var v = el.getAttribute(name), out = rewrite(v);
+        if (out !== v) el.setAttribute(name, out);
+      }
+    }
+  }
+
+  function patchText(node) {
+    var v = node.nodeValue;
+    if (!v) return;
+    var out = rewrite(v);
+    if (out !== v) node.nodeValue = out;
+  }
+
+  var OPT_OUT = '[data-no-text-override],[contenteditable]';
+  function optedOut(node) {
+    var el = node.nodeType === 1 ? node : node.parentNode;
+    return !!(el && el.closest && el.closest(OPT_OUT));
+  }
+
+  function walk(root) {
+    if (!root) return;
+    // Asked against the whole document, not `root`: the observer hands us
+    // nodes from inside an opted-out container (the text editor's own list of
+    // strings, which must show them as they are), and a container's marker is
+    // above those nodes, not inside them.
+    var anyOptOut = !!document.querySelector(OPT_OUT);
+    if (anyOptOut && optedOut(root)) return;
+    if (root.nodeType === 3) { patchText(root); return; }
+    if (root.nodeType !== 1 && root.nodeType !== 9 && root.nodeType !== 11) return;
+    var doc = root.ownerDocument || document;
+    var walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        var p = n.parentNode;
+        if (!p || SKIP_TAGS[p.nodeName]) return NodeFilter.FILTER_REJECT;
+        if (anyOptOut && optedOut(n)) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    var n, list = [];
+    while ((n = walker.nextNode())) list.push(n);
+    for (var i = 0; i < list.length; i++) patchText(list[i]);
+    patchAttrs(root, anyOptOut);
+  }
+
+  function applyAll() {
+    if (!rules.length) return;
+    if (observer) observer.disconnect();
+    walk(document.body || document.documentElement);
+    var t = rewrite(document.title);
+    if (t !== document.title) document.title = t;
+    if (observer && document.body) { observer.takeRecords(); observer.observe(document.body, OBS); }
+  }
+
+  function startObserver() {
+    if (observer || !window.MutationObserver || !document.body) return;
+    observer = new MutationObserver(function (records) {
+      var touched = [], i, j;
+      for (i = 0; i < records.length; i++) {
+        if (records[i].type === 'characterData') touched.push(records[i].target);
+        else for (j = 0; j < records[i].addedNodes.length; j++) touched.push(records[i].addedNodes[j]);
+      }
+      if (!touched.length) return;
+      // Our own edits must not wake the observer again: drop the records we
+      // generate while patching, then start listening afresh.
+      observer.disconnect();
+      for (i = 0; i < touched.length; i++) walk(touched[i]);
+      observer.takeRecords();
+      observer.observe(document.body, OBS);
+    });
+    observer.observe(document.body, OBS);
+  }
+
+  function setItems(items) {
+    rules = [];
+    minLen = 0;
+    if (!items || !items.length) return;
+    var live = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it || !it.o || typeof it.r !== 'string' || it.o === it.r) continue;
+      if (!inScope(it.s)) continue;
+      live.push(it);
+    }
+    // Longest first, so an override of a whole sentence wins over one of a
+    // phrase inside it.
+    live.sort(function (a, b) { return b.o.length - a.o.length; });
+    rules = live.map(compile);
+    minLen = rules.length ? Math.min.apply(null, rules.map(function (r) {
+      // a rule with a {placeholder} can match something shorter than itself
+      return r.re ? 1 : r.from.length;
+    })) : 0;
+  }
+
+  function run() {
+    if (!rules.length) return;
+    applyAll();
+    startObserver();
+  }
+
+  function refresh() {
+    return fetch('/api/site-text', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var items = (d && d.items) || [];
+        try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
+        setItems(items);
+        run();
+        return items;
+      })
+      .catch(function () { return null; });
+  }
+
+  var cached = null;
+  try { cached = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (cached && cached.items) { setItems(cached.items); run(); }
+  if (!cached || (Date.now() - cached.ts) > TTL) refresh();
+
+  // /text-editor calls refresh() after a save so the change shows at once.
+  window.SiteText = { refresh: refresh, apply: applyAll };
+})();
+
 /* Shared site behaviours: search, mobile nav, script-count badge.
    Root-aware: derives the path prefix from the stylesheet href so it works
    from the site root and from subdirectories like /c/. */
