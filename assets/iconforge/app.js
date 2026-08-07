@@ -255,7 +255,7 @@ function syncControls() {
   const aiBtn = $('if-bgmode').querySelector('button[data-value=ai]');
   aiBtn.disabled = !source || sourceKind !== 'raster';
   aiBtn.title = aiBtn.disabled
-    ? 'Smart AI is for photos and scans — vector art already has a transparent background'
+    ? 'Smart remove is for photos and scans — vector art already has a transparent background'
     : '';
 
   const swatch = $('if-chroma-swatch');
@@ -394,7 +394,7 @@ function draw(supersample) {
   }
 }
 
-/** The Smart AI progress card. `sub` explains what the wait is for; the Stop
+/** The Smart remove progress card. `sub` explains what the wait is for; the Stop
  *  button is wired per run by maybeRunAI. */
 function busy(on, fraction, label, sub) {
   $('if-busy').hidden = !on;
@@ -540,19 +540,20 @@ function maybeRunAI() {
   const req = ++aiReq;
   aiBusy = true;
   syncControls();
-  busy(true, 0, 'Starting the background remover…', 'Keep using the page — this runs in the background.');
+  busy(true, 0, 'Removing', 'Keep using the page — this runs in the background.');
   removeImageBackground(
     source,
-    (fraction, label) => {
+    (fraction, phase) => {
       if (aiReq !== req) return;
-      // The download only happens the first time; say so, because it is the
-      // long part and it looks like nothing is happening.
+      // The heading stays one word start to finish; only the line underneath
+      // changes, because the first-run download is the long wait and without
+      // saying so it looks like nothing is happening.
       busy(
         true,
         fraction,
-        label,
-        /download/i.test(label)
-          ? 'About 45 MB, once per browser. It is kept for next time.'
+        'Removing',
+        phase === 'fetch'
+          ? 'Fetching what it needs — about 45 MB, once per browser. It is kept for next time.'
           : 'Keep using the page — this runs in the background.'
       );
     },
@@ -581,7 +582,7 @@ function maybeRunAI() {
         return;
       }
       toast(
-        'Smart AI could not run: ' +
+        'Smart remove could not run: ' +
           (e && e.message ? e.message : 'the model could not be downloaded') +
           '. Falling back to Keep.',
         'err'

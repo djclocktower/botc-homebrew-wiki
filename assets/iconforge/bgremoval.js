@@ -225,7 +225,7 @@ function runInWorker(source, onProgress, onCancel) {
       const m = e.data || {};
       if (m.type === 'progress') {
         started = true;
-        if (onProgress) onProgress(m.fraction, m.label);
+        if (onProgress) onProgress(m.fraction, m.phase);
       } else if (m.type === 'done') {
         finish(resolve, bitmapToCanvas(m.bitmap));
       } else if (m.type === 'error') {
@@ -262,11 +262,8 @@ async function runOnMainThread(source, onProgress) {
     model: 'isnet_quint8',
     output: { format: 'image/png' },
     progress: (key, current, total) => {
-      const fraction = total > 0 ? current / total : 0;
-      const label = String(key).startsWith('fetch:')
-        ? 'Downloading the AI model…'
-        : 'Cutting out the background…';
-      if (onProgress) onProgress(fraction, label);
+      if (!onProgress) return;
+      onProgress(total > 0 ? current / total : 0, String(key).startsWith('fetch:') ? 'fetch' : 'run');
     }
   });
   return bitmapToCanvas(await createImageBitmap(resultBlob));
@@ -278,7 +275,7 @@ async function runRemoval(source, onProgress, onCancel) {
   } catch (e) {
     if (e && e.cancelled) throw e;
     if (!e || !e.workerUnavailable) throw e;
-    if (onProgress) onProgress(0, 'Preparing…');
+    if (onProgress) onProgress(0, 'run');
     return runOnMainThread(source, onProgress);
   }
 }
@@ -289,7 +286,7 @@ async function runRemoval(source, onProgress, onCancel) {
  * current tolerance. Results are cached per source image, so repeat calls
  * are free.
  *
- * @param {(fraction: number, label: string) => void} [onProgress]
+ * @param {(fraction: number, phase: 'fetch'|'run') => void} [onProgress]
  * @param {(cancel: () => void) => void} [onCancel] receives a function that
  *        abandons the run (used by the Stop button).
  */

@@ -282,7 +282,7 @@ details.if-sec > summary:hover { color: #8a3526; }
   box-shadow: 0 1px 3px rgba(0,0,0,.5); pointer-events: none; z-index: 3;
 }
 
-/* The Smart AI progress card: fixed to the bottom of the viewport, so it is
+/* The Smart remove progress card: fixed to the bottom of the viewport, so it is
    in sight wherever the page is scrolled, and non-blocking — the work runs in
    a worker now, so the rest of the tool keeps going. */
 .if-busy {
@@ -533,13 +533,13 @@ details.if-sec > summary:hover { color: #8a3526; }
             <div class="if-sec-body">
               <div class="if-seg" id="if-bgmode" role="group" aria-label="Background removal">
                 <button type="button" data-value="keep" aria-pressed="true">Keep</button>
-                <button type="button" data-value="ai" aria-pressed="false">Smart AI</button>
+                <button type="button" data-value="ai" aria-pressed="false">Smart remove</button>
                 <button type="button" data-value="key" aria-pressed="false">White key</button>
                 <button type="button" data-value="chroma" aria-pressed="false">Chroma</button>
               </div>
 
               <div id="if-bg-ai" hidden>
-                <p class="if-hint">Neural segmentation handles any background — photos, coloured paper, messy scans. The first run downloads about 45&nbsp;MB and can take a minute; your browser keeps it for next time. It works away in the background, so the page stays usable and you can stop it at any point.</p>
+                <p class="if-hint">Works out where your subject is and cuts everything else away — photos, coloured paper, messy scans, anything the two keys below cannot handle. The first run downloads about 45&nbsp;MB and can take a minute; your browser keeps it for next time. It works away in the background, so the page stays usable and you can stop it whenever you like.</p>
                 <label class="if-row" data-opt="aiTolerance">
                   <span class="if-row-head"><span class="if-label">Cleanup tolerance</span><output class="if-val"></output></span>
                   <input type="range" min="0" max="100" step="1">
@@ -613,7 +613,7 @@ details.if-sec > summary:hover { color: #8a3526; }
                 <span class="if-row-head"><span class="if-label">Line details</span><output class="if-val"></output></span>
                 <input type="range" min="0" max="1" step="0.05">
               </label>
-              <p class="if-hint">Finds anything much darker or brighter than its surroundings — handle wraps, stitching, hatching — and draws it as a white detail line. Works in Silhouette, White key and Smart AI modes.</p>
+              <p class="if-hint">Finds anything much darker or brighter than its surroundings — handle wraps, stitching, hatching — and draws it as a white detail line. Works in Silhouette, White key and Smart remove modes.</p>
               <div class="if-seg" id="if-linemode" data-opt="lineMode" data-needs="lineDetails" role="group" aria-label="Which lines to catch">
                 <button type="button" data-value="dark" aria-pressed="true">Dark lines</button>
                 <button type="button" data-value="both" aria-pressed="false">Both</button>
@@ -892,7 +892,7 @@ details.if-sec > summary:hover { color: #8a3526; }
       <div class="about-card if-tips">
         <ul>
           <li><b>Bold, closed shapes read best.</b> The forge decides what is body and what is detail — thin grey pencil lines give it nothing to hold onto.</li>
-          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart AI</em>, which cuts the subject out for you.</li>
+          <li><b>Line art on white paper?</b> Set Background to <em>White key</em>. A photo, or coloured paper? Use <em>Smart remove</em>, which cuts the subject out for you.</li>
           <li><b>Something filled that should be hollow</b> (or the other way round)? Turn off <em>Fill enclosed spaces</em>, then use the paint bucket to choose each region yourself.</li>
           <li><b>Every icon is a different crop</b> of the same texture sheet — roll the dice under Texture placement so yours does not look identical to the last one.</li>
           <li><b>Save at 591&nbsp;px</b> for the wiki, then add it in the <a href="create">character editor</a> — or use “Save to a character” above if the page already exists.</li>
@@ -907,7 +907,7 @@ details.if-sec > summary:hover { color: #8a3526; }
 
   <div class="if-toast" id="if-toast" role="status" aria-live="polite" hidden></div>
 
-  <!-- Smart AI progress. Fixed to the viewport, because the work takes real
+  <!-- Smart remove progress. Fixed to the viewport, because the work takes real
        time and the person watching may be anywhere on the page — the old
        indicator sat inside the preview stage, which on a phone is scrolled
        far off screen while you are using the Background controls. -->

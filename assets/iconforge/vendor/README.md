@@ -5,7 +5,7 @@ no build step and loads no third-party JavaScript at run time.
 
 | File | What it is | Licence |
 |---|---|---|
-| `imgly-bg-removal.js` | `@imgly/background-removal` 1.7.0, the `dist/index.mjs` from npm, with the two-line patch below. Powers the "Smart AI" background mode. | see `imgly-LICENSE.md` |
+| `imgly-bg-removal.js` | `@imgly/background-removal` 1.7.0, the `dist/index.mjs` from npm, with the two-line patch below. Powers the "Smart remove" background mode. | see `imgly-LICENSE.md` |
 | `ort.wasm.min.js` | `onnxruntime-web` 1.21.0, the `dist/ort.wasm.min.mjs` build from npm, unmodified. It is a peer dependency of the above — the wasm-only build, 46 KB. | MIT (Microsoft) |
 
 Both were `.mjs` upstream and are `.js` here: every module on this site is a
@@ -32,7 +32,7 @@ never does. Drop the file in from npm if that ever changes.
 make those two replacements again before committing.
 
 **How they load.** `bgremoval.js` starts `bg-worker.js`, which dynamically
-imports `imgly-bg-removal.js` the first time someone picks Smart AI; that in
+imports `imgly-bg-removal.js` the first time someone picks Smart remove; that in
 turn pulls in `ort.wasm.min.js` when it builds the inference session. Nothing
 here is fetched on a normal page load.
 

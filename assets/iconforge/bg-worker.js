@@ -12,7 +12,7 @@
    to, and the artwork travels in and out as transferable ImageBitmaps.
 
    Messages in:  { bitmap }              — the artwork, transferred
-   Messages out: { type: 'progress', fraction, label }
+   Messages out: { type: 'progress', fraction, phase }   phase: fetch | run
                  { type: 'done', bitmap }   — the cutout, transferred
                  { type: 'error', message, stage } */
 
@@ -51,9 +51,10 @@ self.onmessage = async (e) => {
         self.postMessage({
           type: 'progress',
           fraction: total > 0 ? current / total : 0,
-          label: String(key).startsWith('fetch:')
-            ? 'Downloading the AI model…'
-            : 'Cutting out the background…'
+          // The page shows one word throughout; the phase only picks the line
+          // of detail underneath it, because the first-run download is the
+          // long wait and otherwise it looks like nothing is happening.
+          phase: String(key).startsWith('fetch:') ? 'fetch' : 'run'
         });
       }
     });

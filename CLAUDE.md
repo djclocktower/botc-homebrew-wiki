@@ -605,7 +605,7 @@ uploaded — except for the one opt-in save described below.
   supersample 1 immediately, then a crisp pass at 2 after 220 ms idle. Export
   always renders one-shot at full quality. Do not "simplify" that into a
   single render — a full pipeline run is ~750 ms.
-- **Smart AI runs in a Web Worker** (`bg-worker.js`) and must stay there. The
+- **"Smart remove" runs in a Web Worker** (`bg-worker.js`) and must stay there. The
   segmentation is one uninterruptible burst of CPU: on the main thread it
   froze the whole tab — no scrolling, no clicking, and the progress bar could
   not even repaint, so it read as a crash. `bgremoval.js` keeps a main-thread
@@ -622,11 +622,13 @@ uploaded — except for the one opt-in save described below.
   documented two-line patch pointing its ONNX imports at the vendored file
   instead of the bare specifier `onnxruntime-web` — **import maps do not
   apply inside workers**, so a bare specifier there is unresolvable. Re-apply
-  that patch on any upgrade or Smart AI dies. The ONNX wasm (~12 MB) and the
+  that patch on any upgrade or Smart remove dies. The ONNX wasm (~12 MB) and the
   model (~44 MB) are fetched from imgly's CDN on first use; they can never be
   committed (the model alone exceeds Cloudflare's 25 MiB per-asset limit and
   would fail the whole deploy). If that fetch fails the tool toasts and falls
-  back to "Keep".
+  back to "Keep". **The page never says "AI"** — the control is "Smart
+  remove" and the progress card just says "Removing". That is deliberate; keep
+  it that way in anything reader-facing. These notes stay technical.
   `minipaint/` is likewise sealed — a prebuilt, minified miniPaint bundle with
   a custom lasso tool. It is only re-skinned (CSS variables injected into the
   same-origin iframe by `editor.js`); never hand-patch `js/bundle.js`.
