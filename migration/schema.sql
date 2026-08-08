@@ -191,3 +191,23 @@ CREATE INDEX IF NOT EXISTS idx_stars_page ON stars(entity_type, slug);
 -- ALTER TABLE characters  ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE collections ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;
 -- ALTER TABLE scripts     ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;
+
+-- ---- PAGE REPORTS (report a character/script/collection/wiki page) ----
+-- There was previously no way to flag a PAGE at all — only comments and DMs —
+-- on a site whose whole premise is user-uploaded art and text, so stolen art
+-- and plagiarism had no channel except the free-text contact form.
+-- Created lazily by the Worker (ensurePageReportsTable).
+-- Resolving clears every open report on a page at once: six people reporting
+-- the same stolen icon is one job for a moderator, not six.
+CREATE TABLE IF NOT EXISTS page_reports (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts          TEXT NOT NULL DEFAULT (datetime('now')),
+  entity_type TEXT NOT NULL,                  -- character | collection | script | wikipage
+  slug        TEXT NOT NULL,
+  reporter_id INTEGER NOT NULL,
+  reason      TEXT,                           -- stolen-art | plagiarism | duplicate | inappropriate | other
+  detail      TEXT,
+  status      TEXT NOT NULL DEFAULT 'open'    -- open | resolved
+);
+CREATE INDEX IF NOT EXISTS idx_page_reports_status ON page_reports(status, id DESC);
+CREATE INDEX IF NOT EXISTS idx_page_reports_page   ON page_reports(entity_type, slug);

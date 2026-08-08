@@ -2053,6 +2053,19 @@ a:hover .starlight-star { opacity: .9; }
 .star-btn.is-starred .starlight-star { transform: scale(1.15); }
 .star-btn:focus-visible { outline: 2px solid var(--pg-link, #2f6fb8); outline-offset: 2px; }
 
+/* Report sits beside Star but must never compete with it — no border, no
+   fill, just a quiet link that is there when somebody needs it. */
+.report-btn {
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-size: .78rem; color: var(--ink, #2f2618);
+  background: none; border: none; border-bottom: 1px solid currentColor;
+  border-radius: 0; padding: 0 0 1px; margin-left: .9em;
+  cursor: pointer; opacity: .42;
+}
+.report-btn:hover:not(:disabled) { opacity: .78; }
+.report-btn:disabled { cursor: default; opacity: .55; border-bottom-color: transparent; }
+.report-btn:focus-visible { outline: 2px solid var(--pg-link, #2f6fb8); outline-offset: 2px; }
+
 /* The count on a browse card. Not a button — the toggle lives on the page —
    so it stays quiet and never looks clickable. */
 .card-stars {

@@ -73,6 +73,54 @@
       })
       .catch(function () { /* leave the button in its unstarred default */ });
 
+    // ---- Report this page ----
+    // Sits next to the Star because this is the one place on a page that is
+    // already about the reader's relationship to it. Deliberately quiet: a
+    // small text link, not a button competing with Star.
+    var report = document.createElement('button');
+    report.type = 'button';
+    report.className = 'report-btn';
+    report.textContent = 'Report';
+    report.title = 'Tell the admins something is wrong with this page';
+    mount.appendChild(report);
+
+    var REPORT_REASONS = [
+      ['stolen-art', 'The art is stolen or used without permission'],
+      ['plagiarism', 'The text is copied from somewhere else'],
+      ['duplicate', 'This is a duplicate of another page'],
+      ['inappropriate', 'The content is offensive or inappropriate'],
+      ['other', 'Something else']
+    ];
+
+    report.addEventListener('click', function () {
+      var lines = REPORT_REASONS.map(function (r, i) { return (i + 1) + '. ' + r[1]; }).join('\n');
+      var pick = window.prompt(
+        'Report this page to the admins.\n\n' + lines + '\n\nType a number (1-' + REPORT_REASONS.length + '):');
+      if (pick === null) return;
+      var idx = parseInt(pick, 10) - 1;
+      if (!(idx >= 0 && idx < REPORT_REASONS.length)) return;
+      var detail = window.prompt('Anything else the admins should know? (optional)') || '';
+      report.disabled = true;
+      fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ type: type, slug: slug, reason: REPORT_REASONS[idx][0], detail: detail })
+      })
+        .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+        .then(function (res) {
+          report.disabled = false;
+          if (res.status === 401) {
+            window.location.href = '/login?next=' + encodeURIComponent(window.location.pathname);
+            return;
+          }
+          if (!res.body || res.body.error) { alert((res.body && res.body.error) || 'Could not send that report.'); return; }
+          report.textContent = res.body.already ? 'Already reported' : 'Reported';
+          report.disabled = true;
+        })
+        .catch(function () { report.disabled = false; alert('Could not send that report.'); });
+    });
+
     btn.addEventListener('click', function () {
       if (busy) return;
       busy = true; paint();

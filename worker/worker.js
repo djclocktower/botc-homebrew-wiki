@@ -1257,6 +1257,35 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- reporting a page ----
+// Same four types as history: everything a reader can actually land on and
+// find something wrong with. News is absent because it is admin-written.
+const REPORTABLE = { character: 1, collection: 1, script: 1, wikipage: 1 };
+let _pageReportsReady = false;
+async function ensurePageReportsTable(env) {
+  if (_pageReportsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS page_reports (
+       id          INTEGER PRIMARY KEY AUTOINCREMENT,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       reporter_id INTEGER NOT NULL,
+       reason      TEXT,
+       detail      TEXT,
+       status      TEXT NOT NULL DEFAULT 'open'
+     )`
+  ).run();
+  // The moderation queue reads by status; the dedupe check reads by page.
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_page_reports_status ON page_reports(status, id DESC)'
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_page_reports_page ON page_reports(entity_type, slug)'
+  ).run();
+  _pageReportsReady = true;
+}
+
 // ---- history: resolving a page of any revisable type ----
 // `revisions` rows are written for wiki pages too (saveRevision is called on
 // every /api/wiki-page save), but both the read and the rollback route gated
@@ -4121,6 +4150,23 @@ export default {
     }
 
     // ---------- ADMIN: REPORTED DM CONVERSATIONS ----------
+    // ---- reported pages (admin) ----
+    if (method === 'GET' && path === '/api/admin/page-reports') {
+      await ensurePageReportsTable(env);
+      const view = url.searchParams.get('view') === 'resolved' ? 'resolved' : 'open';
+      const { results } = await env.DB.prepare(
+        `SELECT r.id, r.ts, r.entity_type, r.slug, r.reason, r.detail, r.status,
+                u.username AS reporter,
+                (SELECT COUNT(*) FROM page_reports x
+                  WHERE x.entity_type=r.entity_type AND x.slug=r.slug AND x.status='open') AS reports
+           FROM page_reports r
+           LEFT JOIN users u ON u.id = r.reporter_id
+          WHERE r.status=?
+          ORDER BY r.id DESC LIMIT 200`
+      ).bind(view).all();
+      return jsonResponse({ view, reports: results || [] });
+    }
+
     // ---- new-account watchlist ----
     // Signup is deliberately open and needs no email verification, so the
     // highest-risk cohort is simply "accounts that appeared recently". This is
@@ -4164,13 +4210,14 @@ export default {
           return r ? Number(r.n) || 0 : 0;
         } catch { return 0; }
       };
-      const [reportedComments, reportedDms, openMessages, newUsers] = await Promise.all([
+      const [reportedComments, reportedDms, openMessages, newUsers, reportedPages] = await Promise.all([
         one("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'"),
         one("SELECT COUNT(*) AS n FROM dm_reports WHERE status='open'"),
         one("SELECT COUNT(*) AS n FROM messages WHERE status='open'"),
         // The new-account cohort is the one worth watching, because signup is
         // deliberately open and unverified — this is the compensating control.
-        one("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now','-7 day')")
+        one("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now','-7 day')"),
+        one("SELECT COUNT(*) AS n FROM page_reports WHERE status='open'")
       ]);
       // The lock state rides along because this is the one call the dashboard
       // makes on every load. It used to come from /api/admin/dashboard, which
@@ -4184,7 +4231,7 @@ export default {
         const r = await env.DB.prepare("SELECT value FROM settings WHERE key='last_backup'").first();
         if (r && r.value) backup = JSON.parse(r.value);
       } catch { /* no backup has run since this was added */ }
-      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup });
+      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, reportedPages, locked, backup });
     }
 
     if (method === 'GET' && path === '/api/admin/dm-reports') {
@@ -5040,6 +5087,39 @@ export default {
         return jsonResponse({ ok: true, id });
       }
 
+      // ---- report a PAGE (not a comment) ----
+      // There was no way to flag a character, script, collection or wiki page
+      // at all — only comments and DMs — on a site whose whole premise is
+      // user-uploaded art and text. Stolen art and plagiarism had no channel
+      // except the free-text contact form.
+      if (path === '/api/report') {
+        await ensurePageReportsTable(env);
+        if (await rateLimited(env, request, 'page-report', 20, 3600, { sess })) {
+          return tooManyResponse('Too many reports. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const slug = String(b.slug || '').trim();
+        if (!REPORTABLE[type]) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+        if (!slug) return jsonResponse({ error: 'Missing slug.' }, { status: 400 });
+        const row = await revisableRow(env, type, slug);
+        if (!row) return jsonResponse({ error: 'That page does not exist.' }, { status: 404 });
+        // Same dedupe shape as comment_reports: one open report per person per
+        // page, so a reporter clicking twice does not look like two people.
+        const already = await env.DB.prepare(
+          "SELECT id FROM page_reports WHERE entity_type=? AND slug=? AND reporter_id=? AND status='open'"
+        ).bind(type, row.slug, sess.userId).first().catch(() => null);
+        if (already) return jsonResponse({ ok: true, already: true });
+        await env.DB.prepare(
+          'INSERT INTO page_reports (entity_type, slug, reporter_id, reason, detail) VALUES (?,?,?,?,?)'
+        ).bind(
+          type, row.slug, sess.userId,
+          String(b.reason || '').trim().slice(0, 60) || 'other',
+          String(b.detail || '').trim().slice(0, 1000) || null
+        ).run();
+        return jsonResponse({ ok: true });
+      }
+
       // ---- content create / update ----
       if (path === '/api/character') {
         {
@@ -5555,6 +5635,35 @@ export default {
           .bind(ownerId, row.slug).run();
         await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
+      }
+
+      // ---- admin: resolve a page report ----
+      if (path === '/api/admin/page-report') {
+        await ensurePageReportsTable(env);
+        const b = await request.json().catch(() => ({}));
+        const action = String(b.action || '');
+        const id = parseInt(b.id, 10) || 0;
+        if (action === 'resolve' || action === 'reopen') {
+          // Resolving clears every open report on that page, not just the row
+          // clicked: six people reporting the same stolen icon is one job, and
+          // leaving five behind would make the queue look permanently busy.
+          const row = await env.DB.prepare('SELECT entity_type, slug FROM page_reports WHERE id=?')
+            .bind(id).first().catch(() => null);
+          if (!row) return jsonResponse({ error: 'No such report.' }, { status: 404 });
+          await env.DB.prepare(
+            'UPDATE page_reports SET status=? WHERE entity_type=? AND slug=? AND status=?'
+          ).bind(
+            action === 'resolve' ? 'resolved' : 'open',
+            row.entity_type, row.slug,
+            action === 'resolve' ? 'open' : 'resolved'
+          ).run();
+          return jsonResponse({ ok: true });
+        }
+        if (action === 'delete') {
+          await env.DB.prepare('DELETE FROM page_reports WHERE id=?').bind(id).run();
+          return jsonResponse({ ok: true });
+        }
+        return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
       }
 
       // ---- admin: wiki lock ----
