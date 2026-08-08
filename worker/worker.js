@@ -1456,14 +1456,27 @@ async function rewriteProfilePins(env, from, to) {
 // removing Starlight from the collection takes it off the characters with
 // it, and a character keeps its own flag if it was given one directly.
 // `starlightFrom` records which collection lent it, for the tooltip.
-async function applyCollectionStarlight(env, chars) {
-  let rows;
+// The set of Starlight collections, memoised per isolate against the content
+// version. This used to be a full `collections` scan on EVERY /c/, /s/ and
+// /collection/ view — a whole table read to answer a question whose answer
+// changes only when an admin toggles a star.
+let _starCollCache = null;
+async function starlightCollections(env) {
+  const version = await contentVersion(env);
+  if (_starCollCache && _starCollCache.version === version) return _starCollCache.rows;
+  let rows = [];
   try {
-    ({ results: rows } = await env.DB.prepare(
+    const { results } = await env.DB.prepare(
       "SELECT data FROM collections WHERE status='published'"
-    ).all());
-  } catch { return chars; }
-  const starred = (rows || []).map(parseData).filter(d => d && d.starlight);
+    ).all();
+    rows = (results || []).map(parseData).filter(d => d && d.starlight);
+  } catch { rows = []; }
+  _starCollCache = { version, rows };
+  return rows;
+}
+
+async function applyCollectionStarlight(env, chars) {
+  const starred = await starlightCollections(env);
   if (!starred.length) return chars;
   for (const coll of starred) {
     const name = coll.displayName || coll.id || coll.slug || 'a collection';
@@ -1906,6 +1919,82 @@ async function officialIconMap(env, origin) {
   return m;
 }
 
+// ---- character data for the SSR script/collection pages ----
+// These pages used to call buildPublicJSON(env, 'characters') outright, which
+// meant every single /s/ and /collection/ view read and parsed the ENTIRE
+// characters table — a twelve-character script paying for five thousand rows —
+// plus a second full scan of collections for Starlight. Three fixes:
+//
+//  1. A script only ever needs its own roster, so fetch exactly those slugs.
+//  2. A collection genuinely has to look at every character (membership is
+//     matched on `appearsIn`, not stored), but it only needs card fields, and
+//     the result is memoised per isolate against the content version.
+//  3. The [[Character Name]] link map needs every name, but only name+slug —
+//     never the data blob. That is its own cheap, separately cached query.
+
+let _cardCharsCache = null;
+async function cachedCardChars(env) {
+  const version = await contentVersion(env);
+  if (_cardCharsCache && _cardCharsCache.version === version) return _cardCharsCache.rows;
+  const rows = await buildPublicJSON(env, 'characters', { fields: 'card' });
+  _cardCharsCache = { version, rows };
+  return rows;
+}
+
+let _charLinkCache = null;
+async function cachedCharLinkMap(env) {
+  const version = await contentVersion(env);
+  if (_charLinkCache && _charLinkCache.version === version) return _charLinkCache.map;
+  const map = {};
+  const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, name FROM characters WHERE status='published'"
+    ).all();
+    for (const r of results || []) {
+      if (r.slug) map[nkey(r.slug)] = r.slug;
+      if (r.name) map[nkey(r.name)] = r.slug;
+    }
+  } catch { /* an empty map just means [[Name]] renders as a plain token */ }
+  _charLinkCache = { version, map };
+  return map;
+}
+
+// Just the roster, for a script page. D1 caps bound parameters at 100, and a
+// script's roster is capped at 100 entries, so chunk at 90 for headroom.
+async function charsBySlug(env, slugs) {
+  const wanted = [...new Set((slugs || []).map(String).filter(Boolean))];
+  if (!wanted.length) return [];
+  const out = [];
+  for (let i = 0; i < wanted.length; i += 90) {
+    const chunk = wanted.slice(i, i + 90);
+    const marks = chunk.map(() => '?').join(',');
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT data, status, star_count FROM characters
+          WHERE status='published' AND slug IN (${marks})`
+      ).bind(...chunk).all();
+      for (const r of results || []) {
+        try {
+          const d = JSON.parse(r.data);
+          if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
+          const cls = Classify.classifyPage(d, 'character');
+          if (cls !== 'standard') d.classification = cls;
+          const stars = Number(r.star_count) || 0;
+          if (stars > 0) d.stars = stars;
+          out.push(d);
+        } catch { /* skip an unparseable row rather than 500 the page */ }
+      }
+    } catch { /* star_count not ALTERed in yet, or a transient failure */ }
+  }
+  // buildPublicJSON used to do this for us. A character on a Starlight
+  // collection carries the star onto every page it appears on, so a roster
+  // built by slug has to inherit it too or the star would vanish on script
+  // pages only. Cheap now that the collection set is memoised.
+  await applyCollectionStarlight(env, out);
+  return out;
+}
+
 // ---- shared SSR for /s/{slug} and /collection/{id} pages ----
 async function renderContentPage(env, ctx, request, url, type, slug) {
   const isScript = type === 'script';
@@ -1933,7 +2022,12 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const d = JSON.parse(row.data);
   if (!d.slug) d.slug = row.slug || slug;
 
-  let chars = await buildPublicJSON(env, 'characters');
+  // A script knows its roster by slug, so it never needs the rest of the
+  // table. A collection's membership is matched on `appearsIn` at read time,
+  // so it does — but from the memoised card feed, not a fresh full parse.
+  let chars = isScript
+    ? await charsBySlug(env, d.characters || [])
+    : await cachedCardChars(env);
   // Scripts can carry imported official roles ('off-' slugs) — resolve them
   if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
     chars = chars.concat(await loadOfficialRoles(env, url.origin));
@@ -1950,14 +2044,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // page). Drafts show only to whoever may edit them.
   const wikiPages = await listWikiPages(env, type, row.slug || slug, { includeDrafts: mayEditParent });
   const pagesHTML = WikiRender.renderPageLinks(wikiPages, { linkRoot: '../' });
-  // [[Character Name]] inside a custom box links to that character.
-  const linkMap = {};
-  const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-  for (const c of chars) {
-    if (c.slug) linkMap[nkey(c.slug)] = c.slug;
-    if (c.name) linkMap[nkey(c.name)] = c.slug;
-  }
-  WikiRender.setCharLinks(linkMap);
+  // [[Character Name]] inside a custom box links to that character. This needs
+  // EVERY character's name, not just the ones on this page, so it cannot come
+  // from `chars` on a script page — but it only needs name+slug, so it is its
+  // own cheap cached query rather than a reason to load the whole corpus.
+  WikiRender.setCharLinks(await cachedCharLinkMap(env));
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -2564,10 +2655,12 @@ export default {
       // Weighted by classification: Starlight pages come up more often and
       // Partial (unfinished) pages never do. Falls back to a plain SQL
       // RANDOM() pick if the table can't be read as JSON for any reason.
+      // Uses the memoised card feed rather than a fresh full parse: this route
+      // reads the whole corpus purely to throw all of it away except one slug,
+      // so it must never be the thing that pays to build it.
       let picked = null;
       try {
-        const chars = await buildPublicJSON(env, 'characters');
-        picked = Classify.weightedPick(chars);
+        picked = Classify.weightedPick(await cachedCardChars(env));
       } catch { /* fall through */ }
       let row = picked && picked.slug ? { slug: picked.slug } : null;
       if (!row) {
