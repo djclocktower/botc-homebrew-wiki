@@ -215,6 +215,18 @@ const EXT_CONTENT_TYPE = {
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
 };
 
+// What /api/upload will accept, and the extensions each type is allowed to be
+// stored under. Deliberately NOT derived from EXT_CONTENT_TYPE: that map is the
+// read side (it labels bytes already in the bucket, including legacy SVGs), and
+// image/svg+xml must never be writable — an SVG is a script-execution format
+// with an image extension, and these files are served from the site's origin.
+const UPLOAD_CONTENT_TYPES = {
+  'image/png':  { type: 'image/png',  exts: ['png'] },
+  'image/jpeg': { type: 'image/jpeg', exts: ['jpg', 'jpeg'] },
+  'image/webp': { type: 'image/webp', exts: ['webp'] },
+  'image/gif':  { type: 'image/gif',  exts: ['gif'] }
+};
+
 // Content-type registry: maps API "type" to its table + display columns.
 const CONTENT = {
   character:  { table: 'characters',  nameCol: 'name' },
@@ -2418,6 +2430,17 @@ export default {
           if (!headers.has('Content-Type') && EXT_CONTENT_TYPE[ext]) {
             headers.set('Content-Type', EXT_CONTENT_TYPE[ext]);
           }
+          // Defence in depth behind the upload whitelist. /api/upload now
+          // refuses anything that isn't a real image type, but objects written
+          // before that check exists still carry whatever Content-Type was
+          // claimed at the time, and writeHttpMetadata() above replays it.
+          // These two headers make such an object inert: nosniff stops the
+          // browser second-guessing a wrong type, and the sandbox CSP means
+          // even a response literally labelled text/html cannot run script or
+          // touch the site's origin. Safe to apply unconditionally — every
+          // response on this path is an image.
+          headers.set('X-Content-Type-Options', 'nosniff');
+          headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
           headers.set('Cache-Control', 'no-cache, must-revalidate');
           if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
           return new Response(obj.body, { headers });
@@ -4163,6 +4186,37 @@ export default {
         }
         if (bytes.length > 8 * 1024 * 1024) {
           return jsonResponse({ error: 'Image is too large (8 MB max).' }, { status: 413 });
+        }
+
+        // The content type was whatever the client claimed — out of the data-URL
+        // prefix or straight off the request header — and it was stored on the R2
+        // object, where the serve path replays it verbatim via
+        // writeHttpMetadata(). Uploading `data:text/html;base64,...` to
+        // art/x.png therefore served attacker-written HTML from our own origin,
+        // and there is no CSP on the site to contain it.
+        //
+        // Same fix /api/account/avatar already uses: whitelist the type, and
+        // derive everything downstream from the MAPPED value so the client's
+        // string is never trusted again. SVG is not on the list and must not be
+        // added — it is a script-execution format wearing an image extension.
+        // split(';') drops any `; charset=...` the raw-body branch picked up off
+        // the request header.
+        const declaredType = String(contentType || '').toLowerCase().split(';')[0].trim();
+        const uploadExt = UPLOAD_CONTENT_TYPES[declaredType];
+        if (!uploadExt) {
+          return jsonResponse({
+            error: 'Images must be PNG, JPEG, WebP, or GIF.'
+          }, { status: 400 });
+        }
+        contentType = uploadExt.type;
+        // The extension has to agree with the bytes, or /assets/ hands back a
+        // file whose name promises one thing and whose Content-Type says
+        // another — exactly the confusion nosniff exists to stop.
+        const keyExt = key.split('.').pop().toLowerCase();
+        if (!uploadExt.exts.includes(keyExt)) {
+          return jsonResponse({
+            error: `A ${contentType} image must be saved as .${uploadExt.exts[0]} (got .${keyExt}).`
+          }, { status: 400 });
         }
 
         if (!sess.isAdmin) {
