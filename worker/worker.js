@@ -3804,6 +3804,65 @@ export default {
     }
 
     // ---------- ADMIN: REPORTED DM CONVERSATIONS ----------
+    // ---- new-account watchlist ----
+    // Signup is deliberately open and needs no email verification, so the
+    // highest-risk cohort is simply "accounts that appeared recently". This is
+    // the compensating control for that decision: one screen showing who is
+    // new and how much they have already published, so a spam run is visible
+    // as a row rather than as a hundred scattered pages.
+    if (method === 'GET' && path === '/api/admin/new-users') {
+      await ensureBanColumn(env);
+      const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get('days'), 10) || 7));
+      const { results } = await env.DB.prepare(
+        `SELECT u.id, u.username, u.display_name, u.email, u.created_at,
+                COALESCE(u.banned,0) AS banned, u.is_admin, u.email_verified,
+                (SELECT COUNT(*) FROM characters  c WHERE c.owner_id = u.id) AS characters,
+                (SELECT COUNT(*) FROM collections o WHERE o.owner_id = u.id) AS collections,
+                (SELECT COUNT(*) FROM scripts     s WHERE s.owner_id = u.id) AS scripts,
+                (SELECT COUNT(*) FROM comments    m WHERE m.user_id  = u.id) AS comments,
+                (SELECT COUNT(*) FROM dms         d WHERE d.sender_id = u.id) AS dms_sent
+           FROM users u
+          WHERE u.created_at >= datetime('now', ?)
+          ORDER BY u.created_at DESC
+          LIMIT 200`
+      ).bind('-' + days + ' day').all();
+      const users = (results || []).map(r => ({
+        ...r,
+        // What actually matters at a glance: total output, so the list can be
+        // read for outliers rather than scanned column by column.
+        total: (r.characters || 0) + (r.collections || 0) + (r.scripts || 0) + (r.comments || 0)
+      }));
+      return jsonResponse({ days, users });
+    }
+
+    // ---- queue counts for the dashboard tab badges ----
+    // One cheap call so the tab strip can say what is waiting without the page
+    // having to open (and pay for) every tab. Every count here is an indexed
+    // COUNT(*) against a status column — see the launch-scale indexes in
+    // migration/schema.sql; these three tables had no indexes at all before.
+    if (method === 'GET' && path === '/api/admin/queue-counts') {
+      const one = async (sql, ...binds) => {
+        try {
+          const r = await env.DB.prepare(sql).bind(...binds).first();
+          return r ? Number(r.n) || 0 : 0;
+        } catch { return 0; }
+      };
+      const [reportedComments, reportedDms, openMessages, newUsers] = await Promise.all([
+        one("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'"),
+        one("SELECT COUNT(*) AS n FROM dm_reports WHERE status='open'"),
+        one("SELECT COUNT(*) AS n FROM messages WHERE status='open'"),
+        // The new-account cohort is the one worth watching, because signup is
+        // deliberately open and unverified — this is the compensating control.
+        one("SELECT COUNT(*) AS n FROM users WHERE created_at >= datetime('now','-7 day')")
+      ]);
+      // The lock state rides along because this is the one call the dashboard
+      // makes on every load. It used to come from /api/admin/dashboard, which
+      // is now lazy-loaded with the Health tab — and the lock banner has to be
+      // correct from the first paint regardless of which tab you land on.
+      const locked = await isWikiLocked(env);
+      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked });
+    }
+
     if (method === 'GET' && path === '/api/admin/dm-reports') {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
@@ -5333,6 +5392,40 @@ export default {
         if (!target) return jsonResponse({ error: 'No such user.' }, { status: 404 });
         if (target.id === sess.userId && (action === 'ban' || action === 'demote')) {
           return jsonResponse({ error: "You can't " + (action === 'ban' ? 'ban' : 'demote') + ' your own account.' }, { status: 400 });
+        }
+        // Ban and take their pages down in one action. Banning a spam account
+        // that has already published forty pages used to leave forty pages up,
+        // and the only way to clear them was the bulk tool, one type at a time.
+        // Unpublishing is deliberately reversible — nothing is deleted, so a
+        // wrong call is undone by unbanning and republishing.
+        // `dryRun` returns the counts without touching anything, so the button
+        // can say exactly what it is about to do before it does it.
+        if (action === 'ban-purge' || (action === 'ban' && b.purge)) {
+          if (target.is_admin) return jsonResponse({ error: 'Admins cannot be banned. Remove admin first.' }, { status: 400 });
+          const counts = {};
+          let total = 0;
+          for (const [type, meta] of Object.entries(CONTENT)) {
+            const r = await env.DB.prepare(
+              `SELECT COUNT(*) AS n FROM ${meta.table} WHERE owner_id=? AND status='published'`
+            ).bind(target.id).first().catch(() => null);
+            counts[type] = r ? Number(r.n) || 0 : 0;
+            total += counts[type];
+          }
+          if (b.dryRun) {
+            return jsonResponse({ ok: true, dryRun: true, username: target.username, counts, total });
+          }
+          await env.DB.prepare('UPDATE users SET banned=1 WHERE id=?').bind(target.id).run();
+          // One statement per table rather than per page: the bulk tools issue
+          // a query per slug and would blow the subrequest limit on an account
+          // that has published a few hundred pages.
+          for (const meta of Object.values(CONTENT)) {
+            await env.DB.prepare(
+              `UPDATE ${meta.table} SET status='draft' WHERE owner_id=? AND status='published'`
+            ).bind(target.id).run().catch(() => {});
+          }
+          await logActivity(env, sess, 'ban', 'user', null,
+            target.username + ' (+ unpublished ' + total + ' page' + (total === 1 ? '' : 's') + ')');
+          return jsonResponse({ ok: true, banned: true, counts, total });
         }
         if (action === 'ban') {
           if (target.is_admin) return jsonResponse({ error: 'Admins cannot be banned. Remove admin first.' }, { status: 400 });

@@ -254,6 +254,63 @@
   .toast { font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem; min-height: 1.2em; margin-top: 10px; }
   .toast.ok  { color: #2a6e2a; }
   .toast.err { color: #9a2c2c; }
+
+  /* ---- Tabs -------------------------------------------------------
+     The dashboard used to be 28 panels stacked in one column with no
+     navigation, which on a phone meant scrolling past finished migrations to
+     reach the moderation queue. Six tabs, and only the open one loads. */
+  .dash-tabs {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    margin: 14px 0 6px; padding-bottom: 0;
+    border-bottom: 1px solid rgba(236,225,200,.22);
+  }
+  .dash-tab-btn {
+    font-family: 'Oswald', sans-serif; font-size: .82rem;
+    letter-spacing: .06em; text-transform: uppercase;
+    background: transparent; color: rgba(236,225,200,.62);
+    border: 1px solid transparent; border-bottom: none; border-radius: 0;
+    padding: 8px 15px; cursor: pointer; position: relative; top: 1px;
+    display: inline-flex; align-items: center; gap: .5em;
+  }
+  .dash-tab-btn:hover { color: rgba(236,225,200,.92); }
+  .dash-tab-btn[aria-selected="true"] {
+    color: #f2e7cd; background: rgba(236,225,200,.09);
+    border-color: rgba(236,225,200,.22);
+  }
+  .dash-tab-btn:focus-visible { outline: 2px solid #9fc4ee; outline-offset: -2px; }
+  /* Count of things actually waiting on a human. Only drawn when non-zero, so
+     an empty badge never implies there is nothing to do on a tab that has not
+     loaded yet. */
+  .dash-tab-badge {
+    font-size: .72rem; line-height: 1; padding: 3px 6px;
+    background: #9a2c2c; color: #fff; border-radius: 999px; font-weight: 600;
+  }
+  .dash-tabs-mobile { display: none; }
+  .dash-tab-panel[hidden] { display: none; }
+  .dash-tab-note {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+    font-size: .86rem; color: rgba(236,225,200,.62);
+    margin: 12px 0 4px; max-width: 62ch; line-height: 1.5;
+  }
+
+  /* On a phone a six-across tab strip wraps into an unreadable block, so it
+     becomes one select instead. The owner reviews on mobile — this is the
+     layout that actually gets used. */
+  @media (max-width: 640px) {
+    .dash-tabs { display: none; }
+    .dash-tabs-mobile {
+      display: block; margin: 14px 0 10px;
+      font-family: 'Oswald', sans-serif; font-size: .74rem;
+      letter-spacing: .07em; text-transform: uppercase;
+      color: rgba(236,225,200,.6);
+    }
+    .dash-tabs-mobile select {
+      display: block; width: 100%; margin-top: 5px; padding: 10px;
+      font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: 1rem;
+      background: #2a2118; color: #f2e7cd;
+      border: 1px solid rgba(236,225,200,.3); border-radius: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -305,52 +362,26 @@
       <h2 class="dash-h2">Admin Dashboard</h2>
       <p class="dash-sub" id="dash-greeting">Overview of recent activity across the wiki.</p>
 
-      <!-- LOCK CONTROL -->
-      <section class="panel lock-panel" aria-label="Wiki lock">
-        <div class="lock-state">
-          <div class="lbl">Wiki status</div>
-          <div class="val" id="lock-val">—</div>
-          <div class="desc" id="lock-desc"></div>
-        </div>
-        <button class="btn" id="lock-btn" type="button" style="display:none">—</button>
-        <div class="toast" id="lock-toast" style="flex-basis:100%"></div>
-      </section>
+      <nav class="dash-tabs" id="dash-tabs" role="tablist" aria-label="Dashboard sections">
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="triage" id="dashtab-triage" aria-controls="tab-triage" aria-selected="false">Triage<span class="dash-tab-badge" id="badge-triage" hidden></span></button>
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="users" id="dashtab-users" aria-controls="tab-users" aria-selected="false">Users<span class="dash-tab-badge" id="badge-users" hidden></span></button>
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="content" id="dashtab-content" aria-controls="tab-content" aria-selected="false">Content<span class="dash-tab-badge" id="badge-content" hidden></span></button>
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="site" id="dashtab-site" aria-controls="tab-site" aria-selected="false">Site<span class="dash-tab-badge" id="badge-site" hidden></span></button>
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="health" id="dashtab-health" aria-controls="tab-health" aria-selected="false">Health<span class="dash-tab-badge" id="badge-health" hidden></span></button>
+        <button type="button" class="dash-tab-btn" role="tab" data-tab="maint" id="dashtab-maint" aria-controls="tab-maint" aria-selected="false">Maintenance<span class="dash-tab-badge" id="badge-maint" hidden></span></button>
+      </nav>
+      <label class="dash-tabs-mobile" for="dash-tab-select">Section
+        <select id="dash-tab-select">
+          <option value="triage">Triage</option>
+          <option value="users">Users</option>
+          <option value="content">Content</option>
+          <option value="site">Site</option>
+          <option value="health">Health</option>
+          <option value="maint">Maintenance</option>
+        </select>
+      </label>
 
-      <!-- ANNOUNCEMENT BANNER -->
-      <section class="panel">
-        <h3>Announcement banner</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Show a message at the top of every page on the site — maintenance notices, contests, anything. Visitors can dismiss it; posting a new message shows it again for everyone.
-        </p>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
-          You can put text links in it with <code>[the text people click](where it goes)</code> — e.g.
-          <code>Read the [July update](/news/july-update)</code>, or a full
-          <code>https://…</code> address for another site. Everything else stays plain text.
-        </p>
-        <textarea class="adm-textarea" id="ann-text" maxlength="600" placeholder="e.g. The wiki will be briefly locked tonight — details on the [news page](/news)."></textarea>
-        <div class="act-filters" style="margin-top:10px">
-          <button type="button" class="small-btn" id="ann-post">Post announcement</button>
-          <button type="button" class="small-btn alt" id="ann-clear">Clear banner</button>
-          <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
-        </div>
-        <div class="toast" id="ann-toast"></div>
-      </section>
-
-      <!-- TEXT EDITOR (the site's own wording) -->
-      <section class="panel">
-        <h3>Text editor</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Every piece of wording the site writes itself — page copy, buttons, labels, the notices above a page. Search it, filter it down to the em dashes or the curly quotes, sort it by length, and rewrite any of it. Changes go live everywhere straight away. Nobody's characters, scripts or comments are listed there.
-        </p>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
-          It also has a live mode: switch it on and browse the wiki exactly as normal, double-clicking (double-tapping on a phone) any wording you want to change.
-        </p>
-        <div class="act-filters">
-          <a class="small-btn" href="text-editor" style="text-decoration:none;display:inline-block">Open the text editor</a>
-        </div>
-      </section>
-
-      <!-- INBOX (contact-form messages) -->
+      <div class="dash-tab-panel" id="tab-triage" role="tabpanel" aria-labelledby="dashtab-triage" hidden>
       <section class="panel">
         <h3>Inbox <span class="count-pill" id="msg-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -361,8 +392,6 @@
         </label>
         <div id="msg-list"></div>
       </section>
-
-      <!-- REPORTED DM CONVERSATIONS -->
       <section class="panel">
         <h3>Reported Conversations <span class="count-pill" id="dmr-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -373,8 +402,45 @@
         </label>
         <div id="dmr-list"></div>
       </section>
+      <section class="panel">
+        <h3>Comments <span class="count-pill" id="cmt-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Comments left on character, script, collection and news pages. Reported ones come here first. Removing a comment hides it from the page but keeps it here so you can undo; purge deletes it for good. A page's owner can also remove comments on their own page.
+        </p>
+        <div class="act-filters">
+          <select id="cmt-view">
+            <option value="reported">reported</option>
+            <option value="recent">most recent</option>
+            <option value="removed">removed</option>
+          </select>
+          <button type="button" class="small-btn" id="cmt-load">Load comments</button>
+        </div>
+        <div id="cmt-list"></div>
+        <div class="toast" id="cmt-toast"></div>
+      </section>
+      </div>
 
-      <!-- USERS -->
+      <div class="dash-tab-panel" id="tab-users" role="tabpanel" aria-labelledby="dashtab-users" hidden>
+      <!-- NEW ACCOUNTS -->
+      <section class="panel">
+        <h3>New accounts <span class="count-pill" id="nu-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Signing up is open and needs no email confirmation, so the accounts worth keeping an eye on
+          are simply the new ones. This is that list, with how much each has posted — a spam run shows
+          up here as one obvious row instead of a hundred scattered pages.
+        </p>
+        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
+          Joined in the last
+          <select id="nu-days">
+            <option value="1">24 hours</option>
+            <option value="7" selected>7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </label>
+        <div id="nu-list"></div>
+        <p class="toast" id="nu-toast"></p>
+      </section>
       <section class="panel">
         <h3>Users <span class="count-pill" id="u-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -387,17 +453,14 @@
         <div id="u-list"></div>
         <div class="toast" id="u-toast"></div>
       </section>
-
-      <!-- MAINTENANCE TOOLS -->
       <section class="panel">
-        <h3>Maintenance tools</h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px">
-          <a href="normalize-icons" style="color:var(--good-name,#2c5b9a);font-weight:600">Standardize character icons &rarr;</a>
-          &mdash; re-fit every character's art to the 591&times;591 frame so icon sizes are consistent site-wide.
-        </p>
+        <h3>Recent sign-ups <span class="count-pill" id="signup-count"></span></h3>
+        <ul class="feed" id="feed-signups"></ul>
+        <p class="note">Public registration isn't enabled yet, so this currently lists existing accounts. It's ready for when creator accounts launch.</p>
       </section>
+      </div>
 
-      <!-- UNOWNED PAGES (assign an owner so a user can edit them) -->
+      <div class="dash-tab-panel" id="tab-content" role="tabpanel" aria-labelledby="dashtab-content" hidden>
       <section class="panel">
         <h3>Unowned pages <span class="count-pill" id="unowned-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -405,8 +468,6 @@
         </p>
         <div id="unowned-list"></div>
       </section>
-
-      <!-- DELETED CONTENT (soft-deleted pages: restore or purge for good) -->
       <section class="panel">
         <h3>Deleted content <span class="count-pill" id="deleted-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -414,8 +475,6 @@
         </p>
         <div id="deleted-list"></div>
       </section>
-
-      <!-- PAGE HISTORY & ROLLBACK -->
       <section class="panel" id="rollback-panel">
         <h3>Page history &amp; rollback</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -433,8 +492,6 @@
         <div id="rb-list"></div>
         <div class="toast" id="rb-toast"></div>
       </section>
-
-      <!-- PROTECTED PAGES -->
       <section class="panel">
         <h3>Protected pages <span class="count-pill" id="prot-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -452,26 +509,6 @@
         <div id="prot-list"></div>
         <div class="toast" id="prot-toast"></div>
       </section>
-
-      <!-- COMMENT MODERATION -->
-      <section class="panel">
-        <h3>Comments <span class="count-pill" id="cmt-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Comments left on character, script, collection and news pages. Reported ones come here first. Removing a comment hides it from the page but keeps it here so you can undo; purge deletes it for good. A page's owner can also remove comments on their own page.
-        </p>
-        <div class="act-filters">
-          <select id="cmt-view">
-            <option value="reported">reported</option>
-            <option value="recent">most recent</option>
-            <option value="removed">removed</option>
-          </select>
-          <button type="button" class="small-btn" id="cmt-load">Load comments</button>
-        </div>
-        <div id="cmt-list"></div>
-        <div class="toast" id="cmt-toast"></div>
-      </section>
-
-      <!-- STARLIGHT -->
       <section class="panel">
         <h3>Starlight</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -489,91 +526,6 @@
         </div>
         <div class="toast" id="star-toast"></div>
       </section>
-
-      <!-- ONE-TIME MIGRATIONS: creator collection + rules pages -->
-      <section class="panel">
-        <h3>Gather a creator into a collection <span class="count-pill" id="cc-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Puts every character credited to one creator into a collection, writing them into its <em>include</em> list (a back catalogue has no shared “Appears in” to match on). Creates the collection if it doesn’t exist. Safe to re-run — it merges rather than replaces. Scan first.
-        </p>
-        <div class="act-filters">
-          <input type="text" id="cc-creator" placeholder="creator name" value="christoph-ehm">
-          <input type="text" id="cc-coll" placeholder="collection name" value="Imppreposterous Syncretastrophy">
-          <button type="button" class="small-btn" id="cc-scan">Scan</button>
-          <button type="button" class="small-btn alt" id="cc-go" style="display:none">Gather them</button>
-        </div>
-        <div id="cc-list"></div>
-        <div class="toast" id="cc-toast"></div>
-      </section>
-
-      <section class="panel">
-        <h3>Rules pages → wiki pages <span class="count-pill" id="c2p-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          States, Conditions, Calls, Alignments and Properties were imported as Fabled characters, but they are reference text, not people you can put on a script. This rewrites each one as a <strong>wiki page</strong> under a parent collection and retires the character it came from. Retiring is a <em>soft</em> delete — Deleted Content can put any of them back, and the last version is in revisions. Scan first: the preview shows the exact text each page will get.
-        </p>
-        <div class="act-filters">
-          <input type="text" id="c2p-from" placeholder="“Appears in” value" value="Homebrew Concepts">
-          <input type="text" id="c2p-parent" placeholder="parent collection id" value="imppreposterous-syncretastrophy">
-          <button type="button" class="small-btn" id="c2p-scan">Scan</button>
-          <button type="button" class="small-btn alt" id="c2p-go" style="display:none">Convert them</button>
-        </div>
-        <div id="c2p-list"></div>
-        <div class="toast" id="c2p-toast"></div>
-      </section>
-
-      <!-- STARLIGHT EVERYTHING ONE ACCOUNT OWNS -->
-      <section class="panel">
-        <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Gives <strong>Starlight ✦</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
-        </p>
-        <div class="act-filters">
-          <input type="text" id="sto-user" placeholder="username" value="admin">
-          <button type="button" class="small-btn" id="sto-scan">Scan</button>
-          <button type="button" class="small-btn alt" id="sto-go" style="display:none">Give Starlight to all</button>
-        </div>
-        <div id="sto-list"></div>
-        <div class="toast" id="sto-toast"></div>
-      </section>
-
-      <!-- PUBLISHED PAGES THAT MISS THE PUBLISH BAR -->
-      <section class="panel">
-        <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          A character now needs a <strong>name, an icon, an ability and tags</strong> before it can be published — the editor saves it as a draft and says what is missing. This finds pages that went live <em>before</em> that bar existed. <strong>Scan first:</strong> it tells you how many, and what they are short of, before anything moves. Moving them to drafts hides them from the site until their owner fills the gap; nothing is deleted, and re-publishing is one click from Bulk actions. Fabled rules pages (States, Conditions, Calls) are exempt and never appear here.
-        </p>
-        <button type="button" class="small-btn" id="noicon-scan">Scan</button>
-        <button type="button" class="small-btn alt" id="noicon-fix" style="display:none">Move all to drafts</button>
-        <div id="noicon-list"></div>
-        <div class="toast" id="noicon-toast"></div>
-      </section>
-
-      <!-- ODYSSEY TEXT CLEANUP (one-time; remove this card once it has been run) -->
-      <section class="panel">
-        <h3>Clean up Odyssey text <span class="count-pill" id="odyc-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          One-time tidy of the 119 Odyssey almanacs: removes the translation's em dashes (commas instead) and rewrites he/him/his and she/her to they/them/their. Character abilities are never touched, and the flavour quotes keep their wording apart from the dashes. Every page it edits is saved to revisions first. Check first, then run.
-        </p>
-        <button type="button" class="small-btn" id="odyc-check">Check what will change</button>
-        <button type="button" class="small-btn alt" id="odyc-run" style="display:none">Clean them up</button>
-        <div id="odyc-list"></div>
-        <div class="toast" id="odyc-toast"></div>
-      </section>
-
-      <!-- NEWS -->
-      <section class="panel">
-        <h3>News <span class="count-pill" id="news-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Articles written by admins. Published ones get their own page, show on the homepage and on <a href="news" style="color:inherit;text-decoration:underline">/news</a>, and readers can comment on them.
-        </p>
-        <div class="act-filters">
-          <a class="small-btn" href="publish-news" style="text-decoration:none">Write an article</a>
-          <button type="button" class="small-btn alt" id="news-load">Refresh list</button>
-        </div>
-        <div id="news-list"></div>
-      </section>
-
-      <!-- BULK ACTIONS -->
       <section class="panel">
         <h3>Bulk actions</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -623,8 +575,62 @@
         </div>
         <div class="toast" id="bulk-toast"></div>
       </section>
+      </div>
 
-      <!-- BROKEN REFERENCES -->
+      <div class="dash-tab-panel" id="tab-site" role="tabpanel" aria-labelledby="dashtab-site" hidden>
+      <section class="panel lock-panel" aria-label="Wiki lock">
+        <div class="lock-state">
+          <div class="lbl">Wiki status</div>
+          <div class="val" id="lock-val">—</div>
+          <div class="desc" id="lock-desc"></div>
+        </div>
+        <button class="btn" id="lock-btn" type="button" style="display:none">—</button>
+        <div class="toast" id="lock-toast" style="flex-basis:100%"></div>
+      </section>
+      <section class="panel">
+        <h3>Announcement banner</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Show a message at the top of every page on the site — maintenance notices, contests, anything. Visitors can dismiss it; posting a new message shows it again for everyone.
+        </p>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+          You can put text links in it with <code>[the text people click](where it goes)</code> — e.g.
+          <code>Read the [July update](/news/july-update)</code>, or a full
+          <code>https://…</code> address for another site. Everything else stays plain text.
+        </p>
+        <textarea class="adm-textarea" id="ann-text" maxlength="600" placeholder="e.g. The wiki will be briefly locked tonight — details on the [news page](/news)."></textarea>
+        <div class="act-filters" style="margin-top:10px">
+          <button type="button" class="small-btn" id="ann-post">Post announcement</button>
+          <button type="button" class="small-btn alt" id="ann-clear">Clear banner</button>
+          <span class="dim" id="ann-status" style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.8rem;opacity:.7"></span>
+        </div>
+        <div class="toast" id="ann-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Text editor</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Every piece of wording the site writes itself — page copy, buttons, labels, the notices above a page. Search it, filter it down to the em dashes or the curly quotes, sort it by length, and rewrite any of it. Changes go live everywhere straight away. Nobody's characters, scripts or comments are listed there.
+        </p>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+          It also has a live mode: switch it on and browse the wiki exactly as normal, double-clicking (double-tapping on a phone) any wording you want to change.
+        </p>
+        <div class="act-filters">
+          <a class="small-btn" href="text-editor" style="text-decoration:none;display:inline-block">Open the text editor</a>
+        </div>
+      </section>
+      <section class="panel">
+        <h3>News <span class="count-pill" id="news-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Articles written by admins. Published ones get their own page, show on the homepage and on <a href="news" style="color:inherit;text-decoration:underline">/news</a>, and readers can comment on them.
+        </p>
+        <div class="act-filters">
+          <a class="small-btn" href="publish-news" style="text-decoration:none">Write an article</a>
+          <button type="button" class="small-btn alt" id="news-load">Refresh list</button>
+        </div>
+        <div id="news-list"></div>
+      </section>
+      </div>
+
+      <div class="dash-tab-panel" id="tab-health" role="tabpanel" aria-labelledby="dashtab-health" hidden>
       <section class="panel">
         <h3>Broken references <span class="count-pill" id="br-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -633,8 +639,6 @@
         <button type="button" class="small-btn" id="br-scan">Scan the wiki</button>
         <div id="br-list"></div>
       </section>
-
-      <!-- ORPHANED IMAGES -->
       <section class="panel">
         <h3>Orphaned images <span class="count-pill" id="orph-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -650,8 +654,6 @@
         </div>
         <div class="toast" id="orph-toast"></div>
       </section>
-
-      <!-- BACKUPS -->
       <section class="panel">
         <h3>Backups <span class="count-pill" id="bk-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -671,8 +673,6 @@
         </div>
         <div class="toast" id="bk-toast"></div>
       </section>
-
-      <!-- STATS -->
       <section class="panel">
         <h3>At a glance</h3>
         <div class="stat-row">
@@ -683,8 +683,6 @@
         </div>
         <div class="team-bars" id="team-bars"></div>
       </section>
-
-      <!-- PAGE VIEWS -->
       <section class="panel">
         <h3>Page views <span class="count-pill" id="pv-total"></span></h3>
         <div class="act-filters">
@@ -695,8 +693,6 @@
         <div id="pv-list"></div>
         <p class="note">Counting starts from when this feature deployed. Common bots and crawlers are filtered out; daily counts are kept for 180 days.</p>
       </section>
-
-      <!-- ADMIN REPORT -->
       <section class="panel">
         <h3>Admin report</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
@@ -714,8 +710,6 @@
         </div>
         <div id="rep-out"></div>
       </section>
-
-      <!-- ACTIVITY LOG -->
       <section class="panel">
         <h3>Activity log <span class="count-pill" id="act-count"></span></h3>
         <div class="act-filters">
@@ -775,7 +769,6 @@
         </div>
         <p class="note">Activity is recorded from now on. Past edits made before this dashboard existed won't appear here.</p>
       </section>
-
       <div class="panel-grid">
         <!-- RECENTLY EDITED -->
         <section class="panel">
@@ -789,13 +782,79 @@
           <ul class="feed" id="feed-creations"></ul>
         </section>
       </div>
+      </div>
 
-      <!-- SIGN-UPS -->
+      <div class="dash-tab-panel" id="tab-maint" role="tabpanel" aria-labelledby="dashtab-maint" hidden>
+        <p class="dash-tab-note">Finished migrations and one-off utilities. Nothing here is part of day-to-day moderation — it is kept because these jobs are occasionally still needed, not because they are routine.</p>
       <section class="panel">
-        <h3>Recent sign-ups <span class="count-pill" id="signup-count"></span></h3>
-        <ul class="feed" id="feed-signups"></ul>
-        <p class="note">Public registration isn't enabled yet, so this currently lists existing accounts. It's ready for when creator accounts launch.</p>
+        <h3>Maintenance tools</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px">
+          <a href="normalize-icons" style="color:var(--good-name,#2c5b9a);font-weight:600">Standardize character icons &rarr;</a>
+          &mdash; re-fit every character's art to the 591&times;591 frame so icon sizes are consistent site-wide.
+        </p>
       </section>
+      <section class="panel">
+        <h3>Gather a creator into a collection <span class="count-pill" id="cc-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Puts every character credited to one creator into a collection, writing them into its <em>include</em> list (a back catalogue has no shared “Appears in” to match on). Creates the collection if it doesn’t exist. Safe to re-run — it merges rather than replaces. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="cc-creator" placeholder="creator name" value="christoph-ehm">
+          <input type="text" id="cc-coll" placeholder="collection name" value="Imppreposterous Syncretastrophy">
+          <button type="button" class="small-btn" id="cc-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="cc-go" style="display:none">Gather them</button>
+        </div>
+        <div id="cc-list"></div>
+        <div class="toast" id="cc-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Rules pages → wiki pages <span class="count-pill" id="c2p-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          States, Conditions, Calls, Alignments and Properties were imported as Fabled characters, but they are reference text, not people you can put on a script. This rewrites each one as a <strong>wiki page</strong> under a parent collection and retires the character it came from. Retiring is a <em>soft</em> delete — Deleted Content can put any of them back, and the last version is in revisions. Scan first: the preview shows the exact text each page will get.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="c2p-from" placeholder="“Appears in” value" value="Homebrew Concepts">
+          <input type="text" id="c2p-parent" placeholder="parent collection id" value="imppreposterous-syncretastrophy">
+          <button type="button" class="small-btn" id="c2p-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="c2p-go" style="display:none">Convert them</button>
+        </div>
+        <div id="c2p-list"></div>
+        <div class="toast" id="c2p-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Gives <strong>Starlight ✦</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="sto-user" placeholder="username" value="admin">
+          <button type="button" class="small-btn" id="sto-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="sto-go" style="display:none">Give Starlight to all</button>
+        </div>
+        <div id="sto-list"></div>
+        <div class="toast" id="sto-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          A character now needs a <strong>name, an icon, an ability and tags</strong> before it can be published — the editor saves it as a draft and says what is missing. This finds pages that went live <em>before</em> that bar existed. <strong>Scan first:</strong> it tells you how many, and what they are short of, before anything moves. Moving them to drafts hides them from the site until their owner fills the gap; nothing is deleted, and re-publishing is one click from Bulk actions. Fabled rules pages (States, Conditions, Calls) are exempt and never appear here.
+        </p>
+        <button type="button" class="small-btn" id="noicon-scan">Scan</button>
+        <button type="button" class="small-btn alt" id="noicon-fix" style="display:none">Move all to drafts</button>
+        <div id="noicon-list"></div>
+        <div class="toast" id="noicon-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Clean up Odyssey text <span class="count-pill" id="odyc-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          One-time tidy of the 119 Odyssey almanacs: removes the translation's em dashes (commas instead) and rewrites he/him/his and she/her to they/them/their. Character abilities are never touched, and the flavour quotes keep their wording apart from the dashes. Every page it edits is saved to revisions first. Check first, then run.
+        </p>
+        <button type="button" class="small-btn" id="odyc-check">Check what will change</button>
+        <button type="button" class="small-btn alt" id="odyc-run" style="display:none">Clean them up</button>
+        <div id="odyc-list"></div>
+        <div class="toast" id="odyc-toast"></div>
+      </section>
+      </div>
     </div>
   </main>
 
@@ -1151,6 +1210,94 @@
     });
 
     /* ---- users panel ---- */
+    /* ---- new-account watchlist ---- */
+    function nuRow(u){
+      var flags = [];
+      if (u.banned) flags.push('<span style="color:#d98;font-weight:600">banned</span>');
+      if (u.is_admin) flags.push('<span style="color:#9fc4ee">admin</span>');
+      if (!u.email_verified) flags.push('<span style="opacity:.6">unverified email</span>');
+      // Output is the signal worth sorting by eye, so it leads.
+      var out = [];
+      if (u.characters)  out.push(u.characters + ' char' + (u.characters === 1 ? '' : 's'));
+      if (u.collections) out.push(u.collections + ' coll');
+      if (u.scripts)     out.push(u.scripts + ' script' + (u.scripts === 1 ? '' : 's'));
+      if (u.comments)    out.push(u.comments + ' comment' + (u.comments === 1 ? '' : 's'));
+      if (u.dms_sent)    out.push(u.dms_sent + ' DM' + (u.dms_sent === 1 ? '' : 's'));
+      return '<div class="feed-row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(236,225,200,.12)">' +
+        '<a href="/u/' + encodeURIComponent(u.username) + '" style="font-weight:600">' + esc(u.username) + '</a>' +
+        '<span style="opacity:.6;font-size:.85rem">' + esc(String(u.created_at || '').slice(0, 16)) + '</span>' +
+        (flags.length ? '<span style="font-size:.82rem">' + flags.join(' · ') + '</span>' : '') +
+        '<span style="font-size:.85rem;opacity:.85">' + (out.length ? esc(out.join(' · ')) : '<em style="opacity:.5">nothing posted</em>') + '</span>' +
+        (u.is_admin || u.banned ? '' :
+          '<button type="button" class="nu-banpurge" data-id="' + u.id + '" data-user="' + esc(u.username) + '"' +
+          ' style="margin-left:auto;font-size:.78rem;padding:3px 9px">Ban + unpublish</button>') +
+        '</div>';
+    }
+
+    function loadNewUsers(){
+      var days = $('nu-days') ? $('nu-days').value : '7';
+      $('nu-list').innerHTML = '<p class="note">Loading…</p>';
+      fetch('/api/admin/new-users?days=' + encodeURIComponent(days), { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || d.error) { $('nu-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not load.') + '</p>'; return; }
+          var list = d.users || [];
+          $('nu-count').textContent = list.length ? list.length : '';
+          $('nu-list').innerHTML = list.length
+            ? list.map(nuRow).join('')
+            : '<p class="note">No accounts created in that window.</p>';
+          wireBanPurge();
+        })
+        .catch(function(){ $('nu-list').innerHTML = '<p class="note">Could not load.</p>'; });
+    }
+
+    /* Ban and take their pages down together. Two steps: a dry run that says
+       exactly what will happen, then the real call — because "ban" and
+       "unpublish 40 pages" are very different sizes of mistake to make by
+       accident. Nothing is deleted, so it is undone by unbanning and
+       republishing. */
+    function wireBanPurge(){
+      Array.prototype.forEach.call(document.querySelectorAll('.nu-banpurge'), function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-id'), user = btn.getAttribute('data-user');
+          var toast = $('nu-toast');
+          btn.disabled = true;
+          fetch('/api/admin/user', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify({ id: id, action: 'ban-purge', dryRun: true })
+          })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (!d || d.error) throw new Error((d && d.error) || 'Could not check.');
+            var msg = 'Ban ' + user + ' and unpublish ' + d.total + ' published page' +
+              (d.total === 1 ? '' : 's') + '?\n\n' +
+              'Characters: ' + (d.counts.character || 0) + '\n' +
+              'Collections: ' + (d.counts.collection || 0) + '\n' +
+              'Scripts: ' + (d.counts.script || 0) + '\n\n' +
+              'Nothing is deleted — the pages become drafts, so this is reversible.';
+            if (!confirm(msg)) { btn.disabled = false; return; }
+            return fetch('/api/admin/user', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+              body: JSON.stringify({ id: id, action: 'ban-purge' })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(res){
+              if (!res || res.error) throw new Error((res && res.error) || 'Failed.');
+              toast.className = 'toast ok';
+              toast.textContent = 'Banned ' + user + ' and unpublished ' + res.total + ' page' + (res.total === 1 ? '' : 's') + '.';
+              loadNewUsers();
+              if (typeof loadUsers === 'function') loadUsers();
+            });
+          })
+          .catch(function(e){
+            btn.disabled = false;
+            toast.className = 'toast err';
+            toast.textContent = (e && e.message) || 'Could not complete that.';
+          });
+        });
+      });
+    }
+
     function loadUsers(){
       var q = $('u-q').value.trim();
       getJSON('/api/admin/users' + (q ? '?q=' + encodeURIComponent(q) : '')).then(function(d){
@@ -2189,20 +2336,108 @@
       $('gate').style.display = 'block';
     }
 
+    /* ---- tabs -------------------------------------------------------
+       Each tab declares what it needs, and a tab's loaders run the first time
+       it is opened rather than all at once on page load. The old startup fired
+       eight requests up front, one of which (/api/admin/dashboard) runs three
+       UNION ALL scans over every character, collection and script — twice —
+       so the cost of opening the dashboard grew with the size of the wiki
+       whether or not you were going to look at that panel.
+
+       Triage is the default because it is the only tab that answers
+       "is anything waiting for me?". */
+    var TAB_LOADERS = {
+      triage:  [loadMessages, loadDmReports, loadComments],
+      users:   [loadUsers, loadNewUsers],
+      content: [],
+      site:    [loadAnnouncement, loadNews],
+      health:  [loadDashboard, function(){ loadAnalytics(7); }],
+      maint:   []
+    };
+    var tabLoaded = {};
+    var TAB_KEYS = ['triage','users','content','site','health','maint'];
+
+    function showTab(key, opts){
+      if (TAB_KEYS.indexOf(key) === -1) key = 'triage';
+      TAB_KEYS.forEach(function(k){
+        var panel = $('tab-' + k);
+        var btn   = $('dashtab-' + k);
+        if (panel) panel.hidden = (k !== key);
+        if (btn) btn.setAttribute('aria-selected', k === key ? 'true' : 'false');
+      });
+      var sel = $('dash-tab-select');
+      if (sel && sel.value !== key) sel.value = key;
+
+      if (!tabLoaded[key]) {
+        tabLoaded[key] = true;
+        (TAB_LOADERS[key] || []).forEach(function(fn){
+          try { fn(); } catch (e) { /* one broken panel must not take the tab down */ }
+        });
+      }
+      // Deep links, and a refresh that stays where you were. replaceState on
+      // the initial paint so the back button isn't polluted before you have
+      // actually navigated anywhere.
+      if (opts && opts.push) {
+        try { history.pushState({ tab: key }, '', '#' + key); } catch (e) {}
+      }
+    }
+
+    function wireNewUsers(){
+      var sel = $('nu-days');
+      if (sel) sel.addEventListener('change', loadNewUsers);
+    }
+
+    function wireTabs(){
+      TAB_KEYS.forEach(function(k){
+        var btn = $('dashtab-' + k);
+        if (btn) btn.addEventListener('click', function(){ showTab(k, { push: true }); });
+      });
+      var sel = $('dash-tab-select');
+      if (sel) sel.addEventListener('change', function(){ showTab(sel.value, { push: true }); });
+      window.addEventListener('popstate', function(){
+        showTab((location.hash || '').replace(/^#/, '') || 'triage');
+      });
+    }
+
+    /* Counts for the tab badges. One cheap call, so the strip can say what is
+       waiting without opening every tab — which is the whole reason the eager
+       load existed in the first place. */
+    function refreshBadges(){
+      fetch('/api/admin/queue-counts', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || d.error) return;
+          setBadge('triage', (d.reportedComments || 0) + (d.reportedDms || 0) + (d.openMessages || 0));
+          setBadge('users', d.newUsers || 0);
+          // Lock state used to arrive with /api/admin/dashboard, which is now
+          // lazy. The banner has to be right from the first paint whichever
+          // tab you land on, so it rides along with the badge counts.
+          if (typeof d.locked !== 'undefined') renderLock(d.locked);
+        })
+        .catch(function(){ /* badges are a nicety, never a blocker */ });
+    }
+    function setBadge(key, n){
+      var el = $('badge-' + key);
+      if (!el) return;
+      if (n > 0) { el.textContent = n > 99 ? '99+' : String(n); el.hidden = false; }
+      else { el.textContent = ''; el.hidden = true; }
+    }
+
     // Auth check, then load.
     wireLockButton();
     fetch('/api/me', { credentials: 'same-origin' })
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (d.loggedIn && d.isAdmin) {
-          loadDashboard();
-          loadAnnouncement();
-          loadMessages();
-          loadDmReports();
-          loadUsers();
-          loadAnalytics(7);
-          loadComments();
-          loadNews();
+          // Reveal the page here rather than inside loadDashboard(): that call
+          // now belongs to the Health tab, and gating visibility on it would
+          // leave the dashboard blank for anyone landing on Triage.
+          $('loading').style.display = 'none';
+          $('dash').style.display = 'block';
+          wireTabs();
+          wireNewUsers();
+          showTab((location.hash || '').replace(/^#/, '') || 'triage');
+          refreshBadges();
         } else showGate();
       })
       .catch(function(){ showGate(); });
