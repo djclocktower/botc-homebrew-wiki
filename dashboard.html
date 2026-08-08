@@ -286,6 +286,12 @@
     background: #9a2c2c; color: #fff; border-radius: 999px; font-weight: 600;
   }
   .dash-tabs-mobile { display: none; }
+  .dash-backup-warning {
+    font-family: 'TradeGothicLT','Libre Franklin',sans-serif; font-size: .9rem;
+    background: rgba(154,44,44,.18); border: 1px solid rgba(216,150,150,.5);
+    color: #f0d4d4; padding: 9px 13px; margin: 12px 0 0; line-height: 1.45;
+  }
+  .dash-backup-warning[hidden] { display: none; }
   .dash-tab-panel[hidden] { display: none; }
   .dash-tab-note {
     font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
@@ -362,6 +368,7 @@
       <h2 class="dash-h2">Admin Dashboard</h2>
       <p class="dash-sub" id="dash-greeting">Overview of recent activity across the wiki.</p>
 
+      <p class="dash-backup-warning" id="backup-warning" hidden></p>
       <nav class="dash-tabs" id="dash-tabs" role="tablist" aria-label="Dashboard sections">
         <button type="button" class="dash-tab-btn" role="tab" data-tab="triage" id="dashtab-triage" aria-controls="tab-triage" aria-selected="false">Triage<span class="dash-tab-badge" id="badge-triage" hidden></span></button>
         <button type="button" class="dash-tab-btn" role="tab" data-tab="users" id="dashtab-users" aria-controls="tab-users" aria-selected="false">Users<span class="dash-tab-badge" id="badge-users" hidden></span></button>
@@ -2413,9 +2420,25 @@
           // lazy. The banner has to be right from the first paint whichever
           // tab you land on, so it rides along with the badge counts.
           if (typeof d.locked !== 'undefined') renderLock(d.locked);
+          renderBackupWarning(d.backup);
         })
         .catch(function(){ /* badges are a nicety, never a blocker */ });
     }
+    /* A failed nightly backup used to be completely invisible: it ran inside
+       ctx.waitUntil() with nobody reading the result, and a failure was
+       recorded as "skipped" in a response that otherwise looked fine. If the
+       last run had failures, say so at the top of every tab. */
+    function renderBackupWarning(bk){
+      var el = $('backup-warning');
+      if (!el) return;
+      if (!bk || bk.ok !== false) { el.hidden = true; el.textContent = ''; return; }
+      var tables = Object.keys(bk.failed || {});
+      el.hidden = false;
+      el.textContent = 'The nightly backup on ' + (bk.date || 'its last run') +
+        ' failed for: ' + (tables.length ? tables.join(', ') : 'one or more tables') +
+        '. Check the Health tab.';
+    }
+
     function setBadge(key, n){
       var el = $('badge-' + key);
       if (!el) return;

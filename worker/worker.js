@@ -1703,20 +1703,77 @@ async function buildPublicJSON(env, table, opts = {}) {
 // Dumps every content table to backups/{YYYY-MM-DD}/{table}.json in the ART
 // bucket. backups/ is not in R2_PREFIXES, so the files are never publicly
 // servable through /assets/. Keeps 30 days of snapshots.
+// Read a backed-up table back in, across however many parts it was written to.
+// Anything reading a backup MUST go through this rather than fetching
+// `{table}.json` directly: that file is only the FIRST chunk once a table
+// grows past BACKUP_CHUNK rows, so a direct read would quietly return a
+// prefix of the table and report "not found" for anything after it.
+async function readBackupTable(env, date, table) {
+  if (!env.ART) return null;
+  const first = await env.ART.get(`backups/${date}/${table}.json`);
+  if (!first) return null;
+  let rows;
+  try { rows = await first.json(); } catch { return null; }
+  if (!Array.isArray(rows)) return null;
+  for (let part = 1; ; part++) {
+    const obj = await env.ART.get(`backups/${date}/${table}.part${part}.json`);
+    if (!obj) break;
+    try {
+      const more = await obj.json();
+      if (Array.isArray(more)) rows = rows.concat(more);
+    } catch { break; }
+  }
+  return rows;
+}
+
+// Rows per backup part. Small enough that a chunk of the widest table
+// (characters, ~3 KB of JSON per row) is a few MB rather than a few hundred.
+const BACKUP_CHUNK = 2000;
+
 async function runBackup(env) {
   if (!env.ART) throw new Error('R2 bucket (ART binding) is not configured.');
   const stamp = new Date().toISOString().slice(0, 10);
   const tables = ['characters', 'collections', 'scripts', 'pages', 'news', 'users', 'activity_log', 'settings', 'revisions', 'messages', 'page_views', 'dms', 'dm_blocks', 'dm_reports', 'comments', 'comment_reports'];
   const saved = {};
+  const failed = {};
   for (const t of tables) {
     try {
-      const { results } = await env.DB.prepare(`SELECT * FROM ${t}`).all();
-      await env.ART.put(`backups/${stamp}/${t}.json`, JSON.stringify(results), {
-        httpMetadata: { contentType: 'application/json' }
-      });
-      saved[t] = results.length;
+      // Paged by rowid rather than SELECT *. The whole table used to be
+      // materialised in the isolate and then stringified — two copies in a
+      // 128 MB budget. `revisions` is the one that breaks first: 20 kept per
+      // page means ~100k rows at a few KB each once the wiki has a few
+      // thousand characters, which cannot be read into a Worker at all.
+      let after = 0;
+      let part = 0;
+      let rows = 0;
+      for (;;) {
+        const { results } = await env.DB.prepare(
+          `SELECT rowid AS _rid, * FROM ${t} WHERE rowid > ? ORDER BY rowid LIMIT ${BACKUP_CHUNK}`
+        ).bind(after).all();
+        const batch = results || [];
+        if (!batch.length) break;
+        after = batch[batch.length - 1]._rid;
+        for (const r of batch) delete r._rid;
+        const name = part === 0
+          ? `backups/${stamp}/${t}.json`
+          : `backups/${stamp}/${t}.part${part}.json`;
+        await env.ART.put(name, JSON.stringify(batch), {
+          httpMetadata: { contentType: 'application/json' }
+        });
+        rows += batch.length;
+        part++;
+        if (batch.length < BACKUP_CHUNK) break;
+      }
+      saved[t] = rows;
     } catch (e) {
-      saved[t] = 'skipped (' + ((e && e.message) || 'error') + ')';
+      // A failure here used to be recorded as "skipped" and returned inside a
+      // successful-looking result, so a backup that had silently stopped
+      // working looked exactly like one that was fine. Record it as a failure,
+      // and let the caller decide how loudly to say so.
+      const msg = (e && e.message) || 'error';
+      saved[t] = 0;
+      failed[t] = msg;
+      console.error(`[backup] ${stamp} ${t} FAILED: ${msg}`);
     }
   }
   const cutoff = Date.now() - 30 * 86400000;
@@ -1727,7 +1784,20 @@ async function runBackup(env) {
       if (m && Date.parse(m[1]) < cutoff) await env.ART.delete(obj.key);
     }
   } catch { /* pruning is best-effort */ }
-  return { date: stamp, saved };
+  const failedTables = Object.keys(failed);
+  // Recorded in settings so the dashboard can show it. A cron backup runs
+  // inside ctx.waitUntil() with nobody reading the return value, so without
+  // this a broken nightly backup is invisible until the day it is needed.
+  try {
+    await env.DB.prepare(
+      `INSERT INTO settings (key,value) VALUES ('last_backup',?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+    ).bind(JSON.stringify({
+      date: stamp, at: new Date().toISOString(),
+      ok: failedTables.length === 0, failed
+    })).run();
+  } catch { /* the backup itself matters more than the bookkeeping */ }
+  return { date: stamp, saved, failed, ok: failedTables.length === 0 };
 }
 
 function jsonResponse(obj, extraHeaders = {}) {
@@ -3987,7 +4057,14 @@ export default {
       // is now lazy-loaded with the Health tab — and the lock banner has to be
       // correct from the first paint regardless of which tab you land on.
       const locked = await isWikiLocked(env);
-      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked });
+      // Last backup result, so a nightly backup that has quietly stopped
+      // working is visible on the dashboard instead of on the day it is needed.
+      let backup = null;
+      try {
+        const r = await env.DB.prepare("SELECT value FROM settings WHERE key='last_backup'").first();
+        if (r && r.value) backup = JSON.parse(r.value);
+      } catch { /* no backup has run since this was added */ }
+      return jsonResponse({ reportedComments, reportedDms, openMessages, newUsers, locked, backup });
     }
 
     if (method === 'GET' && path === '/api/admin/dm-reports') {
@@ -4173,9 +4250,10 @@ export default {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[a-z_]{1,40}$/.test(table)) {
         return jsonResponse({ error: 'Bad date or table.' }, { status: 400 });
       }
-      const obj = await env.ART.get(`backups/${date}/${table}.json`);
-      if (!obj) return jsonResponse({ error: 'No such backup file.' }, { status: 404 });
-      return new Response(obj.body, {
+      // Concatenated across parts so the downloaded file is the whole table.
+      const rows = await readBackupTable(env, date, table);
+      if (!rows) return jsonResponse({ error: 'No such backup file.' }, { status: 404 });
+      return new Response(JSON.stringify(rows), {
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Content-Disposition': `attachment; filename="botc-backup-${date}-${table}.json"`,
@@ -6203,10 +6281,8 @@ export default {
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
         const date = String(b.date || '');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return jsonResponse({ error: 'Bad backup date.' }, { status: 400 });
-        const obj = await env.ART.get(`backups/${date}/${t.table}.json`);
-        if (!obj) return jsonResponse({ error: 'No backup of ' + t.table + ' for ' + date + '.' }, { status: 404 });
-        let rows;
-        try { rows = await obj.json(); } catch { return jsonResponse({ error: 'That backup file is corrupt.' }, { status: 500 }); }
+        const rows = await readBackupTable(env, date, t.table);
+        if (!rows) return jsonResponse({ error: 'No backup of ' + t.table + ' for ' + date + ', or the file is corrupt.' }, { status: 404 });
         const want = String(b.slug || '');
         const hit = (rows || []).find(r => r && r.slug === want) ||
                     (rows || []).find(r => r && String(r.slug).toLowerCase() === want.toLowerCase());
@@ -6348,9 +6424,34 @@ export default {
   // Nightly cron (see [triggers] in wrangler.toml): back up D1 to R2, and
   // prune page-view analytics older than 180 days.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runBackup(env));
-    ctx.waitUntil(
-      env.DB.prepare("DELETE FROM page_views WHERE day < date('now', '-180 day')").run().catch(() => {})
-    );
+    // Backup first, retention after — pruning is worthless if the snapshot it
+    // is trimming behind never got written.
+    ctx.waitUntil((async () => {
+      try {
+        const res = await runBackup(env);
+        if (res && !res.ok) {
+          console.error('[cron] backup finished with failures:', JSON.stringify(res.failed));
+        }
+      } catch (e) {
+        console.error('[cron] backup threw:', (e && e.message) || e);
+      }
+
+      // Retention. page_views(day) is indexed now, so this is a range delete
+      // rather than the nightly full scan of the largest table it used to be.
+      const prune = [
+        ["DELETE FROM page_views WHERE day < date('now', '-180 day')", 'page_views'],
+        // activity_log had no retention at all and grew forever, while
+        // /api/admin/activity runs an unbounded COUNT(*) over it on every
+        // load. A year is well past the point where an admin is still
+        // investigating something.
+        ["DELETE FROM activity_log WHERE ts < datetime('now', '-365 day')", 'activity_log'],
+        // Contact-form messages that were dealt with long ago.
+        ["DELETE FROM messages WHERE status='resolved' AND ts < datetime('now', '-180 day')", 'messages']
+      ];
+      for (const [sql, label] of prune) {
+        try { await env.DB.prepare(sql).run(); }
+        catch (e) { console.error(`[cron] prune ${label} failed:`, (e && e.message) || e); }
+      }
+    })());
   }
 };
