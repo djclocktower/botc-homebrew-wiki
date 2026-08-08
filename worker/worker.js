@@ -1257,6 +1257,51 @@ async function getEntityRow(env, type, slug) {
   ).bind(slug).first().catch(() => null);
 }
 
+// ---- history: resolving a page of any revisable type ----
+// `revisions` rows are written for wiki pages too (saveRevision is called on
+// every /api/wiki-page save), but both the read and the rollback route gated
+// on CONTENT[type] — which holds only character/collection/script — so that
+// history accumulated in D1 and was reachable by nobody, including admins,
+// while publish-page.html told people deletion could not be undone.
+const REVISABLE = { character: 1, collection: 1, script: 1, wikipage: 1 };
+
+async function revisableRow(env, type, slug) {
+  if (type === 'wikipage') {
+    await ensurePagesTable(env);
+    const row = await env.DB.prepare(
+      'SELECT slug, title AS name, owner_id, status, data, updated_at FROM pages WHERE slug=?'
+    ).bind(slug).first().catch(() => null);
+    return row || null;
+  }
+  if (!CONTENT[type]) return null;
+  let row = await getEntityRow(env, type, slug);
+  if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+  return row || null;
+}
+
+// Writes a revision's data back onto its row. Split out because rollback and
+// the owner-facing version of it are the same operation with different gates.
+async function applyRollback(env, type, row, d) {
+  if (type === 'character') {
+    if (!d.name || !d.team) throw new Error('That revision is missing required fields.');
+    await env.DB.prepare(
+      `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
+  } else if (type === 'collection') {
+    await env.DB.prepare(
+      `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.displayName || row.name || row.slug, JSON.stringify(d), row.slug).run();
+  } else if (type === 'wikipage') {
+    await env.DB.prepare(
+      `UPDATE pages SET title=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.title || row.name || row.slug, JSON.stringify(d), row.slug).run();
+  } else {
+    await env.DB.prepare(
+      `UPDATE scripts SET name=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
+    ).bind(d.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
+  }
+}
+
 // ---- edit conflicts ----
 // Every content write is a blind whole-document upsert, and the editors post
 // back the entire object they loaded. So an admin (or a second tab) that
@@ -3987,11 +4032,13 @@ export default {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
       const type = url.searchParams.get('type') || '';
-      if (!CONTENT[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      // REVISABLE, not CONTENT: wiki-page history is written like every other
+      // type's and was unreachable purely because this guard did not know the
+      // word — while publish-page.html told people it could not be restored.
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
       const slugParam = (url.searchParams.get('slug') || '').trim();
       if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
-      let row = await getEntityRow(env, type, slugParam);
-      if (!row && type === 'collection') row = await findCollectionRow(env, slugParam);
+      const row = await revisableRow(env, type, slugParam);
       const pk = row ? row.slug : slugParam;
       await ensureRevisionsTable(env);
       const { results } = await env.DB.prepare(
@@ -4001,6 +4048,33 @@ export default {
       return jsonResponse({
         slug: pk,
         current: row ? { name: row.name, status: row.status || 'published' } : null,
+        revisions: results || []
+      });
+    }
+
+    // ---------- PAGE HISTORY (the page's OWNER, or an admin) ----------
+    // Deliberately outside /api/admin/: rollback used to be admin-only, so an
+    // owner whose page had been clobbered — by a stale admin tab, or by their
+    // own second window — had to file a contact-form message and wait for
+    // somebody to fix it. They can see and undo their own history now.
+    if (method === 'GET' && path === '/api/page-history') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+      await ensureRevisionsTable(env);
+      const { results } = await env.DB.prepare(
+        `SELECT id, ts, name, status, edited_by, length(data) AS bytes
+           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC`
+      ).bind(type, row.slug).all();
+      return jsonResponse({
+        slug: row.slug,
+        current: { name: row.name, status: row.status || 'published' },
         revisions: results || []
       });
     }
@@ -4753,6 +4827,40 @@ export default {
       }
 
       // ---- comments ----
+      // ---- roll a page back to one of its own revisions (owner or admin) ----
+      // Same operation as /api/admin/rollback, gated on owning the page rather
+      // than on being an admin. Outside /api/admin/ because everything under
+      // that prefix is admin-only by the check above.
+      if (path === '/api/page-rollback') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await revisableRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is in the trash. It has to be restored before it can be rolled back.' }, { status: 400 });
+        }
+        if (!sess.isAdmin && await isProtected(env, type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        await ensureRevisionsTable(env);
+        const rev = await env.DB.prepare(
+          'SELECT id, ts, data FROM revisions WHERE id=? AND entity_type=? AND slug=?'
+        ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
+        if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
+        let d;
+        try { d = JSON.parse(rev.data); } catch { d = null; }
+        if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
+        delete d._deleted;
+        // Snapshot what is being replaced, so the rollback is itself undoable.
+        await saveRevision(env, sess, type, row);
+        try { await applyRollback(env, type, row, d); }
+        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not restore that revision.' }, { status: 500 }); }
+        await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || d.title || row.name);
+        return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
+      }
+
       // ---- Stars (the reader-facing like system) ----
       // Toggles, so the button needs no separate un-star call and a double
       // tap is harmless. Returns the fresh count so the page can repaint from
@@ -5367,10 +5475,8 @@ export default {
       if (path === '/api/admin/rollback') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
-        const t = CONTENT[type];
-        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-        let row = await getEntityRow(env, type, String(b.slug || ''));
-        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await revisableRow(env, type, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (row.status === 'deleted') {
           return jsonResponse({ error: 'That page is in the trash. Restore it from Deleted Content first, then roll it back.' }, { status: 400 });
@@ -5385,21 +5491,9 @@ export default {
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
         delete d._deleted;
         await saveRevision(env, sess, type, row); // make the rollback undoable
-        if (type === 'character') {
-          if (!d.name || !d.team) return jsonResponse({ error: 'That revision is missing required fields.' }, { status: 500 });
-          await env.DB.prepare(
-            `UPDATE characters SET name=?, team=?, creator=?, tags=?, appears_in=?, data=?, updated_at=datetime('now') WHERE slug=?`
-          ).bind(d.name, d.team, d.creator || null, d.tags || null, d.appearsIn || null, JSON.stringify(d), row.slug).run();
-        } else if (type === 'collection') {
-          await env.DB.prepare(
-            `UPDATE collections SET display_name=?, data=?, updated_at=datetime('now') WHERE slug=?`
-          ).bind(d.displayName || row.name || row.slug, JSON.stringify(d), row.slug).run();
-        } else {
-          await env.DB.prepare(
-            `UPDATE scripts SET name=?, author=?, data=?, updated_at=datetime('now') WHERE slug=?`
-          ).bind(d.name || row.slug, d.author || null, JSON.stringify(d), row.slug).run();
-        }
-        await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || row.name);
+        try { await applyRollback(env, type, row, d); }
+        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not restore that revision.' }, { status: 500 }); }
+        await logActivity(env, sess, 'rollback', type, row.slug, d.name || d.displayName || d.title || row.name);
         return jsonResponse({ ok: true, slug: row.slug, restoredFrom: rev.ts });
       }
 
