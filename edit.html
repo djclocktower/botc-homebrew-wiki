@@ -192,10 +192,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -664,18 +666,31 @@
     }
 
     // ── show/hide bluffing & fighting fields based on team ──
+    // Only the box that matches the team is offered, but the other one is
+    // hidden ONLY while it is empty: its text still saves and still prints a
+    // section on the page, so hiding a filled box leaves the author unable to
+    // find (or remove) something their page is showing.
     var GOOD_TEAMS = { townsfolk: 1, outsider: 1 };
     function updatePerspectiveFields() {
       var team = $('team').value;
       var name = $('name').value.trim() || 'Character';
       var isGood = !!GOOD_TEAMS[team];
-      $('bluffing-fld').style.display = isGood ? '' : 'none';
-      $('fighting-fld').style.display = !isGood ? '' : 'none';
+      var strayBluff = !isGood && !!$('bluffing').value.trim();
+      var strayFight = isGood && !!$('fighting').value.trim();
+      $('bluffing-fld').style.display = (isGood || strayBluff) ? '' : 'none';
+      $('fighting-fld').style.display = (!isGood || strayFight) ? '' : 'none';
+      $('bluffing-note').hidden = !strayBluff;
+      $('fighting-note').hidden = !strayFight;
       $('bluffing-label').textContent = name;
       $('fighting-label').textContent = name;
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
+    // Re-check when a box is left rather than on every keystroke, so emptying
+    // an off-team box never makes it vanish from under the cursor.
+    ['bluffing', 'fighting'].forEach(function (id) {
+      $(id).addEventListener('blur', updatePerspectiveFields);
+    });
     // ── ability character counter ──
     (function() {
       var ta = $('ability'), ct = document.getElementById('ability-count');
