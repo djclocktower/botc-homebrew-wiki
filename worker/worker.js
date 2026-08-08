@@ -4028,21 +4028,29 @@ export default {
       const rowBinds = fBinds.slice();
       const before = parseInt(q.get('before') || '0', 10) || 0;
       if (before) { rowWh.push('id < ?'); rowBinds.push(before); }
-      const [rowsRes, totalRes] = await Promise.all([
+      // The COUNT is a full scan of the largest write-heavy table when no
+      // filter narrows it, and it was being run again on every page of the
+      // cursor — for a number the UI only shows once, above the first page.
+      // Run it on the first page only; later pages keep the total they have.
+      const wantTotal = !before;
+      const jobs = [
         env.DB.prepare(
           'SELECT id, ts, username, action, entity_type, entity_slug, entity_name FROM activity_log' +
           (rowWh.length ? ' WHERE ' + rowWh.join(' AND ') : '') +
           ' ORDER BY id DESC LIMIT ?'
-        ).bind(...rowBinds, limit).all(),
-        env.DB.prepare(
+        ).bind(...rowBinds, limit).all()
+      ];
+      if (wantTotal) {
+        jobs.push(env.DB.prepare(
           'SELECT COUNT(*) AS n FROM activity_log' +
           (filters.length ? ' WHERE ' + filters.join(' AND ') : '')
-        ).bind(...fBinds).first()
-      ]);
+        ).bind(...fBinds).first());
+      }
+      const [rowsRes, totalRes] = await Promise.all(jobs);
       const rows = rowsRes.results || [];
       return jsonResponse({
         rows,
-        total: totalRes ? totalRes.n : rows.length,
+        total: wantTotal ? (totalRes ? totalRes.n : rows.length) : null,
         hasMore: rows.length === limit,
         nextBefore: rows.length ? rows[rows.length - 1].id : null
       });
@@ -4160,7 +4168,8 @@ export default {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
       await ensureBanColumn(env);
-      const q = (url.searchParams.get('q') || '').trim();
+      // 48, not unbounded: D1 errors on a LIKE pattern over 50 characters.
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 48);
       let sql =
         `SELECT u.id, u.username, u.display_name, u.email, u.is_admin,
                 COALESCE(u.banned, 0) AS banned, u.created_at, u.last_login,
@@ -4522,7 +4531,9 @@ export default {
       const type = url.searchParams.get('type') || '';
       const t = CONTENT[type];
       if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
-      const q = (url.searchParams.get('q') || '').trim();
+      // D1 caps LIKE/GLOB patterns at 50 characters and ERRORS above it rather
+      // than degrading, so a long search query used to fail the whole request.
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 48);
       const owner = (url.searchParams.get('owner') || '').trim();
       const status = (url.searchParams.get('status') || '').trim();
       // Membership lives in the collection's own match/include/exclude, not on
@@ -4543,11 +4554,18 @@ export default {
       // Content flags can't be expressed in SQL (they live in the data blob),
       // so pull `data` and filter in JS. 'any' means no flag filter.
       const flag = (url.searchParams.get('flag') || '').trim();
+      // Only over-fetch when something below actually filters in JS. With no
+      // flag and no collection filter the extra 600 rows were read, parsed and
+      // classified purely to be thrown away by the .slice(0, 400) at the end —
+      // and `data` is the expensive column in this query, ~3 KB a row.
+      const needsJsFilter = !!collKey ||
+        ['no-icon', 'partial', 'starlight', 'no-owner'].includes(flag);
+      const rowLimit = needsJsFilter ? 1000 : 400;
       const { results } = await env.DB.prepare(
         `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner, p.data
          FROM ${t.table} p LEFT JOIN users u ON u.id = p.owner_id
          ${wh.length ? 'WHERE ' + wh.join(' AND ') : ''}
-         ORDER BY p.updated_at DESC LIMIT 1000`
+         ORDER BY p.updated_at DESC LIMIT ${rowLimit}`
       ).bind(...binds).all();
       let pages = (results || []).map(r => {
         const d = parseData(r);
@@ -6417,9 +6435,17 @@ export default {
             pages: hits.slice(0, 300)
           });
         }
-        for (const h of hits) {
-          await env.DB.prepare("UPDATE characters SET status='draft', updated_at=datetime('now') WHERE slug=?")
-            .bind(h.slug).run();
+        // One awaited UPDATE per hit blew the Worker's 1,000-subrequest limit:
+        // this sweep is unbounded, and on a wiki with thousands of characters
+        // it would die partway through with no way to tell how far it got.
+        // IN (...) chunks instead — D1 caps bound parameters at 100, so 90.
+        for (let i = 0; i < hits.length; i += 90) {
+          const chunk = hits.slice(i, i + 90).map(h => h.slug);
+          const marks = chunk.map(() => '?').join(',');
+          await env.DB.prepare(
+            `UPDATE characters SET status='draft', updated_at=datetime('now')
+              WHERE slug IN (${marks})`
+          ).bind(...chunk).run();
         }
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' incomplete page(s) moved to draft');

@@ -978,6 +978,7 @@
 
     /* ---- full activity log (paginated + filterable) ---- */
     var actNextBefore = null;
+    var actTotal = null;
 
     function activityFilters(){
       return {
@@ -1013,7 +1014,11 @@
           else feed.insertAdjacentHTML('beforeend', html);
           actNextBefore = d.nextBefore;
           var shown = feed.querySelectorAll('li').length;
-          $('act-count').textContent = shown + ' of ' + d.total;
+          // total only comes back on the first page now — the COUNT behind it
+          // is a full scan, and re-running it for every "load more" was work
+          // for a number that never changes mid-scroll. Keep the one we have.
+          if (d.total != null) actTotal = d.total;
+          $('act-count').textContent = actTotal != null ? (shown + ' of ' + actTotal) : String(shown);
           more.style.display = d.hasMore ? '' : 'none';
         })
         .catch(function(){
