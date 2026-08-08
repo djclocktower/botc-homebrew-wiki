@@ -637,7 +637,15 @@
       // dispatch input so the ability counter + Grimoire Forge link keep up
       function set(id, v) { if (v != null) { $(id).value = v; $(id).dispatchEvent(new Event('input')); } }
       set('name',    obj.name    || '');
-      if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) $('team').value = obj.team;
+      // Assigning .value fires no event, so the page has to be told the team
+      // changed: the Bluffing / Fighting boxes are picked by team, and without
+      // this the import leaves the PREVIOUS team's box on screen — import a
+      // townsfolk over a demon draft and the form kept offering "Fighting the
+      // …" and never offered "Bluffing as the …".
+      if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) {
+        $('team').value = obj.team;
+        $('team').dispatchEvent(new Event('change'));
+      }
       set('ability', obj.ability || '');
       set('quote',   (obj.flavor || '').replace(/^["']|["']$/g, ''));
       set('edition', obj.edition || '');
