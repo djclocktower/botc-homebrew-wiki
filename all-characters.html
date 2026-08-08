@@ -508,9 +508,9 @@
     }
 
     Promise.all([
-      fetch('collections.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();}),
-      fetch('scripts.json?_=' + Date.now()).then(function(r){return r.json();}).catch(function(){return[];})
+      fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch('characters.json?fields=card').then(function(r){return r.json();}),
+      fetch('scripts.json').then(function(r){return r.json();}).catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
       (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });

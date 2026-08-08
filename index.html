@@ -342,9 +342,9 @@
     }
 
     Promise.all([
-      fetch('collections.json?_='+Date.now()).then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); }),
-      fetch('scripts.json?_=' + Date.now()).then(function(r){ return r.json(); }).catch(function(){return[];})
+      fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
+      fetch('characters.json?fields=card').then(function(r){ return r.json(); }),
+      fetch('scripts.json').then(function(r){ return r.json(); }).catch(function(){return[];})
     ]).then(function(mainRes){
       var collData=mainRes[0]||[], list=mainRes[1], scriptData=mainRes[2]||[];
       COLLECTIONS = collData.map(function(c){
@@ -469,7 +469,7 @@
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     var grid = document.getElementById('scripts-grid');
     if (!grid) return;
-    fetch('scripts.json?_=' + Date.now())
+    fetch('scripts.json')
       .then(function(r){ return r.json(); })
       .then(function(scripts){
         if (!scripts || !scripts.length){

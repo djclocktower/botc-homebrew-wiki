@@ -120,8 +120,8 @@
     var grid = document.getElementById('collections-grid');
 
     Promise.all([
-      fetch('collections.json?_=' + Date.now()).then(function(r){ return r.json(); }).catch(function(){ return []; }),
-      fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); })
+      fetch('collections.json').then(function(r){ return r.json(); }).catch(function(){ return []; }),
+      fetch('characters.json?fields=card').then(function(r){ return r.json(); })
     ]).then(function(res){
       var collData = res[0] || [], list = res[1] || [];
       var COLLECTIONS = collData.map(function(c){

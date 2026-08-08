@@ -102,7 +102,7 @@
         '</div></a>';
     }
 
-    fetch('characters.json?_=' + Date.now())
+    fetch('characters.json?fields=card')
       .then(function(r) { return r.json(); })
       .then(function(list) {
         var panel = document.getElementById('panel');

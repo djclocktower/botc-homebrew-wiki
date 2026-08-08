@@ -387,8 +387,25 @@ async function isWikiLocked(env) {
   } catch { return false; }
 }
 
+// Actions that change what /characters.json, /collections.json and
+// /scripts.json would return. Hanging the feed-cache bump off logActivity
+// rather than off ~18 individual write handlers means a new content action
+// gets correct cache invalidation for free, just by logging itself like
+// everything else does. Comment/DM/report/login actions are absent on purpose:
+// they never appear in a feed, so bumping for them would throw away a
+// perfectly good cache every time somebody posted a comment.
+const FEED_CHANGING_ACTIONS = new Set([
+  'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
+  'starlight', 'unstarlight', 'rollback', 'restore', 'restore-backup',
+  'assign-owner', 'protect', 'unprotect', 'purge'
+]);
+
 // ---- activity log helper ----
 async function logActivity(env, sess, action, entityType, slug, name) {
+  // Bulk actions arrive as 'bulk-publish', 'bulk-delete', ...
+  if (FEED_CHANGING_ACTIONS.has(action) || String(action || '').startsWith('bulk-')) {
+    await bumpContentVersion(env);
+  }
   let username = null;
   try {
     const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -1425,12 +1442,96 @@ function sanitizeWikiFields(o, imgBase, themeBase) {
   if (theme) o.theme = theme; else delete o.theme;
 }
 
+// ---- content version: the cache key for the JSON feeds ----
+// The feeds used to be built from a full table scan on EVERY request and sent
+// `no-store`, while all 17 client call sites added `?_=' + Date.now()` — so
+// nothing cached anywhere, ever, and a homepage load meant reading every
+// published row out of D1. D1 is a single Durable Object, so that is the first
+// thing to queue up and fail under real traffic.
+//
+// A counter in `settings` fixes it: every content write bumps it, the feed
+// caches under a key containing it, and a bump therefore invalidates by simply
+// not matching any more. Old entries fall out on their own TTL.
+// `max-age=0` so the BROWSER always revalidates: the owner reviews edits on the
+// live site, and a page that waits a minute to show his own save is worse than
+// the bandwidth is worth. Revalidation is nearly free — the Worker compares one
+// ETag (a single indexed settings lookup) and returns an empty 304 without ever
+// touching the content tables.
+// `s-maxage=300` is the half that matters: the EDGE holds the built feed for
+// five minutes, so the expensive full-table read is amortised across every
+// visitor in that colo rather than paid per request. A content write bumps the
+// version, which changes the cache key, so an edit is visible immediately
+// regardless of the 300.
+const FEED_CACHE_CONTROL = 'public, max-age=0, s-maxage=300, must-revalidate';
+const CONTENT_VERSION_KEY = 'content_version';
+const CONTENT_VERSION_CACHE_MS = 5000;
+let _contentVersionCache = null;
+
+async function contentVersion(env) {
+  if (_contentVersionCache && (Date.now() - _contentVersionCache.at) < CONTENT_VERSION_CACHE_MS) {
+    return _contentVersionCache.v;
+  }
+  let v = '0';
+  try {
+    const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+      .bind(CONTENT_VERSION_KEY).first();
+    if (r && r.value) v = String(r.value);
+  } catch { /* settings unavailable -> behave as version 0 */ }
+  _contentVersionCache = { at: Date.now(), v };
+  return v;
+}
+
+// Called after anything that changes what the feeds would return. Never allowed
+// to break the write it follows — a missed bump costs at most CACHE_TTL of
+// staleness, a thrown error would cost the user their save.
+async function bumpContentVersion(env) {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO settings (key,value) VALUES (?, '1')
+       ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
+    ).bind(CONTENT_VERSION_KEY).run();
+  } catch { /* stale feed is survivable; a failed save is not */ }
+  _contentVersionCache = null;
+}
+
+// ---- the almanac half of a character, dropped from the card feed ----
+// These are the fields ONLY assets/render.js draws, i.e. only the server-rendered
+// /c/ page ever needs them — and they are ~79% of characters.json's bytes
+// (summaryBullets alone is 19%). Every browse/tag/team/search page was
+// downloading all of it to draw thumbnails.
+//
+// This is deliberately an EXCLUDE list rather than an include list. An include
+// list silently drops any field added later, and the consumers are spread over
+// 17 files — assets/token-tool.js alone needs `reminders`, `remindersGlobal`,
+// `setup`, `firstNight` and `otherNight`, none of which look like "card" fields.
+// Excluding is fail-safe: a new field ships to everyone until it is proven big.
+// Measured on the live corpus (606 published): dropping these takes
+// characters.json from 465 KB gzipped to 154 KB — 38% of the full feed.
+//
+// NOT dropped, deliberately: firstNightReminder, otherNightReminder, jinxes,
+// quote and flavor. They look like almanac prose, but buildSchema() in
+// assets/render.js needs every one of them to emit official-schema JSON, and
+// three client pages export that (all-characters.html's "Collection JSON",
+// script.html and script-view.html). Dropping them would silently produce
+// incomplete script JSON — the worst kind of breakage, because it looks fine.
+// Removing them too would get the feed to 21% / 68 KB; that needs those three
+// pages to lazily fetch ?fields=full when the reader actually opens the JSON
+// box, which is the follow-up to this change.
+const CARD_DROP_FIELDS = new Set([
+  'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
+  'customBoxes', 'callout', 'pronunciation', 'altArt', 'custom'
+]);
+
 // ---- build the three JSON files from D1 (published pages only) ----
 // `opts.includeDrafts` adds draft rows and stamps each row's `status`, for the
 // admin-only ?drafts=1 form of the JSON feeds. Soft-deleted rows are never
 // included either way — recovery is the dashboard's job.
+// `opts.fields === 'card'` drops CARD_DROP_FIELDS. Characters only: collections
+// and scripts are a few KB in total, so trimming them buys nothing and would
+// risk the roster fields that /s/ and the script builder read.
 async function buildPublicJSON(env, table, opts = {}) {
   const drafts = !!opts.includeDrafts;
+  const cardOnly = opts.fields === 'card' && table === 'characters';
   const where = drafts ? "status IN ('published','draft')" : "status='published'";
   let results;
   try {
@@ -1455,9 +1556,13 @@ async function buildPublicJSON(env, table, opts = {}) {
     // Standard is the default everywhere, so it is left off the wire —
     // characters.json is ~1000 entries and the repetition is not free.
     if (d.starlight) d.starlight = true; else delete d.starlight;
+    // NOTE: classify BEFORE trimming. Classify.classifyPage reads exactly the
+    // prose fields the card feed drops (summaryBullets, howToRun, examples,
+    // tips ...), so trimming first would flag every finished page as Partial.
     const cls = Classify.classifyPage(d, type);
     if (cls !== 'standard') d.classification = cls;
     else delete d.classification;
+    if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
   // Characters pick up Starlight from any Starlight collection they belong to.
@@ -1842,7 +1947,47 @@ export default {
         : path === '/collections.json' ? 'collections' : 'scripts';
       const wantsDrafts = url.searchParams.get('drafts') === '1';
       const includeDrafts = wantsDrafts && !!(await adminSession(env, request));
-      return jsonResponse(await buildPublicJSON(env, table, { includeDrafts }));
+      const fields = url.searchParams.get('fields') === 'card' ? 'card' : 'full';
+
+      // The admin ?drafts=1 feed is never cached and never gets an ETag: it is
+      // per-viewer by definition, and a cached copy handed to a visitor would
+      // reveal that unpublished pages exist. Same reasoning as the `no-store`
+      // note above.
+      if (includeDrafts) {
+        return jsonResponse(await buildPublicJSON(env, table, { includeDrafts, fields }));
+      }
+
+      const version = await contentVersion(env);
+      const etag = `W/"${table}-${fields}-v${version}"`;
+
+      // A matching ETag means the browser already has this exact version.
+      if ((request.headers.get('If-None-Match') || '') === etag) {
+        return new Response(null, {
+          status: 304,
+          headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL }
+        });
+      }
+
+      // Edge cache, keyed on the content version so a bump misses automatically
+      // rather than needing an explicit purge.
+      const cache = caches.default;
+      const cacheKey = new Request(
+        `https://feed.internal/${table}.json?fields=${fields}&v=${version}`,
+        { method: 'GET' }
+      );
+      const hit = await cache.match(cacheKey).catch(() => null);
+      if (hit) return hit;
+
+      const body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
+      const response = new Response(body, {
+        headers: {
+          ...JSON_HEADERS,
+          ETag: etag,
+          'Cache-Control': FEED_CACHE_CONTROL
+        }
+      });
+      if (ctx) ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
+      return response;
     }
 
     // ---------- SITE-WIDE ANNOUNCEMENT (public; site.js shows the banner) ----------

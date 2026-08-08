@@ -211,7 +211,7 @@
      page agree on which names are real characters. */
   function loadCharLinks() {
     if (!window.WikiRender) return Promise.resolve({});
-    return fetch('characters.json?_=' + Date.now())
+    return fetch('characters.json?fields=card')
       .then(function (r) { return r.json(); })
       .then(function (list) {
         var map = {};

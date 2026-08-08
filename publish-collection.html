@@ -702,7 +702,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       })
       .catch(function(){ $('gate').style.display = ''; });
 
-    fetch('characters.json?_=' + Date.now())
+    fetch('characters.json?fields=card')
       .then(function(r){ return r.json(); })
       .then(function(list){
         allChars = list || [];

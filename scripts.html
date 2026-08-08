@@ -79,7 +79,7 @@
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     var grid = document.getElementById('scripts-grid');
-    fetch('scripts.json?_=' + Date.now())
+    fetch('scripts.json')
       .then(function(r){ return r.json(); })
       .then(function(scripts){
         if (!scripts.length){

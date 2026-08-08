@@ -538,9 +538,9 @@
       if (allChars) return Promise.resolve(allChars);
       if (fetchPromise) return fetchPromise;
       fetchPromise = Promise.all([
-        fetch(ROOT + 'characters.json?_=' + Date.now()).then(function (r) { return r.json(); }),
-        fetch(ROOT + 'scripts.json?_=' + Date.now()).then(function (r) { return r.json(); }).catch(function () { return []; }),
-        fetch(ROOT + 'collections.json?_=' + Date.now()).then(function (r) { return r.json(); }).catch(function () { return []; })
+        fetch(ROOT + 'characters.json?fields=card').then(function (r) { return r.json(); }),
+        fetch(ROOT + 'scripts.json').then(function (r) { return r.json(); }).catch(function () { return []; }),
+        fetch(ROOT + 'collections.json').then(function (r) { return r.json(); }).catch(function () { return []; })
       ]).then(function (res) {
         allChars = res[0] || [];
         allScripts = res[1] || [];
