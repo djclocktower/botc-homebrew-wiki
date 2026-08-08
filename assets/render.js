@@ -360,6 +360,9 @@
     var nch = Math.max(String(titleName).replace(/\s+/g, ' ').trim().length, 4);
 
     return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
+      // Star button mount — filled by assets/stars.js on SSR pages only, so
+      // the create/edit previews that also call this renderer stay unchanged.
+      '<div class="star-mount" data-star-mount></div>' +
       '<div class="char-layout">' +
       '<section class="char-parchment card">' +
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +

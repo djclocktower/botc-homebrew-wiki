@@ -169,3 +169,25 @@ CREATE INDEX IF NOT EXISTS idx_comment_reports_st ON comment_reports(status, com
 CREATE INDEX IF NOT EXISTS idx_comments_status_id ON comments(status, id DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_status    ON messages(status);
 CREATE INDEX IF NOT EXISTS idx_dm_reports_status  ON dm_reports(status);
+
+-- ---- STARS (the reader-facing like system) ----------------------
+-- One row per (account, page); the PK makes a double-star a no-op rather
+-- than something the API has to guard against. Created lazily by the Worker
+-- (ensureStarsTable) like news/comments/dms, so no manual migration.
+CREATE TABLE IF NOT EXISTS stars (
+  user_id     INTEGER NOT NULL,
+  entity_type TEXT NOT NULL,                   -- character | collection | script
+  slug        TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, entity_type, slug)
+);
+CREATE INDEX IF NOT EXISTS idx_stars_page ON stars(entity_type, slug);
+
+-- star_count is denormalised onto the content rows so a browse grid can sort
+-- by stars without a COUNT(*) per row. The stars table stays the source of
+-- truth for who starred what; syncStarCount() recounts from it after every
+-- toggle rather than doing count +/- 1, which would lose an increment when
+-- two people star the same page at once.
+-- ALTER TABLE characters  ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE collections ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE scripts     ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0;

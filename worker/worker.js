@@ -608,6 +608,56 @@ async function ensureDmTables(env) {
 const COMMENT_MAX = 2000;
 // Bumping this re-prompts everyone with the "be respectful" agreement.
 const COMMENT_TERMS_VERSION = '1';
+// ---- Stars (the reader-facing like system) ----
+// One row per (account, page). The PK makes a double-star a no-op rather than
+// something the API has to check for.
+//
+// `star_count` is denormalised onto the content rows on purpose. Sorting a
+// browse grid by stars must never mean a COUNT(*) per row — that is the same
+// mistake the JSON feeds made with almanac prose, one layer down. The stars
+// table stays the source of truth for *who* starred what; the column exists so
+// the feed can carry a number without a join.
+const STARRABLE = { character: 'characters', collection: 'collections', script: 'scripts' };
+let _starsReady = false;
+async function ensureStarsTable(env) {
+  if (_starsReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS stars (
+       user_id     INTEGER NOT NULL,
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+       PRIMARY KEY (user_id, entity_type, slug)
+     )`
+  ).run();
+  // Counting a page's stars, and listing one account's stars for their profile.
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_stars_page ON stars(entity_type, slug)'
+  ).run();
+  for (const table of Object.values(STARRABLE)) {
+    try {
+      await env.DB.prepare(
+        `ALTER TABLE ${table} ADD COLUMN star_count INTEGER NOT NULL DEFAULT 0`
+      ).run();
+    } catch { /* already there */ }
+  }
+  _starsReady = true;
+}
+
+// Recount from the stars table rather than doing count = count ± 1. Two people
+// starring at once would lose an increment; a recount is one indexed query and
+// is always right.
+async function syncStarCount(env, type, slug) {
+  const table = STARRABLE[type];
+  if (!table) return 0;
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM stars WHERE entity_type=? AND slug=?'
+  ).bind(type, slug).first();
+  const n = row ? Number(row.n) || 0 : 0;
+  await env.DB.prepare(`UPDATE ${table} SET star_count=? WHERE slug=?`).bind(n, slug).run();
+  return n;
+}
+
 let _commentsReady = false;
 async function ensureCommentTables(env) {
   if (_commentsReady) return;
@@ -1591,10 +1641,15 @@ async function buildPublicJSON(env, table, opts = {}) {
   const where = drafts ? "status IN ('published','draft')" : "status='published'";
   let results;
   try {
-    ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
+    ({ results } = await env.DB.prepare(`SELECT data, status, star_count FROM ${table} WHERE ${where}`).all());
   } catch {
-    // status column not migrated yet -> serve everything (legacy behaviour)
-    ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
+    try {
+      // star_count not ALTERed in yet (nobody has starred anything)
+      ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
+    } catch {
+      // status column not migrated yet -> serve everything (legacy behaviour)
+      ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
+    }
   }
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
@@ -1619,6 +1674,11 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cls !== 'standard') d.classification = cls;
     else delete d.classification;
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
+    // Zero is the overwhelmingly common case and the default everywhere that
+    // reads it, so it is left off the wire — same reasoning as `classification`
+    // above, and it matters across thousands of rows.
+    const stars = Number(r.star_count) || 0;
+    if (stars > 0) d.stars = stars; else delete d.stars;
     return d;
   });
   // Characters pick up Starlight from any Starlight collection they belong to.
@@ -1803,8 +1863,9 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
     body, draftBanner,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
-      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
-    scripts: ['render.js', 'tags.js', 'charpage.js', 'comments.js', 'site.js']
+      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};` +
+      ` window.PAGE_STARS = ${Number(d.stars) || 0};`,
+    scripts: ['render.js', 'tags.js', 'charpage.js', 'stars.js', 'comments.js', 'site.js']
   });
 }
 
@@ -1851,7 +1912,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const table = isScript ? 'scripts' : 'collections';
   let row = null;
   try {
-    row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
+    row = await env.DB.prepare(`SELECT slug, data, status, owner_id, star_count FROM ${table} WHERE slug=?`)
       .bind(slug).first();
   } catch {
     row = await env.DB.prepare(`SELECT slug, data FROM ${table} WHERE slug=?`).bind(slug).first();
@@ -1927,10 +1988,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
     body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};` +
+      ` window.PAGE_STARS = ${Number(row && row.star_count) || 0};`,
     scripts: isScript
-      ? ['render.js', 'pageview.js', 'comments.js', 'site.js']
-      : ['render.js', 'pageview.js', 'card-filters.js', 'comments.js', 'site.js']
+      ? ['render.js', 'pageview.js', 'stars.js', 'comments.js', 'site.js']
+      : ['render.js', 'pageview.js', 'card-filters.js', 'stars.js', 'comments.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -2381,7 +2443,7 @@ export default {
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
         let row = null;
         try {
-          row = await env.DB.prepare('SELECT data, status, owner_id FROM characters WHERE slug = ?')
+          row = await env.DB.prepare('SELECT data, status, owner_id, star_count FROM characters WHERE slug = ?')
             .bind(slug).first();
         } catch {
           row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
@@ -2404,6 +2466,10 @@ export default {
           if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
+          // Reader Stars. Carried on the row, not in the blob, so it is stamped
+          // on here for the renderer's bootstrap — assets/stars.js reads it so
+          // the button paints the right number on first frame.
+          d.stars = Number(row.star_count) || 0;
           // Same Starlight inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
@@ -3006,6 +3072,33 @@ export default {
       const sess = await getSession(env, request);
       if (sess) await env.SESSIONS.delete('sess:' + sess.token);
       return jsonResponse({ ok: true }, { 'Set-Cookie': clearCookie() });
+    }
+
+    // ---- which pages the reader has starred ----
+    // One request for the whole list rather than one per card: a browse grid
+    // draws a hundred stars at once, and most accounts have starred tens of
+    // things, not thousands. Logged-out readers get empty lists, not a 401 —
+    // the star just renders unfilled.
+    if (method === 'GET' && path === '/api/stars') {
+      const sess = await getSession(env, request);
+      const empty = { character: [], collection: [], script: [] };
+      // `loggedIn` matters: an empty list means the same thing for a logged-out
+      // reader and for one who has starred nothing, and the button needs to
+      // tell those apart to know whether to offer a login.
+      if (!sess) return jsonResponse({ loggedIn: false, starred: empty });
+      try {
+        await ensureStarsTable(env);
+        const { results } = await env.DB.prepare(
+          'SELECT entity_type, slug FROM stars WHERE user_id=? LIMIT 5000'
+        ).bind(sess.userId).all();
+        const starred = { character: [], collection: [], script: [] };
+        for (const r of results || []) {
+          if (starred[r.entity_type]) starred[r.entity_type].push(r.slug);
+        }
+        return jsonResponse({ loggedIn: true, starred });
+      } catch {
+        return jsonResponse({ loggedIn: true, starred: empty });
+      }
     }
 
     if (method === 'GET' && path === '/api/me') {
@@ -4350,6 +4443,50 @@ export default {
       }
 
       // ---- comments ----
+      // ---- Stars (the reader-facing like system) ----
+      // Toggles, so the button needs no separate un-star call and a double
+      // tap is harmless. Returns the fresh count so the page can repaint from
+      // the server's number rather than guessing at one.
+      if (path === '/api/star') {
+        const limited = await writeLimited(env, request, sess, 'star');
+        if (limited) return limited;
+        await ensureStarsTable(env);
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || 'character');
+        const slug = String(b.slug || '').trim();
+        const table = STARRABLE[type];
+        if (!table) return jsonResponse({ error: 'Unknown page type.' }, { status: 400 });
+        if (!slug) return jsonResponse({ error: 'Missing slug.' }, { status: 400 });
+
+        // Only published pages can be starred: a draft is not public, and its
+        // star count would leak that it exists.
+        const row = await env.DB.prepare(
+          `SELECT slug FROM ${table} WHERE slug=? AND status='published'`
+        ).bind(slug).first();
+        if (!row) return jsonResponse({ error: 'That page does not exist.' }, { status: 404 });
+
+        const existing = await env.DB.prepare(
+          'SELECT 1 FROM stars WHERE user_id=? AND entity_type=? AND slug=?'
+        ).bind(sess.userId, type, slug).first();
+
+        const starred = !existing;
+        if (starred) {
+          await env.DB.prepare(
+            'INSERT OR IGNORE INTO stars (user_id, entity_type, slug) VALUES (?,?,?)'
+          ).bind(sess.userId, type, slug).run();
+        } else {
+          await env.DB.prepare(
+            'DELETE FROM stars WHERE user_id=? AND entity_type=? AND slug=?'
+          ).bind(sess.userId, type, slug).run();
+        }
+        const count = await syncStarCount(env, type, slug);
+        // The feeds carry star counts, so a star has to invalidate them — but
+        // NOT through logActivity(): starring is not an edit, and it would bury
+        // the activity log under one row per tap.
+        await bumpContentVersion(env);
+        return jsonResponse({ ok: true, starred, stars: count });
+      }
+
       // Agreeing to the comment terms. The browser also shows the modal, but
       // the server is what actually gates posting, so a first comment can
       // carry {agree:true} and be accepted in one round-trip.

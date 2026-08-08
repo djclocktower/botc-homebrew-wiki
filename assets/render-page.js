@@ -229,18 +229,30 @@
               ? 'Starlight — part of the ' + esc(c.starlightFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
             '" aria-label="Starlight">✦</span>' : '');
+      // Reader Stars. A count only — the toggle button lives on the page
+      // itself, because a card is already one big <a> and burying a second
+      // control inside it breaks both keyboard nav and the click target.
+      // data-stars is what card-filters.js sorts on, and it is present even at
+      // zero so "most starred" has something to read on every card.
+      var starCount = Number(c.stars) || 0;
+      var starPill = starCount > 0
+        ? '<span class="card-stars" title="' + starCount +
+          (starCount === 1 ? ' reader has' : ' readers have') +
+          ' starred this page."><span class="starlight-star" aria-hidden="true">✦</span> ' + starCount + '</span>'
+        : '';
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
+        ' data-stars="' + starCount + '"' +
         (cls === 'partial' ? ' data-partial="1"' : '') +
         (starred ? ' data-starlight="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
-        '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
+        '<div class="char-card-name">' + esc(c.name) + marks + starPill + '</div>' +
         '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character &rarr;</span>' +
@@ -441,6 +453,10 @@
       ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
       : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
+    // Where assets/stars.js hangs the Star button. Left empty by the renderer
+    // and filled in the browser, so the SSR HTML stays the same for everyone
+    // and only the reader's own starred state is client-side.
+    top += '<div class="star-mount" data-star-mount></div>';
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
 
@@ -498,6 +514,7 @@
       ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
       : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
+    top += '<div class="star-mount" data-star-mount></div>';
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
 
