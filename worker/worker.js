@@ -639,6 +639,11 @@ async function ensureDmTables(env) {
        status      TEXT NOT NULL DEFAULT 'open'
      )`
   ).run();
+  // dm_reports is created here, so schema.sql cannot index it. It had none,
+  // and the admin DM queue filters on exactly this column.
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_dm_reports_status ON dm_reports(status)"
+  ).run();
   _dmReady = true;
 }
 
@@ -728,6 +733,17 @@ async function ensureCommentTables(env) {
        reason      TEXT,
        status      TEXT NOT NULL DEFAULT 'open'
      )`
+  ).run();
+  // These two belong here rather than in migration/schema.sql: both tables are
+  // created lazily by this function, so schema.sql cannot index them — it does
+  // not create them and the script would fail on a fresh database.
+  // comment_reports had no indexes at all, and it is exactly what the
+  // moderation queue reads under load.
+  await env.DB.prepare(
+    "CREATE INDEX IF NOT EXISTS idx_comment_reports_st ON comment_reports(status, comment_id)"
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_comments_status_id ON comments(status, id DESC)'
   ).run();
   // Which version of the comment terms this account has agreed to.
   try { await env.DB.prepare('ALTER TABLE users ADD COLUMN comment_terms TEXT').run(); }

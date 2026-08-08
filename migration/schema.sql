@@ -165,10 +165,13 @@ CREATE INDEX IF NOT EXISTS idx_users_created      ON users(created_at DESC);
 
 -- Moderation queues. comment_reports, messages and dm_reports had no indexes
 -- whatsoever, and they are exactly the tables that get read under load.
-CREATE INDEX IF NOT EXISTS idx_comment_reports_st ON comment_reports(status, comment_id);
-CREATE INDEX IF NOT EXISTS idx_comments_status_id ON comments(status, id DESC);
+-- `messages` is created in this file, so its index lives here. The other three
+-- tables are created lazily by the Worker, which means this script cannot index
+-- them — it would fail on a fresh database with "no such table". Those indexes
+-- live beside their CREATE TABLE in worker.js instead:
+--   comments, comment_reports -> ensureCommentTables()
+--   dm_reports                -> ensureDmTables()
 CREATE INDEX IF NOT EXISTS idx_messages_status    ON messages(status);
-CREATE INDEX IF NOT EXISTS idx_dm_reports_status  ON dm_reports(status);
 
 -- ---- STARS (the reader-facing like system) ----------------------
 -- One row per (account, page); the PK makes a double-star a no-op rather
