@@ -1249,9 +1249,49 @@ function canEditRow(sess, row) {
 async function getEntityRow(env, type, slug) {
   const t = CONTENT[type];
   if (!t || !slug) return null;
+  // updated_at rides along for the edit-conflict check: the editors send it
+  // back as baseUpdatedAt, and a save whose base no longer matches the stored
+  // row is rejected rather than silently overwriting somebody else's work.
   return env.DB.prepare(
-    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data FROM ${t.table} WHERE slug=?`
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, updated_at FROM ${t.table} WHERE slug=?`
   ).bind(slug).first().catch(() => null);
+}
+
+// ---- edit conflicts ----
+// Every content write is a blind whole-document upsert, and the editors post
+// back the entire object they loaded. So an admin (or a second tab) that
+// opened a page an hour ago and pressed Save reverted every field the owner
+// had changed since — silently, with no warning to either of them and no
+// notification afterwards.
+//
+// The fix is one comparison: the editor sends the updated_at it loaded, and a
+// save whose base no longer matches the stored row is refused. Deliberately
+// permissive in one direction — a client that sends no baseUpdatedAt at all
+// is allowed through, because /api/character is a public-ish endpoint used by
+// Icon Forge, Grimforge and mass-upload, and breaking those to protect
+// against a rare race would be the worse trade.
+// Always call through checkEditConflict(), which also strips the field: `body`
+// is spread wholesale into the stored JSON blob, so leaving baseUpdatedAt on it
+// would persist a stale timestamp inside every page's data forever.
+function editConflict(existing, body) {
+  if (!existing) return null;                       // creating, nothing to clobber
+  const base = body && body.baseUpdatedAt;
+  if (!base) return null;                           // caller opted out (see above)
+  const current = existing.updated_at;
+  if (!current || String(base) === String(current)) return null;
+  return jsonResponse({
+    error: 'Somebody else saved changes to this page while you had it open. ' +
+           'Reload the editor to get their version — your unsaved changes are still ' +
+           'in this tab, so copy anything you need before reloading.',
+    conflict: true,
+    savedAt: current
+  }, { status: 409 });
+}
+
+function checkEditConflict(existing, body) {
+  const res = editConflict(existing, body);
+  if (body && typeof body === 'object') delete body.baseUpdatedAt;
+  return res;
 }
 
 // ---- renaming a page (old URL keeps working) ----
@@ -3753,7 +3793,13 @@ export default {
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
       if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
-      return jsonResponse({ slug: row.slug, data: JSON.parse(row.data), status: row.status || 'published', canEdit: editable });
+      return jsonResponse({
+        slug: row.slug, data: JSON.parse(row.data),
+        status: row.status || 'published', canEdit: editable,
+        // The editor posts this back so the Worker can tell a save based on
+        // the current row from one based on an hour-old copy.
+        updatedAt: row.updated_at || null
+      });
     }
 
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
@@ -4943,6 +4989,10 @@ export default {
         if (existing && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
+        {
+          const conflict = checkEditConflict(existing, c);
+          if (conflict) return conflict;
+        }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
         // Starlight is admin-only: never trust the client, always carry the
@@ -4971,8 +5021,10 @@ export default {
         if (renamedFrom) {
           await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
         }
+        const savedRow = await getEntityRow(env, 'character', c.slug);
         return jsonResponse({
           ok: true, slug: c.slug, status, renamedFrom, renamedArt,
+          updatedAt: savedRow ? savedRow.updated_at : null,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
           iconBlocked,
@@ -5002,6 +5054,10 @@ export default {
         }
         if (existing && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        {
+          const conflict = checkEditConflict(existing, c);
+          if (conflict) return conflict;
         }
         // Keep the existing PK for updates; new collections use the kebab id
         // as PK so the URL, id and PK all agree.
@@ -5059,6 +5115,10 @@ export default {
         }
         if (existing && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        {
+          const conflict = checkEditConflict(existing, s);
+          if (conflict) return conflict;
         }
         sanitizePageFields(s, 'scripts/' + s.slug);
         s.characters = Array.isArray(s.characters)

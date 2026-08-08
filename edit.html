@@ -358,6 +358,7 @@
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
+    var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
     var artAltDataURL = null;   // newly uploaded alternate art (data URL)
@@ -825,7 +826,8 @@
           remindersGlobal: d.remindersGlobal, setup: d.setup, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
           customJson: d.customJson,
-          status: saveStatus
+          status: saveStatus,
+          baseUpdatedAt: loadedUpdatedAt
         });
         // Renaming: the Worker moves the page (and its art, comments, views
         // and history) from here, and leaves /c/{old} redirecting to it.
@@ -850,7 +852,15 @@
         }).then(function(r){
           return r.json().then(function(j){
             if(r.status === 401) throw new Error('Not logged in. Please log in at /login first.');
+            // 409: somebody saved this page while it was open here. Do NOT
+            // retry or merge — the whole point is that this tab's copy is
+            // stale, and posting it again is exactly the overwrite being
+            // prevented. Tell the editor and let them decide.
+            if(r.status === 409) throw new Error(j.error || 'Somebody else saved this page while you had it open. Reload before saving again.');
             if(!r.ok) throw new Error(j.error || 'Save failed.');
+            // A successful save moves the page on: adopt the new stamp so a
+            // second save from the same tab is not treated as stale.
+            if (j && j.updatedAt) loadedUpdatedAt = j.updatedAt;
             return j;
           });
         });
@@ -968,6 +978,10 @@
         .then(function(res){
           var entry = res.data;
           currentStatus = res.status || 'published';
+          // Stamp of the version this editor was opened on. Posted back with
+          // the save so the Worker can refuse a write based on a stale copy
+          // instead of silently reverting whatever changed in the meantime.
+          loadedUpdatedAt = res.updatedAt || null;
           updatePublishButton();
           if(res.canEdit === false){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
