@@ -307,14 +307,58 @@ function clearCookie() {
   return 'botc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 }
 
-// ---- basic per-IP rate limiting (KV counter; best-effort) ----
-async function rateLimited(env, request, bucket, limit, windowSec) {
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const key = `rl:${bucket}:${ip}`;
+// ---- basic rate limiting (KV counter; best-effort) ----
+// `opts.sess` switches the bucket from the caller's IP to their account. Use it
+// for anything only a logged-in user can do: an IP bucket is the wrong shape
+// there in both directions — one account rotating IPs is unlimited, while a
+// school or a household behind one NAT punishes everybody on it. Signup, login
+// and password reset stay on IP, because there is no account to key on yet.
+//
+// Still best-effort by design: KV is eventually consistent, so a tight
+// concurrent burst can overshoot the limit. That is fine at these thresholds —
+// the job is to stop a flood, not to be an exact quota.
+async function rateLimited(env, request, bucket, limit, windowSec, opts = {}) {
+  const identity = opts.sess && opts.sess.userId
+    ? 'u' + opts.sess.userId
+    : (request.headers.get('CF-Connecting-IP') || 'unknown');
+  const key = `rl:${bucket}:${identity}`;
   const cur = parseInt((await env.SESSIONS.get(key)) || '0', 10);
   if (cur >= limit) return true;
   await env.SESSIONS.put(key, String(cur + 1), { expirationTtl: windowSec });
   return false;
+}
+
+// Every 429 the site sends should say when to come back; none of them did.
+function tooManyResponse(message, retryAfterSec) {
+  return jsonResponse({ error: message }, {
+    status: 429,
+    'Retry-After': String(retryAfterSec)
+  });
+}
+
+// Per-account write limits. Generous enough that no real contributor will
+// notice — mass-upload.html legitimately loops /api/upload — but low enough
+// that one script cannot fill R2 or the characters table overnight.
+const WRITE_LIMITS = {
+  upload:     { bucket: 'upload',     limit: 60, window: 3600, msg: 'You have uploaded a lot of images in the last hour. Take a short break and try again.' },
+  character:  { bucket: 'wchar',      limit: 40, window: 3600, msg: 'You have saved a lot of characters in the last hour. Take a short break and try again.' },
+  collection: { bucket: 'wcoll',      limit: 20, window: 3600, msg: 'You have saved a lot of collections in the last hour. Take a short break and try again.' },
+  script:     { bucket: 'wscript',    limit: 20, window: 3600, msg: 'You have saved a lot of scripts in the last hour. Take a short break and try again.' },
+  wikipage:   { bucket: 'wpage',      limit: 20, window: 3600, msg: 'You have saved a lot of pages in the last hour. Take a short break and try again.' },
+  publish:    { bucket: 'wpublish',   limit: 60, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' },
+  star:       { bucket: 'star',      limit: 200, window: 3600, msg: 'That is a lot of stars in one hour. Take a short break and try again.' }
+};
+
+// Admins are exempt: they run the bulk tools, and locking an admin out mid
+// cleanup is worse than the flood the limit is guarding against.
+async function writeLimited(env, request, sess, kind) {
+  if (!sess || sess.isAdmin) return null;
+  const r = WRITE_LIMITS[kind];
+  if (!r) return null;
+  if (await rateLimited(env, request, r.bucket, r.limit, r.window, { sess })) {
+    return tooManyResponse(r.msg, r.window);
+  }
+  return null;
 }
 
 // ---- outgoing email (Resend; optional) ----
@@ -2902,7 +2946,7 @@ export default {
     // ---------- AUTH: SIGN UP ----------
     if (method === 'POST' && path === '/api/signup') {
       if (await rateLimited(env, request, 'signup', 5, 3600)) {
-        return jsonResponse({ error: 'Too many signups from this connection. Try again later.' }, { status: 429 });
+        return tooManyResponse('Too many signups from this connection. Try again later.', 3600);
       }
       const body = await request.json().catch(() => ({}));
       const username = String(body.username || '').trim();
@@ -2935,7 +2979,7 @@ export default {
     // ---------- AUTH: LOG IN ----------
     if (method === 'POST' && path === '/api/login') {
       if (await rateLimited(env, request, 'login', 10, 600)) {
-        return jsonResponse({ error: 'Too many login attempts. Wait a few minutes and try again.' }, { status: 429 });
+        return tooManyResponse('Too many login attempts. Wait a few minutes and try again.', 600);
       }
       const body = await request.json().catch(() => ({}));
       const identifier = String(body.username || body.email || '').trim();
@@ -3051,7 +3095,7 @@ export default {
     // ---------- AUTH: FORGOT / RESET PASSWORD ----------
     if (method === 'POST' && path === '/api/forgot-password') {
       if (await rateLimited(env, request, 'forgot', 5, 3600)) {
-        return jsonResponse({ error: 'Too many reset requests. Try again later.' }, { status: 429 });
+        return tooManyResponse('Too many reset requests. Try again later.', 3600);
       }
       const body = await request.json().catch(() => ({}));
       const identifier = String(body.email || body.username || '').trim();
@@ -3107,7 +3151,7 @@ export default {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       if (await rateLimited(env, request, 'verify', 3, 3600)) {
-        return jsonResponse({ error: 'Too many verification emails requested. Try again later.' }, { status: 429 });
+        return tooManyResponse('Too many verification emails requested. Try again later.', 3600);
       }
       const u = await env.DB.prepare('SELECT id, username, display_name, email, email_verified FROM users WHERE id=?')
         .bind(sess.userId).first();
@@ -4087,7 +4131,7 @@ export default {
       if (path === '/api/account/avatar') {
         if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
         if (await rateLimited(env, request, 'avatar', 20, 3600)) {
-          return jsonResponse({ error: 'Too many avatar changes. Try again later.' }, { status: 429 });
+          return tooManyResponse('Too many avatar changes. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
@@ -4139,6 +4183,11 @@ export default {
       }
 
       if (path === '/api/account/email') {
+        // Sends a Resend email every time it succeeds, so without a limit any
+        // account is a free mail cannon pointed at any address.
+        if (!sess.isAdmin && await rateLimited(env, request, 'emailchange', 5, 3600, { sess })) {
+          return tooManyResponse('You have changed your email several times in the last hour. Try again later.', 3600);
+        }
         const b = await request.json().catch(() => ({}));
         const email = String(b.email || '').trim();
         if (!EMAIL_RE.test(email) || email.length > 254) return jsonResponse({ error: 'Please enter a valid email address.' }, { status: 400 });
@@ -4162,6 +4211,10 @@ export default {
 
       // ---- image upload (ownership-checked) ----
       if (path === '/api/upload') {
+        {
+          const limited = await writeLimited(env, request, sess, 'upload');
+          if (limited) return limited;
+        }
         if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
         let key, bytes, contentType;
@@ -4312,7 +4365,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot post comments.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'comment', 30, 3600)) {
-          return jsonResponse({ error: 'Slow down — too many comments from this connection. Try again later.' }, { status: 429 });
+          return tooManyResponse('Slow down — too many comments from this connection. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
@@ -4415,7 +4468,7 @@ export default {
       if (path === '/api/comments/report') {
         await ensureCommentTables(env);
         if (await rateLimited(env, request, 'comment-report', 20, 3600)) {
-          return jsonResponse({ error: 'Too many reports. Try again later.' }, { status: 429 });
+          return tooManyResponse('Too many reports. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const id = parseInt(b.id, 10);
@@ -4434,6 +4487,10 @@ export default {
 
       // ---- content create / update ----
       if (path === '/api/character') {
+        {
+          const limited = await writeLimited(env, request, sess, 'character');
+          if (limited) return limited;
+        }
         const c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
@@ -4527,6 +4584,10 @@ export default {
       }
 
       if (path === '/api/collection') {
+        {
+          const limited = await writeLimited(env, request, sess, 'collection');
+          if (limited) return limited;
+        }
         const c = await request.json();
         if (!c || (!c.slug && !c.id && !c.displayName)) {
           return jsonResponse({ error: 'Missing collection name' }, { status: 400 });
@@ -4582,6 +4643,10 @@ export default {
       }
 
       if (path === '/api/script') {
+        {
+          const limited = await writeLimited(env, request, sess, 'script');
+          if (limited) return limited;
+        }
         const s = await request.json();
         if (!s || !s.slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
         if (!/^[a-z0-9-]{1,80}$/.test(String(s.slug))) {
@@ -4618,6 +4683,10 @@ export default {
       // admin. The page is then owned by whoever created it, and only they (or
       // an admin) can edit it afterwards.
       if (path === '/api/wiki-page') {
+        {
+          const limited = await writeLimited(env, request, sess, 'wikipage');
+          if (limited) return limited;
+        }
         await ensurePagesTable(env);
         const b = await request.json().catch(() => ({}));
         const kebab = s => String(s || '').toLowerCase().normalize('NFD')
@@ -4712,6 +4781,10 @@ export default {
 
       // ---- publish / unpublish a page ----
       if (path === '/api/publish') {
+        {
+          const limited = await writeLimited(env, request, sess, 'publish');
+          if (limited) return limited;
+        }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
@@ -4750,6 +4823,10 @@ export default {
       // character from silently breaking on an accidental delete. The prior
       // status + who/when is stashed in the data blob (no schema migration).
       if (path === '/api/delete') {
+        {
+          const limited = await writeLimited(env, request, sess, 'publish');
+          if (limited) return limited;
+        }
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || 'character');
         const t = CONTENT[type];
@@ -4991,7 +5068,7 @@ export default {
       // ---- contact the admins (bug reports, suggestions, anything) ----
       if (path === '/api/contact') {
         if (await rateLimited(env, request, 'contact', 5, 3600)) {
-          return jsonResponse({ error: 'Too many messages in a row. Try again in a bit.' }, { status: 429 });
+          return tooManyResponse('Too many messages in a row. Try again in a bit.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         const category = ['bug', 'suggestion', 'question', 'other'].includes(b.category) ? b.category : 'other';
@@ -5016,7 +5093,7 @@ export default {
           return jsonResponse({ error: 'This account is suspended and cannot send messages. You can contact the admins from your account page.' }, { status: 403 });
         }
         if (await rateLimited(env, request, 'dm', 20, 300)) {
-          return jsonResponse({ error: 'You are sending messages very quickly — wait a minute and try again.' }, { status: 429 });
+          return tooManyResponse('You are sending messages very quickly — wait a minute and try again.', 300);
         }
         const b = await request.json().catch(() => ({}));
         const to = String(b.to || '').trim();
@@ -5081,7 +5158,7 @@ export default {
       // (GET /api/admin/dm-thread refuses un-reported pairs).
       if (path === '/api/messages/report') {
         if (await rateLimited(env, request, 'dmreport', 5, 3600)) {
-          return jsonResponse({ error: 'Too many reports in a row. Try again later.' }, { status: 429 });
+          return tooManyResponse('Too many reports in a row. Try again later.', 3600);
         }
         const b = await request.json().catch(() => ({}));
         await ensureDmTables(env);
