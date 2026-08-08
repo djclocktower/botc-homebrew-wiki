@@ -3175,9 +3175,43 @@ export default {
         for (const r of results || []) used.add(String(r.from_slug));
       } catch { /* nothing has ever been renamed */ }
       used.add(base);
+      // Disambiguation ladder, in order:
+      //   witcher
+      //   witcher-{collection or script}   <- the character's own "appears in"
+      //   witcher-{username}               <- when it belongs to neither
+      //   witcher-...-2, -3                <- further copies by the same author
+      //
+      // Collection first because it is what the wiki already reads as
+      // (`witcher-odyssey`), and because it is the useful half of the name when
+      // two different people write a Witcher for two different sets. The
+      // username rung catches the loose character that belongs to no set, where
+      // the author IS the distinguishing fact.
+      //
+      // Duplicate NAMES are entirely fine and nothing here discourages them:
+      // the display name is untouched, no warning is shown, and the page simply
+      // gets its own address. Numbering keeps the site's existing -2/-3 style
+      // (the first copy is unnumbered, so the second is 2).
       const candidates = [];
       const appears = kebab(String(url.searchParams.get('appearsIn') || '').split(',')[0]);
-      if (appears) candidates.push(base + '-' + appears);
+      let author = '';
+      try {
+        const u = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        author = kebab(u && u.username);
+      } catch { /* fall through to plain numbering */ }
+      // The collection/script wins outright when there is one: the author rung
+      // is the fallback for a character that belongs to no set, not a second
+      // guess to try once the collection form is taken. So a second Witcher in
+      // Odyssey is witcher-odyssey-2 — still obviously an Odyssey Witcher —
+      // rather than jumping to witcher-{author} and dropping the set from the
+      // URL entirely.
+      const flavour = appears || author;
+      if (flavour) {
+        candidates.push(base + '-' + flavour);
+        for (let i = 2; i < 60; i++) candidates.push(base + '-' + flavour + '-' + i);
+      }
+      // Last resort, and the whole ladder for a page with neither a set nor a
+      // resolvable username.
       for (let i = 2; i < 60; i++) candidates.push(base + '-' + i);
       const suggestion = candidates.find(s => s.length <= 80 && !used.has(s)) || null;
       // Nothing about the page sitting on that URL is returned: it may be
