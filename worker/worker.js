@@ -285,11 +285,53 @@ function randomToken() {
 }
 
 // ---- sessions (stored in KV) ----
+// KV cannot be queried by value, so revoking "every session belonging to user
+// N" needs an index we maintain ourselves: usess:{id} holds that account's
+// live tokens. Without it, changing a password left every existing 30-day
+// cookie valid — so a stolen session survived the exact thing a worried user
+// would do about it.
+const SESSION_TTL = 60 * 60 * 24 * 30;
+// A cap, because this list is only ever read to revoke. An account with more
+// live sessions than this has bigger problems, and the oldest simply age out
+// on their own TTL as they always did.
+const SESSION_INDEX_MAX = 40;
+
+async function indexSession(env, userId, token) {
+  try {
+    const key = 'usess:' + userId;
+    const raw = await env.SESSIONS.get(key);
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch { list = []; }
+    list.push(token);
+    if (list.length > SESSION_INDEX_MAX) list = list.slice(-SESSION_INDEX_MAX);
+    await env.SESSIONS.put(key, JSON.stringify(list), { expirationTtl: SESSION_TTL });
+  } catch { /* an unindexed session is still a valid one; never fail a login */ }
+}
+
+// Drop every session this account has, optionally sparing the one making the
+// request (so changing your own password does not log you out of the tab you
+// changed it in).
+async function revokeSessions(env, userId, keepToken) {
+  try {
+    const key = 'usess:' + userId;
+    const raw = await env.SESSIONS.get(key);
+    let list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch { list = []; }
+    for (const t of list) {
+      if (keepToken && t === keepToken) continue;
+      await env.SESSIONS.delete('sess:' + t).catch(() => {});
+    }
+    if (keepToken) await env.SESSIONS.put(key, JSON.stringify([keepToken]), { expirationTtl: SESSION_TTL });
+    else await env.SESSIONS.delete(key).catch(() => {});
+  } catch { /* best-effort: D1 re-checks bans on every write regardless */ }
+}
+
 async function createSession(env, userId, isAdmin) {
   const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
   const session = JSON.stringify({ userId, isAdmin, created: Date.now() });
   // 30-day expiry
-  await env.SESSIONS.put('sess:' + token, session, { expirationTtl: 60 * 60 * 24 * 30 });
+  await env.SESSIONS.put('sess:' + token, session, { expirationTtl: SESSION_TTL });
+  await indexSession(env, userId, token);
   return token;
 }
 async function getSession(env, request) {
@@ -3535,6 +3577,11 @@ export default {
       const hash = await hashPassword(password);
       await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?').bind(hash, userId).run();
       await env.SESSIONS.delete('pwreset:' + token);
+      // Everything signed in under the old password goes. Order matters: the
+      // revoke has to happen BEFORE the new session is minted, or it would
+      // delete the session it just created and log them straight back out.
+      // A reset is the other half of "I think somebody is in my account".
+      await revokeSessions(env, parseInt(userId, 10) || userId);
       // Log them straight in for convenience.
       const u = await env.DB.prepare('SELECT id, is_admin FROM users WHERE id=?').bind(userId).first();
       const sessTok = await createSession(env, u.id, !!u.is_admin);
@@ -4607,9 +4654,23 @@ export default {
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
       const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
-      // Suspended accounts can still use account settings and the contact
-      // form (to appeal), but cannot touch content.
-      if (isContentWrite && acctFlags.banned) {
+
+      // What a SUSPENDED account may still reach. Everything else that writes
+      // is closed to them. The old rule only covered the content-write list
+      // above, which left a banned user free to pin and delete comments, star
+      // pages, file reports, block people, change their public profile and
+      // avatar, and roll pages back — none of which is what "suspended" is
+      // supposed to mean.
+      //
+      // Deliberately still allowed:
+      //   /api/contact           appealing the ban is the point
+      //   /api/logout            never trap somebody in a session
+      //   /api/account/password  they must be able to secure their own account
+      //   /api/account/email     same
+      const BANNED_ALLOWED = new Set([
+        '/api/contact', '/api/logout', '/api/account/password', '/api/account/email'
+      ]);
+      if (acctFlags.banned && !BANNED_ALLOWED.has(path)) {
         return jsonResponse({ error: 'This account is suspended. You can contact the admins from your account page.' }, { status: 403 });
       }
       if (isContentWrite && await isWikiLocked(env)) {
@@ -4703,7 +4764,11 @@ export default {
         // (no current password on Discord-only accounts: they may set one freely)
         await env.DB.prepare('UPDATE users SET password_hash=? WHERE id=?')
           .bind(await hashPassword(newPassword), sess.userId).run();
-        return jsonResponse({ ok: true });
+        // Changing a password is what somebody does when they think their
+        // account is compromised, so it has to end the attacker's session too.
+        // The tab doing the changing keeps its own.
+        await revokeSessions(env, sess.userId, sess.token);
+        return jsonResponse({ ok: true, otherSessionsEndedProbably: true });
       }
 
       if (path === '/api/account/email') {
@@ -4870,6 +4935,10 @@ export default {
           httpMetadata: { contentType },
           customMetadata: { owner: String(sess.userId) }
         });
+        // Uploads were never recorded anywhere, so there was no way to answer
+        // "who put this image here" or to see a flood while it was happening.
+        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
+        await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
@@ -5883,6 +5952,7 @@ export default {
             return jsonResponse({ ok: true, dryRun: true, username: target.username, counts, total });
           }
           await env.DB.prepare('UPDATE users SET banned=1 WHERE id=?').bind(target.id).run();
+          await revokeSessions(env, target.id);
           // One statement per table rather than per page: the bulk tools issue
           // a query per slug and would blow the subrequest limit on an account
           // that has published a few hundred pages.
@@ -5898,6 +5968,7 @@ export default {
         if (action === 'ban') {
           if (target.is_admin) return jsonResponse({ error: 'Admins cannot be banned. Remove admin first.' }, { status: 400 });
           await env.DB.prepare('UPDATE users SET banned=1 WHERE id=?').bind(target.id).run();
+          await revokeSessions(env, target.id);
           await logActivity(env, sess, 'ban', 'user', null, target.username);
         } else if (action === 'unban') {
           await env.DB.prepare('UPDATE users SET banned=0 WHERE id=?').bind(target.id).run();
