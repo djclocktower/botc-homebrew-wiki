@@ -205,10 +205,12 @@
       <div class="fld" id="bluffing-fld" style="display:none">
         <label for="bluffing">Bluffing as the <span id="bluffing-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="bluffing"></textarea>
+        <div class="sub persp-note" id="bluffing-note" style="margin:6px 0 0" hidden>This section is normally only for good characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
       </div>
       <div class="fld" id="fighting-fld" style="display:none">
         <label for="fighting">Fighting the <span id="fighting-label">Character</span> <span class="hint">(one per line)</span></label>
         <textarea id="fighting"></textarea>
+        <div class="sub persp-note" id="fighting-note" style="margin:6px 0 0" hidden>This section is normally only for evil characters. It is showing because the box still has text in it, and that text prints on the page — empty the box to drop the section.</div>
       </div>
       <div class="row2">
         <div class="fld">
@@ -635,7 +637,15 @@
       // dispatch input so the ability counter + Grimoire Forge link keep up
       function set(id, v) { if (v != null) { $(id).value = v; $(id).dispatchEvent(new Event('input')); } }
       set('name',    obj.name    || '');
-      if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) $('team').value = obj.team;
+      // Assigning .value fires no event, so the page has to be told the team
+      // changed: the Bluffing / Fighting boxes are picked by team, and without
+      // this the import leaves the PREVIOUS team's box on screen — import a
+      // townsfolk over a demon draft and the form kept offering "Fighting the
+      // …" and never offered "Bluffing as the …".
+      if (obj.team && $('team').querySelector('option[value="' + obj.team + '"]')) {
+        $('team').value = obj.team;
+        $('team').dispatchEvent(new Event('change'));
+      }
       set('ability', obj.ability || '');
       set('quote',   (obj.flavor || '').replace(/^["']|["']$/g, ''));
       set('edition', obj.edition || '');
@@ -822,18 +832,33 @@
     addJinx();
     update();
 
+    // Good characters get "Bluffing as the …", evil ones "Fighting the …", so
+    // only the box that matches the team is offered. The other one is hidden
+    // ONLY while it is empty: whatever is in it still saves and still prints a
+    // section on the page, and a box you cannot see is a box you cannot fix.
+    // (A townsfolk went live with a stray "Fighting the …" section typed while
+    // the team was still evil, which its author then could not find.)
     var GOOD_TEAMS = { townsfolk: 1, outsider: 1 };
     function updatePerspectiveFields() {
       var team = $('team').value;
       var name = $('name').value.trim() || 'Character';
       var isGood = !!GOOD_TEAMS[team];
-      $('bluffing-fld').style.display = isGood ? '' : 'none';
-      $('fighting-fld').style.display = !isGood ? '' : 'none';
+      var strayBluff = !isGood && !!$('bluffing').value.trim();
+      var strayFight = isGood && !!$('fighting').value.trim();
+      $('bluffing-fld').style.display = (isGood || strayBluff) ? '' : 'none';
+      $('fighting-fld').style.display = (!isGood || strayFight) ? '' : 'none';
+      $('bluffing-note').hidden = !strayBluff;
+      $('fighting-note').hidden = !strayFight;
       $('bluffing-label').textContent = name;
       $('fighting-label').textContent = name;
     }
     $('team').addEventListener('change', updatePerspectiveFields);
     $('name').addEventListener('input', updatePerspectiveFields);
+    // Re-check when a box is left rather than on every keystroke, so emptying
+    // an off-team box never makes it vanish from under the cursor.
+    ['bluffing', 'fighting'].forEach(function (id) {
+      $(id).addEventListener('blur', updatePerspectiveFields);
+    });
     updatePerspectiveFields();
     // ── ability character counter ──
     (function() {
