@@ -1855,7 +1855,7 @@ async function bumpContentVersion(env) {
 // box, which is the follow-up to this change.
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
-  'customBoxes', 'callout', 'pronunciation', 'altArt', 'custom'
+  'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'altArt', 'custom'
 ]);
 
 // ---- build the three JSON files from D1 (published pages only) ----
@@ -2830,6 +2830,12 @@ export default {
           displayName: r.display_name || r.username || '[deleted user]',
           avatarUrl: r.avatar_url || null,
           isAdmin: !!r.is_admin,
+          // "Creator": this comment was written by the account that owns the
+          // page it sits on, so a reader can tell the person who made the
+          // thing from everyone else discussing it. Decided here rather than
+          // client-side because the page's owner is not otherwise something
+          // the comment widget is told.
+          isOwner: !!(target.ownerId != null && r.user_id === target.ownerId),
           mine: !!(sess && r.user_id === sess.userId)
         }))
       });

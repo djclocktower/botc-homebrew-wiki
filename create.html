@@ -232,6 +232,14 @@
         <input type="text" id="pronunciation">
       </div>
       <div class="fld">
+        <label for="ipa">IPA spelling <span class="hint">(optional &mdash; e.g. /b&#650;&#712;g&#603;&#720;n/)</span></label>
+        <input type="text" id="ipa">
+      </div>
+      <div class="fld">
+        <label for="respelling">Pronunciation respelling <span class="hint">(optional &mdash; e.g. buh-GAIN)</span></label>
+        <input type="text" id="respelling">
+      </div>
+      <div class="fld">
         <label for="translatedBy">Translated by <span class="hint">(optional)</span></label>
         <input type="text" id="translatedBy">
       </div>
@@ -454,6 +462,8 @@
         appearsIn: $('appears').value.trim(),
         tags: $('tags').value.trim(),
         pronunciation: $('pronunciation').value.trim(),
+        ipa: $('ipa').value.trim(),
+        respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(),
         iconBy: $('iconBy').value.trim(),
         edition: $('edition').value.trim(),
@@ -512,7 +522,7 @@
     var deb;
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
     ['name','team','creator','ability','lede','bullets','howto','callout','examples','tips',
-     'quote','appears','tags','pronunciation','edition','firstNight','otherNight','fnReminder','onReminder',
+     'quote','appears','tags','pronunciation','ipa','respelling','edition','firstNight','otherNight','fnReminder','onReminder',
      'reminders','remindersGlobal','setup','bluffing','fighting','jinxDisplay','customJson'].forEach(function (id) {
       $(id).addEventListener('input', schedule); $(id).addEventListener('change', schedule);
     });
@@ -780,7 +790,8 @@
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
-            pronunciation: d.pronunciation, translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
+            pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
+            translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,

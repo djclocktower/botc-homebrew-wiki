@@ -196,6 +196,29 @@
       '</div>';
   }
 
+  /* The quiet "how do you say it" block under the flavour quote. Three
+     optional lines, any of which may stand alone:
+       pronunciation  free text, the only character field that takes the
+                      wiki's inline marks (**bold** / *italic*), so an author
+                      can stress a syllable in their own words
+       ipa            the IPA spelling, e.g. /bʊˈgɛːn/
+       respelling     a plain-English respelling, e.g. buh-GAIN
+     IPA and the respelling are notation rather than prose, so they are
+     escaped and printed verbatim — an asterisk in a respelling is an
+     asterisk, not italics. */
+  function pronounceBlock(d) {
+    var free   = String((d && d.pronunciation) || '').trim();
+    var ipa    = String((d && d.ipa) || '').trim();
+    var respel = String((d && d.respelling) || '').trim();
+    if (!free && !ipa && !respel) return '';
+    return '<div class="pronounce-block">' +
+      '<span class="pronounce-label">Pronunciation</span>' +
+      (free ? '<p class="pronounce">' + inlineText(free) + '</p>' : '') +
+      (ipa ? '<p class="pronounce pronounce-ipa">' + esc(ipa) + '</p>' : '') +
+      (respel ? '<p class="pronounce pronounce-respell">' + esc(respel) + '</p>' : '') +
+      '</div>';
+  }
+
   /* ── Full character page body ── */
   function renderCharacter(d, artSrc, linkRoot) {
     var root = (linkRoot != null) ? linkRoot
@@ -287,9 +310,7 @@
       '<div class="card-actions">' + copyBtn + '</div>' +
       emblem +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
-      (String(d.pronunciation || '').trim()
-        ? '<div class="pronounce-block"><span class="pronounce-label">Pronunciation</span>' +
-          '<p class="pronounce">' + inlineText(String(d.pronunciation).trim()) + '</p></div>' : '') +
+      pronounceBlock(d) +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.

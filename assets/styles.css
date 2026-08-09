@@ -196,6 +196,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: #6b5d49; letter-spacing: .01em; margin: 3px 0 0; }
 .pronounce strong { font-weight: 700; color: var(--ink); }
 .pronounce em { font-style: italic; }
+/* IPA and the respelling sit under the free-text line as notation: the IPA in
+   a face that actually carries the phonetic glyphs, the respelling in small
+   caps-ish letterspacing so BUH-gain reads as a guide rather than a word. */
+.pronounce-ipa { font-family: 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'DejaVu Sans', serif;
+  color: #7a6c56; margin-top: 2px; }
+.pronounce-respell { font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .8rem; letter-spacing: .06em; color: #8a7a62; margin-top: 2px; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
 /* minmax(0,1fr) + wrapping: a long unbroken value (creator handle, collection
    name, tag, URL) must not widen the track and push the card off the page. */
@@ -2211,6 +2218,10 @@ a:hover .starlight-star { opacity: .9; }
    rather than just first. */
 .cmt-is-pinned { border-color: rgba(255,233,173,.5); background: rgba(122,92,24,.22); }
 .cmt-badge-pin { background: #7a5c18; border-color: rgba(255,233,173,.45); }
+/* "Creator" — the account that owns the page. Deliberately not the maroon the
+   Admin badge uses: the two can appear side by side on the same comment, and
+   two identical pills would read as one long word. */
+.cmt-badge-creator { background: #2f5d3a; border-color: rgba(214,240,220,.4); }
 
 /* Replies: one level only, indented with a rule down the left so the thread
    is obvious without a second colour. */
