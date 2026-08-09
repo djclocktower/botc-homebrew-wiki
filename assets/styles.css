@@ -186,16 +186,6 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .char-side { display: flex; flex-direction: column; gap: clamp(16px,2.2vw,26px); }
 .emblem { display: block; width: min(86%, 286px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
-/* How to say the name — a quiet labelled line tucked under the flavour quote.
-   Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
-   so it can stress the right syllable. */
-.pronounce-block { margin: -8px 6px 16px; }
-.pronounce-label { display: block; text-align: center; font-size: .72rem;
-  text-transform: uppercase; letter-spacing: .09em; font-weight: 600; color: #8a7a62; }
-.pronounce { font-family: 'EB Garamond', serif; font-size: .92rem; text-align: center;
-  color: #6b5d49; letter-spacing: .01em; margin: 3px 0 0; }
-.pronounce strong { font-weight: 700; color: var(--ink); }
-.pronounce em { font-style: italic; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
 /* minmax(0,1fr) + wrapping: a long unbroken value (creator handle, collection
    name, tag, URL) must not widen the track and push the card off the page. */
@@ -1422,6 +1412,20 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: block;
   margin-bottom: 8px;
 }
+/* How to say the name — one quiet line under the title, above the boxes, so it
+   sits on the page background rather than on parchment (hence the parchment
+   ink and the same shadow the title carries). Takes the wiki's inline marks
+   (**bold**, *italic*) through render-wiki.js so it can stress a syllable. */
+.pronounce {
+  font-family: 'EB Garamond', serif; font-size: 1rem; line-height: 1.3;
+  color: var(--parch); opacity: .85; letter-spacing: .01em;
+  margin: 0 0 2px; text-shadow: 0 2px 8px rgba(0,0,0,.65), 0 1px 2px rgba(0,0,0,.5);
+}
+.pronounce-label { text-transform: uppercase; letter-spacing: .07em;
+  font-size: .82rem; opacity: .8; }
+.pronounce strong { font-weight: 700; opacity: 1; }
+.pronounce em { font-style: italic; }
+
 /* Copy-link button: a corner tab flush against the info card's frame.
    The card supplies the top/right strokes (its own 4px border); the button
    only draws left/bottom edges in the same frame colour, so the tab reads
