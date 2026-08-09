@@ -351,10 +351,13 @@
     ]).then(function(mainRes){
       var collData=mainRes[0]||[], list=mainRes[1], scriptData=mainRes[2]||[];
       COLLECTIONS = collData.map(function(c){
+        // Whatever the tiles draw has to be copied across here: this is a
+        // rebuilt object, not the row from collections.json, so a field that
+        // is missing from this list is simply absent later on.
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
                 header:c.header||'',include:c.include||[],exclude:c.exclude||[],
-                starlight:!!c.starlight};
+                author:c.author||'',starlight:!!c.starlight};
       });
         // ── Stats ─────────────────────────────────────────────
         // Membership honors hybrid include/exclude via the shared resolver.
