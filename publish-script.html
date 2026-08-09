@@ -672,7 +672,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     }
 
     // ── load characters, then wire up state ──
-    fetch('characters.json?_=' + Date.now())
+    fetch('characters.json?fields=card')
       .then(function(r){ return r.json(); })
       .then(function(list){
         (list || []).forEach(function(c){ bySlug[c.slug] = c; });

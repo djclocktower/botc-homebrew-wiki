@@ -967,13 +967,32 @@
       if (!slug) { draftMsg('err', 'That name has no letters or digits to build a page address from.'); return; }
 
       // The check runs first so any clash is reported in the panel above, but
-      // it no longer interrupts: the save goes ahead either way. The Worker
-      // refuses a page owned by someone else, and snapshots a revision before
-      // overwriting one of your own.
+      // it does not interrupt: duplicate names are fine and the save goes ahead.
+      //
+      // The slug, though, must not. This used to post slugify(name) straight
+      // through, and the Worker's ownership guard only refuses a page owned by
+      // SOMEBODY ELSE — so if you already owned /c/witcher, "Add to Drafts"
+      // silently replaced your finished, published Witcher with a three-field
+      // stub. A revision was kept, but only an admin could restore it.
+      // Asking /api/slug-check for a free address makes this behave like the
+      // real editors: the character keeps its name, the page gets its own URL.
       draftMsg('', 'Checking the name…');
       checkName().then(function () {
         draftMsg('', 'Saving draft…');
         $('gf-draft').disabled = true;
+        return fetch('/api/slug-check?type=character&name=' + encodeURIComponent(name), { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .catch(function () { return null; })
+          .then(function (j) {
+            // `mine` means saving here updates one of your own pages. That is
+            // exactly the overwrite being avoided, so unlike create.html this
+            // takes the free address in that case too — a syntax-checker
+            // scratchpad should never be able to eat a finished page.
+            if (j && !j.error && j.taken && j.suggestion) return j.suggestion;
+            return slug;
+          });
+      }).then(function (finalSlug) {
+        slug = finalSlug;
         return fetch('/api/character', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

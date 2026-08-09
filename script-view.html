@@ -67,8 +67,8 @@
     var content = document.getElementById('content');
 
     Promise.all([
-      fetch('scripts.json?_=' + Date.now()).then(function(r){return r.json();}),
-      fetch('characters.json?_=' + Date.now()).then(function(r){return r.json();})
+      fetch('scripts.json').then(function(r){return r.json();}),
+      fetch('characters.json?fields=card').then(function(r){return r.json();})
     ]).then(function(res){
       var scripts = res[0], chars = res[1];
       var bySlug = {}; chars.forEach(function(c){ bySlug[c.slug] = c; });

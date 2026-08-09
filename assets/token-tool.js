@@ -160,7 +160,7 @@
 
   /* ---- data load (in parallel with the engine boot above) ---- */
   function loadData() {
-    var wiki = fetch('characters.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (list) {
+    var wiki = fetch('characters.json?fields=card').then(function (r) { return r.json(); }).then(function (list) {
       allChars = list.filter(function (c) { return c && c.slug && c.ability; });
       allChars.forEach(function (c) { charBySlug[c.slug] = c; });
     });
@@ -204,13 +204,13 @@
     if (q.get('chars')) incoming = incoming.concat(q.get('chars').split(',').map(function (x) { return x.trim(); }).filter(Boolean));
     var jobs = [];
     if (hasScript) {
-      jobs.push(fetch('scripts.json?_=' + Date.now()).then(function (r) { return r.json(); }).then(function (scripts) {
+      jobs.push(fetch('scripts.json').then(function (r) { return r.json(); }).then(function (scripts) {
         var sc = scripts.filter(function (x) { return x.slug === q.get('script'); })[0];
         if (sc && sc.characters) incoming = incoming.concat(sc.characters);
       }).catch(function () {}));
     }
     if (hasColl) {
-      jobs.push(fetch('collections.json?_=' + Date.now()).then(function (r) { return r.json(); }).catch(function () { return []; }).then(function (collData) {
+      jobs.push(fetch('collections.json').then(function (r) { return r.json(); }).catch(function () { return []; }).then(function (collData) {
         var list = (collData || []).map(function (c) {
           return { id: c.id, slug: c.slug, displayName: c.displayName || c.slug, match: c.match || [] };
         });

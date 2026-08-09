@@ -157,7 +157,7 @@
     }).catch(function(){});
 
     // existing slugs, to flag overwrites in the preview
-    fetch('characters.json?_=' + Date.now()).then(function(r){ return r.json(); }).then(function(list){
+    fetch('characters.json?fields=card').then(function(r){ return r.json(); }).then(function(list){
       list.forEach(function(c){ if (c.slug) existingSlugs[c.slug] = 1; });
     }).catch(function(){});
 

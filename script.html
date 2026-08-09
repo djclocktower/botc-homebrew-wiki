@@ -529,7 +529,7 @@
 
     // ── load data ──
     loadOfficial().then(function () {
-    return fetch('characters.json?_=' + Date.now())
+    return fetch('characters.json?fields=card')
       .then(function (r) { return r.json(); })
       .then(function (list) {
         allChars = list;

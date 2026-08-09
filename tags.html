@@ -75,7 +75,7 @@
     // Canonical tag list + descriptions live in assets/tags.js
     var KNOWN_TAGS = window.KNOWN_TAGS || [];
 
-    fetch('characters.json?_=' + Date.now())
+    fetch('characters.json?fields=card')
       .then(function(r) { return r.json(); })
       .then(function(list) {
         // Seed tagMap from KNOWN_TAGS, then overlay real counts

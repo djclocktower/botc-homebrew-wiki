@@ -135,3 +135,41 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT
 );
 INSERT OR IGNORE INTO settings (key, value) VALUES ('wiki_locked', '0');
+
+-- ---- SETTINGS: content_version ----------------------------------
+-- Counter bumped by logActivity() on every feed-changing action. The JSON
+-- feeds (/characters.json etc.) key their edge-cache entry on it, so a
+-- content write invalidates the cache by no longer matching, with no purge.
+INSERT OR IGNORE INTO settings (key, value) VALUES ('content_version', '1');
+
+-- ---- LAUNCH-SCALE INDEXES ---------------------------------------
+-- Added when the site was hardened for a large influx of contributors.
+-- Applied live to the botc-wiki D1 instance; repeated here so a fresh
+-- database gets them too. All idempotent.
+--
+-- page_views(day) is the important one: the PK is (entity_type, slug, day),
+-- so `day` is not a leading column and the nightly 180-day retention DELETE
+-- full-scanned the largest table in the database every single night.
+-- EXPLAIN QUERY PLAN now reports SEARCH ... USING INDEX instead of SCAN.
+CREATE INDEX IF NOT EXISTS idx_page_views_day     ON page_views(day);
+
+-- status='published' filters that previously had no index at all. Both fire
+-- on every content page view via applyCollectionStarlight() and the sitemap.
+CREATE INDEX IF NOT EXISTS idx_collections_status ON collections(status);
+CREATE INDEX IF NOT EXISTS idx_scripts_status     ON scripts(status);
+
+-- The admin dashboard and profile pages sort by updated_at with no index,
+-- which forces a full scan and sort even behind a LIMIT.
+CREATE INDEX IF NOT EXISTS idx_characters_upd     ON characters(status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_users_created      ON users(created_at DESC);
+
+-- Moderation queues. comment_reports, messages and dm_reports had no indexes
+-- whatsoever, and they are exactly the tables that get read under load.
+-- `messages` is created in this file, so its index lives here. The other three
+-- tables are created lazily by the Worker, which means this script cannot index
+-- them — it would fail on a fresh database with "no such table". Those indexes
+-- live beside their CREATE TABLE in worker.js instead:
+--   comments, comment_reports -> ensureCommentTables()
+--   dm_reports                -> ensureDmTables()
+CREATE INDEX IF NOT EXISTS idx_messages_status    ON messages(status);
+
