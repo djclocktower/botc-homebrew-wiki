@@ -97,7 +97,7 @@ assets/
                        for SSR — must stay browser+module compatible, no DOM at
                        top level. Takes the wiki text engine through
                        init(WikiRender) for the one formatted character field,
-                       `pronunciation` — the quiet line under the page title
+                       `pronunciation` — the quiet line under the flavour quote
                        (**bold**/*italic*); without it that text still renders,
                        escaped and unformatted.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)

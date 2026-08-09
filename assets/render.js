@@ -287,6 +287,9 @@
       '<div class="card-actions">' + copyBtn + '</div>' +
       emblem +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
+      (String(d.pronunciation || '').trim()
+        ? '<div class="pronounce-block"><span class="pronounce-label">Pronunciation</span>' +
+          '<p class="pronounce">' + inlineText(String(d.pronunciation).trim()) + '</p></div>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
@@ -357,15 +360,7 @@
     var titleName = stripCreatorMark(d.name, splitCreators(d.creator)[0] || '') || d.name || 'Unnamed';
     var nch = Math.max(String(titleName).replace(/\s+/g, ' ').trim().length, 4);
 
-    // How to say the name: one quiet line directly under the title, above the
-    // boxes. Takes the wiki's inline marks so it can stress a syllable.
-    var pronounce = String(d.pronunciation || '').trim();
-    var pronounceLine = pronounce
-      ? '<p class="pronounce"><span class="pronounce-label">Pronunciation:</span> ' +
-        inlineText(pronounce) + '</p>' : '';
-
-    return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1>' +
-      pronounceLine + '</div>' +
+    return '<div class="title-row"><h1 class="gen-title" style="--nch:' + nch + '">' + esc(titleName) + '</h1></div>' +
       '<div class="char-layout">' +
       '<section class="char-parchment card">' +
       (summaryCol || howCol ? '<div class="cols">' + (summaryCol ? '<div>' + summaryCol + '</div>' : '') + (howCol ? '<div>' + howCol + '</div>' : '') + '</div>' : '') +
