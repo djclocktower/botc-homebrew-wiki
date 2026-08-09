@@ -2116,12 +2116,36 @@ ${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').jo
 // The "this page is Partial" nudge. Only ever rendered for someone who can
 // edit the page (owner or admin) — a reader has no use for it, and the wiki
 // does not advertise which pages its authors haven't finished.
+// Dismissal lives in the reader's own localStorage, so the server cannot know
+// about it. This runs inline, immediately after the notice, purely so a banner
+// the owner already closed never paints — putting it in site.js (which loads at
+// the end of the body) would flash it on every visit, which is the exact
+// annoyance the close button exists to remove. The click handler, and the
+// writing of this key, stay in site.js where behaviour belongs.
+const PARTIAL_PREHIDE =
+  '<script>(function(){try{' +
+  'var n=document.currentScript&&document.currentScript.previousElementSibling;' +
+  'if(!n||!n.classList.contains("page-notice-partial"))return;' +
+  'var m=JSON.parse(localStorage.getItem("botc_partial_dismissed")||"{}");' +
+  'if(m[n.getAttribute("data-partial-slug")]===n.getAttribute("data-partial-sig"))n.remove();' +
+  '}catch(e){}})();<\/script>';
+
 function partialNoticeHTML(d) {
-  const missing = Classify.listPhrase(Classify.missingBits(d));
-  return '<div class="page-notice page-notice-partial" role="status">' +
+  const bits = Classify.missingBits(d);
+  const missing = Classify.listPhrase(bits);
+  // data-partial-sig is what is still outstanding. Dismissal is remembered
+  // against it, so closing the notice silences THIS gap — fill part of it in
+  // and the notice comes back for whatever is left, the same way a new
+  // announcement reappears after the old one was dismissed.
+  return '<div class="page-notice page-notice-partial" role="status"' +
+    ' data-partial-slug="' + attr(d.slug) + '"' +
+    ' data-partial-sig="' + attr(bits.join('|')) + '">' +
     '<strong>' + SYS.partialLabel + '</strong> ' + SYS.partialBody +
     (missing ? ' ' + SYS.partialFix.replace('{missing}', escapeHtml(missing)) : '') +
-    ' <a href="../edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a></div>';
+    ' <a href="../edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a>' +
+    '<button type="button" class="page-notice-close" aria-label="' +
+    attr(SYS.partialDismiss) + '">&times;</button>' +
+    '</div>' + PARTIAL_PREHIDE;
 }
 
 // The creator page is one static file (profile.html) served under two paths:
@@ -2852,8 +2876,12 @@ export default {
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
           // "This page is Partial" is shown to the people who can act on it
-          // and to nobody else (see partialNoticeHTML).
-          const partialNotice = Classify.isPartial(d) && await canEdit();
+          // and to nobody else (see partialNoticeHTML). It asks isIncomplete,
+          // not isPartial: Starlight lifts a page out of the public Partial
+          // tier, but it does not fill in the missing tags or almanac, and
+          // the owner is still the one who can. Most Starlight here is
+          // inherited from a collection, so no admin ever looked at the page.
+          const partialNotice = Classify.isIncomplete(d) && await canEdit();
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {

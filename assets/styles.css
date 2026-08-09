@@ -2060,17 +2060,35 @@ a:hover .starlight-star { opacity: .9; }
 /* Sits above the topbar like the draft banner, but quieter: it is advice,
    not a state. Only the page's owner and admins are ever served it. */
 .page-notice {
+  position: relative;
   background: #3a2c17; color: #efe3c6;
   font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
   font-size: .92rem; line-height: 1.45;
-  text-align: center; padding: 10px 16px;
+  text-align: center; padding: 10px 44px 10px 16px;
   border-bottom: 1px solid rgba(247,236,208,.18);
 }
 .page-notice strong { color: #ffe9ad; font-weight: 700; }
 .page-notice em { font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
 .page-notice a { color: #ffe9ad; white-space: nowrap; }
+/* Same affordance as the announcement bar's close button, so closing one
+   feels like closing the other. */
+.page-notice-close {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #efe3c6;
+  opacity: .75;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.page-notice-close:hover { opacity: 1; }
 @media (max-width: 640px) {
-  .page-notice { font-size: .84rem; padding: 9px 12px; text-align: left; }
+  .page-notice { font-size: .84rem; padding: 9px 40px 9px 12px; text-align: left; }
 }
 
 /* ─── Comment sections (/c/, /s/, /collection/, /news/) ──────── */
