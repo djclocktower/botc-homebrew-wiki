@@ -288,7 +288,8 @@
       emblem +
       (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
       (String(d.pronunciation || '').trim()
-        ? '<p class="pronounce">' + inlineText(String(d.pronunciation).trim()) + '</p>' : '') +
+        ? '<div class="pronounce-block"><span class="pronounce-label">Pronunciation</span>' +
+          '<p class="pronounce">' + inlineText(String(d.pronunciation).trim()) + '</p></div>' : '') +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
