@@ -231,7 +231,7 @@
           <div class="login-field">
             <label for="su-username">Username</label>
             <input type="text" id="su-username" autocomplete="username" autocapitalize="none" spellcheck="false">
-            <div class="login-hint">3–20 characters: letters, numbers, hyphens, underscores. Shown on pages you create.</div>
+            <div class="login-hint">3–20 characters: letters, numbers, hyphens, underscores. Shown on pages you create. Accented letters are kept as their plain letter (Tír becomes Tir) — you can still log in either way.</div>
           </div>
           <div class="login-field">
             <label for="su-email">Email</label>
@@ -378,8 +378,13 @@
         .then(function(res){
           if (res.ok && res.body.ok) {
             try { sessionStorage.removeItem('botc_me'); } catch(e){}
-            setMsg('success', 'Account created! Redirecting…');
-            setTimeout(function(){ location.href = 'account?welcome=1'; }, 700);
+            // An accented name is folded for the handle (see /api/signup) — say
+            // so, and hold the page a moment longer so it can be read.
+            var folded = res.body.folded;
+            setMsg('success', folded
+              ? 'Account created as @' + res.body.username + ' — your name keeps its accents, your login handle spells them out. Redirecting…'
+              : 'Account created! Redirecting…');
+            setTimeout(function(){ location.href = 'account?welcome=1'; }, folded ? 2600 : 700);
           } else {
             setMsg('error', res.body.error || 'Signup failed.');
             btn.disabled = false; btn.textContent = 'Create Account';

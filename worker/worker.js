@@ -453,13 +453,50 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ---- accented Latin letters -> their plain letters ----
+// A fada (á é í ó ú) is a LETTER, not decoration: "Tir-far-thóinn" has to fold
+// to "tir-far-thoinn", never to "tir-far-th-inn". Every slug helper in this
+// file already does this; the account code was the one place that skipped it
+// and dropped the letter on the floor.
+//
+// NFD splits an accented letter into its base letter plus a combining mark, so
+// deleting the marks keeps the letter — that covers the fadas, and every other
+// accent, umlaut, tilde, cedilla and ring with them. The few below have no
+// decomposition at all (NFD leaves them whole), so they have to be named.
+const LATIN_EXTRAS = {
+  'ø': 'o', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ł': 'l', 'ħ': 'h',
+  'ı': 'i', 'ŧ': 't', 'ŋ': 'n', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'ẞ': 'ss'
+};
+function foldLatin(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[øđðþłħıŧŋæœßẞ]/gi, ch => {
+      const out = LATIN_EXTRAS[ch.toLowerCase()] || LATIN_EXTRAS[ch] || ch;
+      // Keep the case that was typed: Ø -> O, Æ -> Ae.
+      return ch === ch.toLowerCase() ? out : out.charAt(0).toUpperCase() + out.slice(1);
+    });
+}
+// The ASCII spelling of a name typed with accents, or null when there is
+// nothing to fold — the signal for "don't bother running the query twice".
+function foldedAlt(name) {
+  const folded = foldLatin(name);
+  return folded && folded !== String(name || '') ? folded : null;
+}
+
 // ---- validation ----
+// Usernames stay ASCII on purpose, and folding (not rejecting) is what makes
+// that painless. Two hard reasons they cannot simply allow the accented
+// letters through: they are the /u/{username} URL, and every uniqueness and
+// login check compares them with SQLite's lower(), which in D1 (no ICU) folds
+// ASCII only — lower('TÍR') is 'tÍr', so "TÍR" and "tír" would come out as two
+// different accounts sharing one handle.
 const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function validSignup(username, email, password) {
   if (!USERNAME_RE.test(username || '')) {
-    return 'Username must be 3–20 characters: letters, numbers, hyphens or underscores.';
+    return 'Username must be 3–20 characters: letters, numbers, hyphens or underscores. Accented letters are kept as their plain letter (ó becomes o).';
   }
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return 'Please enter a valid email address.';
@@ -471,9 +508,15 @@ function validSignup(username, email, password) {
 }
 
 async function findUserByLogin(env, identifier) {
-  return env.DB.prepare(
-    `SELECT * FROM users WHERE lower(username) = lower(?1) OR (email IS NOT NULL AND lower(email) = lower(?1))`
-  ).bind(identifier).first();
+  const sql = `SELECT * FROM users WHERE lower(username) = lower(?1) OR (email IS NOT NULL AND lower(email) = lower(?1))`;
+  const hit = await env.DB.prepare(sql).bind(identifier).first();
+  if (hit) return hit;
+  // Stored usernames are ASCII, but people type their name the way they spell
+  // it. Typing "Tír-far-thóinn" must reach tir-far-thoinn — an accent is not a
+  // wrong password. One folded retry, and only when there was something to
+  // fold, so an ASCII login still costs exactly one query.
+  const folded = foldedAlt(identifier);
+  return folded ? env.DB.prepare(sql).bind(folded).first() : null;
 }
 
 // ---- wiki lock (global freeze flag, stored in D1 settings) ----
@@ -1001,9 +1044,13 @@ async function notifyComment(env, opts) {
 
 async function findUserByUsername(env, username) {
   if (!username) return null;
-  return env.DB.prepare(
-    'SELECT id, username, display_name, avatar_url, is_admin FROM users WHERE lower(username)=lower(?)'
-  ).bind(username).first().catch(() => null);
+  const sql = 'SELECT id, username, display_name, avatar_url, is_admin FROM users WHERE lower(username)=lower(?)';
+  const hit = await env.DB.prepare(sql).bind(username).first().catch(() => null);
+  if (hit) return hit;
+  // Same folded retry as findUserByLogin: an accented spelling of an ASCII
+  // handle still addresses the account (DM ?to=, the creator-name alias box).
+  const folded = foldedAlt(username);
+  return folded ? env.DB.prepare(sql).bind(folded).first().catch(() => null) : null;
 }
 
 let _banReady = false;
@@ -2270,9 +2317,13 @@ function discordRedirectUri(origin) {
 }
 
 // Pick a free username derived from the Discord name.
+// foldLatin FIRST, or every accented letter is outside [a-z0-9_-] and becomes a
+// hyphen: "Tir-far-thóinn" came out as tir-far-th-inn, with the ó deleted and
+// the name broken in half. Folded, it is tir-far-thoinn.
 async function uniqueUsername(env, base) {
-  let stem = String(base || 'user').toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, '').slice(0, 16);
+  let stem = foldLatin(base || 'user').toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, '')
+    .slice(0, 16).replace(/[-_]+$/, '');
   if (stem.length < 3) stem = ('user-' + (stem || '')).slice(0, 16).replace(/[-_]+$/, '');
   for (let i = 0; i < 50; i++) {
     const candidate = i === 0 ? stem : stem + '-' + (i + 1);
@@ -2877,13 +2928,19 @@ export default {
       let u = null;
       if (uname) {
         await ensureProfileColumn(env);
-        u = await env.DB.prepare(
-          'SELECT id, username, display_name, bio, avatar_url, created_at, profile_json FROM users WHERE lower(username)=lower(?)'
-        ).bind(uname).first().catch(() => null);
-        if (!u) {
+        // Accented spelling of an ASCII handle resolves too, so /u/Tír-far-thóinn
+        // opens the same profile as /u/tir-far-thoinn rather than 404ing.
+        const keys = [uname, foldedAlt(uname)].filter(Boolean);
+        for (const key of keys) {
           u = await env.DB.prepare(
-            'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
-          ).bind(uname).first();
+            'SELECT id, username, display_name, bio, avatar_url, created_at, profile_json FROM users WHERE lower(username)=lower(?)'
+          ).bind(key).first().catch(() => null);
+          if (!u) {
+            u = await env.DB.prepare(
+              'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
+            ).bind(key).first().catch(() => null);
+          }
+          if (u) break;
         }
         if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
       } else {
@@ -3252,7 +3309,12 @@ export default {
         return tooManyResponse('Too many signups from this connection. Try again later.', 3600);
       }
       const body = await request.json().catch(() => ({}));
-      const username = String(body.username || '').trim();
+      // Fold before validating, so "Tír-far-thóinn" signs up as tir-far-thoinn
+      // instead of being told a fada is not a letter. The typed spelling goes
+      // back in the response and the login page says which handle was made;
+      // logging in with the accented spelling works either way.
+      const typedName = String(body.username || '').trim();
+      const username = foldLatin(typedName);
       const email = String(body.email || '').trim();
       const password = String(body.password || '');
       const bad = validSignup(username, email, password);
@@ -3266,17 +3328,23 @@ export default {
       if (emailTaken) return jsonResponse({ error: 'An account with that email already exists. Try logging in or resetting your password.' }, { status: 409 });
 
       const hash = await hashPassword(password);
+      // The handle is ASCII, the NAME is not: someone who signed up as
+      // "Tír-far-thóinn" keeps that spelling on their pages and profile, the
+      // same way a Discord signup keeps its display name.
       const res = await env.DB.prepare(
-        `INSERT INTO users (username, password_hash, email, is_admin, last_login)
-         VALUES (?,?,?,0,datetime('now'))`
-      ).bind(username, hash, email).run();
+        `INSERT INTO users (username, password_hash, email, is_admin, display_name, last_login)
+         VALUES (?,?,?,0,?,datetime('now'))`
+      ).bind(username, hash, email, typedName === username ? null : typedName).run();
       const userId = res.meta.last_row_id;
 
       const token = await createSession(env, userId, false);
       await logActivity(env, { userId }, 'signup', 'user', null, username);
       // Best-effort verification email; signup succeeds either way.
       ctx.waitUntil(sendVerificationEmail(env, url.origin, { id: userId, username, email }));
-      return jsonResponse({ ok: true, username }, { 'Set-Cookie': sessionCookie(token) });
+      return jsonResponse(
+        { ok: true, username, typedName, folded: typedName !== username },
+        { 'Set-Cookie': sessionCookie(token) }
+      );
     }
 
     // ---------- AUTH: LOG IN ----------
@@ -5478,8 +5546,9 @@ export default {
         }
         const uname = String(b.username || '').trim();
         if (uname) {
-          const u = await env.DB.prepare('SELECT username FROM users WHERE lower(username)=lower(?)')
-            .bind(uname).first();
+          // findUserByUsername, not a raw query: typing the creator's accented
+          // spelling into this box has to reach their ASCII handle.
+          const u = await findUserByUsername(env, uname);
           if (!u) return jsonResponse({ error: 'No account with that username.' }, { status: 404 });
           await env.DB.prepare(
             'INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'

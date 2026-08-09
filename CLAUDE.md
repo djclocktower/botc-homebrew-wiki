@@ -802,3 +802,16 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+12. **Usernames are ASCII, and an accented letter is FOLDED, never dropped.**
+   `foldLatin()` in worker.js (NFD, minus the combining marks, plus a small map
+   for ø/æ/ß and friends) is the single helper: signup, the Discord-name
+   derivation (`uniqueUsername`), login and every username lookup run through
+   it, so "Tir-far-thóinn" becomes `tir-far-thoinn` — it once became
+   `tir-far-th-inn`, with the fada turned into a hyphen. The handle stays ASCII
+   because it *is* the `/u/{username}` URL and because D1's SQLite `lower()`
+   has no ICU (`lower('TÍR')` is `'tÍr'`, so accented handles could not be
+   compared case-insensitively and two accounts could share one). The accented
+   spelling is kept as the account's `display_name`, and logging in or linking
+   a creator name with it still resolves — each lookup retries once folded.
+   Any new place that turns a person's typed name into a handle must call
+   `foldLatin()` first.
