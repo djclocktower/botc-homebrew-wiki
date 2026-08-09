@@ -375,19 +375,59 @@
      safe (e.g. "MOON" is ~0.76/char, "ENLIGHTENED ONE" ~0.57), so measure the
      rendered text and scale the font down until the single line fits. Never
      wraps (white-space:nowrap in CSS); short names stay at the cap. */
+  /* The measuring is done on a hidden copy, never on the title itself. The
+     title is white-space:nowrap, so blowing it up to the cap size to measure
+     made it wider than a phone screen: the document reflowed around the
+     overflow and the browser dragged the reader hundreds of pixels back up the
+     page — worst at the comment section, where a fast scroll and the URL bar
+     retracting (which fires resize) land together. Measuring off-layout also
+     makes the answer stable, because clientWidth was being read while the page
+     was overflowing: the same title fitted to 50.9px one moment and 60.2px the
+     next. The probe is position:fixed + hidden, so it never touches layout. */
+  var fitProbe = null;
+  function textWidthAt(el, px) {
+    if (!fitProbe) {
+      fitProbe = document.createElement('span');
+      fitProbe.setAttribute('aria-hidden', 'true');
+      fitProbe.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;' +
+        'white-space:nowrap;pointer-events:none;';
+      document.body.appendChild(fitProbe);
+    }
+    var cs = window.getComputedStyle(el);
+    fitProbe.style.fontFamily = cs.fontFamily;
+    fitProbe.style.fontWeight = cs.fontWeight;
+    fitProbe.style.fontStyle = cs.fontStyle;
+    fitProbe.style.letterSpacing = cs.letterSpacing;
+    fitProbe.style.textTransform = cs.textTransform;
+    fitProbe.style.fontSize = px + 'px';
+    fitProbe.textContent = el.textContent;
+    return fitProbe.getBoundingClientRect().width;
+  }
+
   function fitCharTitle() {
-    if (typeof document === 'undefined') return;
+    if (typeof document === 'undefined' || !document.body) return;
     var els = document.querySelectorAll('.gen-title');
+    var vw = window.innerWidth || 1000;
+    fitCharTitle._w = vw;
     for (var i = 0; i < els.length; i++) {
       var el = els[i];
       el.style.whiteSpace = 'nowrap';
-      var vw = window.innerWidth || 1000;
       var maxPx = vw <= 420 ? 66 : vw <= 640 ? 78 : 144;   // "large & in charge", bounded on mobile
-      el.style.fontSize = maxPx + 'px';
       var avail = el.clientWidth;                            // block fills its container
-      if (avail && el.scrollWidth > avail) {                // single line overflows → shrink to fit
-        var size = maxPx * (avail * 0.99) / el.scrollWidth;
-        el.style.fontSize = Math.max(size, 14).toFixed(1) + 'px';
+      var wide = textWidthAt(el, maxPx);
+      var size = (avail && wide > avail)                     // single line overflows → shrink to fit
+        ? Math.max(maxPx * (avail * 0.99) / wide, 14)
+        : maxPx;
+      // Write only when it actually changes: an unchanged font-size is a
+      // reflow the page does not need.
+      var next = size.toFixed(1) + 'px';
+      if (el.style.fontSize !== next) el.style.fontSize = next;
+      // The probe is a copy, so trust it but verify: now that the fitted size
+      // is on the real title it can be measured directly and trimmed once.
+      // This only ever shrinks, so it can never blow the page out sideways.
+      if (avail && el.scrollWidth > avail) {
+        var exact = Math.max(size * (avail * 0.99) / el.scrollWidth, 14).toFixed(1) + 'px';
+        if (el.style.fontSize !== exact) el.style.fontSize = exact;
       }
     }
     // The web font (Dumbledor2) changes glyph widths; re-fit once it loads so an
@@ -462,8 +502,12 @@
       jbox.querySelector('.jinx-drop-body').hidden = !jopen;
     });
     // Re-fit the title on viewport resize / orientation change (debounced).
+    // Width is the only thing the fit depends on, and on a phone every scroll
+    // that hides or shows the URL bar fires resize with the width unchanged —
+    // so ignore those outright rather than re-measure on every flick.
     var fitTimer;
     window.addEventListener('resize', function () {
+      if (fitCharTitle._w === (window.innerWidth || 1000)) return;
       clearTimeout(fitTimer);
       fitTimer = setTimeout(fitCharTitle, 120);
     });
