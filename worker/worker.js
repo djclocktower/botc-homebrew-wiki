@@ -556,8 +556,11 @@ async function ensureUsernameKey(env) {
       'SELECT id, username FROM users WHERE username_key IS NULL'
     ).all();
     for (const r of results || []) {
+      // Per row: a key that collides with one already in the table would throw
+      // against the UNIQUE index below, and one unkeyable row must not leave
+      // the rest of the table unkeyed.
       await env.DB.prepare('UPDATE users SET username_key=? WHERE id=?')
-        .bind(usernameKey(r.username), r.id).run();
+        .bind(usernameKey(r.username), r.id).run().catch(() => {});
     }
     // UNIQUE is the real guard against two signups racing onto one key. It can
     // only fail if live data already holds a collision, which is why it comes
