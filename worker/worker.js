@@ -453,13 +453,84 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+// ---- accented Latin letters -> their plain letters ----
+// A fada (á é í ó ú) is a LETTER, not decoration: "Tir-far-thóinn" has to fold
+// to "tir-far-thoinn", never to "tir-far-th-inn". Every slug helper in this
+// file already does this; the account code was the one place that skipped it
+// and dropped the letter on the floor.
+//
+// NFD splits an accented letter into its base letter plus a combining mark, so
+// deleting the marks keeps the letter — that covers the fadas, and every other
+// accent, umlaut, tilde, cedilla and ring with them. The few below have no
+// decomposition at all (NFD leaves them whole), so they have to be named.
+const LATIN_EXTRAS = {
+  'ø': 'o', 'đ': 'd', 'ð': 'd', 'þ': 'th', 'ł': 'l', 'ħ': 'h',
+  'ı': 'i', 'ŧ': 't', 'ŋ': 'n', 'æ': 'ae', 'œ': 'oe', 'ß': 'ss', 'ẞ': 'ss'
+};
+function foldLatin(s) {
+  return String(s == null ? '' : s)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[øđðþłħıŧŋæœßẞ]/gi, ch => {
+      const out = LATIN_EXTRAS[ch.toLowerCase()] || LATIN_EXTRAS[ch] || ch;
+      // Keep the case that was typed: Ø -> O, Æ -> Ae.
+      return ch === ch.toLowerCase() ? out : out.charAt(0).toUpperCase() + out.slice(1);
+    });
+}
+// ---- usernames ----
+// A username is spelled with the letters the person's name is spelled with:
+// "Tir-far-thóinn" keeps its fada, and so does @tir-far-thóinn. The account
+// code used to be ASCII-only, which turned the ó into a hyphen and produced
+// @tir-far-th-inn. Letting the letters through takes two things that SQL
+// cannot do for us:
+//
+//   1. NORMALISATION. "ó" is either one code point (U+00F3) or "o" plus a
+//      combining accent (U+0301) — identical on screen, different strings, and
+//      Apple keyboards hand over the second form. Stored names go through NFC
+//      so one spelling is one account.
+//   2. CASE AND CONFUSABILITY. D1's SQLite has no ICU, so lower() folds ASCII
+//      and nothing else: lower('Ó') is 'Ó'. Comparing handles in SQL would let
+//      "Tir-far-thÓinn" and "tir-far-thóinn" be two accounts with one name.
+//
+// So identity is a JS-computed key, stored in users.username_key: accents
+// folded away, then lower-cased. It is the UNIQUE column and the one every
+// lookup matches on, while users.username keeps the spelling that gets shown.
+// Folding it into the key does three jobs at once — the case fold SQLite
+// cannot do, "type it with or without the accent and you still find the
+// account", and a block on registering the near-identical @tir-far-thoinn
+// next to @tir-far-thóinn.
+function normUsername(s) {
+  return String(s == null ? '' : s).normalize('NFC').trim();
+}
+function usernameKey(s) {
+  return foldLatin(s).normalize('NFC').trim().toLowerCase();
+}
+
 // ---- validation ----
-const USERNAME_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/;
+// Letters (any script), numbers, hyphen, underscore; 3–20; not starting with a
+// separator. \p{M} rides along for the scripts whose marks NFC does not
+// compose away.
+const USERNAME_RE = /^[\p{L}\p{N}][\p{L}\p{N}\p{M}_-]{2,19}$/u;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// One name, one script. A fada is somebody's name; a lone Cyrillic "е" inside
+// an otherwise Latin handle is somebody else's name being borrowed, and the
+// key above cannot fold what it cannot recognise as the same letter. A wholly
+// Greek or wholly Han username is fine — it is the mixture that is a costume.
+function mixesScripts(name) {
+  const s = String(name || '');
+  if (!/\p{Script=Latin}/u.test(s)) return false;
+  return /[\p{L}\p{M}]/u.test(
+    s.replace(/[\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/gu, '')
+  );
+}
 
 function validSignup(username, email, password) {
   if (!USERNAME_RE.test(username || '')) {
-    return 'Username must be 3–20 characters: letters, numbers, hyphens or underscores.';
+    return 'Username must be 3–20 characters: letters (accents welcome), numbers, hyphens or underscores.';
+  }
+  if (mixesScripts(username)) {
+    return 'Username mixes letters from two different alphabets. Please use one alphabet.';
   }
   if (!email || email.length > 254 || !EMAIL_RE.test(email)) {
     return 'Please enter a valid email address.';
@@ -470,10 +541,66 @@ function validSignup(username, email, password) {
   return null;
 }
 
+// users.username_key: added lazily, like users.banned and users.profile_json —
+// no manual migrations, ever. The backfill runs usernameKey() in JS over the
+// unkeyed rows rather than leaning on SQLite's lower(): lower() is right only
+// for ASCII handles, and the whole point of this column is that handles are no
+// longer ASCII. The users table is small and this runs once per fresh column.
+let _unameKeyReady = false;
+async function ensureUsernameKey(env) {
+  if (_unameKeyReady) return true;
+  try { await env.DB.prepare('ALTER TABLE users ADD COLUMN username_key TEXT').run(); }
+  catch { /* already there */ }
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id, username FROM users WHERE username_key IS NULL'
+    ).all();
+    for (const r of results || []) {
+      // Per row: a key that collides with one already in the table would throw
+      // against the UNIQUE index below, and one unkeyable row must not leave
+      // the rest of the table unkeyed.
+      await env.DB.prepare('UPDATE users SET username_key=? WHERE id=?')
+        .bind(usernameKey(r.username), r.id).run().catch(() => {});
+    }
+    // UNIQUE is the real guard against two signups racing onto one key. It can
+    // only fail if live data already holds a collision, which is why it comes
+    // last: the lookups above work either way, they just lose the race guard.
+    await env.DB.prepare(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_key ON users(username_key)'
+    ).run().catch(() => {});
+    _unameKeyReady = true;
+  } catch { /* try again on the next request rather than 500 this one */ }
+  return _unameKeyReady;
+}
+
+// The one way to turn a typed handle into a row. `cols` is always an internal
+// literal, never anything a caller sent. If the key column could not be added
+// this degrades to the old ASCII comparison instead of failing every login.
+async function selectUserByName(env, cols, name, extraWhere) {
+  const ready = await ensureUsernameKey(env);
+  const where = ready ? 'username_key = ?1' : 'lower(username) = lower(?1)';
+  const sql = `SELECT ${cols} FROM users WHERE ${where}${extraWhere ? ' ' + extraWhere : ''}`;
+  return env.DB.prepare(sql).bind(ready ? usernameKey(name) : normUsername(name))
+    .first().catch(() => null);
+}
+
 async function findUserByLogin(env, identifier) {
+  const id = normUsername(identifier);
+  if (!id) return null;
+  // Handle first, then email. Two queries where there used to be one, because
+  // the handle is now matched on the folded key and the email is not.
+  const byName = await selectUserByName(env, '*', id);
+  if (byName) return byName;
   return env.DB.prepare(
-    `SELECT * FROM users WHERE lower(username) = lower(?1) OR (email IS NOT NULL AND lower(email) = lower(?1))`
-  ).bind(identifier).first();
+    'SELECT * FROM users WHERE email IS NOT NULL AND lower(email) = lower(?)'
+  ).bind(id).first().catch(() => null);
+}
+
+// Is this handle taken — or close enough to an existing one to read as it?
+// Both questions are the same question once the key has the accents folded out
+// of it, which is the point of keying it that way.
+async function usernameTaken(env, name) {
+  return !!(await selectUserByName(env, 'id', name));
 }
 
 // ---- wiki lock (global freeze flag, stored in D1 settings) ----
@@ -1001,9 +1128,7 @@ async function notifyComment(env, opts) {
 
 async function findUserByUsername(env, username) {
   if (!username) return null;
-  return env.DB.prepare(
-    'SELECT id, username, display_name, avatar_url, is_admin FROM users WHERE lower(username)=lower(?)'
-  ).bind(username).first().catch(() => null);
+  return selectUserByName(env, 'id, username, display_name, avatar_url, is_admin', username);
 }
 
 let _banReady = false;
@@ -1163,9 +1288,9 @@ async function resolveCreatorAccount(env, name) {
       // An alias row with an empty value means "this name has no account" —
       // an admin's way of overruling a wrong ownership match.
       if (!alias.value) return null;
-      return await env.DB.prepare(
-        'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
-      ).bind(alias.value).first();
+      return await selectUserByName(
+        env, 'id, username, display_name, bio, avatar_url, created_at', alias.value
+      );
     }
   } catch { /* settings table unreachable -> fall through to ownership */ }
   // Proof by ownership: whoever owns the most PUBLISHED pages credited to this
@@ -2269,16 +2394,34 @@ function discordRedirectUri(origin) {
   return origin + '/api/auth/discord/callback';
 }
 
-// Pick a free username derived from the Discord name.
+// Pick a free username derived from the Discord name. This is where
+// "Tir-far-thóinn" became @tir-far-th-inn: the old class was [a-z0-9_-], every
+// accented letter fell outside it and was replaced by a hyphen, so the ó was
+// deleted and the name broken in half. The class now keeps letters of any
+// script (\p{L}\p{M}\p{N}) — only the genuine punctuation and spaces become
+// hyphens — and the name is normalised so the accent is one composed letter.
 async function uniqueUsername(env, base) {
-  let stem = String(base || 'user').toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '-').replace(/^[-_]+|[-_]+$/g, '').slice(0, 16);
-  if (stem.length < 3) stem = ('user-' + (stem || '')).slice(0, 16).replace(/[-_]+$/, '');
+  // Code points, not UTF-16 units, all the way through: slicing a name at 16
+  // units can cut an astral character in half and leave a lone surrogate.
+  const cut = (s, n) => [...s].slice(0, n).join('');
+  const clean = s => normUsername(
+    normUsername(s).toLowerCase().replace(/[^\p{L}\p{M}\p{N}_-]+/gu, '-')
+  ).replace(/^[-_]+|[-_]+$/g, '');
+  let stem = cut(clean(base || 'user'), 16).replace(/[-_]+$/, '');
+  // A Discord display name is not vetted the way a typed username is, so it
+  // gets the same one-alphabet rule rather than a free pass into a handle that
+  // reads as somebody else's — falling back to the plain-letter spelling.
+  if (mixesScripts(stem)) stem = cut(clean(foldLatin(stem)).replace(/[^a-z0-9_-]+/g, '-'), 16).replace(/[-_]+$/, '');
+  // A name that survives none of that (all punctuation, say) still needs one.
+  // A short name is padded with a digit rather than an English word, so a
+  // two-character Han name stays a Han name instead of becoming "user-太一"
+  // and tripping the one-alphabet rule on its way out.
+  if ([...stem].length < 3) stem = stem ? stem + '-1' : 'user';
   for (let i = 0; i < 50; i++) {
     const candidate = i === 0 ? stem : stem + '-' + (i + 1);
-    const hit = await env.DB.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)')
-      .bind(candidate).first();
-    if (!hit) return candidate;
+    // usernameTaken, so a Discord signup cannot land on the folded twin of an
+    // existing handle either — it walks on to -2 like any other collision.
+    if (!(await usernameTaken(env, candidate))) return candidate;
   }
   return stem + '-' + Date.now();
 }
@@ -2877,14 +3020,11 @@ export default {
       let u = null;
       if (uname) {
         await ensureProfileColumn(env);
-        u = await env.DB.prepare(
-          'SELECT id, username, display_name, bio, avatar_url, created_at, profile_json FROM users WHERE lower(username)=lower(?)'
-        ).bind(uname).first().catch(() => null);
-        if (!u) {
-          u = await env.DB.prepare(
-            'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE lower(username)=lower(?)'
-          ).bind(uname).first();
-        }
+        // Keyed, so /u/tir-far-thóinn and /u/tir-far-thoinn are one profile —
+        // a link typed without the accent still lands.
+        const cols = 'id, username, display_name, bio, avatar_url, created_at';
+        u = await selectUserByName(env, cols + ', profile_json', uname);
+        if (!u) u = await selectUserByName(env, cols, uname);
         if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
       } else {
         u = await resolveCreatorAccount(env, aname);
@@ -3252,24 +3392,32 @@ export default {
         return tooManyResponse('Too many signups from this connection. Try again later.', 3600);
       }
       const body = await request.json().catch(() => ({}));
-      const username = String(body.username || '').trim();
+      // Kept as typed, only NFC-composed: an accented letter is a letter, and
+      // the handle is the name. Identity comparisons happen on usernameKey().
+      const username = normUsername(body.username);
       const email = String(body.email || '').trim();
       const password = String(body.password || '');
       const bad = validSignup(username, email, password);
       if (bad) return jsonResponse({ error: bad }, { status: 400 });
 
-      const nameTaken = await env.DB.prepare('SELECT 1 FROM users WHERE lower(username)=lower(?)')
-        .bind(username).first();
-      if (nameTaken) return jsonResponse({ error: 'That username is already taken.' }, { status: 409 });
+      // One message for both cases the key catches — the exact handle, and the
+      // one that differs only by an accent — because to a reader they are the
+      // same collision and the remedy is the same.
+      if (await usernameTaken(env, username)) {
+        return jsonResponse({
+          error: 'That username is taken, or is too close to one that already exists. Try adding something to it.'
+        }, { status: 409 });
+      }
       const emailTaken = await env.DB.prepare('SELECT 1 FROM users WHERE email IS NOT NULL AND lower(email)=lower(?)')
         .bind(email).first();
       if (emailTaken) return jsonResponse({ error: 'An account with that email already exists. Try logging in or resetting your password.' }, { status: 409 });
 
       const hash = await hashPassword(password);
+      await ensureUsernameKey(env);
       const res = await env.DB.prepare(
-        `INSERT INTO users (username, password_hash, email, is_admin, last_login)
-         VALUES (?,?,?,0,datetime('now'))`
-      ).bind(username, hash, email).run();
+        `INSERT INTO users (username, username_key, password_hash, email, is_admin, last_login)
+         VALUES (?,?,?,?,0,datetime('now'))`
+      ).bind(username, usernameKey(username), hash, email).run();
       const userId = res.meta.last_row_id;
 
       const token = await createSession(env, userId, false);
@@ -3606,10 +3754,11 @@ export default {
 
       // Brand-new account from Discord. No password yet ('' = Discord-only).
       const username = await uniqueUsername(env, discordName);
+      await ensureUsernameKey(env);
       const ins = await env.DB.prepare(
-        `INSERT INTO users (username, password_hash, email, is_admin, display_name, discord_id, discord_username, avatar_url, email_verified, last_login)
-         VALUES (?, '', ?, 0, ?, ?, ?, ?, ?, datetime('now'))`
-      ).bind(username, discordEmail, discordName, discordId, du.username || discordName, avatarUrl, discordEmail ? 1 : 0).run();
+        `INSERT INTO users (username, username_key, password_hash, email, is_admin, display_name, discord_id, discord_username, avatar_url, email_verified, last_login)
+         VALUES (?, ?, '', ?, 0, ?, ?, ?, ?, ?, datetime('now'))`
+      ).bind(username, usernameKey(username), discordEmail, discordName, discordId, du.username || discordName, avatarUrl, discordEmail ? 1 : 0).run();
       const newId = ins.meta.last_row_id;
       await logActivity(env, { userId: newId }, 'signup', 'user', null, username);
       const t = await createSession(env, newId, false);
@@ -3900,7 +4049,14 @@ export default {
       const filters = [];
       const fBinds = [];
       const uname = (q.get('user') || '').trim();
-      if (uname) { filters.push('lower(username)=lower(?)'); fBinds.push(uname); }
+      if (uname) {
+        // activity_log.username is a copy of users.username taken at write
+        // time, so resolve the account and match its exact spelling. Falls back
+        // to the ASCII comparison for the log rows of a deleted account.
+        const who = await findUserByUsername(env, uname);
+        if (who) { filters.push('username = ?'); fBinds.push(who.username); }
+        else { filters.push('lower(username)=lower(?)'); fBinds.push(uname); }
+      }
       const action = (q.get('action') || '').trim();
       if (action.endsWith('*')) {
         // "comment*" -> every comment action in one filter (comment,
@@ -5478,8 +5634,9 @@ export default {
         }
         const uname = String(b.username || '').trim();
         if (uname) {
-          const u = await env.DB.prepare('SELECT username FROM users WHERE lower(username)=lower(?)')
-            .bind(uname).first();
+          // findUserByUsername, not a raw query: typing the creator's accented
+          // spelling into this box has to reach their ASCII handle.
+          const u = await findUserByUsername(env, uname);
           if (!u) return jsonResponse({ error: 'No account with that username.' }, { status: 404 });
           await env.DB.prepare(
             'INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
@@ -5509,8 +5666,7 @@ export default {
         let ownerId = null;
         const uname = String(b.username || '').trim();
         if (uname) {
-          const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
-            .bind(uname).first();
+          const u = await findUserByUsername(env, uname);
           if (!u) return jsonResponse({ error: 'No user named "' + uname + '".' }, { status: 404 });
           ownerId = u.id;
         }
@@ -6147,8 +6303,7 @@ export default {
         const b = await request.json().catch(() => ({}));
         const uname = String(b.username || '').trim();
         if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
-        const u = await env.DB.prepare('SELECT id, username FROM users WHERE lower(username)=lower(?)')
-          .bind(uname).first();
+        const u = await findUserByUsername(env, uname);
         if (!u) return jsonResponse({ error: 'No account named "' + uname + '".' }, { status: 404 });
         const { results } = await env.DB.prepare(
           "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
@@ -6465,8 +6620,7 @@ export default {
         if (!slugs.length) return jsonResponse({ error: 'No pages selected.' }, { status: 400 });
         let ownerId = null;
         if (action === 'assign-owner') {
-          const u = await env.DB.prepare('SELECT id FROM users WHERE lower(username)=lower(?)')
-            .bind(String(b.username || '').trim()).first();
+          const u = await findUserByUsername(env, String(b.username || '').trim());
           if (!u) return jsonResponse({ error: 'No user named "' + String(b.username || '') + '".' }, { status: 404 });
           ownerId = u.id;
         }

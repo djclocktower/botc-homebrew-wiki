@@ -802,3 +802,23 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+12. **Usernames carry their own letters — fadas included — and identity is
+   `users.username_key`, never `lower(username)`.** `@tir-far-thóinn` keeps its
+   fada; the account code was once ASCII-only and turned it into
+   `@tir-far-th-inn`. Three helpers in worker.js: `normUsername()` (NFC + trim,
+   what gets STORED and displayed), `usernameKey()` (`foldLatin()` then
+   lower-case, what gets COMPARED) and `foldLatin()` (NFD minus the combining
+   marks, plus a small map for ø/æ/ß). `username_key` is a lazily-ALTERed
+   UNIQUE column, backfilled in JS, and **every lookup goes through
+   `selectUserByName()`** — do not write `lower(username)=lower(?)` again. D1's
+   SQLite has no ICU, so `lower('Ó')` is `'Ó'`: comparing handles in SQL would
+   make `Tir-far-thÓinn` and `tir-far-thóinn` two accounts with one name.
+   Folding the accents *into* the key does three jobs at once — the case fold
+   SQLite cannot do, "type it with or without the accent and you still find the
+   account", and a block on registering the near-identical `@tir-far-thoinn`
+   beside `@tir-far-thóinn`. `mixesScripts()` refuses a handle that mixes Latin
+   with another alphabet (one Cyrillic `е` inside a Latin name is impersonation
+   the key cannot fold away); a wholly Greek or wholly Han handle is fine, and
+   `uniqueUsername()` applies the same rule to Discord display names. Any new
+   place that turns a typed name into a handle needs all of this, which is why
+   it should call the existing helpers rather than roll its own.
