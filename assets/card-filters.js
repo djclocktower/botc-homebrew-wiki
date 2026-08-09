@@ -128,7 +128,6 @@
       '<option value="name-asc">Name (A–Z)</option>' +
       '<option value="name-desc">Name (Z–A)</option>' +
       '<option value="recent">Recently added</option>' +
-      '<option value="stars-desc">Most starred</option>' +
       '</select></div>';
     html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
     bar.innerHTML = html;
@@ -211,12 +210,6 @@
         if (STATE.sort === 'name-asc') arr.sort(function (a, b) { return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || ''); });
         else if (STATE.sort === 'name-desc') arr.sort(function (a, b) { return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || ''); });
         else if (STATE.sort === 'recent') arr.sort(function (a, b) { return (+b.getAttribute('data-order') || 0) - (+a.getAttribute('data-order') || 0); });
-        // Most starred, ties broken by name so the order is stable rather than
-        // whatever the DOM happened to hold — most cards share a count of 0.
-        else if (STATE.sort === 'stars-desc') arr.sort(function (a, b) {
-          var d = (+b.getAttribute('data-stars') || 0) - (+a.getAttribute('data-stars') || 0);
-          return d !== 0 ? d : (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || '');
-        });
         arr.forEach(function (card) { g.appendChild(card); });
       });
     }

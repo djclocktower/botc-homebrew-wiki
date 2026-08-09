@@ -389,20 +389,6 @@
       </label>
 
       <div class="dash-tab-panel" id="tab-triage" role="tabpanel" aria-labelledby="dashtab-triage" hidden>
-      <!-- REPORTED PAGES -->
-      <section class="panel">
-        <h3>Reported pages <span class="count-pill" id="pr-count"></span></h3>
-        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Characters, scripts, collections and wiki pages readers have flagged — stolen art, copied text,
-          duplicates. Resolving clears every open report on that page at once, since six people reporting
-          the same icon is one job.
-        </p>
-        <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
-          <input type="checkbox" id="pr-show-resolved"> show resolved instead
-        </label>
-        <div id="pr-list"></div>
-        <p class="toast" id="pr-toast"></p>
-      </section>
       <section class="panel">
         <h3>Inbox <span class="count-pill" id="msg-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
@@ -1236,60 +1222,6 @@
     });
 
     /* ---- users panel ---- */
-    /* ---- reported pages ---- */
-    var PR_HREF = { character: '/c/', collection: '/collection/', script: '/s/', wikipage: '/p/' };
-    var PR_REASON = {
-      'stolen-art': 'Stolen art', 'plagiarism': 'Copied text', 'duplicate': 'Duplicate',
-      'inappropriate': 'Inappropriate', 'other': 'Other'
-    };
-    function loadPageReports(){
-      var view = ($('pr-show-resolved') && $('pr-show-resolved').checked) ? 'resolved' : 'open';
-      $('pr-list').innerHTML = '<p class="note">Loading&hellip;</p>';
-      fetch('/api/admin/page-reports?view=' + view, { credentials: 'same-origin' })
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          if (!d || d.error) { $('pr-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not load.') + '</p>'; return; }
-          var list = d.reports || [];
-          $('pr-count').textContent = (view === 'open' && list.length) ? list.length : '';
-          if (!list.length) { $('pr-list').innerHTML = '<p class="note">Nothing here.</p>'; return; }
-          $('pr-list').innerHTML = list.map(function(r){
-            var href = (PR_HREF[r.entity_type] || '/c/') + encodeURIComponent(r.slug);
-            return '<div style="padding:9px 0;border-bottom:1px solid rgba(236,225,200,.12)">' +
-              '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:baseline">' +
-                '<a href="' + href + '" style="font-weight:600">' + esc(r.slug) + '</a>' +
-                '<span style="opacity:.6;font-size:.82rem">' + esc(r.entity_type) + '</span>' +
-                '<span style="font-size:.82rem;color:#e0b4b4">' + esc(PR_REASON[r.reason] || r.reason || 'Other') + '</span>' +
-                (r.reports > 1 ? '<span style="font-size:.8rem;font-weight:600">' + r.reports + ' reports</span>' : '') +
-                '<span style="opacity:.55;font-size:.8rem">by ' + esc(r.reporter || 'unknown') + ' · ' + esc(String(r.ts||'').slice(0,16)) + '</span>' +
-                '<span style="margin-left:auto;display:flex;gap:6px">' +
-                  '<button type="button" class="pr-act" data-id="' + r.id + '" data-action="' + (r.status === 'open' ? 'resolve' : 'reopen') + '" style="font-size:.78rem;padding:3px 9px">' + (r.status === 'open' ? 'Resolve' : 'Reopen') + '</button>' +
-                  '<button type="button" class="pr-act" data-id="' + r.id + '" data-action="delete" style="font-size:.78rem;padding:3px 9px">Delete</button>' +
-                '</span>' +
-              '</div>' +
-              (r.detail ? '<p style="margin:5px 0 0;font-size:.86rem;opacity:.8">' + esc(r.detail) + '</p>' : '') +
-            '</div>';
-          }).join('');
-          Array.prototype.forEach.call(document.querySelectorAll('.pr-act'), function(btn){
-            btn.addEventListener('click', function(){
-              btn.disabled = true;
-              fetch('/api/admin/page-report', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-                body: JSON.stringify({ id: btn.getAttribute('data-id'), action: btn.getAttribute('data-action') })
-              }).then(function(r){ return r.json(); }).then(function(res){
-                if (!res || res.error) throw new Error((res && res.error) || 'Failed.');
-                $('pr-toast').className = 'toast ok'; $('pr-toast').textContent = 'Done.';
-                loadPageReports(); refreshBadges();
-              }).catch(function(e){
-                btn.disabled = false;
-                $('pr-toast').className = 'toast err';
-                $('pr-toast').textContent = (e && e.message) || 'Could not do that.';
-              });
-            });
-          });
-        })
-        .catch(function(){ $('pr-list').innerHTML = '<p class="note">Could not load.</p>'; });
-    }
-
     /* ---- new-account watchlist ---- */
     function nuRow(u){
       var flags = [];
@@ -2427,7 +2359,7 @@
        Triage is the default because it is the only tab that answers
        "is anything waiting for me?". */
     var TAB_LOADERS = {
-      triage:  [loadPageReports, loadMessages, loadDmReports, loadComments],
+      triage:  [loadMessages, loadDmReports, loadComments],
       users:   [loadUsers, loadNewUsers],
       content: [],
       site:    [loadAnnouncement, loadNews],
@@ -2465,8 +2397,6 @@
     function wireNewUsers(){
       var sel = $('nu-days');
       if (sel) sel.addEventListener('change', loadNewUsers);
-      var pr = $('pr-show-resolved');
-      if (pr) pr.addEventListener('change', loadPageReports);
     }
 
     function wireTabs(){
@@ -2489,7 +2419,7 @@
         .then(function(r){ return r.json(); })
         .then(function(d){
           if (!d || d.error) return;
-          setBadge('triage', (d.reportedComments || 0) + (d.reportedDms || 0) + (d.openMessages || 0) + (d.reportedPages || 0));
+          setBadge('triage', (d.reportedComments || 0) + (d.reportedDms || 0) + (d.openMessages || 0));
           setBadge('users', d.newUsers || 0);
           // Lock state used to arrive with /api/admin/dashboard, which is now
           // lazy. The banner has to be right from the first paint whichever
