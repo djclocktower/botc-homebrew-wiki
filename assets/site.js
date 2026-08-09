@@ -387,6 +387,46 @@
       .catch(function () {});
   })();
 
+  /* ── "This page is Partial" notice: closeable, like the announcement ──
+     The notice itself is server-rendered (partialNoticeHTML in worker.js) and
+     only ever served to the page's owner or an admin, so anything found here
+     already belongs to whoever is looking at it.
+
+     Dismissal is remembered per page AND per outstanding gap: closing it
+     silences the notice for what is missing right now, and filling part of
+     that in brings it back for the rest. That mirrors the announcement bar,
+     where dismissing one message does not silence the next.
+
+     A dismissed notice is removed before paint by a one-line inline script the
+     Worker prints after it; this block is what writes the key it reads, and
+     re-checks it in case that script did not run. */
+  (function () {
+    var KEY = 'botc_partial_dismissed';
+    var MAX = 200;                       // keep the map from growing forever
+    var note = document.querySelector('.page-notice-partial[data-partial-slug]');
+    if (!note) return;
+    var btn = note.querySelector('.page-notice-close');
+    if (!btn) return;
+    var slug = note.getAttribute('data-partial-slug');
+    var sig = note.getAttribute('data-partial-sig') || '';
+    function read() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; }
+    }
+    if (read()[slug] === sig) { note.remove(); return; }
+    btn.addEventListener('click', function () {
+      var m = read();
+      m[slug] = sig;
+      var keys = Object.keys(m);
+      // Object key order is insertion order for string keys, so the oldest
+      // entries are the ones at the front.
+      if (keys.length > MAX) {
+        keys.slice(0, keys.length - MAX).forEach(function (k) { delete m[k]; });
+      }
+      try { localStorage.setItem(KEY, JSON.stringify(m)); } catch (e) {}
+      note.remove();
+    });
+  })();
+
   /* ── Script-count badge on Script Builder nav links ── */
   var SCRIPT_KEY = 'botc_script';
   function scriptCount() {

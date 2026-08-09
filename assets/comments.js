@@ -137,6 +137,12 @@
         '<div class="cmt-head">' +
           '<a class="cmt-who" href="' + ROOT + 'u/' + encodeURIComponent(c.username) + '">' +
             esc(c.displayName) + '</a>' +
+          // "Creator" marks the account that owns this page, so a reader can
+          // tell the person who made the thing from everyone else talking
+          // about it. Shown alongside Admin rather than instead of it: on a
+          // wiki where the admin writes pages too, both are true and both are
+          // worth knowing.
+          (c.isOwner ? '<span class="cmt-badge cmt-badge-creator" title="Made this page">Creator</span>' : '') +
           (c.isAdmin ? '<span class="cmt-badge">Admin</span>' : '') +
           (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin">📌 Pinned</span>' : '') +
           '<span class="cmt-when">' + esc(when(c.ts)) + '</span>' +

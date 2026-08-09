@@ -29,11 +29,13 @@
 
   var SYSTEM_TEXT = {
     /* The "this page is Partial" banner above the topbar on a /c/ page.
-       Only ever shown to the page's owner and to admins. */
+       Only ever shown to the page's owner and to admins, which is what the
+       parenthesis in partialBody is telling the one person who sees it. */
     partialLabel: 'PARTIAL',
-    partialBody: '— This page doesn’t show on the homepage or All Characters search.',
-    partialFix: 'Add {missing} to fix.',
+    partialBody: '— (Only you can see this warning.)',
+    partialFix: 'Add {missing} to finish.',
     partialEdit: 'Edit this page →',
+    partialDismiss: 'Dismiss this warning',
 
     /* The draft bar at the very top of an unpublished page. */
     draftPage: 'DRAFT — only you can see this page. Publish it from',

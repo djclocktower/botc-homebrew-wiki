@@ -167,20 +167,32 @@
     return !!(d && d.starlight);
   }
 
-  /* Partial = any part of a finished almanac entry is still missing.
-     Starlight always wins: an admin has looked at the page, so it is never
-     also flagged unfinished.
+  /* Incomplete = some part of a finished almanac entry is still missing.
+     This asks only about the content, so a Starlight page can be incomplete
+     — and often is, because Starlight is frequently inherited from a
+     collection rather than earned page by page. It drives the notice the
+     Worker shows the page's OWNER (partialNoticeHTML in worker.js), who is
+     the one person who can act on it.
 
-     Only characters can be Partial. The `ability` check is what enforces
+     Only characters can be incomplete. The `ability` check is what enforces
      that: every character has one (the API rejects a save without it) and no
      collection or script does, so passing a collection here can never come
      back true even when the caller forgets to say what type it is. Without
      this guard every collection and script would read as unfinished, because
      none of them have tags or almanac text. */
-  function isPartial(d) {
-    if (!d || isStarlight(d)) return false;
+  function isIncomplete(d) {
+    if (!d) return false;
     if (!nonEmpty(d.ability)) return false;
     return unmet(d, STANDARD_REQUIREMENTS).length > 0;
+  }
+
+  /* Partial is the PUBLIC tier: incomplete, and not lifted out of it by
+     Starlight. Starlight still wins here — an admin has looked at the page,
+     so readers are never told it is unfinished and it keeps its place in
+     browsing. Only the owner's notice uses isIncomplete instead. */
+  function isPartial(d) {
+    if (!d || isStarlight(d)) return false;
+    return isIncomplete(d);
   }
 
   /* 'starlight' | 'partial' | 'standard' for a character. */
@@ -287,7 +299,7 @@
     canPublish: canPublish, missingForPublish: missingForPublish,
     PUBLISH_REQUIREMENTS: PUBLISH_REQUIREMENTS,
     STANDARD_REQUIREMENTS: STANDARD_REQUIREMENTS,
-    isPartial: isPartial, isStarlight: isStarlight,
+    isPartial: isPartial, isIncomplete: isIncomplete, isStarlight: isStarlight,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,
     weightedPick: weightedPick, weightedShuffle: weightedShuffle,

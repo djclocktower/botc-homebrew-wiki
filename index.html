@@ -299,7 +299,10 @@
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
+          // Same footer shape as the script tiles below: count, then who made
+          // it, then the Starlight star behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
+            ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
             ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
               window.classBadgeHTML('starlight') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
@@ -490,7 +493,12 @@
             headerHTML +
             '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
             '<div class="collection-footer">' +
-              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
+              // Same footer shape as the collection tiles above: count, then
+              // who made it, then the Starlight star behind a hairline.
+              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
+                (sc.author ? ' · ' + esc(sc.author) : '') +
+                (sc.starlight ? '<span class="coll-star-sep"></span>' +
+                  window.classBadgeHTML('starlight') : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }).join('');

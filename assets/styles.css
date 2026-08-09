@@ -196,6 +196,13 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: #6b5d49; letter-spacing: .01em; margin: 3px 0 0; }
 .pronounce strong { font-weight: 700; color: var(--ink); }
 .pronounce em { font-style: italic; }
+/* IPA and the respelling sit under the free-text line as notation: the IPA in
+   a face that actually carries the phonetic glyphs, the respelling in small
+   caps-ish letterspacing so BUH-gain reads as a guide rather than a word. */
+.pronounce-ipa { font-family: 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'DejaVu Sans', serif;
+  color: #7a6c56; margin-top: 2px; }
+.pronounce-respell { font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .8rem; letter-spacing: .06em; color: #8a7a62; margin-top: 2px; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
 /* minmax(0,1fr) + wrapping: a long unbroken value (creator handle, collection
    name, tag, URL) must not widen the track and push the card off the page. */
@@ -2047,10 +2054,15 @@ a:hover .starlight-star { opacity: .9; }
    and character pages carry it at the end of the Tags row — both behind a
    hairline rule, so the star reads as a mark rather than as another item in
    the list next to it (it is not a tag and is not clickable). */
+/* The hairline before a Starlight star. It is drawn as a border on an inline
+   element rather than a 1px inline-block on purpose: an inline-block is a line
+   break opportunity, so on a narrow tile the separator and the star would wrap
+   onto a line of their own and read as a mistake. A non-replaced inline
+   element introduces no break, so the star always stays with the text it
+   follows. Renders identically either way. */
 .coll-star-sep, .info-star-sep {
-  display: inline-block; width: 1px; height: .95em;
-  background: currentColor; opacity: .35;
-  margin: 0 .55em; vertical-align: -.12em;
+  display: inline; border-left: 1px solid currentColor;
+  opacity: .35; margin: 0 .55em;
 }
 /* Placeholder for the tags side of that row when a page is Starlight but has
    no tags of its own (it can inherit the star from its collection). */
@@ -2060,17 +2072,35 @@ a:hover .starlight-star { opacity: .9; }
 /* Sits above the topbar like the draft banner, but quieter: it is advice,
    not a state. Only the page's owner and admins are ever served it. */
 .page-notice {
+  position: relative;
   background: #3a2c17; color: #efe3c6;
   font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
   font-size: .92rem; line-height: 1.45;
-  text-align: center; padding: 10px 16px;
+  text-align: center; padding: 10px 44px 10px 16px;
   border-bottom: 1px solid rgba(247,236,208,.18);
 }
 .page-notice strong { color: #ffe9ad; font-weight: 700; }
 .page-notice em { font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
 .page-notice a { color: #ffe9ad; white-space: nowrap; }
+/* Same affordance as the announcement bar's close button, so closing one
+   feels like closing the other. */
+.page-notice-close {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #efe3c6;
+  opacity: .75;
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.page-notice-close:hover { opacity: 1; }
 @media (max-width: 640px) {
-  .page-notice { font-size: .84rem; padding: 9px 12px; text-align: left; }
+  .page-notice { font-size: .84rem; padding: 9px 40px 9px 12px; text-align: left; }
 }
 
 /* ─── Comment sections (/c/, /s/, /collection/, /news/) ──────── */
@@ -2188,6 +2218,10 @@ a:hover .starlight-star { opacity: .9; }
    rather than just first. */
 .cmt-is-pinned { border-color: rgba(255,233,173,.5); background: rgba(122,92,24,.22); }
 .cmt-badge-pin { background: #7a5c18; border-color: rgba(255,233,173,.45); }
+/* "Creator" — the account that owns the page. Deliberately not the maroon the
+   Admin badge uses: the two can appear side by side on the same comment, and
+   two identical pills would read as one long word. */
+.cmt-badge-creator { background: #2f5d3a; border-color: rgba(214,240,220,.4); }
 
 /* Replies: one level only, indented with a rule down the left so the thread
    is obvious without a second colour. */
