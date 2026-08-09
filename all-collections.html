@@ -109,7 +109,11 @@
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
+          // Same footer shape as the script tiles on /scripts and the tiles on
+          // the homepage: count, then who made it, then the Starlight star
+          // behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
+            ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
             ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
               window.classBadgeHTML('starlight') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +

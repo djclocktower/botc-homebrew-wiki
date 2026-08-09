@@ -2047,10 +2047,15 @@ a:hover .starlight-star { opacity: .9; }
    and character pages carry it at the end of the Tags row — both behind a
    hairline rule, so the star reads as a mark rather than as another item in
    the list next to it (it is not a tag and is not clickable). */
+/* The hairline before a Starlight star. It is drawn as a border on an inline
+   element rather than a 1px inline-block on purpose: an inline-block is a line
+   break opportunity, so on a narrow tile the separator and the star would wrap
+   onto a line of their own and read as a mistake. A non-replaced inline
+   element introduces no break, so the star always stays with the text it
+   follows. Renders identically either way. */
 .coll-star-sep, .info-star-sep {
-  display: inline-block; width: 1px; height: .95em;
-  background: currentColor; opacity: .35;
-  margin: 0 .55em; vertical-align: -.12em;
+  display: inline; border-left: 1px solid currentColor;
+  opacity: .35; margin: 0 .55em;
 }
 /* Placeholder for the tags side of that row when a page is Starlight but has
    no tags of its own (it can inherit the star from its collection). */

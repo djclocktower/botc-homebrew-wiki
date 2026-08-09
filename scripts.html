@@ -96,11 +96,17 @@
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
-            '<h3 class="collection-name">' + esc(sc.name) +
-              window.classBadgeHTML(window.classifyPage(sc, 'script')) + '</h3>' +
+            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
             (blurb ? '<p class="script-tile-desc">' + esc(blurb) + '</p>' : '') +
+            // Same footer shape as the collection tiles and the homepage:
+            // count, then who made it, then the Starlight star behind a
+            // hairline. The star used to sit against the title here, which was
+            // the odd one out of the wiki's three tile grids.
             '<div class="collection-footer">' +
-              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') + (sc.author ? ' · ' + esc(sc.author) : '') + '</span>' +
+              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
+                (sc.author ? ' · ' + esc(sc.author) : '') +
+                (sc.starlight ? '<span class="coll-star-sep"></span>' +
+                  window.classBadgeHTML('starlight') : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }
