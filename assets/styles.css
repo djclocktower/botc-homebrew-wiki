@@ -186,12 +186,14 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .char-side { display: flex; flex-direction: column; gap: clamp(16px,2.2vw,26px); }
 .emblem { display: block; width: min(86%, 286px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
-/* How to say the name — a quiet line under the flavour quote. Takes the
-   wiki's inline marks (**bold**, *italic*) through render-wiki.js, so it can
-   stress the right syllable. */
+/* How to say the name — a quiet labelled line tucked under the flavour quote.
+   Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
+   so it can stress the right syllable. */
+.pronounce-block { margin: -2px 6px 16px; }
+.pronounce-label { display: block; text-align: center; font-size: .72rem;
+  text-transform: uppercase; letter-spacing: .09em; font-weight: 600; color: #8a7a62; }
 .pronounce { font-family: 'EB Garamond', serif; font-size: .92rem; text-align: center;
-  color: #6b5d49; letter-spacing: .01em; margin: 6px 6px 16px; }
-.quote + .pronounce { margin-top: -10px; }
+  color: #6b5d49; letter-spacing: .01em; margin: 3px 0 0; }
 .pronounce strong { font-weight: 700; color: var(--ink); }
 .pronounce em { font-style: italic; }
 .info-h { font-weight: 600; text-align: center; font-size: 1.18rem; color: var(--ink); letter-spacing: .02em; margin: 0 0 14px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.4); }
