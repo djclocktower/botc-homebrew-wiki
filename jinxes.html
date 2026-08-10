@@ -18,7 +18,7 @@
      dropdown, the jinx pair rows) lives in styles.css. */
   .jg-wrap { position: relative; margin: 0 0 10px; }
   .jg-stage {
-    position: relative; width: 100%; height: clamp(360px, 62vh, 680px);
+    position: relative; width: 100%; height: clamp(420px, 80vh, 860px);
     background: var(--parch); background-image: url('assets/parchment.jpg');
     background-size: cover;
     border: 4px solid var(--parch-frame);
@@ -182,6 +182,7 @@
       <div class="jg-bar">
         <input type="search" id="jg-search" placeholder="Find a character on the map…" autocomplete="off" aria-label="Find a character on the map">
         <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
+        <button type="button" class="filter-chip" id="jg-f-fit">Fit all</button>
         <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
       </div>
 
@@ -198,7 +199,7 @@
         <span><i class="jg-swatch" style="border-color:#9a0d12"></i> Jinx on an evil character</span>
         <span><i class="jg-swatch" style="border-color:#8a7a5c"></i> Grey ring = official character</span>
       </div>
-      <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom.</p>
+      <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom. <b>Fit all</b> shows the whole map at once.</p>
     </section>
 
     <section class="landing-section" id="jx-add-section" hidden>
@@ -344,6 +345,15 @@
         homebrewOnly = !homebrewOnly;
         this.classList.toggle('active', homebrewOnly);
         if (GRAPH) GRAPH.filter(homebrewOnly ? function (n) { return !n.official; } : null);
+      });
+
+      /* Deliberately zoom past the legibility floor to see the whole shape
+         at once. The default view never does this on its own — at 172 nodes
+         it would draw every icon too small to make out. */
+      $('jg-f-fit').addEventListener('click', function () {
+        if (!GRAPH) return;
+        GRAPH.fitAll();
+        $('jg-panel').hidden = true;
       });
 
       $('jg-f-reset').addEventListener('click', function () {

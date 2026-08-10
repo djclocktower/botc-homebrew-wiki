@@ -113,8 +113,13 @@ assets/
                        seeded from a hash of the node id so the map looks the
                        same every visit, and the simulation runs a fixed number
                        of ticks and STOPS rather than animating forever. Read the
-                       header before touching the physics — REPEL_CAP and the
-                       DRAG_SLOP threshold both exist because of specific bugs.
+                       header before touching the physics — REPEL_CAP, the
+                       DRAG_SLOP threshold and MIN_ICON_PX all exist because of
+                       specific bugs. NODE_GAP/LINK_REST set how far apart the
+                       icons sit; MIN_ICON_PX stops the opening view zooming out
+                       past legibility (fitting 172 nodes to a phone gives 8px
+                       icons), so the map may overflow and pan — "Fit all" is
+                       the deliberate way to see the whole shape.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.

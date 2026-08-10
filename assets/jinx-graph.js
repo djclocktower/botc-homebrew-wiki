@@ -95,9 +95,11 @@
        almost on top of each other produce an enormous first-tick force and
        fling the whole map apart — 320 ticks of gravity never gets it back.
        REPEL_CAP is what keeps the opening tick sane; do not remove it. */
-    var REPEL = 5200;
-    var REPEL_CAP = 26;
-    var REPEL_RANGE2 = 360000;   // beyond 600px apart, ignore each other
+    var REPEL = 16000;
+    var REPEL_CAP = 44;
+    var REPEL_RANGE2 = 810000;   // beyond 900px apart, ignore each other
+    var LINK_REST = 118;         // slack in a jinx line, on top of both radii
+    var NODE_GAP = 26;           // clear parchment between two icons
 
     function simulate(ticks) {
       var i, j, k, n, m, dx, dy, d2, len, force, ux, uy;
@@ -133,7 +135,7 @@
           var l = links[i];
           dx = l.b.x - l.a.x; dy = l.b.y - l.a.y;
           len = Math.sqrt(dx * dx + dy * dy) || 0.01;
-          var rest = 46 + l.a.r + l.b.r;
+          var rest = LINK_REST + l.a.r + l.b.r;
           force = (len - rest) * 0.09;
           if (force > 12) force = 12;
           var sx = (dx / len) * force, sy = (dy / len) * force;
@@ -145,8 +147,8 @@
         for (i = 0; i < nodes.length; i++) {
           n = nodes[i];
           if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
-          n.vx -= n.x * 0.055;
-          n.vy -= n.y * 0.055;
+          n.vx -= n.x * 0.022;
+          n.vy -= n.y * 0.022;
           n.x += n.vx * a;
           n.y += n.vy * a;
           n.vx *= 0.72;
@@ -160,7 +162,7 @@
           n = nodes[i];
           for (j = i + 1; j < nodes.length; j++) {
             m = nodes[j];
-            var want = n.r + m.r + 4;
+            var want = n.r + m.r + NODE_GAP;
             dx = m.x - n.x; dy = m.y - n.y;
             d2 = dx * dx + dy * dy;
             if (d2 >= want * want || d2 === 0) continue;
@@ -173,7 +175,7 @@
         }
       }
     }
-    simulate(400);
+    simulate(520);
 
     // ---- svg ---------------------------------------------------------
     var svg = el('svg', { class: 'jg-svg', xmlns: SVG_NS });
@@ -257,17 +259,31 @@
       var r = svg.getBoundingClientRect();
       return { w: r.width || mount.clientWidth || 800, h: r.height || 520 };
     }
-    /* Fit the whole map, once, and whenever the box changes size. */
-    function fit() {
+    /* The smallest a character icon may be drawn at when the map first
+       opens. Fitting 170-odd nodes into a phone-width box mathematically
+       cannot leave them legible — it lands around 8px, which is the "grouped
+       so tight together it's hard to read" complaint. So the opening view is
+       allowed to overflow: it zooms only as far out as MIN_ICON_PX and lets
+       the reader pan. Pinching out past this is still fine (minimum zoom is
+       0.15); the floor governs the default view, not what the reader may do. */
+    var MIN_ICON_PX = 26;
+    var medianR = nodes.map(function (n) { return n.r; })
+      .sort(function (a, b) { return a - b; })[Math.floor(nodes.length / 2)] || 14;
+
+    /* Fit the map, once, and whenever the box changes size.
+       fit({all: true}) ignores the legibility floor and really does show
+       everything, however small that ends up. */
+    function fit(o) {
       var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       nodes.forEach(function (n) {
         minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
         minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r);
       });
       var s = size();
-      var pad = 24;
+      var pad = 20;
       var k = Math.min((s.w - pad * 2) / (maxX - minX || 1),
                        (s.h - pad * 2) / (maxY - minY || 1));
+      if (!(o && o.all)) k = Math.max(k, MIN_ICON_PX / (medianR * 2));
       view.k = Math.max(0.15, Math.min(k, 2));
       view.x = s.w / 2 - ((minX + maxX) / 2) * view.k;
       view.y = s.h / 2 - ((minY + maxY) / 2) * view.k;
@@ -566,6 +582,7 @@
       focus: focus,
       filter: filter,
       fit: fit,
+      fitAll: function () { select(null); fit({ all: true }); },
       select: function (id) { return id ? focus(id) : select(null); },
       nodeCount: nodes.length,
       edgeCount: links.length,
