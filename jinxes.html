@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jinxes — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Every jinx on the BOTC HomeBrew Wiki, as a searchable list and an interactive map of which fan-made Blood on the Clocktower characters are jinxed with which.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Jinxes">
+<meta property="og:description" content="Every jinx on the wiki, as a searchable list and an interactive relationship map.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  /* Page-local: the map and its furniture. Everything reusable (the picker
+     dropdown, the jinx pair rows) lives in styles.css. */
+  .jg-wrap { position: relative; margin: 0 0 10px; }
+  .jg-stage {
+    position: relative; width: 100%; height: clamp(360px, 62vh, 680px);
+    background: var(--parch); background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 4px solid var(--parch-frame);
+    overflow: hidden; touch-action: none; cursor: grab;
+  }
+  .jg-stage:active { cursor: grabbing; }
+  .jg-svg { display: block; width: 100%; height: 100%; }
+  .jg-edge { stroke-width: 1.4; stroke-opacity: .5; }
+  .jg-edge.jg-lit { stroke-width: 2.6; stroke-opacity: .95; }
+  .jg-edge.jg-dim { stroke-opacity: .07; }
+  .jg-node { cursor: pointer; }
+  .jg-ring { stroke-width: 2.5; }
+  .jg-node.jg-sel .jg-ring { stroke-width: 4.5; }
+  .jg-node.jg-dim { opacity: .13; }
+  .jg-node:focus { outline: none; }
+  .jg-node:focus .jg-ring { stroke-dasharray: 3 2; }
+
+  .jg-tip {
+    position: absolute; z-index: 12; max-width: 260px; pointer-events: none;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(40,12,30,.3); padding: 7px 10px;
+    font-family: 'Trade Gothic', sans-serif; font-size: .8rem; color: #5b4632;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .jg-tip strong { font-family: 'Oswald', sans-serif; color: var(--maroon); font-size: .88rem; }
+  .jg-tip-text { font-family: 'EB Garamond', serif; font-style: italic; font-size: .86rem; line-height: 1.25; }
+
+  .jg-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 10px; }
+  .jg-bar input[type="search"] {
+    flex: 1 1 190px; min-width: 0; padding: 7px 10px;
+    border: 1px solid var(--parch-frame); background: #fffdf8;
+    font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
+  }
+  .jg-legend {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    margin: 8px 0 0; font-family: 'Trade Gothic', sans-serif;
+    font-size: .76rem; color: var(--parch); opacity: .8;
+  }
+  .jg-legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .jg-swatch { width: 16px; height: 0; border-top: 2.5px solid; }
+  /* These sit on the purple page background, not on parchment, so they
+     take the light ink .type-header uses rather than the dark body ink. */
+  .jg-hint { margin: 6px 0 0; font-size: .78rem; font-family: 'Trade Gothic', sans-serif; color: var(--parch); opacity: .72; }
+
+  /* Detail panel: slides over the map on a phone, sits beside it on a desktop. */
+  .jg-panel {
+    position: absolute; right: 0; top: 0; bottom: 0; width: min(330px, 86%);
+    z-index: 14; overflow-y: auto; padding: 14px 16px;
+    background: #fffdf8; border-left: 3px solid var(--parch-frame);
+    box-shadow: -8px 0 22px rgba(40,12,30,.18);
+  }
+  .jg-panel[hidden] { display: none; }
+  .jg-panel-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 4px; }
+  .jg-panel-ico { width: 46px; height: 46px; object-fit: contain; flex: none; }
+  .jg-panel h3 { margin: 0; font-family: 'Oswald', sans-serif; font-size: 1.05rem; color: var(--maroon); }
+  .jg-panel-meta { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .7; }
+  .jg-panel-close {
+    position: absolute; top: 8px; right: 10px; background: none; border: 0;
+    font-size: 1.2rem; line-height: 1; cursor: pointer; color: #726348;
+  }
+  .jg-panel-jinx { padding: 9px 0; border-top: 1px solid #eadfc6; }
+  .jg-panel-jinx a { font-family: 'Oswald', sans-serif; font-weight: 600; text-decoration: none; font-size: .95rem; }
+  .jg-panel-jinx a.good { color: var(--good-name); }
+  .jg-panel-jinx a.evil { color: var(--evil); }
+  .jg-panel-jinx a:hover { text-decoration: underline; }
+  .jg-panel-jinx p { margin: 2px 0 0; font-family: 'EB Garamond', serif; font-style: italic; font-size: .95rem; line-height: 1.3; }
+  /* On a phone a side panel covers the whole map, so the reader loses sight
+     of what they just tapped. Become a bottom sheet instead: the map stays
+     visible above it, and the sheet is only as tall as it needs to be. */
+  @media (max-width: 620px) {
+    .jg-panel {
+      left: 0; right: 0; top: auto; bottom: 0; width: auto;
+      max-height: 58%; border-left: 0; border-top: 3px solid var(--parch-frame);
+      box-shadow: 0 -8px 22px rgba(40,12,30,.22);
+    }
+  }
+
+  .jx-panel {
+    background-color: var(--parch);
+    background-image: url('assets/parchment.jpg');
+    background-size: cover;
+    border: 4px solid var(--parch-frame);
+    padding: 24px 28px;
+    color: var(--ink);
+  }
+  @media (max-width: 620px) { .jx-panel { padding: 16px 14px; } }
+
+  /* The list below the map */
+  .jx-list-char { margin: 0 0 22px; }
+  .jx-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+  .jx-list-head img { width: 42px; height: 42px; object-fit: contain; flex: none; }
+  .jx-list-head a { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.06rem; color: var(--maroon); text-decoration: none; }
+  .jx-list-head a:hover { text-decoration: underline; }
+  .jx-list-count { font-family: 'Trade Gothic', sans-serif; font-size: .76rem; opacity: .6; }
+  .jx-list-body { border-left: 2px solid var(--parch-frame); padding-left: 12px; margin-left: 20px; }
+
+  .jx-form { display: grid; gap: 10px; max-width: 640px; }
+  .jx-form label { font-family: 'Trade Gothic', sans-serif; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: #5b4632; display: block; margin-bottom: 3px; }
+  .jx-form input, .jx-form select, .jx-form textarea {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--parch-frame);
+    background: #fffdf8; font-family: 'Trade Gothic', sans-serif; font-size: .9rem; color: #5b4632;
+  }
+  .jx-form textarea { min-height: 74px; font-family: 'EB Garamond', serif; font-size: 1rem; }
+  .jx-form-row { display: grid; grid-template-columns: 1fr 130px; gap: 10px; align-items: end; }
+  .jx-msg { font-family: 'Trade Gothic', sans-serif; font-size: .85rem; margin: 0; }
+  .jx-msg.err { color: var(--evil); }
+  .jx-msg.ok { color: #2f6f3f; }
+  @media (max-width: 620px) {
+    .jx-form-row { grid-template-columns: 1fr; }
+    .jx-list-body { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Jinxes</h1>
+    <p>Every jinx on the wiki — which characters do not get along, and what happens when they meet</p>
+  </div>
+
+  <main class="home-panel">
+
+    <section class="landing-section">
+      <h2 class="type-header">The Map</h2>
+      <div class="type-rule"></div>
+      <p class="jg-hint" id="jg-summary">Loading the map…</p>
+
+      <div class="jg-bar">
+        <input type="search" id="jg-search" placeholder="Find a character on the map…" autocomplete="off" aria-label="Find a character on the map">
+        <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
+        <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
+      </div>
+
+      <div class="jg-wrap">
+        <div class="jg-stage" id="jg-stage"></div>
+        <aside class="jg-panel" id="jg-panel" hidden aria-live="polite">
+          <button type="button" class="jg-panel-close" id="jg-panel-close" aria-label="Close">&times;</button>
+          <div id="jg-panel-body"></div>
+        </aside>
+      </div>
+
+      <div class="jg-legend">
+        <span><i class="jg-swatch" style="border-color:#2f6fb8"></i> Jinx on a good character</span>
+        <span><i class="jg-swatch" style="border-color:#9a0d12"></i> Jinx on an evil character</span>
+        <span><i class="jg-swatch" style="border-color:#8a7a5c"></i> Grey ring = official character</span>
+      </div>
+      <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom.</p>
+    </section>
+
+    <section class="landing-section" id="jx-add-section" hidden>
+      <h2 class="type-header">Add a Jinx</h2>
+      <div class="type-rule"></div>
+      <p class="jg-hint" style="margin-bottom:12px">A jinx belongs to both characters, so you only need to own one of them. It is saved on your character and appears on both pages.</p>
+      <div class="jx-panel">
+      <form class="jx-form" id="jx-form">
+        <div>
+          <label for="jx-mine">Your character</label>
+          <select id="jx-mine"></select>
+        </div>
+        <div class="jx-form-row">
+          <div>
+            <label for="jx-other">Jinxed with</label>
+            <input type="text" id="jx-other" placeholder="Search official and wiki characters…" autocomplete="off">
+          </div>
+          <div>
+            <label for="jx-align">Shown as</label>
+            <select id="jx-align">
+              <option value="good">Good</option>
+              <option value="evil">Evil</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="jx-text">The rule</label>
+          <textarea id="jx-text" placeholder="If the Widow is in play, …"></textarea>
+        </div>
+        <div>
+          <button type="submit" class="btn" id="jx-save">Save jinx</button>
+        </div>
+        <p class="jx-msg" id="jx-msg" hidden></p>
+      </form>
+      </div>
+    </section>
+
+    <section class="landing-section">
+      <h2 class="type-header">Every Jinx</h2>
+      <div class="type-rule"></div>
+      <div class="jg-bar">
+        <input type="search" id="jx-list-search" placeholder="Search names and rule text…" autocomplete="off" aria-label="Search jinxes">
+        <button type="button" class="filter-chip" id="jx-list-homebrew">Between wiki characters only</button>
+      </div>
+      <p class="jg-hint" id="jx-list-count"></p>
+      <div class="jx-panel">
+        <div id="jx-list"><p style="opacity:.7">Loading jinxes…</p></div>
+      </div>
+    </section>
+
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/jinx-graph.js"></script>
+  <script src="assets/jinx-picker.js"></script>
+  <script>
+    /* /jinxes — the whole jinx picture in one place.
+
+       Everything on this page is built from GET /api/jinxes, which returns
+       {nodes, edges}: every wiki character that takes part in a jinx, plus
+       the official characters they are jinxed with, and one edge per jinx.
+       The map and the list are two views of that same payload, so they can
+       never disagree about what the wiki says.
+
+       The "Add a Jinx" section only appears for a logged-in account that
+       owns at least one character — the Worker is the real gate
+       (POST /api/jinx re-checks ownership), this just avoids showing a form
+       that could only fail. */
+    (function () {
+      'use strict';
+
+      var $ = function (id) { return document.getElementById(id); };
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      var DATA = null, GRAPH = null, NODE = {};
+      var homebrewOnly = false, listHomebrewOnly = false, listQuery = '';
+
+      // ---------- the map ----------
+      function buildGraph() {
+        if (!window.mountJinxGraph) return;
+        GRAPH = window.mountJinxGraph({
+          mount: 'jg-stage',
+          data: DATA,
+          onSelect: showPanel
+        });
+        if (!GRAPH) {
+          $('jg-summary').textContent = 'No jinxes to map yet.';
+          return;
+        }
+        $('jg-summary').textContent =
+          GRAPH.nodeCount + ' characters, ' + GRAPH.edgeCount + ' jinxes between them.';
+      }
+
+      function showPanel(sel) {
+        var panel = $('jg-panel');
+        if (!sel) { panel.hidden = true; return; }
+        var n = sel.node;
+        var meta = n.official ? 'Official character'
+          : ((n.team ? n.team.charAt(0).toUpperCase() + n.team.slice(1) : '') +
+             (n.creator ? ' · ' + n.creator : ''));
+        var html =
+          '<div class="jg-panel-head">' +
+            (n.icon ? '<img class="jg-panel-ico" src="' + esc(n.icon) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+            '<div><h3>' + esc(n.name) + '</h3>' +
+            '<span class="jg-panel-meta">' + esc(meta) + '</span></div>' +
+          '</div>' +
+          '<p style="margin:6px 0 2px"><a href="' + esc(n.href) + '"' +
+            (n.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
+            (n.official ? 'View on the official wiki →' : 'Open this page →') + '</a></p>';
+        sel.jinxes.forEach(function (j) {
+          html += '<div class="jg-panel-jinx">' +
+            '<a class="' + (j.align === 'evil' ? 'evil' : 'good') + '" href="' + esc(j.with.href) + '"' +
+            (j.with.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
+            esc(j.with.name) + '</a>' +
+            '<p>' + esc(j.text) + '</p></div>';
+        });
+        $('jg-panel-body').innerHTML = html;
+        panel.hidden = false;
+      }
+
+      $('jg-panel-close').addEventListener('click', function () {
+        $('jg-panel').hidden = true;
+        if (GRAPH) GRAPH.select(null);
+      });
+
+      $('jg-search').addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        if (!q || !GRAPH) return;
+        for (var i = 0; i < DATA.nodes.length; i++) {
+          if (DATA.nodes[i].name.toLowerCase().indexOf(q) === 0) {
+            GRAPH.focus(DATA.nodes[i].id);
+            return;
+          }
+        }
+      });
+
+      $('jg-f-homebrew').addEventListener('click', function () {
+        homebrewOnly = !homebrewOnly;
+        this.classList.toggle('active', homebrewOnly);
+        if (GRAPH) GRAPH.filter(homebrewOnly ? function (n) { return !n.official; } : null);
+      });
+
+      $('jg-f-reset').addEventListener('click', function () {
+        if (!GRAPH) return;
+        GRAPH.select(null);
+        GRAPH.fit();
+        $('jg-panel').hidden = true;
+      });
+
+      // ---------- the list ----------
+      /* Grouped by the wiki character that carries the jinx, because that is
+         the page the reader would go to next. An edge whose two ends are both
+         wiki characters is listed under the one that declares it — the index
+         already de-duplicates the pair, so it appears once. */
+      function renderList() {
+        var groups = {};
+        DATA.edges.forEach(function (e) {
+          var a = NODE[e.a], b = NODE[e.b];
+          if (!a || !b) return;
+          if (listHomebrewOnly && (a.official || b.official)) return;
+          if (listQuery) {
+            var hay = (a.name + ' ' + b.name + ' ' + e.text).toLowerCase();
+            if (hay.indexOf(listQuery) === -1) return;
+          }
+          // Group under the wiki character; a is always one by construction.
+          (groups[a.id] = groups[a.id] || { node: a, rows: [] }).rows.push({ other: b, e: e });
+        });
+
+        var keys = Object.keys(groups).sort(function (x, y) {
+          return groups[x].node.name.toLowerCase().localeCompare(groups[y].node.name.toLowerCase());
+        });
+
+        var total = 0;
+        keys.forEach(function (k) { total += groups[k].rows.length; });
+        $('jx-list-count').textContent = total
+          ? total + ' jinx' + (total === 1 ? '' : 'es') + ' across ' + keys.length +
+            ' character' + (keys.length === 1 ? '' : 's') + '.'
+          : '';
+
+        if (!keys.length) {
+          $('jx-list').innerHTML = '<p style="opacity:.7">No jinx matches that.</p>';
+          return;
+        }
+
+        var html = '';
+        keys.forEach(function (k) {
+          var g = groups[k];
+          html += '<div class="jx-list-char">' +
+            '<div class="jx-list-head">' +
+              (g.node.icon ? '<img loading="lazy" decoding="async" src="' + esc(g.node.icon) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+              '<a href="' + esc(g.node.href) + '">' + esc(g.node.name) + '</a>' +
+              '<span class="jx-list-count">' + g.rows.length + ' jinx' + (g.rows.length === 1 ? '' : 'es') + '</span>' +
+            '</div><div class="jx-list-body">';
+          g.rows.forEach(function (r) {
+            html += '<div class="jinx">' +
+              (r.other.icon ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(r.other.icon) + '" alt="" onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">' : '') +
+              '<div class="jbody">' +
+              '<a class="jname ' + (r.e.align === 'evil' ? 'evil' : 'good') + '" href="' + esc(r.other.href) + '"' +
+              (r.other.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
+              esc(r.other.name) + '</a>' +
+              '<span class="jtext">' + esc(r.e.text) + '</span></div></div>';
+          });
+          html += '</div></div>';
+        });
+        $('jx-list').innerHTML = html;
+      }
+
+      var listTimer = null;
+      $('jx-list-search').addEventListener('input', function () {
+        var v = this.value.trim().toLowerCase();
+        clearTimeout(listTimer);
+        listTimer = setTimeout(function () { listQuery = v; renderList(); }, 140);
+      });
+      $('jx-list-homebrew').addEventListener('click', function () {
+        listHomebrewOnly = !listHomebrewOnly;
+        this.classList.toggle('active', listHomebrewOnly);
+        renderList();
+      });
+
+      // ---------- add a jinx ----------
+      /* Shown only when the reader has a character to hang a jinx off. The
+         Worker checks ownership again on POST — this is convenience, not
+         security. */
+      function setupForm() {
+        fetch('/api/account', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (acct) {
+            var chars = (acct && acct.characters) || [];
+            if (!chars.length) return;
+            var sel = $('jx-mine');
+            chars.slice().sort(function (a, b) {
+              return String(a.name || '').localeCompare(String(b.name || ''));
+            }).forEach(function (c) {
+              var o = document.createElement('option');
+              o.value = c.slug;
+              o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '');
+              sel.appendChild(o);
+            });
+            $('jx-add-section').hidden = false;
+            if (window.mountJinxPicker) window.mountJinxPicker($('jx-other'));
+          })
+          .catch(function () { /* logged out: the form stays hidden */ });
+      }
+
+      function msg(text, kind) {
+        var m = $('jx-msg');
+        m.textContent = text;
+        m.className = 'jx-msg' + (kind ? ' ' + kind : '');
+        m.hidden = !text;
+      }
+
+      $('jx-form').addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var other = $('jx-other');
+        var body = {
+          from: $('jx-mine').value,
+          align: $('jx-align').value,
+          text: $('jx-text').value.trim()
+        };
+        if (other.dataset.slug) body.toSlug = other.dataset.slug;
+        else if (other.dataset.id) body.toId = other.dataset.id;
+        else { msg('Pick the other character from the list so the jinx points at a real page.', 'err'); return; }
+        if (!body.text) { msg('Add the rule text.', 'err'); return; }
+
+        $('jx-save').disabled = true;
+        msg('Saving…');
+        fetch('/api/jinx', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            $('jx-save').disabled = false;
+            if (!res.ok || res.d.error) { msg(res.d.error || 'Could not save that jinx.', 'err'); return; }
+            msg('Saved. It is on both character pages now — reload to see it on the map.', 'ok');
+            $('jx-text').value = '';
+          })
+          .catch(function () {
+            $('jx-save').disabled = false;
+            msg('Could not reach the server. Try again in a moment.', 'err');
+          });
+      });
+
+      // ---------- go ----------
+      fetch('/api/jinxes', { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          DATA = d || { nodes: [], edges: [] };
+          DATA.nodes.forEach(function (n) { NODE[n.id] = n; });
+          if (!DATA.edges.length) {
+            $('jg-summary').textContent = 'No jinxes on the wiki yet.';
+            $('jx-list').innerHTML = '<p style="opacity:.7">No jinxes yet. Add the first one above.</p>';
+          } else {
+            buildGraph();
+            renderList();
+          }
+          setupForm();
+        })
+        .catch(function () {
+          $('jg-summary').textContent = 'Could not load the jinx list.';
+          $('jx-list').innerHTML = '<p style="opacity:.7">Could not load the jinx list.</p>';
+        });
+    })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

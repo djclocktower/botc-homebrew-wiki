@@ -118,6 +118,12 @@
           <p class="browse-card-desc">Wincon, Setup, Mobility, Public Action — find characters by mechanic.</p>
           <span class="browse-card-count" id="bc-tag">—</span>
         </a>
+        <a class="browse-card" href="jinxes">
+          <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18.5" r="2.6"/><path d="M7.4 7.3 9.9 16.3"/><path d="M16.6 7.3 14.1 16.3"/><path d="M7.6 6h8.8"/></svg></div>
+          <h3 class="browse-card-title">Jinxes</h3>
+          <p class="browse-card-desc">Which characters do not get along — as a list and an interactive map.</p>
+          <span class="browse-card-count" id="bc-jinx">—</span>
+        </a>
         <a class="browse-card" href="script">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></div>
           <h3 class="browse-card-title">Script Builder</h3>
@@ -435,6 +441,12 @@
           });
         });
         document.getElementById('bc-tag').textContent = Object.keys(tagSet).length + ' tags';
+        // Jinx count: characters carrying at least one. The card feed keeps
+        // `jinxes` (see CARD_DROP_FIELDS in worker.js), so this needs no
+        // second request.
+        var nJinxed = list.filter(function(c){ return c.jinxes && c.jinxes.length; }).length;
+        document.getElementById('bc-jinx').textContent =
+          nJinxed ? nJinxed + ' jinxed characters' : 'See the map';
 
         // ── Recently added (last 8 in array order) ────────────
         // Partial (unfinished) pages stay off the front page.
