@@ -266,15 +266,27 @@
     return html;
   }
 
-  function renderJinxGroup(entries) {
+  /* Both sides of a script jinx are characters on this roster, so each one
+     gets its icon and a link to its page — the same treatment the /c/ page's
+     jinx box gives, rather than the bare text pair this used to print. */
+  function renderJinxGroup(entries, root) {
+    root = root || '';
     var findScriptJinxes = dep('findScriptJinxes');
     var jinxes = findScriptJinxes ? findScriptJinxes(entries) : [];
     if (!jinxes.length) return '';
     var html = '<div class="script-team-group" id="sec-jinxes"><h3 class="script-team-head">Jinxes <span class="script-team-count">(' + jinxes.length + ')</span></h3>' +
       '<div class="script-char-list">';
+    function side(c) {
+      return '<a class="jx-pair-side" href="' + esc(charHref(c, root)) + '">' +
+        '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' + esc(artSrc(c, root)) + '" alt=""' +
+        ' onerror="this.style.display=\'none\'">' +
+        '<span class="jx-pair-name">' + esc(c.name) + '</span></a>';
+    }
     jinxes.forEach(function (j) {
-      html += '<div class="script-char-row"><div class="script-char-text">' +
-        '<span class="script-char-name">' + esc(j.a.name) + ' ↔ ' + esc(j.b.name) + '</span>' +
+      html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
+        '<span class="script-char-name jx-pair">' +
+          side(j.a) + '<span class="jx-pair-link">&harr;</span>' + side(j.b) +
+        '</span>' +
         '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
     });
     return html + '</div></div>';
@@ -462,7 +474,7 @@
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root) +
-      renderJinxGroup(cfg.entries) + '</div>';
+      renderJinxGroup(cfg.entries, root) + '</div>';
     main += renderNightOrder(cfg.entries, root);
     if (cfg.missing && cfg.missing.length) {
       main += '<p class="script-missing">⚠ ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
@@ -533,7 +545,7 @@
     var chars = '<section class="coll-chars" id="sec-characters">' + count +
       '<div id="coll-grid">' + renderRosterCards(cfg.entries, root, cfg.orderMap) + '</div></section>';
 
-    var jinx = renderJinxGroup(cfg.entries);
+    var jinx = renderJinxGroup(cfg.entries, root);
     var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
 
     return top + meta + prosePanel + filters + chars + jinxPanel;

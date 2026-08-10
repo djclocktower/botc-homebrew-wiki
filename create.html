@@ -358,6 +358,7 @@
   <script src="assets/art-normalize.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
+  <script src="assets/jinx-picker.js"></script>
   <script>
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
@@ -374,6 +375,28 @@
           }
         });
         window.setOfficialIconUrls(m);
+        var names = {};
+        (roles || []).forEach(function (r) {
+          if (!r || !r.name) return;
+          names[window.slugId(r.id)] = r.name;
+          names[window.slugId(r.name)] = r.name;
+        });
+        window.setOfficialNames(names);
+        if (typeof update === 'function') update();
+      }).catch(function () {});
+    // This wiki's own characters, so a jinx with another homebrew page shows
+    // its art and links to /c/ instead of falling back to plain text.
+    fetch(SITE_ROOT + 'characters.json?fields=card').then(function (r) { return r.json(); })
+      .then(function (list) {
+        var w = {};
+        (list || []).forEach(function (c) {
+          if (!c || !c.slug) return;
+          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
+          [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function (k) {
+            if (k && !w[k]) w[k] = row;
+          });
+        });
+        window.setWikiChars(w);
         if (typeof update === 'function') update();
       }).catch(function () {});
     var artDataURL   = null;
@@ -381,7 +404,24 @@
     var importedImage = null;
 
     // ── jinx rows ──────────────────────────────────────────────────
-    function addJinx(name, align, text) {
+    // A jinx entry can arrive as the editor's {name, align, text} or as
+    // official-schema {id, reason}. One shape in, one shape out.
+    function normalizeJinx(j) {
+      var nm = (j.name || '').trim();
+      if (!nm && window.resolveJinxTarget) {
+        nm = window.resolveJinxTarget({ id: j.id || '', slug: j.slug || '' }, '').name || '';
+      }
+      if (!nm) nm = j.id || '';
+      return {
+        name: nm,
+        align: j.align === 'evil' ? 'evil' : 'good',
+        text: j.text || j.reason || '',
+        slug: j.slug || '',
+        id: j.id || ''
+      };
+    }
+
+    function addJinx(name, align, text, slug, id) {
       var row = document.createElement('div');
       row.className = 'jinx-row';
       row.innerHTML =
@@ -390,7 +430,8 @@
         '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
-      if (name)  row.querySelector('.jx-name').value  = name;
+      if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
+      else if (name) row.querySelector('.jx-name').value = name;
       if (align) row.querySelector('.jx-align').value = align;
       if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
@@ -400,6 +441,7 @@
         ta.addEventListener('input', function() { autoExpand(ta); });
         autoExpand(ta);
       });
+      if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
@@ -441,9 +483,16 @@
     function gather() {
       var jinxes = [];
       document.querySelectorAll('.jinx-row').forEach(function (r) {
-        var n = r.querySelector('.jx-name').value.trim();
-        if (n) jinxes.push({ name: n, align: r.querySelector('.jx-align').value,
-                             text: r.querySelector('.jx-text').value.trim() });
+        var f = r.querySelector('.jx-name');
+        var n = f.value.trim();
+        if (!n) return;
+        // The picker records WHICH character was chosen; a hand-typed name
+        // carries neither and is matched by name the old way.
+        var j = { name: n, align: r.querySelector('.jx-align').value,
+                  text: r.querySelector('.jx-text').value.trim() };
+        if (f.dataset.slug) j.slug = f.dataset.slug;
+        else if (f.dataset.id) j.id = f.dataset.id;
+        jinxes.push(j);
       });
       return {
         name: $('name').value.trim(),
@@ -667,7 +716,13 @@
       set('remindersGlobal', (obj.remindersGlobal || []).join('\n'));
       $('setup').checked = !!obj.setup;
       document.querySelectorAll('.jinx-row').forEach(function (r) { r.remove(); });
-      (obj.jinxes || []).forEach(function (j) { addJinx(j.id || '', 'good', j.reason || ''); });
+      // Official-schema JSON carries {id, reason}. The id is a slug, not a
+      // name — putting it straight in the name field is what produced pages
+      // reading "pithag". Keep it as the id and let the renderer name it.
+      (obj.jinxes || []).forEach(function (j) {
+        var n = normalizeJinx(j);
+        addJinx(n.name, n.align, n.text, n.slug, n.id);
+      });
       if (!(obj.jinxes || []).length) addJinx();
       var imgUrl = Array.isArray(obj.image) ? obj.image[0] : obj.image;
       var msg = $('importmsg');

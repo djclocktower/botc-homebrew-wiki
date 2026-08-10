@@ -55,12 +55,23 @@
     'snakecharmer':'Snake Charmer','villageidiot':'Village Idiot',
     'banxian_festival_of_lanterns':'Ban Xian','pedant_festival_of_lanterns':'Pedant'
   };
+  /* An id with no name behind it: `cadenza_the_academy` used to render as
+     "Cadenza_the_academy" because the fallback only capitalised the first
+     letter. Split on the separators, drop the collection suffix that bulk
+     imports tack on, and title-case what is left. */
+  function prettifyJinxId(id) {
+    var parts = String(id || '').split(/[_-]+/).filter(Boolean);
+    if (!parts.length) return '';
+    // `mystic_the_academy`, `zuggtmoy_travelbythestarlight` \u2014 the leading
+    // segment is the character, the rest is where it came from.
+    var name = parts[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
   function jinxDisplayName(j) {
     if (j.name && j.name.trim()) return j.name.trim();
     var id = j.id || '';
     if (JINX_ID_NAMES[id]) return JINX_ID_NAMES[id];
-    // Fallback: capitalise first letter
-    return id ? id[0].toUpperCase() + id.slice(1) : id;
+    return prettifyJinxId(id) || id;
   }
 
   function slugId(name) {
@@ -79,6 +90,93 @@
     if (!OFFICIAL_ICON_URLS || !id) return '';
     var u = OFFICIAL_ICON_URLS[slugId(id)];
     return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
+  }
+
+  /* Official display names, keyed the same way. Jinx names are typed by hand,
+     so the wiki carries "leviathan", "pithag" and "plaguedoctor" where it
+     means Leviathan, Pit-Hag and Plague Doctor. When the target is an
+     official character, its real name wins over whatever was typed — the same
+     courtesy the icon already gets. Optional: unset, the typed text stands. */
+  var OFFICIAL_NAMES = null;
+  function setOfficialNames(map) { OFFICIAL_NAMES = map || null; }
+  function officialName(id) {
+    if (!OFFICIAL_NAMES || !id) return '';
+    var n = OFFICIAL_NAMES[slugId(id)];
+    return (typeof n === 'string' && n) ? n : '';
+  }
+
+  /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
+     jinx naming another homebrew page can find it. Same injection pattern as
+     the official icon map: the Worker sets it for SSR, the editors set it from
+     characters.json. Unset, jinx rendering is exactly what it was before —
+     official characters resolve, homebrew ones fall back to plain text. */
+  var WIKI_CHARS = null;
+  function setWikiChars(map) { WIKI_CHARS = map || null; }
+  function wikiChar(key) {
+    if (!WIKI_CHARS || !key) return null;
+    var c = WIKI_CHARS[key];
+    return (c && c.slug) ? c : null;
+  }
+  /* A wiki character's icon. Mirrors artSrc() in render-page.js: `art` is a
+     path under /assets (R2-backed), `image` is an absolute URL from a bulk
+     import, and a page may carry either or both. */
+  function wikiCharIcon(c, root) {
+    if (!c) return '';
+    if (c.art) return root + 'assets/' + c.art;
+    if (typeof c.image === 'string' && c.image) return c.image;
+    if (Array.isArray(c.image) && c.image[0]) return c.image[0];
+    return '';
+  }
+
+  /* ── Where does a jinx entry point? ──────────────────────────────────
+     One answer for every consumer: the /c/ page box, the script and
+     collection jinx lists, and the /jinxes index. Returns
+     {name, href, iconSrc, external, slug, team}.
+
+     Order matters, and official comes before this wiki deliberately: 291 of
+     the 319 jinxes live on the site name an official character, and a
+     homebrew page that happens to share a name (there is more than one
+     "Sculptor") must not steal their link. An entry written by the jinx
+     picker carries an explicit `slug`, which skips the guessing entirely. */
+  function resolveJinxTarget(j, root) {
+    root = root || '';
+    var nm = jinxDisplayName(j);
+    var rawId = j.id || slugId(j.name || '');
+    var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
+
+    // 1. An explicit slug from the picker — unambiguous, no name matching.
+    if (j.slug) {
+      var pick = wikiChar(normJinxId(j.slug));
+      if (pick) {
+        return { name: pick.name || nm, href: root + 'c/' + pick.slug,
+                 iconSrc: wikiCharIcon(pick, root), external: false,
+                 slug: pick.slug, team: pick.team || '' };
+      }
+    }
+
+    // 2. An official character keeps the official icon and the official wiki,
+    //    and takes its proper name back from roles.json.
+    var offIcon = officialIconUrl(iconId) || officialIconUrl(nm);
+    if (offIcon) {
+      var offNm = officialName(iconId) || officialName(nm) || nm;
+      return { name: offNm, href: jinxURL(offNm), iconSrc: offIcon,
+               external: true, slug: '', team: '' };
+    }
+
+    // 3. One of ours, matched by id or by name.
+    var hit = wikiChar(normJinxId(rawId)) || wikiChar(normJinxId(nm));
+    if (hit) {
+      return { name: hit.name || nm, href: root + 'c/' + hit.slug,
+               iconSrc: wikiCharIcon(hit, root), external: false,
+               slug: hit.slug, team: hit.team || '' };
+    }
+
+    // 4. Unknown: an official character whose icon map has not loaded, or a
+    //    draft, or a typo. The committed icon copy still resolves most of
+    //    these, and onerror hides it when it does not.
+    return { name: nm, href: jinxURL(nm),
+             iconSrc: iconId ? (root + 'assets/icons/' + iconId + '.png') : '',
+             external: true, slug: '', team: '' };
   }
 
   // Creator-symbol registry ("credit icons"), shared with creators.js. The
@@ -164,7 +262,10 @@
     var out = [], seen = {};
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
-        var target = byId[normJinxId(j.id || slugId(j.name || ''))];
+        // An entry written by the jinx picker names its target outright; the
+        // older ones have to be matched by id or by name.
+        var target = (j.slug && byId[normJinxId(j.slug)]) ||
+          byId[normJinxId(j.id || slugId(j.name || ''))];
         if (!target || target === c) return;
         var text = j.text || j.reason || '';
         var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
@@ -316,21 +417,22 @@
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
     var jinxItems = jinxes.map(function (j) {
       var al = (j.align === 'evil') ? 'evil' : 'good';
-      var nm = jinxDisplayName(j);
-      var rawId = j.id || slugId(j.name || '');
-      var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-      // Prefer the official icon (release CDN, via roles.json) for official
-      // characters; fall back to the committed assets/icons copy otherwise.
-      var iconSrc = officialIconUrl(iconId) || officialIconUrl(nm) ||
-        (root + 'assets/icons/' + iconId + '.png');
-      return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
-        (iconId ? '<img loading="lazy" decoding="async" class="jico" src="' + iconSrc + '" alt=""' +
+      var t = resolveJinxTarget(j, root);
+      // A mirrored jinx is stored on the OTHER character's page. It reads the
+      // same, but the line underneath says where to go to edit it.
+      var from = (j.mirrored && j.mirroredFrom) ?
+        '<span class="jfrom">declared on <a href="' + esc(root + 'c/' + j.mirroredFrom.slug) +
+        '">' + esc(j.mirroredFrom.name) + '</a></span>' : '';
+      return '<div class="jinx' + (t.iconSrc ? '' : ' noicon') + '">' +
+        (t.iconSrc ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(t.iconSrc) + '" alt=""' +
         ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
         : '') +
         '<div class="jbody">' +
-        '<a class="jname ' + al + '" href="' + jinxURL(nm) +
-        '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
-        '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
+        '<a class="jname ' + al + '" href="' + esc(t.href) + '"' +
+        (t.external ? ' target="_blank" rel="noopener noreferrer"' : '') +
+        '>' + esc(t.name) + '</a>' +
+        '<span class="jtext">' + esc(j.text || j.reason || '') + '</span>' +
+        from + '</div></div>';
     }).join('');
 
     // Two ways to show jinxes: a floating box in the sidebar (default) or a
@@ -545,7 +647,11 @@
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
     window.findScriptJinxes = findScriptJinxes;
+    window.resolveJinxTarget = resolveJinxTarget;
+    window.normJinxId = normJinxId;
     window.setOfficialIconUrls = setOfficialIconUrls;
+    window.setOfficialNames = setOfficialNames;
+    window.setWikiChars = setWikiChars;
     window.setCreators = setCreators;
     window.setStarMark = setStarMark;
     window.creatorSymbol = creatorSymbol;
@@ -558,7 +664,9 @@
       buildSchema: buildSchema, schemaJSON: schemaJSON,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
-      setOfficialIconUrls: setOfficialIconUrls,
+      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
+      setOfficialNames: setOfficialNames,
       setCreators: setCreators, setStarMark: setStarMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
       splitCreators: splitCreators

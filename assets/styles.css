@@ -223,6 +223,17 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .jname:hover { text-decoration: underline; }
 .jname.good { color: var(--good-name); } .jname.evil { color: var(--evil); }
 .jtext { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.02rem; line-height: 1.28; color: var(--ink); }
+/* A jinx stored on the OTHER character's page: same rule, but the line says
+   where to go to change it. */
+.jfrom { display: block; margin-top: 3px; font-family: 'Trade Gothic', sans-serif; font-size: .78rem; letter-spacing: .03em; text-transform: uppercase; opacity: .62; }
+.jfrom a { color: inherit; }
+
+/* Jinx pairs on script + collection pages: an icon and a link per side. */
+.jx-pair { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.jx-pair-side { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; min-width: 0; }
+.jx-pair-side:hover .jx-pair-name { text-decoration: underline; }
+.jx-pair-ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.jx-pair-link { opacity: .55; flex: none; }
 .nhead { display: block; width: 100%; max-width: 330px; height: auto; margin: 2px auto 14px; }
 .nocard { text-align: center; }
 .nsub { display: block; height: 30px; max-width: 100%; width: auto; margin: 8px auto 6px; }
@@ -2780,4 +2791,50 @@ html.textedit-on .te-live-hit {
     max-height: 70vh; overflow-y: auto;
   }
   .te-live-bar { left: 8px; right: 8px; bottom: 8px; justify-content: center; }
+}
+
+/* ============================================================
+   Jinx character picker
+   (assets/jinx-picker.js — create.html, edit.html, /jinxes)
+
+   Shared, not editor-only: the same control is used by the two
+   character editors and by the Add a jinx form on /jinxes. The
+   search box IS the field it was mounted on, so it keeps whatever
+   styling its form already gives it; only the dropdown is here.
+   ============================================================ */
+.jx-combo { position: relative; min-width: 0; }
+
+.jx-drop {
+  position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30;
+  max-height: 280px; overflow-y: auto;
+  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  box-shadow: 0 10px 22px rgba(40,12,30,.28);
+}
+.jx-group {
+  padding: 6px 10px 4px;
+  font-family: 'Trade Gothic', sans-serif; text-transform: uppercase;
+  letter-spacing: .07em; font-size: .68rem; color: #8a7a5c;
+  background: #f7f0e0; border-bottom: 1px solid #e8dfc8;
+  position: sticky; top: 0;
+}
+.jx-opt {
+  display: flex; align-items: center; gap: 9px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid #f0e8d5;
+  padding: 6px 10px;
+}
+.jx-opt:last-child { border-bottom: none; }
+.jx-opt:hover, .jx-opt.on { background: #efe7d3; }
+.jx-opt-ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.jx-opt-body { min-width: 0; display: flex; flex-direction: column; }
+.jx-opt-name {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.jx-opt-meta {
+  font-size: .73rem; color: #726348;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.jx-empty {
+  margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #726348;
 }

@@ -94,6 +94,10 @@
  *                                name): owned + credited pages, drafts for the
  *                                owner/admins
  *   GET  /api/creators        -> every creator with counts + linked account
+ *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
+ *                                the /jinxes index and its relationship graph
+ *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
+ *                                (or admin) just one of the two characters
  *   GET  /u/{username}        -> creator page (serves profile.html)
  *   GET  /author?a={name}     -> same page; 302 to /u/{username} when the name
  *                                belongs to an account
@@ -1010,6 +1014,29 @@ function sanitizeBoxes(boxes) {
     title: String((b && b.title) || '').slice(0, 120),
     content: String((b && b.content) || '').slice(0, 4000)
   })).filter(b => b.title.trim() || b.content.trim());
+}
+
+// Jinxes on a character. Everything else a user can post arrives sanitized;
+// this one used to be stored verbatim, so a malformed blob could sit in the
+// row forever. Keep the five fields the renderer reads, cap them, and drop
+// anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
+// kept: those are added on read, and a client must never be able to fake one.
+const JINX_MAX = 60;
+function sanitizeJinxes(jinxes) {
+  if (!Array.isArray(jinxes)) return [];
+  return jinxes.slice(0, JINX_MAX).map(j => {
+    const o = {
+      name: String((j && j.name) || '').slice(0, 120).trim(),
+      align: (j && j.align) === 'evil' ? 'evil' : 'good',
+      text: String((j && (j.text || j.reason)) || '').slice(0, 2000)
+    };
+    // `slug` points at a page on this wiki, `id` at an official character.
+    const slug = String((j && j.slug) || '');
+    if (/^[a-z0-9-]{1,80}$/.test(slug)) o.slug = slug;
+    const id = String((j && j.id) || '');
+    if (/^[a-z0-9_-]{1,80}$/.test(id)) o.id = id;
+    return o;
+  }).filter(j => j.name || j.slug || j.id);
 }
 
 // The fact box on a wiki page / news article: a title, an image and rows.
@@ -2219,6 +2246,149 @@ async function officialIconMap(env, origin) {
   return m;
 }
 
+// Map of slugId(id/name) -> official display name. Jinx names are typed by
+// hand, so the wiki holds "leviathan" and "plaguedoctor" where it means
+// Leviathan and Plague Doctor; resolveJinxTarget() uses this to print the
+// real name whenever the target turns out to be an official character.
+let _officialNameMapCache = null;
+async function officialNameMap(env, origin) {
+  if (_officialNameMapCache) return _officialNameMapCache;
+  const m = {};
+  for (const r of await loadOfficialRoles(env, origin)) {
+    if (!r.name) continue;
+    m[Render.slugId(r.id)] = r.name;
+    m[Render.slugId(r.name)] = r.name;
+  }
+  _officialNameMapCache = m;
+  return m;
+}
+
+// ---- the jinx index ----------------------------------------------------
+// Every jinx on the wiki as one edge list, plus the character rows the
+// renderer needs to draw them. Two things need this and neither can afford a
+// table scan of its own: a /c/ page has to know which OTHER characters
+// declare a jinx with it (jinxes are stored on one side only), and /jinxes
+// draws the whole graph.
+//
+// Cached exactly like the JSON feeds: in-isolate, and in caches.default under
+// a key carrying contentVersion(), which logActivity() bumps on every content
+// write. So it self-invalidates with no table, no migration and no rebuild
+// tooling. Cold cost is one card-feed read, the same as a collection page.
+let _jinxIndexCache = null;      // { version, index }
+async function jinxIndex(env, ctx) {
+  const version = await contentVersion(env);
+  if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
+
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  try {
+    const hit = await caches.default.match(cacheKey);
+    if (hit) {
+      const index = await hit.json();
+      _jinxIndexCache = { version, index };
+      return index;
+    }
+  } catch { /* cache miss is not an error */ }
+
+  const rows = await buildPublicJSON(env, 'characters', { fields: 'card' });
+  const index = buildJinxIndex(rows);
+  _jinxIndexCache = { version, index };
+  try {
+    const stored = new Response(JSON.stringify(index), {
+      headers: { ...JSON_HEADERS, 'Cache-Control': FEED_CACHE_CONTROL }
+    });
+    if (ctx) ctx.waitUntil(caches.default.put(cacheKey, stored).catch(() => {}));
+  } catch { /* the in-isolate copy is enough */ }
+  return index;
+}
+
+// The jinx list a /c/ page should show: its own, plus every jinx another
+// character declares with it, pointed back the other way. A mirrored entry
+// carries `mirrored` so the renderer can say where it is edited — the page
+// that stores it is the page that owns it.
+//
+// A pair that BOTH sides declare is shown once: the character's own entry
+// wins, because that is the text its owner wrote.
+function mergeMirroredJinxes(d, slug, jx) {
+  const own = Array.isArray(d.jinxes) ? d.jinxes.filter(j => j && (j.name || j.id || j.slug)) : [];
+  const inbound = (jx.bySlug && jx.bySlug[slug]) || [];
+  if (!inbound.length) return own;
+
+  // What this page already points at, so a mutual jinx is not listed twice.
+  const claimed = new Set();
+  for (const j of own) {
+    const k = (j.slug && Render.normJinxId(j.slug)) ||
+      Render.normJinxId(j.id || Render.slugId(j.name || ''));
+    if (k) claimed.add(k);
+  }
+
+  const out = own.slice();
+  for (const e of inbound) {
+    const other = jx.rows[e.from];
+    if (!other) continue;
+    if (claimed.has(Render.normJinxId(other.slug)) ||
+        claimed.has(Render.normJinxId(other.name))) continue;
+    out.push({
+      slug: other.slug, name: other.name, align: e.align, text: e.text,
+      mirrored: true, mirroredFrom: { slug: other.slug, name: other.name }
+    });
+  }
+  return out;
+}
+
+// Pure, so it can be reasoned about (and tested) without a database.
+// `chars` -> { chars: {key: row}, bySlug: {slug: [edge]}, edges: [edge] }.
+function buildJinxIndex(chars) {
+  const byKey = {};                 // normJinxId(slug|name) -> compact row
+  const bySlugRow = {};
+  for (const c of chars || []) {
+    if (!c || !c.slug) continue;
+    const row = {
+      slug: c.slug, name: c.name || c.slug, team: c.team || '',
+      art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
+      creator: c.creator || ''
+    };
+    bySlugRow[c.slug] = row;
+    for (const k of [Render.normJinxId(c.slug), Render.normJinxId(c.name)]) {
+      if (k && !byKey[k]) byKey[k] = row;
+    }
+  }
+
+  const edges = [];
+  const bySlug = {};                // slug -> edges where it is the TARGET
+  const seen = new Set();
+  for (const c of chars || []) {
+    if (!c || !c.slug || !Array.isArray(c.jinxes)) continue;
+    for (const j of c.jinxes) {
+      if (!j || !(j.name || j.id || j.slug)) continue;
+      const key = Render.normJinxId(j.slug || '') && byKey[Render.normJinxId(j.slug)]
+        ? Render.normJinxId(j.slug)
+        : Render.normJinxId(j.id || Render.slugId(j.name || ''));
+      const target = byKey[key];
+      // A page jinxed with itself is a data slip, not a relationship.
+      if (target && target.slug === c.slug) continue;
+      const text = j.text || j.reason || '';
+      // One edge per unordered pair per rule text, matching findScriptJinxes.
+      const pairKey = [c.slug, target ? target.slug : key].sort().join('|') + '|' + text;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+      const edge = {
+        from: c.slug,
+        to: target ? target.slug : '',
+        key,
+        name: j.name || '',
+        id: j.id || '',
+        align: j.align === 'evil' ? 'evil' : 'good',
+        text
+      };
+      edges.push(edge);
+      if (target) {
+        (bySlug[target.slug] = bySlug[target.slug] || []).push(edge);
+      }
+    }
+  }
+  return { chars: byKey, rows: bySlugRow, bySlug, edges };
+}
+
 // ---- character data for the SSR script/collection pages ----
 // These pages used to call buildPublicJSON(env, 'characters') outright, which
 // meant every single /s/ and /collection/ view read and parsed the ENTIRE
@@ -2890,6 +3060,14 @@ export default {
           const partialNotice = Classify.isIncomplete(d) && await canEdit();
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
+          Render.setOfficialNames(await officialNameMap(env, url.origin));
+          // Jinxes are a property of the pair, so this page shows the ones it
+          // declares AND the ones other characters declare with it.
+          try {
+            const jx = await jinxIndex(env, ctx);
+            Render.setWikiChars(jx.chars);
+            d.jinxes = mergeMirroredJinxes(d, slug, jx);
+          } catch { /* the page's own jinxes still render */ }
           return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
@@ -3257,6 +3435,60 @@ export default {
     }
 
     // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
+    // ---------- JINX INDEX (the /jinxes page: list + relationship graph) ----------
+    // Nodes are every character that takes part in a jinx: the wiki pages
+    // themselves, plus the official characters they are jinxed with, which are
+    // what most of the edges actually point at. Official↔official jinxes are
+    // not here — this is a map of the homebrew wiki, not of the base game.
+    if (method === 'GET' && path === '/api/jinxes') {
+      let index;
+      try {
+        index = await jinxIndex(env, ctx);
+      } catch {
+        return jsonResponse({ nodes: [], edges: [] });
+      }
+      const officialIcons = await officialIconMap(env, url.origin).catch(() => ({}));
+      const officialNames = await officialNameMap(env, url.origin).catch(() => ({}));
+
+      const nodes = new Map();
+      function addWiki(slug) {
+        const r = index.rows[slug];
+        if (!r || nodes.has('c:' + slug)) return 'c:' + slug;
+        nodes.set('c:' + slug, {
+          id: 'c:' + slug, slug: r.slug, name: r.name, team: r.team,
+          creator: r.creator, official: false,
+          icon: r.art ? (url.origin + '/assets/' + r.art) : (r.image || ''),
+          href: '/c/' + r.slug
+        });
+        return 'c:' + slug;
+      }
+      function addOfficial(key, name) {
+        const id = 'o:' + key;
+        if (nodes.has(id)) return id;
+        const nm = officialNames[key] || name || key;
+        nodes.set(id, {
+          id, slug: '', name: nm, team: '', creator: '', official: true,
+          icon: officialIcons[key] || (url.origin + '/assets/icons/' + key + '.png'),
+          href: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(nm.replace(/ /g, '_'))
+        });
+        return id;
+      }
+
+      const edges = [];
+      for (const e of index.edges) {
+        const a = addWiki(e.from);
+        if (!a) continue;
+        // An edge whose target is neither a wiki page nor a known official
+        // character is a typo or a draft — it has no node to attach to.
+        let b;
+        if (e.to) b = addWiki(e.to);
+        else if (officialIcons[e.key] || officialNames[e.key]) b = addOfficial(e.key, e.name);
+        else continue;
+        edges.push({ a, b, align: e.align, text: e.text });
+      }
+      return jsonResponse({ nodes: [...nodes.values()], edges });
+    }
+
     if (method === 'GET' && path === '/api/creators') {
       const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
       // One credit string can name several people; each of them gets their own
@@ -3380,7 +3612,7 @@ export default {
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
-        'steven-approved-order', 'rules', 'news'];
+        'steven-approved-order', 'rules', 'news', 'jinxes'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -4734,7 +4966,7 @@ export default {
       // Posting a comment counts as a content write: a wiki locked because of
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments', '/api/jinx'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -5259,6 +5491,8 @@ export default {
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
+        c.jinxes = sanitizeJinxes(c.jinxes);
+        if (!c.jinxes.length) delete c.jinxes;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
@@ -5295,6 +5529,87 @@ export default {
               ' before it can be published. Add that and publish again.'
             : undefined
         });
+      }
+
+      // ---- add / edit / remove a single jinx, from the /jinxes page ----
+      // A jinx is a relationship, so it can be created from either end: you
+      // need to own (or admin) just ONE of the two characters. It is stored on
+      // the side you own, and the other page shows it mirrored on read.
+      if (path === '/api/jinx') {
+        {
+          const limited = await writeLimited(env, request, sess, 'character');
+          if (limited) return limited;
+        }
+        const b = await request.json().catch(() => null);
+        if (!b || !b.from) return jsonResponse({ error: 'Missing character' }, { status: 400 });
+        if (!b.toSlug && !b.toId) {
+          return jsonResponse({ error: 'Pick the character this jinx is with.' }, { status: 400 });
+        }
+
+        const row = await getEntityRow(env, 'character', String(b.from));
+        if (!row) return jsonResponse({ error: 'No such character' }, { status: 404 });
+        if (!canEditRow(sess, row)) {
+          return jsonResponse({ error: 'That character belongs to another account.' }, { status: 403 });
+        }
+        if (!sess.isAdmin && await isProtected(env, 'character', row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        // The other side has to exist. An official id is checked against
+        // roles.json, a wiki slug against the table — a jinx pointing at
+        // nothing is exactly the breakage this whole feature is fixing.
+        let target;
+        if (b.toSlug) {
+          const t = await getEntityRow(env, 'character', String(b.toSlug));
+          if (!t) return jsonResponse({ error: 'No such character' }, { status: 404 });
+          if (t.slug === row.slug) {
+            return jsonResponse({ error: 'A character cannot be jinxed with itself.' }, { status: 400 });
+          }
+          target = { slug: t.slug, name: t.name };
+        } else {
+          const names = await officialNameMap(env, url.origin).catch(() => ({}));
+          const key = Render.slugId(String(b.toId));
+          if (!names[key]) {
+            return jsonResponse({ error: 'No official character by that name.' }, { status: 404 });
+          }
+          target = { id: key, name: names[key] };
+        }
+
+        const d = parseData(row);
+        const list = Array.isArray(d.jinxes) ? d.jinxes.slice() : [];
+        // Match on whichever key identifies the target, so editing and
+        // removing find the same entry adding created.
+        const wanted = Render.normJinxId(target.slug || target.id);
+        const at = list.findIndex(j => {
+          const k = (j.slug && Render.normJinxId(j.slug)) ||
+            Render.normJinxId(j.id || Render.slugId(j.name || ''));
+          return k === wanted;
+        });
+
+        if (b.remove) {
+          if (at === -1) return jsonResponse({ error: 'That jinx is not on this character.' }, { status: 404 });
+          list.splice(at, 1);
+        } else {
+          const entry = {
+            name: target.name,
+            align: b.align === 'evil' ? 'evil' : 'good',
+            text: String(b.text || '')
+          };
+          if (target.slug) entry.slug = target.slug; else entry.id = target.id;
+          if (!entry.text.trim()) {
+            return jsonResponse({ error: 'A jinx needs its rule text.' }, { status: 400 });
+          }
+          if (at === -1) list.push(entry); else list[at] = entry;
+        }
+
+        d.jinxes = sanitizeJinxes(list);
+        if (!d.jinxes.length) delete d.jinxes;
+
+        await saveRevision(env, sess, 'character', row);
+        await env.DB.prepare(
+          `UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?`
+        ).bind(JSON.stringify(d), row.slug).run();
+        await logActivity(env, sess, 'update', 'character', row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, jinxes: d.jinxes || [] });
       }
 
       if (path === '/api/collection') {
