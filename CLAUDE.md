@@ -57,7 +57,8 @@ Key dynamic behavior:
   the `/messages` page), **comments** (`/api/comments*` — the comment section on
   every character/script/collection/news/wiki page), **wiki pages**
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
-  `/api/admin/news`), admin tools (dashboard, full activity log, report,
+  `/api/admin/news`), **jinxes** (`GET /api/jinxes` — the whole edge list for
+  the `/jinxes` page; `POST /api/jinx` — add/edit/remove one), admin tools (dashboard, full activity log, report,
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
@@ -100,6 +101,20 @@ assets/
                        `pronunciation` — the quiet line under the flavour quote
                        (**bold**/*italic*); without it that text still renders,
                        escaped and unformatted.
+  jinx-picker.js       The "Jinxed character" search box: one combobox over the
+                       official roster AND this wiki's, mounted on a field with
+                       mountJinxPicker(). Records WHICH character was picked
+                       (`slug` for one of ours, `id` for an official one) so the
+                       jinx no longer depends on the typed name matching later.
+                       Shaped like night-order-picker.js on purpose. Used by
+                       create.html, edit.html and /jinxes.
+  jinx-graph.js        The relationship map on /jinxes: hand-rolled SVG plus a
+                       small spring layout, no library and no CDN. Positions are
+                       seeded from a hash of the node id so the map looks the
+                       same every visit, and the simulation runs a fixed number
+                       of ticks and STOPS rather than animating forever. Read the
+                       header before touching the physics — REPEL_CAP and the
+                       DRAG_SLOP threshold both exist because of specific bugs.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
@@ -247,14 +262,19 @@ publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/autho
                        body images (R2 pages/), fact box, custom boxes, theme kit,
                        contents + comments toggles. ?p={slug} edits,
                        ?parentType=&parentSlug= starts a new one.
+jinxes.html            /jinxes — every jinx on the wiki, as a grouped list and an
+                       interactive map, both built from GET /api/jinxes so they
+                       cannot disagree. Creators can add a jinx to a character
+                       they own (POST /api/jinx). Linked from tools.html and the
+                       homepage browse cards; in the sitemap's staticPages.
 news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Creator Icons. This is what
-                       the "Tools" nav entry points at.
+                       Grimoire Forge, Icon Forge, Jinxes, Creator Icons. This
+                       is what the "Tools" nav entry points at.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -453,6 +473,42 @@ A credit can name several people ("Taiyi (太一), Saki") and each of them gets
 their own creator page, so every match is done one comma-separated segment at a
 time — `creditMatchSQL()` / `creditNames()` in worker.js, `splitCreators()` in
 creators.js. Never compare a whole `creator` column against a single name.
+
+## Jinxes
+
+A jinx is a rule about a **pair** of characters, but it is stored on one side
+only: `data.jinxes` on the character whose editor typed it, as
+`{name, align, text}` plus **one** of `slug` (a character on this wiki) or `id`
+(an official character). Older rows use the official-schema `{id, reason}`
+shape and bulk imports use `{id, name, text}`; every reader normalizes with
+`j.name || j.id` and `j.text || j.reason`, and `sanitizeJinxes()` in worker.js
+caps and whitelists the fields on save.
+
+- **`resolveJinxTarget()` (render.js) answers "who is this jinx with"** for
+  every consumer — the `/c/` sidebar box, the script and collection lists, and
+  `/jinxes`. See gotcha 8 for the resolution order and why official wins.
+  It needs two registries, injected the same way `setOfficialIconUrls()` is:
+  `setWikiChars()` (this wiki's characters) and `setOfficialNames()` (so a
+  jinx typed as "leviathan" prints as Leviathan). Unset, jinxes still render —
+  official ones resolve, homebrew ones fall back to plain text.
+- **Mirroring is derived on read, never stored.** A `/c/` page shows its own
+  jinxes plus every jinx another character declares with it
+  (`mergeMirroredJinxes()`), flagged `mirrored` so the renderer can say which
+  page to go to to edit it. A pair both sides declare is shown once, and the
+  character's **own** entry wins — that is the text its owner wrote.
+- **`jinxIndex(env, ctx)` is where "who points at me" comes from.** A single
+  page view cannot scan every character (see the comment above
+  `charactersForCollection` for why that was removed), so the whole edge list
+  is derived once and cached in-isolate **and** in `caches.default` under a key
+  carrying `contentVersion()`. `logActivity()` bumps that on every content
+  write, so it self-invalidates. No table, no migration, no rebuild tooling.
+  `buildJinxIndex()` is pure and can be tested without a database.
+- **`POST /api/jinx`** adds, edits or removes one jinx. You need to own (or
+  admin) **one** of the two characters; it is stored on the side you own and
+  the other page gets it by mirroring. The other side must exist — an official
+  id is checked against roles.json, a wiki slug against the table.
+- `assets/jinx-icons/` (9 files) is **orphaned** — referenced only by a
+  `_headers` cache rule. The renderer reads `assets/icons/`.
 
 ## Custom wiki pages (`/p/{slug}`)
 
@@ -786,8 +842,14 @@ this is how admin-written pages stop being hidden for want of a tag.
    to R2 `backups/{date}/` (30-day retention) — that's the real backup.
 7. Some character names carry credit marks (`∇`, `♊︎`) in the D1 name field;
    token-tool.js strips them for tokens only. Don't "fix" the names.
-8. Jinx icons resolve by slugified id against `assets/icons/`; missing icons
-   hide gracefully via onerror. Don't rename icon files.
+8. **`resolveJinxTarget()` in render.js is the only place a jinx target is
+   worked out.** Order is: an explicit `slug` written by the jinx picker, then
+   an official character (icon from roles.json, link to the official wiki),
+   then a character on this wiki (its own art, link to `/c/{slug}`), then the
+   committed `assets/icons/{slugid}.png` with onerror hiding it. Official
+   deliberately beats this wiki — 291 of the ~320 jinxes on the site name an
+   official character, and a homebrew page sharing a name (there is more than
+   one "Sculptor") must not steal their link. Don't rename icon files.
 9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
    the static `news.html` and must stay that way, or the Worker swallows it.
 10. Announcements, news bodies, wiki pages and custom boxes all go through
