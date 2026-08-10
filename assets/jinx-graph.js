@@ -339,7 +339,22 @@
       return { x: (p.x - view.x) / view.k, y: (p.y - view.y) / view.k };
     }
 
+    /* Whether focus arrived from a pointer or from the keyboard. The hover
+       tooltip is a mouse affordance: on a touch screen there is no hover to
+       end it, so tapping a character left it stranded on the parchment (and
+       saying the same thing as the panel that just opened). It is now shown
+       for the mouse and for keyboard focus, and never for a tap. */
+    var pointerFocus = false;
+    // Tab moves focus without ever reaching the node's own keydown, so the
+    // reset has to be watched for at the document.
+    function onKeyNav(ev) {
+      if (ev.key === 'Tab' || ev.key.indexOf('Arrow') === 0) pointerFocus = false;
+    }
+    document.addEventListener('keydown', onKeyNav, true);
+
     svg.addEventListener('pointerdown', function (ev) {
+      pointerFocus = true;
+      hideTip();
       svg.setPointerCapture(ev.pointerId);
       pointers[ev.pointerId] = localPoint(ev);
       var ids = Object.keys(pointers);
@@ -439,6 +454,9 @@
     // ---- selection ----------------------------------------------------
     var selected = null;
     function select(n) {
+      // Selecting replaces the tooltip with the panel; leaving both up is
+      // duplicate information, and on touch the tooltip would never leave.
+      hideTip();
       selected = n;
       paint();
       if (opts.onSelect) {
@@ -457,7 +475,9 @@
       n.el.addEventListener('keydown', function (ev) {
         if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); select(n); }
       });
-      n.el.addEventListener('focus', function () { showTipFor(n); });
+      n.el.addEventListener('focus', function () {
+        if (!pointerFocus) showTipFor(n);
+      });
       n.el.addEventListener('blur', hideTip);
     });
 
@@ -587,6 +607,7 @@
       nodeCount: nodes.length,
       edgeCount: links.length,
       destroy: function () {
+        document.removeEventListener('keydown', onKeyNav, true);
         if (ro) ro.disconnect();
         if (svg.parentNode) svg.parentNode.removeChild(svg);
         if (tip.parentNode) tip.parentNode.removeChild(tip);
