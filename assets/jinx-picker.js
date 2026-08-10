@@ -175,12 +175,18 @@
     }
 
     function pick(c) {
+      // The editors refresh their preview off `input`, so one has to be
+      // dispatched — but this field's OWN input handler clears the recorded
+      // target (that is what makes typing over a pick drop it). The guard
+      // marks this as a set rather than a keystroke.
+      field.setAttribute('data-jxsetting', '1');
       field.value = c.name;
       if (c.official) { field.dataset.id = c.id || ''; delete field.dataset.slug; }
       else { field.dataset.slug = c.slug; delete field.dataset.id; }
       close();
       field.dispatchEvent(new Event('input', { bubbles: true }));
       field.dispatchEvent(new Event('change', { bubbles: true }));
+      field.removeAttribute('data-jxsetting');
     }
 
     // Typing by hand drops the recorded target: the text no longer describes
