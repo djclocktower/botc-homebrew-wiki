@@ -119,7 +119,12 @@ assets/
                        icons sit; MIN_ICON_PX stops the opening view zooming out
                        past legibility (fitting 172 nodes to a phone gives 8px
                        icons), so the map may overflow and pan — "Fit all" is
-                       the deliberate way to see the whole shape.
+                       the deliberate way to see the whole shape. Every node
+                       keeps its computed homeX/homeY so resetLayout() can undo
+                       dragging without re-running the simulation. Link mode
+                       (setLinkMode + onPair) reuses the ordinary click to pick
+                       two characters — a long press or two-finger gesture would
+                       be both harder to find and easier to hit by accident.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.

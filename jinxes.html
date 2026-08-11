@@ -52,6 +52,27 @@
     border: 1px solid var(--parch-frame); background: #fffdf8;
     font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
   }
+  .jg-bar select {
+    padding: 7px 10px; max-width: 260px;
+    border: 1px solid var(--parch-frame); background: #fffdf8;
+    font-family: 'Trade Gothic', sans-serif; font-size: .88rem; color: #5b4632;
+  }
+  /* The running instruction while two characters are being linked. */
+  .jg-linkbar {
+    margin: 0 0 10px; padding: 8px 12px;
+    background: #fffdf8; border: 1px solid var(--parch-frame);
+    font-family: 'Trade Gothic', sans-serif; font-size: .85rem; color: #5b4632;
+  }
+  .jg-linkbar b { color: var(--maroon); }
+  .jg-linkbar button {
+    background: none; border: 0; padding: 0; margin-left: 8px;
+    font: inherit; color: #726348; text-decoration: underline; cursor: pointer;
+  }
+  /* In link mode the cursor is a crosshair and the picked character keeps a
+     heavy ring, so it is obvious the next click completes a pair. */
+  .jg-stage.jg-linking, .jg-linking .jg-node { cursor: crosshair; }
+  .jg-node.jg-pick .jg-ring { stroke-width: 5; stroke: var(--maroon); }
+
   .jg-legend {
     display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
     margin: 8px 0 0; font-family: 'Trade Gothic', sans-serif;
@@ -181,10 +202,19 @@
 
       <div class="jg-bar">
         <input type="search" id="jg-search" placeholder="Find a character on the map…" autocomplete="off" aria-label="Find a character on the map">
+        <select id="jg-author" aria-label="Show one creator's characters">
+          <option value="">Any creator</option>
+        </select>
+      </div>
+      <div class="jg-bar">
         <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
+        <button type="button" class="filter-chip" id="jg-f-official">Official only</button>
         <button type="button" class="filter-chip" id="jg-f-fit">Fit all</button>
         <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
+        <button type="button" class="filter-chip" id="jg-f-relayout">Reset layout</button>
+        <button type="button" class="filter-chip" id="jg-f-link" hidden>Link two characters</button>
       </div>
+      <p class="jg-linkbar" id="jg-linkbar" hidden></p>
 
       <div class="jg-wrap">
         <div class="jg-stage" id="jg-stage"></div>
@@ -199,7 +229,7 @@
         <span><i class="jg-swatch" style="border-color:#9a0d12"></i> Jinx on an evil character</span>
         <span><i class="jg-swatch" style="border-color:#8a7a5c"></i> Grey ring = official character</span>
       </div>
-      <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom. <b>Fit all</b> shows the whole map at once.</p>
+      <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom. <b>Fit all</b> shows the whole map at once; <b>Reset layout</b> puts everything you dragged back. <b>Link two characters</b> picks a pair and opens the form below with both filled in.</p>
     </section>
 
     <section class="landing-section" id="jx-add-section" hidden>
@@ -279,8 +309,10 @@
           .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
-      var DATA = null, GRAPH = null, NODE = {};
-      var homebrewOnly = false, listHomebrewOnly = false, listQuery = '';
+      var DATA = null, GRAPH = null, NODE = {}, NEIGHBOURS = {};
+      var homebrewOnly = false, officialOnly = false, author = '';
+      var listHomebrewOnly = false, listQuery = '';
+      var MY_CHARS = {};        // slug -> name, for the characters you own
 
       // ---------- the map ----------
       function buildGraph() {
@@ -288,7 +320,9 @@
         GRAPH = window.mountJinxGraph({
           mount: 'jg-stage',
           data: DATA,
-          onSelect: showPanel
+          onSelect: showPanel,
+          onLinkStep: showLinkStep,
+          onPair: startJinxForPair
         });
         if (!GRAPH) {
           $('jg-summary').textContent = 'No jinxes to map yet.';
@@ -341,10 +375,64 @@
         }
       });
 
+      /* One place that decides what is shown, so the three controls cannot
+         contradict each other. A creator filter keeps the characters they are
+         jinxed WITH as well — a creator's pages on their own are a scatter of
+         disconnected dots, and the whole point is seeing what they connect to. */
+      function applyGraphFilter() {
+        if (!GRAPH) return;
+        if (!homebrewOnly && !officialOnly && !author) return GRAPH.filter(null);
+
+        var keep = null;
+        if (author) {
+          keep = {};
+          DATA.nodes.forEach(function (n) {
+            if (n.official || !n.creator) return;
+            if (creatorNames(n.creator).indexOf(author) === -1) return;
+            keep[n.id] = 1;
+            (NEIGHBOURS[n.id] || []).forEach(function (id) { keep[id] = 1; });
+          });
+        }
+        GRAPH.filter(function (n) {
+          if (keep && !keep[n.id]) return false;
+          if (homebrewOnly && n.official) return false;
+          if (officialOnly && !n.official) return false;
+          return true;
+        });
+      }
+
+      // A page can be co-credited ("Taiyi (太一), Saki"); each name is its own
+      // creator, the same way the rest of the wiki treats a credit string.
+      function creatorNames(s) {
+        return String(s || '').split(',').map(function (x) { return x.trim(); })
+          .filter(Boolean);
+      }
+
       $('jg-f-homebrew').addEventListener('click', function () {
         homebrewOnly = !homebrewOnly;
+        if (homebrewOnly) { officialOnly = false; $('jg-f-official').classList.remove('active'); }
         this.classList.toggle('active', homebrewOnly);
-        if (GRAPH) GRAPH.filter(homebrewOnly ? function (n) { return !n.official; } : null);
+        applyGraphFilter();
+      });
+
+      $('jg-f-official').addEventListener('click', function () {
+        officialOnly = !officialOnly;
+        if (officialOnly) { homebrewOnly = false; $('jg-f-homebrew').classList.remove('active'); }
+        this.classList.toggle('active', officialOnly);
+        applyGraphFilter();
+      });
+
+      $('jg-author').addEventListener('change', function () {
+        author = this.value;
+        applyGraphFilter();
+      });
+
+      $('jg-f-relayout').addEventListener('click', function () {
+        if (!GRAPH) return;
+        var moved = GRAPH.resetLayout();
+        this.textContent = moved ? 'Layout reset' : 'Nothing moved';
+        var btn = this;
+        setTimeout(function () { btn.textContent = 'Reset layout'; }, 1400);
       });
 
       /* Deliberately zoom past the legibility floor to see the whole shape
@@ -433,6 +521,81 @@
         renderList();
       });
 
+      /* Only creators who actually have a jinxed character are worth listing —
+         the wiki has hundreds of creators and a handful of them are on this
+         map at all. */
+      function buildAuthorList() {
+        var seen = {};
+        DATA.nodes.forEach(function (n) {
+          if (n.official) return;
+          creatorNames(n.creator).forEach(function (c) { seen[c] = (seen[c] || 0) + 1; });
+        });
+        var names = Object.keys(seen).sort(function (a, b) {
+          return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+        var sel = $('jg-author');
+        names.forEach(function (name) {
+          var o = document.createElement('option');
+          o.value = name;
+          o.textContent = name + ' (' + seen[name] + ')';
+          sel.appendChild(o);
+        });
+      }
+
+      // ---------- link two characters on the map ----------
+      /* The map already shows who is jinxed with whom, so it is also the
+         natural place to say "these two should be". Pick two characters and
+         the form below opens filled in. The Worker still decides whether the
+         save is allowed; this only saves typing. */
+      function showLinkStep(state) {
+        var bar = $('jg-linkbar');
+        if (!state) { bar.hidden = true; $('jg-f-link').classList.remove('active'); return; }
+        $('jg-f-link').classList.add('active');
+        bar.innerHTML = state.step === 1
+          ? 'Pick the <b>first</b> character.<button type="button" id="jg-link-cancel">cancel</button>'
+          : 'Picked <b>' + esc(state.first.name) + '</b>. Now pick the <b>second</b>.' +
+            '<button type="button" id="jg-link-cancel">cancel</button>';
+        bar.hidden = false;
+        var c = document.getElementById('jg-link-cancel');
+        if (c) c.addEventListener('click', function () { GRAPH.setLinkMode(false); });
+      }
+
+      $('jg-f-link').addEventListener('click', function () {
+        if (!GRAPH) return;
+        GRAPH.setLinkMode(!GRAPH.isLinkMode());
+      });
+
+      function startJinxForPair(pair) {
+        var bar = $('jg-linkbar');
+        // You have to own one of them. Officials are nobody's, so a pair of
+        // official characters can never be linked here.
+        var mine = MY_CHARS[pair.a.slug] ? pair.a : (MY_CHARS[pair.b.slug] ? pair.b : null);
+        var other = (mine === pair.a) ? pair.b : pair.a;
+        if (!mine) {
+          bar.innerHTML = '<b>' + esc(pair.a.name) + '</b> and <b>' + esc(pair.b.name) +
+            '</b> — you do not own either of these, so you cannot write a jinx between them.';
+          bar.hidden = false;
+          return;
+        }
+        if (pair.linked) {
+          bar.innerHTML = '<b>' + esc(pair.a.name) + '</b> and <b>' + esc(pair.b.name) +
+            '</b> are already jinxed. Saving will replace the existing rule text.';
+          bar.hidden = false;
+        } else {
+          bar.hidden = true;
+        }
+
+        $('jx-mine').value = mine.slug;
+        if (window.setJinxField) {
+          window.setJinxField($('jx-other'), other.name,
+            other.official ? '' : other.slug,
+            other.official ? other.id.replace(/^o:/, '') : '');
+        }
+        $('jx-add-section').hidden = false;
+        $('jx-add-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('jx-text').focus();
+      }
+
       // ---------- add a jinx ----------
       /* Shown only when the reader has a character to hang a jinx off. The
          Worker checks ownership again on POST — this is convenience, not
@@ -452,7 +615,9 @@
               o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '');
               sel.appendChild(o);
             });
+            chars.forEach(function (c) { MY_CHARS[c.slug] = c.name; });
             $('jx-add-section').hidden = false;
+            $('jg-f-link').hidden = false;
             if (window.mountJinxPicker) window.mountJinxPicker($('jx-other'));
           })
           .catch(function () { /* logged out: the form stays hidden */ });
@@ -503,6 +668,13 @@
         .then(function (d) {
           DATA = d || { nodes: [], edges: [] };
           DATA.nodes.forEach(function (n) { NODE[n.id] = n; });
+          // Adjacency, so the creator filter can keep each of their
+          // characters' jinx partners on screen too.
+          DATA.edges.forEach(function (e) {
+            (NEIGHBOURS[e.a] = NEIGHBOURS[e.a] || []).push(e.b);
+            (NEIGHBOURS[e.b] = NEIGHBOURS[e.b] || []).push(e.a);
+          });
+          buildAuthorList();
           if (!DATA.edges.length) {
             $('jg-summary').textContent = 'No jinxes on the wiki yet.';
             $('jx-list').innerHTML = '<p style="opacity:.7">No jinxes yet. Add the first one above.</p>';

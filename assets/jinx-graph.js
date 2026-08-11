@@ -22,8 +22,9 @@
       leave open is a battery cost for no benefit, and dragging re-heats
       only the neighbourhood being dragged.
 
-   mountJinxGraph(opts) -> api, where opts is
-     {mount, data, onSelect}. Returns {focus, filter, destroy}. */
+   mountJinxGraph({mount, data, onSelect, onPair, onLinkStep}) -> api:
+     focus(id), filter(fn), fit(), fitAll(), resetLayout(), hasMoved(),
+     setLinkMode(on), select(id), destroy(). */
 (function () {
   'use strict';
 
@@ -95,11 +96,11 @@
        almost on top of each other produce an enormous first-tick force and
        fling the whole map apart — 320 ticks of gravity never gets it back.
        REPEL_CAP is what keeps the opening tick sane; do not remove it. */
-    var REPEL = 16000;
-    var REPEL_CAP = 44;
-    var REPEL_RANGE2 = 810000;   // beyond 900px apart, ignore each other
-    var LINK_REST = 118;         // slack in a jinx line, on top of both radii
-    var NODE_GAP = 26;           // clear parchment between two icons
+    var REPEL = 26000;
+    var REPEL_CAP = 58;
+    var REPEL_RANGE2 = 1440000;  // beyond 1200px apart, ignore each other
+    var LINK_REST = 175;         // slack in a jinx line, on top of both radii
+    var NODE_GAP = 52;           // clear parchment between two icons
 
     function simulate(ticks) {
       var i, j, k, n, m, dx, dy, d2, len, force, ux, uy;
@@ -175,7 +176,11 @@
         }
       }
     }
-    simulate(520);
+    simulate(560);
+    // Where the simulation left each node. Dragging is meant to be a way to
+    // untangle a corner and then put it back, so the computed layout is kept
+    // and "Reset layout" restores it.
+    nodes.forEach(function (n) { n.homeX = n.x; n.homeY = n.y; });
 
     // ---- svg ---------------------------------------------------------
     var svg = el('svg', { class: 'jg-svg', xmlns: SVG_NS });
@@ -452,11 +457,49 @@
     }
 
     // ---- selection ----------------------------------------------------
+    /* Link mode: pick two characters on the map and the page opens the
+       "add a jinx" form for that pair. It reuses the ordinary click, because
+       a second gesture on a touch screen (long press, two-finger) is both
+       harder to discover and easy to trigger by accident. */
+    var linkMode = false, linkFirst = null;
+
+    function setLinkMode(on) {
+      linkMode = !!on;
+      linkFirst = null;
+      selected = null;
+      svg.classList.toggle('jg-linking', linkMode);
+      paint();
+      if (opts.onLinkStep) opts.onLinkStep(linkMode ? { step: 1 } : null);
+    }
+
+    function linkedAlready(a, b) {
+      for (var i = 0; i < links.length; i++) {
+        if ((links[i].a === a && links[i].b === b) ||
+            (links[i].a === b && links[i].b === a)) return true;
+      }
+      return false;
+    }
+
+    function linkPick(n) {
+      if (!n) { linkFirst = null; paint(); if (opts.onLinkStep) opts.onLinkStep({ step: 1 }); return; }
+      if (!linkFirst) {
+        linkFirst = n;
+        paint();
+        if (opts.onLinkStep) opts.onLinkStep({ step: 2, first: n.d });
+        return;
+      }
+      if (n === linkFirst) { linkPick(null); return; }
+      var pair = { a: linkFirst.d, b: n.d, linked: linkedAlready(linkFirst, n) };
+      setLinkMode(false);
+      if (opts.onPair) opts.onPair(pair);
+    }
+
     var selected = null;
     function select(n) {
       // Selecting replaces the tooltip with the panel; leaving both up is
       // duplicate information, and on touch the tooltip would never leave.
       hideTip();
+      if (linkMode) return linkPick(n);
       selected = n;
       paint();
       if (opts.onSelect) {
@@ -499,6 +542,7 @@
         var dim = !n.on || (near && !near[n.id]);
         n.el.classList.toggle('jg-dim', !!dim);
         n.el.classList.toggle('jg-sel', n === selected);
+        n.el.classList.toggle('jg-pick', n === linkFirst);
       });
       links.forEach(function (l) {
         var visible = l.a.on && l.b.on;
@@ -603,6 +647,26 @@
       filter: filter,
       fit: fit,
       fitAll: function () { select(null); fit({ all: true }); },
+      /* Put every dragged character back where the simulation left it. The
+         camera is not touched — someone who has zoomed into a corner wants to
+         stay there while the tangle underneath straightens out. */
+      resetLayout: function () {
+        var moved = 0;
+        nodes.forEach(function (n) {
+          if (n.x !== n.homeX || n.y !== n.homeY) moved++;
+          n.x = n.homeX; n.y = n.homeY; n.vx = 0; n.vy = 0; n.fixed = false;
+        });
+        place();
+        return moved;
+      },
+      hasMoved: function () {
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i].x !== nodes[i].homeX || nodes[i].y !== nodes[i].homeY) return true;
+        }
+        return false;
+      },
+      setLinkMode: setLinkMode,
+      isLinkMode: function () { return linkMode; },
       select: function (id) { return id ? focus(id) : select(null); },
       nodeCount: nodes.length,
       edgeCount: links.length,
