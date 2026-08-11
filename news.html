@@ -93,11 +93,18 @@
           });
           grid.innerHTML = list.map(function(a){
             var card = window.NewsRender.renderCard(a, { linkRoot: '' });
-            if (a.status !== 'published'){
-              card = card.replace('<div class="news-card-date">',
-                '<div class="news-card-date">DRAFT &middot; ');
-            }
-            return card;
+            if (!isAdmin) return card;
+            // Admins get the article's state and a way into the editor under
+            // each card. It has to sit OUTSIDE the card, which is itself a
+            // link — an <a> inside an <a> is invalid and swallows the click.
+            var draft = a.status !== 'published';
+            return '<div class="news-admin-item">' + card +
+              '<div class="news-admin-row">' +
+                '<span class="news-admin-pill ' + (draft ? 'draft' : 'published') + '">' +
+                  (draft ? 'Draft' : 'Published') + '</span>' +
+                '<a class="news-admin-edit" href="publish-news?n=' +
+                  encodeURIComponent(a.slug) + '">&#9998; Edit</a>' +
+              '</div></div>';
           }).join('');
         });
     }).catch(function(){

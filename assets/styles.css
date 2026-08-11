@@ -2328,6 +2328,26 @@ a:hover .starlight-star { opacity: .9; }
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .news-back a:hover { color: #fff; text-decoration: underline; }
+/* Admin strip under a news card on /news: the article's state and a way into
+   the editor. The wrapper becomes the grid item, so the card inside it has to
+   stretch or a short article's tile stops matching its neighbours. */
+.news-admin-item { display: flex; flex-direction: column; }
+.news-admin-item .news-card { flex: 1; }
+.news-admin-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 2px 0;
+}
+.news-admin-pill {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 9px; border-radius: 999px;
+}
+.news-admin-pill.draft { background: rgba(154,110,20,.22); color: #f0d79a; border: 1px solid rgba(214,170,70,.5); }
+.news-admin-pill.published { background: rgba(42,110,42,.22); color: #b7e0b7; border: 1px solid rgba(90,170,90,.5); }
+.news-admin-edit {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.85); text-decoration: none;
+}
+.news-admin-edit:hover { color: #fff; text-decoration: underline; }
 @media (max-width: 640px) {
   .news-article { padding: 16px 14px; border-width: 2px; }
   .news-article h1 { font-size: 1.35rem; }
