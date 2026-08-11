@@ -1889,14 +1889,18 @@ async function buildPublicJSON(env, table, opts = {}) {
     // Partial/Standard/Starlight is derived here rather than stored, so a
     // page re-classifies itself the moment its owner adds a tag or a line of
     // almanac text. `starlight` is the only stored half (admin-set).
-    // Standard is the default everywhere, so it is left off the wire —
-    // characters.json is ~1000 entries and the repetition is not free.
     if (d.starlight) d.starlight = true; else delete d.starlight;
     // NOTE: classify BEFORE trimming. Classify.classifyPage reads exactly the
     // prose fields the card feed drops (summaryBullets, howToRun, examples,
     // tips ...), so trimming first would flag every finished page as Partial.
     const cls = Classify.classifyPage(d, type);
+    // Standard is the default everywhere, so the full feed leaves it off the
+    // wire. The CARD feed cannot: the fields Classify reads are about to be
+    // deleted, so a reader recomputing a trimmed row would call every
+    // finished page Partial. Stamping 'standard' is what tells it not to
+    // (Classify.isPartial trusts an explicit stamp over recomputing).
     if (cls !== 'standard') d.classification = cls;
+    else if (cardOnly) d.classification = 'standard';
     else delete d.classification;
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
