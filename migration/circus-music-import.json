@@ -1,0 +1,2651 @@
+{
+ "source": "https://classic-ferret-fed.notion.site/Circus-Music-75a68e4d4f194ea585d93e1c40b7c8e1",
+ "note": "Import record for \"Circus Music\", BakedIce's homebrew collection, written from her Notion page: the game data from each character's own JSON block on that page (falling back to CircusMusicMasterApril.json, the master JSON linked there, for anything it does not carry), and the almanac prose - flavour line, summary bullets, examples, how-to-run and storyteller notes - from the page body, word for word. Jinxes come from each character's \"<Name> Jinxes\" sub-page, which is also where the good/evil alignment comes from: that page colours the jinxed character's name blue for good and red for evil. Nothing was written that the source does not say. Notes:\n- The five names already used by other creators on the wiki (Carpenter, Cleric, Medium, Prodigy, Prophet) take a -circus-music URL suffix in the wiki's existing duplicate style; the other 30 keep their plain slug.\n- No tags were assigned: the source has none, and nothing is written here that it does not say. Untagged pages would normally be Partial and hidden from browsing (assets/classify.js), but Starlight overrides Partial, so the collection's Starlight is what keeps all 35 visible.\n- The ability line is taken from each character's JSON block. Three of them differ from the wording printed above it on the page: the Conspiracist (the JSON adds \"(non-Traveller)\"), the Caliban (the JSON phrases it for the Storyteller, the page for the token) and the Comediarch (the same rule, rephrased). The JSON is the version she distributes for play.\n- The flavour line is stored twice on purpose: `quote` is the quote alone, which is what the page shows, and `flavor` keeps her full line including the ★By BakedIce★ credit, which is what render.js exports into script JSON. She asks specifically that those credits are not removed.\n- `jsonId` carries her own official-schema ids (Quori_Circus_Music, and the Seer's Tiresias_Circus_Music), so a script built here exports the same ids as her master JSON. Jinxes pointing at her own characters carry those ids too.\n- Each character ships two icons: the character art and an alignment-flipped (evil) version, stored as art and artAlt. The Maskmaker has only the one. All of them go through the site's own 591x591 resize, the same transform as assets/art-normalize.js.\n- Two jinx names were corrected so they resolve: \"Tiresias\" is this collection's own Seer, and \"Marionnete\" is the official Marionette. Jinx icons and links resolve by slugified name.\n- The Shankaar has a second \"Flipped\" JSON on the page. It is the same character - the second Shankaar token - not a separate one, so it is one page here.\n- The collection is Starlight, which lends the status to every character in it. The Cleric and the Showman carry their own Starlight flag as well, for TheDarkArtist's icons; an own flag wins over the inherited one, so un-starring the collection would leave those two starred and take it off the other 33.",
+ "collection": {
+  "id": "circus-music",
+  "slug": "circus-music",
+  "displayName": "Circus Music",
+  "author": "BakedIce",
+  "description": "Come one, come all! The grim, gnarly, and amazing show put on by your favorite director of mayhem has begun it’s wicked and wild performance! A gruesome serenade filled with chaos, the likes of which humanity has never seen prior! If you are a fan of flipping Blood on the Clocktower on it’s head, then you have come to the right place for some of the most spectacular, mind boggling, and weird homebrew you’ve ever faced! Credit to the A Pint of Clocktower Discord Server for all their help in controlling and stoking my chaos!",
+  "tagline": "",
+  "version": "",
+  "difficulty": "",
+  "synopsis": "",
+  "gameplay": "",
+  "strategyGood": "",
+  "strategyEvil": "",
+  "match": [
+   "circusmusic"
+  ],
+  "include": [],
+  "exclude": [],
+  "customBoxes": [
+   {
+    "title": "Using these characters",
+    "content": "Please use the work of other homebrewers responsibly! We are a small community, and it is easy for our history to get lost. A lot of time and effort has gone into everything the homebrew community does, no matter how you stumble across it, so please do your best to respect other’s work. All of this is to say:\n\n- When using works from the Circus Music Collection, make sure that all involved have the ability to find which characters are from this collection. Thankfully, all character JSONS have sufficient accreditation in the flavor text. For formats that don’t display the flavor text, please draw attention to which characters are homebrew. Please do not remove credits from the flavor text.\n- Do not use any art featured in the Circus Music collection for any other purpose than how they are being used here. You do not have permission to use my art, or any of the art made by my friends.\n- When publicly sharing a script made using the Circus Music characters, I would recommend sharing the JSON generated in the official app as well. Not only does this let people interested in your script easily run it, but ensures that the flavor text can still be seen by those curious.\n- For scripts that feature the works of multiple creators, it may be useful to signify which characters on script are from this collection by adding the BakedIce creator tag (★) at the end of the character name. This isn’t necessary, but it is useful for quick distinguishing. Doing this would require manual JSON editing. Please do not remove credits from the flavor text.\n- If you have any questions about this collection, or just want to let me know how your game using a character from here went, please reach out to Bakedice on Discord!"
+   },
+   {
+    "title": "Credits",
+    "content": "Circus Music is a Homebrew Character Collection by BakedIce (she/her) for the game Blood on the Clocktower by the Pandemonium Institute.\n\n- Everything of the Circus Music Title Image was made by Luis S, of HBL, with the exception of the stars and their outlines.\n- Credit to the A Pint of Clocktower Discord Server for all their help in controlling and stoking my chaos.\n- Character art by BakedIce except where a page credits someone else."
+   }
+  ],
+  "header": "collections/circus-music.png",
+  "logo": "",
+  "starlight": true
+ },
+ "characters": [
+  {
+   "name": "Quori",
+   "team": "townsfolk",
+   "ability": "You know 2 players & if their characters are in my column.",
+   "lede": "The Quori gives intel from beyond reality.",
+   "summaryBullets": [
+    "On the 1st night, the Quori learns 2 players & then whether or not each player is in the same column on the character sheet as the Quori.",
+    "The Quori can learn players of any alignment, including the Demon!",
+    "If either player changes character into one from a different column, the Quori will wake & learn them again.",
+    "Depending on how you look at the script, it might be hard to remember where the \"columns\" are. Typically, if the Quori is in the first 7 Townsfolk, then they can learn any of them and the 1st 2 characters of other character types. Likewise, if the Quori is in the last 6, they can often learn any of the last 6 Townsfolk and the last 2 characters of other character types. There are unconventional scripts that create other possibilities, though!",
+    "If the Quori is under an effect which forces their info to be false, like the Vortox, then they must learn false info about both players. If they are drunk or poisoned instead, then they could learn true info about either, both, or neither player.",
+    "This summary is really flattering! I make it way easier to figure out if those 2 people are evil or not."
+   ],
+   "howToRun": [
+    "When setting up the 1st night, place the KNOWN reminder token on 2 players.",
+    "During the 1st night, wake the Quori. Show the Quori the 2 players with the KNOWN reminder token. After pointing to each one, nod if they are in the Quori's column, or shake or your head if they aren't. Put the Quori to sleep."
+   ],
+   "examples": [
+    "Jon, the Quori, learns Bill and Tam. He learns that Bill's character is in the same column as the Quori, but Tam's is not.",
+    "Carly is the Quori. She learns that Bill, the Vortox, is in the same column as her, and that Mike the Snake Charmer isn't. Neither of these are true, because Bill is the Vortox.",
+    "Ahmed is the Quori. He looks at the script and notices something is deeply strange. It is formatted such that the Quori is in a 3rd column, in which there is only itself, the Drunk, and the Marionnete. When he learns that Charlie and Stevie are not in the same column as the Quori, he can conclude they aren't the Drunk or Marionnete."
+   ],
+   "tips": [
+    "Don’t just use standard script ordering with the Quori. It really works best when the position of every character on the script is intentional."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Watcha dreaming about? can I join?",
+   "flavor": "Watcha dreaming about? can I join? // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Quori_Circus_Music",
+   "firstNight": 54.21,
+   "firstNightReminder": "Show the Quori the 2 players with the KNOWN reminder token. After pointing to each one, nod if they are in the Quori's column, or shake or your head if they aren't.",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Known",
+    "Known"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "quori",
+   "page": "c/quori.html",
+   "art": "art/quori.png",
+   "image": "https://botchomebrew.wiki/assets/art/quori.png",
+   "artAlt": "art/quori-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/quori-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Conspiracist",
+   "team": "townsfolk",
+   "ability": "Each night, learn an evil player or Outsider. If a (non-Traveller) neighbor is evil, you get false info.",
+   "lede": "The Conspiracist knows who's in cahoots, but little about who they work for.",
+   "summaryBullets": [
+    "Each night, the Conspiracist learns a player who is either evil, an Outsider, or both. The Conspiracist does not know which this player is.",
+    "The Conspiracist will learn false info if they neighbor an evil player. This means that the players they learn each night cannot be evil or an Outsider. Most players that meet this description are Townsfolk, but not all (such as Good Travellers).",
+    "If the Conspiracist is poisoned or drunk, they can learn false or true info.",
+    "The Conspiracist does not know if they are getting true or false info, they must deduce this for themselves.",
+    "The Conspiracist is only concerned with their direct neighboring players, not their alive neighbors. Whether the Conspiracist gets true or false info can change throughout the game due to effects like the Mezepheles and Matron."
+   ],
+   "howToRun": [
+    "While preparing the first night, check if either neighbor of the Conspiracist is evil. If one or both neighbors are evil, the Conspiracist will learn false info — mark the Conspiracist with the FALSE INFO reminder token.",
+    "Each night, wake the Conspiracist. Point to an evil player or an Outsider. Recall that if they have the FALSE INFO reminder token, that you must show them a player which is neither. Put the Conspiracist to sleep."
+   ],
+   "examples": [
+    "On the 1st night, the Conspiracist learns the Shade. On the 2nd, they learn the Shankaar. On the 3rd, they learn the Leviathan.",
+    "On the 1st night, the Conspiracist learns the Shugenja. This is because the Conspiracist neighbors the Goblin.",
+    "On the 1st night, the Conspiracist learns the Xaan. On the 3rd night, the Conspiracist is poisoned by the Xaan, and so may now get false info, or true info, as the Storyteller pleases."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Yes, if everyone were telling the truth, I am wrong. All the evidence provided by our alleged peers points to the opposite of my conclusions...however-",
+   "flavor": "Yes, if everyone were telling the truth, I am wrong. All the evidence provided by our alleged peers points to the opposite of my conclusions...however- // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Conspiracist_Circus_Music",
+   "firstNight": 61.55,
+   "firstNightReminder": "Point to an evil player or an Outsider. Recall that if the Conspiracist has the FALSE INFO reminder token, that you must show them a player which is neither.",
+   "otherNight": 83.86,
+   "otherNightReminder": "Point to an evil player or an Outsider. Recall that if the Conspircacist has the FALSE INFO reminder token, that you must show them a player which is neither.",
+   "reminders": [
+    "False Info"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "conspiracist",
+   "page": "c/conspiracist.html",
+   "art": "art/conspiracist.png",
+   "image": "https://botchomebrew.wiki/assets/art/conspiracist.png",
+   "artAlt": "art/conspiracist-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/conspiracist-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Trixter",
+   "team": "townsfolk",
+   "ability": "Each night*, learn an alive good player who's mad that you're evil.",
+   "lede": "The Trixter messes with their allies to know them better.",
+   "summaryBullets": [
+    "Each night, after the first, if there is an alive good player that is mad that the Trixter is evil, the Trixter learns who they are.",
+    "The player who is mad about the Trixter being evil must be actively attempting to convince the group that the Trixter is evil. This usually means convincing the group they are not the Trixter, but is a Minion or Demon instead.",
+    "If there are no alive good players who are mad that the Trixter is evil, the Trixter does not wake.",
+    "The Trixter could, in theory, learn themself. They should not unless there isn’t anyone else they could learn, and they are genuinely attempting to convince the group that they are evil."
+   ],
+   "howToRun": [
+    "Each day, pay attention to who is mad that the player who is the Trickster is evil. Choose 1 alive good player that is doing this, and mark them with the MAD reminder token.",
+    "Each night, after the first, see if a player has the MAD reminder token. If so, wake the Trickster and point to that player. Put the Trickster to sleep."
+   ],
+   "examples": [
+    "Micheal, the Trixter, claims to be the Gentleman and begins ordering people not to vote on certain nominations. This convinces Steven that Micheal is evil, and Steven nominates Micheal. That night, Micheal learns that Steven was mad he was evil.",
+    "Philip is the Trixter, who shares the good players he’s learned so far. Victoria says that she thinks one of these players is evil, and that Philip is just trying to protect his Demon. She convinces the town to execute a player Philip learned. That night, Philip learns Victoria.",
+    "On the 3rd day, Joseph, the Trixter, tells everyone that he is the Showman. The alive Baron and the dead Showman both claim that he’s simply an evil player, who’s trying to confuse the town. Despite their best efforts, Joseph lives, since no one else is mad that Joseph is evil. That night, Joseph does not wake."
+   ],
+   "tips": [
+    "Don’t accept madness which has been orchestrated beforehand, unless you feel confident that the player is deviating from the plan. If players are likely to know that the Trickster is the Trickster, madness against them should usually include some refutation of this detail."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "What's that behind you?",
+   "flavor": "What's that behind you? // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Trixter_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 80.35,
+   "otherNightReminder": "If a player is marked with the Trixter's MAD reminder token, wake the Trixter & point to that player.",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "trixter",
+   "page": "c/trixter.html",
+   "art": "art/trixter.png",
+   "image": "https://botchomebrew.wiki/assets/art/trixter.png",
+   "artAlt": "art/trixter-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/trixter-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Candlemaker",
+   "team": "townsfolk",
+   "ability": "Once per game, publicly choose a player: if alive & not the Demon, they win if (& only if) you do, even if you died.",
+   "lede": "The Candlemaker can guide their enemies to their team.",
+   "summaryBullets": [
+    "Once per game, the Candlemaker publicly chooses a player. While this player lives, & unless they are the Demon, the can only win if the Candlemaker’s team wins. If the game ends otherwise, they lose.",
+    "If the chosen player dies, they are no longer affected by the Candlemaker ability. If the Candlemaker dies before using their ability, they are not longer able to. If they die after using their ability, it still affects the chosen player.",
+    "Minions chosen by the Candlemaker are not good. To abilities they still register as evil, they are still a Minion, and they do not learn of their alignment changing, since their alignment hasn't.",
+    "If the Candlemaker is evil & then chooses a player who is good, that player would win & lose with the evil team while they live.",
+    "If the Candlemaker chooses the Demon, nothing happens."
+   ],
+   "howToRun": [
+    "Once per game, the Candlemaker will publicly choose a player — mark the Candlemaker with the NO ABILITY reminder & mark the chosen player with the BLESSED reminder token. If the Candlemaker's team wins, and the chosen player is alive, & not the Demon, declare that they've won as well. If the Candlemaker's team loses, and the chosen player is alive, & not the Demon, declare that they've lost as well."
+   ],
+   "examples": [
+    "The Candlemaker chooses the Ariel. The Ariel can only win with the good team while they live, so they tell the group who their Demon is.",
+    "The Candlemaker chooses the Gentleman. The Demon kills the Gentleman, returning the Gentleman's win conditions to normal.",
+    "The Candlemaker chooses the Conspiracist. The Conspiracist says they think they’re already on the Candlemaker’s team. The Candlemaker gives the Conspiracist a high five, to celebrate their comradery."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The light forward isn’t always clear, but I will make sure it is there.",
+   "flavor": "The light forward isn’t always clear, but I will make sure it is there. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Candlemaker_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "No ability",
+    "Blessed"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Lleech",
+     "align": "evil",
+     "text": "The Lleech & their host register as “the Demon” to the Candlemaker"
+    },
+    {
+     "name": "Evil Twin",
+     "align": "evil",
+     "text": "If the Evil Twin has been chosen by the Candlemaker, evil does not win when the good twin is executed."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "candlemaker",
+   "page": "c/candlemaker.html",
+   "art": "art/candlemaker.png",
+   "image": "https://botchomebrew.wiki/assets/art/candlemaker.png",
+   "artAlt": "art/candlemaker-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/candlemaker-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Worker",
+   "team": "townsfolk",
+   "ability": "When you die, learn a player & their character tonight. [All Townsfolk are Workers]",
+   "lede": "The Worker unites the town.",
+   "summaryBullets": [
+    "Every single Townsfolk is a Worker! Effects like the Pit Hag can still change a Worker into a different Townsfolk, however.",
+    "The evil team does not learn there are Workers in play. The good team can rely on having a secret that they alone know.",
+    "Whenever a Worker dies, the Storyteller will choose a player who that Worker will learn the character of that night. This happens even if the Worker was executed, or died to effects like the Psychopath."
+   ],
+   "howToRun": [
+    "When setting up the game, replace all Townsfolk character tokens with Worker tokens.",
+    "When a Worker dies during the day, mark them with the DIED TODAY reminder. Since the Worker only has 1 such reminder, you may want to write down other players who die during the day.",
+    "Each night, except for the first, wake a Worker with a DEAD or DIED TODAY reminder token. Point to any player and show the Worker that player’s character token. Put this Worker to sleep. Repeat this until all of them have woken."
+   ],
+   "examples": [
+    "All Townsfolk are Workers, but none of them claim to be. Carl seems to be believing everyone’s lies a little too passionately, and he is accused of being the Imp.",
+    "Joe is a Worker. He is killed by the Godfather. Tonight he learns that Micheal is a Worker.",
+    "Micheal is executed. That night, he learns that Greg is the Godfather, even though Micheal is dead."
+   ],
+   "tips": [
+    "Consider how trusted a Worker is when giving them their info. Less trusted players getting more potent info is generally most interesting. The good team should be getting their strongest info early on. Powerful info in the late game can make it very hard for the evil team to win. Multiple players receiving the same information should be kept to a minimum.",
+    "The ideal final day has 1 alive player that was seen as a non-Demon character by a Worker who isn’t confirmed. Adjust this as needed.",
+    "Icon inspired by Maria Sibylla Merian. She drew detailed bug paintings."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Divided, we only beg. United, we bargain instead.",
+   "flavor": "Divided, we only beg. United, we bargain instead. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Sister_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 74.23,
+   "otherNightReminder": "Wake a Worker with a DEAD or DIED TODAY reminder token. Point to any player and show the Worker that player’s character token. Put this Worker to sleep. Repeat this until all of them have woken.",
+   "reminders": [
+    "Died Today"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "worker",
+   "page": "c/worker.html",
+   "art": "art/worker.png",
+   "image": "https://botchomebrew.wiki/assets/art/worker.png",
+   "artAlt": "art/worker-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/worker-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Groom",
+   "team": "townsfolk",
+   "ability": "On your 1st day, publicly choose a player (not yourself): if they agree, you both can't die until both would.",
+   "lede": "The Groom unites themselves with another player, until death does them part.",
+   "summaryBullets": [
+    "During the Groom’s 1st day, the Groom can publicly choose a player. If this player does not agree to the Groom ability, the Groom will lose their ability.",
+    "If the chosen player agrees, then neither player can die until both players have had their deaths prevented by the Groom ability.",
+    "If the chosen player wishes to agree, they must do so in public when chosen by the Groom ability.",
+    "The Groom ability persists until both players have been saved by it specifically. It does not matter how many things attempt to kill one player, until the other is saved by the Groom ability, they will not die. If something other than the Groom ability stopped a player's death, then that player does not count as being saved by the Groom ability.",
+    "If something does, in fact, kill a player protected by the Groom, they are still considered saved by the Groom ability. If this player is the Groom, the Groom loses their ability, on account of being dead.",
+    "When the Groom ability ends, the players remain alive, but are no longer protected."
+   ],
+   "howToRun": [
+    "During the 1st day, if the Groom declares they’re choosing a player, that player may declare that they agree to the Groom ability, or that they do not. If they don't agree to the Groom ability, the Groom loses their ability -- Mark the Groom with the NO ABILITY reminder token. If they do agree, mark the Groom and their chosen player with the SAFE reminder token.",
+    "If a player marked with the SAFE reminder token would die, they do not, but are marked with the SURVIVED reminder token. If the other player with the SAFE reminder token already has the SURVIVED reminder token, remove both SAFE reminders, and mark the Groom with the NO ABILITY reminder token. In this situation, the player who would've been marked with the SURVIVED reminder token still does not die."
+   ],
+   "examples": [
+    "Micheal, the Groom, chooses Sarah, the Town Crier. Sarah agrees. When the No Dashii attacks Micheal that night, Micheal survives. When the No Dashii attacks Sarah the next night, Sarah survives. When Sarah is executed the next day, she dies.",
+    "Elizabeth, the Groom, chooses Lily, the Ojo. Lily agrees. When Lily is executed, she survives. When she is attacked by the Slayer, she survives. Elizabeth is executed and survives. The next day, Lily is executed and dies."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Please, can you make me the happiest man in the world?",
+   "flavor": "Please, can you make me the happiest man in the world? // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Groom_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Safe",
+    "Safe",
+    "Survived",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "groom",
+   "page": "c/groom.html",
+   "art": "art/groom.png",
+   "image": "https://botchomebrew.wiki/assets/art/groom.png",
+   "artAlt": "art/groom-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/groom-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Cleric",
+   "team": "townsfolk",
+   "ability": "From the 2nd day onward, Demons you nominate die. If an evil player is dead, you are drunk.",
+   "lede": "The Cleric can banish the Demon while things are dire.",
+   "summaryBullets": [
+    "From the 2nd day of the game onward, if the Cleric nominates the Demon, the Demon immediately dies, usually resulting in the good team’s victory.",
+    "If an evil player is dead, the Cleric is permanently drunk for the rest of the game. The Cleric does not learn this, and will have to deduce their own sobriety.",
+    "If a Cleric is made after the 2nd day, they begin acting immediately.",
+    "Evil players can be killed in the night to disable the Cleric!"
+   ],
+   "howToRun": [
+    "From the second day onward, if the Cleric nominates a player, and the nominated player is an alive Demon, declare that the nominated player dies — Mark them with a shroud.",
+    "If an evil player is dead, the Cleric is drunk — Mark them with the DRUNK reminder token."
+   ],
+   "examples": [
+    "Ivan is the Cleric. On the first day, he nominates Joal, the Imp, and nothing happens. On the 3rd day, he nominates Joal, the Imp, and Joal dies. The good team wins.",
+    "Markus is the Cleric, who nominates Marshall. Marshall, despite being the Imp, lives, since sophie, the evil Shankaar, is dead.",
+    "Joseph, the Imp, is too damn scared of this Cleric business, and so decides to kill himself in the night. This would cause the Cleric to become drunk, if there were one in play."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "A voice from beyond booms in my lungs. In searing light, I will reduce thee to ash. Ash that blows away in the same spectacle.",
+   "flavor": "A voice from beyond booms in my lungs. In searing light, I will reduce thee to ash. Ash that blows away in the same spectacle. // ★By BakedIce★, ξ Art by TheDarkArtist ξ",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "TheDarkArtist",
+   "edition": "",
+   "jsonId": "Cleric_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Drunk"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Lleech",
+     "align": "evil",
+     "text": "If the Cleric is sober and nominates the Lleech host, the Lleech host dies."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "cleric-circus-music",
+   "page": "c/cleric-circus-music.html",
+   "art": "art/cleric-circus-music.png",
+   "image": "https://botchomebrew.wiki/assets/art/cleric-circus-music.png",
+   "artAlt": "art/cleric-circus-music-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/cleric-circus-music-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": true
+  },
+  {
+   "name": "Torchbearer",
+   "team": "townsfolk",
+   "ability": "During evil info, you register as the Demon instead of them. If you're nominated & all evil players vote, they win.",
+   "lede": "The Torchbearer leads the evil team.",
+   "summaryBullets": [
+    "During Minion Info and Demon Info, the Torchbearer will register as the Demon! They’ll know who the Minions are, they’ll start the game knowing 3 bluffs, and the Minions will think the Torchbearer is the Demon.",
+    "Likewise, during Minion Info and Demon Info, the Demon won’t register as the Demon. While they’ll still register as the Demon for abilities and win conditions, they won’t know their team or bluffs.",
+    "If the Torchbearer is nominated, and all evil players vote, the evil team will immediately win, whether or not the Torchbearer is executed.",
+    "If the Torchbearer dies, they can’t lose due to their ability anymore!",
+    "The Torchbearer doesn’t know who the Demon is, nor does the Demon know who the Torchbearer is.",
+    "Anything that would mess with the info the Demon learns, like the Magician or Poppy Grower, likewise affects the Torchbearer.",
+    "Things the Demon learns that aren’t due to Demon Info, such as the King or Lunatic, aren’t learned by the Torchbearer."
+   ],
+   "howToRun": [
+    "If 7 or more players, make the following adjustments during the Minion Info and Demon Info steps.",
+    "During Minion Info, point to the Torchbearer instead of the Demon after showing the “This is your Demon” info card. During Demon Info, wake the Torchbearer instead of the Demon, and give the Torchbearer normal Demon Info. Put the Torchbearer to sleep, and do not wake the Demon.",
+    "If the Torchbearer is nominated, & every evil player votes, the evil team immediately wins."
+   ],
+   "examples": [
+    "Bill, the Torchbearer, learns that Amy is the Minion, and that the Lycanthrope, Mayor, and Chef are not in-play. Amy learns that Bill is the Demon.",
+    "Scott, the Demon, doesn’t learn any bluffs or who his Minions are, because a Torchbearer is in play.",
+    "Charlotte, the Torchbearer, is nominated by the Goblin. The Vigormortis and the Goblin, who are the entire evil team, vote on this nomination. The evil team wins.",
+    "Jamie, the Fang Gu, is fighting an uphill battle with the Vizier, who wrongly thinks that Jamie is the Torchbearer."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "At the edge of the light, the darkness follows.",
+   "flavor": "At the edge of the light, the darkness follows. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Torchbearer_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Pithag",
+     "align": "evil",
+     "text": "If the Pit Hag creates a Torchbearer, then any alive player becomes a Torchbearer & learns true Demon Info."
+    },
+    {
+     "name": "Summoner",
+     "align": "evil",
+     "text": "If there was ever a Summoner, the Torchbearer loses if they're executed & all evil players voted."
+    },
+    {
+     "name": "Boffin",
+     "align": "evil",
+     "text": "The Demon can't gain the Torchbearer ability."
+    },
+    {
+     "name": "Spy",
+     "align": "evil",
+     "text": "If the Spy and Torchbearer are both in-play, the Torchbearer has no ability during the day."
+    },
+    {
+     "name": "Widow",
+     "align": "evil",
+     "text": "If the Widow and Torchbearer are both in-play, the Torchbearer has no ability during the day."
+    },
+    {
+     "name": "Seer",
+     "align": "evil",
+     "text": "Minions would think the Torchbearer is the Seer (instead of the real Seer).",
+     "id": "Tiresias_Circus_Music"
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "torchbearer",
+   "page": "c/torchbearer.html",
+   "art": "art/torchbearer.png",
+   "image": "https://botchomebrew.wiki/assets/art/torchbearer.png",
+   "artAlt": "art/torchbearer-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/torchbearer-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Sericulturist",
+   "team": "townsfolk",
+   "ability": "Each night, choose a player: you learn if the closest Minion from them is 1) clockwise, 2) anti-clockwise, or 3) neither.",
+   "lede": "The Sericulturist weaves the Minions together.",
+   "summaryBullets": [
+    "Each night the Sericulturist chooses a player, and then learns whether the closest Minion from that player is closer clockwise, anti-clockwise, or neither.",
+    "The Sericulturist learns their info in the form of a number. So they learn “1” if the closest Minion is clockwise, or “3” if the Minion is equidistant.",
+    "Chosen Minions yield information about other Minions, assuming there are any. Usually, if there is only 1 Minion they are neither clockwise, nor anti-clockwise from their closest Minion.",
+    "Likewise, if there are no Minions at all, then the Sericulturist would learn “neither” regardless of who they choose.",
+    "If there are multiple Minions that are the same distance from this player, then their closest Minion is neither clockwise, nor anti-clockwise.",
+    "Remember, the Sericulturist looks for Minions, not the Demon!"
+   ],
+   "howToRun": [
+    "Each night, wake the Sericulturist. They point at any player. If the closest Minion from this player is clockwise, show fingers for 1. If the closest Minion from this player anti-clockwise, show fingers for 2. If the closest Minion from this player is neither clockwise, nor anti-clockwise, show fingers for 3. Put the Sericulturist to sleep."
+   ],
+   "examples": [
+    "Lily, the Sericulturist, chooses Abby, the Chef. Lily learns that the closest Minion from Lily is Clockwise. The next night, Lily chooses Mara, the Poisoner, who is 2 seats Clockwise from Abby, and learns “Clockwise” again. The 3rd night, she chooses Jacob, the dead Wizard, who is 1 seat Clockwise from Mara. Lily learns “Anti-Clockwise”."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Don't let the things that keep you safe go to waste.",
+   "flavor": "Don't let the things that keep you safe go to waste. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Sericulturist_Circus_Music",
+   "firstNight": 56.28,
+   "firstNightReminder": "The Sericulturist points at any player. If the closest Minion from this player is clockwise, show fingers for 1. If the closest Minion from this player anti-clockwise, show fingers for 2. If the closest Minion from this player is neither clockwise, nor anti-clockwise, show fingers for 3.",
+   "otherNight": 76.28,
+   "otherNightReminder": "The Sericulturist points at any player. If the closest Minion from this player is clockwise, show fingers for 1. If the closest Minion from this player anti-clockwise, show fingers for 2. If the closest Minion from this player is neither clockwise, nor anti-clockwise, show fingers for 3.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "sericulturist",
+   "page": "c/sericulturist.html",
+   "art": "art/sericulturist.png",
+   "image": "https://botchomebrew.wiki/assets/art/sericulturist.png",
+   "artAlt": "art/sericulturist-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/sericulturist-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Carpenter",
+   "team": "townsfolk",
+   "ability": "Each night*, learn if 1 of the Demon’s 2 alive neighbors died tonight.",
+   "lede": "The Carpenter learns when the Demon betrays those closest to them.",
+   "summaryBullets": [
+    "Each night, after the first, the Carpenter learns whether or not an alive neighbor of the Demon died tonight.",
+    "The Carpenter learns information about all players who died tonight. If any of them were an alive neighbor of the Demon, the Carpenter learns a yes. This can include players not killed by the Demon, or evil players.",
+    "If no one dies at night, the Carpenter learns a no. If both alive neighbors of the Demon die at night, the Carpenter would learn a yes that night.",
+    "If a player dies during the day, the Carpenter does not learn about them, even if the Demon caused their death."
+   ],
+   "howToRun": [
+    "Each night, if an alive neighbor of the Demon dies, mark the Carpenter with the BETRAYAL reminder token.",
+    "Each night, except for the first, wake the Carpenter. If they have the BETRAYAL reminder token, nod your head yes. Otherwise, shake your head no. Remove the BETRAYAL reminder token & put the Carpenter to sleep."
+   ],
+   "examples": [
+    "The Seer kills the Trickster, who neighbors them. The Carpenter learns that yes, the Demon's living neighbor died tonight.",
+    "The No Dashii kills the Nightwatchmen, who isn't one of their alive neighbors. The Carpenter learns that a living neighbor of the Demon didn't die tonight.",
+    "The Legion kills the Shade, who's alive neighbors are 2 other Legions. The Carpenter learns that yes, an alive neighbor of the Demon has died tonight."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "כדי לבנות בית, כל פיסת עץ חייבת לסמוך זה על זה. לא הצלחתי לבנות כבר זמן מה...יש בוגד בתוכנו.",
+   "flavor": "כדי לבנות בית, כל פיסת עץ חייבת לסמוך זה על זה. לא הצלחתי לבנות כבר זמן מה...יש בוגד בתוכנו. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Carpenter_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 78.33,
+   "otherNightReminder": "If the Carpenter has the BETRAYAL reminder token, nod your head yes. Otherwise, shake your head no.",
+   "reminders": [
+    "Betrayal"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "carpenter-circus-music",
+   "page": "c/carpenter-circus-music.html",
+   "art": "art/carpenter-circus-music.png",
+   "image": "https://botchomebrew.wiki/assets/art/carpenter-circus-music.png",
+   "artAlt": "art/carpenter-circus-music-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/carpenter-circus-music-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Kenku",
+   "team": "townsfolk",
+   "ability": "Each night*, choose a player: if they’d die tonight, you learn 2 good players who die instead.",
+   "lede": "The Kenku murders their friends instead of the Demon.",
+   "summaryBullets": [
+    "The players killed by the Kenku must be good players, and are decided by the Storyteller. This can include Outsiders, Townsfolk, Travelers, or even the Kenku themselves!",
+    "The Kenku learns which good players will be dying after their chosen player would die. They learn this even if those players don’t die due to effects like the Inkeeper.",
+    "The good players killed by the Kenku cannot include the player currently protected by the Kenku.",
+    "The Kenku can activate any number of times per night. For example, effects like the Gossip can target the chosen player. If this happens, the Kenku learns every player their ability kills."
+   ],
+   "howToRun": [
+    "Each night, after the first, wake the Kenku. They point to any player — Mark them with the “Shiny” reminder token. Put the Kenku to sleep.",
+    "If the player marked with the “Shiny” reminder dies at night, they do not. Instead, choose 2 other good players, who die instead — Mark them with the “Dead” reminder token. Then, wake the Kenku & point to these 2 players. Put the Kenku to sleep."
+   ],
+   "examples": [
+    "Billy is the Kenku and protects Sarah from being killed by Imp. Billy learns that May, the Orcale, and Stacie, the good Cult Leader, die in Sarah’s stead.",
+    "Joseph is the Kenku and protects himself each night. Nothing attempts to kill Joseph at night, so his ability never activates.",
+    "Micheal is the Kenku. Micheal protects the Imp from dying at night, and the Storyteller chooses to kill Micheal and the Al-Saahir."
+   ],
+   "tips": [
+    "When choosing which players die to the Kenku, make sure to keep in mind that these players will be confirmed. Generally, you should be looking for which 2 good players would be most devastating for the evil team be confirmed & killed."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Guys, be murderer on the loose! There is a very very careful.",
+   "flavor": "Guys, be murderer on the loose! There is a very very careful. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Kenku_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 23.19,
+   "otherNightReminder": "The Kenku points to player -- Mark them with the SHINY reminder token. If that player would die tonight, they don't, & 2 good players die instead -- mark them with the Kenku's DEAD reminder tokens. Then, wake the Kenku & point to these 2 players.",
+   "reminders": [
+    "Shiny",
+    "Dead",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Leviathan",
+     "align": "evil",
+     "text": "Each night, the Leviathan chooses a player. If this player is protected by the Kenku, then the Kenku learns 2 other good players who die."
+    },
+    {
+     "name": "Riot",
+     "align": "evil",
+     "text": "Each night, the Riot chooses a player. If this player is protected by the Kenku, then the Kenku learns 2 other good players who die."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "kenku",
+   "page": "c/kenku.html",
+   "art": "art/kenku.png",
+   "image": "https://botchomebrew.wiki/assets/art/kenku.png",
+   "artAlt": "art/kenku-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/kenku-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Imam",
+   "team": "townsfolk",
+   "ability": "Each day, you may publicly advise your team: that night, learn how useful your advice was.",
+   "lede": "The Imam searches for the correct path.",
+   "summaryBullets": [
+    "Each day, the Imam may publicly give advice to their team. That night, the Imam learns how useful the advice was.",
+    "If the Imam doesn’t give advice to their team, they don’t learn info that night.",
+    "The Imam’s advice must be addressed to their entire team. It can mention specific players, but the advice must be such that any player on the Imam’s team can follow it, or the group can as a whole.",
+    "The Imam’s advice is assessed based on how useful it’d be if followed that day. For example, advice pertaining to the final day is not useful for days before the final day."
+   ],
+   "howToRun": [
+    "Each day, if the Imam publicly gives a piece of advice that their team could follow, mark a player with the ADVISED reminder token. If it helps, you may place it some amount of steps clockwise from the Imam to indicate that the advice was helpful, or some amount counterclockwise to indicate that it wasn’t.",
+    "That night, wake the Imam. Use your thumb to signal how useful the advice was. Remove the ADVISED reminder token and put the Imam to sleep."
+   ],
+   "examples": [
+    "Bailey, the Imam, advises her team to ignore players claiming to be the same character. That night, she learns that this advice was not useful. This was because the Imp was claiming the same character as the Curionist.",
+    "Scott, the Imam, advises his team to execute Bill. Since a lot of people don’t trust Bill, and Bill has no ability, it was pretty useful advice, even though Bill wasn’t the Demon.",
+    "Jonah, the Imam, advises their team to figure out the Prodigy’s trait. They learn that this advice isn’t very useful. The Prodigy had already found their trait. Jonah then advises their team to figure out the Amnesiac’s ability. They learn that this is advice is pretty useful, since they’d gain a lot of info in doing so."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "گود سے لے کر قبر تک علم حاصل کرو",
+   "flavor": "گود سے لے کر قبر تک علم حاصل کرو // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Imam_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 77.48,
+   "otherNightReminder": "Give a thumb signal which relates to how useful the Imam's adivce was yesterday.",
+   "reminders": [
+    "advised"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "imam",
+   "page": "c/imam.html",
+   "art": "art/imam.png",
+   "image": "https://botchomebrew.wiki/assets/art/imam.png",
+   "artAlt": "art/imam-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/imam-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Medium",
+   "team": "townsfolk",
+   "ability": "Once per game, at night*, choose to learn which dead players are evil.",
+   "lede": "The Medium can learn the true nature of every single dead player.",
+   "summaryBullets": [
+    "Once per game, the Medium can use their ability. When they do, they learn every dead evil player.",
+    "If no dead players are evil, or there are no dead players, you tell the Medium a 0.",
+    "They can learn players that they'd think are alive, such as those killed by the Shade, or a player who died tonight."
+   ],
+   "howToRun": [
+    "Each night, after the first, wake the Medium. They will either nod or shake their head. If they nod, point to every dead player that is evil. If there are no dead evil players, show fingers for 0 instead. Put the Medium to sleep.",
+    "If they nod, the Medium loses their ability — mark them with the NO ABILITY reminder and remove their night token from the night sheet. (The Medium won’t wake again.)"
+   ],
+   "examples": [
+    "Adrian, the Medium, uses their ability on the 3rd night. They learn that Markus, the Shankaar, is evil. They don't learn that any other player is evil, since no other dead players are evil.",
+    "The Medium uses their ability on the 2nd night. There are no dead evil players, so they learn this.",
+    "The Medium uses their ability on the 4th night. They learn that Bobby, who they thought was alive, is actually a dead evil player. This is because the Shade killed him, and he said nothing about it."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I like to be honest with my clients. Your grandfather is a real حمار.",
+   "flavor": "I like to be honest with my clients. Your grandfather is a real حمار. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Medium_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 81.43,
+   "otherNightReminder": "The Medium will either nod or shake their head. If they nod, point to every dead player that is evil. If there are no dead evil players, show fingers for 0 instead.",
+   "reminders": [
+    "No ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "medium-circus-music",
+   "page": "c/medium-circus-music.html",
+   "art": "art/medium-circus-music.png",
+   "image": "https://botchomebrew.wiki/assets/art/medium-circus-music.png",
+   "artAlt": "art/medium-circus-music-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/medium-circus-music-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Prophet",
+   "team": "townsfolk",
+   "ability": "Once per game, you may give the Storyteller a statement & they'll give you 1 they agree with as much.",
+   "lede": "The Prophet agrees with the world.",
+   "summaryBullets": [
+    "Once per game, they may give the Storyteller any statement they want.",
+    "The Storyteller will, at some point, give a statement that they think is about as true.",
+    "For statements that are objectively true or false, this means giving one that matches in veracity. Subjective statements, however, will be based on the Storyteller's opinions.",
+    "The Storyteller doesn't need to give the Prophet their statement right away. They can wait until future days or give it during the night. However, if the Prophet has given the Storyteller a statement, they must respond with another one at some point, even if the Prophet dies."
+   ],
+   "howToRun": [
+    "Once per game, at any time, the Prophet will give you a statement. Write it down (if you need) and mark them with the NO ABILITY reminder token. At any point in the future, even if the Prophet dies, tell them a statement which you believe to be equally true."
+   ],
+   "examples": [
+    "Lairah tells the Storyteller \"Micheal is the Demon\". The Storyteller responds \"Bill is the Drunk.\" Micheal is not the Demon, and Bill is not the Drunk.",
+    "The Prophet tells the Storyteller \"This game is very entertaining\". The Storyteller replies that night \"Good should look for the Baron\". This game is absolutely hilarious for the Storyteller, one of their favorites, but the good team hasn't even considered what Minions are in play, nor who they are.",
+    "The Prophet says \"The Demon is attractive.\" The Storyteller, embarrassed, says \"A Minion is funny\""
+   ],
+   "tips": [
+    "The Prophet is a character that can be very silly, but it’s important to be kind. If situations would like the last example would make you as a player or Storyteller uncomfortable, your group should steer away from them."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Things beyond my vision...Can you accept me as your own?",
+   "flavor": "Things beyond my vision...Can you accept me as your own? // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Prophet_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "prophet-circus-music",
+   "page": "c/prophet-circus-music.html",
+   "art": "art/prophet-circus-music.png",
+   "image": "https://botchomebrew.wiki/assets/art/prophet-circus-music.png",
+   "artAlt": "art/prophet-circus-music-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/prophet-circus-music-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Bug Collector",
+   "team": "townsfolk",
+   "ability": "The Storyteller has a picture. Each day, you may see it & briefly discuss its meaning.",
+   "lede": "The Bug Collector knows a lot on a specific subject",
+   "summaryBullets": [
+    "The Storyteller will draw or find a picture, which in some way, relates to the game. Each day, the Bug Collector will get to see this picture.",
+    "When playing in person, the Storyteller should bring a notebook or sketchbook with them to make drawings with. Online play is slightly more complicated, and it is recommended you direct message the player a picture of your drawing, or an image downloaded.",
+    "If pictographic communication, for any reason, is off the table then it’s recommended to substitute with a different artistic medium, such as music or poetry.",
+    "If the Bug Collector would learn false info, they may see a picture that doesn’t relate to the game, or relates in a false way! This can also cause the picture to change.",
+    "Alongside seeing their picture, they will get to discuss the picture with the Storyteller. This can be a great place for the Storyteller or correct misunderstandings, or point out important details.",
+    "The Bug Collector’s discussion will usually be a fairly short back and forth. While the Storyteller might be more inclined to lie if the Bug Collector is drunk, poisoned, or otherwise afflicted by abilities like the Vortox, this conversation is not explicit mechanical information. Think of it like a conversation (you do like talking to your players, right?).",
+    "The Bug Collector can learn about…anything! Any one thing, several things, and through any style. Feel free to get creative and metaphorical. Generally, the harder to parse the Bug Collector’s info is, the more rewarding it should be to finally understand."
+   ],
+   "howToRun": [
+    "At some point, draw or find a picture which relates to the game in some way.",
+    "Each day, the Bug Collector may visit you in private. Show them this picture, and have a short conversation with them about the picture, and how it relates to the game."
+   ],
+   "examples": [
+    "There is a Kenku in play, and a Pixie who knows this. Josie, the Bug Collector, loves video games. The Storyteller knows she is familiar with Banjo & Kazooie, a video game about a bear and a bird working together. The Storyteller draws these characters, and shows Josie this on the 1st day. Josie asks if this picture is talking about jumping to conclusions, since those characters jump a lot. The Storyteller agrees that these character do jump a lot, but says that she should focus on more obvious aspects to them. On the 4th day, she correctly deduces that her picture is in reference to the Pixie and Kenku being friends, and the Storyteller agrees.",
+    "The storyteller feels like there’s something about the game, when looked at from their perspective, that feels evocative of vultures. On the 1st day, they show Tina, the Bug Collector, a drawing of an angry Vulture. Tina proposes that her picture could mean that the good team has made errors early on, and the evil team is capitalizing on them very well. She also proposes that the good team might be circling around who the Demon is, and is waiting to kill them instead of making a direct attack. The Storyteller points out that the vulture is angry, and so it’d be strange if it weren’t depicting one attacking."
+   ],
+   "tips": [
+    "It can be helpful, when having a conversation with the Bug Collector, to take the perspective that you are also analyzing the picture, looking for hidden meaning. Try to point to Bug Collector in the right direction, and point out aspects of the picture they might be overlooking or overemphasizing."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "...Eat daily, just like humans! Spiders also like to eat their mates, just like mantises. Though mantises, unlike ants, don't live in colonies. Ant colonies are so cool! They have a graveyard area, and if an ant produces a certain pheromone, they'll think they're dead, when they're actually alive! Comparing and contrasting the role of ant queens and bee queens, you actually find that…",
+   "flavor": "...Eat daily, just like humans! Spiders also like to eat their mates, just like mantises. Though mantises, unlike ants, don't live in colonies. Ant colonies are so cool! They have a graveyard area, and if an ant produces a certain pheromone, they'll think they're dead, when they're actually alive! Comparing and contrasting the role of ant queens and bee queens, you actually find that… // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Bugcollector_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "bug-collector",
+   "page": "c/bug-collector.html",
+   "art": "art/bug-collector.png",
+   "image": "https://botchomebrew.wiki/assets/art/bug-collector.png",
+   "artAlt": "art/bug-collector-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/bug-collector-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Squire",
+   "team": "townsfolk",
+   "ability": "You have an in-play Townsfolk’s ability, but don't know which.",
+   "lede": "The Squire serves without knowing their lord.",
+   "summaryBullets": [
+    "The Squire has the ability of an in-play Townsfolk. They keep this ability even if this character is dead, drunk, or poisoned. The Squire themselves can lose their ability as normal.",
+    "The Squire does not know which ability they have! They will wake for & make choices for their ability as normal, even if that might reveal which ability they have.",
+    "If the Squire tries to use an ability they don’t have, like the Fisherman’s, they are told they don’t have that ability.",
+    "If the Squire is poisoned, drunk, or afflicted by abilities like the Vortox, they might wake or learn info in ways that the ability they have wouldn't. You cannot use this to mimic effects like the Nightwatchman or the Widow.",
+    "If the ability, like the Candlemaker’s, is retained beyond death, then the Squire follows suit.",
+    "If the player who has the ability the Squire is copying changes character, the Squire will change which in-play ability they have."
+   ],
+   "howToRun": [
+    "During the 1st night, mark a Townsfolk with the LORD reminder token. The Squire has their ability. They use it as if they were that character, and wake at night when that character would normally wake to use their ability."
+   ],
+   "examples": [
+    "There is an Alsaahir in play. The Squire has the Alsaahir ability. There is also an Oracle in play, so the Squire is unsure which ability they have until the 2nd night passes and they don’t wake up.",
+    "The Squire learns “1” on the 2nd night, and isn’t sure if they have the Empath ability or the Mathematician ability."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Indeed. It’s been a lovely few weeks, but time calls! Bye-bye for now!",
+   "flavor": "Indeed. It’s been a lovely few weeks, but time calls! Bye-bye for now! // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Squire_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Lord",
+    "?"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Candlemaker",
+     "align": "good",
+     "text": "If the Squire uses the Candlemaker ability, they learn this tonight.",
+     "id": "Candlemaker_Circus_Music"
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "squire",
+   "page": "c/squire.html",
+   "art": "art/squire.png",
+   "image": "https://botchomebrew.wiki/assets/art/squire.png",
+   "artAlt": "art/squire-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/squire-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Prodigy",
+   "team": "outsider",
+   "ability": "You start knowing everyone with a trait & guess it each day, even if dead. If you haven't guessed true, executed Demons win.",
+   "lede": "The Prodigy is cursed with infinite knowledge.",
+   "summaryBullets": [
+    "The Prodigy learns everyone playing the game who shares a trait decided by the Storyteller at the end of the first night. The Prodigy does not learn this trait.",
+    "The Prodigy can learn any number of players, and can even learn themselves, the Storyteller, and Travellers. If the Prodigy’s trait applies to an in-play Fabled or Loric character, the Prodigy will not learn this.",
+    "Each day, the Prodigy may publicly, or privately with the Storyteller, guess a trait that applies to their info. Their ability will be active until they guess something which applies to every player they learned, none of the players they didn’t learn, and was true when the Storyteller gave them their info. This will, most of the time, be the trait the Storyteller intended, but it need not be. The Prodigy does not learn whether or not they've guessed true.",
+    "Until the Prodigy makes a guess that meets the above criteria, the team of Demons who are executed will win. It does not matter whether or not this execution kills the Demon, would end the game, or if the Prodigy lives.",
+    "The Storyteller has the opportunity to deny a Prodigy’s guess and inform them that they are doing this. This is mostly to prevent obviously true guesses, such as “all players who are wearing glasses”. In this situation, the Prodigy may make a different guess."
+   ],
+   "howToRun": [
+    "When setting up the first night, look at the Grimoire and find a trait which applies to some players. Write this down and save it for later. Place a night token next to each player that fits this trait.",
+    "On the first night, wake the Prodigy, and point to every person playing the game that this trait applies to. Put the Prodigy to sleep.",
+    "Each day, privately with you or publicly, the Prodigy may guess a trait, even if they have died. If the Prodigy guesses a trait which applies to everyone you showed them, and to no one else, which was true at the time you woke the Prodigy, then mark them with the ENLIGHTENED reminder token.",
+    "Remember, while you gave the Prodigy information with a specific trait in mind, if they guess something that meets the above criteria, then they do not need to guess the exact trait which you had intended. If the Prodigy attempts to make a guess that you feel undermines the spirit of the game (such as information based on things outside the game, or trivial things like where players are sitting in the circle) you may ask them to make a different guess. Be very clear with your players what things you'd veto as a Prodigy guess, and make sure to not give a Prodigy information with such things as the intended trait.",
+    "If a Demon is executed, & the Prodigy does not have the ENLIGHTENED reminder token, then declare that the team of the executed Demon wins."
+   ],
+   "examples": [
+    "The Prodigy starts the game knowing every player who’s character is religious in nature. They learn Tam, the Cleric; Bill, the Leviathan; Josie, the Saint; and Roxanne, the Shugenja. While High Priestess is on the script, it isn’t in play. The Prodigy does not guess their trait, and so when Bill dies from execution, the evil team wins.",
+    "The Prodigy starts the game knowing every evil player. The Prodigy guesses that they know every player who was poisoned, then, the next day, every player that affected the set up, and then, the next day, every evil player. Even though the Prodigy has guessed their trait, they do not know this, and so the next day they guess that they know every player that the Demon thinks is a Minion.",
+    "The Prodigy starts the game knowing the longest line of good Townsfolk. On the 2nd night, the Prodigy dies. The next day, the Prodigy makes another guess, but they still have not guessed truthfully. At the end of the day, the Alsaahir activates their ability, but despite the Prodigy not finding their trait, the good team wins."
+   ],
+   "tips": [
+    "If you’re not yet confident in your ability to make Prodigy traits, consider making ones which aren’t too difficult. Generally, the pressure that the Prodigy adds to the good team is still significant, even if their trait isn’t that hard to solve for. Also, don’t be afraid to give the Prodigy very powerful info! They do not know what their info means, so a Prodigy who has successfully found their trait with confidence should be greatly rewarded. Remember that evil players are very likely to lie, so including them can make simple traits much harder to solve for.",
+    "The Prodigy can learn info about any trait, including ones that players might not initially think to consider, like character flavor, art, or name. Encourage and answer odd questions about whether or not certain characters would fit certain criterias. Be open to unorthodox guesses, and try to avoid using technicalities to cause the Prodigy’s team to lose.",
+    "Evil players will usually bluff a good character that lacks their traits, so each evil player makes Prodigy info much harder solve with confidence. This isn't always a bad thing, it's just something to keep in mind!",
+    "Make your trait as direct as possible. \"Neighbors of\" is usually a terrible, horrible, no good way to start a trait. Even simple traits are prone to overthinking, so don't overthink your trait, or try to get too clever.",
+    "Generally speaking, if the Prodigy can identify every character they've learned, that should work for turning off their ability. Of course, the Prodigy need not do this, and this isn't how their ability works (they must find a connection). Likewise, there are times where this isn't always the case, and it's fine (ex: players who woke due to a Minion ability).",
+    "If you're struggling to come up with ideas for a trait, try working backwards. Choose a handful of players you want the Prodigy to learn, and see what traits you can find they have in common. Don't forget to double check if any other players have that trait, though!",
+    "If the Prodigy seems wildly off course, don't be afraid to help them out a little. This shouldn't be done if the Prodigy's assessment of the game state is off, but if they're making guesses that have no hope of being the truth, feel free to let them know this and let them guess again. Likewise, if they're not considering an aspect of the game your trait relies on, don't be afraid to remind them of it (ex: make sure you look at the token art). While giving away clever connections can lose some of the magic of the Prodigy, players won't appreciate that magic if they lose what felt like an unwinnable game.",
+    "If the Prodigy is trying to guess obvious things, like \"players wearing red\", don't be afraid to ask them to guess something else. Unless, of course, this is something you want. It's your game!",
+    "While the consult where the Prodigy makes their guess is a great time to assess their understanding of things, it's not the only time. Keep an eye on public discussions, and see if anyone's on the scent. Using characters like the High Priestess, or the Savant, can help support players who are hot on the trail.",
+    "The Prodigy ability is removed so long as their guess is true: it applies to everyone they learned, no one else, and this was the case when they learned their info. While the distinction between this and your intended trait often doesn't matter, still keep an eye open at every guess the Prodigy makes. Likewise, keep in mind that you don't declare whether or not the Prodigy guessed true, and they keep their ability while dead.",
+    "The Prodigy works well with characters that can assess specific player alignment, like the Medium, the Ravenkeeper, or the Sailor. Characters like the Dreamer or the Librarian can also help inform who, if anyone, the Prodigy learned is lying.",
+    "Start easy. I can't emphasize this enough. \"Boring traits\" that work well will lead to fun games. You can think outside the box, you can have your fun, and Prodigy can be a real chin-scratcher when you know what you're doing, but the trait that your players will love the most, and remember dearly for a while, is the one that they solve."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The other children kicked the ball amongst each other, playing in reality. I kicked the ball alone, playing with reality.",
+   "flavor": "The other children kicked the ball amongst each other, playing in reality. I kicked the ball alone, playing with reality. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Prodigy_Circus_Music",
+   "firstNight": 76.95,
+   "firstNightReminder": "Point to every player marked with a night order token. Put the Prodigy to sleep.",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Guessed True"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Chambermaid",
+     "align": "good",
+     "text": "The Chambermaid learns if the Prodigy wakes tonight or not, even though the Chambermaid wakes first."
+    },
+    {
+     "name": "Mathematician",
+     "align": "good",
+     "text": "The Mathematician learns if the Prodigy's ability will malfunction tonight, even though the Mathematician wakes first."
+    },
+    {
+     "name": "Pit Hag",
+     "align": "evil",
+     "text": "The Pit-Hag cannot make a Prodigy."
+    },
+    {
+     "name": "Spy",
+     "align": "evil",
+     "text": "The Spy does not see the “Enlightened” reminder token when looking into the Grimoire."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "prodigy-circus-music",
+   "page": "c/prodigy-circus-music.html",
+   "art": "art/prodigy-circus-music.png",
+   "image": "https://botchomebrew.wiki/assets/art/prodigy-circus-music.png",
+   "artAlt": "art/prodigy-circus-music-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/prodigy-circus-music-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Showman",
+   "team": "outsider",
+   "ability": "Players who don’t applaud your (& only your) death might die at any time.",
+   "lede": "The Showman kills their critics.",
+   "summaryBullets": [
+    "Players who don’t applaud when the Showman’s death is declared might die at any time for the rest of the game.",
+    "Players who applaud the deaths of players aside from the Showman will also die at any time.",
+    "The Showman can kill all their victims at once, but this isn’t necessary. The Showman can even obscure other effects, like that of the Witch, or kill a player in the event that the Demon cannot.",
+    "Players will not know when the Showman dies, and so will have to quickly deduce after each death whether or not they believe that player was the Showman.",
+    "If more than 1 player has the Showman ability, then players who applaud for all of them (and only them) are safe from the Showman ability."
+   ],
+   "howToRun": [
+    "When you declare a player’s death, even if the Showman isn’t in play, wait a few seconds (you may want to clarify you’re “holding for applause” or something similar).",
+    "If the player who died is the Showman, mark each player who didn’t applaud with the HECKLE reminder. If the player who died isn’t the Showman, mark each player who did applaud with the HECKLE reminder.",
+    "Players with the HECKLE reminder might die at any time. Online, applause can take the form of raising your hand or sending a clapping emoji. Other methods can work, and these should be accompanied by actual applause if possible, but make sure that you can clearly tell who did and who didn’t applaud."
+   ],
+   "examples": [
+    "The Showman is executed and dies, and everyone except the Monk, Artist, & Dreamer applauds. The Dreamer and Artist die immediately. That night, when the Demon’s kill is prevented by the Monk, the Monk is killed by the Showman.",
+    "Tera, the Showman, is killed at night. The next day, when the Storyteller announces that they died in the night, no one applauds. The Storyteller kills all but 3 players using the Showman’s ability.",
+    "Stella isn’t the Showman, but is the Baron pretending to be the Showman. When she is executed, everyone except Athena, the actual Showman, applauds. Only 4 players live, so the Storyteller kills 2 players, and the game ends."
+   ],
+   "tips": [
+    "If most players disobey the Showman, you may find it more convenient to track which players have applauded. If no players have, feel free to place 1 Heckle reminder in the center of the Grimoire. For players who die instantly, you likely don’t want to use a reminder token to mark them, and the same goes for dead players.",
+    "Killing players late in the game for a Showman who died early on is rarely fun. Players who wait for the dead player to clarify if they’re the Showman or not should not count as having applauded.",
+    "Art by TheDarkArtist! Thank you so much, Dark!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Thank you, thank you. I feel I just gave the performance of a lifetime! I said, I just gave the performance of a lifetime.",
+   "flavor": "Thank you, thank you. I feel I just gave the performance of a lifetime! I said, I just gave the performance of a lifetime. // ★By BakedIce★, ξ Art by TheDarkArtist ξ",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "TheDarkArtist",
+   "edition": "",
+   "jsonId": "Showman_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Heckle",
+    "Heckle",
+    "Heckle",
+    "Heckle",
+    "Heckle"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "showman",
+   "page": "c/showman.html",
+   "art": "art/showman.png",
+   "image": "https://botchomebrew.wiki/assets/art/showman.png",
+   "artAlt": "art/showman-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/showman-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": true
+  },
+  {
+   "name": "Sinner",
+   "team": "outsider",
+   "ability": "If 2 players live, even if you don't, the most recently killed executee's team wins. Dead Townsfolk are evil.",
+   "lede": "One Sinner makes everyone look evil.",
+   "summaryBullets": [
+    "If any Townsfolk die while the Sinner lives, they turn evil that night. If the Sinner dies, then players who die after them do not change alignment.",
+    "If 2 players live, the team of the last player who died by execution wins. This happens even if this player wasn't executed on the final day, or if the Sinner is dead.",
+    "To clarify, this means that (on most scripts) killing the Demon on the final day will result in the evil team winning. Killing the Demon earlier will not.",
+    "Players who survive execution, or are already dead when they are executed, are not the most recently killed executee.",
+    "Once only 2 players live, the game ends before the Sinner's ability would change anyone's alignment.",
+    "For the purposes of which team wins, the Sinner considers the alignment of the player when they were executed. So If the last executee is a good Townsfolk who since turned evil, good would win!",
+    "If the Sinner dies in the same night as other players, then make sure to consult the Night Order. Townsfolk who died before the Sinner turn evil, but any afterward don’t."
+   ],
+   "howToRun": [
+    "At night, if any dead Townsfolk is good, wake them. Show the YOU ARE info token then give a thumbs down. Put them to sleep. Turn their character token upside down. (This shows they are now evil.)",
+    "When a player dies by execution, mark them with the MOST RECENT reminder token. If only 2 players live, even if the Possessed is dead, then declare that the team of that player wins."
+   ],
+   "examples": [
+    "Nala is the Sinner. Tony, the Seamstress, is executed on the 1st day. Tony turns evil that night.",
+    "The final 3 players are Bill, Clyde, and Maya. The dead players, most of whom are evil, agree that Bill is most likely to be the Demon. So when Bill is nominated, they all vote. Bill is the Demon, and so the evil team wins.",
+    "The final 3 players are Alex, Betsie, and Daniel. The dead players, most of whom are evil, agree that Alex is most likely to be the Demon. When Alex, the Monk, is executed good wins.",
+    "Steven, the Demon, admits to being the Demon on the final day because he thinks a Sinner is in play."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The best medicine in the world is someone to blame.",
+   "flavor": "The best medicine in the world is someone to blame. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Sinner_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Most Recent"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Spy",
+     "align": "evil",
+     "text": "Only 1 jinxed character can be in-play."
+    },
+    {
+     "name": "Pithag",
+     "align": "evil",
+     "text": "The Pit-Hag cannot create a Sinner, or change a Sinner's character."
+    },
+    {
+     "name": "Widow",
+     "align": "evil",
+     "text": "Only 1 jinxed character can be in-play."
+    },
+    {
+     "name": "Fang Gu",
+     "align": "evil",
+     "text": "If the Sinner exits play, Townsfolk they made evil become good."
+    },
+    {
+     "name": "Godfather",
+     "align": "evil",
+     "text": "Only 1 jinxed character can be in-play."
+    },
+    {
+     "name": "Mastermind",
+     "align": "evil",
+     "text": "The Mastermind ability is prioritized over the Sinner ability."
+    },
+    {
+     "name": "Boffin",
+     "align": "evil",
+     "text": "The Demon cannot have the Sinner ability."
+    },
+    {
+     "name": "Summoner",
+     "align": "evil",
+     "text": "If the Sinner exits play, Townsfolk they made evil turn good."
+    },
+    {
+     "name": "Wraith",
+     "align": "evil",
+     "text": "Only 1 jinxed character can be in-play."
+    },
+    {
+     "name": "Leviathan",
+     "align": "evil",
+     "text": "If a Sinner is in play, the team of the player executed on the 5th day wins (even if 1 good player has already been executed)."
+    },
+    {
+     "name": "Riot",
+     "align": "evil",
+     "text": "On the 3rd dawn, if a Riot is in play, the Sinner is drunk from then onwards."
+    },
+    {
+     "name": "Caliban",
+     "align": "evil",
+     "text": "If the Sinner exits play, Townsfolk they made evil become good.",
+     "id": "Caliban_Circus_Music"
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "sinner",
+   "page": "c/sinner.html",
+   "art": "art/sinner.png",
+   "image": "https://botchomebrew.wiki/assets/art/sinner.png",
+   "artAlt": "art/sinner-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/sinner-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Malum",
+   "team": "outsider",
+   "ability": "You start knowing the in-play Minions. They might change if a good player is \"mad\" this info is false, even if you're dead.",
+   "lede": "The Malum’s knowledge is undeniable.",
+   "summaryBullets": [
+    "On the 1st night, the Malum learns which Minion characters are in play.",
+    "If a good player is “mad” that different Minion characters are in play, Minions might become different Minion characters.",
+    "This may entail being mad that a different number of Minions are in play due to abilities like the Lord of Typhon and Imp",
+    "This can happen multiple times per game, & can happen even if the Malum is dead. The Malum won’t know what the new Minion characters are! You can even change a Minion’s character in the middle of the day, though this is only advisable if you can inform them of this change.",
+    "The Malum still has their ability, even if, for whatever reason, the Malum’s info isn’t true.",
+    "While the Malum ability can activate multiple times per game, if there is no longer a good player who’s mad, then the ability cannot activate."
+   ],
+   "howToRun": [
+    "On the 1st night, wake the Malum. Show them the character token of every in-play Minion character. Put the Malum to sleep.",
+    "If a good player is mad that the in-play Minions are not the Minions that the Malum learned (even if this is the case) then mark them with the Malum’s MAD reminder token.",
+    "At any point going forward, if a good player is marked with the Malum’s MAD reminder token, you may change any Minion’s character to a different Minion character. The next chance you get, show this Minion the “You are” info token and then their new Minion character. If this is at night, put the Minion to sleep."
+   ],
+   "examples": [
+    "There is a Wizard in play. The Malum learns this, but Steven, the Mayor, is mad that a Xaan is in play instead. The Wizard becomes the Mastermind.",
+    "The Malum knows there is a Mastermind in play. The Balloonist accuses the Malum of being the Leviathan, but agrees that a Mastermind is in play. The Malum ability does not activate.",
+    "The Malum knows there is a Mezepheles in play. When telling people, the Malum is not believed at all. On the 2nd night, the Mezepheles becomes the Xaan. On the 3rd night, the Xaan becomes the Wizard. By the 4th night, there are no good players mad that the in-play Minion isn’t Mezepheles, so the Wizard’s character does not change."
+   ],
+   "tips": [
+    "Not all madness breaks are the same, nor should they be treated as such. Generally, the more flagrantly the good team is distrusting of the Malum’s info (or what it implies) the more you should use the Malum’s ability to hurt the good team. Also consider how many people are breaking madness, and why they might be doing so (see Politician)."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Discipuli edunt malum donec aegrotant. Aspirare debemus similes esse, charissime.",
+   "flavor": "Discipuli edunt malum donec aegrotant. Aspirare debemus similes esse, charissime. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Malum_Circus_Music",
+   "firstNight": 53.66,
+   "firstNightReminder": "Show the Malum the character token of every in-play Minion character.",
+   "otherNight": 13.66,
+   "otherNightReminder": "If any player is marked with the Malum's MAD reminder token, you may change a Minion's character to a different Minion character. If you do, wake this Minion and show them the \"YOU ARE\" info token and then their new Minion character. Put this Minion to sleep.",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Summoner",
+     "align": "evil",
+     "text": "If the Malum would remove the Summoner before they use their ability, they use it immediately. The Summoner cannot create an in-play Demon. Deaths are arbitrary tonight if the Summoner used their ability."
+    },
+    {
+     "name": "Caliban",
+     "align": "evil",
+     "text": "If the Malum would remove the Caliban before the Demon uses their ability, they use it immediately.",
+     "id": "Caliban_Circus_Music"
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "malum",
+   "page": "c/malum.html",
+   "art": "art/malum.png",
+   "image": "https://botchomebrew.wiki/assets/art/malum.png",
+   "artAlt": "art/malum-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/malum-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shade",
+   "team": "outsider",
+   "ability": "Once per game, a player you vote for might die tonight (& learn this), but appear alive until executed.",
+   "lede": "The Shade kills a player who is the only one that knows they died.",
+   "summaryBullets": [
+    "When a player is nominated, if the Shade votes, the nominee might die that night, and learn that the Shade killed them.",
+    "That morning, it is not publicly declared that they are dead, even if the Demon attacked them at night. It is the dead player's responsibility to tell the group that they are dead (if they want to).",
+    "Players killed by the Shade only appear alive, they do not register as alive. This means that they cannot nominate, can only vote once, and will register as dead to abilities.",
+    "If the player killed by the Shade is executed, it will be declared that they die, even though they are already dead. If they voted before this, they do not gain another vote, but only the player killed by the Shade knows this.",
+    "The player killed by the Shade will continue to appear alive until they are executed, even if the Shade is poisoned, drunk, or dead.",
+    "If a player killed by the Shade is resurrected, then only that player learns this. They do not learn why they have been resurrected, and nothing is declared about it in the morning."
+   ],
+   "howToRun": [
+    "Once per game, if the Shade votes on a nomination, mark the nominee with the DEAD reminder token (they are not yet dead) and mark the Shade with the NO ABILITY reminder. That night, wake the player marked DEAD. Show them the THIS CHARACTER SELECTED YOU info token, and then the Shade character token. Put them to sleep. They die, but do not announce this tomorrow morning.",
+    "If the player with the DEAD reminder token is executed, declare that they die. This player appears as alive to other players (but not their abilities!) until they are executed, even if the Shade dies or becomes drunk or poisoned.",
+    "If the dead player nominates or votes multiple times, do not draw attention to it, but make sure they understand how the Shade works and that this is cheating.",
+    "If something afterwards would kill this player, do not announce them as having died, even if the Shade is dead. If this player comes back to life, then that night, wake them, and repeat the info you showed them when they died, but shake your head “no” at the end. Put them to sleep, and do not declare anything about it in the morning."
+   ],
+   "examples": [
+    "The Shade votes for the Savant. In the night, the Savant dies and learns this, and in the morning nothing is announced. The Savant wants to nominate Kelly, but cannot due to being dead, so he has to ask Micheal to nominate her.",
+    "The Baron was nominated and the Shade voted for it. That night, the Baron dies and learns this, but does not say anything to the good team, letting them think an extra player is alive than there really is.",
+    "The Gentleman was nominated, but the Shade did not vote. In spite of this, the Gentleman still claims to be dead, as though they were killed by the Shade in the night."
+   ],
+   "tips": [
+    "It isn’t advisable to use the Shade ability to make their team win, such as by killing the Demon. Don’t be afraid to use the Shade ability to cause the loss of their team, however, as they should understand this as a risk when voting!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I worry that when I'm not looking, people I love are dying, and they aren't around to tell me.",
+   "flavor": "I worry that when I'm not looking, people I love are dying, and they aren't around to tell me. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Shade_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 70.44,
+   "otherNightReminder": "Wake the player marked DEAD. Show them the THIS CHARACTER SELECTED YOU info token, and then the Shade character token. Put them to sleep. They die, but do not announce this tomorrow morning.",
+   "reminders": [
+    "Dead",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Chambermaid",
+     "align": "good",
+     "text": "The player killed by the Shade registers as alive to the Chambermaid ability."
+    },
+    {
+     "name": "Professor",
+     "align": "good",
+     "text": "The professor may choose alive players."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "shade",
+   "page": "c/shade.html",
+   "art": "art/shade.png",
+   "image": "https://botchomebrew.wiki/assets/art/shade.png",
+   "artAlt": "art/shade-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/shade-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Dragon Killer",
+   "team": "outsider",
+   "ability": "Only the Demon can register as an evil player or character to Townsfolk, even if you die.",
+   "lede": "The Dragon Killer makes Minions dodge their roles.",
+   "summaryBullets": [
+    "Townsfolk abilities cannot perceive any player as evil, unless they’re the Demon.",
+    "This does not afflict Townsfolk who are drunk or poisoned.",
+    "This will usually take the form of Minions, evil Townsfolk, and evil Travellers appearing as good players & characters. Minions can be shown as Townsfolk or Outsiders.",
+    "The Dragon Killer has no effect on information regarding the Demon."
+   ],
+   "howToRun": [
+    "Whenever using a Townsfolk ability, check to see if the Dragon Killer is in play (even if they’re dead). If so, remember that only the Demon can register as an evil player or character to this ability. This means evil players who aren’t the Demon must register as good, and as a Townsfolk or Outsider to this ability."
+   ],
+   "examples": [
+    "Rohan is the Cannibal, and there is a Dragon Killer in play. Billy, the Baron, is executed today. Billy registers as the good Virgin to Rohan, so the next day, Rohan has the Virgin ability.",
+    "Sarah is the Steward, and there is a Dragon Killer in play. Sarah could learn any player except the Demon, but ends up learning Rose, the good Undertaker.",
+    "Sammy is the Village Idiot, and Mildred is the drunk Village Idiot. Mildred learns that Rosie, the Gentleman, is evil, and Sammy learns that Rosie is good. There is a Dragon Killer in play."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I can die 1000 times, and still get up. But you, you only need to die once.",
+   "flavor": "I can die 1000 times, and still get up. But you, you only need to die once. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Dragonkiller_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Investigator",
+     "align": "good",
+     "text": "If there is a Dragon Killer in play, there is a player who (in spite of the Dragon Killer ability) registers as an in-play Minion character to the Investigator."
+    },
+    {
+     "name": "Clockmaker",
+     "align": "good",
+     "text": "If there is a Dragon Killer in play, the neighbors of Minions might register as Minions to the Clockmaker (in spite of the Dragon Killer ability)."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "dragon-killer",
+   "page": "c/dragon-killer.html",
+   "art": "art/dragon-killer.png",
+   "image": "https://botchomebrew.wiki/assets/art/dragon-killer.png",
+   "artAlt": "art/dragon-killer-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/dragon-killer-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shepherd",
+   "team": "outsider",
+   "ability": "If only 3 players live (not Travellers), your team loses at dawn.",
+   "lede": "The Shepherd avoids the final fight.",
+   "summaryBullets": [
+    "The Shepherd loses their ability if they are dead, so if 3 players live that doesn’t include the Shepherd, their team does not lose.",
+    "The Shepherd ability only activates the dawn after it’s condition is met. This means that if the Demon dies, and only 3 players live afterwards, the good team still wins.",
+    "Travellers don’t count towards the Shepherd’s ability."
+   ],
+   "howToRun": [
+    "Once 3 (or less) players who aren’t Travellers live, declare that the game ends and that the Shepherd’s team loses."
+   ],
+   "examples": [
+    "The last 3 living players are the Imp, the Kenku, and the Shepherd. The good team loses.",
+    "The last 3 living players are the Cleric, the Imp, and the Chambermaid. The Shepherd is dead, so the game resumes.",
+    "The last 3 living players are the Caliban, the Shankaar, and the Shepherd. The Imp has just been executed, so the good team wins."
+   ],
+   "tips": [
+    "Art by Pynstripe! Thank you so much, Pyn!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Look, my mamma didn't raise no quitter, ok!? She passed when I was young.",
+   "flavor": "Look, my mamma didn't raise no quitter, ok!? She passed when I was young. // ★By BakedIce★, ♣ Art by Pynstripe ♣",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Pynstripe",
+   "edition": "",
+   "jsonId": "Shepherd_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Pit Hag",
+     "align": "evil",
+     "text": "If the Pit Hag makes a player into the Shepherd, deaths tonight are arbitrary."
+    },
+    {
+     "name": "Leviathan",
+     "align": "evil",
+     "text": "If the Shepherd is alive on the final day, their team loses."
+    },
+    {
+     "name": "Riot",
+     "align": "evil",
+     "text": "If the Shepherd is alive on the final day, their team loses."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "shepherd",
+   "page": "c/shepherd.html",
+   "art": "art/shepherd.png",
+   "image": "https://botchomebrew.wiki/assets/art/shepherd.png",
+   "artAlt": "art/shepherd-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/shepherd-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Gentleman",
+   "team": "minion",
+   "ability": "You start knowing 1 good player, & once per game, may publicly order them. They follow, or might be executed.",
+   "lede": "The Gentleman can charm good players into helping the evil team.",
+   "summaryBullets": [
+    "The Gentleman learns a good player on the 1st night. Once per game, the Gentleman can publicly give this player an order. If they do not follow it, they might be executed.",
+    "The Gentleman can execute players at night, and give orders which extend into the night phase.",
+    "Usually, the Storyteller should verify which orders they would be willing to execute for, especially if directly asked, and especially if asked by the Gentleman.",
+    "The learned player doesn’t know they’ve been learned, and it is not confirmed whether or not the Gentleman has actually used their ability. This means any player could order any player, and that player will have to assess the risks before choosing to follow or not.",
+    "If the player learned by the Gentleman becomes evil, they do not learn a new player."
+   ],
+   "howToRun": [
+    "When setting up the first night, mark a good player with the ADMIRER reminder token. On the first night, wake the gentleman, and then point to that player. Then put the Gentleman to sleep.",
+    "Once per game, the Gentleman will order a player. If that player is the player they learned, then mark the Gentleman with the NO ABILITY reminder token. You may want to turn the ADMIRER reminder token, to indicate which player is affected by the order. If this player does not follow the order provided, mark them with the DISOBEYED reminder token, they might be executed at any point in the game."
+   ],
+   "examples": [
+    "Abby, the Gentleman, learns Sandra, the Shade. On the final day, Abby orders that Sandra does not to nominate. Sandra chooses to nominate anyway. She is executed immediately. The Evil Team has won.",
+    "Clark, the Gentleman, learns Mike. On the first day, he orders that Bethany says her character. Bethany says that she won't, and nothing happens. He then orders that Mike doesn’t vote today, and Mike chooses not to vote that day."
+   ],
+   "tips": [
+    "Make sure to always be clear with your players whether or not you'd be willing to execute a player for disobeying a Gentleman order, even if it's an evil player pretending to use the Gentleman ability. When accepting orders as valid, make sure you are ready to answer any questions about it, especially ones the Gentleman themselves might ask you beforehand. While actions which would guarantee the loss of the player's team given the context (for example, \"Do not nominate today.\") should be ones you are willing to execute for, commands which would always result in the loss of the Admirer’s team tend to be less enjoyable."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "If looks could kill, we’d both be dead. Let’s keep our beautiful eyes closed.",
+   "flavor": "If looks could kill, we’d both be dead. Let’s keep our beautiful eyes closed. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Gentleman_Circus_Music",
+   "firstNight": 37.45,
+   "firstNightReminder": "Point to the player marked ADMIRER.",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Admirer",
+    "No Ability",
+    "Disobeyed"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "gentleman",
+   "page": "c/gentleman.html",
+   "art": "art/gentleman.png",
+   "image": "https://botchomebrew.wiki/assets/art/gentleman.png",
+   "artAlt": "art/gentleman-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/gentleman-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Caliban",
+   "team": "minion",
+   "ability": "Once per game, at night, the Demon chooses which alive player is an evil Caliban. [No one is Caliban, +1 Outsider]",
+   "lede": "The Caliban works for the evil team, whether or not they want to.",
+   "summaryBullets": [
+    "Whether or not a Caliban is in play is decided before the game starts, and if there is, then the Caliban token isn’t put in the bag, but an Outsider is instead.",
+    "The Caliban ability doesn’t belong to a player until one is Caliban. This means that the Caliban can’t be made drunk or poisoned before the Demon has gained their ally!",
+    "The Caliban is evil due to their ability, so a dead player or drunk player who is turned into the Caliban is still good.",
+    "The player who is the Caliban knows that they are the Caliban, but they don’t learn the Demon or any other evil players."
+   ],
+   "howToRun": [
+    "When setting up the game, decide if you want one of the minions to be Caliban. If you want a minion to be Caliban, then add 1 less minion to the bag (the one that would be Caliban) and replace them with an outsider, then mark the Demon with the \"Has Caliban\" reminder token.",
+    "If the Demon has the \"Has Caliban\" reminder token, then wake them each night and show them the Caliban token. They shake their head or point to a player. Change the chosen player's character token to the Caliban's, and put the Demon to sleep. If a player is Caliban, remove the Demon's \"Has Caliban\" reminder token.",
+    "If a player becomes Caliban, wake them up and show them the \"You Are\" info token, and then the Caliban character token, and then a thumbs down. If the Caliban has no ability (such as being poisoned or drunk when transformed), then remember that their alignment doesn't change. Also keep in mind that their alignment does not revert if they lose the Caliban ability, such as if they die."
+   ],
+   "examples": [
+    "Jody is the Fortune Teller. On the 3rd night, the Imp decides to make her the Caliban. She becomes Caliban and evil.",
+    "Karl is the dead Ravenkeeper. The Demon decides to make him the Caliban. Karl remains good.",
+    "Bessie is the Butler, who votes alongside Markus the Recluse. On the 3rd night, unbeknownst to Bessie, Markus becomes the Caliban. When she tries to vote for the Imp on the last day, she is surprised that Markus does not vote, and thus she cannot vote either."
+   ],
+   "tips": [
+    "Find your Demon! Often times, your Demon will just tell you who they are, but you may need to play for a little bit without knowing for certain who the Demon is. Usually, it helps to think about who would convert you to their side. If you were public that someone was the Demon, you were probably right!",
+    "Act the same. You don't want to tip anyone off to what has occured. The Caliban can be one of the hardest Minions to track, because until this moment you weren't even evil at all! Don't blow your cover now.",
+    "Switch up the act. Your goal isn't to find the Demon, but to obscure them! While you want to appear good, you won't win by always helping the good team. Trying to discredit the true info you already shared can also help a lot.",
+    "Your work starts before you turn evil. While a lot of this responsibility falls on the Demon, there's a lot of work you can do to help them be in a strong position. Becoming mechanically confirmed, socially trusted, or otherwise leading the conversation are great ways to win as good, that let you misdirect the town as an evil player.",
+    "Being quiet early on, or flat out lying, can make it easy to spin a narrative that favors the evil team once you turn evil. Be careful, though, as this can make you a less appealing target for conversion.",
+    "As an evil player in a Caliban game, try focusing on looking more trustworthy early on. If you look suspicious later, players might wrongly assume there was a time when you were good & telling the truth.",
+    "As the Demon in a Caliban game, try to find the most impactful player to turn. The Cailban is great at getting strong detectives to stop searching, and to make players you're framing play along with their downfall. The Caliban themselves should help with your plan, so make sure you have one!"
+   ],
+   "bluffing": [],
+   "fighting": [
+    "Assume anyone can turn evil. While you can still trust other players, don't assume trustworthy players will stay trustworthy.",
+    "While anyone can turn evil, only 1 player will. Consider what the evil team has to gain by making certain players into the Caliban. While the evil team's ultimate goal is to be unpredictable, they're still looking to get the most out of their ability. If someone seems poorly trusted, especially early on, it's rare that the evil team will recruit them.",
+    "Trust the dead. The Demon can't recruit dead players to their side, and there's 1 less Minion to die early on.",
+    "Distrust the alive. Not only can the Demon recruit alive players, but the threat alone can make alive players lie to cover their bases in case they turn evil.",
+    "Keep in mind that you have the potential to turn evil as well. The work of the Caliban often starts while they're still good, and many traits that make a strong Caliban also make for a strong good player. Get people to trust you, and learn as much as you can...no matter how you end up using it.",
+    "Don't expect to turn evil. The evil team lacks a lot of their usual resources. Capitalizing on their early numbers disadvantage may force the Demon to use their ability early. Likewise, if you suspect evil was on the ropes to start, you can assume that the Caliban ability has already been used.",
+    "Talk to people. In Caliban games, trust is an unstable but important resource. Listening to everyone can shred the Caliban's social game warping surprisingly fast. You also might catch a Caliban who just turned and doesn't know who they need to protect just yet."
+   ],
+   "callout": "",
+   "quote": "Caliban: A plague upon that tyrant I serve! I won't get him any more sticks! I'll follow you, you wondrous man.",
+   "flavor": "Caliban: A plague upon that tyrant I serve! I won't get him any more sticks! I'll follow you, you wondrous man. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Caliban_Circus_Music",
+   "firstNight": 32.39,
+   "firstNightReminder": "If the demon has the HAS CALIBAN reminder token, wake them & show them the Caliban Token. They shake their had or point to a player. Change the chosen player's character token to the Caliban's, and put the demon to sleep. If a player is Caliban, remove the demon's HAS CALIBAN reminder token.",
+   "otherNight": 15.21,
+   "otherNightReminder": "If the demon has the HAS CALIBAN reminder token, wake them & show them the Caliban Token. They shake their had or point to a player. Change the chosen player's character token to the Caliban's, and put the demon to sleep. If a player is Caliban, remove the demon's HAS CALIBAN reminder token.",
+   "reminders": [],
+   "remindersGlobal": [
+    "Has Caliban"
+   ],
+   "setup": true,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-disabled"
+    }
+   ],
+   "jinxes": [
+    {
+     "name": "Alchemist",
+     "align": "good",
+     "text": "If the alchemist would gain the Caliban ability, they register as the demon to it."
+    },
+    {
+     "name": "Clockmaker",
+     "align": "good",
+     "text": "If no players are Minions, the Clockmaker won't receive their information until one is."
+    },
+    {
+     "name": "Choirboy",
+     "align": "good",
+     "text": "The Demon can’t turn the King into Caliban."
+    },
+    {
+     "name": "Engineer",
+     "align": "good",
+     "text": "If the Demon hasn't chosen who Caliban is yet, and the Engineer removes it from play, then one of the demon's alive neighbors becomes the evil minion they chose."
+    },
+    {
+     "name": "Huntsman",
+     "align": "good",
+     "text": "If the Demon makes the Damsel into Caliban, and there is an alive Huntsman, a different living player becomes the Damsel and the Huntsman learns this."
+    },
+    {
+     "name": "Investigator",
+     "align": "good",
+     "text": "If the Caliban is in play, the Investigator might not receive their information until a Caliban is created. If this happens, the Investigator must learn about the Caliban."
+    },
+    {
+     "name": "Magician",
+     "align": "good",
+     "text": "If there is a Magician in play, the Demon might think that 1 of their minions is Caliban instead of the Magician."
+    },
+    {
+     "name": "Poppy Grower",
+     "align": "good",
+     "text": "If the Poppy Grower is alive when the Demon chooses who Caliban will be, the Storyteller chooses who becomes Caliban."
+    },
+    {
+     "name": "Summoner",
+     "align": "evil",
+     "text": "The Summoner registers as the Demon to Caliban, until a demon is made."
+    },
+    {
+     "name": "Vizier",
+     "align": "evil",
+     "text": "The Vizier knows who Caliban is."
+    },
+    {
+     "name": "Kazali",
+     "align": "evil",
+     "text": "If the Kazali chooses to make a Caliban using their ability, then Caliban is one of their minions, and nothing happens to the chosen player."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "caliban",
+   "page": "c/caliban.html",
+   "art": "art/caliban.png",
+   "image": "https://botchomebrew.wiki/assets/art/caliban.png",
+   "artAlt": "art/caliban-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/caliban-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Curionist",
+   "team": "minion",
+   "ability": "On your 1st night, choose 2 players: they're poisoned. The Storyteller may prompt you to choose differently.",
+   "lede": "The Curionist only collects the finest they can.",
+   "summaryBullets": [
+    "The Curionist chooses who they poison on the 1st night. Those chosen players are poisoned for as long as the Curionist lives.",
+    "The Storyteller may prompt the Curionist to choose differently with their ability. This can only happen on the 1st night, when the Curionist is making their choices.",
+    "If the Curionist dies, they stop poisoning the chosen players. If a chosen player dies, they remain poisoned."
+   ],
+   "howToRun": [
+    "On the first night, wake the Curionist. The Curionist points to 2 players: they're poisoned -- Mark them with the Curionist's POISONED reminder. You may ask them to choose differently by shaking your head, pointing at the Curionist ability text on the character sheet, and waiting for the Curionist to choose again. Once you feel satisfied with the Curionist’s choices, put them to sleep."
+   ],
+   "examples": [
+    "The Curionist chooses the Fortune Teller and the Slayer. The Slayer uses their ability on the Demon, but the Demon does not die.",
+    "The Curionist chooses the Kenku and the Imp. The Storyteller prompts them to choose differently, and so they choose the Kenku and the Cleric."
+   ],
+   "tips": [
+    "The Curionist has to make a choice with little info to work off of. Generally, if you’re considering reprompting them because their choices are too weak, your instinct is probably correct. On the contrary, if you’re considering reprompting them because their choices are too strong, it’s more than likely fine."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Be calm and collected as you're calmly collected.",
+   "flavor": "Be calm and collected as you're calmly collected. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Curionist_Circus_Music",
+   "firstNight": 33.14,
+   "firstNightReminder": "The Curionist points to 2 players: they're poisoned -- Mark them with the Curionist's POISONED reminder. You may ask them to choose differently by shaking your head, pointing at the Curionist ability text on the character sheet, and waiting for the Curionist to choose again.",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Poisoned",
+    "Poisoned"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "curionist",
+   "page": "c/curionist.html",
+   "art": "art/curionist.png",
+   "image": "https://botchomebrew.wiki/assets/art/curionist.png",
+   "artAlt": "art/curionist-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/curionist-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Cordyceps",
+   "team": "minion",
+   "ability": "Dead Townsfolk, Outsiders, & Minions regain their ability. Alive Townsfolk are poisoned.",
+   "lede": "The Cordyceps imitates life.",
+   "summaryBullets": [
+    "While Townsfolk live, they’re poisoned! They can learn true or false info, & their abilities won’t work.",
+    "When Townsfolk die, they regain their ability. They’ll no longer be poisoned, and characters like the Washerwoman get their info again.",
+    "This extends to Outsiders and Minions. They have their abilities while alive as normal, but once they die, they keep their abilities!",
+    "This extends to the Cordyceps themself! If the Cordyceps dies, they keep their ability.",
+    "Some characters, who only work while dead, aren’t changed by the Cordyceps. For example, the Ravenkeeper is poisoned while they’re alive, but this doesn’t affect the Ravenkeeper ability.",
+    "When a player changes character, they are both losing their old character’s ability, and gaining a new ability if they’re alive. Once a player regains their ability due to the Cordyceps, they keep it even if the Cordyceps exits play.",
+    "Dead players who are drunk or poisoned have no ability, but the Storyteller may convince them they do have one. Normally this doesn’t matter, but if a Cordyceps could be in play, the Storyteller can use this to make dead players think they’ve regained their ability."
+   ],
+   "howToRun": [
+    "When Townsfolk are alive, they’re poisoned. (They have no ability, but they think they do. If their ability would give them information, you can give false information to them if you wish.)",
+    "Whenever a Townsfolk, Outsider, or Minion dies, they regain their ability! Run this ability how you would as if it were the 1st night it’d be active, and run the ability as normal afterwards.",
+    "Keep in mind that, when a player changes character, they are both losing their old character’s ability, and gaining a new ability if they’re alive. Once a player regains their ability due to the Cordyceps, they keep it even if the Cordyceps exits play."
+   ],
+   "examples": [
+    "On the 1st night, the Washerwoman learns that 1 of Josh and Abby are the Mayor. This isn't the case, as Josh is the Cordyceps and Abby is the Fisherman. When the Washerwoman dies, they learn that 1 of Abby and Marlo are the Fisherman.",
+    "On the 1st night, the Goon is chosen by the Fortune Teller, making them drunk. On the 1st day, the Goon dies from execution. On the 2nd night, the Demon chooses the Goon, turning the Goon evil & making the Demon drunk.",
+    "Amanda, the Cordyceps, is executed and dies. They keep their ability, and alive Townsfolk remain poisoned. The Fortune Teller dies, and learns true info that night. The Pit Hag dies afterwards, and keeps their ability as well. The Pit Hag changes Amanda into the Wizard. Amanda no longer has any ability, but the Pit Hag and Fortune Teller still have theirs.",
+    "The Imp dies at night, and turns the Wizard into the Imp. Because the Imp is not a Townsfolk, Outsider, or Minion, they do not keep their ability while dead."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Subject is suffering delusions of animacy. Please investigate further.",
+   "flavor": "Subject is suffering delusions of animacy. Please investigate further. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Cordyceps_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Professor",
+     "align": "good",
+     "text": "The Professor can't choose themself."
+    },
+    {
+     "name": "Snake Charmer",
+     "align": "good",
+     "text": "If the Snake Charmer is dead, the Demon would instead swap character & alignment with any alive Townsfolk."
+    },
+    {
+     "name": "Alchemist",
+     "align": "good",
+     "text": "If the Alchemist would gain the Cordyceps ability, the Storyteller has it instead & the Alchemist learns this."
+    },
+    {
+     "name": "Huntsman",
+     "align": "good",
+     "text": "The Huntsman can choose dead players."
+    },
+    {
+     "name": "Torchbearer",
+     "align": "good",
+     "text": "When a dead Torchbearer regains their ability, they learn true Demon Info.",
+     "id": "Torchbearer_Circus_Music"
+    },
+    {
+     "name": "Zealot",
+     "align": "good",
+     "text": "The Zealot loses their ability when they die."
+    },
+    {
+     "name": "Shepherd",
+     "align": "good",
+     "text": "A dead Shepherd has no ability.",
+     "id": "Shepherd_Circus_Music"
+    },
+    {
+     "name": "Devil’s Advocate",
+     "align": "evil",
+     "text": "If the Devil's Advocate is dead, they can't choose the Demon."
+    },
+    {
+     "name": "Mezepheles",
+     "align": "evil",
+     "text": "A dead Mezepheles does not get a new word."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "cordyceps",
+   "page": "c/cordyceps.html",
+   "art": "art/cordyceps.png",
+   "image": "https://botchomebrew.wiki/assets/art/cordyceps.png",
+   "artAlt": "art/cordyceps-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/cordyceps-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shankaar",
+   "team": "minion",
+   "ability": "Each night, Evil players secretly communicate for 1 minute. [A good neighbor is an evil Shankaar]",
+   "lede": "The Shankaar’s allies commune in the shadows.",
+   "summaryBullets": [
+    "The 2nd Shankaar drew a good character token, meaning they get it as a bluff!",
+    "The secret communication can take whatever form you want, so long as it is indeed secret and for approximately a minute! Online, usually setting up a group chat or private conversation works. For in person play, you’ll often have to get more creative. Don’t underestimate the power of frantic miming and pointing!",
+    "Both Shankaars get normal minion info, but the 2nd Shankaar knows they can bluff the character they started as!"
+   ],
+   "howToRun": [
+    "Place 1 Shankaar token into the bag. After receiving tokens, look at where the Shankaar is. Choose 1 of their 2 good neighbors, and swap their token for the other Shankaar token.",
+    "At the start of the first night, wake this player and show them the YOU ARE info token, the Shankaar character token, & a thumbs down. This occurs before anything else, so the new Shankaar participates in Minion/Demon info.",
+    "Each night, wake all evil players. Show them the THIS CHARACTER SELECTED YOU info token and then the Shankaar character token. Give them a silent countdown of “3, 2, 1…”. They can then secretly communicate for 1 minute. Ensure no other players can hear what the evil team is saying, or the fact they are communicating. When the minute ends, put all evil players to sleep."
+   ],
+   "examples": [
+    "During the 1st night, Steven mimes to the evil team a star and someone throwing a ball. The group knows he’s the Demon, and so assumes he’s the Imp. Joseph quietly lifts his character sheet and points to the Pit-Hag, to show the group he is the Pit-Hag. The 2 Shankaars understand sign language, and so sign out \"Fire Ghost\" to try to tell the evil team that they're the Shankaars.",
+    "During the 2nd night, the evil team quietly get up and move to a nearby area, where they whisper as quietly as they can for the minute.",
+    "During the night, the evil team discusses what bluffs they're giving to the good team, what characters they think players have, and if any Minions should try to gather group attention."
+   ],
+   "tips": [
+    "Inspired by the Hivemind by Patters!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "In fire we’re born…In unity we live…",
+   "flavor": "In fire we’re born…In unity we live… // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Shankaar_Circus_Music",
+   "firstNight": 37.85,
+   "firstNightReminder": "Wake all evil players. Show them the THIS CHARACTER SELECTED YOU info token and then the Shankaar character token. Give them a silent countdown of \"3, 2, 1…\". They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "otherNight": 15.31,
+   "otherNightReminder": "Wake all evil players. Show them the THIS CHARACTER SELECTED YOU info token and then the Shankaar character token. Give them a silent countdown of \"3, 2, 1…\". They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Alchemist",
+     "align": "good",
+     "text": "If the Alchemist has the Shankaar ability, the new Shankaar does not become evil."
+    },
+    {
+     "name": "Choirboy",
+     "align": "good",
+     "text": "The King registers as evil to the Shankaar setup ability if there is a Choiroy."
+    },
+    {
+     "name": "Cult Leader",
+     "align": "good",
+     "text": "The Cult Leader does not wake for secret communication."
+    },
+    {
+     "name": "Engineer",
+     "align": "good",
+     "text": "If the Engineer creates a Shankaar, one of their good neighbors becomes an evil Shankaar. If they remove the Shankaar, one becomes a chosen Minion, the other loses their ability."
+    },
+    {
+     "name": "Huntsman",
+     "align": "good",
+     "text": "If the Damsel becomes a Shankaar, another good player becomes the Damsel."
+    },
+    {
+     "name": "Magician",
+     "align": "good",
+     "text": "If the Shankaar is in play, the Minions will secretly communicate, and they can choose 1 extra player to communicate with them."
+    },
+    {
+     "name": "Poppy Grower",
+     "align": "good",
+     "text": "If the Poppy Grower is in play, Evil players don't wake to secretly communicate until the Poppy Grower dies."
+    },
+    {
+     "name": "Ogre",
+     "align": "good",
+     "text": "The Ogre does not wake for secret communication."
+    },
+    {
+     "name": "Sinner",
+     "align": "good",
+     "text": "Evil Townsfolk don’t wake for evil communication.",
+     "id": "Sinner_Circus_Music"
+    },
+    {
+     "name": "Marionette",
+     "align": "evil",
+     "text": "The Marionette does not wake for secret communication."
+    },
+    {
+     "name": "Kazali",
+     "align": "evil",
+     "text": "The Kazali may choose 2 neighboring players to be Shankaars."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "shankaar",
+   "page": "c/shankaar.html",
+   "art": "art/shankaar.png",
+   "image": "https://botchomebrew.wiki/assets/art/shankaar.png",
+   "artAlt": "art/shankaar-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/shankaar-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Alphera",
+   "team": "minion",
+   "ability": "Each day you may publicly guess every player's character: if all are correct, your team wins.",
+   "lede": "If the Alphera sees everything, the world ends.",
+   "summaryBullets": [
+    "Each day, the Alphera can publicly guess every player's character. If every character (good and evil) is correct, their team immediately wins.",
+    "If they get any wrong, nothing happens. It is not explained why nothing happens.",
+    "If they get any characters wrong, they can try again the next day. The Alphera does not need to guess every day.",
+    "Other players can pretend to be the Alphera. Only the Alphera can win by correctly guessing every player."
+   ],
+   "howToRun": [
+    "During the day, the Alphera may publicly state that they are the Alphera and begin guessing player's characters. If they guess a player incorrectly, mark the the Alphera with the “incorrect” reminder token. If the Alphera has guessed every player and does not have the “incorrect” reminder token, then declare that the game is over, and the Alphera’s team has won.",
+    "Before starting the day, check if the Alphera is marked with the “incorrect” reminder token. If they are, remove it."
+   ],
+   "examples": [
+    "Misha is the Alphera and once Scott is about to be executed, guesses that Scott is the Seer, Jamie is the Barber, Phil is the Medium, Jon is the Chambermaid, Mike is the Noble, and that Misha is the Alphera. Because this is all true, her team wins.",
+    "Sophie is the Alphera and guesses that Joe is the Carpenter, even though he is the Candlemaker, and guesses every other player correctly. When she concludes, nothing happens.",
+    "Tim is the Demon, and pretends to be the Alphera. He gets every player's character correct, but does not win, since he isn't the Alphera."
+   ],
+   "tips": [
+    "Always do your best to clarify the Alphera’s intent, without giving either team any extra information. Technicalities shouldn’t deny an evil team their deserved victory."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The constellation blinked",
+   "flavor": ">The constellation blinked // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Alphera_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Incorrect"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Worker",
+     "align": "good",
+     "text": "If an Alphera and Worker are both in play, there might be 1 more or 1 fewer Outsider.",
+     "id": "Sister_Circus_Music"
+    },
+    {
+     "name": "Plague Doctor",
+     "align": "good",
+     "text": "If the Storyteller would gain the Alphera ability, the Demon does instead."
+    },
+    {
+     "name": "Widow",
+     "align": "evil",
+     "text": "The widow does not see the Grimoire if an Alphera is alive."
+    },
+    {
+     "name": "Spy",
+     "align": "evil",
+     "text": "The Spy does not see the Grimoire if an Alphera is alive."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "alphera",
+   "page": "c/alphera.html",
+   "art": "art/alphera.png",
+   "image": "https://botchomebrew.wiki/assets/art/alphera.png",
+   "artAlt": "art/alphera-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/alphera-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Ariel",
+   "team": "minion",
+   "ability": "Once per game, while dead, publicly choose a player: if they're executed, their team loses.",
+   "lede": "The Ariel is free to trick the living once they die.",
+   "summaryBullets": [
+    "At any moment, after the Ariel has died, they may publicly choose a player. From this point on, if this player is executed, then their team loses.",
+    "The chosen player and their team still loses even if they survive execution, or are executed by an ability like the Gentleman’s or Cerenovus’s",
+    "If the Ariel curses an evil player, then the good team can win when they’re executed. The Ariel can target dead players.",
+    "Not only does the Ariel keep their ability after death, but it's a requirement for their ability to work!",
+    "The Storyteller does not confirm whether or not the Ariel ability has actually been used, meaning dead evil players can pretend to use it."
+   ],
+   "howToRun": [
+    "Once per game, the Ariel will, while dead, publicly choose a player — Mark them with the “Cursed” reminder token, and the Ariel themselves with the “No Ability” reminder token.",
+    "If the player marked with the “Cursed” reminder token is executed, declare that the game is over and their team has lost. Do this even if the Ariel is dead (which is required for this to potentially occur)."
+   ],
+   "examples": [
+    "Sarah is the Ariel. Whilst alive she publicly chooses for Tim, the Cleric. Tim is executed, and the game resumes. Sarah dies that night, and the next day she publicly chooses Bill, the Shepherd. When Bill is executed, the good team loses.",
+    "Lilly is the Ariel. After dying, she publicly chooses Jeremy, the Shankaar. Jeremy is executed 2 days later, and the good team wins.",
+    "Jonah is the Caliban. Sarah, the Chambermaid, is about to be executed. Jonah, who is dead, decides to publicly choose her with the Ariel ability. While nothing would occur if she were executed, players don’t want to take that risk, and so execute a different player."
+   ],
+   "tips": [
+    "It is highly recommended that, if the Ariel uses their ability near the end of the day, to extend the day by an appropriate length, so that a different player could be executed if players wish. It also helps to publicly acknowledge any player claiming to use the Ariel ability, and remind players if someone allegedly chosen by the Ariel is about to be executed."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "♪ Merrily, merrily...Shall I live now ♪",
+   "flavor": "♪ Merrily, merrily...Shall I live now ♪ // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Ariel_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "No Ability",
+    "Cursed"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Vizier",
+     "align": "evil",
+     "text": "The Vizier ability cannot execute the player cursed by Ariel."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "ariel",
+   "page": "c/ariel.html",
+   "art": "art/ariel.png",
+   "image": "https://botchomebrew.wiki/assets/art/ariel.png",
+   "artAlt": "art/ariel-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/ariel-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Seer",
+   "team": "demon",
+   "ability": "Each night, see the Grimoire, & then*, choose a player: they die. Minions steal 1 bluff & only know you. You don't know them.",
+   "lede": "The Seer is blind and omniscient.",
+   "summaryBullets": [
+    "Each night, the Seer will look into the Grimoire. On nights after the 1st, the Seer will then choose a player, who dies.",
+    "The Seer’s Minions get 1 bluff each, which only they know. The Seer does not get the bluffs that Minions steal, which means they won’t have any bluffs if there are 3 or more Minions.",
+    "The Seer isn’t told who their Minions are, and when looking into the Grimoire, their Minions will be replaced with good characters.",
+    "The Minions will only know who the Seer is. They do not know who other Minions are.",
+    "Minion reminder tokens will be left or removed at Storyteller discretion. Reminder tokens may be placed in the Grimoire to simulate the characters that the Seer thinks their Minions are. The Storyteller cannot place or change reminder tokens relating to characters that are in play.",
+    "If there are more than 3 Minions, they get a bluff which another Minion got, & the Seer gets no bluffs. If a Minion is made later in the game, they learn a bluff (one which another Minion might’ve learned) & learn who the Seer is."
+   ],
+   "howToRun": [
+    "During the first night, instead of Minion info, wake each Minion one by one. Show this Minion the THESE CHARACTERS ARE NOT IN PLAY info token, and then one of the Demon’s bluffs. Then show them the THIS IS YOUR DEMON info token, and point to the Seer. Put them to sleep.",
+    "During the Demon Info step, don't show the Seer their Minions or any bluffs a Minion learned.",
+    "Each night, make some adjustments to your Grimoire before showing it to the Seer. Make sure that the only Demon bluffs visible are the ones the Seer received on the first night. Replace Minions with Townsfolk or Outsiders, and you may add reminder tokens for this Townsfolk or Outsider, and you may remove reminder tokens from the Minion they are.",
+    "Show the Seer the Grimoire. If it’s after the 1st night, they will take a Shroud token and place it on a player’s character token — That player dies, you may mark them with the “Dead” reminder token. Put the Seer back to sleep. Readjust the characters and reminder tokens in your Grimoire until it is accurate."
+   ],
+   "examples": [
+    "Amy is the Seer. Jeffery, the Poisoner, learns there isn’t a Shugenja in play. Amy learns there isn’t a Monk or Cannibal in play. Jeffery knows that Amy is his Demon, but Amy doesn’t know who her Minion is.",
+    "On the 2nd night, Micheal, the Seer, sees the Grimoire. Despite Jordan and Freddie being Micheal’s Minions, Micheal thinks they are the Monk and Showman. Micheal kills Freddie, thinking Freddie is good.",
+    "On the 3rd night, the Seer sees the Grimoire & kills the Cannibal."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "You seek a homecoming sweet as honey, but a god will make it bitter.",
+   "flavor": "You seek a homecoming sweet as honey, but a god will make it bitter. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Tiresias_Circus_Music",
+   "firstNight": 18.56,
+   "firstNightReminder": "Instead of Minion info, wake each Minion one by one. Show this Minion the THESE CHARACTERS ARE NOT IN PLAY info token, and then one of the Demon’s bluffs. Then show them the THIS IS YOUR DEMON info token, and point to the Seer. Put them to sleep. During the Demon Info step, don't show the Seer their Minions or any bluffs they learned. Show the Seer the adjusted Grimoire. Put the Seer back to sleep. Readjust the characters and reminder tokens in your Grimoire until it is accurate.",
+   "otherNight": 48.56,
+   "otherNightReminder": "Show the Seer the adjusted Grimoire. They will take a Shroud token and place it on a player’s character token — That player dies, you may mark them with the DEAD reminder token. Put the Seer back to sleep. Readjust the characters and reminder tokens in your Grimoire until it is accurate.",
+   "reminders": [
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [
+    {
+     "name": "grimoire",
+     "type": "signal",
+     "time": "night"
+    }
+   ],
+   "jinxes": [
+    {
+     "name": "Poppy Grower",
+     "align": "good",
+     "text": "The Seer doesn’t learn their team when the Poppy Grower dies, & Minions don't learn each other."
+    },
+    {
+     "name": "Magician",
+     "align": "good",
+     "text": "Minions learn both the Seer & the Magician. The Seer doesn't think the Magician is a Minion."
+    },
+    {
+     "name": "Snake Charmer",
+     "align": "good",
+     "text": "The Seer thinks the Snake Charmer is a different good character which isn’t in play."
+    },
+    {
+     "name": "Caliban",
+     "align": "evil",
+     "text": "When the Seer chooses that a player is Caliban, the Storyteller chooses which player.",
+     "id": "Caliban_Circus_Music"
+    },
+    {
+     "name": "Marionette",
+     "align": "evil",
+     "text": "The Seer knows the Marionette is in-play, but not who they are. The Marionette does not steal a bluff."
+    },
+    {
+     "name": "Shankaar",
+     "align": "evil",
+     "text": "The Seer does not wake for secret communication. Only 1 Shankaar steals a bluff.",
+     "id": "Shankaar_Circus_Music"
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "seer",
+   "page": "c/seer.html",
+   "art": "art/seer.png",
+   "image": "https://botchomebrew.wiki/assets/art/seer.png",
+   "artAlt": "art/seer-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/seer-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Comediarch",
+   "team": "demon",
+   "ability": "Each night*, choose a player: they die. If the last executee isn't a Townsfolk, evil wins when you're executed.",
+   "lede": "The Comediarch laughs whether they live or die",
+   "summaryBullets": [
+    "If the Comediarch is executed, and the player executed before them wasn’t a Townsfolk, then the evil team wins.",
+    "If the player executed before the Comediarch was a Townsfolk, then good wins as normal.",
+    "If no one has been executed this game, the Comediarch ability is still active — evil would win if the Comediarch the 1st executee.",
+    "The Comediarch ability does not concern itself with whether or not executed players are killed.",
+    "The Comediarch ability can be stopped by executing dead Townsfolk.",
+    "The Comediarch checks the character of the executee when they were executed. If a Townsfolk is executed and then becomes a different character type, the Comediarch ability is still neutralized. Likewise, if the last executee becomes a Townsfolk, but wasn’t one when executed, the Comediarch ability is still active!"
+   ],
+   "howToRun": [
+    "Each night except the first, wake the Comediarch. They point at any player. That player dies - mark them with the DEAD reminder. Put the Comediarch to sleep.",
+    "When a player is executed, mark them with the “Last Executee” reminder token. Before placing it on the Comediarch, check which player currently has it. If it is not a Townsfolk (including if no one has it) then declare that the game is over and that the evil team wins."
+   ],
+   "examples": [
+    "On the 2nd day, the Poisoner is executed. On the 3rd day, the Comediarch is executed. Evil wins!",
+    "On the 1st day, the Fool is executed, but survives. On the 2nd day, the Comediarch is executed. Good wins!",
+    "On the 4th day, the dead Banshee is executed. The next day, the Comediarch is executed. Good wins!",
+    "On the day when 5 players live, the Goon is executed. The next day, 3 players live: the Comediarch, the Fortune Teller, and the Artist. If the Comediarch is executed, evil would win, but if they aren’t, evil would still win. Since there’s no way for good to win, the Storyteller declares that the game is over, and evil wins!"
+   ],
+   "tips": [
+    "Made in collaboration with ♪Soothslayer♪!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I shall live as I die, and die as I live: laughing along the way.",
+   "flavor": "I shall live as I die, and die as I live: laughing along the way. // ★By BakedIce★ ♪And Soothslayer♪",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Comediarch_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 43.69,
+   "otherNightReminder": "The Comediarch points at any player -- mark them with the Comediarch's DEAD reminder token.",
+   "reminders": [
+    "Dead",
+    "Last Executee"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "comediarch",
+   "page": "c/comediarch.html",
+   "art": "art/comediarch.png",
+   "image": "https://botchomebrew.wiki/assets/art/comediarch.png",
+   "artAlt": "art/comediarch-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/comediarch-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Prosperor",
+   "team": "demon",
+   "ability": "Each night*, all players may silently choose to die. Only evil players see their choice, & they win if no one dies tonight.",
+   "lede": "The Prosperor gives people command over their fates, but is ultimately in control.",
+   "summaryBullets": [
+    "Each night, except for the first, the Storyteller will ask for silence. They will then ask every player who wants to die that night to raise their hand, and will wake every evil player before they make their decision.",
+    "If there is a night where no players die, the evil team immediately wins.",
+    "Evil players can see who will be dying tonight before making their decision on whether or not they die. Depending on the context, they may not be waken together. In this case, the Storyteller chooses which order to wake them in.",
+    "If players chose to die, but something prevented them from dying, they don’t count as dying for the Prosperor ability.",
+    "Dead players can choose to die again, but this is usually irrelevant."
+   ],
+   "howToRun": [
+    "Each night, except for the first, ask all players for silence. Ask players who wish to die tonight to raise their hand. They die — mark them with one of the Prosperor’s “Dead” reminder tokens.",
+    "Wake evil players either together or one by one. After an evil player wakes, they may choose to die, just like other players. If no players die tonight, declare that the game is over and that the evil team has won."
+   ],
+   "examples": [
+    "It is the 2nd night. Micheal, the Caliban, & Charlotte, the Ravenkeeper, both choose to die. On the 3rd night, Carl, the Fortune Teller, chooses to die.",
+    "On the 4th night, Steven, the Ariel, wakes and sees that no good players choose to die tonight. He decides not to die, and since there are no players who died tonight, the evil team wins."
+   ],
+   "tips": [
+    "If you are waking evil players separately, consider the factors that would influence an evil player’s decision. For example, the Baron would probably wait for a night where a few other good players are dying before choosing to die as well, while the Poisoner might change their decision based on whether or not the Baron is dying tonight."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Siamo fatti della stessa materia di cui sono fatti i sogni e la nostra breve vita è circondata dal sonno.",
+   "flavor": "Siamo fatti della stessa materia di cui sono fatti i sogni e la nostra breve vita è circondata dal sonno. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Prosperor_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 49.2,
+   "otherNightReminder": "Ask all players for silence. Players who wish to die tonight raise their hand. They die — mark them with one of the Prosperor’s DEAD reminder tokens.  Wake evil players either together or one by one. After an evil player wakes, they may choose to die, just like other players.",
+   "reminders": [
+    "Dead",
+    "Dead",
+    "Dead",
+    "Dead",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [
+    {
+     "name": "Exorcist",
+     "align": "good",
+     "text": "If the Exorcist chooses the Prosperor, only 1 player dies tonight. If no one would die that night, the Exorcist dies."
+    },
+    {
+     "name": "Lunatic",
+     "align": "good",
+     "text": "The Storyteller might wake the Lunatic to see which players choose to die."
+    },
+    {
+     "name": "Sinner",
+     "align": "good",
+     "text": "Evil Townsfolk don't wake to see which players choose to die.",
+     "id": "Sinner_Circus_Music"
+    },
+    {
+     "name": "Ogre",
+     "align": "good",
+     "text": "The Ogre always wakes (separately) to see which players choose to die, regardless of their alignment."
+    },
+    {
+     "name": "Mastermind",
+     "align": "evil",
+     "text": "If the Prosperor dies by execution, and the Mastermind is alive, the Prosperor keeps their ability until dawn. The 1st player to die that night doesn’t, and the good team wins the next day."
+    },
+    {
+     "name": "Marionette",
+     "align": "evil",
+     "text": "The Marionette does not wake to see which players choose to die. Evil players may choose to wake one of their neighbors during the Prosperor ability."
+    }
+   ],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "prosperor",
+   "page": "c/prosperor.html",
+   "art": "art/prosperor.png",
+   "image": "https://botchomebrew.wiki/assets/art/prosperor.png",
+   "artAlt": "art/prosperor-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/prosperor-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Eclypso",
+   "team": "demon",
+   "ability": "If a player died today, or no one has in 2 days, choose 3 players tonight: they all die.",
+   "lede": "The Eclypso brings cyclical doom",
+   "summaryBullets": [
+    "Each night after the first, if a player died that day, the Eclypso chooses 3 players to kill.",
+    "If a player didn't die that day, then the Eclypso doesn't wake that night.",
+    "If 2 days go by without anyone dying, the Eclypso will wake to kill 3 players that night. This includes the night in between these days.",
+    "Players usually die during the day due to execution. Abilities like the Witch, or Psychopath might cause the Eclypso to activate otherwise, and abilities like the Pacifist and Tea Lady might prevent it."
+   ],
+   "howToRun": [
+    "When a player dies during the day, mark them with the Eclypso's \"died today\" reminder token. If no one died today, place the \"died today\" reminder in the center of the grimoire, and remove it when a player next dies. If the \"died today\" reminder was already in the center of the grimoire, place it on the Eclypso.",
+    "Each night, if a player is marked with the \"died today\" reminder token, wake the Eclypso. They point to any 3 players. Those players die -- mark them with the Eclypo's \"dead\" reminder tokens. Put the Eclypso to sleep."
+   ],
+   "examples": [
+    "Micheal is executed. Tommy, the Eclypso, kills Stewie, Raya, and Marshall that night.",
+    "On the 1st day, no one is executed. That night, the Assassin kills a player, and the Eclypso doesn't. On the 2nd day, the Fool is executed and survives. Since the Assassin killed a player, the Eclypso still does not wake. On the 3rd day, no one is executed. The Eclypso kills 3 players that night."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "If you look way up, you’ll see the northern lights, the shooting stars, and the sky falling.",
+   "flavor": "If you look way up, you’ll see the northern lights, the shooting stars, and the sky falling. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Eclypso_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 57.95,
+   "otherNightReminder": "If a player is marked with the DIED TODAY reminder token, wake the Eclypso. They point to any 3 players. Those players die -- mark them with the Eclypo's DEAD reminder tokens.",
+   "reminders": [
+    "Died Today",
+    "Dead",
+    "Dead",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "eclypso",
+   "page": "c/eclypso.html",
+   "art": "art/eclypso.png",
+   "image": "https://botchomebrew.wiki/assets/art/eclypso.png",
+   "artAlt": "art/eclypso-alt.png",
+   "imageAlt": "https://botchomebrew.wiki/assets/art/eclypso-alt.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Maskmaker",
+   "team": "loric",
+   "ability": "Name any character. There might be 1 or more of that character in-play.",
+   "lede": "The Maskmaker lets anyone be a popular character.",
+   "summaryBullets": [
+    "Before the game starts, the Storyteller names any character. During set up, the Storyteller can add this character into play as many times as they want (including not at all!)",
+    "The Storyteller can name any Townsfolk, Outsider, Minion, or Demon that they want! This can include characters not on the script.",
+    "This character might appear more than the usual set up would allow. For example, if the Maskmaker favors the Zealot then it can be in-play in a 10 player game.",
+    "The character is still the alignment they would normally be at set up. For example, if the Maskmaker favored the Pit-Hag then all Pit-Hags would be evil.",
+    "If the favored character isn't in play, the Demon can learn it as a bluff. Since the evil team can bluff this character whether or not it's in-play, however, this is often ill-advised.",
+    "For online play, you can send a player a blank token to represent an offscript character. For in person play, you may use offscript character tokens for a similar effect.",
+    "If you're making or using a script built around the Maskmaker, make sure it's clear which character is intended to be favored.",
+    "If you're using a script that wasn't build around the Maskmaker, consider how the character you choose interacts with the script. Make sure to include the Djinn Fabled character if any special rules must be invoked on account of the Maskmaker."
+   ],
+   "howToRun": [
+    "Declare which character is favored by the Maskmaker. Put any amount of Maskmaker tokens or offscript tokens into the bag to represent this charcter."
+   ],
+   "examples": [
+    "The group is playing Trouble Brewing. The Storyteller declares that the Maskmaker is in play, and that it favors the Alchemist. There are 3 Alchemists in play."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Following the crowd is really popular nowadays.",
+   "flavor": "Following the crowd is really popular nowadays. // ★By BakedIce★",
+   "appearsIn": "Circus Music",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "",
+   "jsonId": "Maskmaker_Circus_Music",
+   "firstNight": 0.0,
+   "firstNightReminder": "",
+   "otherNight": 0.0,
+   "otherNightReminder": "",
+   "reminders": [
+    "?",
+    "?",
+    "?"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "maskmaker",
+   "page": "c/maskmaker.html",
+   "art": "art/maskmaker.png",
+   "image": "https://botchomebrew.wiki/assets/art/maskmaker.png",
+   "artAlt": "",
+   "imageAlt": "",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  }
+ ]
+}
