@@ -454,6 +454,17 @@ their own creator page, so every match is done one comma-separated segment at a
 time — `creditMatchSQL()` / `creditNames()` in worker.js, `splitCreators()` in
 creators.js. Never compare a whole `creator` column against a single name.
 
+**Proof by ownership needs pinning where a bulk import owns the pages.** The
+admin account owns most of the imported wiki, so every name credited on those
+pages resolved to it and `/author?a=` 302'd the lot to `/u/admin` — Taiyi, Gstone
+Games, Hystrex and the rest all landed on one profile. Twenty-eight names are
+now pinned unlinked (empty `creator_alias:` rows), so each renders its own
+creator page; the same thing had happened to seven co-credits and attribution
+fragments under christoph-ehm ("idea by Lins", "based on TPI"), plus one each
+under teobius and dashieswag92. `DJ_DJ_DJ` is deliberately left resolving to
+`admin`. **Any future bulk import owned by one account needs the same pass**, or
+it quietly swallows every name it is credited to.
+
 ## Custom wiki pages (`/p/{slug}`)
 
 Text-first pages hanging off one script or collection — modelled on the
@@ -822,3 +833,18 @@ this is how admin-written pages stop being hidden for want of a tag.
    `uniqueUsername()` applies the same rule to Discord display names. Any new
    place that turns a typed name into a handle needs all of this, which is why
    it should call the existing helpers rather than roll its own.
+13. **Writing to D1 directly bypasses `bumpContentVersion()` — bump
+   `settings.content_version` yourself.** The JSON feeds and several in-isolate
+   caches are keyed on that counter, so a row written straight to the database
+   (dashboard, API, MCP) is served from a stale cache until it happens to
+   expire, and the staleness does not look like caching. Importing a collection
+   without bumping left it out of `collections.json`, so `linkAppearsIn()` in
+   charpage.js found no match and every one of its characters showed "Appears
+   in" as plain text instead of a link. Granting that collection Starlight
+   without bumping left `_starCollCache` holding the pre-Starlight list, so
+   `applyCollectionStarlight()` lent the status to none of its members while the
+   collection itself already read as Starlight. Both looked like bugs in the
+   feature and were neither. One
+   `INSERT INTO settings (key,value) VALUES ('content_version','1') ON CONFLICT
+   (key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
+   after the write is the whole fix.
