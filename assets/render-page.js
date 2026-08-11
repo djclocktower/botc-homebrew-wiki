@@ -235,7 +235,11 @@
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
-        (cls === 'partial' ? ' data-partial="1"' : '') +
+        // Starlight wins over Partial (same rule as Classify.isPartial): a
+        // character can be stamped 'partial' and then inherit the star from a
+        // Starlight collection, and an admin-blessed page is never hidden
+        // behind the Show Partial chip.
+        (cls === 'partial' && !starred ? ' data-partial="1"' : '') +
         (starred ? ' data-starlight="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
