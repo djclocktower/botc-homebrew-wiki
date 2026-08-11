@@ -815,13 +815,19 @@
 })();
 
 /* ── Redesigned top bar: Edit button placement (editable pages) ──
-   Editable server-rendered pages (/c/, /s/, /collection/) carry
+   Editable server-rendered pages (/c/, /s/, /collection/, /p/, /news/) carry
    <a class="edit-link" id="edit-btn"> in the brand group; charpage.js /
-   pageview.js set its href and un-hide it BEFORE this file runs (script
-   order). Move it to the end of the nav row on desktop, and clone it into
-   the hamburger dropdown for mobile (where the nav row is hidden). Guarded
-   on display so a hidden/inactive button is never surfaced. */
-(function () {
+   pageview.js / wikipage.js set its href and un-hide it BEFORE this file runs
+   (script order). Move it to the end of the nav row on desktop, and clone it
+   into the hamburger dropdown for mobile (where the nav row is hidden).
+   Guarded on display so a hidden/inactive button is never surfaced.
+
+   Exposed as a function AND called immediately, because news pages can only
+   decide whether to show it after asking /api/me — by the time that answer
+   lands this file has long since run and bailed on a hidden button. Calling
+   it again is safe: moving the button to a place it already sits is a no-op,
+   and the mobile clone is guarded on its own id. */
+window.placeEditButton = function () {
   var editBtn = document.getElementById('edit-btn');
   if (!editBtn || editBtn.style.display === 'none') return;
   var crumb = document.querySelector('.crumb');
@@ -834,7 +840,8 @@
     clone.style.display = '';
     dropdown.appendChild(clone);
   }
-})();
+};
+window.placeEditButton();
 
 /* Auto-growing textareas: every edit form on the site expands to fit its
    content as you type, so long fields (abilities, descriptions, strategy
