@@ -123,13 +123,24 @@ assets/
                        roster, jinxes, night order, credits, infobox, JSON export,
                        theming). Browser+Worker like render.js; init(Render) injects
                        render.js's exports. resolveCollectionMembers() (hybrid
-                       match[]/include[]/exclude[]), sanitizeTheme(), FONT_PRESETS.
+                       match[]/include[]/exclude[]), sortCollectionMembers()
+                       (the roster order — team first, then the author's
+                       `order[]`, then name; the single source of truth, used by
+                       the page AND by publish-collection.html so the editor's
+                       list IS the page's list), sanitizeTheme(), FONT_PRESETS.
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
-                       Partial, Starlight only, creator, sort). mountCardFilters()
+                       Partial, Starlight only, creator, sort). Sort offers Page
+                       order / A–Z / Z–A / Recently added / Steven Approved
+                       Order; SAO needs sao.js loaded first or the option is not
+                       built, and it reads the ability off the card rather than
+                       a repeated data-* attribute. mountCardFilters()
                        wires one box to one grid; auto-mounts on SSR collection
-                       pages, and profile.html mounts its own. Reads the card
+                       pages with defaultSort:'page' so the author's arranged
+                       order is what a reader sees first, and profile.html
+                       mounts its own (no page order there — the creator feed is
+                       newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
                        implementation, not one per page.
   classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
@@ -266,11 +277,19 @@ script.html            Script Builder — roster only (localStorage botc_script;
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
-                       SAO sort (localStorage botc_script_meta). Publish + Save as
+                       SAO sort (localStorage botc_script_meta). The roster
+                       summary lists every character with ▲▼ to arrange it by
+                       hand; that order IS characters[], which the script page
+                       already renders in. Moves are within a team only (the
+                       page draws one section per team) and roster slugs this
+                       wiki has no character for are carried along untouched,
+                       never dropped. Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
-                       membership manager (match terms + manual include/exclude).
+                       membership manager (match terms + manual include/exclude)
+                       plus roster arranging: ▲▼ per character, a Sort (SAO)
+                       button and Reset order, saved as `order[]`.
                        Publish/Draft via /api/collection; ?c={id} edit mode.
 publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
                        markdown-ish body with toolbar + live preview, banner and
@@ -372,7 +391,13 @@ alone. Purge deletes a comment and its replies for good) and a lazily ALTERed `u
 holding the comment-guidelines version that account agreed to,
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard
-inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
+inbox — NOT user DMs. An admin answers one with
+`POST /api/admin/message {action:'reply', body}`, which DELIVERS the answer as
+a `dms` row from that admin to the message's author — so it rides the unread
+count, the mail flag on "My Account", and can be replied to. The lazily-ALTERed
+`last_reply`/`replied_at`/`replied_by` columns are only the dashboard's record
+that it happened; blocks are deliberately not checked, as everywhere else an
+admin messages a user), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
@@ -408,7 +433,13 @@ Scripts and collections carry rich page fields in their `data` JSON (all
 optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
 strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
 membership — `match[]` (auto, normalized `appearsIn`) plus manual `include[]` /
-`exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js). Every
+`exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js), and
+an optional `order[]` of slugs — the author's hand-arranged roster order, kept
+as a SEPARATE list from membership on purpose: a slug in `order[]` that is no
+longer a member just never matches, and a member missing from it falls to the
+end of its team alphabetically, so neither list has to be kept in step with the
+other. Team grouping always wins over it (the page draws one section per team).
+Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
 link or a `[[Character Name]]`. Every one of these is length-capped and

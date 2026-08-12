@@ -166,6 +166,11 @@
   .msg-item:first-child { border-top: none; }
   .msg-item .msg-body { white-space: pre-wrap; overflow-wrap: anywhere; opacity: .9; margin-top: 3px; }
   .msg-item .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
+  .msg-item .msg-reply {
+    margin-top: 6px; padding: 6px 9px; font-size: .84rem;
+    background: rgba(42,110,42,.07); border-left: 3px solid rgba(42,110,42,.45);
+  }
+  .msg-item .msg-reply a { color: inherit; font-weight: 700; }
   .btn {
     font-family: 'Dumbledor2', serif;
     font-size: 1rem; letter-spacing: .04em;
@@ -798,9 +803,15 @@
             var badge = m.status === 'resolved'
               ? '<span class="badge ok">resolved</span>'
               : '<span class="badge warn">received</span>';
+            // The admins' answer is sent as a direct message, so point at it
+            // rather than repeating it here — that is where you can write back.
+            var replied = m.replied_at
+              ? '<div class="msg-reply">The admins replied ' + esc(fmtDate(m.replied_at)) +
+                ' — <a href="/messages">read it in your messages</a>.</div>'
+              : '';
             return '<div class="msg-item"><strong>' + esc(C_LABEL[m.category] || m.category || 'Message') + '</strong> ' +
               badge + '<span class="when">' + esc(fmtDate(m.ts)) + '</span>' +
-              '<div class="msg-body">' + esc(m.body) + '</div></div>';
+              '<div class="msg-body">' + esc(m.body) + '</div>' + replied + '</div>';
           }).join('');
         })
         .catch(function(){});

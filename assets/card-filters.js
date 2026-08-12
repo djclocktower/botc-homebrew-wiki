@@ -62,9 +62,19 @@
       if (g) sec._origOrder = [].slice.call(g.querySelectorAll('.char-card'));
     });
 
+    // Where the page itself has an order worth keeping — a collection whose
+    // author arranged its roster by hand — the caller asks for 'page' and the
+    // box leaves the server's order alone until a reader picks something else.
+    // A creator page has no such order (the feed is newest-first), so it stays
+    // on A–Z and never offers Page order at all.
+    var DEFAULT_SORT = opts.defaultSort === 'page' ? 'page' : 'name-asc';
+    // SAO needs assets/sao.js. Every page that offers the option loads it, but
+    // the option is only built when the function is actually there.
+    var HAS_SAO = typeof window !== 'undefined' && typeof window.saoCompare === 'function';
+
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [], creator: '',
-               showPartial: false, starlightOnly: false, sort: 'name-asc' };
+               showPartial: false, starlightOnly: false, sort: DEFAULT_SORT };
     }
     var STATE = freshState();
 
@@ -125,9 +135,11 @@
       html += '</select></div>';
     }
     html += '<div class="filter-group"><span class="filter-group-label">Sort</span><select class="filter-select" id="cf-sort">' +
+      (DEFAULT_SORT === 'page' ? '<option value="page">Page order</option>' : '') +
       '<option value="name-asc">Name (A–Z)</option>' +
       '<option value="name-desc">Name (Z–A)</option>' +
       '<option value="recent">Recently added</option>' +
+      (HAS_SAO ? '<option value="sao">Steven Approved Order</option>' : '') +
       '</select></div>';
     html += '<div class="filter-group"><span class="filter-group-label">&nbsp;</span><button type="button" class="filter-reset" id="cf-reset">Reset filters</button></div>';
     bar.innerHTML = html;
@@ -175,12 +187,13 @@
     var crSel = bar.querySelector('#cf-creator');
     if (crSel) crSel.addEventListener('change', function () { STATE.creator = crSel.value; apply(); });
     var sortSel = bar.querySelector('#cf-sort');
+    sortSel.value = STATE.sort;
     sortSel.addEventListener('change', function () { STATE.sort = sortSel.value; apply(); });
     bar.querySelector('#cf-reset').addEventListener('click', function () {
       STATE = freshState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
       if (crSel) crSel.value = '';
-      sortSel.value = 'name-asc';
+      sortSel.value = STATE.sort;
       apply();
     });
 
@@ -202,14 +215,27 @@
       return true;
     }
 
+    // SAO compares on the ability line, which is already on the card as text —
+    // no need for the server to repeat it in an attribute.
+    function saoSubject(card) {
+      var ab = card.querySelector('.char-card-ability');
+      return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
+    }
+
     function sortCards() {
       sections.forEach(function (sec) {
         var g = sec.querySelector('.char-grid');
         if (!g || !sec._origOrder) return;
+        // _origOrder is the order the server rendered, which IS "page order".
         var arr = sec._origOrder.slice();
         if (STATE.sort === 'name-asc') arr.sort(function (a, b) { return (a.getAttribute('data-name') || '').localeCompare(b.getAttribute('data-name') || ''); });
         else if (STATE.sort === 'name-desc') arr.sort(function (a, b) { return (b.getAttribute('data-name') || '').localeCompare(a.getAttribute('data-name') || ''); });
         else if (STATE.sort === 'recent') arr.sort(function (a, b) { return (+b.getAttribute('data-order') || 0) - (+a.getAttribute('data-order') || 0); });
+        // Cards are already grouped into one section per team, and SAO orders
+        // within a team — so sorting each grid on its own is the whole job.
+        else if (STATE.sort === 'sao' && HAS_SAO) {
+          arr.sort(function (a, b) { return window.saoCompare(saoSubject(a), saoSubject(b)); });
+        }
         arr.forEach(function (card) { g.appendChild(card); });
       });
     }
@@ -256,7 +282,10 @@
   if (typeof document !== 'undefined' && document.getElementById('coll-grid')) {
     var ok = mountCardFilters({
       grid: 'coll-grid', bar: 'coll-filter-bar',
-      toggle: 'coll-filter-toggle', count: 'coll-chars-count'
+      toggle: 'coll-filter-toggle', count: 'coll-chars-count',
+      // A collection's roster order is the author's — set in the editor and
+      // rendered by the server — so it is what a reader sees first.
+      defaultSort: 'page'
     });
     if (!ok) {   // empty collection — nothing to filter
       var fc = document.getElementById('coll-filters');
