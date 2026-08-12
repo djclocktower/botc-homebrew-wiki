@@ -72,6 +72,18 @@ Key dynamic behavior:
   `mass-upload.html` additionally tracks the slugs **its own run** has just
   taken, so two characters with the same name in one file get two pages
   instead of the second overwriting the first.
+  **Scripts and collections work the same way** (`publish-script.html`,
+  `publish-collection.html`), with one difference: a page being *created*
+  never lands on an existing URL, **not even one of your own**. There is no
+  rename for these two — the URL is fixed once created and an edit carries
+  `EDIT_SLUG`/`EDIT_KEY` — so a name that matches a page you already have
+  means a second page, never a silent overwrite of the first (grimforge's
+  "+ Add to Drafts" is strict for the same reason). The save says so when it
+  happens. For **collections the key is the kebab `id`, not the PK slug**, so
+  `/api/slug-check` resolves them through `findCollectionRow()` and counts
+  both ids and PK slugs as taken — matching how `/api/collection` resolves a
+  write. Checking only the PK would call a legacy id free and the save would
+  then refuse it.
 - **Creator pages are one page on two keys.** `/u/{username}` (an account) and
   `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
   which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account

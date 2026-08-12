@@ -510,6 +510,36 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       pill.textContent = currentStatus === 'draft' ? 'Draft' : currentStatus === 'published' ? 'Published' : '';
     }
 
+    // ── which URL will this collection get? ──
+    // A collection's URL is its kebab id (/collection/{id}) and so are its
+    // image slots in R2 (collections/{id}[-logo|-bg].png). A name another
+    // account already used failed twice over: the header upload was refused
+    // first, and the save came back "That collection belongs to another
+    // account" (or "A collection with that name already exists"). A name YOU
+    // had already used was worse — nothing complained, the save just replaced
+    // the collection you already had. So ask the Worker for a free id before
+    // anything is uploaded, the way the character editors and the mass
+    // uploader do: the collection keeps its name, the page gets its own
+    // address. Editing (EDIT_KEY) never asks — that id IS the page.
+    function resolveId(name){
+      if (EDIT_KEY) return Promise.resolve(EDIT_KEY);
+      var base = slugify(name);
+      if (!base) return Promise.resolve('');
+      return fetch('/api/slug-check?type=collection&name=' + encodeURIComponent(name), { credentials:'same-origin' })
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+        .then(function(j){
+          // If the check itself fails, carry on and let the save decide: the
+          // Worker never lets anyone write over a page that isn't theirs.
+          if (!j || j.error || !j.taken) return base;
+          // Taken — INCLUDING by a collection of your own. This is the "make a
+          // new collection" flow (an edit has EDIT_KEY, set by ?c= or by the
+          // previous save), so landing on one that already exists would
+          // replace it rather than update it.
+          return j.suggestion || base;
+        });
+    }
+
     // ── save ──
     function submitCollection(saveStatus){
       var isDraft = saveStatus === 'draft';
@@ -517,14 +547,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var desc = $('pc-desc').value.trim();
       if (!name){ pubStatus('err', 'Please give the collection a name.'); return; }
       if (!desc){ pubStatus('err', 'Please add a short description.'); return; }
-      var id = EDIT_KEY || slugify(name);
-      if (!id){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
+      var wanted = EDIT_KEY || slugify(name);
+      if (!wanted){ pubStatus('err', 'Could not derive a collection id from that name.'); return; }
+      var id = wanted, bumped = false;
 
       $('pc-publish').disabled = true;
       $('pc-draft').disabled = true;
       var verb = isDraft ? 'Saving draft' : 'Publishing';
 
-      var chain = Promise.resolve();
+      // The id has to be settled before the first upload: the image slots are
+      // built from it, and an upload into somebody else's slot is refused.
+      pubStatus('work', verb + '… checking the page URL');
+      var chain = resolveId(name).then(function(s){
+        if (s) id = s;
+        bumped = id !== wanted;
+      });
       if (headerDataURL) chain = chain.then(function(){ pubStatus('work', verb + '… uploading header'); return apiUpload('collections/' + id + '.png', headerDataURL); });
       if (logoDataURL)   chain = chain.then(function(){ pubStatus('work', verb + '… uploading logo'); return apiUpload('collections/' + id + '-logo.png', logoDataURL); });
       if (bgDataURL)     chain = chain.then(function(){ pubStatus('work', verb + '… uploading background'); return apiUpload('collections/' + id + '-bg.png', bgDataURL); });
@@ -575,10 +612,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         $('pub-page-title').textContent = 'Edit Collection';
         updateUrlPreview(); updateButtons(); loadPages(id);
         var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
+        // The name was already spoken for, so this page took the next free
+        // address. Say so: silently landing somewhere else would read as the
+        // save having failed, and "did it overwrite the other one?" is the
+        // first thing anyone would wonder.
+        var note = bumped
+          ? ' <em>A page already used <code>/collection/' + esc(wanted) + '</code>, so this one has its own address. ' +
+            'If you meant to change a collection you already made, open it from <a href="account">your account</a>.</em>'
+          : '';
         if (isDraft){
-          pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> Hit <strong>Publish to Wiki</strong> when it’s ready.');
+          pubStatus('ok', '✓ Draft saved (not public). <a href="' + pageUrl + '" target="_blank">Preview →</a> Hit <strong>Publish to Wiki</strong> when it’s ready.' + note);
         } else {
-          pubStatus('ok', '✓ Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.');
+          pubStatus('ok', '✓ Published! Live now at <a href="' + pageUrl + '" target="_blank">your collection page</a>.' + note);
         }
         $('pc-publish').disabled = false;
         $('pc-draft').disabled = false;
