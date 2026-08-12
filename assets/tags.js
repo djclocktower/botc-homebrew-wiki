@@ -7,6 +7,7 @@
   var TAG_INFO = {
     'Alignment Change': 'Can change a player’s alignment, or make good and evil players swap sides.',
     'Character Change': 'Can change a player’s character, or become another character itself.',
+    'Confirmation': 'This character can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
