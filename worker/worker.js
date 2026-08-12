@@ -3548,7 +3548,14 @@ export default {
         .replace(/^-+|-+$/g, '').slice(0, 80);
       const base = kebab(url.searchParams.get('name') || url.searchParams.get('slug'));
       if (!base) return jsonResponse({ error: 'Nothing to check.' }, { status: 400 });
-      const row = await getEntityRow(env, type, base);
+      // A collection's URL is its kebab `id`, which for legacy rows is NOT the
+      // PK slug ("The Academy" is the PK of the-academy). /api/collection
+      // resolves a write through findCollectionRow, so the check has to look
+      // the same way round or it calls a URL free that the save then refuses
+      // with "A collection with that name already exists."
+      const row = type === 'collection'
+        ? await findCollectionRow(env, base)
+        : await getEntityRow(env, type, base);
       // A URL a renamed page still redirects from is taken too: building a new
       // page there would quietly hijack every old link to the moved one.
       const parked = !row && !!(await lookupRedirect(env, type, base));
@@ -3559,12 +3566,28 @@ export default {
       const mine = !!row && canEditRow(sess, row);
       // Find the first free variant either way.
       let used;
-      try {
-        const { results } = await env.DB.prepare(
-          `SELECT slug FROM ${t.table} WHERE slug=? OR slug LIKE ?`
-        ).bind(base, base + '-%').all();
-        used = new Set((results || []).map(r => String(r.slug)));
-      } catch { used = new Set(); }
+      if (type === 'collection') {
+        // Same reason as above: a collection is reachable by its id as well as
+        // by its PK slug, so both count as taken. The table is small and
+        // findCollectionRow already scans it.
+        used = new Set();
+        const { results } = await env.DB.prepare('SELECT slug, data FROM collections')
+          .all().catch(() => ({ results: [] }));
+        for (const r of results || []) {
+          used.add(String(r.slug));
+          try {
+            const d = JSON.parse(r.data);
+            if (d && d.id) used.add(String(d.id));
+          } catch { /* skip bad rows */ }
+        }
+      } else {
+        try {
+          const { results } = await env.DB.prepare(
+            `SELECT slug FROM ${t.table} WHERE slug=? OR slug LIKE ?`
+          ).bind(base, base + '-%').all();
+          used = new Set((results || []).map(r => String(r.slug)));
+        } catch { used = new Set(); }
+      }
       try {
         const { results } = await env.DB.prepare(
           'SELECT from_slug FROM redirects WHERE entity_type=? AND (from_slug=? OR from_slug LIKE ?)'

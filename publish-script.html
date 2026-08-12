@@ -512,6 +512,35 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       setTimeout(function(){ btn.textContent = '⇅ Sort Roster (SAO)'; }, 1500);
     });
 
+    // ── which URL will this script get? ──────────────────────────────
+    // A script's URL comes from its name (/s/{slug}) and so do its image slots
+    // in R2 (scripts/{slug}[-logo|-bg].png). A name another account already
+    // used failed twice over: the header upload was refused first, and the
+    // save came back "That script belongs to another account." A name YOU had
+    // already used was worse — nothing complained at all, the save simply
+    // replaced the script you already had. So ask the Worker for a free URL
+    // before anything is uploaded, exactly as the character editors and the
+    // mass uploader do: the script keeps its name, the page gets its own
+    // address in the wiki's existing duplicate style (fall-of-rome-2, -3).
+    function resolveSlug(name){
+      if (EDIT_SLUG) return Promise.resolve(EDIT_SLUG);   // editing: the URL IS the page
+      var base = slugify(name);
+      if (!base) return Promise.resolve('');
+      return fetch('/api/slug-check?type=script&name=' + encodeURIComponent(name), { credentials:'same-origin' })
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+        .then(function(j){
+          // If the check itself fails, carry on and let the save decide: the
+          // Worker never lets anyone write over a page that isn't theirs.
+          if (!j || j.error || !j.taken) return base;
+          // Taken — INCLUDING by a script of your own. This is the "publish a
+          // new script" flow (an edit has EDIT_SLUG, set by ?s= or by the
+          // previous save), so landing on a page that already exists would
+          // replace it rather than update it.
+          return j.suggestion || base;
+        });
+    }
+
     // ── Save the script (saveStatus = 'published' | 'draft') ──
     function submitScript(saveStatus){
       var isDraft = saveStatus === 'draft';
@@ -529,14 +558,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (missing.length) { pubStatus('err', 'Please fill in the ' + missing.join(', ') + ' before saving.'); return; }
       if (!chars.length) { pubStatus('err', 'Your script is empty. <a href="script">Add characters in the Script Builder →</a>'); return; }
 
-      var slug = EDIT_SLUG || slugify(name);
-      if (!slug) { pubStatus('err', 'Could not derive a script slug from that name.'); return; }
+      var wanted = EDIT_SLUG || slugify(name);
+      if (!wanted) { pubStatus('err', 'Could not derive a script slug from that name.'); return; }
+      var slug = wanted, bumped = false;
 
       $('sb-publish').disabled = true;
       $('sb-draft').disabled = true;
       var verb = isDraft ? 'Saving draft' : 'Publishing';
 
-      var chain = Promise.resolve();
+      // The URL has to be settled before the first upload: the image slots are
+      // built from it, and an upload into somebody else's slot is refused.
+      pubStatus('work', verb + '… checking the page URL');
+      var chain = resolveSlug(name).then(function(s){
+        if (s) slug = s;
+        bumped = slug !== wanted;
+      });
       if (headerDataURL){
         chain = chain.then(function(){ pubStatus('work', verb + '… uploading header'); return apiUpload('scripts/' + slug + '.png', headerDataURL); });
       }
@@ -591,10 +627,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         m.editSlug = slug; setMeta(m);
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
         var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
+        // The name was already spoken for, so this page took the next free
+        // address. Say so: silently landing somewhere else would read as the
+        // save having failed, and "did it overwrite the other one?" is the
+        // first thing anyone would wonder.
+        var note = bumped
+          ? ' <em>A page already used <code>/s/' + esc(wanted) + '</code>, so this one has its own address. ' +
+            'If you meant to change a script you already made, open it from <a href="account">your account</a>.</em>'
+          : '';
         if (isDraft) {
-          pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.');
+          pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.' + note);
         } else {
-          pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.');
+          pubStatus('ok', '✓ Published! Live now at <a href="' + url + '" target="_blank">your script page</a>.' + note);
         }
         $('sb-publish').disabled = false;
         $('sb-draft').disabled = false;
