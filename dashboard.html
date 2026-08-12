@@ -1846,8 +1846,13 @@
       postJSON('/api/admin/bulk', body).then(function(res){
         btn.disabled = false;
         if (res.body && res.body.ok) {
+          var unpinned = res.body.unpinned || [];
           setToast('bulk-toast', true, 'Done: ' + res.body.done + ' page' + (res.body.done === 1 ? '' : 's') +
-            (res.body.failed && res.body.failed.length ? ' — failed: ' + res.body.failed.join(', ') : '') + '.');
+            (res.body.failed && res.body.failed.length ? ' — failed: ' + res.body.failed.join(', ') : '') + '.' +
+            // Say it out loud: the transfer also handed the creator name back to
+            // ownership, which is what makes /author?a=Name redirect to /u/name.
+            (unpinned.length ? ' Creator name' + (unpinned.length === 1 ? ' ' : 's ') +
+              unpinned.join(', ') + ' now link' + (unpinned.length === 1 ? 's' : '') + ' to that account.' : ''));
           $('bulk-load').click();
           loadActivity(true);
         } else setToast('bulk-toast', false, (res.body && res.body.error) || 'Failed.');

@@ -104,6 +104,8 @@
  *   GET  /collection/{id}     -> collection page (server-side rendered from D1)
  *   GET  /script-view(.html)  -> 301 to /s/{slug} (legacy links)
  *   POST /api/admin/assign-owner -> admin: set/clear a page's owner account
+ *                                (also lifts a stale "no account" pin on the
+ *                                creator name, if the name IS that account)
  *
  *   -- admin --
  *   GET  /api/admin/dashboard -> dashboard data (incl. deleted + protected)
@@ -1306,6 +1308,14 @@ async function resolveCreatorAccount(env, name) {
       );
     }
   } catch { /* settings table unreachable -> fall through to ownership */ }
+  return await creatorOwnerByProof(env, key);
+}
+
+// The ownership half of resolveCreatorAccount, on its own so an admin can be
+// shown who a pinned name WOULD resolve to if the pin were lifted.
+async function creatorOwnerByProof(env, name) {
+  const key = normCreator(name);
+  if (!key) return null;
   // Proof by ownership: whoever owns the most PUBLISHED pages credited to this
   // name. Published matters — a draft is invisible to everyone but its owner,
   // so counting drafts would let anyone claim any name by saving an unpublished
@@ -1331,6 +1341,65 @@ async function resolveCreatorAccount(env, name) {
       'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE id=?'
     ).bind(ownerId).first();
   } catch { return null; }
+}
+
+// The credit line off a content row, whichever field its type keeps it in.
+// Read out of the data blob rather than the indexed column, because the column
+// is not in every SELECT (getEntityRow does not fetch it) and the blob is.
+function rowCredit(type, row) {
+  const d = parseData(row);
+  return String((type === 'character' ? d.creator : d.author) || '');
+}
+
+// Does this creator name spell that account's own name? Folded the same way
+// handles are, so the credit "Hystrex" matches @hystrex, and a credit typed
+// with its accents matches the handle it was registered with.
+function creatorNameIsAccount(name, user) {
+  const key = usernameKey(name);
+  if (!key || !user) return false;
+  const uKey = user.username_key || usernameKey(user.username || '');
+  if (uKey && key === uKey) return true;
+  const dKey = usernameKey(user.display_name || '');
+  return !!dKey && key === dKey;
+}
+
+// A creator name pinned unlinked (creator_alias:{name} = '') says the name
+// belongs to no account, and that pin beats ownership on every read. Handing
+// that name's pages to an account of the same name says the opposite — and the
+// pin quietly won, which is how a live /u/hystrex ended up with a stale
+// /author?a=Hystrex page beside it instead of a redirect to it. So an admin
+// transfer lifts the pin and the name goes back to being decided by ownership,
+// which by then is proof rather than guesswork.
+//
+// Two deliberate limits, because the pin is also what stops a bulk-imported
+// name being claimed:
+//   * admin actions only — a page somebody saved under their own account must
+//     never lift a pin, or registering @lins and publishing one character
+//     would hand over every bulk-imported "Lins" page.
+//   * only names the account is actually spelled with — a co-credit like
+//     "idea by Lins" riding along on a transferred page stays pinned.
+async function unpinCreatorNames(env, sess, user, credits) {
+  const cleared = [];
+  if (!user) return cleared;
+  const seen = new Set();
+  for (const raw of credits || []) {
+    for (const key of creditNames(raw)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!creatorNameIsAccount(key, user)) continue;
+      try {
+        const row = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+          .bind(creatorAliasKey(key)).first();
+        // No row means ownership already decides; a non-empty value is an
+        // admin pointing the name at an account on purpose. Neither is stale.
+        if (!row || row.value) continue;
+        await env.DB.prepare('DELETE FROM settings WHERE key=?').bind(creatorAliasKey(key)).run();
+        await logActivity(env, sess, 'update', 'creator', key, user.username);
+        cleared.push(key);
+      } catch { /* the transfer itself stands; a stale pin is fixable by hand */ }
+    }
+  }
+  return cleared;
 }
 
 // An account -> every creator name it has published under (proof by ownership),
@@ -3251,7 +3320,35 @@ export default {
         }
       } catch { /* the creator page still works without them */ }
 
+      // Admins get the alias state for the names this page covers, because
+      // "nobody has claimed this name" and "an admin pinned this name as
+      // unclaimed" produced the same sentence in the box below the hero — which
+      // is how a pin outlived the account it was hiding without anyone seeing
+      // it. `wouldBe` is who the name resolves to once the pin is lifted, so a
+      // stale one can be recognised as stale.
+      let aliases = null;
+      if (sess && sess.isAdmin) {
+        aliases = {};
+        const want = [...new Set([...names, normCreator(aname)].filter(Boolean))].slice(0, 12);
+        for (const n of want) {
+          let row = null;
+          try {
+            row = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+              .bind(creatorAliasKey(n)).first();
+          } catch { /* settings unreachable — the box just falls back to plain wording */ }
+          if (!row) continue;
+          const value = String(row.value || '');
+          const entry = { pinned: !value, username: value || null };
+          if (!value) {
+            const proof = await creatorOwnerByProof(env, n);
+            entry.wouldBe = proof ? proof.username : null;
+          }
+          aliases[n] = entry;
+        }
+      }
+
       return jsonResponse({
+        aliases,
         profile: u ? {
           claimed: true,
           username: u.username,
@@ -5756,17 +5853,21 @@ export default {
         let row = await getEntityRow(env, type, String(b.slug || ''));
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-        let ownerId = null;
+        let ownerId = null, ownerUser = null;
         const uname = String(b.username || '').trim();
         if (uname) {
           const u = await findUserByUsername(env, uname);
           if (!u) return jsonResponse({ error: 'No user named "' + uname + '".' }, { status: 404 });
           ownerId = u.id;
+          ownerUser = u;
         }
         await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(ownerId, row.slug).run();
         await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
+        // Giving a name's pages to an account of that name settles who the name
+        // belongs to, so a stale "this name has no account" pin comes off.
+        const unpinned = await unpinCreatorNames(env, sess, ownerUser, [rowCredit(type, row)]);
+        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null, unpinned });
       }
 
       // ---- admin: wiki lock ----
@@ -6749,11 +6850,12 @@ export default {
         if (!ACTIONS.includes(action)) return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         const slugs = (Array.isArray(b.slugs) ? b.slugs : []).slice(0, 200).map(String);
         if (!slugs.length) return jsonResponse({ error: 'No pages selected.' }, { status: 400 });
-        let ownerId = null;
+        let ownerId = null, ownerUser = null;
         if (action === 'assign-owner') {
           const u = await findUserByUsername(env, String(b.username || '').trim());
           if (!u) return jsonResponse({ error: 'No user named "' + String(b.username || '') + '".' }, { status: 404 });
           ownerId = u.id;
+          ownerUser = u;
         }
         const tag = String(b.tag || '').trim().slice(0, 40);
         if ((action === 'add-tag' || action === 'remove-tag')) {
@@ -6767,6 +6869,7 @@ export default {
         } catch { /* non-fatal */ }
         let done = 0;
         const failed = [];
+        const credits = [];   // credit lines of the pages an assign-owner moved
         for (const slug of slugs) {
           try {
             let row = await getEntityRow(env, type, slug);
@@ -6792,6 +6895,7 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
+              if (action === 'assign-owner') credits.push(rowCredit(type, row));
             } else if (action === 'starlight' || action === 'unstarlight') {
               const on = action === 'starlight';
               const d = parseData(row);
@@ -6822,7 +6926,11 @@ export default {
           } catch { failed.push(slug); }
         }
         await logActivity(env, sess, 'bulk-' + action, type, null, done + ' page' + (done === 1 ? '' : 's'));
-        return jsonResponse({ ok: true, done, failed });
+        // Same as the single-page transfer: handing a name's pages to an account
+        // of that name is the answer to "does this name have an account?", so a
+        // pin saying it does not comes off rather than outliving the transfer.
+        const unpinned = await unpinCreatorNames(env, sess, ownerUser, credits);
+        return jsonResponse({ ok: true, done, failed, unpinned });
       }
 
       return jsonResponse({ error: 'Unknown endpoint' }, { status: 404 });

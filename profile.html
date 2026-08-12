@@ -104,6 +104,8 @@
     background:#5b1f21; color:#f4ead2; border:1px solid rgba(236,225,200,.35);
   }
   .creator-link-msg { margin:6px 0 0; font-size:.82rem; }
+  /* A pin that is hiding an account which has since earned the name. */
+  .creator-link-warn { display:block; margin-top:5px; color:#ffcf8a; }
   /* Pinned strip — one uniform card, because a pin can be any of the three types. */
   .pin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
   .pin-card {
@@ -371,7 +373,7 @@
     });
 
     /* ── hero ── */
-    function renderHero(p, counts, me) {
+    function renderHero(p, counts, me, aliases) {
       var claimed = !!p.claimed;
       var title = p.displayName || p.username || 'Creator';
       var avatarInner = p.avatarUrl
@@ -430,21 +432,33 @@
         '</div>';
       fitHeroName();
 
-      if (me && me.isAdmin) renderAdminLinkBox(p);
+      if (me && me.isAdmin) renderAdminLinkBox(p, aliases);
     }
 
     // Admins can attach a creator name to an account (or detach it) from the
     // page where the mismatch is visible. Backed by POST /api/admin/creator-alias.
-    function renderAdminLinkBox(p) {
+    function renderAdminLinkBox(p, aliases) {
       var name = (p.creatorNames && p.creatorNames[0]) || authorName || p.displayName || '';
       if (!name) return;
+      // A name pinned as unlinked reads exactly like a name nobody has claimed,
+      // so say which it is — and, when the pin is hiding an account that has
+      // since earned the name, say that too, with the button that fixes it.
+      var pin = (aliases || {})[String(name).trim().toLowerCase()];
+      var state;
+      if (p.claimed) state = 'linked to <strong>@' + esc(p.username) + '</strong>.';
+      else if (pin && pin.pinned) {
+        state = '<strong>pinned as unlinked</strong> by an admin, so ownership is ignored.' +
+          (pin.wouldBe
+            ? ' <span class="creator-link-warn">Without the pin it would link to <strong>@' +
+              esc(pin.wouldBe) + '</strong> &mdash; press &ldquo;Decide by ownership&rdquo; if those pages are theirs.</span>'
+            : '');
+      } else state = 'not linked to an account.';
       var box = document.createElement('div');
       box.className = 'creator-link-box';
       box.innerHTML =
-        '<strong>Admin:</strong> creator name &ldquo;' + esc(name) + '&rdquo; is ' +
-        (p.claimed ? 'linked to <strong>@' + esc(p.username) + '</strong>.' : 'not linked to an account.') +
+        '<strong>Admin:</strong> creator name &ldquo;' + esc(name) + '&rdquo; is ' + state +
         '<form id="cl-form"><input id="cl-user" type="text" placeholder="username" value="' +
-        esc(p.claimed ? p.username : '') + '" autocomplete="off">' +
+        esc(p.claimed ? p.username : (pin && pin.wouldBe) || '') + '" autocomplete="off">' +
         '<button type="submit">Link</button>' +
         '<button type="button" id="cl-clear">Decide by ownership</button></form>' +
         '<p class="creator-link-msg" id="cl-msg"></p>';
@@ -575,7 +589,7 @@
         collections: data.collections.length,
         pages: (data.pages || []).length,
         drafts: d.characters.length + d.scripts.length + d.collections.length
-      }, me);
+      }, me, data.aliases);
       renderBody(data, me);
     }).catch(function () { fail('Could not load this creator.'); });
   })();

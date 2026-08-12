@@ -526,6 +526,31 @@ under teobius and dashieswag92. `DJ_DJ_DJ` is deliberately left resolving to
 `admin`. **Any future bulk import owned by one account needs the same pass**, or
 it quietly swallows every name it is credited to.
 
+**A pin outlives the reason for it, so a transfer lifts it.** Hystrex was one of
+the twenty-eight; then Hystrex signed up and the pages were handed to
+`@hystrex`. Proof by ownership was suddenly real — and lost to the pin, which
+always wins, so `/u/hystrex` was live while `/author?a=Hystrex` still rendered
+the unclaimed page beside it. Both admin transfer routes
+(`POST /api/admin/assign-owner` and the dashboard's bulk `assign-owner`) now
+call `unpinCreatorNames()`, which deletes an **empty** `creator_alias:` row when
+the transferred page's credit **is the receiving account's own name**
+(`creatorNameIsAccount()`, folded the same way handles are) and reports what it
+lifted in the response. Two limits are deliberate:
+
+- **Admin actions only.** The pin is also what stops a bulk-imported name being
+  claimed, and proof by ownership counts any published page — so if saving your
+  own page lifted a pin, registering `@lins` and publishing one character would
+  hand over every imported "Lins" page. A page save must never touch a pin.
+- **Only the account's own name.** A co-credit riding along on a transferred
+  page ("Hystrex, idea by Lins") leaves "idea by Lins" pinned.
+
+Pins are also **visible** now: `/api/user` hands admins an `aliases` map
+(`{pinned, username, wouldBe}`) for the names on the page, and the admin box
+under the hero says "pinned as unlinked" rather than the same "not linked to an
+account" it showed for a name nobody had ever pinned — plus who the name *would*
+resolve to if the pin came off. That sentence being identical for both states is
+the reason this went unnoticed.
+
 ## Custom wiki pages (`/p/{slug}`)
 
 Text-first pages hanging off one script or collection — modelled on the
