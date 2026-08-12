@@ -256,8 +256,10 @@
       var title = (opts && opts.from)
         ? 'Starlight — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
         : DESCRIPTIONS.starlight;
-      return '<span class="starlight-star" title="' + title.replace(/"/g, '&quot;') +
-        '" aria-label="Starlight">\u2726</span>';
+      // Empty on purpose: the shooting star is painted by .starlight-star in
+      // styles.css (one definition, inheriting the surrounding text colour).
+      return '<span class="starlight-star" role="img" title="' + title.replace(/"/g, '&quot;') +
+        '" aria-label="Starlight"></span>';
     }
     if (cls === 'partial') {
       return '<span class="page-class page-class-partial" title="' +

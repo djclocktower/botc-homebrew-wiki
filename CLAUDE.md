@@ -785,8 +785,21 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
   written to the character row, so un-starring the collection takes it off
   the characters too; a character's own flag always wins and carries
   `starlightFrom` for the tooltip.
-  The visible mark is a bare `✦` that inherits the surrounding text colour
-  (`.starlight-star`) — deliberately not a coloured pill. On collection
+  The visible mark is a bare **shooting star** that inherits the surrounding
+  text colour — deliberately not a coloured pill. **The artwork is defined
+  once, in `styles.css`**: `.starlight-star` is an *empty* span that the
+  stylesheet fills by masking `currentColor` through an inline SVG data URI
+  (`--starlight-icon`). It is a mask and not an `<svg>` or an `<img>` for two
+  reasons — the mark is emitted from four places (classify.js,
+  render-page.js ×2, profile.html) plus three "Starlight only" filter chips,
+  so inline SVG would mean the same path pasted into all of them, and an
+  `<img>` cannot follow the text colour it sits in, which is the entire point
+  of the mark. Add `.starlight-star-lead` when it *leads* a label instead of
+  trailing a name (the filter chips, the scripts/collections Status row); it
+  just swaps the margin. Anywhere markup cannot go — the `<option>` in the
+  dashboard's bulk-action menu — the label simply reads "Give Starlight" with
+  no mark at all, rather than falling back to a glyph that no longer matches.
+  On collection
   tiles it sits after the character count behind a hairline `.coll-star-sep`.
   On a `/c/` page it sits at the end of the **Tags** row behind the same
   hairline (`.info-star-sep`) — it is a mark, never a link, so it can't be

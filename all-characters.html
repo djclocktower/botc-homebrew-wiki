@@ -229,7 +229,8 @@
           html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
         }
         if (nStar){
-          html += '<button type="button" class="filter-chip" id="fc-starlight" title="Starlight — pages the wiki admins have picked out.">✦ Starlight only (' + nStar + ')</button>';
+          html += '<button type="button" class="filter-chip" id="fc-starlight" title="Starlight — pages the wiki admins have picked out.">' +
+            '<span class="starlight-star starlight-star-lead" aria-hidden="true"></span>Starlight only (' + nStar + ')</button>';
         }
         html += '</div></div>';
       }

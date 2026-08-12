@@ -584,7 +584,9 @@
             <option value="clear-owner">Clear owner</option>
             <option value="publish">Publish</option>
             <option value="unpublish">Move to drafts</option>
-            <option value="starlight">Give Starlight ✦</option>
+            <!-- No mark here: an <option> renders plain text, so it cannot
+                 carry the shooting star the rest of the site shows. -->
+            <option value="starlight">Give Starlight</option>
             <option value="unstarlight">Remove Starlight</option>
             <option value="delete">Move to trash</option>
             <option value="restore">Restore from trash</option>
@@ -845,7 +847,7 @@
       <section class="panel">
         <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Gives <strong>Starlight ✦</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
+          Gives <strong>Starlight<span class="starlight-star" aria-hidden="true"></span></strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
         </p>
         <div class="act-filters">
           <input type="text" id="sto-user" placeholder="username" value="admin">
@@ -1813,14 +1815,16 @@
           d.pages.map(function(pg){
             // Flag anything an admin would want to spot at a glance.
             var notes = [];
-            if (pg.starlight) notes.push('✦ Starlight');
+            if (pg.starlight) notes.push('<span class="starlight-star starlight-star-lead" aria-hidden="true"></span>Starlight');
             if (pg.classification === 'partial') notes.push('Partial');
             if (pg.hasIcon === false) notes.push('NO ICON');
             return '<label class="adm-row" style="cursor:pointer">' +
               '<input type="checkbox" class="bulk-check" value="' + esc(pg.slug) + '">' +
               '<span class="grow">' + esc(pg.name || pg.slug) +
               ' <span class="dim">' + esc(pg.status) + (pg.owner ? ' · ' + esc(pg.owner) : ' · unowned') +
-              (notes.length ? ' · ' + esc(notes.join(' · ')) : '') + '</span></span>' +
+              // Not escaped: every note above is a literal written here, and
+              // the Starlight one is the mark's empty span.
+              (notes.length ? ' · ' + notes.join(' · ') : '') + '</span></span>' +
               '</label>';
           }).join('');
         $('bulk-act-row').style.display = '';

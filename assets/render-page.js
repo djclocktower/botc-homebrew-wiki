@@ -252,17 +252,18 @@
       // already here — this file never needs classify.js of its own.
       var cls = c.classification || '';
       var starred = !!(c.starlight || cls === 'starlight');
-      // Marks on the name: the Starlight star (same bare glyph as everywhere
-      // else) and, on a creator page's drafts, what is still unpublished.
+      // Marks on the name: the Starlight star (the same bare mark as
+      // everywhere else — an empty span the stylesheet paints) and, on a
+      // creator page's drafts, what is still unpublished.
       var marks =
         (c.status === 'draft'
           ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
         (starred
-          ? '<span class="starlight-star" title="' +
+          ? '<span class="starlight-star" role="img" title="' +
             (c.starlightFrom
               ? 'Starlight — part of the ' + esc(c.starlightFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
-            '" aria-label="Starlight">✦</span>' : '');
+            '" aria-label="Starlight"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
@@ -419,9 +420,9 @@
      Standard pages show nothing, which is the point of Standard. */
   function starlightRow(d) {
     if (!d || !d.starlight) return [];
-    return ['<dt>Status:</dt><dd><span class="starlight-star" ' +
+    return ['<dt>Status:</dt><dd><span class="starlight-star starlight-star-lead" ' +
       'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks." ' +
-      'aria-label="Starlight">\u2726</span> Starlight</dd>'];
+      'role="img" aria-label="Starlight"></span>Starlight</dd>'];
   }
 
   function renderJsonPanel(jsonText, actions, label, collapsed) {

@@ -279,7 +279,7 @@
     }
     function starMark(x) {
       return x && x.starlight
-        ? ' <span class="starlight-star" title="Awarded by the wiki admins." aria-label="Starlight">✦</span>' : '';
+        ? ' <span class="starlight-star" role="img" title="Awarded by the wiki admins." aria-label="Starlight"></span>' : '';
     }
     function draftMark(x) {
       return x && x.status === 'draft'

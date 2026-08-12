@@ -2033,14 +2033,33 @@ body.theme-bg::before {
 /* ─── Page classification marks (Partial / Starlight) ────────── */
 /* Standard pages deliberately get nothing — see assets/classify.js. */
 
-/* Starlight is a bare star that takes the colour of whatever text it sits
-   next to, so it reads as part of the name rather than a badge stuck on it.
-   No background, no border, no colour of its own. */
+/* Starlight is a bare shooting star that takes the colour of whatever text it
+   sits next to, so it reads as part of the name rather than a badge stuck on
+   it. No background, no border, no colour of its own.
+
+   THE ICON IS DEFINED ONCE, HERE. It is painted as a mask over currentColor
+   rather than drawn as an <svg> or an <img>: the mark is emitted from four
+   places (classify.js, render-page.js twice, profile.html) plus three filter
+   chips, and inline SVG would have meant the same path pasted into all of
+   them — while an <img> could not follow the text colour it sits in, which is
+   the whole point of this mark. The span the emitters write stays empty. */
 .starlight-star {
-  color: inherit; font-size: .78em; opacity: .65;
-  margin-left: .38em; vertical-align: baseline;
-  cursor: help; font-weight: inherit;
+  /* Wider than the ✦ it replaces because a shooting star is a wide shape:
+     .78em tall is the glyph's old size, and the width follows the artwork's
+     8:5 proportions. Slightly less transparent too — thin trails read fainter
+     than a solid glyph at the same opacity. */
+  display: inline-block; width: 1.25em; height: .78em;
+  vertical-align: -.02em; opacity: .7; cursor: help;
+  background-color: currentColor;
+  -webkit-mask: var(--starlight-icon) no-repeat center / contain;
+          mask: var(--starlight-icon) no-repeat center / contain;
+  margin-left: .38em;
 }
+:root {
+  --starlight-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 100'%3E%3Cpath d='M37.8 29.6 46.9 55.8 74.6 56.3 52.5 73.1 60.5 99.6 37.8 83.8 15.1 99.6 23.1 73.1 1 56.3 28.7 55.8ZM40.3 31.1 158.5 1.5 46.5 45.5ZM46.7 48.9 148 14 51.5 60ZM58 68 121 50 61.5 77.5Z'/%3E%3C/svg%3E");
+}
+/* Leading the label on a filter chip, rather than trailing a name. */
+.starlight-star-lead { margin-left: 0; margin-right: .34em; cursor: inherit; }
 a:hover > .starlight-star,
 a:hover .starlight-star { opacity: .9; }
 
