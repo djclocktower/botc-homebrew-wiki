@@ -393,6 +393,7 @@
         ta.addEventListener('input', function() { autoExpand(ta); });
         autoExpand(ta);
       });
+      if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
     }
     $('addjinx').addEventListener('click', function(){ addJinx(); });
 
