@@ -257,11 +257,18 @@
       var topHTML = coll.header
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(coll.header) + '" alt="' + esc(name) + '"></div>'
         : '';
+      // The blurb goes in the tagline paragraph, the same slot (and the same
+      // three-line cutoff) every other collection tile on the site uses. It
+      // used to be dropped into .collection-count, which is a small-caps
+      // one-liner meant for "12 characters" — a collection whose description
+      // runs to a paragraph turned the whole tile into a wall of capitals.
+      var blurb = coll.tagline || coll.description || '';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + starMark(coll) + draftMark(coll) + '</h3>' +
+        (blurb ? '<p class="collection-tile-tagline">' + esc(blurb) + '</p>' : '') +
         '<div class="collection-footer">' +
-          '<span class="collection-count">' + esc(coll.description || 'Collection') + '</span>' +
+          '<span class="collection-count">' + esc(coll.author || 'Collection') + '</span>' +
           '<span class="collection-arrow">Browse &rarr;</span>' +
         '</div></a>';
     }

@@ -3167,6 +3167,9 @@ export default {
           o.id = d.id || slug;
           o.displayName = d.displayName || slug;
           o.author = d.author || '';
+          // Tagline first, description as the fallback — the tile prefers the
+          // short line and only falls back to the long one.
+          o.tagline = d.tagline || '';
           o.description = d.description || '';
           o.header = d.header || '';
         }

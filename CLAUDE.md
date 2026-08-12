@@ -178,6 +178,20 @@ assets/
                        Generated from GrayPockets/Released-as-Homebrew (the
                        `source` field inside the file says where); roles.json has
                        no night order, which is why this is separate.
+  special-editor.js    The `special[]` repeater on create.html + edit.html — the
+                       official schema's per-character behaviour flags ("cannot
+                       go in the bag", "show the Storyteller the grimoire"), of
+                       which `setup` was long the only one the wiki understood.
+                       Anything else was dropped on import and therefore missing
+                       from the wiki's own JSON export. Now carried through by
+                       mass-upload.html, create.html's JSON autofill and both
+                       editors, and validated + exported by render.js
+                       (`sanitizeSpecial`, the owner of the shape — the widget
+                       only collects). The name box is a datalist, never a
+                       closed list: the official vocabulary grows, and a name
+                       this repo has never seen still belongs to the character.
+                       It is a plain <fieldset>, which is all redesign-create.js
+                       needs to file it under Advanced Options.
   sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.
