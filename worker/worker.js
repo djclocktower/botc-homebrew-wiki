@@ -116,7 +116,9 @@
  *   GET  /api/admin/users     -> user list (?q= search) for the users panel
  *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link for a user
  *   GET  /api/admin/messages  -> contact-form inbox (?status=open|all)
- *   POST /api/admin/message   -> resolve/reopen/delete an inbox message
+ *   POST /api/admin/message   -> reply to / resolve / reopen / delete an inbox
+ *                                message; {action:'reply', body} sends the
+ *                                answer to its author as a direct message
  *   POST /api/admin/protect   -> protect/unprotect one page from edits
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
  *   GET  /api/admin/site-text -> every saved system-text override, with who
@@ -719,6 +721,17 @@ async function ensureMessagesTable(env) {
        status   TEXT NOT NULL DEFAULT 'open'
      )`
   ).run();
+  // An admin's answer to a contact message is DELIVERED as a direct message —
+  // that is the channel the site already has, with an unread count and the
+  // mail flag on "My Account", and it lets the person write back. These three
+  // columns are only the dashboard's record that it happened, so an admin can
+  // see at a glance which messages have been answered and what was said
+  // without opening the thread. Lazily ALTERed, like every other column added
+  // after the fact (see users.banned).
+  for (const col of ['last_reply TEXT', 'replied_at TEXT', 'replied_by TEXT']) {
+    try { await env.DB.prepare('ALTER TABLE messages ADD COLUMN ' + col).run(); }
+    catch { /* already there */ }
+  }
   _messagesReady = true;
 }
 
@@ -2382,9 +2395,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
     bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    // sao.js before card-filters.js: the filter box only builds its Steven
+    // Approved Order option when window.saoCompare is already there.
     scripts: isScript
       ? ['render.js', 'pageview.js', 'comments.js', 'site.js']
-      : ['render.js', 'pageview.js', 'card-filters.js', 'comments.js', 'site.js']
+      : ['render.js', 'pageview.js', 'sao.js', 'card-filters.js', 'comments.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -3167,6 +3182,9 @@ export default {
           o.id = d.id || slug;
           o.displayName = d.displayName || slug;
           o.author = d.author || '';
+          // Tagline first, description as the fallback — the tile prefers the
+          // short line and only falls back to the long one.
+          o.tagline = d.tagline || '';
           o.description = d.description || '';
           o.header = d.header || '';
         }
@@ -3833,7 +3851,9 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       await ensureMessagesTable(env);
       const { results } = await env.DB.prepare(
-        'SELECT id, ts, category, body, status FROM messages WHERE user_id=? ORDER BY id DESC LIMIT 20'
+        // replied_at lets the account page say an answer is waiting; the answer
+        // itself was delivered as a DM, so it is read in /messages.
+        'SELECT id, ts, category, body, status, replied_at, replied_by FROM messages WHERE user_id=? ORDER BY id DESC LIMIT 20'
       ).bind(sess.userId).all();
       return jsonResponse({ messages: results || [] });
     }
@@ -4303,7 +4323,7 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
       await ensureMessagesTable(env);
       const status = url.searchParams.get('status') || 'open';
-      let sql = 'SELECT id, ts, user_id, username, category, body, status FROM messages';
+      let sql = 'SELECT id, ts, user_id, username, category, body, status, last_reply, replied_at, replied_by FROM messages';
       const binds = [];
       if (status !== 'all') { sql += ' WHERE status=?'; binds.push(status === 'resolved' ? 'resolved' : 'open'); }
       sql += ' ORDER BY id DESC LIMIT 200';
@@ -5373,6 +5393,17 @@ export default {
         for (const k of ['include', 'exclude']) {
           c[k] = Array.isArray(c[k]) ? c[k].slice(0, 500).map(x => String(x).slice(0, 80)) : [];
         }
+        // The author's hand-arranged roster order: a list of slugs, and only a
+        // list of slugs. It is deliberately NOT the membership — membership is
+        // still match[]/include[]/exclude[] — so a slug that leaves the
+        // collection just stops being found, and a new member that is not in
+        // here sorts after the ordered ones (see resolveCollectionMembers's
+        // caller in render-page.js). That means neither list has to be kept in
+        // step with the other, which is the only reason this is safe to store.
+        c.order = Array.isArray(c.order)
+          ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
+          : [];
+        if (!c.order.length) delete c.order;
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
         // Admin-only flag: keep whatever is stored, ignore the client.
@@ -6006,6 +6037,44 @@ export default {
         } else if (action === 'resolve' || action === 'reopen') {
           await env.DB.prepare('UPDATE messages SET status=? WHERE id=?')
             .bind(action === 'resolve' ? 'resolved' : 'open', id).run();
+        } else if (action === 'reply') {
+          // Answering a contact message. The answer goes out as a direct
+          // message from the admin who wrote it, which is what makes it
+          // reachable: it lands in the person's /messages, bumps the unread
+          // count on /api/me, lights the mail flag site.js puts on "My
+          // Account", and they can simply write back — none of which a reply
+          // stored only on this row would do.
+          const body = String(b.body || '').trim().slice(0, 3000);
+          if (body.length < 2) return jsonResponse({ error: 'Write a reply first.' }, { status: 400 });
+          const msg = await env.DB.prepare('SELECT id, user_id, username FROM messages WHERE id=?')
+            .bind(id).first().catch(() => null);
+          if (!msg) return jsonResponse({ error: 'That message no longer exists.' }, { status: 404 });
+          if (!msg.user_id) {
+            return jsonResponse({ error: 'This message has no account attached, so there is nobody to reply to.' }, { status: 400 });
+          }
+          if (msg.user_id === sess.userId) {
+            return jsonResponse({ error: "That's your own message — you can't reply to yourself." }, { status: 400 });
+          }
+          await ensureDmTables(env);
+          // Deliberately NOT checking dm_blocks: admins bypass blocks
+          // everywhere else for exactly this reason, and somebody who wrote to
+          // the admins is owed the answer whatever their block list says.
+          await env.DB.prepare(
+            'INSERT INTO dms (sender_id, recipient_id, body) VALUES (?,?,?)'
+          ).bind(sess.userId, msg.user_id, body).run();
+          // The session carries only {userId, isAdmin} — the name is looked up,
+          // the same way logActivity does it.
+          let adminName = null;
+          try {
+            const a = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+              .bind(sess.userId).first();
+            adminName = a ? a.username : null;
+          } catch { /* the record is still worth writing without a name */ }
+          await env.DB.prepare(
+            "UPDATE messages SET last_reply=?, replied_at=datetime('now'), replied_by=? WHERE id=?"
+          ).bind(body, adminName, id).run();
+          await logActivity(env, sess, 'reply', 'message', String(id), msg.username || null);
+          return jsonResponse({ ok: true, sentTo: msg.username || null });
         } else {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         }

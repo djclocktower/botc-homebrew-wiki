@@ -125,6 +125,9 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- render.js owns the official-schema shape, including sanitizeSpecial()
+       for the special[] flags this page imports. -->
+  <script src="assets/render.js"></script>
   <script>
   (function(){
     var $ = function(id){ return document.getElementById(id); };
@@ -320,6 +323,11 @@
         reminders: Array.isArray(c.reminders) ? c.reminders : [],
         remindersGlobal: Array.isArray(c.remindersGlobal) ? c.remindersGlobal : [],
         setup: !!c.setup,
+        // The official schema's behaviour flags — "cannot go in the bag"
+        // (Drunk, Phantom), "show the Storyteller the grimoire", and the rest.
+        // These used to be dropped on the floor here, so a character imported
+        // with them came back out of the wiki's own JSON export without them.
+        special: window.sanitizeSpecial ? window.sanitizeSpecial(c.special) : [],
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : [],
         page: 'c/' + slug + '.html',
         status: opts.status

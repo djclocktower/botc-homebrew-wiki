@@ -51,6 +51,20 @@
     padding-bottom:12px;border-bottom:1px dashed #d8caa8}
   .box-row:last-of-type{border-bottom:none}
   .box-row textarea{grid-column:1/-1;min-height:56px}
+  /* Special properties (assets/special-editor.js). Named areas rather than a
+     five-across row: the form column is ~460px and narrower on a phone. */
+  .special-row{display:grid;gap:8px;margin-bottom:12px;align-items:center;
+    grid-template-columns:minmax(0,1fr) 92px auto;
+    grid-template-areas:"type type del" "name name name" "time value ."}
+  .special-row + .special-row{border-top:1px dashed #d8caa8;padding-top:12px}
+  .sp-type{grid-area:type}.sp-name{grid-area:name}
+  .sp-time{grid-area:time}.sp-value{grid-area:value}.sp-del{grid-area:del}
+  .special-row input,.special-row select{
+    width:100%;max-width:100%;box-sizing:border-box;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;color:#241a12;
+    background:#fffdf8;border:1px solid #cdbfa0;border-radius:6px;padding:8px 10px}
+  .special-row input:focus,.special-row select:focus{outline:2px solid #b98;border-color:#b98}
+  .special-row .sp-del{width:auto}
   .btn{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.04em;cursor:pointer;
     border:none;border-radius:7px;padding:9px 16px;font-size:.9rem}
   .btn-sm{padding:6px 12px;font-size:.82rem}
@@ -296,6 +310,13 @@
       </fieldset>
 
       <fieldset>
+        <legend>Special properties</legend>
+        <p class="sub" style="margin:0 0 10px">The behaviour flags the official script tools read — whether the character can be drawn from the bag, what the app shows the Storyteller, and so on. Most characters need none. The Drunk and the Phantom, for instance, both carry <code>ability / bag-disabled</code>. Imported characters keep whatever they arrived with.</p>
+        <div id="specials"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addspecial">+ Add special property</button>
+      </fieldset>
+
+      <fieldset>
         <legend>Jinxes</legend>
         <div class="fld">
           <label for="jinxDisplay">Jinx display style</label>
@@ -338,6 +359,7 @@
   <script src="assets/redesign-create.js"></script>
   <!-- "acts directly after" search over the official night order -->
   <script src="assets/night-order-picker.js"></script>
+  <script src="assets/special-editor.js"></script>
   <script src="assets/creators.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
@@ -414,6 +436,10 @@
     }
     $('addbox').addEventListener('click', function(){ addBox(); });
 
+    // Special properties (assets/special-editor.js): the official schema's
+    // per-character behaviour flags. Shared with create.html.
+    var specialUI = window.SpecialEditor.mount($('specials'), $('addspecial'), { onChange: update });
+
     function gatherBoxes(){
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function(r){
@@ -452,7 +478,9 @@
         otherNight: Number($('otherNight').value)||0,
         otherNightReminder: $('onReminder').value.trim(),
         reminders: lines('reminders'), remindersGlobal: lines('remindersGlobal'),
-        setup: $('setup').checked, jinxes: jinxes,
+        setup: $('setup').checked,
+        special: specialUI ? specialUI.gather() : [],
+        jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim()
       };
@@ -655,6 +683,8 @@
       document.querySelectorAll('.box-row').forEach(function(r){ r.remove(); });
       (entry.customBoxes || []).forEach(function(b){ addBox((b&&b.title)||'', (b&&b.content)||''); });
 
+      if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(entry.special) : []);
+
       var artURL = SITE_ROOT + 'assets/' + entry.art;
       $('arturl').textContent = 'Current: ' + entry.art;
       loadImageToCanvas(artURL, true).then(function(url){
@@ -836,7 +866,10 @@
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
           otherNightReminder: d.otherNightReminder, reminders: d.reminders,
-          remindersGlobal: d.remindersGlobal, setup: d.setup, jinxes: d.jinxes,
+          remindersGlobal: d.remindersGlobal, setup: d.setup,
+          // Explicit, so the form wins over whatever the loaded row held —
+          // Object.assign would otherwise keep the old special[] forever.
+          special: d.special, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
           customJson: d.customJson,
           status: saveStatus,

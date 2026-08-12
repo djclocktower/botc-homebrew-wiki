@@ -51,6 +51,24 @@
 .pub-summary .sub { font-size:.84rem; color:#6b5d49; margin:0 0 12px; }
 .pub-teams { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
 .pub-team-chip { font-family:'Oswald',sans-serif; font-size:.8rem; letter-spacing:.03em; text-transform:uppercase; color:var(--maroon); background:rgba(91,31,33,.08); border:1px solid rgba(180,160,120,.4); padding:4px 10px; }
+/* The roster, arrangeable with ▲▼ */
+.pub-roster { margin-top:10px; max-height:340px; overflow-y:auto; border:1px solid #cdbfa0; background:#fffdf8; }
+.pub-roster-head {
+  font-family:'Oswald',sans-serif; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+  color:#6b5d49; background:rgba(91,31,33,.05); padding:4px 10px;
+  border-bottom:1px solid rgba(180,160,120,.25);
+}
+.pub-roster-row { display:flex; align-items:center; gap:8px; padding:5px 10px; border-bottom:1px solid rgba(180,160,120,.25); }
+.pub-roster-row:last-child { border-bottom:none; }
+.pub-roster-name { flex:1; font-size:.92rem; color:var(--maroon); font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pub-roster-missing { color:#6b5d49; font-weight:400; font-style:italic; }
+.pub-move { display:flex; flex-shrink:0; gap:2px; }
+.pub-move-btn {
+  font-size:.8rem; line-height:1; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:3px 6px; cursor:pointer;
+}
+.pub-move-btn:hover:not(:disabled) { color:var(--maroon); border-color:var(--maroon); }
+.pub-move-btn:disabled { opacity:.3; cursor:default; }
 .pub-empty { color:#6b5d49; font-size:.92rem; }
 .pub-empty a { color:var(--maroon); font-weight:600; }
 .pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
@@ -319,10 +337,52 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
     function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
-    // ── Read-only summary of the current script ──
+    // ── the roster, in the order the script page will show it ──
+    // The page groups by team and keeps the stored order within each team, so
+    // the list here is sorted by team and otherwise left alone. Array sort is
+    // stable, so sorting on the team index alone preserves that inner order.
+    //
+    // Slugs with no character behind them (a roster entry this wiki does not
+    // have) are carried along untouched and written back at the end — the
+    // script page reports them, and rearranging must never quietly drop them.
+    // Same rule sortRosterSAO already follows.
+    function orderedRoster(){
+      var teamIdx = {};
+      TEAMS.forEach(function(t, i){ teamIdx[t[0]] = i; });
+      var chars = [], missing = [];
+      getScript().forEach(function(slug){
+        if (bySlug[slug]) chars.push(bySlug[slug]); else missing.push(slug);
+      });
+      chars.sort(function(a, b){
+        var ta = teamIdx[a.team] != null ? teamIdx[a.team] : 99;
+        var tb = teamIdx[b.team] != null ? teamIdx[b.team] : 99;
+        return ta - tb;
+      });
+      return { chars: chars, missing: missing };
+    }
+    function writeRoster(r){
+      setScript(r.chars.map(function(c){ return c.slug; }).concat(r.missing));
+    }
+    // ▲▼ swap with the neighbour on the same team only: the page draws one
+    // section per team, so a move across that line could not be shown.
+    function moveChar(i, dir){
+      var r = orderedRoster();
+      var j = i + dir;
+      if (!r.chars[i] || !r.chars[j] || r.chars[j].team !== r.chars[i].team) return;
+      var tmp = r.chars[i]; r.chars[i] = r.chars[j]; r.chars[j] = tmp;
+      writeRoster(r);
+      renderSummary();
+    }
+    document.addEventListener('click', function(e){
+      var mv = e.target.closest && e.target.closest('.pub-move-btn');
+      if (!mv) return;
+      moveChar(parseInt(mv.getAttribute('data-i'), 10), mv.getAttribute('data-move') === 'up' ? -1 : 1);
+    });
+
+    // ── Summary of the current script ──
     function renderSummary(){
-      var s = getScript();
-      var chars = s.map(function(slug){ return bySlug[slug]; }).filter(Boolean);
+      var roster = orderedRoster();
+      var chars = roster.chars;
       var body = $('pub-summary-body');
       if (!chars.length){
         body.innerHTML = '<p class="pub-empty">Your script is empty. <a href="script">Add characters in the Script Builder →</a></p>';
@@ -334,7 +394,37 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         if (n) html += '<span class="pub-team-chip">' + esc(t[1]) + ' ' + n + '</span>';
       });
       html += '</div>';
-      html += '<p class="sub" style="margin:8px 0 0">' + chars.length + ' character' + (chars.length===1?'':'s') + ' total.</p>';
+      html += '<p class="sub" style="margin:8px 0 0">' + chars.length + ' character' + (chars.length===1?'':'s') + ' total. ' +
+        'This is the order the script page shows, within each team — use ▲▼ to arrange it.</p>';
+      html += '<div class="pub-roster">';
+      var lastTeam = null;
+      chars.forEach(function(c, i){
+        if (c.team !== lastTeam){
+          lastTeam = c.team;
+          var label = '';
+          TEAMS.forEach(function(t){ if (t[0] === c.team) label = t[1]; });
+          html += '<div class="pub-roster-head">' + esc(label || c.team || 'Other') + '</div>';
+        }
+        var first = !chars[i-1] || chars[i-1].team !== c.team;
+        var last  = !chars[i+1] || chars[i+1].team !== c.team;
+        html += '<div class="pub-roster-row">' +
+          '<span class="pub-move">' +
+            '<button type="button" class="pub-move-btn" data-move="up" data-i="' + i + '"' +
+              (first ? ' disabled' : '') + ' aria-label="Move ' + esc(c.name) + ' up">▲</button>' +
+            '<button type="button" class="pub-move-btn" data-move="down" data-i="' + i + '"' +
+              (last ? ' disabled' : '') + ' aria-label="Move ' + esc(c.name) + ' down">▼</button>' +
+          '</span>' +
+          '<span class="pub-roster-name">' + esc(c.name) + '</span>' +
+          '</div>';
+      });
+      if (roster.missing.length){
+        html += '<div class="pub-roster-head">Not in the wiki</div>';
+        roster.missing.forEach(function(slug){
+          html += '<div class="pub-roster-row"><span class="pub-move"></span>' +
+            '<span class="pub-roster-name pub-roster-missing">' + esc(slug) + '</span></div>';
+        });
+      }
+      html += '</div>';
       // Jinxes active between characters on this script
       var jinxes = window.findScriptJinxes ? window.findScriptJinxes(chars) : [];
       if (jinxes.length){

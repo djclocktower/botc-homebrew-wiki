@@ -171,6 +171,20 @@
   .mini-act.bad  { color: #9a2c2c; border-color: rgba(154,44,44,.4); }
   .mini-act:hover { background: rgba(255,253,248,.95); }
   .mini-act:disabled { opacity: .5; cursor: default; }
+  /* Inbox: replying to a contact message (the answer goes out as a DM). */
+  .adm-reply { flex-basis: 100%; margin-top: 6px; }
+  .adm-reply-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+  .adm-reply-acts .dim { font-size: .78rem; opacity: .7; }
+  .adm-reply-prev {
+    flex-basis: 100%; white-space: pre-wrap; overflow-wrap: anywhere;
+    background: rgba(42,110,42,.06); border: 1px solid rgba(42,110,42,.3);
+    border-left-width: 3px; border-radius: 6px; padding: 8px 10px;
+    font-size: .88rem; margin-top: 6px;
+  }
+  .adm-reply-head {
+    display: block; font-family: 'Oswald', sans-serif; font-size: .72rem;
+    letter-spacing: .05em; text-transform: uppercase; color: #2a6e2a; margin-bottom: 4px;
+  }
   .adm-textarea {
     width: 100%; box-sizing: border-box; font: inherit; font-size: .92rem;
     background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
@@ -1122,17 +1136,43 @@
         }
         box.innerHTML = d.messages.map(function(m){
           var resolved = m.status === 'resolved';
+          // The reply is delivered as a DM, so it can only go to a message that
+          // has an account behind it. Every contact message does today (the
+          // form needs a login), but an old row might not.
+          var canReply = !!m.username;
           return '<div class="adm-row" data-msg-id="' + m.id + '">' +
             '<span class="tag tag-type">' + esc(MSG_LABEL[m.category] || m.category || 'Message') + '</span>' +
             '<span class="grow">' +
               (m.username
                 ? '<a href="/u/' + encodeURIComponent(m.username) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(m.username) + '</a>'
                 : 'unknown user') +
-              (resolved ? ' <span class="tag tag-create">resolved</span>' : '') + '</span>' +
+              (resolved ? ' <span class="tag tag-create">resolved</span>' : '') +
+              (m.replied_at ? ' <span class="tag tag-create">replied</span>' : '') + '</span>' +
             '<span class="dim" title="' + esc(absTime(m.ts)) + '">' + esc(relTime(m.ts)) + '</span>' +
+            (canReply ? '<button type="button" class="mini-act ok" data-msg-act="reply-open">' +
+              (m.replied_at ? 'Reply again' : 'Reply') + '</button>' : '') +
             '<button type="button" class="mini-act ' + (resolved ? 'warn' : 'ok') + '" data-msg-act="' + (resolved ? 'reopen' : 'resolve') + '">' + (resolved ? 'Reopen' : 'Resolve') + '</button>' +
             '<button type="button" class="mini-act bad" data-msg-act="delete">Delete</button>' +
             '<div class="adm-body">' + esc(m.body) + '</div>' +
+            (m.replied_at
+              ? '<div class="adm-reply-prev">' +
+                  '<span class="adm-reply-head">Replied' +
+                    (m.replied_by ? ' by ' + esc(m.replied_by) : '') +
+                    ' <span class="dim" title="' + esc(absTime(m.replied_at)) + '">' + esc(relTime(m.replied_at)) + '</span>' +
+                  '</span>' + esc(m.last_reply || '') +
+                '</div>'
+              : '') +
+            (canReply
+              ? '<div class="adm-reply" data-reply-for="' + m.id + '" hidden>' +
+                  '<textarea class="adm-textarea adm-reply-text" rows="3" maxlength="3000" ' +
+                    'placeholder="Your reply to @' + esc(m.username) + '…"></textarea>' +
+                  '<div class="adm-reply-acts">' +
+                    '<button type="button" class="mini-act ok" data-msg-act="reply-send">Send reply</button>' +
+                    '<button type="button" class="mini-act" data-msg-act="reply-cancel">Cancel</button>' +
+                    '<span class="dim">Goes to @' + esc(m.username) + ' as a direct message — they can write back.</span>' +
+                  '</div>' +
+                '</div>'
+              : '') +
             '</div>';
         }).join('');
       });
@@ -1142,7 +1182,35 @@
       var btn = e.target.closest && e.target.closest('[data-msg-act]');
       if (!btn) return;
       var act = btn.getAttribute('data-msg-act');
-      var id = parseInt(btn.closest('.adm-row').getAttribute('data-msg-id'), 10);
+      var row = btn.closest('.adm-row');
+      var id = parseInt(row.getAttribute('data-msg-id'), 10);
+
+      // Opening and closing the reply box are page-local — no request.
+      var panel = row.querySelector('.adm-reply');
+      if (act === 'reply-open') {
+        panel.hidden = false;
+        btn.style.display = 'none';
+        panel.querySelector('.adm-reply-text').focus();
+        return;
+      }
+      if (act === 'reply-cancel') {
+        panel.hidden = true;
+        var openBtn = row.querySelector('[data-msg-act="reply-open"]');
+        if (openBtn) openBtn.style.display = '';
+        return;
+      }
+      if (act === 'reply-send') {
+        var ta = panel.querySelector('.adm-reply-text');
+        var body = ta.value.trim();
+        if (!body) { ta.focus(); return; }
+        btn.disabled = true;
+        postJSON('/api/admin/message', { id: id, action: 'reply', body: body }).then(function(res){
+          if (res.body && res.body.ok) loadMessages();
+          else { btn.disabled = false; alert((res.body && res.body.error) || 'Failed to send the reply.'); }
+        });
+        return;
+      }
+
       if (act === 'delete' && !confirm('Delete this message for good?')) return;
       btn.disabled = true;
       postJSON('/api/admin/message', { id: id, action: act }).then(function(res){
