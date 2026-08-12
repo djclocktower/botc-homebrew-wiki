@@ -62,12 +62,16 @@ Key dynamic behavior:
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   A character's URL **and its R2 art slot** are both derived from its name, so
-  both editors ask `GET /api/slug-check` before uploading anything and take the
+  both editors **and the mass uploader** ask `GET /api/slug-check` before
+  uploading anything and take the
   first free URL automatically, in the wiki's existing duplicate style
   (`illusionist-megalomania`, `witcher-odyssey`, then `-2`, `-3`). No prompt,
   no dialog — the character keeps its name, the page just gets its own address.
   A URL that is only *parked* by a redirect counts as taken. The Worker is
   still the enforcer — the check only decides which slug the editor asks for.
+  `mass-upload.html` additionally tracks the slugs **its own run** has just
+  taken, so two characters with the same name in one file get two pages
+  instead of the second overwriting the first.
 - **Creator pages are one page on two keys.** `/u/{username}` (an account) and
   `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
   which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account

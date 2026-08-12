@@ -184,13 +184,16 @@
 
     function buildRow(c, i){
       var slug = slugify(c.name);
-      var exists = existingSlugs[slug] ? ' <span class="hint">(already exists — will be overwritten if you own it)</span>' : '';
+      // The URL shown here is only the one the name asks for. A name somebody
+      // else already used gets its own address when the batch runs, and the
+      // cell is rewritten then.
+      var exists = existingSlugs[slug] ? ' <span class="hint">(that URL is taken — updates your page, or takes a free one)</span>' : '';
       var img = Array.isArray(c.image) ? c.image[0] : c.image;
       var alt = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
       return '<tr id="mu-row-' + i + '">' +
         '<td><strong>' + esc(c.name) + '</strong>' + exists + '</td>' +
         '<td class="mu-team">' + esc(normTeam(c.team)) + '</td>' +
-        '<td>c/' + esc(slug) + '</td>' +
+        '<td class="mu-page">c/' + esc(slug) + '</td>' +
         '<td>' + (img ? 'from URL' + (alt ? ' + alt' : '') : '—') + '</td>' +
         '<td class="mu-state mu-state-wait">waiting</td>' +
         '</tr>';
@@ -252,10 +255,53 @@
       td.className = 'mu-state mu-state-' + cls;
       td.innerHTML = text;
     }
+    function rowSlug(i, slug){
+      var row = $('mu-row-' + i); if (!row) return;
+      var td = row.querySelector('.mu-page');
+      if (td) td.textContent = 'c/' + slug;
+    }
+
+    // ── which URL should this character get? ──
+    // A character's URL comes from its name (/c/{slug}) and so does its art
+    // slot in R2 (art/{slug}.png). A name another account already used failed
+    // here twice over: the art upload was refused, and the save came back "A
+    // character with that name already exists and belongs to another account."
+    // The create and edit pages ask the Worker for a free URL first — this
+    // does the same. The character keeps its name, its page just gets its own
+    // address, in the shape the wiki already uses for duplicate names
+    // (witcher-odyssey, then -2, -3). Nothing to read, nothing to confirm.
+    var usedThisRun = {};
+    function resolveSlug(name, appearsIn){
+      var base = slugify(name);
+      var q = '/api/slug-check?type=character&name=' + encodeURIComponent(name) +
+              '&appearsIn=' + encodeURIComponent(appearsIn || '');
+      return fetch(q, { credentials:'same-origin' })
+        .then(function(r){ return r.json(); })
+        .catch(function(){ return null; })
+        .then(function(j){
+          var pick;
+          // If the check itself fails, carry on and let the save decide: the
+          // Worker never lets anyone write over a page that isn't theirs.
+          if (!j || j.error || !j.taken) pick = base;
+          // `mine` means the URL is one of your own pages, so saving updates
+          // it — re-running an import over your own characters is the point.
+          else if (j.mine && !usedThisRun[base]) pick = base;
+          else pick = j.suggestion || base;
+          // Two characters with the same name in ONE file: each is saved
+          // before the next is resolved, so the Worker normally sees the
+          // first — but never let one batch overwrite a page it just made.
+          if (usedThisRun[pick]) {
+            for (var n = 2; n < 60; n++) {
+              if (!usedThisRun[pick + '-' + n] && !existingSlugs[pick + '-' + n]) { pick = pick + '-' + n; break; }
+            }
+          }
+          usedThisRun[pick] = 1;
+          return pick;
+        });
+    }
 
     // ── create one character ──
-    function createOne(c, i, opts){
-      var slug = slugify(c.name);
+    function createOne(c, i, opts, slug){
       var imgUrl = Array.isArray(c.image) ? c.image[0] : c.image;
       var altUrl = Array.isArray(c.image) && c.image.length > 1 ? c.image[1] : null;
       var entry = {
@@ -333,6 +379,10 @@
         status: $('pubstate').value === 'draft' ? 'draft' : 'published'
       };
       $('go').disabled = true; $('parse').disabled = true;
+      // Fresh each run: re-running the same file (after a couple of failures,
+      // say) must be able to land on the pages the first run created rather
+      // than stepping around them into duplicates.
+      usedThisRun = {};
       setStatus('work', 'Creating ' + parsed.length + ' pages&hellip;');
       var i = 0, ok = 0, fail = 0;
       (function next(){
@@ -342,7 +392,15 @@
           else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them under <a href="all-characters">All Characters</a>' + (opts.status==='draft' ? ' via <a href="account">your account page</a> (drafts)' : '') + '.');
           return;
         }
-        createOne(parsed[i], i, opts).then(function(good){
+        var c = parsed[i], idx = i;
+        rowState(idx, 'work', 'checking URL&hellip;');
+        resolveSlug(c.name, opts.appearsIn).then(function(slug){
+          rowSlug(idx, slug);
+          return createOne(c, idx, opts, slug);
+        }).catch(function(err){
+          rowState(idx, 'err', '&#10007; ' + esc((err && err.message) || 'failed'));
+          return false;
+        }).then(function(good){
           if (good) ok++; else fail++;
           i++; next();
         });
