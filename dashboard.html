@@ -842,6 +842,14 @@
         <div class="toast" id="sto-toast"></div>
       </section>
       <section class="panel">
+        <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          A jinx names the character it is with, but nothing guarantees that character exists. When it does not — a typo, a bulk import that referenced a page never brought over, a character since renamed or unpublished — the reader just sees a name that does not link anywhere. There is no single page that shows these, so this counts them. It also lists pairs where <em>both</em> characters describe the same jinx in different words: only one wording is ever shown, so the other is invisible work.
+        </p>
+        <button type="button" class="small-btn" id="jxh-scan">Scan</button>
+        <div id="jxh-list"></div>
+      </section>
+      <section class="panel">
         <h3>Incomplete published pages <span class="count-pill" id="noicon-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           A character now needs a <strong>name, an icon, an ability and tags</strong> before it can be published — the editor saves it as a draft and says what is missing. This finds pages that went live <em>before</em> that bar existed. <strong>Scan first:</strong> it tells you how many, and what they are short of, before anything moves. Moving them to drafts hides them from the site until their owner fills the gap; nothing is deleted, and re-publishing is one click from Bulk actions. Fabled rules pages (States, Conditions, Calls) are exempt and never appear here.
@@ -1615,6 +1623,52 @@
         $('sto-scan').click();
         loadActivity(true);
       });
+    });
+
+    /* ---- jinxes pointing at nothing, and pairs written twice ---- */
+    $('jxh-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('jxh-list').innerHTML = '<p class="note">Scanning…</p>';
+      fetch('/api/admin/jinx-health', { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.disabled = false;
+          if (d.error) { $('jxh-list').innerHTML = '<p class="note">' + esc(d.error) + '</p>'; return; }
+          var t = d.totals || {};
+          $('jxh-count').textContent = t.broken ? t.broken + ' broken' : 'all resolve';
+          var html = '<p class="note">' + t.official + ' resolve to an official character, ' +
+            t.wiki + ' to a wiki character, <strong>' + t.broken + '</strong> to nothing.</p>';
+
+          if ((d.broken || []).length) {
+            html += '<h4 style="margin:12px 0 6px">Pointing at nothing</h4>';
+            d.broken.forEach(function(b){
+              html += '<div class="row"><div><strong>' + esc(b.label) + '</strong> ' +
+                '<span class="note">(' + esc(b.key) + ') &times;' + b.count + '</span><br>' +
+                '<span class="note">on: ' + b.on.map(function(o){
+                  return '<a href="/edit?c=' + encodeURIComponent(o.slug) + '" target="_blank">' +
+                    esc(o.name) + '</a>' + (o.creator ? ' <em>' + esc(o.creator) + '</em>' : '');
+                }).join(', ') + '</span></div></div>';
+            });
+          }
+          if ((d.conflicts || []).length) {
+            html += '<h4 style="margin:14px 0 6px">Both sides wrote a rule</h4>';
+            d.conflicts.forEach(function(c){
+              if (!c.a || !c.b) return;
+              html += '<div class="row"><div><strong>' + esc(c.a.name) + '</strong> &harr; <strong>' +
+                esc(c.b.name) + '</strong><br>' +
+                '<span class="note">' + esc(c.a.name) + ': &ldquo;' + esc(String(c.aText).slice(0,120)) + '&rdquo;</span><br>' +
+                '<span class="note">' + esc(c.b.name) + ': &ldquo;' + esc(String(c.bText).slice(0,120)) + '&rdquo;</span></div></div>';
+            });
+          }
+          if (!(d.broken || []).length && !(d.conflicts || []).length) {
+            html += '<p class="note">Every jinx on the wiki points at a real character, and no pair is described twice.</p>';
+          }
+          $('jxh-list').innerHTML = html;
+        })
+        .catch(function(){
+          btn.disabled = false;
+          $('jxh-list').innerHTML = '<p class="note">Scan failed.</p>';
+        });
     });
 
     /* ---- published pages that no longer meet the publish bar ---- */

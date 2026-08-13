@@ -127,6 +127,31 @@
   }
   @media (max-width: 620px) { .jx-panel { padding: 16px 14px; } }
 
+  /* Jump-to-letter strip: 127 characters is a very long scroll on a phone. */
+  .jx-az {
+    display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 10px;
+  }
+  .jx-az a, .jx-az span {
+    display: inline-block; min-width: 25px; padding: 3px 5px; text-align: center;
+    font-family: 'Trade Gothic', sans-serif; font-size: .8rem; text-decoration: none;
+    background: #fffdf8; border: 1px solid var(--parch-frame); color: #5b4632;
+  }
+  .jx-az a:hover { background: #efe7d3; }
+  .jx-az span { opacity: .35; }
+  .jx-list-char { scroll-margin-top: 90px; }
+
+  /* Edit / remove, on jinxes stored on a character you own. */
+  .jg-panel-act { display: flex; gap: 10px; margin-top: 4px; }
+  .jg-panel-act button {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font-family: 'Trade Gothic', sans-serif; font-size: .74rem;
+    letter-spacing: .04em; text-transform: uppercase; color: #726348;
+    text-decoration: underline;
+  }
+  .jg-panel-act button:hover { color: var(--maroon); }
+  .jg-panel-act .jg-act-del:hover { color: var(--evil); }
+  .jg-panel-note { font-family: 'Trade Gothic', sans-serif; font-size: .72rem; opacity: .6; margin: 3px 0 0; }
+
   /* The list below the map */
   .jx-list-char { margin: 0 0 22px; }
   .jx-list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
@@ -209,6 +234,7 @@
       <div class="jg-bar">
         <button type="button" class="filter-chip" id="jg-f-homebrew">Wiki characters only</button>
         <button type="button" class="filter-chip" id="jg-f-official">Official only</button>
+        <button type="button" class="filter-chip" id="jg-f-base" hidden>Show base-game jinxes</button>
         <button type="button" class="filter-chip" id="jg-f-fit">Fit all</button>
         <button type="button" class="filter-chip" id="jg-f-reset">Reset view</button>
         <button type="button" class="filter-chip" id="jg-f-relayout">Reset layout</button>
@@ -228,6 +254,7 @@
         <span><i class="jg-swatch" style="border-color:#2f6fb8"></i> Jinx on a good character</span>
         <span><i class="jg-swatch" style="border-color:#9a0d12"></i> Jinx on an evil character</span>
         <span><i class="jg-swatch" style="border-color:#8a7a5c"></i> Grey ring = official character</span>
+        <span id="jg-legend-base" hidden><i class="jg-swatch" style="border-color:#8a7a5c;border-style:dashed"></i> Base-game jinx</span>
       </div>
       <p class="jg-hint">Tap or click a character to see its jinxes. Drag to move one, drag the background to pan, pinch or scroll to zoom. <b>Fit all</b> shows the whole map at once; <b>Reset layout</b> puts everything you dragged back. <b>Link two characters</b> picks a pair and opens the form below with both filled in.</p>
     </section>
@@ -275,6 +302,7 @@
         <button type="button" class="filter-chip" id="jx-list-homebrew">Between wiki characters only</button>
       </div>
       <p class="jg-hint" id="jx-list-count"></p>
+      <nav class="jx-az" id="jx-az" aria-label="Jump to a letter" hidden></nav>
       <div class="jx-panel">
         <div id="jx-list"><p style="opacity:.7">Loading jinxes…</p></div>
       </div>
@@ -330,6 +358,23 @@
         }
         $('jg-summary').textContent =
           GRAPH.nodeCount + ' characters, ' + GRAPH.edgeCount + ' jinxes between them.';
+        if (GRAPH.baseCount) $('jg-f-base').hidden = false;
+
+        /* /jinxes?c={slug} opens focused on that character — what the "See
+           this on the jinx map" link on every /c/ page points at, and what
+           makes a view of the map shareable. */
+        var want = new URLSearchParams(location.search).get('c');
+        if (want) {
+          var hit = GRAPH.focus('c:' + want);
+          if (!hit) {
+            for (var i = 0; i < DATA.nodes.length; i++) {
+              if (DATA.nodes[i].name.toLowerCase() === want.toLowerCase()) {
+                GRAPH.focus(DATA.nodes[i].id);
+                break;
+              }
+            }
+          }
+        }
       }
 
       function showPanel(sel) {
@@ -348,15 +393,83 @@
           '<p style="margin:6px 0 2px"><a href="' + esc(n.href) + '"' +
             (n.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
             (n.official ? 'View on the official wiki →' : 'Open this page →') + '</a></p>';
-        sel.jinxes.forEach(function (j) {
+        sel.jinxes.forEach(function (j, i) {
+          // A jinx is stored on one of the two characters. Only that page's
+          // owner can change it, so only they get the buttons; everyone else
+          // is told where it lives instead of getting a button that 403s.
+          var mine = !j.base && j.storedOn && MY_CHARS[j.storedOn.slug];
+          var elsewhere = !j.base && j.storedOn && j.storedOn.slug !== n.slug;
           html += '<div class="jg-panel-jinx">' +
             '<a class="' + (j.align === 'evil' ? 'evil' : 'good') + '" href="' + esc(j.with.href) + '"' +
             (j.with.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
             esc(j.with.name) + '</a>' +
-            '<p>' + esc(j.text) + '</p></div>';
+            (j.base ? '<span class="jg-panel-note">Base-game jinx</span>' : '') +
+            '<p>' + esc(j.text) + '</p>' +
+            (mine
+              ? '<div class="jg-panel-act">' +
+                  '<button type="button" class="jg-act-edit" data-i="' + i + '">Edit</button>' +
+                  '<button type="button" class="jg-act-del" data-i="' + i + '">Remove</button>' +
+                '</div>'
+              : (elsewhere
+                  ? '<p class="jg-panel-note">Written on ' + esc(j.storedOn.name) + '</p>'
+                  : '')) +
+            '</div>';
         });
         $('jg-panel-body').innerHTML = html;
         panel.hidden = false;
+
+        $('jg-panel-body').querySelectorAll('.jg-act-edit').forEach(function (b) {
+          b.addEventListener('click', function () { editJinx(sel.jinxes[+b.dataset.i]); });
+        });
+        $('jg-panel-body').querySelectorAll('.jg-act-del').forEach(function (b) {
+          b.addEventListener('click', function () { removeJinx(sel.jinxes[+b.dataset.i], b); });
+        });
+      }
+
+      /* Editing is the add form with the pair and the text already in it —
+         POST /api/jinx overwrites the entry for that pair, so saving is the
+         edit. */
+      function editJinx(j) {
+        var other = (j.storedOn.slug === j.with.slug) ? j.storedOn : j.with;
+        $('jx-mine').value = j.storedOn.slug;
+        if (window.setJinxField) {
+          window.setJinxField($('jx-other'), other.name,
+            other.official ? '' : other.slug,
+            other.official ? String(other.id).replace(/^o:/, '') : '');
+        }
+        $('jx-align').value = j.align === 'evil' ? 'evil' : 'good';
+        $('jx-text').value = j.text || '';
+        $('jx-add-section').hidden = false;
+        $('jx-add-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('jx-text').focus();
+      }
+
+      function removeJinx(j, btn) {
+        if (!window.confirm('Remove the jinx between ' + j.storedOn.name +
+            ' and ' + j.with.name + '?')) return;
+        var body = { from: j.storedOn.slug, remove: true };
+        var other = (j.storedOn.slug === j.with.slug) ? j.storedOn : j.with;
+        if (other.official) body.toId = String(other.id).replace(/^o:/, '');
+        else body.toSlug = other.slug;
+        btn.disabled = true;
+        btn.textContent = 'Removing…';
+        fetch('/api/jinx', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (!res.ok || res.d.error) {
+              btn.disabled = false; btn.textContent = 'Remove';
+              window.alert(res.d.error || 'Could not remove that jinx.');
+              return;
+            }
+            btn.textContent = 'Removed — reload to update the map';
+          })
+          .catch(function () {
+            btn.disabled = false; btn.textContent = 'Remove';
+            window.alert('Could not reach the server.');
+          });
       }
 
       $('jg-panel-close').addEventListener('click', function () {
@@ -438,6 +551,14 @@
       /* Deliberately zoom past the legibility floor to see the whole shape
          at once. The default view never does this on its own — at 172 nodes
          it would draw every icon too small to make out. */
+      $('jg-f-base').addEventListener('click', function () {
+        var on = !this.classList.contains('active');
+        this.classList.toggle('active', on);
+        this.textContent = on ? 'Hide base-game jinxes' : 'Show base-game jinxes';
+        $('jg-legend-base').hidden = !on;
+        if (GRAPH) GRAPH.setBaseLayer(on);
+      });
+
       $('jg-f-fit').addEventListener('click', function () {
         if (!GRAPH) return;
         GRAPH.fitAll();
@@ -487,9 +608,14 @@
         }
 
         var html = '';
+        var seenLetter = {};
         keys.forEach(function (k) {
           var g = groups[k];
-          html += '<div class="jx-list-char">' +
+          var L = String(g.node.name).trim().charAt(0).toUpperCase();
+          if (!/[A-Z]/.test(L)) L = 'other';
+          var anchor = seenLetter[L] ? '' : ' id="jxL-' + L + '"';
+          seenLetter[L] = 1;
+          html += '<div class="jx-list-char"' + anchor + '>' +
             '<div class="jx-list-head">' +
               (g.node.icon ? '<img loading="lazy" decoding="async" src="' + esc(g.node.icon) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
               '<a href="' + esc(g.node.href) + '">' + esc(g.node.name) + '</a>' +
@@ -507,6 +633,26 @@
           html += '</div></div>';
         });
         $('jx-list').innerHTML = html;
+        buildAZ(keys.map(function (k) { return groups[k].node.name; }));
+      }
+
+      /* One entry per letter that has characters behind it; letters with
+         none are shown greyed rather than removed, so the strip does not
+         reflow as the search narrows. */
+      function buildAZ(names) {
+        var have = {};
+        names.forEach(function (n) {
+          var c = String(n).trim().charAt(0).toUpperCase();
+          have[/[A-Z]/.test(c) ? c : '#'] = 1;
+        });
+        var letters = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        var az = $('jx-az');
+        az.innerHTML = letters.map(function (L) {
+          return have[L]
+            ? '<a href="#jxL-' + (L === '#' ? 'other' : L) + '">' + L + '</a>'
+            : '<span>' + L + '</span>';
+        }).join('');
+        az.hidden = names.length < 12;
       }
 
       var listTimer = null;

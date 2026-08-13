@@ -362,8 +362,83 @@
           }
         });
         window.setOfficialIconUrls(m);
+        var names = {};
+        (roles || []).forEach(function(r){
+          if (!r || !r.name) return;
+          names[window.slugId(r.id)] = r.name;
+          names[window.slugId(r.name)] = r.name;
+        });
+        window.setOfficialNames(names);
         if (typeof update === 'function') update();
       }).catch(function(){});
+
+    // This wiki's own characters, so a jinx with another homebrew page shows
+    // its art and links to /c/ instead of falling back to plain text.
+    var INBOUND = null;
+    fetch(SITE_ROOT + 'characters.json?fields=card').then(function(r){ return r.json(); })
+      .then(function(list){
+        var w = {};
+        (list || []).forEach(function(c){
+          if (!c || !c.slug) return;
+          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
+          [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function(k){
+            if (k && !w[k]) w[k] = row;
+          });
+        });
+        window.setWikiChars(w);
+        // Who already declares a jinx with the character being edited. A jinx
+        // is stored on one side only, so without this you can write a second,
+        // conflicting rule for a pair and never know: the other page's text
+        // is the one that shows, and yours silently loses.
+        INBOUND = {};
+        (list || []).forEach(function(c){
+          if (!c || !c.slug || !c.jinxes) return;
+          c.jinxes.forEach(function(j){
+            var k = (j.slug && window.normJinxId(j.slug)) ||
+              window.normJinxId(j.id || window.slugId(j.name || ''));
+            if (!k) return;
+            (INBOUND[k] = INBOUND[k] || []).push({ slug: c.slug, name: c.name, text: j.text || j.reason || '' });
+          });
+        });
+        checkJinxConflicts();
+        if (typeof update === 'function') update();
+      }).catch(function(){});
+
+    /* Flag any jinx row whose pair the OTHER character already describes. */
+    function jxEsc(x) {
+      return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+    function checkJinxConflicts() {
+      if (!INBOUND) return;
+      var meKeys = {};
+      var nameEl = document.getElementById('name');
+      [nameEl ? nameEl.value : '', originalSlug].forEach(function(v){
+        var k = window.normJinxId(window.slugId(v) || v);
+        if (k) meKeys[k] = 1;
+      });
+      document.querySelectorAll('.jinx-row').forEach(function(row){
+        var f = row.querySelector('.jx-name');
+        var warn = row.querySelector('.jx-conflict');
+        var key = (f.dataset.slug && window.normJinxId(f.dataset.slug)) ||
+          window.normJinxId(f.dataset.id || window.slugId(f.value || ''));
+        var hit = null;
+        (INBOUND[key] || []).forEach(function(src){
+          if (meKeys[window.normJinxId(src.slug)] || meKeys[window.normJinxId(src.name)]) hit = src;
+        });
+        if (!hit) { if (warn) warn.remove(); return; }
+        if (!warn) {
+          warn = document.createElement('p');
+          warn.className = 'jx-conflict';
+          row.appendChild(warn);
+        }
+        warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
+          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 the page shows their wording, not yours. ' +
+          '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
+      });
+    }
+    window.checkJinxConflicts = checkJinxConflicts;
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
@@ -394,6 +469,10 @@
         autoExpand(ta);
       });
       if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
+      row.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () { if (window.checkJinxConflicts) window.checkJinxConflicts(); });
+      });
+      if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function(){ addJinx(); });
 

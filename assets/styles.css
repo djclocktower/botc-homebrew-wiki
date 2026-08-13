@@ -2838,3 +2838,23 @@ html.textedit-on .te-live-hit {
 .jx-empty {
   margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #726348;
 }
+
+/* Foot of the /c/ jinx box: the way through to the whole picture. */
+.jinx-map-link {
+  display: block; margin-top: 10px; padding-top: 9px;
+  border-top: 1px solid rgba(180,160,120,.4);
+  font-family: 'Trade Gothic', sans-serif; font-size: .8rem;
+  letter-spacing: .03em; text-align: center; text-decoration: none;
+}
+.jinx-map-link:hover { text-decoration: underline; }
+
+/* "The other character already writes this jinx" — shown under a jinx row in
+   the character editors. A jinx is stored on one side only, so two people can
+   describe the same pair and only one wording ever appears. */
+.jx-conflict {
+  grid-column: 1 / -1; margin: 2px 0 0; padding: 6px 9px;
+  background: rgba(154,13,18,.07); border-left: 3px solid var(--evil);
+  font-family: 'Trade Gothic', sans-serif; font-size: .78rem;
+  line-height: 1.35; color: #5b4632;
+}
+.jx-conflict b { color: var(--maroon); }

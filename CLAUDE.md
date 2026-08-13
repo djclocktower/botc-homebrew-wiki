@@ -101,6 +101,9 @@ assets/
                        `pronunciation` — the quiet line under the flavour quote
                        (**bold**/*italic*); without it that text still renders,
                        escaped and unformatted.
+  official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
+                       base-game layer on /jinxes. Generated, partial, with a
+                       `source` field inside — same treatment as night-order.json.
   jinx-picker.js       The "Jinxed character" search box: one combobox over the
                        official roster AND this wiki's, mounted on a field with
                        mountJinxPicker(). Records WHICH character was picked
@@ -517,8 +520,19 @@ caps and whitelists the fields on save.
   admin) **one** of the two characters; it is stored on the side you own and
   the other page gets it by mirroring. The other side must exist — an official
   id is checked against roles.json, a wiki slug against the table.
-- `assets/jinx-icons/` (9 files) is **orphaned** — referenced only by a
-  `_headers` cache rule. The renderer reads `assets/icons/`.
+- **Jinx rule text goes through `render-wiki.js`** like every other
+  writer-supplied string, so `**bold**` and `[[Character Name]]` work in it.
+  The `/c/` route therefore has to call `WikiRender.setCharLinks()`.
+- **`assets/official-jinxes.json`** holds jinxes between two OFFICIAL
+  characters (71 pairs; the `source` field says where from, and it is
+  partial). They are an **opt-in layer** on `/jinxes`, off by default — the
+  base game's own rules would drown what this wiki made. Served in
+  `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
+  move the layout.
+- **`GET /api/admin/jinx-health`** counts jinxes that point at nothing (a
+  typo, or a bulk import naming a character never brought over) and pairs
+  where both characters wrote a rule — only one wording is ever shown, so the
+  other is invisible. Dashboard card: "Jinx health".
 
 ## Custom wiki pages (`/p/{slug}`)
 

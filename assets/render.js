@@ -431,17 +431,22 @@
         '<a class="jname ' + al + '" href="' + esc(t.href) + '"' +
         (t.external ? ' target="_blank" rel="noopener noreferrer"' : '') +
         '>' + esc(t.name) + '</a>' +
-        '<span class="jtext">' + esc(j.text || j.reason || '') + '</span>' +
+        '<span class="jtext">' + inlineText(j.text || j.reason || '') + '</span>' +
         from + '</div></div>';
     }).join('');
 
     // Two ways to show jinxes: a floating box in the sidebar (default) or a
     // collapsible dropdown at the foot of the main column. Chosen per-character.
     var jinxMode = (d.jinxDisplay === 'dropdown') ? 'dropdown' : 'sidebar';
+    // Where this character sits in the whole picture. The map is the only
+    // place a reader can see a jinx from both ends at once.
+    var mapLink = jinxes.length && d.slug ?
+      '<a class="jinx-map-link" href="' + root + 'jinxes?c=' + encodeURIComponent(d.slug) +
+      '">See this on the jinx map &rarr;</a>' : '';
     var jinxCard = jinxes.length ?
       '<div class="card" id="sec-jinxes">' +
         '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
-        jinxItems +
+        jinxItems + mapLink +
       '</div>' : '';
     var jinxDrop = jinxes.length ?
       '<div class="jinx-drop" id="sec-jinxes">' +
@@ -449,7 +454,7 @@
           '<span class="jinx-drop-title">Jinxes</span>' +
           '<span class="jinx-drop-arrow">&#9662;</span>' +
         '</div>' +
-        '<div class="jinx-drop-body" hidden>' + jinxItems + '</div>' +
+        '<div class="jinx-drop-body" hidden>' + jinxItems + mapLink + '</div>' +
       '</div>' : '';
 
     // Custom user-defined sidebar boxes: any number of {title, content}.

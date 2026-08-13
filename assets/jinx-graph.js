@@ -3,8 +3,9 @@
    Every character on the wiki that takes part in a jinx, drawn as a node,
    with a line to each character it is jinxed with. Official characters are
    here too as anchor nodes: most jinxes point at one, so without them the
-   map would be a handful of disconnected pairs. Official-to-official jinxes
-   are not included — this is a map of the homebrew wiki, not the base game.
+   map would be a handful of disconnected pairs. Jinxes between two OFFICIAL
+   characters are an opt-in layer (setBaseLayer), off by default — this is a
+   map of the homebrew wiki, and the base game's own rules would drown it.
 
    Hand-rolled SVG on purpose. The repo vendors everything and has no
    bundler, and a graph library would be the first CDN dependency on the
@@ -24,7 +25,7 @@
 
    mountJinxGraph({mount, data, onSelect, onPair, onLinkStep}) -> api:
      focus(id), filter(fn), fit(), fitAll(), resetLayout(), hasMoved(),
-     setLinkMode(on), select(id), destroy(). */
+     setBaseLayer(on), setLinkMode(on), select(id), destroy(). */
 (function () {
   'use strict';
 
@@ -38,6 +39,7 @@
   var OFFICIAL_COLOR = '#8a7a5c';
   var EDGE_GOOD = '#2f6fb8';
   var EDGE_EVIL = '#9a0d12';
+  var BASE_COLOR = '#8a7a5c';   // base-game jinxes, the same grey as official rings
 
   function el(name, attrs) {
     var n = document.createElementNS(SVG_NS, name);
@@ -79,11 +81,20 @@
     nodes.forEach(function (n) { byId[n.id] = n; });
 
     var links = [];
-    data.edges.forEach(function (e) {
+    (data.edges || []).forEach(function (e) {
       var a = byId[e.a], b = byId[e.b];
       if (!a || !b || a === b) return;
       a.deg++; b.deg++;
       links.push({ a: a, b: b, e: e, on: true });
+    });
+    /* Official-to-official jinxes. They are laid out with everything else so
+       the shape does not jump when they are switched on, but they start
+       hidden: they are base-game rules, not what this wiki made. */
+    var baseLinks = [];
+    (data.baseEdges || []).forEach(function (e) {
+      var a = byId[e.a], b = byId[e.b];
+      if (!a || !b || a === b) return;
+      baseLinks.push({ a: a, b: b, e: e, on: true, base: true });
     });
 
     // A node's pull should grow with how connected it is, but slowly — the
@@ -198,11 +209,12 @@
     var defs = el('defs', {});
     svg.insertBefore(defs, root);
 
-    links.forEach(function (l) {
+    links.concat(baseLinks).forEach(function (l) {
       l.el = el('line', {
-        class: 'jg-edge',
-        stroke: l.e.align === 'evil' ? EDGE_EVIL : EDGE_GOOD
+        class: 'jg-edge' + (l.base ? ' jg-base' : ''),
+        stroke: l.base ? BASE_COLOR : (l.e.align === 'evil' ? EDGE_EVIL : EDGE_GOOD)
       });
+      if (l.base) l.el.setAttribute('hidden', 'hidden');
       gEdges.appendChild(l.el);
     });
 
@@ -244,7 +256,7 @@
     mount.appendChild(svg);
 
     function place() {
-      links.forEach(function (l) {
+      links.concat(baseLinks).forEach(function (l) {
         l.el.setAttribute('x1', l.a.x); l.el.setAttribute('y1', l.a.y);
         l.el.setAttribute('x2', l.b.x); l.el.setAttribute('y2', l.b.y);
       });
@@ -494,6 +506,17 @@
       if (opts.onPair) opts.onPair(pair);
     }
 
+    var showBase = false;
+    function setBaseLayer(on) {
+      showBase = !!on;
+      baseLinks.forEach(function (l) {
+        if (showBase) l.el.removeAttribute('hidden');
+        else l.el.setAttribute('hidden', 'hidden');
+      });
+      paint();
+      return baseLinks.length;
+    }
+
     var selected = null;
     function select(n) {
       // Selecting replaces the tooltip with the panel; leaving both up is
@@ -505,10 +528,14 @@
       if (opts.onSelect) {
         opts.onSelect(n ? {
           node: n.d,
-          jinxes: links.filter(function (l) { return l.a === n || l.b === n; })
+          jinxes: links.concat(showBase ? baseLinks : [])
+            .filter(function (l) { return l.a === n || l.b === n; })
             .map(function (l) {
               var other = l.a === n ? l.b : l.a;
-              return { with: other.d, align: l.e.align, text: l.e.text };
+              // `a` is the side that declares the jinx, so it is the page
+              // that stores it and the only one that can edit it.
+              return { with: other.d, align: l.e.align, text: l.e.text,
+                       storedOn: l.a.d, base: !!l.e.base };
             })
         } : null);
       }
@@ -533,7 +560,7 @@
       if (selected) {
         near = {};
         near[selected.id] = 1;
-        links.forEach(function (l) {
+        links.concat(showBase ? baseLinks : []).forEach(function (l) {
           if (l.a === selected) near[l.b.id] = 1;
           if (l.b === selected) near[l.a.id] = 1;
         });
@@ -544,7 +571,7 @@
         n.el.classList.toggle('jg-sel', n === selected);
         n.el.classList.toggle('jg-pick', n === linkFirst);
       });
-      links.forEach(function (l) {
+      links.concat(showBase ? baseLinks : []).forEach(function (l) {
         var visible = l.a.on && l.b.on;
         var lit = !selected || l.a === selected || l.b === selected;
         l.el.classList.toggle('jg-dim', !visible || !lit);
@@ -665,6 +692,8 @@
         }
         return false;
       },
+      setBaseLayer: setBaseLayer,
+      baseCount: baseLinks.length,
       setLinkMode: setLinkMode,
       isLinkMode: function () { return linkMode; },
       select: function (id) { return id ? focus(id) : select(null); },

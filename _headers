@@ -23,8 +23,6 @@
 # Official role icons never change — cache long
 /assets/icons/*
   Cache-Control: public, max-age=31536000, immutable
-/assets/jinx-icons/*
-  Cache-Control: public, max-age=31536000, immutable
 
 # Fonts rarely change and are large — cache long
 /assets/fonts/*

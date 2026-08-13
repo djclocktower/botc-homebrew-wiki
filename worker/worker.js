@@ -98,6 +98,8 @@
  *                                the /jinxes index and its relationship graph
  *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
  *                                (or admin) just one of the two characters
+ *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
+ *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
  *   GET  /author?a={name}     -> same page; 302 to /u/{username} when the name
  *                                belongs to an account
@@ -2263,6 +2265,23 @@ async function officialNameMap(env, origin) {
   return m;
 }
 
+// Jinxes between two OFFICIAL characters (assets/official-jinxes.json). The
+// homebrew map does not need these to make sense, so they are an opt-in layer
+// on /jinxes rather than part of the picture by default — see the `note` in
+// the file. Cached per isolate like the roles list.
+let _officialJinxCache = null;
+async function loadOfficialJinxes(env, origin) {
+  if (_officialJinxCache) return _officialJinxCache;
+  try {
+    const res = await env.ASSETS.fetch(new Request(origin + '/assets/official-jinxes.json'));
+    const doc = await res.json();
+    _officialJinxCache = Array.isArray(doc && doc.jinxes) ? doc.jinxes : [];
+  } catch {
+    _officialJinxCache = [];
+  }
+  return _officialJinxCache;
+}
+
 // ---- the jinx index ----------------------------------------------------
 // Every jinx on the wiki as one edge list, plus the character rows the
 // renderer needs to draw them. Two things need this and neither can afford a
@@ -3061,6 +3080,9 @@ export default {
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           Render.setOfficialNames(await officialNameMap(env, url.origin));
+          // [[Character Name]] inside a jinx rule or a custom box links to
+          // that character. Cheap cached name->slug query, not the corpus.
+          WikiRender.setCharLinks(await cachedCharLinkMap(env));
           // Jinxes are a property of the pair, so this page shows the ones it
           // declares AND the ones other characters declare with it.
           try {
@@ -3464,6 +3486,7 @@ export default {
       }
       function addOfficial(key, name) {
         const id = 'o:' + key;
+        name = name || '';
         if (nodes.has(id)) return id;
         const nm = officialNames[key] || name || key;
         nodes.set(id, {
@@ -3486,7 +3509,31 @@ export default {
         else continue;
         edges.push({ a, b, align: e.align, text: e.text });
       }
-      return jsonResponse({ nodes: [...nodes.values()], edges });
+
+      // The base-game layer. Marked `base` so the page can switch it on and
+      // off without another request, and only drawn between characters that
+      // are already anchors on the map or brought in with it.
+      const baseEdges = [];
+      for (const j of await loadOfficialJinxes(env, url.origin)) {
+        if (!officialNames[j.a] || !officialNames[j.b]) continue;
+        baseEdges.push({
+          a: addOfficial(j.a), b: addOfficial(j.b),
+          align: 'good', text: j.text || '', base: true
+        });
+      }
+
+      const body = JSON.stringify({
+        nodes: [...nodes.values()], edges, baseEdges
+      });
+      // Same edge-cache treatment as the JSON feeds: the index underneath is
+      // already keyed by contentVersion, so the response can be too.
+      const etag = `W/"jinxes-v${await contentVersion(env)}"`;
+      if ((request.headers.get('If-None-Match') || '') === etag) {
+        return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL } });
+      }
+      return new Response(body, {
+        headers: { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL }
+      });
     }
 
     if (method === 'GET' && path === '/api/creators') {
@@ -4817,6 +4864,58 @@ export default {
       const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'")
         .first().catch(() => ({ n: 0 }));
       return jsonResponse({ view, comments: results || [], openReports: (open && open.n) || 0 });
+    }
+
+    // ---------- ADMIN: JINX HEALTH ----------
+    // Every jinx that points at nothing: a typo, a character that was never
+    // imported, or one that has since been renamed or unpublished. These are
+    // invisible from any single page — the reader just sees a name that does
+    // not link anywhere — so they need somewhere to be counted.
+    if (method === 'GET' && path === '/api/admin/jinx-health') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+
+      const index = await jinxIndex(env, ctx);
+      const icons = await officialIconMap(env, url.origin).catch(() => ({}));
+      const names = await officialNameMap(env, url.origin).catch(() => ({}));
+
+      const broken = new Map();      // key -> {key, label, count, on[]}
+      let official = 0, wiki = 0;
+      for (const e of index.edges) {
+        if (e.to) { wiki++; continue; }
+        if (icons[e.key] || names[e.key]) { official++; continue; }
+        const row = broken.get(e.key) ||
+          { key: e.key, label: e.name || e.id || e.key, count: 0, on: [] };
+        row.count++;
+        const from = index.rows[e.from];
+        if (from && row.on.length < 25) {
+          row.on.push({ slug: from.slug, name: from.name, creator: from.creator });
+        }
+        broken.set(e.key, row);
+      }
+
+      // A pair both sides wrote a rule for: only one of the two is ever
+      // shown, so the other is invisible work. Worth surfacing.
+      const texts = new Map();
+      const conflicts = [];
+      for (const e of index.edges) {
+        if (!e.to) continue;
+        const pair = [e.from, e.to].sort().join('|');
+        const prev = texts.get(pair);
+        if (prev === undefined) { texts.set(pair, e); continue; }
+        if ((prev.text || '').trim() !== (e.text || '').trim()) {
+          conflicts.push({
+            a: index.rows[prev.from], b: index.rows[e.from],
+            aText: prev.text, bText: e.text
+          });
+        }
+      }
+
+      return jsonResponse({
+        totals: { official, wiki, broken: [...broken.values()].reduce((n, r) => n + r.count, 0) },
+        broken: [...broken.values()].sort((a, b) => b.count - a.count),
+        conflicts
+      });
     }
 
     // ---------- ADMIN: PAGE LIST FOR BULK ACTIONS ----------

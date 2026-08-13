@@ -397,8 +397,62 @@
           });
         });
         window.setWikiChars(w);
+        // Who already declares a jinx with the character being edited. A jinx
+        // is stored on one side only, so without this you can write a second,
+        // conflicting rule for a pair and never know: the other page's text
+        // is the one that shows, and yours silently loses.
+        INBOUND = {};
+        (list || []).forEach(function (c) {
+          if (!c || !c.slug || !c.jinxes) return;
+          c.jinxes.forEach(function (j) {
+            var k = (j.slug && window.normJinxId(j.slug)) ||
+              window.normJinxId(j.id || window.slugId(j.name || ''));
+            if (!k) return;
+            (INBOUND[k] = INBOUND[k] || []).push({ slug: c.slug, name: c.name, text: j.text || j.reason || '' });
+          });
+        });
+        checkJinxConflicts();
         if (typeof update === 'function') update();
       }).catch(function () {});
+
+    /* Flag any jinx row whose pair the OTHER character already describes. */
+    var INBOUND = null;
+    function checkJinxConflicts() {
+      if (!INBOUND) return;
+      var meKeys = {};
+      var myName = document.getElementById('name');
+      [myName ? myName.value : '', window.CURRENT_SLUG || ''].forEach(function (v) {
+        var k = window.normJinxId(window.slugId(v) || v);
+        if (k) meKeys[k] = 1;
+      });
+      document.querySelectorAll('.jinx-row').forEach(function (row) {
+        var f = row.querySelector('.jx-name');
+        var warn = row.querySelector('.jx-conflict');
+        var key = (f.dataset.slug && window.normJinxId(f.dataset.slug)) ||
+          window.normJinxId(f.dataset.id || window.slugId(f.value || ''));
+        var hit = null;
+        (INBOUND[key] || []).forEach(function (src) {
+          // Does the character named in this row already declare a jinx
+          // pointing back at us?
+          if (meKeys[window.normJinxId(src.slug)] || meKeys[window.normJinxId(src.name)]) hit = src;
+        });
+        if (!hit) { if (warn) warn.remove(); return; }
+        if (!warn) {
+          warn = document.createElement('p');
+          warn.className = 'jx-conflict';
+          row.appendChild(warn);
+        }
+        warn.innerHTML = '\u26a0 <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
+          esc(String(hit.text).slice(0, 140)) + '\u201d \u2014 the page shows their wording, not yours. ' +
+          '<a href="c/' + esc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
+      });
+    }
+    function esc(x) {
+      return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+    window.checkJinxConflicts = checkJinxConflicts;
     var artDataURL   = null;
     var artAltDataURL = null;
     var importedImage = null;
@@ -442,6 +496,10 @@
         autoExpand(ta);
       });
       if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
+      row.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () { if (window.checkJinxConflicts) window.checkJinxConflicts(); });
+      });
+      if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
