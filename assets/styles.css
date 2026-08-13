@@ -256,9 +256,21 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: var(--maroon); letter-spacing: .04em;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem);
 }
-.custom-box-body { color: var(--ink); font-size: 1rem; line-height: 1.4; }
+/* A custom box renders the same writer-supplied markup as .wiki-body, so it
+   needs .wiki-body's wrapping too: a bare URL is one unbreakable token, and
+   without this it pushed past the box, past the viewport, and dragged the
+   whole page sideways on a phone. See the long-names block near the end of
+   this file for why `anywhere` rather than `break-word`. */
+.custom-box-body {
+  color: var(--ink); font-size: 1rem; line-height: 1.4;
+  overflow-wrap: anywhere; word-break: break-word; min-width: 0;
+}
+.custom-box, .coll-boxes { min-width: 0; }
 .custom-box-body p { margin: 0 0 10px; }
 .custom-box-body p:last-child { margin-bottom: 0; }
+/* Wide children scroll inside the box instead of widening it. */
+.custom-box-body pre, .custom-box-body table { max-width: 100%; overflow-x: auto; }
+.custom-box-body img { max-width: 100%; height: auto; }
 
 /* ════════════════════════════════════════════════════════════════
    HOMEPAGE STYLES
