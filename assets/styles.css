@@ -267,9 +267,21 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   color: var(--maroon); letter-spacing: .04em;
   font-size: clamp(1.2rem, 2.6vw, 1.7rem);
 }
-.custom-box-body { color: var(--ink); font-size: 1rem; line-height: 1.4; }
+/* A custom box renders the same writer-supplied markup as .wiki-body, so it
+   needs .wiki-body's wrapping too: a bare URL is one unbreakable token, and
+   without this it pushed past the box, past the viewport, and dragged the
+   whole page sideways on a phone. See the long-names block near the end of
+   this file for why `anywhere` rather than `break-word`. */
+.custom-box-body {
+  color: var(--ink); font-size: 1rem; line-height: 1.4;
+  overflow-wrap: anywhere; word-break: break-word; min-width: 0;
+}
+.custom-box, .coll-boxes { min-width: 0; }
 .custom-box-body p { margin: 0 0 10px; }
 .custom-box-body p:last-child { margin-bottom: 0; }
+/* Wide children scroll inside the box instead of widening it. */
+.custom-box-body pre, .custom-box-body table { max-width: 100%; overflow-x: auto; }
+.custom-box-body img { max-width: 100%; height: auto; }
 
 /* ════════════════════════════════════════════════════════════════
    HOMEPAGE STYLES
@@ -1620,6 +1632,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .collection-tile-tagline {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: .9rem;
   color: var(--ink); opacity: .85; margin: 0 0 10px; line-height: 1.3;
+  /* Tiles sit in a grid, so one collection with a paragraph-long blurb
+     stretches the whole row. Cut it off after three lines — the collection's
+     own page carries the full text. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  line-clamp: 3; overflow: hidden;
 }
 
 /* Script view page */
@@ -2339,6 +2356,26 @@ a:hover .starlight-star { opacity: .9; }
   color: rgba(236,225,200,.8); text-decoration: none;
 }
 .news-back a:hover { color: #fff; text-decoration: underline; }
+/* Admin strip under a news card on /news: the article's state and a way into
+   the editor. The wrapper becomes the grid item, so the card inside it has to
+   stretch or a short article's tile stops matching its neighbours. */
+.news-admin-item { display: flex; flex-direction: column; }
+.news-admin-item .news-card { flex: 1; }
+.news-admin-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 2px 0;
+}
+.news-admin-pill {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 9px; border-radius: 999px;
+}
+.news-admin-pill.draft { background: rgba(154,110,20,.22); color: #f0d79a; border: 1px solid rgba(214,170,70,.5); }
+.news-admin-pill.published { background: rgba(42,110,42,.22); color: #b7e0b7; border: 1px solid rgba(90,170,90,.5); }
+.news-admin-edit {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.85); text-decoration: none;
+}
+.news-admin-edit:hover { color: #fff; text-decoration: underline; }
 @media (max-width: 640px) {
   .news-article { padding: 16px 14px; border-width: 2px; }
   .news-article h1 { font-size: 1.35rem; }

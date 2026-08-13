@@ -415,6 +415,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var pill = $('n-pill');
       pill.className = 'pub-status-pill ' + (status === 'published' ? 'published' : 'draft');
       pill.textContent = status === 'published' ? 'Published' : 'Draft';
+      // On a live article this button takes it off the site, which "Save as
+      // Draft" does not say. Name it after what it does.
+      $('n-draft').textContent = status === 'published' ? 'Unpublish' : 'Save as Draft';
+      $('n-publish').textContent = status === 'published' ? 'Save Changes' : 'Publish';
     }
 
     function showUrl(){
@@ -431,6 +435,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // which needs a second save to record the paths.
     function save(status){
       var a = collect();
+      var wasPublished = currentStatus === 'published';
       if (!a.title) { say('err', 'Give the article a title first.'); return; }
       if (!a.body.trim()) { say('err', 'Write the article body first.'); return; }
       a.status = status;
@@ -459,8 +464,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         // Keep the address bar in step so a refresh reopens the same article.
         try { history.replaceState(null, '', 'publish-news?n=' + encodeURIComponent(d.slug)); } catch(e){}
         say('ok', d.status === 'published'
-          ? 'Published. <a href="news/' + encodeURIComponent(d.slug) + '">View the article →</a>'
-          : 'Saved as a draft. Only admins can see it.');
+          ? 'Saved. <a href="news/' + encodeURIComponent(d.slug) + '">View the article →</a>'
+          : (wasPublished
+              ? 'Taken off the site. It is a draft again — only admins can see it, and Publish puts it back.'
+              : 'Saved as a draft. Only admins can see it.'));
         loadList();
       }).catch(function(err){ say('err', esc(err.message || 'Could not reach the server. Try again.')); });
     }
@@ -552,7 +559,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
       ['n-toc','n-pinned'].forEach(function(id){ $(id).addEventListener('change', preview); });
       $('n-publish').addEventListener('click', function(){ save('published'); });
-      $('n-draft').addEventListener('click', function(){ save('draft'); });
+      $('n-draft').addEventListener('click', function(){
+        if (currentStatus === 'published' &&
+            !confirm('Take this article off the site? It goes back to being a draft — readers stop seeing it, but nothing is deleted and you can publish it again.')) return;
+        save('draft');
+      });
       $('n-delete').addEventListener('click', del);
       setPill('draft');
       // [[Character Name]] resolves in the preview the same way it does live.

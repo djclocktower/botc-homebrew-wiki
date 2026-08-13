@@ -108,6 +108,40 @@
     });
   }
 
+  /* The order a collection's roster is shown in, and the single source of
+     truth for it — the collection page renders through this, and
+     publish-collection.html arranges through it, so the editor's list is the
+     page's list.
+
+     Team first: the page draws one section per team, so nothing can reorder
+     across that boundary. Then the author's hand-arranged `order` list. Then
+     name, for anyone the author has never placed.
+
+     Membership and order are deliberately separate lists. A slug in `order`
+     that is no longer a member simply never matches; a member missing from
+     `order` ranks Infinity and falls to the end of its team, alphabetically.
+     Neither list has to be kept in step with the other — which is the only
+     reason it is safe to store an order beside a membership rule that
+     recomputes itself — and a collection nobody has arranged sorts exactly as
+     it always did. Sorts a copy; the input array is left alone. */
+  function sortCollectionMembers(coll, members) {
+    var teamOrder = {};
+    TEAMS.forEach(function (t, i) { teamOrder[t[0]] = i; });
+    var manual = {};
+    (Array.isArray(coll && coll.order) ? coll.order : []).forEach(function (slug, i) {
+      if (manual[slug] == null) manual[slug] = i;
+    });
+    return (members || []).slice().sort(function (a, b) {
+      var ta = teamOrder[a.team] != null ? teamOrder[a.team] : 99;
+      var tb = teamOrder[b.team] != null ? teamOrder[b.team] : 99;
+      if (ta !== tb) return ta - tb;
+      var ma = manual[a.slug] != null ? manual[a.slug] : Infinity;
+      var mb = manual[b.slug] != null ? manual[b.slug] : Infinity;
+      if (ma !== mb) return ma - mb;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+  }
+
   /* ── helpers ── */
   function b64url(str) {
     var b64 = '';
@@ -235,7 +269,11 @@
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
-        (cls === 'partial' ? ' data-partial="1"' : '') +
+        // Starlight wins over Partial (same rule as Classify.isPartial): a
+        // character can be stamped 'partial' and then inherit the star from a
+        // Starlight collection, and an admin-blessed page is never hidden
+        // behind the Show Partial chip.
+        (cls === 'partial' && !starred ? ' data-partial="1"' : '') +
         (starred ? ' data-starlight="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
@@ -624,15 +662,7 @@
   function renderCollectionPage(coll, allChars, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
-    var members = resolveCollectionMembers(coll, allChars || []);
-    // stable order: team, then name
-    var teamOrder = {};
-    TEAMS.forEach(function (t, i) { teamOrder[t[0]] = i; });
-    members.sort(function (a, b) {
-      var ta = teamOrder[a.team] != null ? teamOrder[a.team] : 99;
-      var tb = teamOrder[b.team] != null ? teamOrder[b.team] : 99;
-      return ta !== tb ? ta - tb : (a.name || '').localeCompare(b.name || '');
-    });
+    var members = sortCollectionMembers(coll, resolveCollectionMembers(coll, allChars || []));
     var name = coll.displayName || coll.slug || 'Collection';
     var jsonText = buildPageExport(name, coll.author, coll.header, members);
     // orderMap: each slug's index in the full character list, for "recently
@@ -663,6 +693,7 @@
     renderRosterCards: renderRosterCards,
     filterBoxHTML: filterBoxHTML,
     resolveCollectionMembers: resolveCollectionMembers,
+    sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,
     themeAttrs: themeAttrs,
     buildPageExport: buildPageExport,

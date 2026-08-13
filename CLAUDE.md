@@ -63,12 +63,28 @@ Key dynamic behavior:
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   A character's URL **and its R2 art slot** are both derived from its name, so
-  both editors ask `GET /api/slug-check` before uploading anything and take the
+  both editors **and the mass uploader** ask `GET /api/slug-check` before
+  uploading anything and take the
   first free URL automatically, in the wiki's existing duplicate style
   (`illusionist-megalomania`, `witcher-odyssey`, then `-2`, `-3`). No prompt,
   no dialog — the character keeps its name, the page just gets its own address.
   A URL that is only *parked* by a redirect counts as taken. The Worker is
   still the enforcer — the check only decides which slug the editor asks for.
+  `mass-upload.html` additionally tracks the slugs **its own run** has just
+  taken, so two characters with the same name in one file get two pages
+  instead of the second overwriting the first.
+  **Scripts and collections work the same way** (`publish-script.html`,
+  `publish-collection.html`), with one difference: a page being *created*
+  never lands on an existing URL, **not even one of your own**. There is no
+  rename for these two — the URL is fixed once created and an edit carries
+  `EDIT_SLUG`/`EDIT_KEY` — so a name that matches a page you already have
+  means a second page, never a silent overwrite of the first (grimforge's
+  "+ Add to Drafts" is strict for the same reason). The save says so when it
+  happens. For **collections the key is the kebab `id`, not the PK slug**, so
+  `/api/slug-check` resolves them through `findCollectionRow()` and counts
+  both ids and PK slugs as taken — matching how `/api/collection` resolves a
+  write. Checking only the PK would call a legacy id free and the save would
+  then refuse it.
 - **Creator pages are one page on two keys.** `/u/{username}` (an account) and
   `/author?a={name}` (the free-text `creator` field) both serve `profile.html`,
   which asks `GET /api/user?u=` or `?a=`. A name that belongs to an account
@@ -135,13 +151,24 @@ assets/
                        roster, jinxes, night order, credits, infobox, JSON export,
                        theming). Browser+Worker like render.js; init(Render) injects
                        render.js's exports. resolveCollectionMembers() (hybrid
-                       match[]/include[]/exclude[]), sanitizeTheme(), FONT_PRESETS.
+                       match[]/include[]/exclude[]), sortCollectionMembers()
+                       (the roster order — team first, then the author's
+                       `order[]`, then name; the single source of truth, used by
+                       the page AND by publish-collection.html so the editor's
+                       list IS the page's list), sanitizeTheme(), FONT_PRESETS.
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
-                       Partial, Starlight only, creator, sort). mountCardFilters()
+                       Partial, Starlight only, creator, sort). Sort offers Page
+                       order / A–Z / Z–A / Recently added / Steven Approved
+                       Order; SAO needs sao.js loaded first or the option is not
+                       built, and it reads the ability off the card rather than
+                       a repeated data-* attribute. mountCardFilters()
                        wires one box to one grid; auto-mounts on SSR collection
-                       pages, and profile.html mounts its own. Reads the card
+                       pages with defaultSort:'page' so the author's arranged
+                       order is what a reader sees first, and profile.html
+                       mounts its own (no page order there — the creator feed is
+                       newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
                        implementation, not one per page.
   classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
@@ -190,6 +217,20 @@ assets/
                        Generated from GrayPockets/Released-as-Homebrew (the
                        `source` field inside the file says where); roles.json has
                        no night order, which is why this is separate.
+  special-editor.js    The `special[]` repeater on create.html + edit.html — the
+                       official schema's per-character behaviour flags ("cannot
+                       go in the bag", "show the Storyteller the grimoire"), of
+                       which `setup` was long the only one the wiki understood.
+                       Anything else was dropped on import and therefore missing
+                       from the wiki's own JSON export. Now carried through by
+                       mass-upload.html, create.html's JSON autofill and both
+                       editors, and validated + exported by render.js
+                       (`sanitizeSpecial`, the owner of the shape — the widget
+                       only collects). The name box is a datalist, never a
+                       closed list: the official vocabulary grows, and a name
+                       this repo has never seen still belongs to the character.
+                       It is a plain <fieldset>, which is all redesign-create.js
+                       needs to file it under Advanced Options.
   sao.js               SAO sort (single source of truth): SAO_PREFIXES, saoCompare,
                        sortRosterSAO(). Used by script.html, publish-script.html,
                        steven-approved-order.html, and safe in the Worker.
@@ -264,11 +305,19 @@ script.html            Script Builder — roster only (localStorage botc_script;
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
-                       SAO sort (localStorage botc_script_meta). Publish + Save as
+                       SAO sort (localStorage botc_script_meta). The roster
+                       summary lists every character with ▲▼ to arrange it by
+                       hand; that order IS characters[], which the script page
+                       already renders in. Moves are within a team only (the
+                       page draws one section per team) and roster slugs this
+                       wiki has no character for are carried along untouched,
+                       never dropped. Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
-                       membership manager (match terms + manual include/exclude).
+                       membership manager (match terms + manual include/exclude)
+                       plus roster arranging: ▲▼ per character, a Sort (SAO)
+                       button and Reset order, saved as `order[]`.
                        Publish/Draft via /api/collection; ?c={id} edit mode.
 publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
                        markdown-ish body with toolbar + live preview, banner and
@@ -375,7 +424,13 @@ alone. Purge deletes a comment and its replies for good) and a lazily ALTERed `u
 holding the comment-guidelines version that account agreed to,
 `revisions` (every content save snapshots the replaced version, 20 kept per
 page, for admin rollback), `messages` (contact-the-admins form → dashboard
-inbox — NOT user DMs), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
+inbox — NOT user DMs. An admin answers one with
+`POST /api/admin/message {action:'reply', body}`, which DELIVERS the answer as
+a `dms` row from that admin to the message's author — so it rides the unread
+count, the mail flag on "My Account", and can be replied to. The lazily-ALTERed
+`last_reply`/`replied_at`/`replied_by` columns are only the dashboard's record
+that it happened; blocks are deliberately not checked, as everywhere else an
+admin messages a user), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
@@ -411,7 +466,13 @@ Scripts and collections carry rich page fields in their `data` JSON (all
 optional, no migration): `tagline, version, difficulty, synopsis, gameplay,
 strategyGood, strategyEvil, logo, theme{}`. Collections also have hybrid
 membership — `match[]` (auto, normalized `appearsIn`) plus manual `include[]` /
-`exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js). Every
+`exclude[]` slug lists (see `resolveCollectionMembers` in render-page.js), and
+an optional `order[]` of slugs — the author's hand-arranged roster order, kept
+as a SEPARATE list from membership on purpose: a slug in `order[]` that is no
+longer a member just never matches, and a member missing from it falls to the
+end of its team alphabetically, so neither list has to be kept in step with the
+other. Team grouping always wins over it (the page draws one section per team).
+Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
 link or a `[[Character Name]]`. Every one of these is length-capped and
@@ -486,6 +547,17 @@ A credit can name several people ("Taiyi (太一), Saki") and each of them gets
 their own creator page, so every match is done one comma-separated segment at a
 time — `creditMatchSQL()` / `creditNames()` in worker.js, `splitCreators()` in
 creators.js. Never compare a whole `creator` column against a single name.
+
+**Proof by ownership needs pinning where a bulk import owns the pages.** The
+admin account owns most of the imported wiki, so every name credited on those
+pages resolved to it and `/author?a=` 302'd the lot to `/u/admin` — Taiyi, Gstone
+Games, Hystrex and the rest all landed on one profile. Twenty-eight names are
+now pinned unlinked (empty `creator_alias:` rows), so each renders its own
+creator page; the same thing had happened to seven co-credits and attribution
+fragments under christoph-ehm ("idea by Lins", "based on TPI"), plus one each
+under teobius and dashieswag92. `DJ_DJ_DJ` is deliberately left resolving to
+`admin`. **Any future bulk import owned by one account needs the same pass**, or
+it quietly swallows every name it is credited to.
 
 ## Jinxes
 
@@ -908,3 +980,18 @@ this is how admin-written pages stop being hidden for want of a tag.
    `uniqueUsername()` applies the same rule to Discord display names. Any new
    place that turns a typed name into a handle needs all of this, which is why
    it should call the existing helpers rather than roll its own.
+13. **Writing to D1 directly bypasses `bumpContentVersion()` — bump
+   `settings.content_version` yourself.** The JSON feeds and several in-isolate
+   caches are keyed on that counter, so a row written straight to the database
+   (dashboard, API, MCP) is served from a stale cache until it happens to
+   expire, and the staleness does not look like caching. Importing a collection
+   without bumping left it out of `collections.json`, so `linkAppearsIn()` in
+   charpage.js found no match and every one of its characters showed "Appears
+   in" as plain text instead of a link. Granting that collection Starlight
+   without bumping left `_starCollCache` holding the pre-Starlight list, so
+   `applyCollectionStarlight()` lent the status to none of its members while the
+   collection itself already read as Starlight. Both looked like bugs in the
+   feature and were neither. One
+   `INSERT INTO settings (key,value) VALUES ('content_version','1') ON CONFLICT
+   (key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
+   after the write is the whole fix.

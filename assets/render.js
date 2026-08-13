@@ -209,6 +209,45 @@
       .map(function (n) { return n.trim(); }).filter(Boolean);
   }
 
+  /* ── official-schema `special` entries ──
+     The script tool's per-character behaviour flags: how a character is shown
+     in the app, what the Storyteller's grimoire does with it, whether it may
+     be drawn from the bag at all. The Drunk carries
+     {type:"ability", name:"bag-disabled"}; the Phantom, being the same kind of
+     character, needs the same entry or the app treats it as an ordinary
+     townsfolk. `setup` was the only one of these the wiki understood, so
+     everything else was dropped on import and missing from the export.
+
+     Kept deliberately permissive on `name`: the official vocabulary grows, and
+     an entry the wiki has never heard of still belongs to the character.
+     What is enforced is the shape — a known type, a plain string name, and
+     numbers/strings in the optional slots — so nothing can smuggle an object
+     into somebody's exported JSON. */
+  var SPECIAL_TYPES = ['selection', 'ability', 'signal', 'vote', 'reveal', 'player'];
+  var SPECIAL_TIMES = ['pregame', 'day', 'night', 'firstNight', 'firstDay', 'otherNight', 'otherDay'];
+  function sanitizeSpecial(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [];
+    list.forEach(function (s) {
+      if (!s || typeof s !== 'object') return;
+      var type = String(s.type || '').trim();
+      var name = String(s.name || '').trim().slice(0, 60);
+      if (!name || SPECIAL_TYPES.indexOf(type) === -1) return;
+      var o = { type: type, name: name };
+      if (s.value !== undefined && s.value !== null && s.value !== '') {
+        var v = Number(s.value);
+        if (!isNaN(v)) o.value = v;
+      }
+      if (s.time && SPECIAL_TIMES.indexOf(String(s.time)) !== -1) o.time = String(s.time);
+      if (s.global) {
+        var g = String(s.global).trim().slice(0, 20);
+        if (g) o.global = g;
+      }
+      if (out.length < 12) out.push(o);
+    });
+    return out;
+  }
+
   /* ── Build official-schema JSON object from character data ── */
   function buildSchema(d) {
     var o = {
@@ -238,7 +277,8 @@
       }).filter(function (j) { return j.id; });
       if (jx.length) o.jinxes = jx;
     }
-    if (d.special && d.special.length) o.special = d.special;
+    var sp = sanitizeSpecial(d.special);
+    if (sp.length) o.special = sp;
     return o;
   }
   function schemaJSON(d) {
@@ -649,6 +689,9 @@
     window.renderJsonBox = renderJsonBox;
     window.buildSchema = buildSchema;
     window.schemaJSON = schemaJSON;
+    window.sanitizeSpecial = sanitizeSpecial;
+    window.SPECIAL_TYPES = SPECIAL_TYPES;
+    window.SPECIAL_TIMES = SPECIAL_TIMES;
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
     window.findScriptJinxes = findScriptJinxes;
@@ -667,6 +710,8 @@
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
+      sanitizeSpecial: sanitizeSpecial,
+      SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,

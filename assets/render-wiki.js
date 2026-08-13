@@ -74,8 +74,11 @@
   }
 
   /* Image sources are tighter than links: a remote https image, or one of the
-     wiki's own asset folders. Anything else is dropped. */
-  var IMG_PATH_RE = /^(pages|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
+     wiki's own asset folders. Anything else is dropped.
+     Keep this list in step with R2_SERVE_PREFIXES in worker/worker.js — a
+     folder the site uploads into but doesn't list here goes to R2 fine and
+     then renders as nothing, which is how news images were invisible. */
+  var IMG_PATH_RE = /^(pages|news|art|scripts|collections|icons|tokens)\/[a-z0-9._ /-]+\.(png|jpe?g|webp|gif|svg)$/i;
   function safeImg(raw, root) {
     var src = String(raw || '').trim();
     if (!src) return '';

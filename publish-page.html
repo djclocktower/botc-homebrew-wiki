@@ -39,6 +39,13 @@
 #p-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
 #p-status.work { display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
 #p-status a { color:inherit; font-weight:700; }
+/* The Images section sits a long way above the main status box, so its own
+   messages are shown right under the file input instead — an upload that
+   reported "save the page first" into a box two screens down looked exactly
+   like a button that did nothing. */
+#p-image-note.err { color:#9A0D12; font-weight:600; }
+#p-image-note.work { color:#234f74; font-weight:600; }
+#p-image-note.ok { color:#1c5429; font-weight:600; }
 .fmt-help { font-size:.82rem; color:#6b5d49; line-height:1.7; margin:8px 0 0; }
 .fmt-help code { background:#fffdf8; border:1px solid #e0d5bd; padding:1px 4px; font-size:.86em; }
 details.sb-details { padding:0; }
@@ -186,7 +193,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <div class="sb-fld">
             <label for="p-image-add">Images for the text</label>
             <input type="file" id="p-image-add" accept="image/*">
-            <p class="sub" id="p-image-note" style="margin:6px 0 0">Save the page once first — then uploads get a home under this page's name.</p>
+            <p class="sub" id="p-image-note" style="margin:6px 0 0">Pick an image and it uploads straight away. A brand-new page is saved as a draft first, so the image has somewhere to be filed.</p>
             <ul class="img-list" id="p-image-list"></ul>
           </div>
         </div>
@@ -385,7 +392,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> — <a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>';
       $('p-delete').style.display = '';
       $('page-title').textContent = 'Edit Page';
-      $('p-image-note').textContent = 'Uploads are stored under this page and can be dropped straight into the text.';
+      imgSay('', 'Uploads are stored under this page and can be dropped straight into the text.');
       try { history.replaceState(null, '', 'publish-page?p=' + encodeURIComponent(slug)); } catch(e){}
     }
 
@@ -443,52 +450,85 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       this.style.display = 'none';
     });
 
-    // Body images can only be filed once the page has a name of its own.
+    // Messages for the Images section go right under the file input. The main
+    // status box lives past the end of the form, so anything reported there
+    // while somebody is picking an image is off screen and never seen.
+    function imgSay(cls, html){
+      var el = $('p-image-note');
+      el.className = 'sub ' + (cls || '');
+      el.innerHTML = html || '';
+    }
+
+    // Body images are filed under the page's own name, so the page needs one
+    // before it can take any. Rather than refusing and asking for a save, take
+    // the save: a draft costs nothing, is private, and is what the person was
+    // going to do next anyway. Resolves to the slug, or rejects with the
+    // reason the page cannot be saved yet.
+    function ensureSlug(){
+      if (slug) return Promise.resolve(slug);
+      if (!$('p-title').value.trim())
+        return Promise.reject(new Error('Give the page a title first — images are filed under the page’s name.'));
+      if (!$('p-body').value.trim())
+        return Promise.reject(new Error('Write something in the page body first, then the image has a page to live on.'));
+      imgSay('work', 'Saving this page as a draft first…');
+      return save('draft').then(function(){
+        if (!slug) throw new Error('The page could not be saved, so there is nowhere to file the image yet.');
+        return slug;
+      });
+    }
+
     $('p-image-add').addEventListener('change', function(e){
       var f = e.target.files[0];
-      if (!f) return;
-      if (!slug) {
-        say('err', 'Save the page once (Save as Draft is fine) and then upload images — they need the page’s name to be filed under.');
-        e.target.value = '';
-        return;
-      }
-      var rd = new FileReader();
-      rd.onload = function(ev){
-        var img = new Image();
-        img.onload = function(){
-          var w = img.width, h = img.height;
-          if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200; }
-          var cv = document.createElement('canvas');
-          cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
-          var key = 'pages/' + slug + '-' + (images.length + 1) + '-' + Date.now().toString(36) + '.png';
-          say('work', 'Uploading image…');
-          upload(key, cv.toDataURL('image/png')).then(function(){
-            images.push(key);
-            renderImages();
-            say('ok', 'Image uploaded. Use <strong>Insert into text</strong> to place it, then save the page.');
-          }).catch(function(err){ say('err', esc(err.message)); });
-        };
-        img.src = ev.target.result;
-      };
-      rd.readAsDataURL(f);
       e.target.value = '';
+      if (!f) return;
+      ensureSlug().then(function(){
+        return new Promise(function(resolve, reject){
+          var rd = new FileReader();
+          rd.onerror = function(){ reject(new Error('That file could not be read.')); };
+          rd.onload = function(ev){
+            var img = new Image();
+            img.onerror = function(){ reject(new Error('That file is not an image the browser can open.')); };
+            img.onload = function(){
+              var w = img.width, h = img.height;
+              if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200; }
+              var cv = document.createElement('canvas');
+              cv.width = w; cv.height = h;
+              cv.getContext('2d').drawImage(img, 0, 0, w, h);
+              var key = 'pages/' + slug + '-' + (images.length + 1) + '-' + Date.now().toString(36) + '.png';
+              imgSay('work', 'Uploading image…');
+              upload(key, cv.toDataURL('image/png')).then(function(){
+                images.push(key);
+                renderImages();
+                imgSay('ok', 'Image uploaded. Use <strong>Insert into text</strong> below to place it, then save the page.');
+                resolve();
+              }, reject);
+            };
+            img.src = ev.target.result;
+          };
+          rd.readAsDataURL(f);
+        });
+      }).catch(function(err){
+        imgSay('err', '✗ ' + esc(err.message));
+      });
     });
 
     // ── saving ──
     // A brand-new page is saved first so the server can hand back its slug;
     // only then do the banner/background have a slot to upload into, which
     // needs a second save to record the paths.
+    // Always returns a promise (settling once the save is done, whether it
+    // worked or not) so callers can wait for it — the image upload saves a
+    // brand-new page first to give the image somewhere to be filed.
     function save(status){
       var p = collect();
-      if (!p.title) { say('err', 'Give the page a title first.'); return; }
-      if (!p.body.trim()) { say('err', 'Write something in the page body first.'); return; }
-      if (!slug && !parentType) { say('err', 'This page has nothing to attach to.'); return; }
+      if (!p.title) { say('err', 'Give the page a title first.'); return Promise.resolve(); }
+      if (!p.body.trim()) { say('err', 'Write something in the page body first.'); return Promise.resolve(); }
+      if (!slug && !parentType) { say('err', 'This page has nothing to attach to.'); return Promise.resolve(); }
       p.status = status;
       $('p-publish').disabled = true; $('p-draft').disabled = true;
       say('work', status === 'published' ? 'Publishing…' : 'Saving draft…');
 
-      api('/api/wiki-page', p).then(function(res){
+      return api('/api/wiki-page', p).then(function(res){
         slug = res.slug;
         parentName = res.parentName || parentName;
         parentKey = res.parentKey || parentKey;

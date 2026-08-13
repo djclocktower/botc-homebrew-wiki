@@ -186,12 +186,30 @@
     return unmet(d, STANDARD_REQUIREMENTS).length > 0;
   }
 
+  /* A tier the SERVER already worked out for this row, or '' if it didn't say.
+     characters.json?fields=card — what the homepage, All Characters, the team
+     and tag pages all fetch — drops the almanac prose to keep the feed small,
+     so a reader recomputing from a card row would call a finished page
+     Partial for want of fields that were never sent. The Worker classifies
+     each row BEFORE it trims it and stamps the answer, so the stamp is the
+     only honest reading of a trimmed row and always wins over recomputing.
+     Rows built in an editor carry no stamp and are computed as normal. */
+  function stampedClass(d) {
+    var c = d && d.classification;
+    return (c === 'partial' || c === 'standard' || c === 'starlight') ? c : '';
+  }
+
   /* Partial is the PUBLIC tier: incomplete, and not lifted out of it by
      Starlight. Starlight still wins here — an admin has looked at the page,
      so readers are never told it is unfinished and it keeps its place in
-     browsing. Only the owner's notice uses isIncomplete instead. */
+     browsing. Only the owner's notice uses isIncomplete instead.
+     isStarlight is asked first, and before the stamp: Starlight inherited
+     from a collection is applied after the row was classified, so a row can
+     be stamped 'partial' and still be Starlight by the time a reader sees it. */
   function isPartial(d) {
     if (!d || isStarlight(d)) return false;
+    var stamp = stampedClass(d);
+    if (stamp) return stamp === 'partial';
     return isIncomplete(d);
   }
 
