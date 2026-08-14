@@ -34,6 +34,9 @@
  *   POST /api/account/unlink-discord
  *   GET  /api/contact         -> your own messages to the admins
  *   POST /api/contact         -> send a message to the admins (bug/suggestion/…)
+ *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
+ *                                box; same inbox as /api/contact, but works
+ *                                without an account (rate-limited per IP)
  *   GET  /api/announcement    -> current site-wide announcement (public)
  *   GET  /api/site-text       -> the site's rewritten system text, as a map
  *                                site.js applies in the browser (public,
@@ -355,6 +358,53 @@ function sessionCookie(token) {
 }
 function clearCookie() {
   return 'botc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+}
+
+// ---- the custom 404 page ----
+// Everything that cannot find what was asked for used to end in a bare
+// `env.ASSETS.fetch(request)`, which hands back Cloudflare's own "Not Found" —
+// a blank page with no top bar, no search and no way back to the wiki. A dead
+// character link pasted in Discord a year ago is the single most likely way a
+// stranger arrives here, so it is worth a real page.
+//
+// assetsOrNotFound() keeps the old behaviour first (a committed static file
+// still wins, which is what the legacy redirect stubs rely on) and only swaps
+// in /404.html when the assets binding says 404. The page is served AT the URL
+// that was asked for — no redirect — so it can show the broken address, and so
+// the reader can retry or copy the link they came in on.
+//
+// Images, JSON and scripts keep the bare 404: an HTML page inside an <img> is
+// pure waste, `onerror` fires either way, and fetch() callers want the status,
+// not a document.
+function wantsHTMLPage(request, path) {
+  if (path.startsWith('/api/') || path.startsWith('/assets/')) return false;
+  if (/\.(png|jpe?g|gif|webp|svg|ico|json|js|mjs|css|txt|xml|map|woff2?|ttf|otf)$/i.test(path)) return false;
+  return (request.headers.get('Accept') || '').includes('text/html');
+}
+
+async function notFoundResponse(env, request, fallback) {
+  const url = new URL(request.url);
+  if (!wantsHTMLPage(request, url.pathname)) return fallback || new Response('Not found', { status: 404 });
+  try {
+    // A bare GET, deliberately: forwarding the caller's headers would carry
+    // their If-None-Match along and could turn this into a 304 with no body.
+    const page = await env.ASSETS.fetch(new Request(url.origin + '/404.html'));
+    if (page.ok) {
+      return new Response(await page.text(), {
+        status: 404,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      });
+    }
+  } catch { /* fall through to whatever the assets binding said */ }
+  return fallback || new Response('Not found', { status: 404 });
+}
+
+// The drop-in replacement for `return env.ASSETS.fetch(request)` on any path
+// that might not exist.
+async function assetsOrNotFound(env, request) {
+  const res = await env.ASSETS.fetch(request);
+  if (res.status !== 404) return res;
+  return notFoundResponse(env, request, res);
 }
 
 // ---- basic rate limiting (KV counter; best-effort) ----
@@ -2511,17 +2561,17 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     row = await env.DB.prepare(`SELECT slug, data FROM ${table} WHERE slug=?`).bind(slug).first();
   }
   if (!isScript && !row) row = await findCollectionRow(env, slug);
-  if (!row || !row.data) return env.ASSETS.fetch(request);
+  if (!row || !row.data) return assetsOrNotFound(env, request);
 
   // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
-  if (row.status === 'deleted') return env.ASSETS.fetch(request);
+  if (row.status === 'deleted') return assetsOrNotFound(env, request);
 
   // One session read serves both the draft check and the "may this reader see
   // draft wiki pages / the new-page button" check further down.
   const pageSess = await getSession(env, request);
   const mayEditParent = canEditRow(pageSess, row);
   const isDraft = row.status === 'draft';
-  if (isDraft && !mayEditParent) return env.ASSETS.fetch(request); // 404 for everyone else
+  if (isDraft && !mayEditParent) return assetsOrNotFound(env, request); // 404 for everyone else
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   const d = JSON.parse(row.data);
   if (!d.slug) d.slug = row.slug || slug;
@@ -2809,12 +2859,12 @@ export default {
           headers: { Location: url.origin + '/news/' + slug + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
       await ensureNewsTable(env);
       const row = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
-      if (!row) return env.ASSETS.fetch(request);
+      if (!row) return assetsOrNotFound(env, request);
       const isDraft = row.status !== 'published';
-      if (isDraft && !(await adminSession(env, request))) return env.ASSETS.fetch(request);
+      if (isDraft && !(await adminSession(env, request))) return assetsOrNotFound(env, request);
       if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'news', row.slug));
 
       const d = parseData(row);
@@ -2932,15 +2982,15 @@ export default {
           headers: { Location: url.origin + '/p/' + encodeURIComponent(slug) + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
       await ensurePagesTable(env);
       const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
         .bind(slug).first().catch(() => null);
-      if (!row) return env.ASSETS.fetch(request);
+      if (!row) return assetsOrNotFound(env, request);
       const isDraft = row.status !== 'published';
       if (isDraft) {
         const sess = await getSession(env, request);
-        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+        if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
       }
       if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
 
@@ -2952,7 +3002,7 @@ export default {
       // parent brings everything back.
       if (parent && parent.status === 'deleted') {
         const sess = await getSession(env, request);
-        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+        if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
       }
       WikiRender.setCharLinks(await loadCharLinks(env));
       const page = {
@@ -3073,7 +3123,7 @@ export default {
         if (row && row.data) {
           // Soft-deleted pages are hidden from everyone (incl. owner/admin);
           // recovery happens on the admin dashboard, not the live page.
-          if (row.status === 'deleted') return env.ASSETS.fetch(request);
+          if (row.status === 'deleted') return assetsOrNotFound(env, request);
           const isDraft = row.status === 'draft';
           // Two things want to know whether this viewer owns the page: the
           // draft gate and the Partial nudge. Resolve it at most once, and
@@ -3084,7 +3134,7 @@ export default {
             if (editable === null) editable = canEditRow(await getSession(env, request), row);
             return editable;
           };
-          if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
+          if (isDraft && !(await canEdit())) return assetsOrNotFound(env, request); // 404 for everyone else
           const d = JSON.parse(row.data);
           if (!d.slug) d.slug = slug;
           // Same Starlight inheritance the JSON feeds get, so the star on the
@@ -3125,7 +3175,7 @@ export default {
         }
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- SCRIPT PAGES (server-side rendered from D1) ----------
@@ -3141,7 +3191,7 @@ export default {
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
         return renderContentPage(env, ctx, request, url, 'script', slug);
       }
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- COLLECTION PAGES (server-side rendered from D1) ----------
@@ -3157,7 +3207,7 @@ export default {
       if (key) {
         return renderContentPage(env, ctx, request, url, 'collection', key);
       }
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
@@ -5090,6 +5140,51 @@ export default {
            FROM site_text ORDER BY updated_at DESC`
       ).all();
       return jsonResponse({ overrides: rows.results || [] });
+    }
+
+    // ---------- BROKEN-LINK REPORT (the 404 page's contact box) ----------
+    // Deliberately OUTSIDE the logged-in write gate below. Whoever follows a
+    // dead link off Discord is exactly the person least likely to have an
+    // account here, and "make an account first, then tell us the wiki is
+    // broken" is not a report anyone files. It lands in the same dashboard
+    // inbox as /api/contact, so there is one place to read both.
+    //
+    // What keeps it from being a spam hole: it writes nothing but a message
+    // row, the rate limit is per IP (or per account when there is one), and
+    // every field is capped. An anonymous row has user_id NULL, which the
+    // dashboard already handles — it just cannot be replied to, which is why
+    // the form asks for somewhere to write back.
+    if (method === 'POST' && path === '/api/report-broken-link') {
+      const sess = await getSession(env, request);
+      if (await rateLimited(env, request, 'brokenlink', 4, 3600, { sess })) {
+        return tooManyResponse('Thanks — that is enough reports from here for now. Try again in an hour.', 3600);
+      }
+      const b = await request.json().catch(() => ({}));
+      const brokenPath = String(b.path || '').trim().slice(0, 300);
+      const note = String(b.note || '').trim().slice(0, 1000);
+      const replyTo = String(b.contact || '').trim().slice(0, 120);
+      const cameFrom = String(b.from || '').trim().slice(0, 300);
+      if (!brokenPath && !note) {
+        return jsonResponse({ error: 'Tell us what you were looking for first.' }, { status: 400 });
+      }
+      await ensureMessagesTable(env);
+      let uname = null;
+      if (sess) {
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          uname = u ? u.username : null;
+        } catch { /* non-fatal — the report is still worth keeping */ }
+      }
+      // One readable block, because the inbox shows `body` and nothing else.
+      const lines = ['Broken link: ' + (brokenPath || '(not given)')];
+      if (note) lines.push('', note);
+      if (cameFrom) lines.push('', 'Came from: ' + cameFrom);
+      if (replyTo && !uname) lines.push('', 'Reply to: ' + replyTo);
+      await env.DB.prepare(
+        'INSERT INTO messages (user_id, username, category, body) VALUES (?,?,?,?)'
+      ).bind(sess ? sess.userId : null, uname, 'bug', lines.join('\n')).run();
+      if (sess) await logActivity(env, sess, 'contact', 'message', null, 'broken-link');
+      return jsonResponse({ ok: true, message: 'Thanks — the admins have it.' });
     }
 
     // ---------- WRITES (logged-in users; ownership enforced) ----------
@@ -7244,7 +7339,7 @@ export default {
 
     // ---------- STATIC ASSETS (pass through to Pages) ----------
     // env.ASSETS is the static site binding (Cloudflare Pages / Workers Assets)
-    return env.ASSETS.fetch(request);
+    return assetsOrNotFound(env, request);
   },
 
   // Nightly cron (see [triggers] in wrangler.toml): back up D1 to R2, and

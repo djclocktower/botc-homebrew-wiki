@@ -62,6 +62,12 @@ Key dynamic behavior:
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
+  **`POST /api/report-broken-link` is the one write that does not need a
+  login** — it is the 404 page's report box, and the person following a dead
+  link off Discord is the least likely of anyone to have an account. It writes
+  a `messages` row like `/api/contact` (same dashboard inbox) with
+  `user_id NULL`, which the inbox already renders as unrepliable; the form asks
+  for a handle or an email in the body instead. Rate-limited per IP.
   A character's URL **and its R2 art slot** are both derived from its name, so
   both editors **and the mass uploader** ask `GET /api/slug-check` before
   uploading anything and take the
@@ -386,6 +392,20 @@ drafts.html            /drafts — your own unpublished pages as cards (the same
                        have no card art so they get a plain tile. Linked from
                        the Your Drafts panel on the account page, which keeps
                        its own table — the two are deliberately both there.
+404.html               The custom Not Found page. Nothing links to it: the
+                       Worker serves it AT the address that failed (no
+                       redirect) with a 404 status, via assetsOrNotFound(),
+                       which every "page does not exist" branch now returns —
+                       so all its paths must be root-absolute or they resolve
+                       against /c/whatever. Shows the broken address, a
+                       "Did you mean…" list (edit distance against the JSON
+                       feed the address implies; /c/, /s/ and /collection/
+                       only, so a missing favicon costs no fetch) and a report
+                       box posting to /api/report-broken-link. Only HTML
+                       requests get it — images and JSON keep the bare 404.
+                       WHILE A DESIGN IS BEING PICKED it carries four drafts
+                       and a picker bar; the blocks marked DRAFT PICKER come
+                       out with the three that lose.
 profile.html           The creator page, served at BOTH /u/{username} and
                        /author?a={name} (there is no author.html any more).
                        Hero + pinned strip + characters (shared filter bar) +
