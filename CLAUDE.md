@@ -370,9 +370,10 @@ drafts.html            /drafts — your own unpublished pages as cards (the same
                        only, so a missing favicon costs no fetch) and a report
                        box posting to /api/report-broken-link. Only HTML
                        requests get it — images and JSON keep the bare 404.
-                       WHILE A DESIGN IS BEING PICKED it carries four drafts
-                       and a picker bar; the blocks marked DRAFT PICKER come
-                       out with the three that lose.
+                       The design is a character token on the page background
+                       ("NOT IN THE BAG" curved along its bottom rim, which is
+                       an SVG textPath — sweep-flag 0 is what keeps the words
+                       upright).
 profile.html           The creator page, served at BOTH /u/{username} and
                        /author?a={name} (there is no author.html any more).
                        Hero + pinned strip + characters (shared filter bar) +
