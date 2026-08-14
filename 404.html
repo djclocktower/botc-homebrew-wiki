@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page Not Found — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="That page isn't on the wiki. Search, browse, or tell the admins if a link brought you here by mistake.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Page Not Found">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/favicon.png">
+<!-- EVERY path on this page must be root-absolute. The Worker serves this file
+     at whatever URL was asked for (/c/foo, /s/bar/baz, anything), so a relative
+     href would resolve against that address and break. site.js derives its own
+     ROOT from the stylesheet href below, which is why that one is "/…" too. -->
+<link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/header-redesign.css">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   404 page. Four drafts live here at once while a design is picked;
+   everything above the "SHARED" divider is per-design and three of the
+   four blocks come out once the choice is made.
+   ══════════════════════════════════════════════════════════════════ */
+
+.nf-design { display: none; }
+.nf-design.on { display: block; }
+.nf-main { padding-top: clamp(24px, 5vw, 56px); }
+
+/* ─── A · Torn Page ───────────────────────────────────────────── */
+.nfa-wrap {
+  max-width: 780px; margin: 0 auto;
+  filter: drop-shadow(0 20px 40px rgba(0,0,0,.55));
+}
+.nfa-sheet {
+  background-color: var(--parch);
+  background-image: url('/assets/parchment.jpg');
+  background-size: cover;
+  padding: clamp(26px,4vw,44px) clamp(20px,4vw,48px) clamp(38px,6vw,60px);
+  text-align: center;
+  /* A hand-cut bottom edge. Irregular on purpose — an even zigzag reads as a
+     stamp, not a tear. clip-path removes the border, so the shadow lives on
+     .nfa-wrap as a drop-shadow, which follows the cut instead of the box. */
+  clip-path: polygon(
+    0 0, 100% 0,
+    100% calc(100% - 16px), 94% 100%, 88% calc(100% - 11px),
+    82% calc(100% - 3px), 76% calc(100% - 15px), 69% calc(100% - 6px),
+    62% calc(100% - 18px), 55% calc(100% - 4px), 47% calc(100% - 13px),
+    40% calc(100% - 2px), 33% calc(100% - 17px), 26% calc(100% - 7px),
+    19% calc(100% - 14px), 12% calc(100% - 3px), 6% calc(100% - 12px),
+    0 calc(100% - 5px)
+  );
+}
+.nfa-num {
+  font-family: 'Dumbledor2', serif; font-size: clamp(4.4rem, 17vw, 8.4rem);
+  line-height: .86; letter-spacing: .04em; color: var(--maroon);
+  opacity: .17; margin-bottom: -.22em; user-select: none;
+}
+.nfa-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-size: clamp(1.35rem, 4.4vw, 2.1rem); letter-spacing: .04em;
+  color: var(--maroon); margin: 0 0 .5em; position: relative;
+}
+.nfa-sub { font-size: clamp(.94rem, 2.2vw, 1.02rem); color: var(--ink); max-width: 46ch; margin: 0 auto .2em; }
+
+/* ─── B · Token ───────────────────────────────────────────────── */
+.nfb { text-align: center; }
+.nfb-token {
+  position: relative; width: min(76vw, 300px); aspect-ratio: 1; margin: 0 auto clamp(18px,3vw,28px);
+  border-radius: 50%;
+  background-color: var(--parch);
+  background-image: url('/assets/parchment.jpg');
+  background-size: cover;
+  border: 3px solid var(--parch-frame);
+  box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 0 0 7px rgba(255,255,255,.35), inset 0 0 0 9px var(--parch-frame);
+  display: grid; place-items: center;
+}
+.nfb-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.nfb-arc-text {
+  font-family: 'Dumbledor2', serif; font-size: 17px; letter-spacing: .18em;
+  fill: var(--maroon); opacity: .78;
+}
+.nfb-face { display: grid; place-items: center; gap: 2px; margin-top: -8%; }
+.nfb-num {
+  font-family: 'Dumbledor2', serif; font-size: clamp(2.6rem, 11vw, 4rem);
+  line-height: 1; color: var(--maroon); letter-spacing: .04em;
+}
+.nfb-mark {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .22em;
+  text-transform: uppercase; color: rgba(91,31,33,.6);
+}
+.nfb-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: clamp(1.3rem, 4.4vw, 2rem); letter-spacing: .05em;
+  color: var(--parch); margin: 0 0 .45em; text-shadow: 0 3px 12px rgba(0,0,0,.5);
+}
+.nfb-sub {
+  color: rgba(236,225,200,.78); max-width: 48ch; margin: 0 auto;
+  font-size: clamp(.94rem, 2.2vw, 1.04rem);
+}
+.nfb .nf-url { background: rgba(0,0,0,.3); color: #f0e0b8; border-color: rgba(214,196,150,.3); }
+.nfb-rule { height: 1px; max-width: 520px; margin: 22px auto 0; background: linear-gradient(90deg, transparent, var(--rule), transparent); }
+
+/* ─── C · Almanac Entry ───────────────────────────────────────── */
+.nfc-wrap { max-width: 860px; margin: 0 auto; }
+.nfc-name {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
+  font-size: clamp(1.6rem, 5.5vw, 2.6rem); letter-spacing: .05em;
+  color: var(--maroon); text-align: center; margin: 0 0 2px;
+}
+.nfc-team {
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .18em;
+  text-transform: uppercase; text-align: center; color: var(--evil); margin: 0 0 18px;
+}
+.nfc-emblem {
+  display: grid; place-items: center; width: 118px; height: 118px; margin: 0 auto 10px;
+  border-radius: 50%; border: 2px dashed rgba(91,31,33,.35);
+  font-family: 'Dumbledor2', serif; font-size: 3.4rem; color: rgba(91,31,33,.45);
+}
+.nfc-wrap .ability { text-align: center; }
+.nfc-sech {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem;
+  letter-spacing: .08em; color: var(--maroon); margin: 22px 0 8px; text-align: center;
+}
+.nfc-sech-wrap { display: flex; align-items: center; gap: 12px; }
+.nfc-sech-wrap::before, .nfc-sech-wrap::after {
+  content: ""; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rule), transparent);
+}
+.nfc-wrap ul { max-width: 52ch; margin: 0 auto; }
+.nfc-wrap li a { color: var(--good-name); }
+
+/* ─── D · Night Phase ─────────────────────────────────────────── */
+.nfd { max-width: 620px; margin: 0 auto; text-align: center; color: rgba(236,225,200,.86); }
+.nfd-moon { font-size: 2rem; opacity: .55; line-height: 1; }
+.nfd-num {
+  font-family: 'Dumbledor2', serif; font-size: clamp(3rem, 12vw, 5rem);
+  letter-spacing: .12em; color: var(--parch); margin: 10px 0 4px; line-height: 1;
+  text-shadow: 0 4px 20px rgba(0,0,0,.6);
+}
+.nfd-head {
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .2em;
+  text-transform: uppercase; font-size: .84rem; color: rgba(236,225,200,.62);
+  margin: 0 0 22px;
+}
+.nfd-rule { height: 1px; background: linear-gradient(90deg, transparent, var(--rule), transparent); margin: 0 0 22px; }
+.nfd-sub { font-size: .98rem; line-height: 1.6; margin: 0 0 6px; }
+.nfd .nf-url { background: rgba(0,0,0,.34); color: #f0e0b8; border-color: rgba(214,196,150,.28); }
+
+/* ══════════════════════════════════════════════════════════════════
+   SHARED · the parts every design gets, mounted by the script below
+   ══════════════════════════════════════════════════════════════════ */
+
+/* The address that was asked for */
+.nf-url {
+  display: inline-block; max-width: 100%; overflow-wrap: anywhere;
+  font-family: 'Oswald', sans-serif; font-size: .92em; letter-spacing: .02em;
+  background: rgba(91,31,33,.09); border: 1px solid rgba(91,31,33,.16);
+  padding: 1px 7px; color: var(--maroon);
+}
+.nf-url-note { display: block; font-size: .78rem; opacity: .6; margin-top: 6px; }
+/* Anything given an explicit `display` here would otherwise beat the browser's
+   own [hidden] rule and show through — these three are toggled from script. */
+.nf-url-note[hidden], .nf-field[hidden], .nf-report-who[hidden] { display: none; }
+
+/* "Did you mean" */
+.nf-suggest { margin: clamp(18px,3vw,26px) auto 0; max-width: 560px; text-align: left; }
+.nf-suggest-head {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .14em;
+  text-transform: uppercase; color: rgba(91,31,33,.65); margin: 0 0 8px; text-align: center;
+}
+.nf-sug {
+  display: flex; align-items: center; gap: 11px; text-decoration: none;
+  padding: 8px 10px; border-top: 1px solid rgba(120,100,70,.25); color: var(--maroon);
+}
+.nf-sug:first-of-type { border-top: none; }
+.nf-sug:hover { background: rgba(91,31,33,.06); }
+.nf-sug-thumb { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
+.nf-sug-text { min-width: 0; }
+.nf-sug-name { display: block; font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .02em; }
+.nf-sug-meta {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .72rem;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--evil); opacity: .8;
+}
+.nf-sug-meta.good { color: var(--good-name); }
+/* On the two dark designs the suggestion list sits on the page background */
+.nfb .nf-suggest-head, .nfd .nf-suggest-head { color: rgba(236,225,200,.55); }
+.nfb .nf-sug, .nfd .nf-sug { color: var(--parch); border-top-color: rgba(214,196,150,.18); }
+.nfb .nf-sug:hover, .nfd .nf-sug:hover { background: rgba(236,225,200,.07); }
+.nfb .nf-sug-meta, .nfd .nf-sug-meta { color: rgba(236,225,200,.6); }
+
+/* Quick links */
+.nf-links { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: clamp(18px,3vw,26px) 0 0; }
+.nf-links a {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .08em;
+  text-transform: uppercase; text-decoration: none;
+  padding: 7px 14px; border: 1px solid rgba(91,31,33,.3); color: var(--maroon);
+}
+.nf-links a:hover { background: rgba(91,31,33,.08); }
+.nfb .nf-links a, .nfd .nf-links a { color: var(--parch); border-color: rgba(214,196,150,.3); }
+.nfb .nf-links a:hover, .nfd .nf-links a:hover { background: rgba(236,225,200,.1); }
+
+/* Report box — one markup block (the <template> below), restyled per design */
+.nf-report {
+  max-width: 620px; margin: clamp(26px,4vw,40px) auto 0;
+  background-color: var(--ex-bg); border: 2px solid var(--ex-frame);
+  padding: clamp(16px,3vw,24px);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.45);
+}
+.nf-report-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem;
+  letter-spacing: .05em; color: var(--maroon); margin: 0 0 6px;
+}
+.nf-report-note { font-size: .88rem; color: var(--ink); opacity: .85; margin: 0 0 14px; }
+.nf-field { display: block; margin-bottom: 12px; }
+.nf-field > span {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .74rem;
+  letter-spacing: .1em; text-transform: uppercase; color: rgba(91,31,33,.72); margin-bottom: 4px;
+}
+.nf-report textarea, .nf-report input {
+  width: 100%; font: inherit; font-size: .93rem; color: var(--ink);
+  background: #fffdf8; border: 1px solid #cdbfa0; padding: 8px 10px; border-radius: 0;
+}
+.nf-report textarea { min-height: 84px; resize: vertical; }
+.nf-report-send {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
+  border: none; padding: 10px 22px; cursor: pointer; font-size: .95rem;
+}
+.nf-report-send[disabled] { opacity: .6; cursor: default; }
+.nf-report-msg { font-size: .86rem; margin-top: 9px; min-height: 1.1em; }
+.nf-report-msg.ok  { color: #2a6e2a; }
+.nf-report-msg.err { color: #9a2c2c; }
+.nf-report-who { font-size: .78rem; opacity: .7; margin: 0 0 12px; }
+/* Dark designs: same box, night colours */
+.nfb .nf-report, .nfd .nf-report {
+  background: rgba(20,7,18,.5); border: 1px solid rgba(214,196,150,.28); box-shadow: none;
+  backdrop-filter: blur(4px); text-align: left;
+}
+.nfb .nf-report-head, .nfd .nf-report-head { color: var(--parch); }
+.nfb .nf-report-note, .nfd .nf-report-note,
+.nfb .nf-report-who,  .nfd .nf-report-who { color: rgba(236,225,200,.72); }
+.nfb .nf-field > span, .nfd .nf-field > span { color: rgba(236,225,200,.6); }
+.nfb .nf-report textarea, .nfd .nf-report textarea,
+.nfb .nf-report input,    .nfd .nf-report input {
+  background: rgba(0,0,0,.28); border-color: rgba(214,196,150,.3); color: var(--parch);
+}
+.nfb .nf-report-msg.ok, .nfd .nf-report-msg.ok { color: #8fd08f; }
+.nfb .nf-report-msg.err, .nfd .nf-report-msg.err { color: #e79aa0; }
+
+/* ─── DRAFT PICKER — delete this block with the picker markup ──── */
+.nf-picker {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 12px calc(9px + env(safe-area-inset-bottom));
+  background: rgba(20,7,18,.94); border-top: 1px solid rgba(214,196,150,.28);
+  backdrop-filter: blur(6px);
+}
+.nf-picker-label {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .12em;
+  text-transform: uppercase; color: rgba(236,225,200,.5); width: 100%; text-align: center;
+}
+.nf-picker button {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .06em;
+  background: transparent; color: rgba(236,225,200,.8);
+  border: 1px solid rgba(214,196,150,.35); padding: 6px 13px; cursor: pointer;
+}
+.nf-picker button.on { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+body { padding-bottom: 92px; }   /* room for the picker; goes with it */
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="/assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="/assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="/all-characters">All Characters</a>
+      <a href="/scripts">Scripts</a>
+      <a href="/all-collections">Collections</a>
+      <a href="/script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="/all-characters">All Characters</a>
+    <a href="/scripts">Scripts</a>
+    <a href="/all-collections">Collections</a>
+    <a href="/script">Script Builder</a>
+  </nav>
+
+  <main class="home-panel nf-main">
+
+    <!-- ═══ A · Torn Page ═════════════════════════════════════════ -->
+    <section class="nf-design nfa" data-design="a" data-label="Torn Page">
+      <div class="nfa-wrap">
+        <div class="nfa-sheet">
+          <div class="nfa-num">404</div>
+          <h1 class="nfa-head">This page isn&rsquo;t in the grimoire</h1>
+          <p class="nfa-sub">
+            Nothing lives at <span class="nf-url" data-nf-url></span> — it may have been renamed,
+            it may still be a draft, or it may never have existed at all.
+            <span class="nf-url-note" data-nf-note hidden></span>
+          </p>
+          <div data-nf-suggest></div>
+          <div class="nf-links" data-nf-links></div>
+        </div>
+      </div>
+      <div data-nf-report></div>
+    </section>
+
+    <!-- ═══ B · Token ═════════════════════════════════════════════ -->
+    <section class="nf-design nfb" data-design="b" data-label="Token">
+      <div class="nfb-token">
+        <svg class="nfb-ring" viewBox="0 0 300 300" aria-hidden="true">
+          <defs>
+            <!-- Left → right through the BOTTOM of the circle, so the glyphs
+                 sit upright along the curve the way a real token's text does.
+                 Sweep-flag 0 is what puts the arc under the centre; flipping
+                 it to 1 turns the words upside down over the top. -->
+            <path id="nfb-arc" d="M 33,150 A 117,117 0 0 0 267,150" fill="none"></path>
+          </defs>
+          <text class="nfb-arc-text">
+            <textPath href="#nfb-arc" startOffset="50%" text-anchor="middle">NOT IN THE BAG</textPath>
+          </text>
+        </svg>
+        <div class="nfb-face">
+          <span class="nfb-num">404</span>
+          <span class="nfb-mark">page not found</span>
+        </div>
+      </div>
+      <h1 class="nfb-head">This character isn&rsquo;t in play</h1>
+      <p class="nfb-sub">
+        Nothing lives at <span class="nf-url" data-nf-url></span>. The page may have been renamed,
+        it may still be a draft, or the link may simply be wrong.
+        <span class="nf-url-note" data-nf-note hidden></span>
+      </p>
+      <div data-nf-suggest></div>
+      <div class="nf-links" data-nf-links></div>
+      <div class="nfb-rule"></div>
+      <div data-nf-report></div>
+    </section>
+
+    <!-- ═══ C · Almanac Entry ═════════════════════════════════════ -->
+    <section class="nf-design nfc" data-design="c" data-label="Almanac">
+      <div class="nfc-wrap">
+        <div class="char-parchment">
+          <div class="nfc-emblem" aria-hidden="true">?</div>
+          <h1 class="nfc-name">The Lost Page</h1>
+          <p class="nfc-team">Missing &middot; 404</p>
+          <p class="ability">&ldquo;You think you know this page. You do not.&rdquo;</p>
+          <p class="quote">The shelf is where it has always been. The book is not on it.</p>
+
+          <div class="nfc-sech-wrap"><h2 class="nfc-sech">What Happened</h2></div>
+          <ul>
+            <li>Nothing lives at <span class="nf-url" data-nf-url></span>.</li>
+            <li>Renamed pages keep their old address forever, so a link that lands here was probably never a page — check it for a typo.</li>
+            <li>Unpublished drafts look exactly like this to everyone except their author.</li>
+            <li>Deleted pages are gone; the admins can usually restore one from a backup if you ask.</li>
+          </ul>
+          <p class="nf-url-note" data-nf-note hidden style="text-align:center"></p>
+
+          <div data-nf-suggest></div>
+
+          <div class="nfc-sech-wrap"><h2 class="nfc-sech">Where To Next</h2></div>
+          <div class="nf-links" data-nf-links></div>
+        </div>
+        <div data-nf-report></div>
+      </div>
+    </section>
+
+    <!-- ═══ D · Night Phase ═══════════════════════════════════════ -->
+    <section class="nf-design nfd" data-design="d" data-label="Night">
+      <div class="nfd-moon" aria-hidden="true">☾</div>
+      <div class="nfd-num">404</div>
+      <p class="nfd-head">Page not found</p>
+      <div class="nfd-rule"></div>
+      <p class="nfd-sub">Nothing lives at <span class="nf-url" data-nf-url></span>.</p>
+      <p class="nfd-sub" style="opacity:.7">It may have been renamed, it may still be a draft, or the link may be wrong.</p>
+      <p class="nf-url-note" data-nf-note hidden></p>
+      <div data-nf-suggest></div>
+      <div class="nf-links" data-nf-links></div>
+      <div data-nf-report></div>
+    </section>
+  </main>
+
+  <!-- One report box, cloned into whichever design is showing. The fields are
+       the same in all four — only the CSS differs — so there is one form to
+       keep working, not four. -->
+  <template id="nf-report-tpl">
+    <div class="nf-report">
+      <h2 class="nf-report-head">Think this is a mistake?</h2>
+      <p class="nf-report-note">If a link on the wiki brought you here, or a page you know exists has gone missing, tell the admins and they&rsquo;ll look into it.</p>
+      <p class="nf-report-who" data-nf-who hidden></p>
+      <label class="nf-field">
+        <span>What were you looking for?</span>
+        <textarea data-nf-note-in maxlength="1000" placeholder="e.g. the Illusionist page — I clicked the link from the Odyssey collection"></textarea>
+      </label>
+      <label class="nf-field" data-nf-contact-field>
+        <span>Where can we reply? (optional)</span>
+        <input type="text" data-nf-contact maxlength="120" placeholder="Discord handle or email">
+      </label>
+      <button type="button" class="nf-report-send" data-nf-send>Send to the admins</button>
+      <div class="nf-report-msg" data-nf-msg></div>
+    </div>
+  </template>
+
+  <!-- ═══ DRAFT PICKER — remove this whole block, its CSS and the
+       `body { padding-bottom }` rule once a design is chosen. ═══ -->
+  <div class="nf-picker" id="nf-picker">
+    <span class="nf-picker-label">Draft designs — tap one to see it. This bar goes away once you&rsquo;ve picked.</span>
+  </div>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var DESIGNS = ['a', 'b', 'c', 'd'];
+  var DEFAULT_DESIGN = 'a';
+  var STORE = 'botc_404_design';   // goes with the picker
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  var TEAM_LABEL = {
+    townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+  };
+  var GOOD = { townsfolk: 1, outsider: 1 };
+
+  /* ── Which address failed ────────────────────────────────────────
+     This file is served AT the broken URL (no redirect), so location is
+     the address the reader actually asked for. The one exception is
+     somebody opening /404 on purpose — then there is nothing broken and
+     the page says so rather than pointing at itself. */
+  var previewing = /^\/404(\.html)?\/?$/.test(location.pathname);
+  // The design picker's own ?d= is stripped back out, so the address shown to
+  // the reader (and sent to the admins) is the one they actually followed.
+  // That strip goes when the picker does.
+  var query = (location.search || '')
+    .replace(/([?&])d=[a-d](&|$)/, '$1').replace(/[?&]$/, '');
+  var brokenPath = previewing ? '/c/a-page-that-isnt-here' : location.pathname + query;
+
+  /* ── "Did you mean…" ─────────────────────────────────────────────
+     Edit distance, not a bigram score: the ways a wiki address actually
+     goes wrong are a dropped letter, a swapped pair, a missing accent
+     and a half-remembered name, and letter-pair scoring reads those as
+     badly as it reads two unrelated words that both contain "er". The
+     feed is only fetched when the address looks like a page address —
+     a stray /favicon.ico must not pull the character list down.
+
+     The prefix rule earns its keep here specifically: half this wiki's
+     slugs carry a disambiguating suffix, so /c/sculptor should find
+     sculptor-fall-of-rome. */
+  function lev(a, b) {
+    var m = a.length, n = b.length, i, j, prev = [], cur = [];
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      }
+      for (j = 0; j <= n; j++) prev[j] = cur[j];
+    }
+    return prev[n];
+  }
+  function similar(wanted, cand) {
+    if (!wanted || !cand) return 0;
+    if (wanted === cand) return 1;
+    // Containment only counts once there is enough of a word to mean
+    // something — otherwise "/c/a" is a prefix of a third of the wiki.
+    if (wanted.length >= 3) {
+      if (cand.indexOf(wanted) === 0 || wanted.indexOf(cand) === 0) return 0.92;
+      if (cand.indexOf(wanted) >= 0 || wanted.indexOf(cand) >= 0) return 0.8;
+    }
+    var score = 1 - lev(wanted, cand) / Math.max(wanted.length, cand.length);
+    // A whole word in common is worth more than the letter maths says.
+    var w = wanted.split('-'), c = cand.split('-');
+    for (var i = 0; i < w.length; i++) {
+      if (w[i].length >= 4 && c.indexOf(w[i]) >= 0) { score = Math.max(score, 0.7); break; }
+    }
+    return score;
+  }
+  function slugify(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  // 0.62 is set where a real typo still lands and an unrelated name does
+  // not: "sculpter" finds the Sculptor, "snake-charmer" (an official
+  // character, not a homebrew one) correctly finds nothing rather than
+  // offering the nearest thing with the same letters in it.
+  function best(rows, wanted, keys) {
+    var scored = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i], top = 0;
+      for (var k = 0; k < keys.length; k++) {
+        var sc = similar(wanted, slugify(r[keys[k]]));
+        if (sc > top) top = sc;
+      }
+      if (top >= 0.62) scored.push({ row: r, score: top });
+    }
+    scored.sort(function (x, y) { return y.score - x.score; });
+    return scored.slice(0, 4).map(function (s) { return s.row; });
+  }
+
+  function sugHTML(href, thumb, name, meta, goodClass) {
+    return '<a class="nf-sug" href="' + esc(href) + '">' +
+      (thumb
+        ? '<img class="nf-sug-thumb" src="' + esc(thumb) + '" alt="" loading="lazy" decoding="async" ' +
+          'onerror="this.src=\'/assets/favicon.png\'">'
+        : '') +
+      '<span class="nf-sug-text">' +
+        '<span class="nf-sug-name">' + esc(name) + '</span>' +
+        '<span class="nf-sug-meta' + (goodClass ? ' good' : '') + '">' + esc(meta) + '</span>' +
+      '</span></a>';
+  }
+
+  // Resolves to an HTML string (possibly empty). Never rejects — a failed
+  // feed just means no suggestions, which is not worth an error message.
+  function findSuggestions() {
+    var m, feed, wanted, build;
+
+    if ((m = location.pathname.match(/^\/c\/([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/characters.json?fields=card';
+      build = function (rows) {
+        return best(rows, wanted, ['slug', 'name']).map(function (c) {
+          // Built from the slug, not the feed's `page` field — that one still
+          // carries the legacy "c/{slug}.html" form, which only works because
+          // the Worker 301s it. Link at the address the page actually lives at.
+          return sugHTML('/c/' + encodeURIComponent(c.slug),
+            c.art ? '/assets/' + c.art : '',
+            c.name,
+            (TEAM_LABEL[c.team] || c.team || '') + (c.creator ? ' · ' + c.creator : ''),
+            GOOD[c.team]);
+        }).join('');
+      };
+    } else if ((m = location.pathname.match(/^\/s\/([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/scripts.json';
+      build = function (rows) {
+        return best(rows, wanted, ['slug', 'name']).map(function (s) {
+          return sugHTML('/s/' + encodeURIComponent(s.slug),
+            s.logo || s.header ? '/assets/' + (s.logo || s.header) : '',
+            s.name,
+            'Script' + (s.author ? ' · ' + s.author : ''), false);
+        }).join('');
+      };
+    } else if ((m = location.pathname.match(/^\/collection\/([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/collections.json';
+      build = function (rows) {
+        return best(rows, wanted, ['id', 'slug', 'name', 'displayName']).map(function (c) {
+          return sugHTML('/collection/' + encodeURIComponent(c.id || c.slug),
+            c.logo || c.header ? '/assets/' + (c.logo || c.header) : '',
+            c.displayName || c.name,
+            'Collection' + (c.author ? ' · ' + c.author : ''), false);
+        }).join('');
+      };
+    } else {
+      // Not a content address — match against the site's own pages instead,
+      // which costs no fetch at all.
+      var PAGES = [
+        ['/all-characters', 'All Characters', 'Browse'],
+        ['/all-collections', 'Collections', 'Browse'],
+        ['/scripts', 'Scripts', 'Browse'],
+        ['/tags', 'Tags', 'Browse'],
+        ['/creators', 'Creators', 'Browse'],
+        ['/script', 'Script Builder', 'Tool'],
+        ['/tokens', 'Token Tool', 'Tool'],
+        ['/grimforge', 'Grimoire Forge', 'Tool'],
+        ['/iconforge', 'Icon Forge', 'Tool'],
+        ['/tools', 'Tools', 'Tool'],
+        ['/create', 'Create a Character', 'Tool'],
+        ['/news', 'News', 'Wiki'],
+        ['/account', 'My Account', 'Account'],
+        ['/messages', 'Messages', 'Account'],
+        ['/login', 'Log In', 'Account']
+      ];
+      wanted = slugify(decodeURIComponent(location.pathname));
+      if (!wanted) return Promise.resolve('');
+      var hits = PAGES.filter(function (p) {
+        return similar(wanted, slugify(p[0])) >= 0.62;
+      }).slice(0, 4);
+      return Promise.resolve(hits.map(function (p) {
+        return sugHTML(p[0], '', p[1], p[2], false);
+      }).join(''));
+    }
+
+    return fetch(feed)
+      .then(function (r) { return r.json(); })
+      .then(function (rows) { return Array.isArray(rows) ? build(rows) : ''; })
+      .catch(function () { return ''; });
+  }
+
+  /* ── Mounting one design ─────────────────────────────────────── */
+  var LINKS = [
+    ['/', 'Home'],
+    ['/all-characters', 'All Characters'],
+    ['/all-collections', 'Collections'],
+    ['/scripts', 'Scripts'],
+    ['/tools', 'Tools'],
+    ['/random', 'Random Character']
+  ];
+
+  var me = null;   // filled in by /api/me, used to skip the "reply to" field
+
+  function mountReport(section) {
+    var slot = section.querySelector('[data-nf-report]');
+    if (!slot || slot.firstChild) return;
+    slot.appendChild(document.getElementById('nf-report-tpl').content.cloneNode(true));
+
+    var noteIn = slot.querySelector('[data-nf-note-in]');
+    var contactIn = slot.querySelector('[data-nf-contact]');
+    var contactField = slot.querySelector('[data-nf-contact-field]');
+    var sendBtn = slot.querySelector('[data-nf-send]');
+    var msg = slot.querySelector('[data-nf-msg]');
+    var who = slot.querySelector('[data-nf-who]');
+
+    // Logged in? Then the admins can already answer through the wiki's own
+    // messages, and asking for a handle again is noise.
+    if (me && me.loggedIn) {
+      contactField.hidden = true;
+      who.hidden = false;
+      who.textContent = 'Sending as @' + me.username + ' — the admins can reply straight to your messages.';
+    }
+
+    sendBtn.addEventListener('click', function () {
+      var note = noteIn.value.trim();
+      sendBtn.disabled = true;
+      msg.className = 'nf-report-msg';
+      msg.textContent = 'Sending…';
+      fetch('/api/report-broken-link', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: brokenPath,
+          note: note,
+          contact: contactField.hidden ? '' : contactIn.value.trim(),
+          from: document.referrer || ''
+        })
+      })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (res.ok && res.body.ok) {
+            msg.className = 'nf-report-msg ok';
+            msg.textContent = res.body.message || 'Thanks — the admins have it.';
+            noteIn.disabled = true;
+            contactIn.disabled = true;
+            sendBtn.textContent = 'Sent';
+          } else {
+            sendBtn.disabled = false;
+            msg.className = 'nf-report-msg err';
+            msg.textContent = (res.body && res.body.error) || 'Could not send that — try again in a moment.';
+          }
+        })
+        .catch(function () {
+          sendBtn.disabled = false;
+          msg.className = 'nf-report-msg err';
+          msg.textContent = 'Could not reach the wiki — check your connection and try again.';
+        });
+    });
+  }
+
+  var suggestHTML = null;   // fetched once, reused when the design is switched
+
+  function mount(section) {
+    // the broken address
+    var urlEls = section.querySelectorAll('[data-nf-url]');
+    for (var i = 0; i < urlEls.length; i++) urlEls[i].textContent = brokenPath;
+    if (previewing) {
+      var notes = section.querySelectorAll('[data-nf-note]');
+      for (var n = 0; n < notes.length; n++) {
+        notes[n].hidden = false;
+        notes[n].textContent = 'That address is an example — you opened this page directly, so nothing is actually broken.';
+      }
+    }
+
+    // quick links
+    var links = section.querySelector('[data-nf-links]');
+    if (links && !links.firstChild) {
+      links.innerHTML = LINKS.map(function (l) {
+        return '<a href="' + esc(l[0]) + '">' + esc(l[1]) + '</a>';
+      }).join('');
+    }
+
+    mountReport(section);
+
+    // suggestions
+    var slot = section.querySelector('[data-nf-suggest]');
+    if (!slot) return;
+    function draw(html) {
+      slot.innerHTML = html
+        ? '<div class="nf-suggest"><p class="nf-suggest-head">Did you mean…</p>' + html + '</div>'
+        : '';
+    }
+    if (suggestHTML !== null) { draw(suggestHTML); return; }
+    if (previewing) { suggestHTML = ''; return; }
+    findSuggestions().then(function (html) {
+      suggestHTML = html;
+      draw(html);
+    });
+  }
+
+  /* ── Design switching (draft phase only) ─────────────────────── */
+  function show(key) {
+    var sections = document.querySelectorAll('.nf-design');
+    for (var i = 0; i < sections.length; i++) {
+      var on = sections[i].getAttribute('data-design') === key;
+      sections[i].classList.toggle('on', on);
+      if (on) mount(sections[i]);
+    }
+    var btns = document.querySelectorAll('#nf-picker button');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].classList.toggle('on', btns[b].getAttribute('data-key') === key);
+    }
+    try { localStorage.setItem(STORE, key); } catch (e) { /* private mode */ }
+  }
+
+  var chosen = DEFAULT_DESIGN;
+  try {
+    var stored = localStorage.getItem(STORE);
+    if (DESIGNS.indexOf(stored) >= 0) chosen = stored;
+  } catch (e) { /* private mode */ }
+  // ?d= wins, so a design can be linked to directly. It is read off the
+  // BROKEN url, which is why it is not the primary source.
+  var qd = (location.search.match(/[?&]d=([a-d])\b/) || [])[1];
+  if (qd) chosen = qd;
+
+  var picker = document.getElementById('nf-picker');
+  var sects = document.querySelectorAll('.nf-design');
+  for (var s = 0; s < sects.length; s++) {
+    (function (sec) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-key', sec.getAttribute('data-design'));
+      btn.textContent = sec.getAttribute('data-design').toUpperCase() + ' · ' + sec.getAttribute('data-label');
+      btn.addEventListener('click', function () { show(sec.getAttribute('data-design')); });
+      picker.appendChild(btn);
+    })(sects[s]);
+  }
+
+  // Draw immediately, then redraw once /api/me answers — the page must not
+  // wait on the network to show the reader why they are here.
+  show(chosen);
+  fetch('/api/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      me = d;
+      if (!d || !d.loggedIn) return;
+      var boxes = document.querySelectorAll('[data-nf-report]');
+      for (var i = 0; i < boxes.length; i++) {
+        var field = boxes[i].querySelector('[data-nf-contact-field]');
+        var who = boxes[i].querySelector('[data-nf-who]');
+        if (!field || !who) continue;
+        field.hidden = true;
+        who.hidden = false;
+        who.textContent = 'Sending as @' + d.username + ' — the admins can reply straight to your messages.';
+      }
+    })
+    .catch(function () { /* logged out, or offline — the form still works */ });
+})();
+</script>
+<script src="/assets/site.js"></script>
+</body>
+</html>

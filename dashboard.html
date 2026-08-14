@@ -406,7 +406,7 @@
       <section class="panel">
         <h3>Inbox <span class="count-pill" id="msg-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Bug reports, suggestions, and messages sent from the “Contact the Admins” form on account pages.
+          Bug reports, suggestions, and messages sent from the “Contact the Admins” form on account pages, plus broken-link reports from the 404 page (those can come from people with no account, so they may have nobody to reply to).
         </p>
         <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
           <input type="checkbox" id="msg-show-all"> show resolved too
@@ -1137,15 +1137,17 @@
         box.innerHTML = d.messages.map(function(m){
           var resolved = m.status === 'resolved';
           // The reply is delivered as a DM, so it can only go to a message that
-          // has an account behind it. Every contact message does today (the
-          // form needs a login), but an old row might not.
+          // has an account behind it. The account page's contact form needs a
+          // login, but the 404 page's broken-link box deliberately does not —
+          // those rows have no username, and the reader was asked for a handle
+          // or an email in the body instead.
           var canReply = !!m.username;
           return '<div class="adm-row" data-msg-id="' + m.id + '">' +
             '<span class="tag tag-type">' + esc(MSG_LABEL[m.category] || m.category || 'Message') + '</span>' +
             '<span class="grow">' +
               (m.username
                 ? '<a href="/u/' + encodeURIComponent(m.username) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(m.username) + '</a>'
-                : 'unknown user') +
+                : 'not signed in') +
               (resolved ? ' <span class="tag tag-create">resolved</span>' : '') +
               (m.replied_at ? ' <span class="tag tag-create">replied</span>' : '') + '</span>' +
             '<span class="dim" title="' + esc(absTime(m.ts)) + '">' + esc(relTime(m.ts)) + '</span>' +

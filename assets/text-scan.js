@@ -51,7 +51,10 @@
     '/creators', '/drafts', '/account', '/dashboard', '/login',
     '/reset-password', '/messages', '/news', '/profile', '/tools', '/tokens',
     '/grimforge', '/rules', '/steven-approved-order', '/script-view',
-    '/normalize-icons'
+    '/normalize-icons',
+    // Nothing links to the 404 page — it is only ever reached by asking for
+    // something that isn't there — so the crawl would never find it.
+    '/404'
   ];
 
   /* The text editor's own controls are not wiki text, and listing them buries
