@@ -468,6 +468,19 @@
       '</div>';
   }
 
+  /* ── owner's edit bar ──
+     The pencil in the top bar is easy to miss, and it was the only way in:
+     reaching a collection's editor otherwise meant the account page and a
+     long scroll. The Worker decides who gets this (it already knows whether
+     the reader may edit the row) and passes the href in — an empty one
+     renders nothing, so it is never shown to a reader who would only be
+     refused by the API. */
+  function ownerBar(editHref, label) {
+    if (!editHref) return '';
+    return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
+      esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
+  }
+
   /* ── shared page body ── */
   function renderPageBody(cfg) {
     /* cfg: {root, name, header, logo, tagline, author, version, difficulty,
@@ -487,6 +500,7 @@
     if (cfg.version) metaParts.push('v' + esc(String(cfg.version).replace(/^v/i, '')));
     if (cfg.difficulty && DIFFICULTY_LABEL[cfg.difficulty]) metaParts.push(DIFFICULTY_LABEL[cfg.difficulty]);
     top += '<p class="script-meta-line">' + metaParts.join(' · ') + '</p>';
+    top += ownerBar(cfg.editHref, 'Edit this script');
 
     var main = '';
     if (cfg.synopsis) main += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
@@ -538,6 +552,7 @@
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
+    top += ownerBar(cfg.editHref, 'Edit this collection');
 
     // Information + JSON/tokens boxes — moved to the top. The author credit
     // lives prominently inside the Information box (linked to their page).
@@ -599,7 +614,7 @@
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Script JSON',
+      jsonLabel: 'Script JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: starlightRow(sc)
     });
@@ -626,7 +641,7 @@
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Collection JSON',
+      jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: starlightRow(coll)
     });

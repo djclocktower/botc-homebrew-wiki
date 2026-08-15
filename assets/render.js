@@ -43,6 +43,29 @@
       (typeof window !== 'undefined' ? window.classBadgeHTML : null);
     return fn ? fn('starlight', { from: d.starlightFrom }) : '';
   }
+  /* "Appears in" — the creator's own free-text line if there is one, and
+     otherwise the collections that list this character by hand (the Worker
+     works those out on read and passes them as `appearsInFrom`; see
+     applyCollectionAppearsIn in worker.js). The typed line is linked in the
+     browser by charpage.js, which has to look the name up in collections.json;
+     the derived one arrives knowing its collection's id, so it is a link
+     already. */
+  function appearsInRow(d, root) {
+    var own = (d.appearsIn || '').trim();
+    if (own) {
+      return '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' +
+        esc(own) + '">' + esc(own) + '</dd>';
+    }
+    var from = Array.isArray(d.appearsInFrom) ? d.appearsInFrom : [];
+    var links = from.map(function (c) {
+      if (!c || !c.name) return '';
+      if (!c.id) return esc(c.name);
+      return '<a class="appears-in-link" href="' + root + 'collection/' +
+        encodeURIComponent(c.id) + '">' + esc(c.name) + '</a>';
+    }).filter(Boolean).join('<span class="tag-sep">, </span>');
+    if (!links) return '';
+    return '<dt>Appears in:</dt><dd class="info-appears-in">' + links + '</dd>';
+  }
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -326,7 +349,7 @@
               (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
-      (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' + esc(d.appearsIn.trim()) + '">' + esc(d.appearsIn) + '</dd>' : '') +
+      appearsInRow(d, root) +
       tagsRow +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +

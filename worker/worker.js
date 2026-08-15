@@ -1720,6 +1720,63 @@ async function applyCollectionStarlight(env, chars) {
   return chars;
 }
 
+/* ---- "Appears in", derived from collection membership ----
+   A collection's membership is either matched on the character's own
+   `appearsIn` text or listed by hand in `include[]`. The hand-listed half used
+   to leave the character page saying nothing about the collection it is in,
+   and the creator had to type the name into every character to fix it.
+   This fills that gap on READ: a character with no `appearsIn` of its own
+   picks up the collections that list it, in a separate `appearsInFrom` field.
+
+   Separate on purpose. Writing it into `appearsIn` would feed the match rule
+   that resolves membership in the first place — a collection whose match term
+   happened to equal another collection's name would start swallowing that
+   collection's characters. Nothing is stored either, so removing a character
+   from a collection takes the line off its page, and a character that later
+   gets its own `appearsIn` keeps what its creator typed. */
+let _inclCollCache = null;
+async function includeCollections(env) {
+  const version = await contentVersion(env);
+  if (_inclCollCache && _inclCollCache.version === version) return _inclCollCache.rows;
+  let rows = [];
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT data FROM collections WHERE status='published'"
+    ).all();
+    rows = (results || []).map(parseData)
+      .filter(d => d && Array.isArray(d.include) && d.include.length)
+      .map(d => ({
+        name: d.displayName || d.id || d.slug || '',
+        id: d.id || d.slug || '',
+        include: d.include
+      }))
+      .filter(c => c.name && c.id);
+  } catch { rows = []; }
+  _inclCollCache = { version, rows };
+  return rows;
+}
+
+const APPEARS_IN_MAX = 3;   // a character in more collections than this lists the first few
+async function applyCollectionAppearsIn(env, chars) {
+  const colls = await includeCollections(env);
+  if (!colls.length) return chars;
+  const bySlug = new Map();
+  for (const coll of colls) {
+    for (const slug of coll.include) {
+      if (typeof slug !== 'string') continue;
+      const list = bySlug.get(slug);
+      if (!list) { bySlug.set(slug, [coll]); continue; }
+      if (list.length < APPEARS_IN_MAX && !list.some(c => c.id === coll.id)) list.push(coll);
+    }
+  }
+  for (const c of chars) {
+    if (!c || (c.appearsIn && String(c.appearsIn).trim())) continue;
+    const hit = bySlug.get(c.slug);
+    if (hit) c.appearsInFrom = hit.map(x => ({ name: x.name, id: x.id }));
+  }
+  return chars;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
@@ -1918,8 +1975,12 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
-  // Characters pick up Starlight from any Starlight collection they belong to.
-  if (table === 'characters') await applyCollectionStarlight(env, out);
+  // Characters pick up Starlight from any Starlight collection they belong to,
+  // and an "Appears in" from any collection that lists them by hand.
+  if (table === 'characters') {
+    await applyCollectionStarlight(env, out);
+    await applyCollectionAppearsIn(env, out);
+  }
   return out;
 }
 
@@ -2370,9 +2431,18 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-page?parentType=' + encodeURIComponent(type) + '&parentSlug=' + encodeURIComponent(pageKey)
     : '';
 
+  const editHref = isScript
+    ? '../publish-script?s=' + encodeURIComponent(d.slug)
+    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
+  // The page's own Edit button, for whoever may actually use it. The pencil in
+  // the top bar shows unconditionally (the API is the enforcer); this one is
+  // gated, because it sits in the page where a reader would take it as an
+  // invitation. SSR responses are no-store, so a per-reader button is safe.
+  const ownerEditHref = mayEditParent ? editHref : '';
+
   const body = isScript
-    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref })
-    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref });
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref });
 
   const nChars = isScript
     ? (d.characters || []).length
@@ -2382,9 +2452,6 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
      ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
   const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
-  const editHref = isScript
-    ? '../publish-script?s=' + encodeURIComponent(d.slug)
-    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
     : '';
@@ -2901,6 +2968,9 @@ export default {
           // Same Starlight inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          // Same for the "Appears in" row: a character listed by hand in a
+          // collection says so here without its creator typing the name in.
+          await applyCollectionAppearsIn(env, [d]);
           // "This page is Partial" is shown to the people who can act on it
           // and to nobody else (see partialNoticeHTML). It asks isIncomplete,
           // not isPartial: Starlight lifts a page out of the public Partial
@@ -5307,6 +5377,10 @@ export default {
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
+        // "Appears in" derived from collection membership is worked out on
+        // every read and belongs to no row. A client echoing back a page it
+        // read out of characters.json must not freeze it into the record.
+        delete c.appearsInFrom;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.

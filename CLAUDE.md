@@ -35,7 +35,13 @@ Key dynamic behavior:
   The `.html` form 301-redirects to the clean URL. Legacy `/script-view?s=`
   301-redirects to `/s/{slug}`. **Collection URLs use the kebab `id`**, not the
   PK `slug` (legacy rows have display-string slugs like `"The Academy"`);
-  `findCollectionRow()` resolves either.
+  `findCollectionRow()` resolves either. Script and collection pages carry an
+  **Edit button in the page itself** (`ownerBar()` in render-page.js) as well
+  as the pencil in the top bar — but only for a reader who may actually edit
+  it: the Worker passes `editHref` in when `canEditRow()` says yes and an
+  empty one otherwise, which is safe because SSR responses are `no-store`.
+  The pencil stays unconditional (the API is the enforcer); this one sits in
+  the page, where a reader would take it as an invitation.
 - `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
   same `pageShell()`); `/news` itself is the static `news.html` index. News
   articles are admin-written and live in their own `news` table.
@@ -161,6 +167,13 @@ assets/
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
                        paths — nothing a writer types can become raw HTML.
+                       safeHref() takes http(s), mailto, site-relative AND a
+                       bare domain ('example.com' -> https), because writers
+                       type those constantly and used to get a link to a wiki
+                       page that does not exist. The domain test is narrow on
+                       purpose — dotted labels ending in a letters-only suffix
+                       that is not a file extension — so 'scripts', 'c/slug'
+                       and a stray 'page.html' all stay site-relative.
                        Browser + Worker. Used by /p/, news, custom boxes and
                        (through render-news) the announcement banner.
   render-news.js       News article shape (head, hero, cards) around
@@ -169,6 +182,24 @@ assets/
                        In the Worker it gets the engine through init().
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
+  art-normalize.js     The "Resize icon" button: trims the transparent margin
+                       to find the figure and scales it to 70% of the 591×591
+                       frame. artTrimBox() (the trim on its own) is exported
+                       for art-adjust.js. Browser only — canvas.
+  art-adjust.js        "Adjust by hand": the same frame with the art in your
+                       hands. Drag to move (pointer events, so mouse and touch
+                       are one path), a slider or a pinch for how much of the
+                       token the figure fills, a rotate slider, Start over.
+                       Opens on the automatic answer, so every change is a
+                       nudge from what Resize would have given you. Both
+                       editors pass it the file AS PICKED, not the 600px
+                       working copy, so zooming in stays sharp and a second
+                       visit re-places the original instead of resizing an
+                       already-resized icon. ArtAdjust.open(src) resolves with
+                       a 591×591 PNG or null (cancelled), and rejects only
+                       when the canvas can't be read back — art hosted on
+                       another site taints it, and the editors say so.
+                       Styles are .aa-* in styles.css; this file is DOM only.
   redesign-create.css/.js  The shared layout of the two character editors
                        (create.html + edit.html). The JS groups the flat field
                        run into Basics / The Page / Tags sections, folds credits,
@@ -340,6 +371,10 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, reset-password.html
+                       account.html shows the newest 10 of Your Recent Edits
+                       behind a "Show all N edits" toggle — a busy month used
+                       to put fifty lines between the top of the page and the
+                       settings below it.
 text-editor.html       /text-editor — admin-only. Every string the SITE writes
                        about itself, in one searchable list: filter to the em
                        dashes / curly quotes / any character you type, sort by
@@ -439,6 +474,20 @@ as a SEPARATE list from membership on purpose: a slug in `order[]` that is no
 longer a member just never matches, and a member missing from it falls to the
 end of its team alphabetically, so neither list has to be kept in step with the
 other. Team grouping always wins over it (the page draws one section per team).
+
+A character listed in a collection's `include[]` gets that collection as its
+**"Appears in"** without anyone typing it — `applyCollectionAppearsIn()` in
+worker.js fills `appearsInFrom` (up to 3, `{name, id}`) on read, for characters
+whose own `appearsIn` is blank, in `buildPublicJSON` and on the SSR `/c/` page.
+It is a SEPARATE field on purpose: writing it into `appearsIn` would feed the
+`match[]` rule that resolves membership, so a collection whose match term
+happened to equal another collection's name would start swallowing that
+collection's characters. Nothing is stored (the save handler deletes any
+`appearsInFrom` a client sends back), so removing a character from a collection
+takes the line off its page. `render.js`'s `appearsInRow()` prints the typed
+line or the derived links; charpage.js's `linkAppearsIn()` leaves a row that is
+already linked alone.
+
 Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a

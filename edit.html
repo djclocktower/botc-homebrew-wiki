@@ -219,8 +219,9 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in</label>
+          <label for="appears">Appears in <span class="hint">(optional &mdash; the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
+          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
       </div>
       <div class="fld">
@@ -254,7 +255,8 @@
         <img id="artthumb" class="artthumb" alt="current art">
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Resize trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons. Adjust opens the same frame with the art in your hands &mdash; drag it, and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
@@ -267,6 +269,7 @@
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -365,6 +368,7 @@
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script>
@@ -391,6 +395,12 @@
     var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
+    // The picked file as it arrived, before the 600px working copy — what the
+    // hand adjuster opens on, so zooming in stays sharp and a second pass
+    // re-places the original rather than resizing an already-resized icon.
+    // Null when the art on screen came from the character's stored icon.
+    var artOriginal   = null;
+    var artAltOriginal = null;
     var artAltDataURL = null;   // newly uploaded alternate art (data URL)
     var artAltRemoved = false;  // user removed the existing alternate art
 
@@ -571,6 +581,7 @@
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
+        artOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
@@ -584,6 +595,7 @@
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
+        artAltOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artAltDataURL = url; artAltRemoved = false;
           var th=$('artAltThumb'); th.src=url; th.style.display='block';
@@ -594,7 +606,7 @@
       reader.readAsDataURL(file);
     });
     $('artAltClear').addEventListener('click', function(){
-      artAltDataURL = null; artAltRemoved = true; $('artAlt').value='';
+      artAltDataURL = null; artAltOriginal = null; artAltRemoved = true; $('artAlt').value='';
       $('artAltThumb').style.display='none';
       $('artAltStdWrap').style.display='none';
       $('artAltClear').style.display='none';
@@ -622,6 +634,35 @@
     });
     $('artAltStd').addEventListener('click', function(){
       standardizeArt('artAltThumb', 'artAltStd', function(out){ artAltDataURL = out; artAltRemoved = false; });
+    });
+
+    // ── the same frame, placed by hand (assets/art-adjust.js) ──────
+    // Reads the freshly picked file when there is one and the thumbnail
+    // otherwise, so it works on the icon the character already has (served
+    // same-origin, so the canvas can be read back).
+    function adjustArt(getSrc, thumbId, btnId, title, onDone) {
+      var src = getSrc();
+      if (!src || !window.ArtAdjust) return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true;
+      window.ArtAdjust.open(src, { title: title }).then(function(out){
+        btn.disabled = false;
+        if (!out) return;               // cancelled — leave the art alone
+        $(thumbId).src = out; onDone(out); update();
+        btn.textContent = '✓ Adjusted';
+        setTimeout(function(){ btn.textContent = label; }, 1400);
+      }).catch(function(err){
+        btn.disabled = false;
+        alert((err && err.message) || 'That image could not be adjusted here.');
+      });
+    }
+    $('artAdjust').addEventListener('click', function(){
+      adjustArt(function(){ return artOriginal || $('artthumb').src; }, 'artthumb', 'artAdjust',
+        'Adjust the icon', function(out){ artDataURL = out; artChanged = true; });
+    });
+    $('artAltAdjust').addEventListener('click', function(){
+      adjustArt(function(){ return artAltOriginal || $('artAltThumb').src; }, 'artAltThumb', 'artAltAdjust',
+        'Adjust the alternate icon', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
     function normalizeJinx(j){

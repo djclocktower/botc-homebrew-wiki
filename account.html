@@ -136,6 +136,17 @@
   .feed .act { font-weight: 700; color: var(--maroon); }
   .feed .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
   .feed a { color: var(--maroon); }
+  /* Only the first FEED_SHOWN entries are on screen until "Show all" is
+     pressed — a busy month used to put 50 lines between the top of the page
+     and the account settings below. */
+  .feed li.feed-hidden { display: none; }
+  .feed-toggle {
+    display: none; margin-top: 10px;
+    font-size: .82rem; font-weight: 700; color: var(--maroon);
+    background: rgba(255,253,248,.5); border: 1px solid rgba(122,45,47,.4);
+    border-radius: 5px; padding: 6px 12px; cursor: pointer;
+  }
+  .feed-toggle:hover { background: rgba(255,253,248,.95); }
 
   /* ---- settings forms ---- */
   .set-field { margin-bottom: 14px; }
@@ -292,6 +303,7 @@
       <div class="panel">
         <h3>Your Recent Edits <span class="count-pill" id="n-edits">0</span></h3>
         <ul class="feed" id="edit-feed"></ul>
+        <button type="button" class="feed-toggle" id="edits-toggle" aria-expanded="false"></button>
         <div class="empty-note" id="edits-empty" style="display:none">No activity yet.</div>
       </div>
 
@@ -642,6 +654,27 @@
           '<span class="when">' + fmtDate(e.ts) + '</span></li>';
       }).join('');
       $('edits-empty').style.display = edits.length ? 'none' : 'block';
+      collapseFeed();
+    }
+
+    // Recent edits: show the newest FEED_SHOWN and hide the rest behind a
+    // toggle, so the settings below stay a short scroll away however much you
+    // have been editing. Re-run on every load(), and it re-collapses — the
+    // list is rebuilt from scratch each time.
+    var FEED_SHOWN = 10;
+    function collapseFeed() {
+      var items = Array.prototype.slice.call($('edit-feed').children);
+      var btn = $('edits-toggle');
+      if (items.length <= FEED_SHOWN) { btn.style.display = 'none'; return; }
+      setFeedOpen(false);
+      btn.style.display = 'inline-block';
+      function setFeedOpen(open) {
+        items.forEach(function (li, i) { li.classList.toggle('feed-hidden', !open && i >= FEED_SHOWN); });
+        btn.textContent = open ? 'Show fewer' : 'Show all ' + items.length + ' edits';
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.setAttribute('data-open', open ? '1' : '0');
+      }
+      btn.onclick = function () { setFeedOpen(btn.getAttribute('data-open') !== '1'); };
     }
 
     // list action buttons (publish / unpublish / delete / edit)

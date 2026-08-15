@@ -232,8 +232,9 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in</label>
+          <label for="appears">Appears in <span class="hint">(optional &mdash; the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
+          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
       </div>
       <div class="fld">
@@ -267,7 +268,8 @@
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Resize trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons. Adjust opens the same frame with the art in your hands &mdash; drag it, and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
@@ -280,6 +282,7 @@
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -378,6 +381,7 @@
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script>
@@ -401,6 +405,13 @@
     var artDataURL   = null;
     var artAltDataURL = null;
     var importedImage = null;
+    // The file exactly as it was picked, before the 600px working copy. The
+    // adjuster starts from this so zooming in stays sharp, and so a second
+    // pass at the framing is a fresh placement of the original rather than a
+    // resize of a resize. Null once the art came from an imported JSON's
+    // remote URL — there is no local file then.
+    var artOriginal = null;
+    var artAltOriginal = null;
 
     // ── jinx rows ──────────────────────────────────────────────────
     function addJinx(name, align, text) {
@@ -605,6 +616,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artDataURL = url; importedImage = null;
           var th = $('artthumb'); th.src = url; th.style.display = 'block';
@@ -618,6 +630,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artAltOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artAltDataURL = url;
           var th = $('artAltThumb'); th.src = url; th.style.display = 'block';
@@ -627,7 +640,7 @@
       reader.readAsDataURL(file);
     });
     $('artAltClear').addEventListener('click', function () {
-      artAltDataURL = null; $('artAlt').value = '';
+      artAltDataURL = null; artAltOriginal = null; $('artAlt').value = '';
       $('artAltThumb').style.display = 'none';
       $('artAltStdWrap').style.display = 'none';
       $('artAltClear').style.display = 'none'; update();
@@ -654,6 +667,35 @@
     $('artAltStd').addEventListener('click', function () {
       standardizeInto(function () { return artAltDataURL; },
         function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltStd');
+    });
+
+    // ── the same frame, placed by hand (assets/art-adjust.js) ──────
+    // Opens on the file as it was picked, not on the working copy, so zooming
+    // in is sharp and a second visit re-places the original instead of
+    // resizing an already-resized icon.
+    function adjustInto(getSrc, setUrl, thumbId, btnId, title) {
+      var src = getSrc();
+      if (!src || !window.ArtAdjust) return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true;
+      window.ArtAdjust.open(src, { title: title }).then(function (out) {
+        btn.disabled = false;
+        if (!out) return;                 // cancelled — leave the art alone
+        setUrl(out); $(thumbId).src = out; update();
+        btn.textContent = '✓ Adjusted';
+        setTimeout(function () { btn.textContent = label; }, 1400);
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert((err && err.message) || 'That image could not be adjusted here.');
+      });
+    }
+    $('artAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artOriginal || artDataURL || $('artthumb').src; },
+        function (v) { artDataURL = v; }, 'artthumb', 'artAdjust', 'Adjust the icon');
+    });
+    $('artAltAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artAltOriginal || artAltDataURL || $('artAltThumb').src; },
+        function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltAdjust', 'Adjust the alternate icon');
     });
 
     // ── R2 image upload via the site Worker ────────────────────────
@@ -703,6 +745,9 @@
       var msg = $('importmsg');
       if (imgUrl) {
         importedImage = imgUrl;
+        // An imported icon is somebody else's URL, not a file on this machine:
+        // the adjuster has to work from the copy loaded into the canvas.
+        artOriginal = null;
         msg.className = 'work'; msg.textContent = 'Imported. Trying to load the icon from ' + imgUrl + ' …';
         loadImageToCanvas(imgUrl, true).then(function (url) {
           artDataURL = url; var th = $('artthumb'); th.src = url; th.style.display = 'block';
