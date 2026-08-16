@@ -219,7 +219,19 @@ assets/
   night-order.json     Official night-order positions, only characters that wake.
                        Generated from GrayPockets/Released-as-Homebrew (the
                        `source` field inside the file says where); roles.json has
-                       no night order, which is why this is separate.
+                       no night order, which is why this is separate. Read by
+                       night-order-picker.js AND official-roles.js.
+  official-roles.js    roles.json + night-order.json -> wiki character objects
+                       for the official roster ('off-{id}' slugs). The one
+                       conversion, shared by the Worker (SSR /s/ pages),
+                       script.html and publish-script.html — it used to be
+                       copied per caller, and every copy left firstNight and
+                       otherNight at 0 because roles.json has no positions, so
+                       official characters were silently absent from a script
+                       page's Night Order box. Also cleans `:reminder:` (a
+                       token-placement marker with nothing to place in a list)
+                       out of the official night reminders. Browser + Worker;
+                       the two JSON files are handed in, never fetched here.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -314,7 +326,9 @@ publish-script.html    Script publishing page: name/author/tagline/version/
                        already renders in. Moves are within a team only (the
                        page draws one section per team) and roster slugs this
                        wiki has no character for are carried along untouched,
-                       never dropped. Publish + Save as
+                       never dropped. A Night Order panel arranges the two
+                       night lists the same way (see "Night order" below).
+                       Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
@@ -498,6 +512,33 @@ background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Night order (script pages)
+
+Two questions, answered in two different places, and keeping them apart is the
+whole design:
+
+- **Who acts** belongs to the character. A character is on a night list because
+  its own `firstNight` / `otherNight` is above zero — nothing on the script can
+  add or remove anyone. Official characters get their positions from
+  `assets/night-order.json` through `official-roles.js`; without that merge
+  they carry 0, which is the wiki's way of saying "does not wake", and they
+  were missing from every script page's Night Order box.
+- **What order** belongs to the script's owner, as
+  `nightOrder: {first: [slug], other: [slug]}` in the script's `data` JSON
+  (`sanitizeNightOrder()` in worker.js caps it at 200 slugs a list and drops
+  the key entirely when both are empty).
+
+`PageRender.nightItems(entries, nightOrder)` in render-page.js is the single
+source of truth: the SSR page renders through it and publish-script.html's
+Night Order panel arranges through it, so the owner's list IS the reader's
+list. A character the arrangement has never seen — added to the roster after
+it was last saved — is **not** dumped at the end: `sortNightItems()` slots it
+in after the last arranged character that acts before it does, by night
+number. The editor re-gathers the full order on every save, but only for a
+script somebody has actually arranged; an untouched script stores no key and
+keeps following the characters' own numbers, so a creator fixing a character's
+wake position still moves it everywhere that never overrode it.
 
 ## Renaming a character (the old link keeps working)
 

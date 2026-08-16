@@ -198,6 +198,11 @@ Render.init(WikiRender);
 // them — it is excluded from the asset upload. Put new server-rendered
 // wording there, not inline here, or the owner cannot edit it.
 import SYS from '../assets/system-text.js';
+// The official roster, turned into wiki character objects (night positions
+// merged in from night-order.json). Shared with script.html and
+// publish-script.html so a script page, the builder and the night-order
+// arranger all see the same official characters.
+import OfficialRoles from '../assets/official-roles.js';
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
@@ -1792,6 +1797,22 @@ const PAGE_FIELD_CAPS = {
   version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
 };
 const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
+
+// A script's hand-arranged night order: {first: [slug], other: [slug]}, each
+// list a set of roster slugs. Returns null when there is nothing worth
+// storing, so an unarranged script keeps no key at all and sorts by the
+// characters' own night numbers, exactly as it always did.
+function sanitizeNightOrder(o) {
+  if (!o || typeof o !== 'object') return null;
+  const list = v => Array.isArray(v)
+    ? [...new Set(v.slice(0, 200).map(x => String(x).slice(0, 80)).filter(Boolean))]
+    : [];
+  const out = { first: list(o.first), other: list(o.other) };
+  if (!out.first.length) delete out.first;
+  if (!out.other.length) delete out.other;
+  return (out.first || out.other) ? out : null;
+}
+
 function sanitizePageFields(o, themeBase) {
   for (const k of Object.keys(PAGE_FIELD_CAPS)) {
     if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
@@ -2262,19 +2283,23 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
 
 // ---- official BotC roles (assets/roles.json), for script rosters that
 // include imported official characters ('off-' slugs). Cached per isolate.
+// The wake positions come from assets/night-order.json — roles.json has none,
+// which is why an official character used to be missing from a script page's
+// Night Order box. Both files are fetched as static assets rather than
+// imported, so neither rides in the Worker bundle; a night-order.json that
+// fails to load costs the positions and nothing else.
 let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
   try {
-    const res = await env.ASSETS.fetch(new Request(origin + '/assets/roles.json'));
-    const roles = await res.json();
-    _officialRolesCache = (roles || []).filter(r => r && r.id).map(r => ({
-      slug: 'off-' + String(r.id).toLowerCase().replace(/[^a-z0-9]/g, ''),
-      official: true, id: r.id,
-      name: r.name || r.id, team: r.team || '',
-      ability: r.ability || '', image: r.image || '',
-      page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
-    }));
+    const [rolesRes, nightRes] = await Promise.all([
+      env.ASSETS.fetch(new Request(origin + '/assets/roles.json')),
+      env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null)
+    ]);
+    const roles = await rolesRes.json();
+    let night = null;
+    try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
+    _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
   } catch {
     _officialRolesCache = [];
   }
@@ -5518,6 +5543,14 @@ export default {
         s.characters = Array.isArray(s.characters)
           ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
           : [];
+        // The owner's hand-arranged night order: two lists of roster slugs and
+        // nothing else. Like a collection's `order[]` it is deliberately kept
+        // apart from the roster — a slug in here that has left the script just
+        // never matches, and a character it has never heard of is slotted in
+        // by its own night number (see sortNightItems in render-page.js), so
+        // neither list has to be kept in step with the other.
+        s.nightOrder = sanitizeNightOrder(s.nightOrder);
+        if (!s.nightOrder) delete s.nightOrder;
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         // Admin-only flag: keep whatever is stored, ignore the client.

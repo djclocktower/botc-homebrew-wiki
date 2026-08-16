@@ -69,6 +69,21 @@
 }
 .pub-move-btn:hover:not(:disabled) { color:var(--maroon); border-color:var(--maroon); }
 .pub-move-btn:disabled { opacity:.3; cursor:default; }
+/* Night order arranger — two columns of the same ▲▼ rows as the roster */
+.pub-night-cols { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:640px){ .pub-night-cols { grid-template-columns:1fr; } }
+.pub-night-col h3 {
+  font-family:'Oswald',sans-serif; font-size:.8rem; letter-spacing:.06em; text-transform:uppercase;
+  color:var(--maroon); margin:0 0 6px;
+}
+.pub-night-list { border:1px solid #cdbfa0; background:#fffdf8; max-height:360px; overflow-y:auto; }
+.pub-night-row { display:flex; align-items:flex-start; gap:8px; padding:6px 10px; border-bottom:1px solid rgba(180,160,120,.25); }
+.pub-night-row:last-child { border-bottom:none; }
+.pub-night-text { flex:1; min-width:0; }
+.pub-night-name { font-size:.92rem; color:var(--maroon); font-weight:600; display:block; }
+.pub-night-name .pub-night-off { font-weight:400; color:#6b5d49; font-size:.78rem; }
+.pub-night-reminder { font-size:.8rem; color:#6b5d49; line-height:1.35; display:block; }
+.pub-night-empty { color:#6b5d49; font-size:.88rem; padding:8px 10px; margin:0; }
 .pub-empty { color:#6b5d49; font-size:.92rem; }
 .pub-empty a { color:var(--maroon); font-weight:600; }
 .pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
@@ -227,6 +242,16 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- Night order: who acts is fixed by the characters, the ORDER is yours -->
+    <details class="sb-details" id="sb-night-sec">
+      <summary>Night Order <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — the order the Night Order box on your script page lists everyone in. Starts from each character's own wake position.</span></summary>
+      <div class="sb-details-body">
+        <p class="sub" id="sb-night-note">Use ▲▼ to move a character. Only characters that wake are listed &mdash; that comes from the character, not from here.</p>
+        <div class="pub-night-cols" id="sb-night-body"></div>
+        <button type="button" class="th-clear" id="sb-night-reset" style="margin-top:12px">↺ Back to the standard order</button>
+      </div>
+    </details>
+
     <!-- Optional custom boxes down the side of the script page -->
     <details class="sb-details" id="sb-boxes-sec">
       <summary>Custom Boxes <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — extra boxes down the side of your script page, the same as the ones on character pages.</span></summary>
@@ -301,6 +326,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
+  <script src="assets/official-roles.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/sao.js"></script>
   <script src="assets/theme-editor.js"></script>
@@ -379,11 +405,122 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       moveChar(parseInt(mv.getAttribute('data-i'), 10), mv.getAttribute('data-move') === 'up' ? -1 : 1);
     });
 
+    /* ── Night order ──
+       Who wakes is not a choice here: a character is on these lists because
+       its own firstNight / otherNight says so (official characters get their
+       positions from assets/night-order.json, merged in by official-roles.js).
+       What the owner arranges is the ORDER, stored on the script as
+       nightOrder{first[],other[]} and read back by the same function that
+       renders the page — PageRender.nightItems — so this list IS the list a
+       reader sees.
+
+       The lists are rebuilt from the current roster every time this renders,
+       and gathered again on save, so adding a character in the builder and
+       publishing keeps the stored arrangement in step with the roster. */
+    function getNightOrder(){
+      var m = getMeta();
+      return (m.nightOrder && typeof m.nightOrder === 'object') ? m.nightOrder : {};
+    }
+    function setNightOrder(o){
+      var m = getMeta();
+      if (o && ((o.first && o.first.length) || (o.other && o.other.length))) m.nightOrder = o;
+      else delete m.nightOrder;
+      setMeta(m);
+    }
+    // The two lists as they stand: the stored arrangement applied to the
+    // roster that is actually on the script right now.
+    function nightLists(){
+      if (!window.PageRender || !window.PageRender.nightItems) return { first: [], other: [] };
+      return window.PageRender.nightItems(orderedRoster().chars, getNightOrder());
+    }
+    function moveNight(which, i, dir){
+      var items = nightLists()[which];
+      var j = i + dir;
+      if (!items[i] || !items[j]) return;
+      var slugs = items.map(function(it){ return it.c.slug; });
+      var tmp = slugs[i]; slugs[i] = slugs[j]; slugs[j] = tmp;
+      var o = getNightOrder();
+      // Store BOTH lists whenever either is touched: the arrangement is only
+      // meaningful as the full order, and half of one is what would let the
+      // other drift back to numbers on the next save.
+      var otherWhich = which === 'first' ? 'other' : 'first';
+      o = { first: [], other: [] };
+      o[which] = slugs;
+      o[otherWhich] = nightLists()[otherWhich].map(function(it){ return it.c.slug; });
+      setNightOrder(o);
+      renderNightPanel();
+    }
+    document.addEventListener('click', function(e){
+      var mv = e.target.closest && e.target.closest('.pub-night-btn');
+      if (!mv) return;
+      moveNight(mv.getAttribute('data-list'),
+        parseInt(mv.getAttribute('data-i'), 10),
+        mv.getAttribute('data-move') === 'up' ? -1 : 1);
+    });
+    $('sb-night-reset').addEventListener('click', function(){
+      setNightOrder(null);
+      renderNightPanel();
+    });
+
+    // What gets saved: the order exactly as this page is showing it, for both
+    // lists — but only for a script somebody has actually arranged. A script
+    // nobody has touched stores no key at all and keeps following the
+    // characters' own wake positions, so a creator correcting a character's
+    // night number still moves it on every script that never overrode it.
+    function gatherNightOrder(){
+      var stored = getNightOrder();
+      if (!(stored.first && stored.first.length) && !(stored.other && stored.other.length)) return null;
+      var lists = nightLists();
+      var o = {
+        first: lists.first.map(function(it){ return it.c.slug; }),
+        other: lists.other.map(function(it){ return it.c.slug; })
+      };
+      return (o.first.length || o.other.length) ? o : null;
+    }
+
+    function renderNightPanel(){
+      var lists = nightLists();
+      var body = $('sb-night-body');
+      if (!lists.first.length && !lists.other.length){
+        body.innerHTML = '<p class="pub-night-empty">No character on this script wakes at night, so there is no night order to arrange.</p>';
+        $('sb-night-reset').style.display = 'none';
+        return;
+      }
+      $('sb-night-reset').style.display = '';
+      function col(which, title){
+        var items = lists[which];
+        var html = '<div class="pub-night-col"><h3>' + esc(title) + '</h3><div class="pub-night-list">';
+        if (!items.length){
+          html += '<p class="pub-night-empty">Nobody acts.</p>';
+        } else {
+          items.forEach(function(it, i){
+            html += '<div class="pub-night-row">' +
+              '<span class="pub-move">' +
+                '<button type="button" class="pub-move-btn pub-night-btn" data-list="' + which + '" data-move="up" data-i="' + i + '"' +
+                  (i === 0 ? ' disabled' : '') + ' aria-label="Move ' + esc(it.c.name) + ' earlier">▲</button>' +
+                '<button type="button" class="pub-move-btn pub-night-btn" data-list="' + which + '" data-move="down" data-i="' + i + '"' +
+                  (i === items.length - 1 ? ' disabled' : '') + ' aria-label="Move ' + esc(it.c.name) + ' later">▼</button>' +
+              '</span>' +
+              '<span class="pub-night-text">' +
+                '<span class="pub-night-name">' + esc(it.c.name) +
+                  (it.c.official ? ' <span class="pub-night-off">(official)</span>' : '') + '</span>' +
+                (it.r ? '<span class="pub-night-reminder">' + esc(it.r) + '</span>' : '') +
+              '</span></div>';
+          });
+        }
+        return html + '</div></div>';
+      }
+      body.innerHTML = col('first', 'First Night') + col('other', 'Other Nights');
+    }
+
     // ── Summary of the current script ──
     function renderSummary(){
       var roster = orderedRoster();
       var chars = roster.chars;
       var body = $('pub-summary-body');
+      // The night order hangs off the same roster, so it is redrawn here
+      // rather than at every call site that changes one.
+      renderNightPanel();
       if (!chars.length){
         body.innerHTML = '<p class="pub-empty">Your script is empty. <a href="script">Add characters in the Script Builder →</a></p>';
         return;
@@ -505,6 +642,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (m.strategyEvil) $('sb-strat-evil').value = m.strategyEvil;
       if (m.synopsis || m.gameplay || m.strategyGood || m.strategyEvil) $('sb-sections').open = true;
       if (m.customBoxes && m.customBoxes.length) { boxesUI.load(m.customBoxes); $('sb-boxes-sec').open = true; }
+      // A script that has been arranged opens on its arrangement, so it is
+      // obvious that the order shown is a choice somebody made.
+      if (m.nightOrder && ((m.nightOrder.first || []).length || (m.nightOrder.other || []).length)) {
+        $('sb-night-sec').open = true;
+      }
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
@@ -695,7 +837,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           gameplay: $('sb-gameplay').value.trim(),
           strategyGood: $('sb-strat-good').value.trim(),
           strategyEvil: $('sb-strat-evil').value.trim(),
-          customBoxes: boxesUI.gather()
+          customBoxes: boxesUI.gather(),
+          // Re-gathered from the current roster, not copied from the stored
+          // meta: a character added since the arrangement was last touched is
+          // in the list on screen, and this is what writes it into the saved
+          // order instead of leaving it to be slotted in by number forever.
+          nightOrder: gatherNightOrder()
         };
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
@@ -789,8 +936,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             synopsis: entry.synopsis||'', gameplay: entry.gameplay||'',
             strategyGood: entry.strategyGood||'', strategyEvil: entry.strategyEvil||'',
             customBoxes: entry.customBoxes || [],
+            nightOrder: entry.nightOrder || null,
             theme: entry.theme || {}
           };
+          if (!m.nightOrder) delete m.nightOrder;
           setMeta(m);
           primeFields(m);
           setEditMode(slug);
@@ -805,8 +954,23 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .catch(function(){ /* not found / not yours -> fall through to normal publish view */ });
     }
 
+    // ── Official characters ('off-' roster slugs) ──
+    // A script may hold official characters alongside homebrew ones. Without
+    // them this page called every one "not in the wiki" and left them out of
+    // the night order; official-roles.js builds the same objects the script
+    // page itself renders, night positions included.
+    function loadOfficial(){
+      return Promise.all([
+        fetch('assets/roles.json').then(function(r){ return r.json(); }),
+        fetch('assets/night-order.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
+      ]).then(function(both){
+        window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function(c){ bySlug[c.slug] = c; });
+      }).catch(function(){ /* officials just won't resolve */ });
+    }
+
     // ── load characters, then wire up state ──
-    fetch('characters.json?fields=card')
+    loadOfficial().then(function(){
+    return fetch('characters.json?fields=card')
       .then(function(r){ return r.json(); })
       .then(function(list){
         (list || []).forEach(function(c){ bySlug[c.slug] = c; });
@@ -839,6 +1003,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       .catch(function(){
         $('pub-summary-body').innerHTML = '<p class="pub-empty">Could not load characters. <a href="script">Back to the Script Builder →</a></p>';
       });
+    });
   })();
   </script>
 

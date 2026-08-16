@@ -318,19 +318,64 @@
     return html + '</div></div>';
   }
 
-  function renderNightOrder(entries, root) {
+  /* ── the night order, and the single source of truth for it ──
+     The page renders through this and publish-script.html arranges through
+     it, so the list the owner drags around IS the list a reader sees — the
+     same rule sortCollectionMembers follows for a collection's roster.
+
+     Who acts is never a choice: a character wakes if its own firstNight /
+     otherNight is above zero, and the numbers come from the character (for
+     official ones, from assets/night-order.json, merged in by
+     official-roles.js). What the owner may change is the ORDER, kept on the
+     script as `nightOrder: {first: [slug], other: [slug]}`.
+
+     A character the arrangement has never heard of — added to the roster
+     after it was last saved — is not dumped at the end. It slots in after the
+     last arranged character that acts before it does, by night number, so a
+     roster that grew since the last save still reads right. */
+  function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
-    if (!buildSchema) return '';
+    if (!buildSchema) return { first: [], other: [] };
     var first = [], other = [];
-    entries.forEach(function (c) {
+    (entries || []).forEach(function (c) {
       var s;
       try { s = buildSchema(c); } catch (e) { return; }
       if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
       if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
     });
+    order = order || {};
+    return {
+      first: sortNightItems(first, order.first),
+      other: sortNightItems(other, order.other)
+    };
+  }
+
+  function sortNightItems(items, orderList) {
+    var idx = {};
+    (Array.isArray(orderList) ? orderList : []).forEach(function (slug, i) {
+      if (idx[slug] == null) idx[slug] = i;
+    });
+    var arranged = items.filter(function (it) { return idx[it.c.slug] != null; })
+      .sort(function (a, b) { return idx[a.c.slug] - idx[b.c.slug]; });
+    var keyed = arranged.map(function (it, i) { return { it: it, key: i }; });
+    items.forEach(function (it) {
+      if (idx[it.c.slug] != null) return;
+      var key = -0.5;                    // acts before everything arranged
+      for (var i = 0; i < arranged.length; i++) {
+        if (arranged[i].n <= it.n) key = i + 0.5;
+      }
+      keyed.push({ it: it, key: key });
+    });
+    return keyed.sort(function (a, b) {
+      return a.key - b.key || a.it.n - b.it.n ||
+        (a.it.c.name || '').localeCompare(b.it.c.name || '');
+    }).map(function (x) { return x.it; });
+  }
+
+  function renderNightOrder(entries, root, order) {
+    var lists = nightItems(entries, order);
+    var first = lists.first, other = lists.other;
     if (!first.length && !other.length) return '';
-    function cmp(a, b) { return a.n - b.n || (a.c.name || '').localeCompare(b.c.name || ''); }
-    first.sort(cmp); other.sort(cmp);
     function list(items) {
       if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
@@ -515,7 +560,7 @@
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root) +
       renderJinxGroup(cfg.entries) + '</div>';
-    main += renderNightOrder(cfg.entries, root);
+    main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
     if (cfg.missing && cfg.missing.length) {
       main += '<p class="script-missing">⚠ ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
         (cfg.missing.length === 1 ? 'is' : 'are') + ' not in the wiki: ' + cfg.missing.map(esc).join(', ') + '</p>';
@@ -614,7 +659,7 @@
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Script JSON', editHref: opts.editHref,
+      jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
       extraInfoRows: starlightRow(sc)
     });
@@ -652,6 +697,7 @@
     renderScriptPage: renderScriptPage,
     renderCollectionPage: renderCollectionPage,
     renderRosterCards: renderRosterCards,
+    nightItems: nightItems,
     filterBoxHTML: filterBoxHTML,
     resolveCollectionMembers: resolveCollectionMembers,
     sortCollectionMembers: sortCollectionMembers,

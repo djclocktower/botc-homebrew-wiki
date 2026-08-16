@@ -175,6 +175,7 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render.js"></script>
+  <script src="assets/official-roles.js"></script>
   <script src="assets/sao.js"></script>
   <script>
   (function () {
@@ -508,18 +509,14 @@
     // to allChars, so the Add sidebar and Randomize stay homebrew-only. Non-fatal.
     function slugify(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
     function loadOfficial() {
-      return fetch('assets/roles.json')
-        .then(function (r) { return r.json(); })
-        .then(function (roles) {
-          (roles || []).forEach(function (role) {
-            if (!role || !role.id) return;
-            var id = slugify(role.id);
-            var c = {
-              slug: 'off-' + id, official: true, id: role.id,
-              name: role.name || role.id, team: role.team || '',
-              ability: role.ability || '', image: role.image || '',
-              page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(role.name || role.id).replace(/ /g, '_'))
-            };
+      // roles.json + night-order.json, merged by official-roles.js — the same
+      // objects the Worker builds for a script page, night positions included.
+      return Promise.all([
+        fetch('assets/roles.json').then(function (r) { return r.json(); }),
+        fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; })
+      ])
+        .then(function (both) {
+          window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function (c) {
             officialChars.push(c);
             bySlug[c.slug] = c;
           });
