@@ -77,6 +77,59 @@
 .sb-publish-cta p { margin:0; font-size:.86rem; color:var(--ink); flex:1; min-width:200px; }
 .sb-publish-cta strong { color:var(--maroon); }
 
+/* ─── Add-sidebar filter box ──────────────────────────────
+   The shared filter box (assets/card-filters.js) in a 300px column: always
+   behind its toggle (the site-wide rule only collapses it on phones), and
+   laid out in one column instead of a wide row. */
+.sb-add-filters { margin-bottom: 8px; }
+.sb-add-filters .filter-toggle {
+  display: block; width: 100%; margin: 0;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-weight: 400; letter-spacing: .05em; font-size: .88rem; cursor: pointer;
+  background: var(--parch); color: var(--maroon);
+  border: 2px solid var(--parch-frame); padding: 8px 12px; text-align: left;
+}
+.sb-add-filters .filter-toggle-arrow { float: right; transition: transform .2s ease; }
+.sb-add-filters .filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+.sb-add-filters .filter-bar { display: none; }
+.sb-add-filters .filter-bar.open {
+  display: flex; flex-direction: column; align-items: stretch;
+  /* nowrap matters: the shared bar is a wrapping ROW, and a wrapping COLUMN
+     with a capped height packs the later groups into a second column off to
+     the side, where they cannot be reached. */
+  flex-wrap: nowrap;
+  gap: 10px; padding: 10px 12px; margin: 8px 0 0;
+  max-height: 46vh; overflow-y: auto;
+}
+.sb-add-filters .filter-chip { font-size: .74rem; padding: 3px 8px; }
+.sb-add-filters .filter-select { font-size: .82rem; padding: 5px 8px; width: 100%; }
+.sb-add-count {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  color: #6b5d49; margin: 0 0 6px;
+}
+.sb-add-count:empty { display: none; }
+
+/* ─── Night order panel (widget markup + CSS in styles.css) ── */
+.sb-night {
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  margin-top: 18px;
+}
+.sb-night > summary {
+  cursor: pointer; list-style: none; padding: 12px 16px;
+  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.1rem;
+}
+.sb-night > summary::-webkit-details-marker { display: none; }
+.sb-night-arrow { float: right; transition: transform .15s; }
+.sb-night[open] > summary .sb-night-arrow { transform: rotate(180deg); }
+.sb-night-sub {
+  display: block; font-family: 'Libre Franklin', sans-serif;
+  font-size: .78rem; color: #6b5d49; margin-top: 2px;
+}
+.sb-night-body { padding: 0 16px 16px; }
+.sb-btn-nightreset {
+  margin-top: 12px; background: linear-gradient(180deg,#6b5d49,#4a4133);
+}
+
 /* ─── Jinxes between characters on the script ─────────────── */
 .sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
 .sb-jinx-row:last-child { border-bottom:none; }
@@ -131,7 +184,14 @@
           <h2 class="sb-add-title">All Characters</h2>
           <button class="sb-close-mobile" id="sb-close-mobile" type="button" aria-label="Close">✕</button>
         </div>
-        <input class="sb-filter" id="sb-filter" type="search" placeholder="Filter…" autocomplete="off">
+        <input class="sb-filter" id="sb-filter" type="search" placeholder="Search by name…" autocomplete="off">
+        <!-- The same filter box the collection and creator pages use
+             (assets/card-filters.js), mounted on the list below. -->
+        <div class="sb-add-filters" id="sb-add-filters">
+          <button type="button" class="filter-toggle" id="sb-filter-toggle" aria-expanded="false" aria-controls="sb-filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+          <div class="filter-bar" id="sb-filter-bar" hidden></div>
+        </div>
+        <p class="sb-add-count" id="sb-add-count"></p>
         <div id="sb-add-list" class="sb-add-list">
           <p class="sb-loading">Loading…</p>
         </div>
@@ -168,6 +228,18 @@
       <div id="sb-script" class="sb-script">
         <p class="sb-empty">Your script is empty. Add characters from the sidebar.</p>
       </div>
+
+      <!-- Night order: who acts comes from the characters, the order is yours.
+           Same widget (and same stored arrangement) as the publish page. -->
+      <details class="sb-night" id="sb-night-sec">
+        <summary>Night Order <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub">The order your script page lists the night in. Drag a character, or use &#9650;&#9660;.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div class="no-cols" id="sb-night-body"></div>
+          <button type="button" class="sb-btn sb-btn-nightreset" id="sb-night-reset" type="button">&#8634; Back to the standard order</button>
+        </div>
+      </details>
     </main>
 
   </div>
@@ -175,8 +247,14 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
   <script src="assets/official-roles.js"></script>
+  <script src="assets/classify.js"></script>
+  <!-- sao.js before card-filters.js: the filter box only offers Steven
+       Approved Order when window.saoCompare is already there. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/card-filters.js"></script>
+  <script src="assets/night-order-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -206,6 +284,50 @@
     function setMeta(m) {
       try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
     }
+    /* ── night order ──
+       Stored on the script's meta, so the arrangement made here is the one
+       publish-script.html saves and the one the published page renders.
+       Who acts is not editable: a character is on a night list because its
+       own firstNight / otherNight says so. See "Night order" in CLAUDE.md. */
+    var nightUI = null;
+    function getNightOrder() {
+      var m = getMeta();
+      return (m.nightOrder && typeof m.nightOrder === 'object') ? m.nightOrder : {};
+    }
+    function setNightOrder(o) {
+      var m = getMeta();
+      if (o && ((o.first && o.first.length) || (o.other && o.other.length))) m.nightOrder = o;
+      else delete m.nightOrder;
+      setMeta(m);
+    }
+    // The roster in the order the script page draws it: by team, keeping the
+    // stored order inside each team (Array.sort is stable).
+    function rosterChars() {
+      var teamIdx = {};
+      TEAMS.forEach(function (t, i) { teamIdx[t[0]] = i; });
+      return getScript().map(function (slug) { return bySlug[slug]; }).filter(Boolean)
+        .sort(function (a, b) {
+          var ta = teamIdx[a.team] != null ? teamIdx[a.team] : 99;
+          var tb = teamIdx[b.team] != null ? teamIdx[b.team] : 99;
+          return ta - tb;
+        });
+    }
+    function mountNightEditor() {
+      if (!window.NightOrderEditor) return;
+      nightUI = window.NightOrderEditor.mount(document.getElementById('sb-night-body'), {
+        getEntries: rosterChars,
+        getOrder: getNightOrder,
+        setOrder: setNightOrder,
+        onEmpty: function (empty) {
+          document.getElementById('sb-night-reset').style.display = empty ? 'none' : '';
+        }
+      });
+      document.getElementById('sb-night-reset').addEventListener('click', function () {
+        setNightOrder(null);
+        nightUI.render();
+      });
+    }
+
     function onScript(slug) { return getScript().indexOf(slug) !== -1; }
     function toggle(slug) {
       var s = getScript();
@@ -220,25 +342,35 @@
       if (i !== -1) { s.splice(i, 1); setScript(s); if (window.updateScriptBadge) window.updateScriptBadge(); renderAll(); }
     }
 
-    // ── render the "add" sidebar (all chars, grouped by team, alphabetical) ──
-    function renderSidebar(filter) {
-      filter = (filter || '').trim().toLowerCase();
+    /* ── the "add" sidebar (all chars, grouped by team, alphabetical) ──
+       Built ONCE, then filtered in place by the shared filter box
+       (assets/card-filters.js — the same one the collection and creator pages
+       use), which is why every row carries the data-* attributes the browse
+       cards do. Rebuilding this list on every add would throw away whatever
+       the reader had filtered to, so adding a character only repaints the
+       selected state of the rows. */
+    function renderSidebar() {
       var html = '';
       TEAMS.forEach(function (t) {
         var key = t[0], label = t[1];
-        var group = allChars.filter(function (c) {
-          if (c.team !== key) return false;
-          if (filter && (c.name || '').toLowerCase().indexOf(filter) === -1) return false;
-          return true;
-        }).sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
+        var group = allChars.filter(function (c) { return c.team === key; })
+          .sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
         if (!group.length) return;
-        html += '<div class="sb-add-group"><h3 class="sb-add-grouphead">' + esc(label) + '</h3>';
-        group.forEach(function (c) {
-          var on = onScript(c.slug);
+        html += '<div class="sb-add-group" data-team="' + esc(key) + '">' +
+          '<h3 class="sb-add-grouphead">' + esc(label) + ' <span class="sb-add-groupcount">(' + group.length + ')</span></h3>' +
+          '<div class="sb-add-rows">';
+        group.forEach(function (c, i) {
           var ability = c.ability || '';
-          html += '<div class="sb-add-row">' +
-            '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
+          var star = (window.isStarlight && window.isStarlight(c)) ? '1' : '0';
+          html += '<div class="sb-add-row" data-team="' + esc(c.team || '') + '"' +
+            ' data-tags="' + esc(c.tags || '') + '"' +
+            ' data-creator="' + esc(c.creator || '') + '"' +
+            ' data-name="' + esc(c.name || '') + '"' +
+            ' data-order="' + i + '"' +
+            ' data-partial="' + partial + '" data-starlight="' + star + '">' +
+            '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
+              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) + '</span>' +
             '</button>' +
             (ability
@@ -247,9 +379,32 @@
               : '') +
             '</div>';
         });
-        html += '</div>';
+        html += '</div></div>';
       });
-      document.getElementById('sb-add-list').innerHTML = html || '<p class="sb-loading">No matches.</p>';
+      document.getElementById('sb-add-list').innerHTML = html || '<p class="sb-loading">No characters found.</p>';
+    }
+
+    // Adding or removing a character repaints the ticks, nothing else.
+    function syncSidebarSelection() {
+      var on = {};
+      getScript().forEach(function (slug) { on[slug] = 1; });
+      document.querySelectorAll('#sb-add-list .sb-add-item').forEach(function (btn) {
+        btn.classList.toggle('on', !!on[btn.getAttribute('data-slug')]);
+      });
+    }
+
+    // The filter box, mounted on the sidebar once its rows exist. Partial
+    // characters stay visible here (partialOn): this is the list you build a
+    // script from, so hiding one would put it out of reach.
+    function mountSidebarFilters() {
+      if (!window.mountCardFilters) return;
+      window.mountCardFilters({
+        grid: 'sb-add-list', bar: 'sb-filter-bar', toggle: 'sb-filter-toggle',
+        count: 'sb-add-count', search: 'sb-filter',
+        sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
+        sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
+        label: 'Filters', partialChip: true, partialOn: true, starlightChip: true
+      });
     }
 
     // ── render the current script (main area, grouped by team) ──
@@ -292,8 +447,9 @@
     }
 
     function renderAll() {
-      renderSidebar(document.getElementById('sb-filter').value);
+      syncSidebarSelection();
       renderScript();
+      if (nightUI) nightUI.render();
     }
 
     // ── build export JSON in official format ──
@@ -346,9 +502,6 @@
     document.getElementById('sb-script').addEventListener('click', function (e) {
       var rm = e.target.closest('.sb-script-remove');
       if (rm) removeSlug(rm.getAttribute('data-slug'));
-    });
-    document.getElementById('sb-filter').addEventListener('input', function () {
-      renderSidebar(this.value);
     });
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
@@ -556,6 +709,11 @@
           } catch (e) { /* malformed share payload -> plain builder */ }
           history.replaceState(null, '', location.pathname);
         }
+        // The sidebar is built once, then filtered in place — so the filter
+        // box is mounted here, after its rows exist, and never again.
+        renderSidebar();
+        mountSidebarFilters();
+        mountNightEditor();
         renderAll();
       })
       .catch(function () {

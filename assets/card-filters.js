@@ -40,26 +40,46 @@
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
   /* opts: {grid, bar, toggle, count} — elements or element ids — plus optional
-     {label, noun, partialChip, starlightChip, minCards}. Returns false when
-     there is nothing worth filtering, so the caller can hide its filter box. */
+     {label, noun, partialChip, starlightChip, minCards}.
+
+     The markup it filters is described by four selectors, defaulting to the
+     card grid renderRosterCards() produces. The Script Builder's Add sidebar
+     is a compact list of rows rather than a grid of cards, so it passes its
+     own — one filter implementation, not one per page. Anything it drives has
+     to carry the same data-* attributes the cards do.
+
+     opts.search is an optional text input: a name box that narrows the same
+     list the chips do, so the two can't fight over what is on screen.
+
+     Returns false when there is nothing worth filtering, so the caller can
+     hide its filter box. */
   function mountCardFilters(opts) {
     opts = opts || {};
     var grid = el(opts.grid), bar = el(opts.bar), toggle = el(opts.toggle);
     var countEl = el(opts.count);
     if (!grid || !bar || !toggle) return false;
 
+    var SEL = {
+      section: opts.sectionSel || '.coll-team',
+      inner: opts.innerSel || '.char-grid',
+      card: opts.cardSel || '.char-card',
+      count: opts.sectionCountSel || '.coll-team-count',
+      ability: opts.abilitySel || '.char-card-ability'
+    };
+    var searchEl = el(opts.search);
+
     var label = opts.label || 'Filter characters';
     var noun = opts.noun || 'character';
-    var sections = [].slice.call(grid.querySelectorAll('.coll-team'));
-    var cards = [].slice.call(grid.querySelectorAll('.char-card'));
+    var sections = [].slice.call(grid.querySelectorAll(SEL.section));
+    var cards = [].slice.call(grid.querySelectorAll(SEL.card));
     var total = cards.length;
     if (!total || total < (opts.minCards || 1)) return false;
 
     // Remember each team grid's original card order for the "recently added"
     // and default sorts (cards are laid out team-by-team, name A–Z).
     sections.forEach(function (sec) {
-      var g = sec.querySelector('.char-grid');
-      if (g) sec._origOrder = [].slice.call(g.querySelectorAll('.char-card'));
+      var g = sec.querySelector(SEL.inner);
+      if (g) sec._origOrder = [].slice.call(g.querySelectorAll(SEL.card));
     });
 
     // Where the page itself has an order worth keeping — a collection whose
@@ -72,9 +92,15 @@
     // the option is only built when the function is actually there.
     var HAS_SAO = typeof window !== 'undefined' && typeof window.saoCompare === 'function';
 
+    // Partial pages are hidden until asked for on the browse pages, because
+    // an unfinished page is not worth a reader's time. The Script Builder
+    // passes partialOn: hiding a character there would stop somebody putting
+    // it on their script, which is a different thing entirely.
+    var PARTIAL_ON = !!opts.partialOn;
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [], creator: '',
-               showPartial: false, starlightOnly: false, sort: DEFAULT_SORT };
+               showPartial: PARTIAL_ON, starlightOnly: false, sort: DEFAULT_SORT,
+               q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
     }
     var STATE = freshState();
 
@@ -122,7 +148,8 @@
     if (wantPartial || wantStar) {
       html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
-        html += '<button type="button" class="filter-chip" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
+        html += '<button type="button" class="filter-chip' + (PARTIAL_ON ? ' active' : '') +
+          '" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics.">Show Partial (' + nPartial + ')</button>';
       }
       if (wantStar) {
         html += '<button type="button" class="filter-chip" id="cf-starlight" title="Pages the wiki admins have marked as Starlight.">&#10022; Starlight only (' + nStar + ')</button>';
@@ -190,12 +217,20 @@
     sortSel.value = STATE.sort;
     sortSel.addEventListener('change', function () { STATE.sort = sortSel.value; apply(); });
     bar.querySelector('#cf-reset').addEventListener('click', function () {
+      if (searchEl) searchEl.value = '';
       STATE = freshState();
       bar.querySelectorAll('.filter-chip').forEach(function (b) { b.classList.remove('active', 'active-exclude'); });
+      if (partialBtn) partialBtn.classList.toggle('active', STATE.showPartial);
       if (crSel) crSel.value = '';
       sortSel.value = STATE.sort;
       apply();
     });
+    if (searchEl) {
+      searchEl.addEventListener('input', function () {
+        STATE.q = searchEl.value.trim().toLowerCase();
+        apply();
+      });
+    }
 
     function cardVisible(card) {
       // Partial pages are unfinished and stay out of the listing until the
@@ -212,19 +247,20 @@
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
       // A filter on one name matches any card that credits them.
       if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
+      if (STATE.q && (card.getAttribute('data-name') || '').toLowerCase().indexOf(STATE.q) === -1) return false;
       return true;
     }
 
     // SAO compares on the ability line, which is already on the card as text —
     // no need for the server to repeat it in an attribute.
     function saoSubject(card) {
-      var ab = card.querySelector('.char-card-ability');
+      var ab = card.querySelector(SEL.ability);
       return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
     }
 
     function sortCards() {
       sections.forEach(function (sec) {
-        var g = sec.querySelector('.char-grid');
+        var g = sec.querySelector(SEL.inner);
         if (!g || !sec._origOrder) return;
         // _origOrder is the order the server rendered, which IS "page order".
         var arr = sec._origOrder.slice();
@@ -245,18 +281,18 @@
       var shown = 0;
       sections.forEach(function (sec) {
         var secShown = 0;
-        [].slice.call(sec.querySelectorAll('.char-card')).forEach(function (card) {
+        [].slice.call(sec.querySelectorAll(SEL.card)).forEach(function (card) {
           var vis = cardVisible(card);
           card.style.display = vis ? '' : 'none';
           if (vis) { secShown++; shown++; }
         });
         sec.style.display = secShown ? '' : 'none';
-        var cnt = sec.querySelector('.coll-team-count');
+        var cnt = sec.querySelector(SEL.count);
         if (cnt) cnt.textContent = '(' + secShown + ')';
       });
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
-        STATE.exTags.length + (STATE.creator ? 1 : 0) +
-        (STATE.showPartial ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
+        STATE.exTags.length + (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
+        (STATE.showPartial !== PARTIAL_ON ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
       if (countEl) {
         // At rest, count what the reader can actually see: Partial pages are
         // hidden by default, and "15 of 16" with nothing filtered just reads

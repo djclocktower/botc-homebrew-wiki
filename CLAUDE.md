@@ -148,7 +148,26 @@ assets/
                        mounts its own (no page order there — the creator feed is
                        newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
-                       implementation, not one per page.
+                       implementation, not one per page. The Script Builder's
+                       Add sidebar mounts it too, over its own compact rows
+                       rather than cards: sectionSel/innerSel/cardSel/
+                       sectionCountSel/abilitySel name the markup, `search`
+                       hands it the name box so the chips and the text box
+                       narrow one list instead of fighting, and `partialOn`
+                       leaves Partial characters visible (hiding one there
+                       would put it out of reach of the script you are
+                       building).
+  night-order-editor.js  The two night lists, arranged by hand: drag a row
+                       (pointer events, so mouse and touch are one path) or use
+                       ▲▼. Mounted by script.html AND publish-script.html over
+                       PageRender.nightItems, so both write the same
+                       `nightOrder` and neither can disagree with the page. The
+                       dragged row leaves the flow (position:fixed) and a
+                       placeholder holds its slot — lifting it but leaving it
+                       IN the flow re-shifts the rows under the pointer on
+                       every insert and walks the wrong character to the
+                       bottom. On a phone the drag starts from the grip so the
+                       list can still be scrolled with a finger.
   classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Starlight weighting used by
@@ -317,6 +336,13 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
+                       The Add sidebar carries the shared filter box (team/tag
+                       chips, creator, sort) over the name search, so it is
+                       built ONCE and filtered in place — adding a character
+                       only repaints the ticks, because re-rendering the list
+                       would throw away whatever the reader filtered to. A
+                       Night Order panel sits under the roster, the same
+                       widget publish-script.html uses.
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -530,9 +556,10 @@ whole design:
   the key entirely when both are empty).
 
 `PageRender.nightItems(entries, nightOrder)` in render-page.js is the single
-source of truth: the SSR page renders through it and publish-script.html's
-Night Order panel arranges through it, so the owner's list IS the reader's
-list. A character the arrangement has never seen — added to the roster after
+source of truth: the SSR page renders through it, and both arranging panels —
+the Script Builder's and publish-script.html's, one shared widget in
+`night-order-editor.js` — arrange through it, so the owner's list IS the
+reader's list. A character the arrangement has never seen — added to the roster after
 it was last saved — is **not** dumped at the end: `sortNightItems()` slots it
 in after the last arranged character that acts before it does, by night
 number. The editor re-gathers the full order on every save, but only for a

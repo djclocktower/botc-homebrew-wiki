@@ -2906,3 +2906,67 @@ html.textedit-on .te-live-hit {
   .aa-actions { justify-content: stretch; }
   .aa-btn { flex: 1; text-align: center; }
 }
+
+/* ─── Night order arranger (assets/night-order-editor.js) ──────
+   Two lists, drag or ▲▼ to move a character. Shared by the Script Builder
+   and the publish page, so it lives here rather than in either page. */
+.no-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .no-cols { grid-template-columns: 1fr; } }
+.no-head {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon); margin: 0 0 6px;
+}
+.no-list {
+  border: 1px solid #cdbfa0; background: #fffdf8;
+  max-height: 380px; overflow-y: auto;
+  /* The rows handle their own pointer gestures; without this a drag on a
+     phone scrolls the list instead of moving the character. */
+  touch-action: pan-y;
+}
+.no-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 10px; background: #fffdf8;
+  border-bottom: 1px solid rgba(180,160,120,.25);
+  cursor: grab; user-select: none;
+}
+.no-row:last-child { border-bottom: none; }
+.no-is-dragging .no-row { cursor: grabbing; }
+/* The lifted row leaves the flow and follows the pointer; pointer-events:none
+   is what lets elementFromPoint see the row underneath it. */
+.no-row.no-dragging {
+  position: fixed; z-index: 3000; pointer-events: none;
+  box-shadow: 0 8px 22px rgba(40,12,30,.4);
+  border: 1px solid var(--maroon); border-radius: 3px;
+}
+/* The gap it will drop into. */
+.no-placeholder {
+  background: rgba(91,31,33,.06);
+  border: 1px dashed rgba(122,45,47,.5);
+  box-sizing: border-box;
+}
+/* On a phone the drag starts here rather than anywhere on the row, so the
+   list can still be scrolled with a finger — which makes this a real touch
+   target, not a decoration. */
+.no-grip {
+  flex-shrink: 0; color: #b3a184;
+  font-size: 1rem; line-height: 1.4; cursor: grab;
+  padding: 4px 8px 4px 2px; margin: -4px 0; min-width: 18px;
+  touch-action: none;
+}
+.no-grip:active { color: var(--maroon); }
+.no-pos {
+  flex-shrink: 0; min-width: 1.4em; text-align: right;
+  font-family: 'Oswald', sans-serif; font-size: .78rem; color: #6b5d49; line-height: 1.6;
+}
+.no-text { flex: 1; min-width: 0; }
+.no-name { display: block; font-size: .92rem; color: var(--maroon); font-weight: 600; }
+.no-official { font-weight: 400; color: #6b5d49; font-size: .78rem; }
+.no-reminder { display: block; font-size: .8rem; color: #6b5d49; line-height: 1.35; }
+.no-moves { display: flex; flex-shrink: 0; gap: 2px; }
+.no-move {
+  font-size: .8rem; line-height: 1; font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  background: none; border: 1px solid #cdbfa0; color: #6b5d49; padding: 3px 6px; cursor: pointer;
+}
+.no-move:hover:not(:disabled) { color: var(--maroon); border-color: var(--maroon); }
+.no-move:disabled { opacity: .3; cursor: default; }
+.no-empty { color: #6b5d49; font-size: .88rem; padding: 8px 10px; margin: 0; }
