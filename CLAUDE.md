@@ -157,6 +157,12 @@ assets/
                        leaves Partial characters visible (hiding one there
                        would put it out of reach of the script you are
                        building).
+  jinx-editor.js       One script's jinxes: switch off one the characters
+                       carry, or write one only this script has. Stores
+                       `jinxEdits{off[],add[]}` and resolves through
+                       PageRender.scriptJinxes, which the page and the export
+                       also go through. Mounted by script.html and
+                       publish-script.html.
   night-order-editor.js  The two night lists, arranged by hand: drag a row
                        (pointer events, so mouse and touch are one path) or use
                        ▲▼. Mounted by script.html AND publish-script.html over
@@ -336,6 +342,12 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
+                       The Add sidebar holds the official roster as well as the
+                       homebrew one, told apart by a Source chip pair;
+                       Randomize stays homebrew-only on purpose (180 official
+                       characters would swamp the pool). Export goes through
+                       PageRender.buildPageExport, the same call the published
+                       page's JSON box makes, so the two cannot drift.
                        The Add sidebar carries the shared filter box (team/tag
                        chips, creator, sort) over the name search, so it is
                        built ONCE and filtered in place — adding a character
@@ -343,6 +355,8 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        would throw away whatever the reader filtered to. A
                        Night Order panel sits under the roster, the same
                        widget publish-script.html uses.
+                       Jinx and Night Order panels sit under the roster
+                       (shared widgets — see "Jinxes" and "Night order").
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -566,6 +580,54 @@ number. The editor re-gathers the full order on every save, but only for a
 script somebody has actually arranged; an untouched script stores no key and
 keeps following the characters' own numbers, so a creator fixing a character's
 wake position still moves it everywhere that never overrode it.
+
+## Jinxes on one script
+
+A jinx normally belongs to the characters — both character editors write it
+into the character's own `jinxes`, and any script holding both ends shows it.
+That is right for a rule the character carries everywhere, and no help to a
+script that wants to drop one, or to add a rule that only holds here. So a
+script may carry `jinxEdits: {off: ["slugA|slugB"], add: [{a, b, text}]}`;
+`sanitizeJinxEdits()` in worker.js caps it and drops the key when it is empty.
+
+`PageRender.scriptJinxes(entries, edits)` is the single source of truth: the
+page renders through it, `jinx-editor.js` edits through it, and the exported
+JSON is built from it. **Nothing is written back to the characters** — another
+script keeps whatever they say. The pair key is the two slugs sorted and
+joined with `|`, so it reads the same whichever end the jinx was written on.
+
+The export is the fiddly half, because the official app reads jinxes off the
+CHARACTERS. `jinxExportMap()` rebuilds the jinx list of only those characters
+whose jinxes actually changed — a character the script never touched exports
+byte-for-byte as before, and a jinx it carries with someone who is *not* on
+this script is left alone (that is part of the character, not of this script).
+An official character normally exports as a bare id; if this script gives it a
+jinx, the bare id has nowhere to carry it, so that one — and only that one —
+is written out in full instead.
+
+## The official app's script JSON (`_meta`)
+
+The export follows the schema at
+`github.com/ThePandemoniumInstitute/botc-release`. Beyond `name`/`author`/
+`logo` it carries:
+
+- **`background`** — the script's own page background (`theme.background`),
+  as an absolute URL. One upload serves both the wiki page and the app.
+- **`hideTitle`**, **`almanac`**, **`bootlegger[]`** — set on publish-script's
+  "In the Official App" panel. Bootlegger rules are shown on the script page
+  too, as *House Rules*, or a reader would only find them inside the JSON.
+- **`firstNight` / `otherNight`** — the arranged night order as a list of ids.
+  Only written for a script whose owner arranged one: left out, the app orders
+  the night by each character's own number and reaches the same answer, so
+  writing it anyway would freeze today's answer into the file.
+
+The night is not only characters — dusk opens it, dawn closes it, and the
+first night has the minion and demon info steps in the middle. Those live in
+`assets/night-order.json` under `meta`, positioned from their neighbours on
+the official sheet (minion info between the Magician and the Snitch, demon
+info between the Summoner and the King). Whoever loads that file hands them to
+`PageRender.setNightMeta()`; **without them the sequences are not written at
+all**, rather than publish a night order those steps are missing from.
 
 ## Renaming a character (the old link keeps working)
 

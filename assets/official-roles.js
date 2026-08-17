@@ -54,7 +54,11 @@
       var n = nights[key(r.name || r.id)] || nights[key(r.id)] || { firstNight: 0, otherNight: 0 };
       return {
         slug: 'off-' + key(r.id),
-        official: true, id: r.id,
+        // jsonId keeps the official id when a script has to export this
+        // character as a full object rather than a bare id (which happens
+        // when the script gives it a jinx of its own) — the app matches
+        // characters by id, so inventing one from the name would break it.
+        official: true, id: r.id, jsonId: r.id,
         name: r.name || r.id, team: r.team || '',
         ability: r.ability || '', image: r.image || '',
         edition: r.edition || '',

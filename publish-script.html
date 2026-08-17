@@ -100,6 +100,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 .th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
 .th-state { font-size:.75rem; color:#6b5d49; min-width:64px; text-align:right; }
 .sb-sort-row { margin-top:10px; }
+.sb-check { display:flex; align-items:flex-start; gap:8px; font-size:.9rem; color:#241a12; margin:6px 0 12px; cursor:pointer; }
+.sb-check input { width:17px; height:17px; flex-shrink:0; margin-top:2px; }
+/* House rules (_meta.bootlegger) repeater */
+.boot-row { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+.boot-row input { flex:1; font-family:'Libre Franklin',sans-serif; font-size:.9rem; color:#241a12; background:#fffdf8; border:1px solid #cdbfa0; padding:7px 9px; }
 .pub-url { font-size:.8rem; color:#6b5d49; margin:6px 0 0; word-break:break-all; }
 .pub-url code { background:rgba(91,31,33,.07); padding:1px 5px; }
 </style>
@@ -261,6 +266,35 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- Jinxes on this script -->
+    <details class="sb-details" id="sb-jinx-sec">
+      <summary>Jinxes <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Rules between two characters on this script. Remove one you do not want here, or write your own.</span></summary>
+      <div class="sb-details-body">
+        <div id="sb-jinx-body"></div>
+      </div>
+    </details>
+
+    <!-- Everything else the official app reads out of the JSON -->
+    <details class="sb-details" id="sb-app-sec">
+      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional &mdash; house rules, an almanac link and the title setting, all carried in the script JSON.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label>House rules <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the app calls these bootlegger rules)</span></label>
+          <div id="sb-boot-list"></div>
+          <button type="button" class="th-clear" id="sb-boot-add" style="margin-top:8px">+ Add a rule</button>
+          <p class="sub" style="margin-top:8px">One line each. They show on your script page under <em>House Rules</em> and travel with the script into the app.</p>
+        </div>
+        <div class="sb-fld">
+          <label for="sb-almanac">Almanac link <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional)</span></label>
+          <input type="text" id="sb-almanac" placeholder="https://…">
+          <p class="sub" style="margin-top:6px">Where the app sends players for the character write-ups. <button type="button" class="th-clear" id="sb-almanac-self">Use this script's wiki page</button></p>
+        </div>
+        <label class="sb-check" style="display:block;margin-top:4px">
+          <input type="checkbox" id="sb-hidetitle"> Hide the script name in the app <span class="sub" style="display:block;margin-left:24px">For a logo that already has the name in it.</span>
+        </label>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
       <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for your script's wiki page.</span></summary>
@@ -274,9 +308,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <button type="button" class="th-clear" id="sb-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
           <div class="sb-fld">
-            <label for="sb-bg">Page background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image, shown behind the page)</span></label>
+            <label for="sb-bg">Background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image)</span></label>
             <input type="file" id="sb-bg" accept="image/*">
             <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
+            <div class="sub" style="margin-top:6px">Shown behind your script's wiki page &mdash; and behind the script in the official app, which reads it from the exported JSON.</div>
             <div id="sb-bg-note" class="sub" style="margin-top:6px"></div>
             <button type="button" class="th-clear" id="sb-bg-remove" style="display:none;margin-top:6px">Remove background</button>
           </div>
@@ -313,6 +348,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/render-page.js"></script>
   <script src="assets/official-roles.js"></script>
   <script src="assets/night-order-editor.js"></script>
+  <script src="assets/jinx-editor.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/sao.js"></script>
   <script src="assets/theme-editor.js"></script>
@@ -420,7 +456,73 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       return window.PageRender.nightItems(orderedRoster().chars, getNightOrder());
     }
 
-    // Drag or \u25b2\u25bc, in the shared widget the Script Builder uses too, so an
+    /* ── jinxes ──
+       jinxEdits{off[],add[]} on the script's meta, resolved by
+       PageRender.scriptJinxes — the same call the published page and the
+       exported JSON make. */
+    function getJinxEdits(){
+      var m = getMeta();
+      return (m.jinxEdits && typeof m.jinxEdits === 'object') ? m.jinxEdits : {};
+    }
+    function setJinxEdits(e){
+      var m = getMeta();
+      if (e && ((e.off && e.off.length) || (e.add && e.add.length))) m.jinxEdits = e;
+      else delete m.jinxEdits;
+      setMeta(m);
+      renderSummary();
+    }
+    var jinxUI = window.JinxEditor.mount($('sb-jinx-body'), {
+      getEntries: function(){ return orderedRoster().chars; },
+      getEdits: getJinxEdits,
+      setEdits: setJinxEdits
+    });
+
+    /* ── the rest of what the official app reads ──
+       House rules (_meta.bootlegger), an almanac link and hideTitle. The
+       background it shows behind the script is the page background from the
+       theme kit — one upload, both places. */
+    function bootRows(){ return [].slice.call($('sb-boot-list').querySelectorAll('.boot-row input')); }
+    function gatherBoot(){
+      return bootRows().map(function(i){ return i.value.trim(); }).filter(Boolean).slice(0, 20);
+    }
+    function saveBoot(){
+      var m = getMeta();
+      var list = gatherBoot();
+      if (list.length) m.bootlegger = list; else delete m.bootlegger;
+      setMeta(m);
+    }
+    function addBootRow(value){
+      var row = document.createElement('div');
+      row.className = 'boot-row';
+      row.innerHTML = '<input type="text" maxlength="300" placeholder="e.g. Players may not talk during the first day.">' +
+        '<button type="button" class="th-clear boot-del" aria-label="Remove this rule">&#10005;</button>';
+      row.querySelector('input').value = value || '';
+      row.querySelector('input').addEventListener('input', saveBoot);
+      row.querySelector('.boot-del').addEventListener('click', function(){ row.remove(); saveBoot(); });
+      $('sb-boot-list').appendChild(row);
+    }
+    $('sb-boot-add').addEventListener('click', function(){ addBootRow(''); });
+    $('sb-almanac').addEventListener('input', function(){
+      var m = getMeta();
+      var v = $('sb-almanac').value.trim();
+      if (v) m.almanac = v; else delete m.almanac;
+      setMeta(m);
+    });
+    $('sb-almanac-self').addEventListener('click', function(){
+      // The script's own wiki page IS an almanac, so offer it rather than
+      // making somebody paste their own URL back in.
+      var slug = EDIT_SLUG || getMeta().editSlug;
+      if (!slug){ alert('Publish the script first — then its page has an address to point at.'); return; }
+      $('sb-almanac').value = SITE_ROOT + 's/' + encodeURIComponent(slug);
+      $('sb-almanac').dispatchEvent(new Event('input'));
+    });
+    $('sb-hidetitle').addEventListener('change', function(){
+      var m = getMeta();
+      if ($('sb-hidetitle').checked) m.hideTitle = true; else delete m.hideTitle;
+      setMeta(m);
+    });
+
+    // Drag or ▲▼, in the shared widget the Script Builder uses too, so an
     // order arranged in either place is the same order.
     var nightUI = window.NightOrderEditor.mount($('sb-night-body'), {
       getEntries: function(){ return orderedRoster().chars; },
@@ -455,9 +557,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       var roster = orderedRoster();
       var chars = roster.chars;
       var body = $('pub-summary-body');
-      // The night order hangs off the same roster, so it is redrawn here
-      // rather than at every call site that changes one.
+      // The night order and the jinxes hang off the same roster, so they are
+      // redrawn here rather than at every call site that changes one.
       renderNightPanel();
+      if (jinxUI) jinxUI.render();
       if (!chars.length){
         body.innerHTML = '<p class="pub-empty">Your script is empty. <a href="script">Add characters in the Script Builder →</a></p>';
         return;
@@ -584,6 +687,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (m.nightOrder && ((m.nightOrder.first || []).length || (m.nightOrder.other || []).length)) {
         $('sb-night-sec').open = true;
       }
+      if (m.jinxEdits && ((m.jinxEdits.off || []).length || (m.jinxEdits.add || []).length)) {
+        $('sb-jinx-sec').open = true;
+      }
+      $('sb-boot-list').innerHTML = '';
+      (m.bootlegger || []).forEach(addBootRow);
+      $('sb-almanac').value = m.almanac || '';
+      $('sb-hidetitle').checked = !!m.hideTitle;
+      if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
@@ -779,7 +890,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           // meta: a character added since the arrangement was last touched is
           // in the list on screen, and this is what writes it into the saved
           // order instead of leaving it to be slotted in by number forever.
-          nightOrder: gatherNightOrder()
+          nightOrder: gatherNightOrder(),
+          jinxEdits: getJinxEdits(),
+          bootlegger: gatherBoot(),
+          almanac: $('sb-almanac').value.trim(),
+          hideTitle: !!$('sb-hidetitle').checked
         };
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
@@ -874,9 +989,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             strategyGood: entry.strategyGood||'', strategyEvil: entry.strategyEvil||'',
             customBoxes: entry.customBoxes || [],
             nightOrder: entry.nightOrder || null,
+            jinxEdits: entry.jinxEdits || null,
+            bootlegger: entry.bootlegger || [],
+            almanac: entry.almanac || '',
+            hideTitle: !!entry.hideTitle,
             theme: entry.theme || {}
           };
           if (!m.nightOrder) delete m.nightOrder;
+          if (!m.jinxEdits) delete m.jinxEdits;
           setMeta(m);
           primeFields(m);
           setEditMode(slug);
@@ -902,6 +1022,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         fetch('assets/night-order.json').then(function(r){ return r.json(); }).catch(function(){ return null; })
       ]).then(function(both){
         window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function(c){ bySlug[c.slug] = c; });
+        // The non-character night steps (dusk, minion info, demon info, dawn),
+        // so a saved night order can be written into the exported JSON.
+        if (window.PageRender && both[1]) window.PageRender.setNightMeta(both[1].meta);
       }).catch(function(){ /* officials just won't resolve */ });
     }
 

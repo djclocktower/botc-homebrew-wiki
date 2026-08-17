@@ -97,8 +97,14 @@
     // passes partialOn: hiding a character there would stop somebody putting
     // it on their script, which is a different thing entirely.
     var PARTIAL_ON = !!opts.partialOn;
+    // Optional extra chip group over data-source, for a list that mixes two
+    // kinds of thing — the Script Builder's sidebar holds homebrew characters
+    // and the official roster, and "show me only one of those" is the first
+    // thing anyone wants of it.
+    var SOURCES = Array.isArray(opts.sourceChips) ? opts.sourceChips : [];
     function freshState() {
-      return { inTeams: [], exTeams: [], inTags: [], exTags: [], creator: '',
+      return { inTeams: [], exTeams: [], inTags: [], exTags: [],
+               inSources: [], exSources: [], creator: '',
                showPartial: PARTIAL_ON, starlightOnly: false, sort: DEFAULT_SORT,
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
     }
@@ -133,6 +139,16 @@
       html += '<button type="button" class="filter-chip" data-team="' + t[0] + '">' + esc(t[1]) + '</button>';
     });
     html += '</div></div>';
+    var sourcesPresent = SOURCES.filter(function (sc) {
+      return cards.some(function (c) { return c.getAttribute('data-source') === sc[0]; });
+    });
+    if (sourcesPresent.length > 1) {
+      html += '<div class="filter-group"><span class="filter-group-label">Source</span><div class="filter-chips" id="cf-sources">';
+      sourcesPresent.forEach(function (sc) {
+        html += '<button type="button" class="filter-chip" data-source="' + esc(sc[0]) + '">' + esc(sc[1]) + '</button>';
+      });
+      html += '</div></div>';
+    }
     if (tags.length) {
       html += '<div class="filter-group"><span class="filter-group-label">Tag</span><div class="filter-chips" id="cf-tags">';
       tags.forEach(function (t) { html += '<button type="button" class="filter-chip" data-tag="' + esc(t) + '">' + esc(t) + '</button>'; });
@@ -185,7 +201,8 @@
     // The arrays are read through a getter because Reset swaps STATE wholesale.
     function wireChips(selector, pick) {
       bar.querySelectorAll(selector).forEach(function (btn) {
-        var v = btn.getAttribute('data-team') || btn.getAttribute('data-tag');
+        var v = btn.getAttribute('data-team') || btn.getAttribute('data-tag') ||
+                btn.getAttribute('data-source');
         btn.addEventListener('click', function () {
           var arrs = pick();
           var ii = arrs.inArr.indexOf(v), ei = arrs.exArr.indexOf(v);
@@ -198,6 +215,7 @@
     }
     wireChips('[data-team]', function () { return { inArr: STATE.inTeams, exArr: STATE.exTeams }; });
     wireChips('[data-tag]', function () { return { inArr: STATE.inTags, exArr: STATE.exTags }; });
+    wireChips('[data-source]', function () { return { inArr: STATE.inSources, exArr: STATE.exSources }; });
 
     var partialBtn = bar.querySelector('#cf-partial');
     if (partialBtn) partialBtn.addEventListener('click', function () {
@@ -242,6 +260,11 @@
       var team = teamOf(card);
       if (STATE.inTeams.length && STATE.inTeams.indexOf(team) === -1) return false;
       if (STATE.exTeams.indexOf(team) !== -1) return false;
+      if (SOURCES.length) {
+        var src = card.getAttribute('data-source') || '';
+        if (STATE.inSources.length && STATE.inSources.indexOf(src) === -1) return false;
+        if (STATE.exSources.indexOf(src) !== -1) return false;
+      }
       var ctags = cardTags(card);
       if (STATE.inTags.length && !STATE.inTags.every(function (t) { return ctags.indexOf(t) !== -1; })) return false;
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
@@ -291,7 +314,8 @@
         if (cnt) cnt.textContent = '(' + secShown + ')';
       });
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
-        STATE.exTags.length + (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
+        STATE.exTags.length + STATE.inSources.length + STATE.exSources.length +
+        (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
         (STATE.showPartial !== PARTIAL_ON ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
       if (countEl) {
         // At rest, count what the reader can actually see: Partial pages are

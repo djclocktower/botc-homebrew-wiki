@@ -130,6 +130,14 @@
   margin-top: 12px; background: linear-gradient(180deg,#6b5d49,#4a4133);
 }
 
+/* Official characters sit in the same list as homebrew ones, so they say so */
+.sb-add-off {
+  font-family:'Oswald',sans-serif; font-size:.62rem; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:#6b5d49;
+  border:1px solid rgba(180,160,120,.6); border-radius:3px;
+  padding:0 4px; margin-left:4px; vertical-align:1px; white-space:nowrap;
+}
+
 /* ─── Jinxes between characters on the script ─────────────── */
 .sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
 .sb-jinx-row:last-child { border-bottom:none; }
@@ -229,6 +237,17 @@
         <p class="sb-empty">Your script is empty. Add characters from the sidebar.</p>
       </div>
 
+      <!-- Jinxes on this script: the ones the characters carry, plus any this
+           script writes for itself. Same widget as the publish page. -->
+      <details class="sb-night" id="sb-jinx-sec">
+        <summary>Jinxes <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub">Rules between two characters on this script. Remove one you do not want, or write your own.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div id="sb-jinx-body"></div>
+        </div>
+      </details>
+
       <!-- Night order: who acts comes from the characters, the order is yours.
            Same widget (and same stored arrangement) as the publish page. -->
       <details class="sb-night" id="sb-night-sec">
@@ -255,6 +274,7 @@
   <script src="assets/sao.js"></script>
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
+  <script src="assets/jinx-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -312,6 +332,31 @@
           return ta - tb;
         });
     }
+    /* ── jinxes ──
+       Stored on the script's meta as jinxEdits{off[],add[]} and resolved by
+       PageRender.scriptJinxes, the same call the published page and the
+       exported JSON go through. */
+    var jinxUI = null;
+    function getJinxEdits() {
+      var m = getMeta();
+      return (m.jinxEdits && typeof m.jinxEdits === 'object') ? m.jinxEdits : {};
+    }
+    function setJinxEdits(e) {
+      var m = getMeta();
+      if (e && ((e.off && e.off.length) || (e.add && e.add.length))) m.jinxEdits = e;
+      else delete m.jinxEdits;
+      setMeta(m);
+      renderScript();
+    }
+    function mountJinxEditor() {
+      if (!window.JinxEditor) return;
+      jinxUI = window.JinxEditor.mount(document.getElementById('sb-jinx-body'), {
+        getEntries: rosterChars,
+        getEdits: getJinxEdits,
+        setEdits: setJinxEdits
+      });
+    }
+
     function mountNightEditor() {
       if (!window.NightOrderEditor) return;
       nightUI = window.NightOrderEditor.mount(document.getElementById('sb-night-body'), {
@@ -351,9 +396,13 @@
        selected state of the rows. */
     function renderSidebar() {
       var html = '';
+      // Homebrew AND the official roster: a script is usually a mix, and the
+      // Source chips in the filter box are how you narrow it to one or the
+      // other. Randomize stays homebrew-only (see below).
+      var browsable = allChars.concat(officialChars);
       TEAMS.forEach(function (t) {
         var key = t[0], label = t[1];
-        var group = allChars.filter(function (c) { return c.team === key; })
+        var group = browsable.filter(function (c) { return c.team === key; })
           .sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
         if (!group.length) return;
         html += '<div class="sb-add-group" data-team="' + esc(key) + '">' +
@@ -365,13 +414,15 @@
           var star = (window.isStarlight && window.isStarlight(c)) ? '1' : '0';
           html += '<div class="sb-add-row" data-team="' + esc(c.team || '') + '"' +
             ' data-tags="' + esc(c.tags || '') + '"' +
-            ' data-creator="' + esc(c.creator || '') + '"' +
+            ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
             ' data-name="' + esc(c.name || '') + '"' +
             ' data-order="' + i + '"' +
+            ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
             ' data-partial="' + partial + '" data-starlight="' + star + '">' +
             '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
               '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-              '<span class="sb-add-name">' + esc(c.name) + '</span>' +
+              '<span class="sb-add-name">' + esc(c.name) +
+                (c.official ? ' <span class="sb-add-off">official</span>' : '') + '</span>' +
             '</button>' +
             (ability
               ? '<button type="button" class="sb-add-chevron" data-slug="' + esc(c.slug) + '" aria-label="Show ability" aria-expanded="false">&#9662;</button>' +
@@ -403,7 +454,8 @@
         count: 'sb-add-count', search: 'sb-filter',
         sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
         sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
-        label: 'Filters', partialChip: true, partialOn: true, starlightChip: true
+        label: 'Filters', partialChip: true, partialOn: true, starlightChip: true,
+        sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']]
       });
     }
 
@@ -425,15 +477,20 @@
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
             '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-            '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '">' + esc(c.name) + '</a>' +
+            '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
+              (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
+              esc(c.name) + (c.official ? ' <span class="sb-add-off">official &#8599;</span>' : '') + '</a>' +
             '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
             '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
             '</div>';
         });
         html += '</div>';
       });
-      // Jinxes active between characters on this script
-      var jinxes = window.findScriptJinxes ? window.findScriptJinxes(chars) : [];
+      // Jinxes active between characters on this script — the characters'
+      // own, minus any this script switched off, plus any it wrote itself.
+      var jinxes = (window.PageRender && window.PageRender.scriptJinxes)
+        ? window.PageRender.scriptJinxes(chars, getJinxEdits())
+        : (window.findScriptJinxes ? window.findScriptJinxes(chars) : []);
       if (jinxes.length) {
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">Jinxes <span>(' + jinxes.length + ')</span></h3>';
         jinxes.forEach(function (j) {
@@ -450,25 +507,21 @@
       syncSidebarSelection();
       renderScript();
       if (nightUI) nightUI.render();
+      if (jinxUI) jinxUI.render();
     }
 
-    // ── build export JSON in official format ──
+    /* ── the official-schema export ──
+       Built by PageRender.buildPageExport, the same call the published script
+       page's JSON box uses, so what you download here and what a reader
+       downloads there cannot drift apart. Everything the official app reads
+       rides in the meta: logo, background, hideTitle, almanac, bootlegger and
+       the night order (see the schema at
+       github.com/ThePandemoniumInstitute/botc-release). */
     function buildExport() {
-      var s = getScript();
-      var chars = s.map(function (slug) { return bySlug[slug]; }).filter(Boolean);
       var m = getMeta();
-      var meta = { id: '_meta', name: (m.name || '').trim() || 'My Homebrew Script' };
-      if ((m.author || '').trim()) meta.author = m.author.trim();
-      // logo: use an already-published header path if we have one
-      if (m.header) meta.logo = 'https://botchomebrew.wiki/assets/' + m.header;
-      var arr = [meta];
-      chars.forEach(function (c) {
-        // Official roles export as their bare id (official tools re-fetch the data);
-        // homebrew characters export as a full object.
-        if (c.official) { arr.push(c.slug.replace(/^off-/, '')); return; }
-        if (window.buildSchema) arr.push(window.buildSchema(c));
-      });
-      return JSON.stringify(arr, null, 2);
+      return window.PageRender.buildPageExport(
+        (m.name || '').trim() || 'My Homebrew Script',
+        (m.author || '').trim(), m.header || '', rosterChars(), m);
     }
 
     function download(filename, text) {
@@ -566,6 +619,9 @@
         }
         return arr;
       }
+      // Homebrew only, deliberately: 180-odd official characters in the pool
+      // would swamp a random homebrew script. Add officials by hand from the
+      // sidebar.
       var byTeam = {};
       allChars.forEach(function (c) {
         if (!byTeam[c.team]) byTeam[c.team] = [];
@@ -673,6 +729,10 @@
             officialChars.push(c);
             bySlug[c.slug] = c;
           });
+          // The non-character steps of the night sheet (dusk, minion info,
+          // demon info, dawn) — what the export needs to write a night
+          // sequence the official app can follow.
+          if (window.PageRender && both[1]) window.PageRender.setNightMeta(both[1].meta);
         })
         .catch(function () { /* officials just won't resolve */ });
     }
@@ -714,6 +774,7 @@
         renderSidebar();
         mountSidebarFilters();
         mountNightEditor();
+        mountJinxEditor();
         renderAll();
       })
       .catch(function () {

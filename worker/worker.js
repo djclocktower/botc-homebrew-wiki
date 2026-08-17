@@ -1813,6 +1813,27 @@ function sanitizeNightOrder(o) {
   return (out.first || out.other) ? out : null;
 }
 
+// A script's own jinx edits: {off: ["slugA|slugB"], add: [{a, b, text}]}.
+// Nothing here is written back to the characters — this is one script's view
+// of the rules between them (see scriptJinxes in render-page.js).
+function sanitizeJinxEdits(o) {
+  if (!o || typeof o !== 'object') return null;
+  const slug = v => String(v || '').slice(0, 80);
+  const off = Array.isArray(o.off)
+    ? [...new Set(o.off.slice(0, 200).map(k => String(k).slice(0, 165)).filter(k => k.includes('|')))]
+    : [];
+  const add = Array.isArray(o.add)
+    ? o.add.slice(0, 100).map(j => ({
+        a: slug(j && j.a), b: slug(j && j.b),
+        text: String((j && j.text) || '').slice(0, 300)
+      })).filter(j => j.a && j.b && j.a !== j.b)
+    : [];
+  const out = {};
+  if (off.length) out.off = off;
+  if (add.length) out.add = add;
+  return (out.off || out.add) ? out : null;
+}
+
 function sanitizePageFields(o, themeBase) {
   for (const k of Object.keys(PAGE_FIELD_CAPS)) {
     if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
@@ -2299,6 +2320,11 @@ async function loadOfficialRoles(env, origin) {
     const roles = await rolesRes.json();
     let night = null;
     try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
+    // The non-character steps of the night (dusk, minion info, demon info,
+    // dawn) — what an exported script needs to write a night sequence the
+    // official app can follow. Without them the export leaves the sequence
+    // out entirely rather than publish one those steps are missing from.
+    if (night && night.meta) PageRender.setNightMeta(night.meta);
     _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
   } catch {
     _officialRolesCache = [];
@@ -2429,9 +2455,12 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
     : await cachedCardChars(env);
-  // Scripts can carry imported official roles ('off-' slugs) — resolve them
-  if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
-    chars = chars.concat(await loadOfficialRoles(env, url.origin));
+  // Scripts can carry imported official roles ('off-' slugs) — resolve them.
+  // An arranged night order needs this call too even on an all-homebrew
+  // script: it is what loads the night's non-character steps.
+  if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
+    const official = await loadOfficialRoles(env, url.origin);
+    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
   }
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
@@ -5551,6 +5580,21 @@ export default {
         // neither list has to be kept in step with the other.
         s.nightOrder = sanitizeNightOrder(s.nightOrder);
         if (!s.nightOrder) delete s.nightOrder;
+        s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
+        if (!s.jinxEdits) delete s.jinxEdits;
+        // The rest of what the official app reads out of the exported JSON
+        // (_meta.bootlegger / almanac / hideTitle — the schema lives at
+        // github.com/ThePandemoniumInstitute/botc-release). The background and
+        // logo it shows are the page's own, already validated by
+        // sanitizePageFields, so there is nothing extra to check for those.
+        s.bootlegger = Array.isArray(s.bootlegger)
+          ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
+          : [];
+        if (!s.bootlegger.length) delete s.bootlegger;
+        s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
+          ? s.almanac.trim().slice(0, 300) : '';
+        if (!s.almanac) delete s.almanac;
+        if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         // Admin-only flag: keep whatever is stored, ignore the client.
