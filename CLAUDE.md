@@ -1001,6 +1001,15 @@ this is how admin-written pages stop being hidden for want of a tag.
    `uniqueUsername()` applies the same rule to Discord display names. Any new
    place that turns a typed name into a handle needs all of this, which is why
    it should call the existing helpers rather than roll its own.
+   **The handle is not the name people know themselves by.** A Discord signup
+   is handed `@scape` while the whole site calls them Cellscape (the Discord
+   display name), so logging in with "the name I see everywhere" failed and
+   read as a broken login. `findUserByLogin()` therefore tries username, then
+   email, then `findUserByShownName()` — `display_name` and `discord_username`,
+   folded through `usernameKey()`, and **only when exactly one account
+   matches**. That order is the safety rule: a handle or an email always beats
+   somebody else's display name, and a display name two people share matches
+   nobody. Do not reorder it, and do not relax the uniqueness check.
 13. **Writing to D1 directly bypasses `bumpContentVersion()` — bump
    `settings.content_version` yourself.** The JSON feeds and several in-isolate
    caches are keyed on that counter, so a row written straight to the database
