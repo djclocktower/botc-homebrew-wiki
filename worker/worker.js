@@ -113,6 +113,9 @@
  *   GET  /api/page-history    -> a published page's edit log (public; ?type=&slug=)
  *   GET  /api/page-revision   -> one entry of it, field by field (?type=&slug=&id=)
  *   POST /api/page-rollback   -> put an earlier version back (owner or admin)
+ *   POST /api/suggest         -> propose an edit to a page open to suggestions
+ *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
+ *   POST /api/suggestion      -> approve / decline / withdraw one
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
@@ -631,7 +634,9 @@ async function isWikiLocked(env) {
 const FEED_CHANGING_ACTIONS = new Set([
   'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
   'starlight', 'unstarlight', 'rollback', 'restore', 'restore-backup',
-  'assign-owner', 'protect', 'unprotect', 'purge'
+  'assign-owner', 'protect', 'unprotect', 'purge',
+  // Approving a suggestion writes the page; 'suggest' itself changes nothing.
+  'suggestion-approve'
 ]);
 
 // ---- activity log helper ----
@@ -792,6 +797,46 @@ async function saveRevision(env, sess, type, row) {
     ).bind(type, row.slug, type, row.slug).run();
   } catch { /* history must never break a write */ }
 }
+
+/* ---- suggested edits ----
+   A page whose creator chose `publicEdit: 'suggest'` takes proposed versions
+   instead of direct edits. A suggestion is the whole page as the suggester
+   would have it — the same object the editor posts to save — kept apart from
+   the row until somebody who owns the page approves it. Approving is a normal
+   save: the current version is snapshotted into the history first, so an
+   approval can be rolled back like anything else.
+
+   `base_updated_at` is the version the suggester was working from, which is
+   how the review page can say "this was written against an older version of
+   the page" rather than quietly overwriting work done since. */
+let _suggestReady = false;
+async function ensureSuggestTable(env) {
+  if (_suggestReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS suggestions (
+       id              INTEGER PRIMARY KEY AUTOINCREMENT,
+       entity_type     TEXT NOT NULL,
+       slug            TEXT NOT NULL,
+       user_id         INTEGER,
+       username        TEXT,
+       note            TEXT,
+       data            TEXT NOT NULL,
+       base_updated_at TEXT,
+       status          TEXT NOT NULL DEFAULT 'open',
+       reply           TEXT,
+       decided_by      TEXT,
+       decided_at      TEXT,
+       ts              TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_suggestions_page ON suggestions(entity_type, slug, status)'
+  ).run();
+  _suggestReady = true;
+}
+
+const SUGGEST_MAX_OPEN_PER_PAGE = 50;   // per suggester, per page: a queue, not a firehose
+const SUGGEST_NOTE_MAX = 600;
 
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
 let _viewsReady = false;
@@ -1516,7 +1561,7 @@ function canEditRow(sess, row) {
    draft (nobody else can even see it), an admin-protected page, and a page
    whose owner never opted in. Scripts and collections have no tags, so 'tags'
    means nothing there and is treated as closed. */
-const PUBLIC_EDIT_MODES = { all: 1, tags: 1 };
+const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
 function publicEditMode(d) {
   const v = d && d.publicEdit;
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
@@ -1530,6 +1575,7 @@ function sanitizePublicEdit(v) {
    nothing legitimate comes near this. Cheap insurance against somebody
    parking a megabyte of anything in a row they do not own. */
 const PUBLIC_EDIT_MAX_BYTES = 120000;
+const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits — send yours for the creator to approve.';
 const PUBLIC_EDIT_TAGS_MAX = 400;
 function publicEditTooBig(o) {
   try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
@@ -1544,6 +1590,30 @@ async function editPermission(env, sess, type, row) {
   if (mode === 'tags' && type !== 'character') return '';
   if (await isProtected(env, type, row.slug)) return '';
   return mode;
+}
+
+/* 'suggest' is not write access: it is permission to PROPOSE a version, which
+   the owner then approves or declines (POST /api/suggest). Every save handler
+   asks this before writing, so a mode that is not a writing mode can never
+   reach a row by being mistaken for one. */
+function permCanWrite(perm) {
+  return perm === 'owner' || perm === 'all' || perm === 'tags';
+}
+
+/* Telling a suggester what happened to their suggestion — the same DM row as
+   every other notification, so it lands in the place they already look. */
+async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, origin) {
+  try {
+    if (sug.user_id == null || sug.user_id === fromId) return;
+    await ensureDmTables(env);
+    const text = 'Your suggested edit to \u201c' + (row.name || sug.slug) + '\u201d was ' + verdict + '.' +
+      (reply ? '\n\n\u201c' + reply + '\u201d' : '') +
+      '\n\n' + (origin || '') + '/suggestions?type=' + encodeURIComponent(sug.entity_type) +
+      '&slug=' + encodeURIComponent(sug.slug);
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, sug.user_id, text).run();
+  } catch { /* a notification must never break a decision */ }
 }
 
 // A page edited by somebody who does not own it: tell the owner, through the
@@ -4619,6 +4689,59 @@ export default {
       });
     }
 
+    /* Suggested edits — the list for one page, or everything waiting on the
+       pages you own (?inbox=1). A page's list is for the people who can act on
+       it: its owner, an admin, and each suggester's own entries. */
+    if (method === 'GET' && path === '/api/suggestions') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      await ensureSuggestTable(env);
+
+      if (url.searchParams.get('inbox')) {
+        // Everything open on a page this account owns. The join is done in JS
+        // because the four content types live in four tables.
+        const out = [];
+        for (const [type, t] of Object.entries(CONTENT)) {
+          const { results } = await env.DB.prepare(
+            `SELECT s.id, s.entity_type, s.slug, s.username, s.note, s.ts, s.base_updated_at,
+                    r.${t.nameCol} AS name, r.updated_at
+               FROM suggestions s JOIN ${t.table} r ON r.slug = s.slug
+              WHERE s.entity_type=? AND s.status='open' AND r.owner_id=?
+              ORDER BY s.id DESC LIMIT 100`
+          ).bind(type, sess.userId).all().catch(() => ({ results: [] }));
+          (results || []).forEach(r => out.push(r));
+        }
+        out.sort((a, b) => (b.id - a.id));
+        return jsonResponse({ inbox: out.slice(0, 100) });
+      }
+
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const owns = canEditRow(sess, row);
+      const { results } = await env.DB.prepare(
+        `SELECT id, user_id, username, note, base_updated_at, status, reply,
+                decided_by, decided_at, ts, data
+           FROM suggestions WHERE entity_type=? AND slug=? ORDER BY id DESC LIMIT 100`
+      ).bind(type, row.slug).all().catch(() => ({ results: [] }));
+      const mine = (results || []).filter(r => owns || r.user_id === sess.userId);
+      return jsonResponse({
+        type, slug: row.slug, name: row.name || row.slug,
+        updatedAt: row.updated_at || null,
+        canReview: owns,
+        suggestions: mine.map(r => ({
+          id: r.id, by: r.username || null, mine: r.user_id === sess.userId,
+          note: r.note || '', status: r.status, reply: r.reply || '',
+          decidedBy: r.decided_by || null, decidedAt: r.decided_at || null,
+          ts: r.ts, stale: !!(r.base_updated_at && row.updated_at && r.base_updated_at !== row.updated_at),
+          // What the suggestion would change about the page as it stands now.
+          changes: diffFieldValues(row.data, r.data)
+        }))
+      });
+    }
+
     /* One entry of a page's history, in detail: every field that changed, with
        what it said before and after. This is what makes the log a wiki log
        rather than a list of timestamps — you can read the edit before deciding
@@ -5433,6 +5556,154 @@ export default {
       }
 
       // ---- comments ----
+      /* ---- suggest an edit ----
+         Body: {type, slug, data, note}. `data` is the whole page as the
+         suggester would have it — the same object the editor posts to save —
+         and it is stored, not applied. Nothing here touches the row. */
+      if (path === '/api/suggest') {
+        if (acctFlags.banned) {
+          return jsonResponse({ error: 'This account is suspended.' }, { status: 403 });
+        }
+        if (await rateLimited(env, request, 'suggest', 20, 3600)) {
+          return tooManyResponse('Too many suggestions from this connection. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await revisableRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if ((row.status || 'published') !== 'published') {
+          return jsonResponse({ error: 'That page is not published.' }, { status: 400 });
+        }
+        // The owner does not suggest to themselves — they just save.
+        if (canEditRow(sess, row)) {
+          return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
+        }
+        const mode = publicEditMode(parseData(row));
+        if (mode !== 'suggest') {
+          return jsonResponse({ error: 'That page is not taking suggestions.' }, { status: 403 });
+        }
+        if (await isProtected(env, type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        const data = b.data;
+        if (!data || typeof data !== 'object') return jsonResponse({ error: 'Nothing to suggest.' }, { status: 400 });
+        if (publicEditTooBig(data)) {
+          return jsonResponse({ error: 'That suggestion is too large to send.' }, { status: 413 });
+        }
+        // Owner-only settings never ride in on a suggestion, approved or not.
+        const storedNow = parseData(row);
+        data.slug = row.slug;
+        data.publicEdit = storedNow.publicEdit;
+        data.starlight = !!storedNow.starlight;
+        delete data.status;
+        delete data.renameFrom;
+        delete data.appearsInFrom;
+        if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
+          return jsonResponse({ error: 'That is the page exactly as it stands — nothing to suggest.' }, { status: 400 });
+        }
+        await ensureSuggestTable(env);
+        const open = await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM suggestions WHERE entity_type=? AND slug=? AND user_id=? AND status='open'"
+        ).bind(type, row.slug, sess.userId).first().catch(() => ({ n: 0 }));
+        if (open && open.n >= SUGGEST_MAX_OPEN_PER_PAGE) {
+          return jsonResponse({ error: 'You already have suggestions waiting on this page.' }, { status: 429 });
+        }
+        let uname = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          uname = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        const res = await env.DB.prepare(
+          `INSERT INTO suggestions (entity_type, slug, user_id, username, note, data, base_updated_at)
+           VALUES (?,?,?,?,?,?,?)`
+        ).bind(type, row.slug, sess.userId, uname,
+               String(b.note || '').trim().slice(0, SUGGEST_NOTE_MAX) || null,
+               JSON.stringify(data), row.updated_at || null).run();
+        await logActivity(env, sess, 'suggest', type, row.slug, row.name || row.slug);
+        ctx.waitUntil(notifyPageEdit(env, {
+          fromId: sess.userId, ownerId: row.owner_id, type, slug: row.slug,
+          what: 'suggested an edit to', name: row.name || row.slug,
+          path: '/suggestions?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(row.slug),
+          origin: url.origin
+        }));
+        return jsonResponse({ ok: true, id: res.meta ? res.meta.last_row_id : null });
+      }
+
+      /* ---- approve / decline / withdraw a suggestion ----
+         Approving is an ordinary save made on the suggester's behalf: the
+         current version is snapshotted into the page's history first, so it
+         shows up in the log and can be rolled back like any other edit. */
+      if (path === '/api/suggestion') {
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10) || 0;
+        const action = String(b.action || '');
+        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        await ensureSuggestTable(env);
+        const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
+          .bind(id).first().catch(() => null);
+        if (!sug) return jsonResponse({ error: 'No such suggestion.' }, { status: 404 });
+        if (sug.status !== 'open') return jsonResponse({ error: 'That suggestion has already been dealt with.' }, { status: 409 });
+        const row = await revisableRow(env, sug.entity_type, sug.slug);
+        if (!row) return jsonResponse({ error: 'That page is gone.' }, { status: 404 });
+        const owns = canEditRow(sess, row);
+
+        if (action === 'withdraw') {
+          if (sug.user_id !== sess.userId && !owns) {
+            return jsonResponse({ error: 'That is not your suggestion.' }, { status: 403 });
+          }
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='withdrawn', decided_at=datetime('now') WHERE id=?"
+          ).bind(id).run();
+          return jsonResponse({ ok: true, status: 'withdrawn' });
+        }
+
+        if (!owns) return jsonResponse({ error: 'Only the page\u2019s creator can answer a suggestion.' }, { status: 403 });
+        const reply = String(b.reply || '').trim().slice(0, SUGGEST_NOTE_MAX) || null;
+        let by = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          by = u ? u.username : null;
+        } catch { /* non-fatal */ }
+
+        if (action === 'decline') {
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='declined', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+          ).bind(reply, by, id).run();
+          ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'declined', reply, sess.userId, url.origin));
+          return jsonResponse({ ok: true, status: 'declined' });
+        }
+
+        if (action !== 'approve') return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is in the trash. Restore it first.' }, { status: 400 });
+        }
+        if (!sess.isAdmin && await isProtected(env, sug.entity_type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        let d;
+        try { d = JSON.parse(sug.data); } catch { d = null; }
+        if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
+        // Re-pin everything that belongs to the page rather than to the
+        // suggestion — the row may have changed since it was written.
+        const now = parseData(row);
+        d.slug = row.slug;
+        d.publicEdit = now.publicEdit;
+        d.starlight = !!now.starlight;
+        delete d._deleted;
+        await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
+        try { await applyRollback(env, sug.entity_type, row, d); }
+        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not apply that suggestion.' }, { status: 500 }); }
+        await env.DB.prepare(
+          "UPDATE suggestions SET status='approved', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+        ).bind(reply, by, id).run();
+        await logActivity(env, sess, 'suggestion-approve', sug.entity_type, row.slug,
+          (d.name || d.displayName || d.title || row.name || row.slug) +
+          (sug.username ? ' (from ' + sug.username + ')' : ''));
+        ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'approved', reply, sess.userId, url.origin));
+        return jsonResponse({ ok: true, status: 'approved', slug: row.slug });
+      }
+
       // ---- roll a page back to one of its own revisions (owner or admin) ----
       // Same operation as /api/admin/rollback, gated on owning the page rather
       // than on being an admin. Outside /api/admin/ because everything under
@@ -5661,6 +5932,9 @@ export default {
         if (existing && !perm) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
         }
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
         if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
@@ -5763,6 +6037,9 @@ export default {
         if (existing && !perm) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
         }
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
         if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
@@ -5851,6 +6128,9 @@ export default {
         const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
         if (existing && !perm) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
+        }
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
         }
         if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });

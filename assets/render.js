@@ -72,16 +72,21 @@
      two answer the same question: who has been here, and what did they do?
      A page that is not open still has a history; it is reached from the page's
      own Edit view and the account page. */
+  var OPEN_EDIT_TEXT = {
+    all: ['open to all', 'anyone with an account can edit this page. '],
+    tags: ['tags open to all', 'anyone with an account can change the tags. '],
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. ']
+  };
   function openEditRow(d, root) {
-    var mode = d.publicEdit === 'all' ? 'all' : d.publicEdit === 'tags' ? 'tags' : '';
-    if (!mode) return '';
-    var hist = '<a class="hist-page-link" href="' + root + 'history?type=character&amp;slug=' +
-      encodeURIComponent(d.slug || '') + '">Edit history</a>';
-    return '<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' +
-      (mode === 'tags' ? 'tags open to all' : 'open to all') + '</span> ' +
-      (mode === 'tags'
-        ? 'anyone with an account can change the tags. '
-        : 'anyone with an account can edit this page. ') + hist + '</dd>';
+    var t = OPEN_EDIT_TEXT[d.publicEdit];
+    if (!t) return '';
+    var slug = encodeURIComponent(d.slug || '');
+    var links = '<a class="hist-page-link" href="' + root + 'history?type=character&amp;slug=' + slug + '">Edit history</a>';
+    if (d.publicEdit === 'suggest') {
+      links = '<a class="hist-page-link" href="' + root + 'edit?c=' + slug + '">Suggest an edit</a> ' + links;
+    }
+    return '<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
+      t[1] + links + '</dd>';
   }
 
   function jinxURL(name) {

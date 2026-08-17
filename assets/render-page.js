@@ -728,13 +728,21 @@
      to other people, with the link to its edit log. Characters say the same
      thing in their own info box (openEditRow in render.js). Only an opened page
      says anything: that is how anybody finds out they are welcome to help. */
+  var OPEN_EDIT_TEXT = {
+    all: ['open to all', 'anyone with an account can edit this page. '],
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. ']
+  };
   function openEditRows(d, root, type) {
-    if (d.publicEdit !== 'all') return [];
+    var t = OPEN_EDIT_TEXT[d.publicEdit];
+    if (!t) return [];
     var key = type === 'script' ? (d.slug || '') : (d.id || d.slug || '');
-    return ['<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">open to all</span> ' +
-      'anyone with an account can edit this page. ' +
-      '<a class="hist-page-link" href="' + esc(root) + 'history?type=' + esc(type) +
-      '&amp;slug=' + encodeURIComponent(key) + '">Edit history</a></dd>'];
+    var q = 'type=' + esc(type) + '&amp;slug=' + encodeURIComponent(key);
+    var links = '<a class="hist-page-link" href="' + esc(root) + 'history?' + q + '">Edit history</a>';
+    if (d.publicEdit === 'suggest') {
+      links = '<a class="hist-page-link" href="' + esc(root) + 'suggestions?' + q + '">Suggestions</a> ' + links;
+    }
+    return ['<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
+      t[1] + links + '</dd>'];
   }
 
   /* ── shared page body ── */

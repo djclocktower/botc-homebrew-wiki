@@ -3123,3 +3123,52 @@ html.textedit-on .te-live-hit {
 }
 .guest-bar strong { color: #1b3c58; }
 .guest-bar a { color: #2f6fb8; font-weight: 600; }
+
+/* ─── Suggested edits (/suggestions) ───────────────────────────
+   The owner's review queue, and a suggester's view of their own. Shares the
+   .hist-field before/after blocks with the page history. */
+.sg-row {
+  border-top: 1px solid rgba(180,160,120,.4);
+  padding: 14px 0;
+}
+.sg-row:first-child { border-top: none; padding-top: 4px; }
+.sg-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sg-who { font-weight: 700; color: var(--maroon); }
+.sg-when { font-family: 'Oswald', sans-serif; font-size: .76rem; color: #6b5d49; }
+.sg-chip {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase;
+  border-radius: 3px; padding: 1px 7px; border: 1px solid;
+}
+.sg-open      { color: #7a5c18; background: rgba(154,110,20,.12); border-color: rgba(154,110,20,.4); }
+.sg-approved  { color: #1c5429; background: rgba(42,110,42,.12); border-color: rgba(42,110,42,.4); }
+.sg-declined  { color: #9a2c2c; background: rgba(154,44,44,.1); border-color: rgba(154,44,44,.4); }
+.sg-withdrawn { color: #6b5d49; background: rgba(0,0,0,.04); border-color: rgba(180,160,120,.6); }
+.sg-stale     { color: #9a2c2c; background: rgba(154,44,44,.08); border-color: rgba(154,44,44,.35); text-transform: none; letter-spacing: .02em; }
+.sg-note {
+  font-size: .9rem; color: var(--ink); font-style: italic;
+  margin: 6px 0 0; padding-left: 10px; border-left: 2px solid rgba(180,160,120,.6);
+}
+.sg-reply-said { font-size: .88rem; color: #6b5d49; margin: 6px 0 0; }
+.sg-changes { margin-top: 10px; }
+.sg-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.sg-reply {
+  flex: 1; min-width: 180px;
+  font-family: 'Libre Franklin', sans-serif; font-size: .86rem; color: #241a12;
+  background: #fffdf8; border: 1px solid #cdbfa0; padding: 6px 9px;
+}
+.sg-approve { color: #1c5429; border-color: rgba(42,110,42,.5); }
+.sg-decline { color: #9a2c2c; border-color: rgba(154,44,44,.5); }
+/* The inbox: everything waiting on pages you own */
+.sg-inbox-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-top: 1px solid rgba(180,160,120,.4);
+}
+.sg-inbox-row:first-child { border-top: none; }
+.sg-inbox-main { flex: 1; min-width: 0; }
+.sg-inbox-name { display: block; color: var(--maroon); font-weight: 700; text-decoration: none; }
+.sg-inbox-name:hover { text-decoration: underline; }
+.sg-inbox-meta { display: block; font-family: 'Oswald', sans-serif; font-size: .74rem; color: #6b5d49; }
+.sg-inbox-note { display: block; font-size: .86rem; font-style: italic; color: var(--ink); margin-top: 2px; }
+/* The note box in the editor when a page takes suggestions */
+.suggest-note-fld textarea { min-height: 60px; }

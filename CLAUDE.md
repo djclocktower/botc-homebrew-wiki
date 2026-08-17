@@ -65,8 +65,9 @@ Key dynamic behavior:
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), admin tools (dashboard, full activity log, report,
   revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed),
-  plus the public page history (`/api/page-history`, `/api/page-revision`) and
-  owner rollback (`/api/page-rollback`) — see "Public editing" below.
+  plus the public page history (`/api/page-history`, `/api/page-revision`),
+  owner rollback (`/api/page-rollback`) and suggested edits (`/api/suggest`,
+  `/api/suggestions`, `/api/suggestion`) — see "Public editing" below.
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   A character's URL **and its R2 art slot** are both derived from its name, so
@@ -444,6 +445,9 @@ text-editor.html       /text-editor — admin-only. Every string the SITE writes
                        dashes / curly quotes / any character you type, sort by
                        page or by length, rewrite any of it. See "System text"
                        below. Linked from a dashboard card; not in any nav.
+suggestions.html       /suggestions?type=&slug= — one page's suggested edits,
+                       with the owner's Approve/Decline; /suggestions with no
+                       page is the owner's inbox of everything waiting.
 history.html           /history?type=&slug= — one page's edit log: who changed
                        what and when, with the owner's rollback. Public for a
                        published page (drafts have no history at all).
@@ -651,6 +655,10 @@ other people, stored on the page's `data` as `publicEdit`:
 - **`'tags'`** — anyone with an account may change the tags, and nothing else.
   Characters only: scripts and collections have no tags, so `'tags'` on one of
   those is treated as closed.
+- **`'suggest'`** — anyone with an account may PROPOSE a version, which the
+  creator approves or declines. This is not write access: `permCanWrite()` is
+  what every save handler asks, and 'suggest' is not one of the writing modes,
+  so a suggestion can never reach a row by being mistaken for an edit.
 
 `editPermission(env, sess, type, row)` in worker.js is the single answer to
 "what may this session do to this row": `'owner'` (the owner or an admin),
@@ -694,6 +702,39 @@ records what was live. `REVISIONS_KEEP` is 50.
   before and after text (`diffFieldValues`).
 - `POST /api/page-rollback` — put a version back. Owner or admin, and it
   snapshots the current version first, so a rollback is itself undoable.
+
+## Suggested edits
+
+A page set to `publicEdit: 'suggest'` collects proposed versions in the
+lazily-created `suggestions` table (`entity_type`+`slug`, the suggester, an
+optional `note`, the whole proposed page as `data`, `base_updated_at`, and a
+`status` of open/approved/declined/withdrawn). A suggestion is the same object
+the editor would have saved — stored, not applied.
+
+- `POST /api/suggest` — propose one. Refused for the page's own owner (they
+  just save), for a page not in suggest mode, for a protected or unpublished
+  page, and for a proposal identical to the page as it stands. Owner-only
+  fields (`publicEdit`, `starlight`, `status`, `slug`) are stripped on the way
+  in, so nothing can ride along and be approved by accident.
+- `GET /api/suggestions?type=&slug=` — a page's suggestions, each with the
+  field-by-field difference from the page **as it stands now** (not as it stood
+  when written) and a `stale` flag when those differ. Visible to the owner, to
+  admins, and to each suggester for their own.
+- `GET /api/suggestions?inbox=1` — everything open on pages this account owns,
+  which is what the account page's panel and `/suggestions` with no page use.
+- `POST /api/suggestion` — `approve` (owner/admin), `decline` (owner/admin,
+  with an optional reply) or `withdraw` (the suggester). **Approving is an
+  ordinary save**: the current version is snapshotted with `saveRevision()`
+  first, so the approval shows up in the page's history and can be rolled back
+  like any other edit, and owner-only fields are re-pinned from the row rather
+  than taken from the suggestion.
+
+`suggestions.html` serves both `/suggestions?type=&slug=` (one page's queue,
+with Approve / Decline / Withdraw) and `/suggestions` (the owner's inbox).
+The suggester's side is `edit.html` in suggest mode: the full form, a note box,
+the name locked and **the art inputs disabled** — an upload would write into
+the page's own R2 slot, which is the one thing an unapproved suggestion must
+not touch. Both sides are notified through the same `dms` row comments use.
 
 `history.html` (`/history?type=&slug=`) is the reader-facing page: the current
 version, every edit under it, "What changed" per entry, and "Put this version

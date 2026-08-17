@@ -293,6 +293,15 @@
         <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
       </div>
 
+      <!-- suggested edits waiting on pages you own -->
+      <div class="panel" id="sug-panel" style="display:none">
+        <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
+        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
+          Changes other people have proposed to your pages. Nothing is live until you approve it.
+        </p>
+        <table class="row-list" id="sug-table"></table>
+      </div>
+
       <!-- published pages -->
       <div class="panel">
         <h3>Your Pages <span class="count-pill" id="n-pages">0</span></h3>
@@ -667,6 +676,32 @@
     // have been editing. Re-run on every load(), and it re-collapses — the
     // list is rebuilt from scratch each time.
     var FEED_SHOWN = 10;
+    /* Suggestions waiting on pages this account owns. Its own request rather
+       than part of /api/account: the panel is empty for almost everybody, and
+       an account page should not pay for a join across four tables to find
+       that out — the call is cheap and it hides itself when there is nothing. */
+    function loadSuggestions() {
+      fetch('/api/suggestions?inbox=1', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          var rows = (res && res.inbox) || [];
+          if (!rows.length) return;
+          $('n-sug').textContent = rows.length;
+          $('sug-panel').style.display = '';
+          $('sug-table').innerHTML = rows.map(function (r) {
+            var href = 'suggestions?type=' + encodeURIComponent(r.entity_type) +
+              '&slug=' + encodeURIComponent(r.slug);
+            return '<tr><td><span class="row-name"><a href="' + href + '">' +
+                esc(r.name || r.slug) + '</a></span>' +
+                (r.note ? '<div class="row-date" style="opacity:.8">&ldquo;' + esc(r.note) + '&rdquo;</div>' : '') + '</td>' +
+              '<td class="row-type">from ' + esc(r.username || 'someone') + '</td>' +
+              '<td class="row-date">' + fmtDate(r.ts) + '</td>' +
+              '<td class="row-actions"><a class="mini-btn edit" href="' + href + '">Review</a></td></tr>';
+          }).join('');
+        })
+        .catch(function () { /* the panel just stays hidden */ });
+    }
+
     function collapseFeed() {
       var items = Array.prototype.slice.call($('edit-feed').children);
       var btn = $('edits-toggle');
@@ -889,6 +924,7 @@
           renderProfile(data.profile);
           renderLists(data);
           loadMyMessages();
+          loadSuggestions();
         })
         .catch(function(){
           $('gate').style.display = 'block';

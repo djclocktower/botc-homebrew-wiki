@@ -303,6 +303,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -539,7 +540,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // Who else may edit this page. Stored on the row, enforced by the Worker.
     $('sb-public-edit').addEventListener('change', function(){
       var m = getMeta();
-      if ($('sb-public-edit').value === 'all') m.publicEdit = 'all'; else delete m.publicEdit;
+      var v = $('sb-public-edit').value;
+      if (v === 'all' || v === 'suggest') m.publicEdit = v; else delete m.publicEdit;
       setMeta(m);
     });
 
@@ -715,7 +717,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       (m.bootlegger || []).forEach(addBootRow);
       $('sb-almanac').value = m.almanac || '';
       $('sb-hidetitle').checked = !!m.hideTitle;
-      $('sb-public-edit').value = m.publicEdit === 'all' ? 'all' : '';
+      $('sb-public-edit').value = (m.publicEdit === 'all' || m.publicEdit === 'suggest') ? m.publicEdit : '';
       if (m.publicEdit) $('sb-open-sec').open = true;
       if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
       if (m.header){
@@ -1017,7 +1019,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
             hideTitle: !!entry.hideTitle,
-            publicEdit: entry.publicEdit === 'all' ? 'all' : '',
+            publicEdit: (entry.publicEdit === 'all' || entry.publicEdit === 'suggest') ? entry.publicEdit : '',
             theme: entry.theme || {}
           };
           if (!m.nightOrder) delete m.nightOrder;

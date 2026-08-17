@@ -275,6 +275,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -799,7 +800,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
           // Who else may edit this page (enforced by the Worker, not by the form).
-          $('sb-public-edit').value = c.publicEdit === 'all' ? 'all' : '';
+          $('sb-public-edit').value = (c.publicEdit === 'all' || c.publicEdit === 'suggest') ? c.publicEdit : '';
           if (c.publicEdit) $('sb-open-sec').open = true;
           loadPages(EDIT_KEY);
           include = (c.include || []).slice();

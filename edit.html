@@ -345,6 +345,7 @@
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
@@ -670,6 +671,66 @@
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    // What this account may do to this page, as the Worker answered it:
+    // 'owner' | 'all' | 'tags' | 'suggest' | false.
+    var EDIT_MODE = 'owner';
+
+    /* Sending a suggestion. The art is deliberately not uploaded: an upload
+       would write into the page's own R2 slot, which is the one thing a
+       suggestion must not do before it is accepted. The rest of the page —
+       every word of it — travels in the proposal. */
+    function sendSuggestion(d) {
+      var note = ($('suggest-note') && $('suggest-note').value.trim()) || '';
+      $('save').disabled = true;
+      setStatus('work', 'Sending your suggestion&hellip;');
+      delete d.publicEdit;
+      fetch('/api/suggest', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'character', slug: originalSlug, data: d, note: note })
+      })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (!res || res.error) throw new Error((res && res.error) || 'Could not send that suggestion.');
+          setStatus('ok', '\u2713 Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
+            ' will see it on <a href="suggestions?type=character&slug=' + encodeURIComponent(originalSlug) +
+            '">the suggestions page</a>, and you will get a message either way.');
+        })
+        .catch(function(err){
+          $('save').disabled = false;
+          setStatus('err', err.message);
+        });
+    }
+    function suggestMode(entry) {
+      hideOwnerOnly();
+      var nm = $('name');
+      nm.readOnly = true;
+      nm.title = 'Only the page\u2019s creator can rename it.';
+      $('save-publish').style.display = 'none';
+      $('delete-char').style.display = 'none';
+      $('save').textContent = 'Send this suggestion';
+      // The art inputs would upload into the page's own R2 slot, which is
+      // exactly what an unapproved suggestion must not touch — so they are
+      // closed rather than left there to be filled in and ignored.
+      ['art', 'artAlt'].forEach(function (id) {
+        var el = $(id);
+        if (!el) return;
+        el.disabled = true;
+        el.title = 'Art cannot be suggested — mention it in your note instead.';
+      });
+      // Somewhere to say why, right above the button that sends it.
+      var box = document.createElement('div');
+      box.className = 'fld suggest-note-fld';
+      box.innerHTML = '<label for="suggest-note">A note for the creator <span class="hint">(optional)</span></label>' +
+        '<textarea id="suggest-note" maxlength="600" placeholder="What you changed, and why."></textarea>';
+      var save = $('save');
+      if (save && save.parentNode) save.parentNode.insertBefore(box, save);
+      guestBanner('<strong>This page takes suggestions.</strong> ' +
+        esc(entry.creator || 'The creator') + ' reviews changes before they go live: edit the page ' +
+        'as you think it should read, then send it. Nothing changes until they approve it, and ' +
+        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>');
+    }
+
     /* ── editing somebody else's page ──
        A page its creator opened up. Nothing is hidden for a full public edit —
        the form is the same one the owner sees — but it says whose page this is
@@ -933,6 +994,9 @@
       var d = gather();
       if(!d.name)    return setStatus('err','A character name is required.');
       if(!d.ability) return setStatus('err','An ability line is required.');
+      // A page that takes suggestions is not saved from here at all: the same
+      // form is posted as a proposal for its creator to answer.
+      if (EDIT_MODE === 'suggest') return sendSuggestion(d);
       var saveStatus = newStatus || currentStatus;
 
       $('save').disabled = true;
@@ -1147,6 +1211,7 @@
              all of it — the form only has to avoid inviting somebody to type
              into fields that would be thrown away. */
           var mode = res.editMode || (res.canEdit ? 'owner' : false);
+          EDIT_MODE = mode;
           if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
             $('save').disabled = true;
@@ -1159,6 +1224,7 @@
           populateForm(entry);
           if (mode === 'tags') tagsOnlyMode(entry);
           else if (mode === 'all') guestNotice(entry);
+          else if (mode === 'suggest') suggestMode(entry);
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';
