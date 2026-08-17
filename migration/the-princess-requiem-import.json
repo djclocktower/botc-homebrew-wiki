@@ -1,0 +1,1759 @@
+{
+ "source": "https://www.bloodstar.xyz/p/Nightingale/Princesses_Requiem/almanac.html (and the script.json beside it).",
+ "note": "Import record for \"The Princess’ Requiem\", Snowe’s homebrew script, written from its Bloodstar almanac. Game data (ability, team, night order, night reminders, reminder tokens, setup) comes from the script.json; the prose (flavour line, overview, examples, how to run, tips, attribution) from each character’s almanac page beside it. Nothing was written that the source does not say. Notes:\n- Six of the names already belong to other creators here (Margrave, Huntress, Conspirator, Goldsmith, Inquisitor, Minister), so those six take a -the-princess-requiem URL in the wiki’s existing duplicate style. The other 24 keep their plain slug. \"The Herald\", \"The Painter\", \"The Princess\" and \"The Seraph\" keep the article the author put in the name, so they do not collide with the existing herald, painter and seraph pages at all.\n- Bloodstar’s Overview is one opening line then the detail. That splits the way this wiki is shaped: the line is the lede, the rest is the summary.\n- Bloodstar bolds reminder-token names inside How to Run. Those become the wiki’s [[TOKEN]] notation, which render.js draws as a reminder pill - but ONLY where the bolded run names one of that character’s own reminders. Everything else bolded is ordinary emphasis and flattens, because a character field is plain text.\n- The author’s flavour text carries markdown emphasis (*nerve*, *She*, *will*). A quote is a plain-text field here, so those three markers were unwrapped. \"Each night*\" is untouched everywhere: that asterisk is BotC’s own \"not the first night\" notation, not emphasis.\n- Every character’s Attribution section is kept verbatim in a custom box, which runs through render-wiki.js so the **bold** labels survive. The icon credit also goes in iconBy on its own, so it shows in the info box. Most read \"@luhkmeih (me)\"; three Travellers credit game-icons.net, and five carry an Inspiration or Rework Suggestion credit as well.\n- The night order numbers are the author’s own and are positions within this script (first nights run 2 to 30, other nights 1 to 22) rather than on the official global scale the wiki’s night-order picker uses. They sort this script exactly as intended but do not interleave with official characters in a mixed script.\n- The five Travellers are `traveler` in the source, the official schema’s spelling; the wiki’s team key is `traveller`, so they are stored that way.\n- The almanac has no Examples for 20 of the 30, no How to Run for four of the five Travellers, and no flavour line for the Inquisitor, Goldsmith or Strikebreaker. The author’s own changelog says How To Run was completed \"for all non-Travellers\", so these are gaps in the source, not in the import, and nothing was invented to fill them. There are no tags either, so all 30 pages are Partial and hidden from browsing unless a reader ticks \"Show Partial\". No Starlight was set.\n- The almanac’s Changelog is 7.8k characters, well over the 4000-character cap on a custom box, so it is a wiki page at /p/the-princess-requiem-changelog, linked from the Pages section of the script. Its 14 version headings and 97 entries are the author’s words; only Bloodstar’s HTML became wiki marks (## headings, - bullets, **bold**).\n- The script’s own page takes its Synopsis and Gameplay from the almanac’s Synopsis and Overview pages, its version (2.8.0) from the top of the changelog, and its difficulty (Intermediate) from the Overview’s second line. The header is the almanac’s _meta.png.\n- No collection was created, because only the script was asked for. The characters carry appearsIn \"The Princess’ Requiem\" as plain text; it will start linking on its own if a collection of that name is ever added.\n- No account named Snowe (or luhkmeih) exists on the wiki, so every row is written with owner_id NULL; an admin can hand them over from the dashboard once there is one.\n- Written straight to D1, so settings.content_version was bumped by hand after each write.",
+ "script": {
+  "slug": "the-princess-requiem",
+  "name": "The Princess’ Requiem",
+  "header": "scripts/the-princess-requiem.png",
+  "author": "Snowe",
+  "description": "",
+  "characters": [
+   "margrave-the-princess-requiem",
+   "recordkeeper",
+   "forger",
+   "hypnotist",
+   "dauphin",
+   "marksman",
+   "lieutenant",
+   "nighthawk",
+   "marchioness",
+   "dreamweaver",
+   "huntress-the-princess-requiem",
+   "shapeshifter",
+   "demoiselle",
+   "conspirator-the-princess-requiem",
+   "fireblood",
+   "palsgrave",
+   "torturer",
+   "the-seraph",
+   "the-herald",
+   "the-princess",
+   "the-violinist",
+   "the-painter",
+   "the-hegemon",
+   "the-maelstrom",
+   "the-prince",
+   "dutchman",
+   "strikebreaker",
+   "goldsmith-the-princess-requiem",
+   "inquisitor-the-princess-requiem",
+   "minister-the-princess-requiem"
+  ],
+  "tagline": "",
+  "version": "2.8.0",
+  "difficulty": "intermediate",
+  "synopsis": "Crowds of nobles and their retinues across the three kingdoms arrived at the reclusive Palace of Salument at King Scylla’s behest to mourn the passing of Prince Lucifer di Neiro of the Crown States. Frankly, many of them didn't care. They just came here to curry favor with the King. If anything, Lucifer’s death was an opportunity now that the King had no living male heirs… In a palace a day’s carriage ride from the nearest city, nobody would dream of doing anything untoward, right? No matter how much it might bolster or raise their esteem with the King…\n\nThe nobles trickled into the palace slowly over the course of the day. The Palsgrave and her servants manage their stay, ensuring luxury to the finest point. Near sunset, all fifteen met for a five-course feast in the King’s audience, with live music and entertainment, and they all slowly retreated first to the drawing room, then back to their private rooms, to prepare for the solemn service tomorrow.\n\nSomewhere in the woods beyond, a beacon of light shot upwards, diffusing against the evening clouds.\n\nOne former guest stepped out from the chalk circle where it arose, mind altered by the light. They knelt down on the grass and picked up the pistol lying by their feet, studying it. With the soft click of the gun cocking, they strutted out of the woods towards the palace…\n\n~ · ~ · ~ · ~\n\nThe next morning, Princess Pallas di Angelari was found dead in the forest. With a prince dead and a princess murdered, King Scylla will have blood...",
+  "gameplay": "The Princess' Requiem is a script centered around death and madness. Though evil characters can kill multiple times per night, with every death past one they slip information about their composition and placement. Good players get amazing information out of deaths individually, but many will accidentally interfere with each other; they need to pay extra attention to how people died to solve the game. Players on both teams need to be mad about inconvenient things to make the best use of their abilities.\n\nIntermediate. Recommended for players who are crafty, cooperative, and willing to subvert expectations.",
+  "strategyGood": "",
+  "strategyEvil": "",
+  "starlight": false
+ },
+ "wikiPage": {
+  "slug": "the-princess-requiem-changelog",
+  "title": "Changelog",
+  "parentType": "script",
+  "parentSlug": "the-princess-requiem",
+  "author": "Snowe"
+ },
+ "characters": [
+  {
+   "name": "Margrave",
+   "team": "townsfolk",
+   "ability": "You start knowing an in-play opposing character. If an evil kills you, that character dies too.",
+   "lede": "The Margrave starts knowing an enemy, and slays them at the moment of their death.",
+   "summaryBullets": [
+    "If the character is already dead when the Margrave dies, nothing happens.",
+    "If the character is no longer in play when the Margrave dies, nothing happens.",
+    "In a Painter game, they learn an Outsider or Demon as an arbitrary evil character. If they die at night, then the player they learned dies."
+   ],
+   "howToRun": [
+    "While preparing the first night, put the Margrave's [[SEEN]] reminder token by any evil character token.",
+    "During the first night, wake the Margrave and show them the character token marked [[SEEN]]. Put the Margrave to sleep. Whenever you move this token, move the [[SEEN]] token along with it.",
+    "If the Margrave dies at night, the seen player dies - replace the [[SEEN]] token with the [[DEAD]] token."
+   ],
+   "examples": [
+    "The Margrave starts knowing the Herald. On the third night, the Maelstrom kills the Margrave. The Herald dies too.",
+    "The Margrave starts knowing the Princess. On the fourth night, the Violinist kills the Margrave. The Princess does not die.",
+    "The Margrave starts knowing the Seraph, because the Painter causes the Torturer to register as the Seraph. The real Seraph kills the Margrave, and the Torturer dies because the Painter caused the Seraph to register as the Demon."
+   ],
+   "tips": [
+    "You can technically show the Margrave the Demon, but the vast majority of the time you should not."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I was never his equal, but Prince di Neiro was my only true friend. If you think you can tear him from this world and escape justice, you'll have to kill me too.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "margrave_princesses_requiem",
+   "firstNight": 11,
+   "firstNightReminder": "Show the Margrave the token of an in-play Minion.",
+   "otherNight": 13,
+   "otherNightReminder": "If the Margrave died tonight, kill the player with the character they saw.",
+   "reminders": [
+    "Seen",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "margrave-the-princess-requiem",
+   "page": "c/margrave-the-princess-requiem",
+   "art": "art/margrave-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/margrave-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Recordkeeper",
+   "team": "townsfolk",
+   "ability": "Each night, choose a unique character; they're drunk until dusk.",
+   "lede": "The Recordkeeper stops a character from acting for a day and a night.",
+   "summaryBullets": [
+    "The Recordkeeper can choose a character once per game.",
+    "If the Recordkeeper chooses an out-of-play character, nothing happens."
+   ],
+   "howToRun": [
+    "Each night, wake the Recordkeeper. They point at any character they have not pointed at. Put the Recordkeeper to sleep. If that character is in play, they become [[DRUNK]]—mark them with the [[DRUNK]] reminder."
+   ],
+   "examples": [
+    "The Recordkeeper chooses the Seraph. That night, the Seraph correctly guesses their contract, but their contract does not die because they are drunk.",
+    "The Recordkeeper chooses the Princess. Nothing happens because there is no Princess in play.",
+    "The Recordkeeper tries to choose the Seraph again, but is told no because they already chose it. The Recordkeeper instead chooses the Palsgrave. That night, the Herald gains the Palsgrave ability and can kill a player, because the Recordkeeper did not drunk them."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "You mean while I spent hours looking for you, worrying out of my mind preparing for the Dauphin’s arrival, and you have the nerve to skip work and go drinking? Everything has to be perfect for her. You know our jobs are at stake, right?",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "recordkeeper_princesses_requiem",
+   "firstNight": 12,
+   "firstNightReminder": "The Recordkeeper points to a character. If in play, mark that player with the Drunk token.",
+   "otherNight": 14,
+   "otherNightReminder": "The Recordkeeper points to a character. If in play, mark that player with the Drunk token.",
+   "reminders": [
+    "Drunk"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "recordkeeper",
+   "page": "c/recordkeeper",
+   "art": "art/recordkeeper.png",
+   "image": "https://botchomebrew.wiki/assets/art/recordkeeper.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Forger",
+   "team": "townsfolk",
+   "ability": "Each night, choose a player; a chosen Demon swaps characters with a living Minion.",
+   "lede": "The Forger can trick evil players into moving the Demon around.",
+   "summaryBullets": [
+    "If there are no living Minions when the Forger chooses an evil player, nothing happens."
+   ],
+   "howToRun": [
+    "Each night, wake the Forger. They point at any player. Put the Forger to sleep.",
+    "If that player is not the Demon, nothing happens.",
+    "If that player is the Demon, they change into the character of an in-play Minion, and the old Minion changes into the character of the selected player—swap their tokens. Wake both affected players in succession and show them the YOU ARE info token, then their new character. (This shows they are now evil and the Demon.) Put them to sleep."
+   ],
+   "examples": [
+    "The Forger chooses the Hegemon with the Princess ability. The Hegemon becomes the Herald, and the Herald becomes the Hegemon with the Violinist ability.",
+    "The Forger chooses the Maelstrom, but all Minions are dead. Nothing happens."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "You want blood smeared on that pistol handle like it was shot by a blood-spattered hand, dents consistent with it falling from a height of 10 meters, and engraving to match the Earl’s personal handgun? Give me five hours.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "forger_princesses_requiem",
+   "firstNight": 13,
+   "firstNightReminder": "The Forger wakes up and points to a player. If that player is evil, swap their token and a Minion's.",
+   "otherNight": 15,
+   "otherNightReminder": "The Forger wakes up and points to a player. If that player is evil, swap their token and a Minion's.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me).\n**Inspiration:** @icibalus' Haruspex."
+    }
+   ],
+   "customJson": "",
+   "slug": "forger",
+   "page": "c/forger",
+   "art": "art/forger.png",
+   "image": "https://botchomebrew.wiki/assets/art/forger.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Hypnotist",
+   "team": "townsfolk",
+   "ability": "Each night, choose a player; chosen evils learn you and if they're mad you're evil, they might die at night.",
+   "lede": "The Hypnotist renders evil players unable to say bad things about them.",
+   "summaryBullets": [
+    "If the Hypnotist chooses a good player, nothing happens.",
+    "The madness condition on the evil players ends when the Hypnotist dies."
+   ],
+   "howToRun": [
+    "Each night, wake the Hypnotist and have them choose a player. If they choose an evil, put a [[HYPNOTISED]] reminder token next to that player. Put the Hypnotist to sleep. If applicable, wake the evil player the Hypnotist chose tonight, show them the “this character selected you” card and the Hypnotist token, then point to the Hypnotist player. Put that player back to sleep.",
+    "During any night the Hypnotist ability is active, if you feel that the mad player has tried to convince the group that the Hypnotist is evil, you can decide that they die—mark them with the [[DEAD]] reminder token.",
+    "If the Hypnotist dies, remove all [[HYPNOTISED]] tokens from affected players."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Teehee... I didn't imagine the Count's son would have such a cute side! Don't worry, I guard my own and others' secrets well. Look into my eyes. You don't remember where you saw my face...",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "hypnotist_princesses_requiem",
+   "firstNight": 14,
+   "firstNightReminder": "The Hypnotist chooses a player. If evil, wake them up tell them who the Hypnotist is.",
+   "otherNight": 16,
+   "otherNightReminder": "The Hypnotist chooses a player. If evil, wake them up tell them who the Hypnotist is.",
+   "reminders": [
+    "Hypnotised",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me).\n**Inspiration:** @icibalus' Parvenu."
+    }
+   ],
+   "customJson": "",
+   "slug": "hypnotist",
+   "page": "c/hypnotist",
+   "art": "art/hypnotist.png",
+   "image": "https://botchomebrew.wiki/assets/art/hypnotist.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Dauphin",
+   "team": "townsfolk",
+   "ability": "Each night, choose 2 players (not yourself). If they're mad you're good tomorrow, they can't die tomorrow night.",
+   "lede": "The Dauphin can hide players from the dangers of the night... if they trust her.",
+   "summaryBullets": [
+    "The players are not infomed that they would gain benefits to being mad.",
+    "The protections and madnesses are individual. If one target is mad and the other is not, only the first is protected."
+   ],
+   "howToRun": [
+    "Each night, wake the Dauphin. The Dauphin points to two players. Mark them with the [[MAD]] reminder token, then put the Dauphin to sleep.",
+    "The following day, if you feel that the mad player has tried to convince the group that the Dauphin is good, replace the [[MAD]] token with the [[SAFE]] token. Players marked as [[SAFE]] cannot die during the night.",
+    "At dusk, remove all [[MAD]] reminders. At dawn, remove all [[SAFE]] reminders."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I know I'm here because of my father, but I pride myself on my tactical prowess. I can manipulate her actions... but you have to trust me. I can't do anything alone.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "dauphin_princesses_requiem",
+   "firstNight": 15,
+   "firstNightReminder": "The Dauphin chooses 2 players. Mark them as Mad.",
+   "otherNight": 17,
+   "otherNightReminder": "The Dapuhin chooses 2 players. Mark them as Mad. If the previously Mad characters fulfilled madness, mark them Protected.",
+   "reminders": [
+    "Mad",
+    "Safe"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "dauphin",
+   "page": "c/dauphin",
+   "art": "art/dauphin.png",
+   "image": "https://botchomebrew.wiki/assets/art/dauphin.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Marksman",
+   "team": "townsfolk",
+   "ability": "Each night*, choose a player; chosen Minions kill a good alive neighbour.",
+   "lede": "The Marksman seeks minions as her prey, though their aim is not always true.",
+   "summaryBullets": [
+    "If the Marksman picks a Minion, then one of the two closest living good players on either side of that Minion dies. This skips dead and evil players."
+   ],
+   "howToRun": [
+    "Each night except the first, wake the Marksman. They point at any player. Put the Marksman to sleep.",
+    "If that player is not a Minion, nothing happens.",
+    "If that player is a Minion, the closest clockwise or closest counterclockwise alive good player to the Minion dies- mark them with a [[DEAD]] reminder."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Why'd you have to go, Sis? I'll find who killed you, I swear it. No matter how much blood it costs.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "marksman_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 18,
+   "otherNightReminder": "The Huntress chooses a player; if they’re a Minion, kill one of their good living neighbours.",
+   "reminders": [
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "marksman",
+   "page": "c/marksman",
+   "art": "art/marksman.png",
+   "image": "https://botchomebrew.wiki/assets/art/marksman.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Lieutenant",
+   "team": "townsfolk",
+   "ability": "Each night*, the Demon's worst opposing kill for your team (not yourself) can't die until dawn.",
+   "lede": "The Lieutenant protects those who need it most.",
+   "summaryBullets": [
+    "Each night, the Lieutenant protects, out of the players (not the Lieutenant) on the opposite team from the Demon, the one who would be the worst kill for the Lieutenant’s team. Most of the time, they protect the Demon’s best kill out of the good players.",
+    "If the Demon is good, the Lieutenant protects an evil player instead of a good player. If the Lieutenant is evil, they protect an evil Demon’s worst kill instead of their best.",
+    "The Lieutenant does not learn who they protected."
+   ],
+   "howToRun": [
+    "Each night, except the first, decide which player you believe would be worst for good if they died. Mark them with the Lieutenant's [[SAFE]] reminder token.",
+    "The player marked [[SAFE]] cannot die during the night.",
+    "At dawn, remove the [[SAFE]] reminder token."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Yes, your highness, I facilitated the Marquess’ jailbreak. We both know you wanted him alive, and now he is. If I may speak, your highness? You’re too soft. In the military, they teach you how to get things done.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "lieutenant_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 19,
+   "otherNightReminder": "Decide who the Demon's worst kill for the Lieutenant's team is, then mark them as Protected.",
+   "reminders": [
+    "Safe"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "lieutenant",
+   "page": "c/lieutenant",
+   "art": "art/lieutenant.png",
+   "image": "https://botchomebrew.wiki/assets/art/lieutenant.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Nighthawk",
+   "team": "townsfolk",
+   "ability": "Each night*, if an evil died since dawn and you were mad that you're an in-play character, they (not you) die.",
+   "lede": "The Nighthawk imitates other people to terrorize them, eventually killing them.",
+   "summaryBullets": [
+    "The Nighthawk can kill multiple players per game, but they must pivot in a way that does not simply convince everyone that they are the Nighthawk.",
+    "The Nighthawk can kill evil players, but only if they manage to be mad that they are a particular evil character (rather than evil in general), without the group suspecting that they are under the effects of madness."
+   ],
+   "howToRun": [
+    "During the day, if you feel that the Nighthawk is trying to convince the group that they are an in-play character, mark that character with the [[HUNTED]] reminder. Remove or update this reminder immediately based on the game state and the state of the Nighthawk's madness.",
+    "Whenever an evil player dies, mark the Nighthawk with the [[HUNT TONIGHT]] token.",
+    "Each night, except the first, if the Nighthawk is marked with the [[HUNT TONIGHT]] token, remove it. The player with the [[HUNTED]] reminder dies - replace it with the [[DEAD]] reminder."
+   ],
+   "examples": [],
+   "tips": [
+    "I would recommend being stricter on the madness than you would for characters like Cerenovus: strict Nighthawk madness requires players to be creative to play it effectively, while lenient madness makes the character less interesting."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I am grateful Ms. Etoilee let me enter this world through their body, and so close to so many conceited nobles who treasure their fragile dignity; this plane of existence is much more fun to terrorize than mine.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "nighthawk_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 20,
+   "otherNightReminder": "If an evil died today or yesterday and the Night Hawk was mad about being a player's character, kill them.",
+   "reminders": [
+    "Hunt Tonight",
+    "Hunted",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "nighthawk",
+   "page": "c/nighthawk",
+   "art": "art/nighthawk.png",
+   "image": "https://botchomebrew.wiki/assets/art/nighthawk.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Marchioness",
+   "team": "townsfolk",
+   "ability": "Each day, you may publicly name at least 2 players. If none are the Demon, one dies tonight.",
+   "lede": "The Marchioness can order the deaths of players, but only succeeds if none are the Demon.",
+   "summaryBullets": [
+    "If one or more of the chosen players are a Demon, nothing happens.",
+    "If the Marchioness is drunk when they named non-Demons but sober that night, they still kill a player."
+   ],
+   "howToRun": [
+    "Each day, if the Marchioness declares that they are using their ability, then you enter the circle, holding the Grimoire. They can name any number of players, as long as it is more than one. Mark all players they name with the [[CHOSEN]] reminder.",
+    "Each night except the first, if no Demon is marked as [[CHOSEN]], choose one of them to die—mark them with the [[DEAD]] reminder. Remove all [[CHOSEN]] reminders from the Grimoire."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Jealousy is a bitter master, and I serve her wholeheartedly. I would shine so brightly, Duke di Angelari pales in comparison. The King will know my name.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "marchioness_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 21,
+   "otherNightReminder": "If the Marchioness named no Demons today, kill a named player.",
+   "reminders": [
+    "Chosen",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "marchioness",
+   "page": "c/marchioness",
+   "art": "art/marchioness.png",
+   "image": "https://botchomebrew.wiki/assets/art/marchioness.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Dreamweaver",
+   "team": "townsfolk",
+   "ability": "Each day*, visit the Storyteller and choose a player. You learn which character type killed them, if any.",
+   "lede": "The Dreamweaver can tap into the world of dreams and wishes to glean information about the dead.",
+   "summaryBullets": [
+    "The Dreamweaver receives \"None\" if they choose someone who wasn't killed by an ability, such as an executee or a living player."
+   ],
+   "howToRun": [
+    "Each day, except the first, the Dreamweaver can request a private chat with you. Take them away from the circle so you cannot be overheard. They will tell you a player. Whisper “Townsfolk,\" \"Outsider,\" \"Minion,\" \"Demon,\" \"Traveller,\" or \"None\" to them, depending on the character type of the ability that killed that player."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Dreams are a reflection of the waking world, but more malleable... I take pride in weaving shadows into coherent forms. Does that make me the Prince of Nightmares? Heh, I like the sound of that.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "dreamweaver_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me).\n**Rework Suggestion:** Saxton"
+    }
+   ],
+   "customJson": "",
+   "slug": "dreamweaver",
+   "page": "c/dreamweaver",
+   "art": "art/dreamweaver.png",
+   "image": "https://botchomebrew.wiki/assets/art/dreamweaver.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Huntress",
+   "team": "townsfolk",
+   "ability": "Once per game, at night, learn the nearest living player to you (not yourself) with a reminder token.",
+   "lede": "The Huntress discerns who near her has been affected by others.",
+   "summaryBullets": [
+    "The Huntress counts dead players when determining who the nearest player is, even if they can't be shown them.",
+    "If two players with reminder tokens are equidistant from the Huntress, choose one arbitrarily.",
+    "If no player (other than the Huntress) has a reminder token on them, the Huntress learns this."
+   ],
+   "howToRun": [
+    "Each night, wake the Huntress. They either shake their head no or nod yes.",
+    "If they shake their head no, nothing happens. Put the Huntress to sleep.",
+    "If they nod yes, point to the living player closest to them who has a reminder token on them. Put the Huntress to sleep. The Huntress loses their ability - mark them with the [[NO ABILITY]] reminder and remove their night token from the night sheet."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Hesitation is death, whether in the forest or in a palace. Make one false step, and you'll end up eating lead. I'm paranoid? If you've been betrayed like I have, you'd understand.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "huntress_princesses_requiem",
+   "firstNight": 16,
+   "firstNightReminder": "The Huntress either nods or shakes their head no. If they nod, show them the nearest player with a reminder token.",
+   "otherNight": 22,
+   "otherNightReminder": "The Huntress either nods or shakes their head no. If they nod, show them the nearest player with a reminder token.",
+   "reminders": [
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)\n**Inspiration:** @icibalus' Teacher."
+    }
+   ],
+   "customJson": "",
+   "slug": "huntress-the-princess-requiem",
+   "page": "c/huntress-the-princess-requiem",
+   "art": "art/huntress-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/huntress-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shapeshifter",
+   "team": "townsfolk",
+   "ability": "Minions don't learn their team.",
+   "lede": "The Shapeshifter eavesdrops on the evil team, making them unable to communicate.",
+   "summaryBullets": [
+    "Minions do not wake for the Minion Info step.",
+    "The Demon learns normal starting information.",
+    "If the Painter registers as a Minion, they don’t learn their Minions, but they still learn the bluffs. The Minions register as Demons and learn each other as normal."
+   ],
+   "howToRun": [
+    "During the first night, do not wake the Minions for the normal Minion Info step.",
+    "Show the Demon three out-of-play characters and their Minions, as normal."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I love being a double agent---you can't really call anything I do a mistake! Especially not stretching out in the sun and taking a nap while pretending to be eavesdropping.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "shapeshifter_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "shapeshifter",
+   "page": "c/shapeshifter",
+   "art": "art/shapeshifter.png",
+   "image": "https://botchomebrew.wiki/assets/art/shapeshifter.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Demoiselle",
+   "team": "townsfolk",
+   "ability": "The first time you die at night, you learn who killed you instead. If evil, they choose 2 players to swap characters.",
+   "lede": "The Demoiselle looks to catch a would-be assassin off guard.",
+   "summaryBullets": [
+    "The first time the Demoiselle would die at night, they don't. If the player who killed them was evil, they choose two players to swap characters.",
+    "The Demoiselle learns the player with the ability that killed them, even if the Storyteller was the person most responsible for it.",
+    "A drunk or poisoned Demoiselle can learn arbitrary information, even if they aren't attacked. If they are attacked, they die."
+   ],
+   "howToRun": [
+    "If the Demoiselle would die during the night, they remain alive. Wake them up and point to the player whose ability killed them. Put the Demoiselle to sleep.",
+    "If that player is good, nothing happens.",
+    "If that player is evil, wake them. Show them the THIS CHARACTER SELECTED YOU info token, then the Demoiselle token. They point to two players. Put them to sleep, then swap the character tokens of the chosen players. One at a time, wake each swapped player, show them the YOU ARE info token and their new character token, then put them to sleep. If a player’s alignment does not match the color of their character token, turn it upside-down.",
+    "Either way, the Demoiselle loses their ability—mark them with the [[NO ABILITY]] reminder."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I may look all bows and frills, but I'm fierce with a saber. I may resent my training as a knight, but it has its advantages. Kill with grace, die with dignity... I'd rather live with both.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "demoiselle_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "demoiselle",
+   "page": "c/demoiselle",
+   "art": "art/demoiselle.png",
+   "image": "https://botchomebrew.wiki/assets/art/demoiselle.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Conspirator",
+   "team": "outsider",
+   "ability": "You know a good living player. If you're not mad they're evil, they might die.",
+   "lede": "The Conspirator knows a good player, but is driven to murder by their jealousy.",
+   "summaryBullets": [
+    "The Conspirator always knows a living good player. If the player they saw dies, they learn another one at the earliest opportunity.",
+    "The Conspirator can claim their character, but at extreme peril to their current and future targets: doing so puts them in a situation where they must convince the group that a player is evil without convincing them that they're convincing them they're evil."
+   ],
+   "howToRun": [
+    "When the Conspirator wakes, point to a good player. Mark that player with the [[JEALOUS]] reminder. If that player dies, regardless of whether they die at night or during the day, wake the Conspirator that night and show them a new good player. Move the [[JEALOUS]] token to that player.",
+    "Each night, if you feel that the Conspirator has not tried to convince the group that their target is evil, you can decide that their target dies—mark them with the [[DEAD]] reminder token."
+   ],
+   "examples": [],
+   "tips": [
+    "For the purposes of rendering the game solvable, you should be honest to players about whether they upheld madness. You shouldn't tell them whether they killed anyone, but the Conspirator should be rewarded by knowing for a fact that they did not kill a player."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I've always envied you, Luce. Since you were born, I was the discarded heir, treated like garbage by our parents. But what I really hate? How conceited you were about it all. I hope you have fun in hell.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "conspirator_princesses_requiem",
+   "firstNight": 17,
+   "firstNightReminder": "The Conspirator learns a good player. Mark them as Jealous.",
+   "otherNight": 2,
+   "otherNightReminder": "You may choose to kill the Conspirator's target if they were not mad. If the Conspirator's target is dead, they learn a new good player. Mark them as Jealous.",
+   "reminders": [
+    "Jealous",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me). **Inspiration:** @megaparsec"
+    }
+   ],
+   "customJson": "",
+   "slug": "conspirator-the-princess-requiem",
+   "page": "c/conspirator-the-princess-requiem",
+   "art": "art/conspirator-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/conspirator-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Fireblood",
+   "team": "outsider",
+   "ability": "When you or a Minion dies, an evil player becomes an out-of-play character.",
+   "lede": "The Fireblood's curse allows the Demon to warp reality in the town.",
+   "summaryBullets": [
+    "This character change is mandatory, but the evil player can be dead.",
+    "This player will usually become a character of the same character type. In rare cases, such as when no Demon lives, the Storyteller can turn a Minion into a Demon.",
+    "If the Fireblood registers as a Minion and dies, they still trigger. Further Minions that die do not trigger the Fireblood."
+   ],
+   "howToRun": [
+    "If the Fireblood or a Minion dies, mark them with the [[RIFT TONIGHT]] reminder.",
+    "As soon as possible, decide on an evil player and an out-of-play character. Wake them up. Show them the YOU ARE info token, then their new character token, then put them to sleep. Replace their old character token with the new character token. (You may need to turn character tokens upside-down to remind you that a player’s alignment is opposite to the color of the token. You may need to remind the player that their alignment is unchanged, by giving a thumbs-down.) Remove the [[RIFT TONIGHT]] reminder."
+   ],
+   "examples": [],
+   "tips": [
+    "Although in most cases the Fireblood triggers immediately, Demons are treated as waking up in the same spot in the night order, and the Fireblood can only activate after all Demons. If you change the Demon into a different Demon during the night after making their first kill, you should not give them a second kill, even if the night order suggests you would. However, if the Fireblood turns someone into a character like Marchioness or Violinist that acts after the Demon, they may kill tonight."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I'm... not actually a noble. I'm a cursed child that my parents took in because I had no other home... How can you still love me, when I can't love myself?",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "fireblood_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Rift Tonight"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "fireblood",
+   "page": "c/fireblood",
+   "art": "art/fireblood.png",
+   "image": "https://botchomebrew.wiki/assets/art/fireblood.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Palsgrave",
+   "team": "outsider",
+   "ability": "Once per game, at night*, if both your good alive neighbours are mad they are their character, one might die.",
+   "lede": "The jealous Palsgrave will stop at nothing short of murdering those who let their guard down to climb the peerage.",
+   "summaryBullets": [
+    "Both players must satisfy madness to activate the Palsgrave’s ability. If only one of their good living neighbours is mad that they are their true character, nothing happens.",
+    "The Palsgrave’s reach skips over evil and dead neighbours."
+   ],
+   "howToRun": [
+    "Mark both good alive neighbours of the Palsgrave with the [[MAD]] token. Update these reminders immediately based on this condition throughout the entire game.",
+    "Each night, except the first, if you judge that both of the mad players have been trying to convince the group that they are their true character, you can decide that one of them dies—mark them with the [[DEAD]] reminder. The Palsgrave then loses their ability—mark them with the [[NO ABILITY]] reminder and remove the [[MAD]] reminders from the Grimoire."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Count della Rovere is promising a thousand florins for his son’s ransom… not bad. We’ll let him have that. How’s the espionage on Marquess Pontmercy’s daughter going? She’s coming here for the funeral in two weeks time…",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "palsgrave_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 3,
+   "otherNightReminder": "If both the Palsgrave's good alive neighbours are mad they're their true character, you may choose to kill one of them.",
+   "reminders": [
+    "Mad",
+    "Dead",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "palsgrave",
+   "page": "c/palsgrave",
+   "art": "art/palsgrave.png",
+   "image": "https://botchomebrew.wiki/assets/art/palsgrave.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Torturer",
+   "team": "outsider",
+   "ability": "If both your living neighbors are good, they are drunk, even if you are dead.",
+   "lede": "The Torturer victimises the nearby people, driving them insane.",
+   "summaryBullets": [
+    "If the Torturer neighbours one or two evil players, their ability does nothing.",
+    "If one of their neighbours dies, their new neighbours' drunkenness applies immediately."
+   ],
+   "howToRun": [
+    "If both alive neighbours of the Torturer are good, they are [[DRUNK]]—mark those neighbours’ character tokens with the [[DRUNK]] reminders. If either alive neighbour of the Torturer is evil, remove these reminders. Update these reminders immediately based on this condition throughout the entire game. Keep these reminders in place, even if the Torturer dies."
+   ],
+   "examples": [
+    "The Torturer neighbours the Dreamweaver and the Marchioness. On the first night, the Dreamweaver chooses the Torturer, but nothing happens because they are drunk. On the first day, the Marchioness names six players, not including the Demon. That night, they don't kill anybody.",
+    "The Torturer neighbours the Hegemon and the Recordkeeper. Both their abilities work as normal.",
+    "To the left of the Torturer is the Minister. To their right is the Violinist, then the Marksman. Both the Minister and the Violinist's abilities work as normal. That day, the Violinist is executed. That night, Marksman picks a Minion and the Minister guesses the Violinist as the Violinist; neither kill a player, because both are now drunk."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "In this room, status and titles make no difference: I’ve seen everyone from serfs to dukes here. No matter their rank, everyone bows to one master: pain.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "torturer_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Drunk"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "torturer",
+   "page": "c/torturer",
+   "art": "art/torturer.png",
+   "image": "https://botchomebrew.wiki/assets/art/torturer.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Seraph",
+   "team": "minion",
+   "ability": "You know a living Townsfolk neighbour; they're poisoned. Each night*, guess their character; if you're right, they die.",
+   "lede": "The Seraph finds the characters of the people that hurt them and takes revenge on them.",
+   "summaryBullets": [
+    "If they guess wrong, nothing happens."
+   ],
+   "howToRun": [
+    "While preparing the first night, put the Seraph's [[POISONED]] reminder token by the either the closest Townsfolk to them clockwise or widdershins - they are [[POISONED]].",
+    "On the first night, wake the Seraph and point to the poisoned player. If the poisoned player ever dies, select one of the new two closest living Townsfolk to them to be [[POISONED]] - move the [[POISONED]] reminder token to them. Wake the Seraph as soon as possible and point to the new poisoned player.",
+    "Each night, except the first, wake the Seraph. They point at a character on their character sheet. If the poisoned player is that character, they die - replace the [[POISONED]] reminder with the [[DEAD]] reminder."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Revenge, the ultimate justice. Finding her and crushing her so painfully she regrets ever laying a finger on you. She made me this way. If you want to stand between me and her, you’re welcome to try.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "theseraph_princesses_requiem",
+   "firstNight": 18,
+   "firstNightReminder": "The Seraph learns their Contract.",
+   "otherNight": 4,
+   "otherNightReminder": "The Seraph learns if they have a new Contract. They then point to a character. If their contract is that character, they die.",
+   "reminders": [
+    "Poisoned",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)\n**Rework Suggestion:** @erin_hallow"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-seraph",
+   "page": "c/the-seraph",
+   "art": "art/the-seraph.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-seraph.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Herald",
+   "team": "minion",
+   "ability": "Each night, choose a unique good ability; if not active, gain it until dusk. Good can't win until 2 players live. [-1 Outsider]",
+   "lede": "The Herald can impersonate and gain the ability of any out-of-play invitee.",
+   "summaryBullets": [
+    "An ability is \"active\" when a player has a functioning copy of that ability. A dead player typically does not have an active ability.",
+    "If the Herald chooses an in-play character, nothing happens. If this character normally doesn't wake, they wouldn't be able to tell.",
+    "If the Demon dies, the game doesn't end as long as the Herald (and at least 2 other players) are alive.",
+    "The Herald cannot choose a character more than once per game."
+   ],
+   "howToRun": [
+    "While setting up the game, before putting the character tokens in the bag, remove one Outsider character token and add one Townsfolk character token. (If there are no Outsider tokens to remove, do not add a Townsfolk token.)",
+    "Each night, wake the Herald. They either shake their head no or point at any Townsfolk icon or any Outsider icon on their character sheet that they have not already pointed to this game. Put the Herald to sleep. If they pointed to an icon of a character not in play, swap the Herald token with the chosen character token and mark them with the [[IS THE HERALD]] reminder. If they pointed to an icon of a character in play but dead, mark that character with the [[HERALD'S ABILITY]] reminder.",
+    "At dusk, remove all the Herald's reminder tokens and replace the Herald's token with the Herald again.",
+    "While both the Herald and more than one other person are alive, the good team cannot win."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Due to Count Dantes'... incapacitation, I will oversee the funeral in her place. After all, I am the first ruler of this palace; I have powers beyond your imagination. And if you intend to defy your new queen... Pallas did as well.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "theherald_princesses_requiem",
+   "firstNight": 19,
+   "firstNightReminder": "The Herald points to a character; if out of play, they gain the chosen character ability until dusk.",
+   "otherNight": 5,
+   "otherNightReminder": "The Herald points to a character; if out of play, they gain the chosen character ability until dusk.",
+   "reminders": [
+    "Is the Herald",
+    "Herald's Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-herald",
+   "page": "c/the-herald",
+   "art": "art/the-herald.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-herald.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Princess",
+   "team": "minion",
+   "ability": "You are safe from evil abilities. Evils who choose you or your character swap characters with you. [+1 Outsider]",
+   "lede": "The Princess can pass around the evil team's roles at the cost of their abilities.",
+   "summaryBullets": [
+    "The Princess is safe from being killed by the Demon or the Violinist, and being killed or drunked by any ability picked up by the Herald.",
+    "The Princess must be pointed at by an evil player, whether the Princess player or the Princess character: simply being affected by their ability is not enough.",
+    "Any evil players, even evil Townsfolk, can activate the Princess's ability."
+   ],
+   "howToRun": [
+    "While setting up the game, before putting character tokens in the bag, add one extra Outsider character token and remove one Townsfolk character token.",
+    "At night, if an evil player chooses to use their ability on the Princess, they immediately switch characters with them—swap their character tokens on the Grimoire. Show them the YOU ARE token and then the Princess' token, then put them to sleep. Wake up the old Princess. Show them the YOU ARE token and then their new character."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Sis? I need you here... I'm so scared. I can't bear it anymore. I always ran away... please, forgive me. I know I'll n-never see you again... but I hope you can hear me... somehow...",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "theprincess_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-princess",
+   "page": "c/the-princess",
+   "art": "art/the-princess.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-princess.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Violinist",
+   "team": "minion",
+   "ability": "Each night*, if you were mad a unique evil player was evil yesterday, choose a player; they die.",
+   "lede": "The Violinist gains unimaginable power from their sonata of truth.",
+   "summaryBullets": [
+    "The Violinist must be mad about a new evil player each time they get a kill. If a Violinist is mad about the same evil player for multiple days, they only get one kill.",
+    "The Violinist can be mad about themselves and get a kill from it, if they survive into the night. If they’re doing this, they must actively try to convince the group they’re evil. Passing an evil claim off as a joke will not count as satisfying madness."
+   ],
+   "howToRun": [
+    "During the day, if you feel that the Violinist has tried to convince the group that an evil player was evil, mark that player with the [[SONATA WRITTEN]] token, unless they are already marked.",
+    "Each night, except the first, if any [[SONATA WRITTEN]] tokens were placed down on the previous day, wake the Violinist. They point at any player. That player dies - mark them with the [[DEAD]] reminder. Put the Violinist to sleep."
+   ],
+   "examples": [
+    "Orlando, the Violinist, claims to be the Demoiselle and that Renee, the Herald, attacked them. He loudly and publicly advocates for her execution. That night, Oliver wakes to kill a player. The following day, Orlando still pushes publicly that Renee was evil. That night, Oliver does not wake to kill a player because he was already mad that Renee was evil.",
+    "The Violinist says one time publicly that Phebe, the Maelstrom, is evil. They then don't vote for her execution and don't provide a reasoning for doing so. That night, the Violinist does not get a kill.",
+    "The widely trusted Recordkeeper died on the second night. The Violinist on the fourth day when pressured to claim, claims Recordkeeper and dances awkwardly around the fact they’re in a doubleclaim before outing evil. Everybody agrees that they are a Minion. That night, they get a kill."
+   ],
+   "tips": [
+    "The examples provided for this character are heavily dependent on the meta of the group you play with: use your own Storyteller discretion as you would when adjucating any madness character."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I know who killed them. I guessed ever since they showed me, a worthless, mute half-noble, that they cared. The King may have silenced me, but I'll lay bare my pain the one way I can: with music.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "theviolinist_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 6,
+   "otherNightReminder": "If the Violinist was mad yesterday that an unmarked evil player was evil, mark them with the Sonata Written token. The Violinist then choose a player to die.",
+   "reminders": [
+    "Sonata Written",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-violinist",
+   "page": "c/the-violinist",
+   "art": "art/the-violinist.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-violinist.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Painter",
+   "team": "demon",
+   "ability": "Each night*, choose a player; they die. You & Outsiders register as in-play Minions & Minions register as the Painter to Townsfolk. [+1 Outsider]",
+   "lede": "The Painter can bring fog and delirium across the whole town with a brush stroke.",
+   "summaryBullets": [
+    "The exact character that each player registers as is arbitrary and not fixed. It can change across the course of the game.",
+    "The misregistration is mandatory.",
+    "The misregistration does not chain from Outsider to Minion to Demon; Players with Outsider tokens cannot register as the Demon.",
+    "The misregistration does not affect character swaps."
+   ],
+   "howToRun": [
+    "If a Townsfolk ability mentions Minions or Demons and would interact with a non-Townsfolk player, decide which in-play character (Minion or Demon) they register as, and process their ability as if the player they interacted with was that character. Each night except the first, wake the Painter. They point at any player. That player dies - mark them with the [[DEAD]] reminder. Put the Painter to sleep."
+   ],
+   "examples": [
+    "The Forger chooses Cecilia, the Princess. Because Sylvain the Painter registers as a Minion, Cecilia becomes the Painter and Sylvain becomes the Princess.",
+    "On the first day, the Marchioness names the Painter and four good players. That night, one of the good players dies. The next day, they name the Herald and the Seraph; they kill nobody that night, because they both register as the Painter.",
+    "The Palsgrave dies. Because they register as a Minion, the Fireblood causes the Painter to become the Maelstrom. The Nighthawk doesn't trigger because the Palsgrave, though registering as a Minion, does not register as evil."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I never use black paint. The world is marvelous and vivid, and the greys of reality taint that canvas. All my birdies have a beautiful, colorful soul, and I strive to wipe reality clean so the world can see it.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "thepainter_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 7,
+   "otherNightReminder": "The Painter points to a player; they die.",
+   "reminders": [
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-painter",
+   "page": "c/the-painter",
+   "art": "art/the-painter.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-painter.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Hegemon",
+   "team": "demon",
+   "ability": "You have an out-of-play Minion ability. Each night*, a player dies.",
+   "lede": "The Hegemon walks side-by-side with their Minions.",
+   "summaryBullets": [
+    "The Hegemon knows their character: they learn which ability they have on the first night. They retain any setup parts of their Minion ability.",
+    "The Hegemon is not woken to kill a player: instead, the Storyteller decides a player to kill each night.",
+    "If the Minion ability the Hegemon has enters play in the middle of the game, the Hegemon immediately gains a different out-of-play ability."
+   ],
+   "howToRun": [
+    "While setting up the game, decide on a Minion ability to give the Hegemon. Adjust the composition of the bag as necessary.",
+    "On the first night, wake the Hegemon. Show them the Minion token corresponding to the ability they have. Put them to sleep.",
+    "Each night except the first, decide a player to die - mark them with the [[DEAD]] reminder."
+   ],
+   "examples": [],
+   "tips": [
+    "Make sure to decide which Minion ability the Hegemon will have during setup: some Minions' abilities affect the Outsider count, and the Hegemon has all of a Minions' abilities, even setup abilities!"
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Hurt is never just, but killing with mercy those who hurt others is least unjust. Grudges and spite are chains of humanity we must cast off, lest we corrupt ourselves; we fight not to kill the King, but to save those like us.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "thehegemon_princesses_requiem",
+   "firstNight": 20,
+   "firstNightReminder": "The Hegemon wakes to learn which ability they have.",
+   "otherNight": 8,
+   "otherNightReminder": "The Storyteller selects a player to die.",
+   "reminders": [],
+   "remindersGlobal": [
+    "Dead",
+    "Is the Hegemon"
+   ],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-hegemon",
+   "page": "c/the-hegemon",
+   "art": "art/the-hegemon.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-hegemon.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Maelstrom",
+   "team": "demon",
+   "ability": "Each night*, choose a player; they die. If they’re not a Townsfolk, choose a second.",
+   "lede": "The Maelstrom can sacrifice abilities that help their team for the greater good.",
+   "summaryBullets": [
+    "The Maelstrom can kill at most two players in a night.",
+    "If the Maelstrom kills themselves, they don't choose again because they're dead."
+   ],
+   "howToRun": [
+    "Each night except the first, wake the Maelstrom. They point at any player. That player dies - mark them with the [[DEAD]] reminder. If the player they pointed at was not a Townsfolk, ask them to pick another player, who also dies. Put the Maelstrom to sleep."
+   ],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I am the wind that whispers through the forest, all around you, breathing down your neck. There is no escape; all but the pure of heart shall be purged so I can birth this world anew, free of sin... starting with you.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "themaelstrom_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 9,
+   "otherNightReminder": "The Maelstrom points to a player. They die; if they are not a Townsfolk, ask them to pick another.",
+   "reminders": [
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-maelstrom",
+   "page": "c/the-maelstrom",
+   "art": "art/the-maelstrom.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-maelstrom.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "The Prince",
+   "team": "demon",
+   "ability": "Minions don’t know you; each night*, one kills a player. If you’re mad you’re good & die at night, a player dies instead & you register as dead.",
+   "lede": "The Prince fakes their death and attends their own funeral in secret from the Minions.",
+   "summaryBullets": [
+    "Minions learn each other in a Prince game, but they are not shown a Demon. Each night, except the first, the Storyteller chooses one of them to wake.",
+    "If the Prince is mad to anybody (including the Minions) that they are evil, they lose their passive ability.",
+    "If the Prince appears to die, the Storyteller must kill somebody else that night. They cannot sink this kill."
+   ],
+   "howToRun": [
+    "During the Minion Info step, instead of showing the Minions the Demon play, show them the Prince token.",
+    "Each night except the first, select a Minion and mark them with the [[WAKES]] reminder. Wake them up. They point at any player. That player dies - mark them with the [[DEAD]] reminder. Put them to sleep.",
+    "If the Prince ever dies at night, if you judge that they were trying to convince everyone (especially the Minions) they were good, they remain alive. Instead, choose a player to die in place of them - mark them with the [[DEAD]] reminder. At dawn, declare that they died, but do not add a shroud to the Prince. (Flip the life token on the Town Square, as normal.) From now on, the Prince registers as dead.",
+    "At dawn, remove the [[WAKES]] reminder."
+   ],
+   "examples": [],
+   "tips": [
+    "The apparent double-kill is the primary tip-off that the good team is looking for an undead Prince--you should not sink the kill into players who can't die due to the Lieutenant or Dauphin. Occasionally, you can sink into the Demoiselle, since they know they were killed."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Father wants me dead, and so does that ghost queen. They left me as a caged fox in this palace, stripped of honor, dignity, and identity. I hope you can forgive me, Pallas... I'm saving you. Even if I must do it alone.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "theprince_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 10,
+   "otherNightReminder": "Wake a Minion and ask them to choose a player. If anybody kills the Prince at night, mark the Prince as Alive and kill another player.",
+   "reminders": [
+    "Wakes",
+    "Dead",
+    "Alive"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "the-prince",
+   "page": "c/the-prince",
+   "art": "art/the-prince.png",
+   "image": "https://botchomebrew.wiki/assets/art/the-prince.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Dutchman",
+   "team": "traveller",
+   "ability": "You start knowing an ally. If they die, you die instead.",
+   "lede": "The Dutchman can offer their privateering services to the protection of their team.",
+   "summaryBullets": [],
+   "howToRun": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I get vat on va high seas a lot, ya know? No royal vessel expec’s ta be waylaid by ve count’s daugh'er. I may not soun’ it, bot I’m proud ta be a noble. I’m jus’ more proud ta offah my services to a grea’ah cause.",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "dutchman_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Hired",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "dutchman",
+   "page": "c/dutchman",
+   "art": "art/dutchman.png",
+   "image": "https://botchomebrew.wiki/assets/art/dutchman.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Strikebreaker",
+   "team": "traveller",
+   "ability": "Each night, learn a player. If they nominate tomorrow, the nominee dies that night if good.",
+   "lede": "The Strikebreaker stops people from effectively and justly deciding who should die.",
+   "summaryBullets": [
+    "Only the Strikebreaker learns who the player they're inciting is.",
+    "Nobody explicitly learns who dies, but the Strikebreaker can piece it together based on what they know.",
+    "The players selected are usually chosen to benefit the Strikebreaker's team."
+   ],
+   "howToRun": [],
+   "examples": [],
+   "tips": [
+    "Though an evil Strikebreaker's puppets should benefit their team, I would choose the evil Strikebreaker's puppets roughly half and half on good and evil. A huge power of the evil Strikebreaker is the ability to lie about who their puppet is, which skews the character's siding towards evil without any change in the puppets."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "strikebreaker_princesses_requiem",
+   "firstNight": 21,
+   "firstNightReminder": "The Strikebreaker learns a player.",
+   "otherNight": 11,
+   "otherNightReminder": "If the learned player nominated yesterday, kill the nominee. The Strikebreaker learns another player.",
+   "reminders": [
+    "Puppet",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "strikebreaker",
+   "page": "c/strikebreaker",
+   "art": "art/strikebreaker.png",
+   "image": "https://botchomebrew.wiki/assets/art/strikebreaker.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Goldsmith",
+   "team": "traveller",
+   "ability": "Each day, you may change a player's vote on themselves.",
+   "lede": "The magical allure of the Goldsmith's work compels people to do his bidding.",
+   "summaryBullets": [
+    "After each vote, if not already used today, the Storyteller will leave a few seconds for the Goldsmith to change the nominee's vote on themselves.",
+    "This can only be done once per day."
+   ],
+   "howToRun": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "game-icons",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "goldsmith_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Used Today"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "goldsmith-the-princess-requiem",
+   "page": "c/goldsmith-the-princess-requiem",
+   "art": "art/goldsmith-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/goldsmith-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Inquisitor",
+   "team": "traveller",
+   "ability": "Once per game, at night*, choose a player: they become a character they are mad about being.",
+   "lede": "",
+   "summaryBullets": [],
+   "howToRun": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "game-icons",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "inquisitor_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 12,
+   "otherNightReminder": "If the Inquisitor used their ability today, choose a player to kill, then tell them who.",
+   "reminders": [
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "inquisitor-the-princess-requiem",
+   "page": "c/inquisitor-the-princess-requiem",
+   "art": "art/inquisitor-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/inquisitor-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Minister",
+   "team": "traveller",
+   "ability": "If the day ends in a tie, a tied opposing player is executed (if any). If there are none, a tied ally is executed.",
+   "lede": "The Minister breaks indecision in favor of his team.",
+   "summaryBullets": [
+    "All players who received the most amount of votes count as tied players, not just the first two to reach the threshold.",
+    "If the day ends in a tie, one player is always executed.",
+    "If the day ends and nobody ever got enough votes for execution, nobody is executed as normal."
+   ],
+   "howToRun": [],
+   "examples": [],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "What do you mean, we'd go bankrupt? Are you saying money is more important to you than virtue?",
+   "flavor": "",
+   "appearsIn": "The Princess' Requiem",
+   "tags": "",
+   "creator": "Snowe",
+   "translatedBy": "",
+   "iconBy": "@luhkmeih",
+   "edition": "The Princess’ Requiem",
+   "jsonId": "minister_princesses_requiem",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Tied"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "**Icon:** @luhkmeih (me)"
+    }
+   ],
+   "customJson": "",
+   "slug": "minister-the-princess-requiem",
+   "page": "c/minister-the-princess-requiem",
+   "art": "art/minister-the-princess-requiem.png",
+   "image": "https://botchomebrew.wiki/assets/art/minister-the-princess-requiem.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  }
+ ]
+}
