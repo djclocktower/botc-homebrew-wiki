@@ -1,0 +1,45 @@
+{
+ "source": "The Bazaar collection text and logo, supplied by the owner.",
+ "note": "Import record for \"The Bazaar\", the character collection group run by Patters and Alex S. Written from the text the owner pasted, verbatim, plus the supplied logo. Starlight is on, as asked. Notes:\n- The text lands where the collection page can actually render it. Synopsis carries the flavour piece and then the Overview; the Characters, Character Releases, Sample Scripts and Credits sections are customBoxes.\n- A collection's synopsis is NOT wiki text. It goes through prose() in render-page.js, which escapes everything and understands only [[TOKEN]] - so the source's > quote markers and **bold** were stripped from it, or they would have shown as literal characters (they did, on the first write). Paragraph breaks and line breaks survive, so the five location lines keep their shape. customBoxes DO go through render-wiki.js, which is why the Credits box keeps its bold names and renders the produced-by list as a quote.\n- The source credits five people by Discord ID. Two resolve with certainty and are named: the stream is PattersTTV, and Fall of Rome's 32 characters on this wiki are already credited to \"Alex S.\", so the author string matches that name exactly and both creator pages merge. The other three are described as the source describes them (the creator of Wonderland, a regular on the stream, one more) rather than guessed at. Tom R and Chiz are named in the produced-by list, but nothing in the source says which handle is which, and a wrong guess would misattribute someone's work.\n- The logo is the supplied PNG cropped to its own alpha bounds and scaled to 1600px wide, kept as a transparent PNG because it carries a soft drop shadow. What looks like black blocks against a white background is that shadow; on the wiki's parchment it reads as intended.\n- match[] is [\"thebazaar\"], so any character published with appearsIn \"The Bazaar\" joins the roster on its own. The roster is empty for now: the owner supplied 11 character almanacs alongside this text (Fly, Bilge Rat, Sloth, Skeptic, Gargoyle, Midnight, Bell-Ringer, Schai, Bandwagon, Emissary, Worrywart) but no icons for them, and importing characters was not part of this request.\n- Written straight to D1, so settings.content_version was bumped by hand - twice, once per write.",
+ "collection": {
+  "id": "the-bazaar",
+  "slug": "the-bazaar",
+  "displayName": "The Bazaar",
+  "author": "Patters, Alex S.",
+  "description": "A market… of unknown origins… perhaps a result of a higher power unbeknownst to us.",
+  "tagline": "Their network is vast, their wares are strange, and their prices are stranger still.",
+  "version": "",
+  "difficulty": "",
+  "synopsis": "You will find them where you least expect.\n\nThere is a little shop behind the wrought iron gates of a gleaming arcade.\nIn a hidden cove, boats loaded with curious items meet by torchlight.\nIn an overlooked corner of the souk, there stands a faded tent.\nAn ancient shop leans improbably on the edge of a crumbling bridge.\nAn unmarked sign hangs above an old wooden door in a dark brick alleyway.\n\nBeneath the dim glow of the night market lanterns; leaning against some wooden barrels on a half-rotten dock; at the back of an opulent exchange, or in the shade of the caravanserai's arches, they will be waiting for their next customer.\n\nTheir network is vast, their wares are strange, and their prices are stranger still. They can change your fate, or seal it. They can make pigs fly, or rats speak. They can give you the blood of giants or the weapons of ancient Troy. They can sell you fame, fortune, power, revenge and, in return, they ask for what seems to be just the merest little trifle.\n\nWhat is that one thing you want, that you would give up anything to have? To defy death? To know everything? To become someone else? It can all be yours, if you can afford the cost.\n\nChoose wisely, haggle well, read the small print, and be very, very careful when you strike a deal in… THE BAZAAR.\n\nWelcome to The Bazaar! A market… of unknown origins… perhaps a result of a higher power unbeknownst to us. With them, the vendors bring luxuries and trinkets from afar, each weighted with the valour or torment of its previous owner. Be careful which you pick…\n\nAt each of these mystical, exotic locations, The Bazaar… as ever, will open its stalls. Presenting the public new & exciting goods for the world to uncover. As ever, use them wisely…",
+  "gameplay": "",
+  "strategyGood": "",
+  "strategyEvil": "",
+  "match": [
+   "thebazaar"
+  ],
+  "include": [],
+  "exclude": [],
+  "order": [],
+  "customBoxes": [
+   {
+    "title": "Characters",
+    "content": "The characters published under the Bazaar collection are community driven homebrew creations. They are no way affiliated with the official TPI characters or company, and are intended for non-commercial, community use. Please feel free to use these characters for your homebrew creations, script design and storytelling - we do ask that credit is given where credit is due."
+   },
+   {
+    "title": "Character Releases",
+    "content": "Themed character sets will be released as part of the Bazaar collection, ready to be showcased on the PattersTTV stream the 2nd Wednesday of every month (unless otherwise specified) - so make sure to keep those dates earmarked."
+   },
+   {
+    "title": "Sample Scripts",
+    "content": "Alongside the character release instalments, a set of sample scripts conjured up by members of the Bazaar will also be released, and free to be used by the community. These scripts have been reviewed and play-tested, but may remain subject to change. As always check through the forums, or the pinned messages, to make sure that you have the most up to date scripts."
+   },
+   {
+    "title": "Credits",
+    "content": "The Bazaar is a character collection group developed by community streamer **Patters** & the creator of Fall of Rome, **Alex S.** With great support and contributions from three further members of the group — among them the creator of Wonderland and a regular on the stream — as well as Ellie & Debbie.\n\n> Produced by Patters & Alex S\n> Character Creation by Patters & Alex S\n> Artwork by Tom R\n> Flavour & Script Development by Chiz\n\nEnjoy!"
+   }
+  ],
+  "header": "collections/the-bazaar.png",
+  "logo": "",
+  "starlight": true
+ }
+}
