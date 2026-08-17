@@ -66,6 +66,24 @@
     if (!links) return '';
     return '<dt>Appears in:</dt><dd class="info-appears-in">' + links + '</dd>';
   }
+  /* "Anyone can edit this page", and the link to its history. Only pages whose
+     creator opened them up say so — that is how anybody finds out they are
+     welcome to help. The history link rides along on the same row because the
+     two answer the same question: who has been here, and what did they do?
+     A page that is not open still has a history; it is reached from the page's
+     own Edit view and the account page. */
+  function openEditRow(d, root) {
+    var mode = d.publicEdit === 'all' ? 'all' : d.publicEdit === 'tags' ? 'tags' : '';
+    if (!mode) return '';
+    var hist = '<a class="hist-page-link" href="' + root + 'history?type=character&amp;slug=' +
+      encodeURIComponent(d.slug || '') + '">Edit history</a>';
+    return '<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' +
+      (mode === 'tags' ? 'tags open to all' : 'open to all') + '</span> ' +
+      (mode === 'tags'
+        ? 'anyone with an account can change the tags. '
+        : 'anyone with an account can edit this page. ') + hist + '</dd>';
+  }
+
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -351,6 +369,7 @@
           '</dd>' : '') +
       appearsInRow(d, root) +
       tagsRow +
+      openEditRow(d, root) +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>';

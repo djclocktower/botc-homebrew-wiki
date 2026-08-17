@@ -110,6 +110,9 @@
  *   GET  /api/admin/activity  -> full activity log (paginated + filterable)
  *   GET  /api/admin/report    -> activity report for the last ?days=N days
  *   GET  /api/admin/revisions -> version history for one page (?type=&slug=)
+ *   GET  /api/page-history    -> a published page's edit log (public; ?type=&slug=)
+ *   GET  /api/page-revision   -> one entry of it, field by field (?type=&slug=&id=)
+ *   POST /api/page-rollback   -> put an earlier version back (owner or admin)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
@@ -654,7 +657,9 @@ async function logActivity(env, sess, action, entityType, slug, name) {
 // The table is created lazily by the Worker itself, so no manual D1
 // migration is ever needed. Every content save snapshots the version it is
 // about to replace; the newest 20 revisions per page are kept.
-const REVISIONS_KEEP = 20;
+// Deep enough that a page opened to public editing keeps a usable trail, not
+// just the last handful of saves.
+const REVISIONS_KEEP = 50;
 let _revisionsReady = false;
 async function ensureRevisionsTable(env) {
   if (_revisionsReady) return;
@@ -676,9 +681,101 @@ async function ensureRevisionsTable(env) {
   _revisionsReady = true;
 }
 
+/* What changed between two stored versions, as reader-facing labels — the
+   "what" column of a wiki history. Compares the top-level keys of the two
+   JSON blobs, which is exactly the granularity a page is edited at: a writer
+   changes the ability, or the tags, or the art. Unlabelled keys fall back to
+   their own name rather than being dropped, so a field added later still
+   shows up as having changed instead of silently reading as "no changes". */
+const FIELD_LABELS = {
+  name: 'name', team: 'team', creator: 'creator', ability: 'ability',
+  tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
+  summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
+  tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
+  callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
+  artAlt: 'alternate art', jinxes: 'jinxes', reminders: 'reminders',
+  remindersGlobal: 'global reminders', firstNight: 'first-night order',
+  otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
+  otherNightReminder: 'other-nights reminder', setup: 'setup flag',
+  special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
+  appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
+  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
+  edition: 'edition', publicEdit: 'who may edit',
+  // scripts + collections
+  displayName: 'name', author: 'author', description: 'description',
+  tagline: 'tagline', version: 'version', difficulty: 'difficulty',
+  synopsis: 'synopsis', gameplay: 'gameplay', strategyGood: 'good strategy',
+  strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
+  header: 'header image', theme: 'appearance', match: 'membership rules',
+  include: 'members added', exclude: 'members removed', order: 'roster order',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  almanac: 'almanac link', hideTitle: 'app title setting',
+  // wiki pages
+  title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+};
+const DIFF_VALUE_MAX = 1200;   // per side, per field
+const DIFF_LABEL_MAX = 6;
+
+/* The same comparison as diffFieldLabels, but carrying the values — what the
+   field said before and after — so a reader can judge the edit. Values are
+   flattened to text: a list becomes one line per entry, anything else its
+   JSON, both capped. */
+function diffFieldValues(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const flat = v => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v.slice(0, DIFF_VALUE_MAX);
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (Array.isArray(v) && v.every(x => typeof x === 'string')) {
+      return v.join('\n').slice(0, DIFF_VALUE_MAX);
+    }
+    try { return JSON.stringify(v, null, 1).slice(0, DIFF_VALUE_MAX); } catch { return ''; }
+  };
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push({ field: k, label: FIELD_LABELS[k] || k, before: flat(x), after: flat(y) });
+  }
+  out.sort((p, q) => p.label.localeCompare(q.label));
+  return out.slice(0, 40);
+}
+function diffFieldLabels(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push(FIELD_LABELS[k] || k);
+  }
+  out.sort();
+  if (out.length > DIFF_LABEL_MAX) {
+    const extra = out.length - DIFF_LABEL_MAX;
+    return out.slice(0, DIFF_LABEL_MAX).concat(['and ' + extra + ' more']);
+  }
+  return out;
+}
+
 // Snapshot an existing row before it gets overwritten. `edited_by` records
 // who made the edit that replaced this version. Never blocks the save.
 async function saveRevision(env, sess, type, row) {
+  // Drafts have no history. A draft is nobody's but its owner's, gets saved
+  // over constantly while it is being written, and none of those versions is
+  // one anybody would want back — so a page's history starts at the version
+  // that was published. What is snapshotted is the version being REPLACED, so
+  // taking a published page back to draft still records what was live.
+  if ((row.status || 'published') !== 'published') return;
   try {
     await ensureRevisionsTable(env);
     let by = null;
@@ -1396,6 +1493,83 @@ function canEditRow(sess, row) {
   return !!row.owner_id && row.owner_id === sess.userId;
 }
 
+/* ---- who may edit a page ----
+   `canEditRow` above is ownership: the owner and the admins, and it still
+   governs everything that belongs to whoever made the page — renaming it,
+   publishing it, deleting it, rolling it back, and the public-editing setting
+   itself.
+
+   On top of that a creator may open a page up, stored on the page's data as
+   `publicEdit`:
+
+     'all'   anyone with an account may edit the page
+     'tags'  anyone with an account may change the tags, and nothing else
+
+   editPermission() answers what THIS session may do to THIS row:
+
+     'owner'  everything (the owner, or an admin)
+     'all'    the page's content, but none of the owner's own settings
+     'tags'   the tags and nothing else
+     ''       nothing
+
+   Three things are deliberately never open, whatever the setting says: a
+   draft (nobody else can even see it), an admin-protected page, and a page
+   whose owner never opted in. Scripts and collections have no tags, so 'tags'
+   means nothing there and is treated as closed. */
+const PUBLIC_EDIT_MODES = { all: 1, tags: 1 };
+function publicEditMode(d) {
+  const v = d && d.publicEdit;
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+function sanitizePublicEdit(v) {
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+
+/* A public editor is a stranger with write access, so their save gets a
+   ceiling the owner's has never needed: a page is a few kilobytes of text and
+   nothing legitimate comes near this. Cheap insurance against somebody
+   parking a megabyte of anything in a row they do not own. */
+const PUBLIC_EDIT_MAX_BYTES = 120000;
+const PUBLIC_EDIT_TAGS_MAX = 400;
+function publicEditTooBig(o) {
+  try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
+}
+
+async function editPermission(env, sess, type, row) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if ((row.status || 'published') !== 'published') return '';
+  const mode = publicEditMode(parseData(row));
+  if (!mode) return '';
+  if (mode === 'tags' && type !== 'character') return '';
+  if (await isProtected(env, type, row.slug)) return '';
+  return mode;
+}
+
+// A page edited by somebody who does not own it: tell the owner, through the
+// notification the site already has (the unread count on /api/me and the mail
+// flag site.js puts on "My Account"). Written sender_deleted=1 so it never
+// clutters the editor's own conversation list — they edited a page, they did
+// not send a message. Same shape as notifyComment.
+async function notifyPageEdit(env, opts) {
+  try {
+    const { fromId, ownerId, what, name, path, origin } = opts;
+    if (ownerId == null || ownerId === fromId) return;
+    await ensureDmTables(env);
+    const blocked = await env.DB.prepare(
+      'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+    ).bind(ownerId, fromId).first().catch(() => null);
+    if (blocked) return;
+    const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
+      (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
+      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
+      ' , where you can put back any earlier version.';
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, ownerId, text).run();
+  } catch { /* a notification must never break a save */ }
+}
+
 async function getEntityRow(env, type, slug) {
   const t = CONTENT[type];
   if (!t || !slug) return null;
@@ -1403,7 +1577,7 @@ async function getEntityRow(env, type, slug) {
   // back as baseUpdatedAt, and a save whose base no longer matches the stored
   // row is rejected rather than silently overwriting somebody else's work.
   return env.DB.prepare(
-    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, updated_at FROM ${t.table} WHERE slug=?`
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at FROM ${t.table} WHERE slug=?`
   ).bind(slug).first().catch(() => null);
 }
 
@@ -4156,13 +4330,18 @@ export default {
       }
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const owns = canEditRow(sess, row);
+      // 'owner' | 'all' | 'tags' | '' — what this reader may actually change,
+      // which is what the editor needs to know before it offers them a form.
+      const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
+      const editable = !!mode;
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      if (row.status === 'draft' && !owns) return jsonResponse({ error: 'Not found' }, { status: 404 });
       return jsonResponse({
         slug: row.slug, data: JSON.parse(row.data),
         status: row.status || 'published', canEdit: editable,
+        editMode: mode || false, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
@@ -4395,24 +4574,82 @@ export default {
     // own second window — had to file a contact-form message and wait for
     // somebody to fix it. They can see and undo their own history now.
     if (method === 'GET' && path === '/api/page-history') {
-      const sess = await getSession(env, request);
-      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
       if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      // A published page's history is public, the way a wiki's is: anyone
+      // reading a page can see who changed what, which is the whole point of
+      // opening pages to other people. A draft is nobody's business but its
+      // owner's — and has no history anyway (see saveRevision).
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       await ensureRevisionsTable(env);
       const { results } = await env.DB.prepare(
-        `SELECT id, ts, name, status, edited_by, length(data) AS bytes
-           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC`
+        `SELECT id, ts, name, status, edited_by, data, length(data) AS bytes
+           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id ASC`
       ).bind(type, row.slug).all();
+      const revs = results || [];
+      /* Each row is a snapshot of the page as it stood BEFORE the save that
+         replaced it, stamped with who made that save. So the change one entry
+         describes is the difference between it and whatever came next — the
+         following snapshot, or the page as it stands now for the newest one. */
+      const entries = revs.map((r, i) => {
+        const after = i + 1 < revs.length ? revs[i + 1].data : row.data;
+        return {
+          id: r.id, ts: r.ts, by: r.edited_by || null,
+          name: r.name, status: r.status, bytes: r.bytes,
+          changed: diffFieldLabels(r.data, after)
+        };
+      }).reverse();
       return jsonResponse({
-        slug: row.slug,
-        current: { name: row.name, status: row.status || 'published' },
-        revisions: results || []
+        type, slug: row.slug,
+        name: row.name || row.slug,
+        status: row.status || 'published',
+        createdAt: row.created_at || null,
+        updatedAt: row.updated_at || null,
+        canRestore: owns,
+        publicEdit: publicEditMode(parseData(row)) || '',
+        entries
+      });
+    }
+
+    /* One entry of a page's history, in detail: every field that changed, with
+       what it said before and after. This is what makes the log a wiki log
+       rather than a list of timestamps — you can read the edit before deciding
+       whether to put the old version back. Same visibility rule as the history
+       itself: public for a published page. */
+    if (method === 'GET' && path === '/api/page-revision') {
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      const id = parseInt(url.searchParams.get('id'), 10) || 0;
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      await ensureRevisionsTable(env);
+      const rev = await env.DB.prepare(
+        'SELECT id, ts, edited_by, data FROM revisions WHERE id=? AND entity_type=? AND slug=?'
+      ).bind(id, type, row.slug).first().catch(() => null);
+      if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
+      // The version that replaced this one: the next snapshot up, or the page
+      // as it stands now.
+      const next = await env.DB.prepare(
+        'SELECT data FROM revisions WHERE entity_type=? AND slug=? AND id>? ORDER BY id ASC LIMIT 1'
+      ).bind(type, row.slug, id).first().catch(() => null);
+      return jsonResponse({
+        id: rev.id, ts: rev.ts, by: rev.edited_by || null,
+        fields: diffFieldValues(rev.data, next ? next.data : row.data)
       });
     }
 
@@ -5416,18 +5653,47 @@ export default {
           c.page = 'c/' + c.slug + '.html';
         }
         const existing = await getEntityRow(env, 'character', c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        // Ownership, or the page's own public-editing setting. Everything a
+        // page's creator owns — the URL, publishing, deleting, who may edit —
+        // needs 'owner'; 'all' and 'tags' are what somebody else was invited
+        // to do.
+        const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
           const conflict = checkEditConflict(existing, c);
           if (conflict) return conflict;
         }
+        const stored = existing ? parseData(existing) : null;
+        if (perm === 'tags') {
+          // Tags and nothing else. Rather than compare field by field and
+          // hope nothing was missed, the stored page IS the save and only the
+          // tags are taken from what was posted — anything else the client
+          // sent simply never reaches the record.
+          const tags = typeof c.tags === 'string' ? c.tags : '';
+          c = stored;
+          c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
+        }
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing && perm !== 'owner') {
+          // Publishing and unpublishing belong to the creator. Public editing
+          // only ever applies to a published page, so this keeps it published.
+          status = existing.status || 'published';
+          // As does who may edit it: a guest cannot open a page further, and
+          // cannot close it behind themselves either.
+          c.publicEdit = stored.publicEdit;
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+        }
+        if (!c.publicEdit) delete c.publicEdit;
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
@@ -5455,6 +5721,13 @@ export default {
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
+            what: perm === 'tags' ? 'changed the tags on' : 'edited',
+            name: c.name, path: '/c/' + c.slug, origin: url.origin
+          }));
+        }
         if (renamedFrom) {
           await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
         }
@@ -5486,10 +5759,11 @@ export default {
         // (legacy rows have display-string PK slugs, e.g. "The Academy").
         let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
         if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'collection', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -5532,10 +5806,20 @@ export default {
           ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
           : [];
         if (!c.order.length) delete c.order;
-        const status = c.status === 'draft' ? 'draft' : 'published';
+        let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing && perm !== 'owner') {
+          status = existing.status || 'published';
+          c.publicEdit = parseData(existing).publicEdit;
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+        }
+        if (!c.publicEdit) delete c.publicEdit;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.starlight = existing ? !!parseData(existing).starlight : false;
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -5544,6 +5828,12 @@ export default {
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'collection', slug: pkSlug,
+            what: 'edited', name: c.displayName, path: '/collection/' + (c.id || pkSlug), origin: url.origin
+          }));
+        }
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
       }
 
@@ -5558,10 +5848,11 @@ export default {
           return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -5582,6 +5873,9 @@ export default {
         if (!s.nightOrder) delete s.nightOrder;
         s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
         if (!s.jinxEdits) delete s.jinxEdits;
+        if (existing && perm !== 'owner' && publicEditTooBig(s)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         // The rest of what the official app reads out of the exported JSON
         // (_meta.bootlegger / almanac / hideTitle — the schema lives at
         // github.com/ThePandemoniumInstitute/botc-release). The background and
@@ -5595,8 +5889,16 @@ export default {
           ? s.almanac.trim().slice(0, 300) : '';
         if (!s.almanac) delete s.almanac;
         if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
-        const status = s.status === 'draft' ? 'draft' : 'published';
+        let status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        if (existing && perm !== 'owner') {
+          // Publishing, and who may edit, belong to the creator.
+          status = existing.status || 'published';
+          s.publicEdit = parseData(existing).publicEdit;
+        } else {
+          s.publicEdit = sanitizePublicEdit(s.publicEdit);
+        }
+        if (!s.publicEdit) delete s.publicEdit;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.starlight = existing ? !!parseData(existing).starlight : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
@@ -5607,6 +5909,12 @@ export default {
              name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'script', slug: s.slug,
+            what: 'edited', name: s.name || s.slug, path: '/s/' + s.slug, origin: url.origin
+          }));
+        }
         return jsonResponse({ ok: true, slug: s.slug, status });
       }
 

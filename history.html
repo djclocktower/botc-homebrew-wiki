@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page History — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  .hist-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
+  .hist-sub a { color:#9fc4ee; }
+  .hist-back { display:block; text-align:center; margin:10px 0 0;
+    font-family:'Oswald',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+  .hist-back:hover { color:#fff; text-decoration:underline; }
+  .hist-note { text-align:center; color:rgba(236,225,200,.85); padding:36px 20px;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif; }
+  .hist-note a { color:#9fc4ee; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1 id="hist-title">Page History</h1>
+    <p class="hist-sub" id="hist-page"></p>
+    <a class="hist-back" id="hist-link" href="#">← Back to the page</a>
+  </div>
+
+  <main class="home-panel">
+    <div class="hist-note" id="loading">Loading the history…</div>
+    <div class="hist-note" id="error" style="display:none"></div>
+    <div class="card hist-card" id="card" style="display:none">
+      <p class="hist-open" id="hist-open" style="display:none"></p>
+      <ol class="hist-list" id="list"></ol>
+      <p class="hist-empty" id="empty" style="display:none">
+        Nothing has changed since this page was published. Every edit from here on is listed on this page.
+      </p>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script>
+  (function () {
+    var $ = function (id) { return document.getElementById(id); };
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    var q = new URLSearchParams(location.search);
+    var TYPE = q.get('type') || 'character';
+    var SLUG = q.get('slug') || '';
+    var PATHS = {
+      character: 'c/', script: 's/', collection: 'collection/', wikipage: 'p/'
+    };
+    var TYPE_LABEL = {
+      character: 'character', script: 'script', collection: 'collection', wikipage: 'page'
+    };
+    var data = null;
+
+    function pageHref() { return (PATHS[TYPE] || 'c/') + encodeURIComponent(SLUG); }
+
+    // "3 Feb 2026, 14:05" from the SQLite 'YYYY-MM-DD HH:MM:SS' UTC stamp.
+    function when(ts) {
+      if (!ts) return '';
+      var d = new Date(String(ts).replace(' ', 'T') + 'Z');
+      if (isNaN(d)) return String(ts);
+      return d.toLocaleString(undefined, {
+        day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    }
+    function who(name) {
+      return name
+        ? '<a class="hist-who" href="u/' + encodeURIComponent(name) + '">' + esc(name) + '</a>'
+        : '<span class="hist-who hist-who-gone">someone whose account has gone</span>';
+    }
+    function changeList(changed) {
+      if (!changed || !changed.length) return '<span class="hist-nochange">no visible change</span>';
+      return changed.map(function (c) {
+        return '<span class="hist-chip">' + esc(c) + '</span>';
+      }).join('');
+    }
+
+    function render() {
+      $('hist-title').textContent = 'History of ' + (data.name || SLUG);
+      $('hist-page').innerHTML = 'Every change to this ' + esc(TYPE_LABEL[TYPE] || 'page') +
+        ' since it was published. <a href="' + esc(pageHref()) + '">View the page →</a>';
+      $('hist-link').href = pageHref();
+      if (data.publicEdit) {
+        $('hist-open').style.display = '';
+        $('hist-open').textContent = data.publicEdit === 'tags'
+          ? 'The creator has opened this page’s tags to anyone with an account.'
+          : 'The creator has opened this page to anyone with an account.';
+      }
+      var html = '';
+      // The page as it stands, at the top — the version every entry below is
+      // an ancestor of.
+      html += '<li class="hist-row hist-row-now">' +
+        '<div class="hist-when">' + esc(when(data.updatedAt)) + '</div>' +
+        '<div class="hist-body"><span class="hist-badge">current</span> ' +
+        'the version on the page now</div></li>';
+      (data.entries || []).forEach(function (e) {
+        html += '<li class="hist-row" data-id="' + e.id + '">' +
+          '<div class="hist-when">' + esc(when(e.ts)) + '</div>' +
+          '<div class="hist-body">' +
+            '<div class="hist-line">' + who(e.by) + ' changed ' + changeList(e.changed) + '</div>' +
+            '<div class="hist-acts">' +
+              '<button type="button" class="hist-btn hist-show" data-id="' + e.id + '">What changed</button>' +
+              (data.canRestore
+                ? '<button type="button" class="hist-btn hist-restore" data-id="' + e.id + '">Put this version back</button>'
+                : '') +
+            '</div>' +
+            '<div class="hist-detail" id="d' + e.id + '" hidden></div>' +
+          '</div></li>';
+      });
+      if (data.createdAt) {
+        html += '<li class="hist-row hist-row-first">' +
+          '<div class="hist-when">' + esc(when(data.createdAt)) + '</div>' +
+          '<div class="hist-body">page created</div></li>';
+      }
+      $('list').innerHTML = html;
+      $('card').style.display = '';
+      $('empty').style.display = (data.entries || []).length ? 'none' : '';
+    }
+
+    function detail(id, box, btn) {
+      if (box.getAttribute('data-loaded')) {
+        box.hidden = !box.hidden;
+        btn.textContent = box.hidden ? 'What changed' : 'Hide';
+        return;
+      }
+      btn.disabled = true;
+      fetch('/api/page-revision?type=' + encodeURIComponent(TYPE) +
+            '&slug=' + encodeURIComponent(SLUG) + '&id=' + id, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (!res || res.error) { box.innerHTML = '<p class="hist-err">' + esc((res && res.error) || 'Could not load that version.') + '</p>'; }
+          else if (!res.fields || !res.fields.length) { box.innerHTML = '<p class="hist-nochange">Nothing in the page itself changed.</p>'; }
+          else {
+            box.innerHTML = res.fields.map(function (f) {
+              return '<div class="hist-field">' +
+                '<div class="hist-field-name">' + esc(f.label) + '</div>' +
+                '<div class="hist-was"><span class="hist-tag">before</span><span>' + (f.before ? esc(f.before) : '<em>empty</em>') + '</span></div>' +
+                '<div class="hist-now"><span class="hist-tag">after</span><span>' + (f.after ? esc(f.after) : '<em>empty</em>') + '</span></div>' +
+              '</div>';
+            }).join('');
+          }
+          box.setAttribute('data-loaded', '1');
+          box.hidden = false;
+          btn.textContent = 'Hide';
+        })
+        .catch(function () {
+          btn.disabled = false;
+          box.innerHTML = '<p class="hist-err">Could not load that version.</p>';
+          box.hidden = false;
+        });
+    }
+
+    function restore(id, btn) {
+      if (!confirm('Put this version back?\n\nThe version currently on the page is saved to the history first, so this can be undone.')) return;
+      btn.disabled = true;
+      btn.textContent = 'Restoring…';
+      fetch('/api/page-rollback', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: TYPE, slug: SLUG, id: id })
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (!res || res.error) throw new Error((res && res.error) || 'Could not restore that version.');
+          location.reload();
+        })
+        .catch(function (err) {
+          btn.disabled = false;
+          btn.textContent = 'Put this version back';
+          alert(err.message);
+        });
+    }
+
+    document.addEventListener('click', function (ev) {
+      var show = ev.target.closest && ev.target.closest('.hist-show');
+      if (show) { detail(show.getAttribute('data-id'), $('d' + show.getAttribute('data-id')), show); return; }
+      var back = ev.target.closest && ev.target.closest('.hist-restore');
+      if (back) restore(parseInt(back.getAttribute('data-id'), 10), back);
+    });
+
+    if (!SLUG) {
+      $('loading').style.display = 'none';
+      $('error').style.display = '';
+      $('error').textContent = 'No page named. Open a history from the page itself.';
+      return;
+    }
+    fetch('/api/page-history?type=' + encodeURIComponent(TYPE) + '&slug=' + encodeURIComponent(SLUG),
+          { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        $('loading').style.display = 'none';
+        if (!res || res.error) {
+          $('error').style.display = '';
+          $('error').innerHTML = esc((res && res.error) || 'Could not load that history.') +
+            '<br><a href="' + esc(pageHref()) + '">Back to the page</a>';
+          return;
+        }
+        data = res;
+        document.title = 'History of ' + (res.name || SLUG) + ' — BOTC HomeBrew Wiki';
+        render();
+      })
+      .catch(function () {
+        $('loading').style.display = 'none';
+        $('error').style.display = '';
+        $('error').textContent = 'Could not load that history.';
+      });
+  })();
+  </script>
+
+  <script src="assets/site.js"></script>
+</body>
+</html>

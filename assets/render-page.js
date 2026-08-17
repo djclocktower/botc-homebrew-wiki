@@ -594,12 +594,12 @@
       // on one of them — and forcing the other into the map would export an
       // official character as a full object, quietly replacing the app's own
       // copy of it, to say nothing at all.
-      var before = (c.jinxes || []).map(function (j) {
-        return (j.id || '') + ' ' + (j.text || j.reason || '');
-      }).join('');
-      var after = kept.map(function (j) {
-        return (j.id || '') + ' ' + (j.reason || '');
-      }).join('');
+      var before = JSON.stringify((c.jinxes || []).map(function (j) {
+        return [j.id || '', j.text || j.reason || ''];
+      }));
+      var after = JSON.stringify(kept.map(function (j) {
+        return [j.id || '', j.reason || ''];
+      }));
       if (before !== after) map[slug] = { list: kept };
     });
     return map;
@@ -722,6 +722,19 @@
     if (!editHref) return '';
     return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
       esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
+  }
+
+  /* An extra Status-box row for a script or collection whose creator opened it
+     to other people, with the link to its edit log. Characters say the same
+     thing in their own info box (openEditRow in render.js). Only an opened page
+     says anything: that is how anybody finds out they are welcome to help. */
+  function openEditRows(d, root, type) {
+    if (d.publicEdit !== 'all') return [];
+    var key = type === 'script' ? (d.slug || '') : (d.id || d.slug || '');
+    return ['<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">open to all</span> ' +
+      'anyone with an account can edit this page. ' +
+      '<a class="hist-page-link" href="' + esc(root) + 'history?type=' + esc(type) +
+      '&amp;slug=' + encodeURIComponent(key) + '">Edit history</a></dd>'];
   }
 
   /* ── shared page body ── */
@@ -861,7 +874,7 @@
       jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
       jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(sc)
+      extraInfoRows: starlightRow(sc).concat(openEditRows(sc, root, 'script'))
     });
   }
 
@@ -888,7 +901,7 @@
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(coll)
+      extraInfoRows: starlightRow(coll).concat(openEditRows(coll, root, 'collection'))
     });
   }
 

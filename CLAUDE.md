@@ -64,7 +64,9 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page), **wiki pages**
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), admin tools (dashboard, full activity log, report,
-  revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
+  revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed),
+  plus the public page history (`/api/page-history`, `/api/page-revision`) and
+  owner rollback (`/api/page-rollback`) — see "Public editing" below.
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   A character's URL **and its R2 art slot** are both derived from its name, so
@@ -442,6 +444,9 @@ text-editor.html       /text-editor — admin-only. Every string the SITE writes
                        dashes / curly quotes / any character you type, sort by
                        page or by length, rewrite any of it. See "System text"
                        below. Linked from a dashboard card; not in any nav.
+history.html           /history?type=&slug= — one page's edit log: who changed
+                       what and when, with the owner's rollback. Public for a
+                       published page (drafts have no history at all).
 drafts.html            /drafts — your own unpublished pages as cards (the same
                        renderRosterCards markup the browse and collection pages
                        use, with the shared filter box). Characters come from
@@ -636,6 +641,66 @@ the official sheet (minion info between the Magician and the Snitch, demon
 info between the Summoner and the King). Whoever loads that file hands them to
 `PageRender.setNightMeta()`; **without them the sequences are not written at
 all**, rather than publish a night order those steps are missing from.
+
+## Public editing, and page history
+
+A page belongs to whoever made it. Its creator may nevertheless open it to
+other people, stored on the page's `data` as `publicEdit`:
+
+- **`'all'`** — anyone with an account may edit the page.
+- **`'tags'`** — anyone with an account may change the tags, and nothing else.
+  Characters only: scripts and collections have no tags, so `'tags'` on one of
+  those is treated as closed.
+
+`editPermission(env, sess, type, row)` in worker.js is the single answer to
+"what may this session do to this row": `'owner'` (the owner or an admin),
+`'all'`, `'tags'`, or `''`. Three things are never open whatever the setting
+says — a **draft** (nobody else can even see it), an **admin-protected** page,
+and a page whose creator never opted in. `canEditRow()` still means ownership,
+and everything that belongs to the creator goes through it: renaming,
+publishing, unpublishing, deleting, rolling back, and the setting itself.
+`/api/publish` and `/api/delete` are deliberately left on `canEditRow`.
+
+The save handlers enforce the rest:
+
+- **Tags-only writes are not diffed, they are rebuilt.** The stored page *is*
+  the save and only `tags` is taken from what was posted, so nothing else a
+  client sends can reach the record — no field-by-field comparison to get
+  wrong. Tags are capped at `PUBLIC_EDIT_TAGS_MAX`.
+- A non-owner save carries the stored `publicEdit`, `starlight` and `status`
+  forward: a guest can neither open a page further nor close it behind
+  themselves, and cannot publish or unpublish it.
+- A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413). The
+  owner's is not size-checked — this is about a stranger, not about the format.
+- The editor makes the **name read-only** for a guest, because renaming moves
+  the URL and that stays with the creator; the rename path would refuse it
+  anyway, and refusing the whole save over a retitled page reads as a bug.
+- Every public edit sends the owner a notification (`notifyPageEdit`), the
+  same `dms` row comments use, so it rides the unread count and the mail flag
+  on "My Account".
+
+**History is public and drafts have none.** `saveRevision()` skips any row
+whose stored status is not `published`: a draft is saved over constantly while
+it is being written and none of those versions is one anybody wants back, so a
+page's history starts at the version that went live. What is snapshotted is
+the version being *replaced*, so taking a published page back to draft still
+records what was live. `REVISIONS_KEEP` is 50.
+
+- `GET /api/page-history` — the log: one entry per revision with who saved
+  over it, when, and **what changed** (`diffFieldLabels` compares the top-level
+  keys of the two JSON blobs; `FIELD_LABELS` names them for readers). Public
+  for a published page, owner-only otherwise.
+- `GET /api/page-revision` — one entry in detail: every changed field with its
+  before and after text (`diffFieldValues`).
+- `POST /api/page-rollback` — put a version back. Owner or admin, and it
+  snapshots the current version first, so a rollback is itself undoable.
+
+`history.html` (`/history?type=&slug=`) is the reader-facing page: the current
+version, every edit under it, "What changed" per entry, and "Put this version
+back" for the owner. Linked from the page itself (only an opened page advertises
+itself, via `openEditRow()` in render.js and `openEditRows()` in
+render-page.js), from the account page's row actions, and from the guest banner
+in the editor.
 
 ## Renaming a character (the old link keeps working)
 

@@ -3024,3 +3024,102 @@ html.textedit-on .te-live-hit {
 .sv-boot-list { margin: 0; padding-left: 20px; }
 .sv-boot-list li { color: var(--ink); line-height: 1.5; margin-bottom: .4em; }
 .script-char-off { font-size: .78em; opacity: .6; }
+
+/* ─── Page history (/history) ──────────────────────────────────
+   The wiki-style edit log of one page: who changed what, when, and — for the
+   page's owner — a way to put any earlier version back. */
+.hist-card { max-width: 860px; margin: 0 auto; padding: 20px 24px; }
+.hist-open {
+  font-size: .86rem; color: var(--maroon); font-weight: 600;
+  background: rgba(91,31,33,.07); border: 1px solid rgba(180,160,120,.5);
+  padding: 8px 12px; margin: 0 0 14px;
+}
+/* The site puts a red bullet on every <li> (the global li::before near the top
+   of this file); a history entry is a row, not a bullet point. */
+.hist-list { list-style: none; margin: 0; padding: 0; }
+.hist-list > li::before { content: none; }
+.hist-row {
+  display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 12px;
+  padding: 10px 0; border-top: 1px solid rgba(180,160,120,.4);
+}
+.hist-row:first-child { border-top: none; }
+@media (max-width: 560px) {
+  .hist-row { grid-template-columns: 1fr; gap: 2px; }
+}
+.hist-when {
+  font-family: 'Oswald', sans-serif; font-size: .78rem; letter-spacing: .03em;
+  color: #6b5d49; padding-top: 2px;
+}
+.hist-body { min-width: 0; font-size: .92rem; color: var(--ink); }
+.hist-line { line-height: 1.5; }
+.hist-who { color: var(--maroon); font-weight: 600; text-decoration: none; }
+.hist-who:hover { text-decoration: underline; }
+.hist-who-gone { font-weight: 400; font-style: italic; color: #6b5d49; }
+.hist-badge {
+  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase;
+  color: #1c5429; background: rgba(42,110,42,.12);
+  border: 1px solid rgba(42,110,42,.4); border-radius: 3px; padding: 1px 6px;
+}
+.hist-row-now .hist-body, .hist-row-first .hist-body { color: #6b5d49; }
+.hist-chip {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .74rem;
+  letter-spacing: .03em; color: var(--maroon); background: #fffdf8;
+  border: 1px solid rgba(180,160,120,.7); border-radius: 3px;
+  padding: 1px 7px; margin: 2px 4px 2px 0;
+}
+.hist-nochange { color: #6b5d49; font-style: italic; }
+.hist-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.hist-btn {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  color: var(--maroon); background: rgba(255,253,248,.7);
+  border: 1px solid rgba(122,45,47,.4); border-radius: 4px;
+  padding: 4px 10px; cursor: pointer;
+}
+.hist-btn:hover:not(:disabled) { background: #fffdf8; }
+.hist-btn:disabled { opacity: .5; cursor: default; }
+.hist-detail { margin-top: 10px; }
+.hist-field {
+  border: 1px solid rgba(180,160,120,.5); background: rgba(255,253,248,.55);
+  padding: 8px 10px; margin-bottom: 8px;
+}
+.hist-field-name {
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon); margin-bottom: 4px;
+}
+.hist-was, .hist-now {
+  display: flex; gap: 8px; font-size: .86rem; line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere; padding: 2px 0;
+}
+.hist-was { color: #8a3a3a; }
+.hist-now { color: #1c5429; }
+.hist-tag {
+  flex-shrink: 0; font-family: 'Oswald', sans-serif; font-size: .66rem;
+  letter-spacing: .06em; text-transform: uppercase; opacity: .8; padding-top: 3px;
+  min-width: 44px;
+}
+.hist-err { color: #9a2c2c; font-size: .86rem; margin: 4px 0 0; }
+.hist-empty { color: #6b5d49; font-size: .9rem; margin: 14px 0 0; }
+
+/* "Anyone can edit this" — the marker on a page that has been opened up, and
+   the history link beside it. */
+.open-edit-row .oe-chip {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; font-weight: 600;
+  letter-spacing: .05em; text-transform: uppercase;
+  color: #1c5429; background: rgba(42,110,42,.1);
+  border: 1px solid rgba(42,110,42,.35); border-radius: 3px; padding: 1px 6px;
+}
+.hist-page-link {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  color: var(--maroon); text-decoration: none; border-bottom: 1px solid rgba(122,45,47,.35);
+}
+.hist-page-link:hover { color: var(--evil); }
+
+/* Editing a page somebody else opened up (edit.html) */
+.guest-bar {
+  background: rgba(47,111,184,.09); border: 1px solid rgba(47,111,184,.45);
+  border-radius: 8px; padding: 10px 13px; margin: 0 0 16px;
+  font-size: .88rem; line-height: 1.5; color: #234f74;
+}
+.guest-bar strong { color: #1b3c58; }
+.guest-bar a { color: #2f6fb8; font-weight: 600; }

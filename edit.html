@@ -340,6 +340,18 @@
       </fieldset>
 
       <fieldset>
+        <legend>Who can edit this page</legend>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Open it up and other people can help &mdash; every change is listed in the page's history, and you can put any earlier version back.</p>
+        <div class="fld" style="margin-bottom:0">
+          <select id="publicEdit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -493,7 +505,8 @@
         special: specialUI ? specialUI.gather() : [],
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
-        customJson: $('customJson').value.trim()
+        customJson: $('customJson').value.trim(),
+        publicEdit: $('publicEdit').value
       };
     }
 
@@ -652,6 +665,79 @@
       return { name: j.name||j.id||'', align: j.align||'good', text: j.text||j.reason||'' };
     }
 
+    function esc(x) {
+      return String(x == null ? '' : x).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /* ── editing somebody else's page ──
+       A page its creator opened up. Nothing is hidden for a full public edit —
+       the form is the same one the owner sees — but it says whose page this is
+       and that the change will be recorded, which is the difference between
+       helping and trespassing. */
+    function guestBanner(html) {
+      var bar = document.createElement('div');
+      bar.className = 'guest-bar';
+      bar.innerHTML = html;
+      var card = document.querySelector('.formcard');
+      if (card) card.insertBefore(bar, card.firstChild);
+    }
+    function histLink(entry) {
+      return '<a href="history?type=character&slug=' + encodeURIComponent(originalSlug) + '">' +
+        'this page\u2019s history</a>';
+    }
+    function guestNotice(entry) {
+      // The name is the URL, and renaming a page moves it — that stays with
+      // whoever made it. Locking the field is kinder than letting somebody
+      // retitle the page and have the whole save refused.
+      var nm = $('name');
+      nm.readOnly = true;
+      nm.title = 'Only the page\u2019s creator can rename it.';
+      hideOwnerOnly();
+      guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
+        'opened for anyone with an account to edit. Everything but the name is yours to improve. ' +
+        'Your username and every field you change are recorded in ' + histLink(entry) +
+        ', and the creator can put an earlier version back.');
+    }
+    // Controls that only mean something to the page's owner. The Worker carries
+    // the stored value forward whatever a guest posts, so leaving these on
+    // screen would just be a promise the save does not keep.
+    function hideOwnerOnly() {
+      var sel = $('publicEdit');
+      var fs = sel && sel.closest('fieldset');
+      if (fs) fs.style.display = 'none';
+    }
+    /* Tags only. The save is filtered server-side whatever gets posted, so the
+       point of hiding the rest is honesty: a form you can type into but whose
+       text is silently discarded is worse than no form at all. */
+    function tagsOnlyMode(entry) {
+      hideOwnerOnly();
+      var keep = document.getElementById('tag-picker');
+      var keepFld = keep && keep.closest('.fld');
+      document.querySelectorAll('.formcard .fld, .formcard fieldset').forEach(function (el) {
+        if (keepFld && (el === keepFld || el.contains(keepFld))) return;
+        el.style.display = 'none';
+      });
+      if (keepFld) keepFld.style.display = '';
+      // The redesigned form groups the fields into sections with their own
+      // headings (redesign-create.js), plus an Advanced Options panel. A
+      // section with nothing left in it is a heading over a gap, so it goes
+      // too — and Advanced Options is the owner's toolbox either way.
+      var adv = document.querySelector('details.advanced');
+      if (adv) adv.style.display = 'none';
+      document.querySelectorAll('.formcard .rsec').forEach(function (sec) {
+        var live = [].slice.call(sec.querySelectorAll('.fld, fieldset'))
+          .some(function (el) { return el.style.display !== 'none'; });
+        if (!live) sec.style.display = 'none';
+      });
+      $('save-publish').style.display = 'none';
+      $('save').textContent = 'Save tags';
+      guestBanner('<strong>Tags only.</strong> ' + esc(entry.creator || 'The creator') +
+        ' has opened this page\u2019s tags to anyone with an account &mdash; pick or unpick them below ' +
+        'and save. Nothing else on the page can be changed from here, and your change is ' +
+        'recorded in ' + histLink(entry) + '.');
+    }
+
     // ── populate form from entry ──
     function populateForm(entry){
       originalEntry = entry;
@@ -687,6 +773,7 @@
       $('remindersGlobal').value = (entry.remindersGlobal || []).join('\n');
       $('setup').checked         = !!entry.setup;
       $('customJson').value      = entry.customJson || '';
+      $('publicEdit').value      = entry.publicEdit === 'all' ? 'all' : entry.publicEdit === 'tags' ? 'tags' : '';
       if (entry.artAlt) {
         var altTh = $('artAltThumb');
         altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
@@ -1053,16 +1140,25 @@
           // instead of silently reverting whatever changed in the meantime.
           loadedUpdatedAt = res.updatedAt || null;
           updatePublishButton();
-          if(res.canEdit === false){
+          /* Three ways this editor can open, and the Worker has already
+             decided which: 'owner' (or admin) is the whole form; 'all' is a
+             page whose creator opened it to anyone with an account; 'tags' is
+             a page that opened its tags and nothing else. The server enforces
+             all of it — the form only has to avoid inviting somebody to type
+             into fields that would be thrown away. */
+          var mode = res.editMode || (res.canEdit ? 'owner' : false);
+          if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
             $('save').disabled = true;
             $('save-publish').disabled = true;
-          } else {
+          } else if (mode === 'owner') {
             $('delete-char').style.display = '';
           }
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
           populateForm(entry);
+          if (mode === 'tags') tagsOnlyMode(entry);
+          else if (mode === 'all') guestNotice(entry);
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';

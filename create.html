@@ -354,6 +354,18 @@
       </fieldset>
 
       <fieldset>
+        <legend>Who can edit this page</legend>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Open it up and other people can help &mdash; every change is listed in the page's history, and you can put any earlier version back.</p>
+        <div class="fld" style="margin-bottom:0">
+          <select id="publicEdit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -517,6 +529,9 @@
         jinxDisplay: $('jinxDisplay').value,
         customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim(),
+        // Who may edit the page once it exists (Advanced Options). Owner-only
+        // unless the creator opens it up; the Worker is the enforcer.
+        publicEdit: $('publicEdit').value,
         image: importedImage || ''
       };
     }

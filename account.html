@@ -112,6 +112,7 @@
   .mini-btn.publish { color: #2a6e2a; border-color: rgba(42,110,42,.4); }
   .mini-btn.draft   { color: #7a5c18; border-color: rgba(154,110,20,.4); }
   .mini-btn.del     { color: #9a2c2c; border-color: rgba(154,44,44,.4); }
+  .mini-btn.hist    { color: #234f74; border-color: rgba(35,79,116,.4); text-decoration: none; }
   .mini-btn:hover   { background: rgba(255,253,248,.9); }
   .mini-btn:disabled{ opacity: .5; cursor: default; }
   .empty-note { font-size: .9rem; opacity: .75; padding: 6px 0; }
@@ -578,6 +579,10 @@
       if (isDraft) {
         actions += '<button class="mini-btn publish" data-act="publish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Publish</button>';
       } else {
+        // A published page has a history; a draft does not (drafts are not
+        // snapshotted — see saveRevision in worker.js).
+        actions += '<a class="mini-btn hist" href="history?type=' + type +
+          '&slug=' + encodeURIComponent(r.slug) + '">History</a>';
         actions += '<button class="mini-btn draft" data-act="unpublish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Move to Drafts</button>';
       }
       actions += '<button class="mini-btn del" data-act="delete" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Delete</button>';
