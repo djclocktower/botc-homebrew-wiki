@@ -15,7 +15,8 @@
  *
  *   -- auth --
  *   POST /api/signup          -> create an account (username/email/password)
- *   POST /api/login           -> log in (username OR email + password)
+ *   POST /api/login           -> log in (username, email, or the display name
+ *                                the site shows you, + password)
  *   POST /api/logout          -> clears session
  *   GET  /api/me              -> who am I
  *   POST /api/forgot-password -> email a password-reset link
@@ -593,9 +594,49 @@ async function findUserByLogin(env, identifier) {
   // the handle is now matched on the folded key and the email is not.
   const byName = await selectUserByName(env, '*', id);
   if (byName) return byName;
-  return env.DB.prepare(
+  const byEmail = await env.DB.prepare(
     'SELECT * FROM users WHERE email IS NOT NULL AND lower(email) = lower(?)'
   ).bind(id).first().catch(() => null);
+  if (byEmail) return byEmail;
+  // Last: the name the SITE shows them. See findUserByShownName below.
+  return findUserByShownName(env, id);
+}
+
+// People know themselves by the name the site puts on the screen, and for a
+// Discord signup that is rarely the handle: the account page says @scape while
+// every comment, profile and "Logged in as" says Cellscape, because Cellscape
+// is the display name Discord handed over. Typing the only name you have ever
+// been shown and being told your login is invalid is what this covers — the
+// display name and the Discord handle both get you in.
+//
+// Order is the whole safety argument, and it is in findUserByLogin above:
+// username, then email, then this. So
+//   - setting your display name to somebody's HANDLE never puts you in front
+//     of them: their handle is matched first and wins,
+//   - the same for an email address,
+//   - and a display name only counts when EXACTLY ONE account has it. Two
+//     members called "Alex" are not an identity, and picking one of them would
+//     be guessing at somebody's account, so neither is matched.
+// A match here still has to pass the password check like any other, so the
+// worst a shared name can do is fail a login that was already going to fail.
+async function findUserByShownName(env, id) {
+  const key = usernameKey(id);
+  if (!key) return null;
+  // Matched in JS, folded exactly as a handle is: SQLite has no ICU, so
+  // lower() would fold "Cellscape" and leave "Céline" alone. The users table
+  // is small (tens of rows) and this only runs when nothing else matched.
+  const { results } = await env.DB.prepare(
+    `SELECT id, display_name, discord_username FROM users
+      WHERE (display_name IS NOT NULL AND display_name <> '')
+         OR (discord_username IS NOT NULL AND discord_username <> '')`
+  ).all().catch(() => ({ results: [] }));
+  const hits = new Set();
+  for (const r of results || []) {
+    if (usernameKey(r.display_name) === key || usernameKey(r.discord_username) === key) hits.add(r.id);
+  }
+  if (hits.size !== 1) return null;
+  return env.DB.prepare('SELECT * FROM users WHERE id=?')
+    .bind([...hits][0]).first().catch(() => null);
 }
 
 // Is this handle taken — or close enough to an existing one to read as it?
@@ -3494,13 +3535,30 @@ export default {
       const password = String(body.password || '');
       if (!identifier || !password) return jsonResponse({ error: 'Missing credentials' }, { status: 400 });
       const user = await findUserByLogin(env, identifier);
-      if (!user) return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+      // "Invalid login" for both halves left people re-typing a password that
+      // was right all along. Which half failed is only said when the
+      // identifier is a NAME: names are public here (every profile is a page,
+      // /creators lists them all), so naming one confirms nothing that isn't
+      // already on the site. An email address is not public, so an
+      // email-shaped identifier keeps one message for both cases and gives
+      // away nothing about who is registered.
+      const isEmailish = identifier.includes('@');
+      const vague = 'That email and password don\'t match. Check both, or use "Forgot your password?" below.';
+      if (!user) {
+        return jsonResponse({
+          error: isEmailish ? vague
+            : 'No account has that username. It\'s the @name on your account page — or log in with your email address instead.'
+        }, { status: 401 });
+      }
       const ok = await verifyPassword(password, user.password_hash);
       if (!ok) {
         if (!user.password_hash && user.discord_id) {
           return jsonResponse({ error: 'This account signs in with Discord. Use the Discord button (you can set a password afterwards on your account page).' }, { status: 401 });
         }
-        return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+        return jsonResponse({
+          error: isEmailish ? vague
+            : 'That password doesn\'t match this account. Try again, or use "Forgot your password?" below.'
+        }, { status: 401 });
       }
       if (user.banned) {
         return jsonResponse({ error: 'This account has been suspended. Contact the admins if you think this is a mistake.' }, { status: 403 });
@@ -3676,8 +3734,13 @@ export default {
         const link = url.origin + '/reset-password?token=' + token;
         ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
           'Reset your password',
+          // The username is spelled out because half the people who ask for a
+          // reset are really stuck on the OTHER field: their display name is
+          // the only name the site ever shows them, so this is the one message
+          // that can tell them what to type in the username box.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b> — that, or this email address, is what goes in the log-in box.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
