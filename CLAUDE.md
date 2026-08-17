@@ -207,6 +207,14 @@ assets/
                        In the Worker it gets the engine through init().
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
+  char-preview.js      The live preview iframe on create.html + edit.html.
+                       Written ONCE and then patched in place (only <main>'s
+                       contents are replaced): assigning `srcdoc` per keystroke
+                       reloads the frame, which flashed the frame's dark
+                       background black on every edit and threw away the
+                       preview's scroll position. The in-frame script keeps the
+                       JSON box, the jinx dropdown and the title fit working;
+                       __cpFit() is re-run after each repaint. Browser only.
   art-normalize.js     The "Resize icon" button: trims the transparent margin
                        to find the figure and scales it to 70% of the 591×591
                        frame. artTrimBox() (the trim on its own) is exported

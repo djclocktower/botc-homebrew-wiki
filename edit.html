@@ -367,6 +367,7 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
   <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
@@ -497,35 +498,17 @@
     }
 
     // ── live preview ──
-    var PREVIEW_SCRIPT =
-      '<scr'+'ipt>document.addEventListener("click",function(e){' +
-      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
-      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
-      'var j=e.target.closest&&e.target.closest(".jinx-drop-bar");' +
-      'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
-      'var c=e.target.closest&&e.target.closest(".json-copy");' +
-      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
-      '});' +
-      // Fit the title to width (mirrors fitCharTitle in render.js).
-      '(function(){function f(){var e=document.querySelector(".gen-title");if(!e)return;' +
-      'e.style.whiteSpace="nowrap";var vw=window.innerWidth||800,m=vw<=420?66:vw<=640?78:144;' +
-      'e.style.fontSize=m+"px";var a=e.clientWidth;' +
-      'if(a&&e.scrollWidth>a){e.style.fontSize=Math.max(m*(a*0.99)/e.scrollWidth,14).toFixed(1)+"px";}}' +
-      'f();window.addEventListener("resize",f);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(f);})();<\/scr'+'ipt>';
+    // Written once, then patched in place by assets/char-preview.js: assigning
+    // srcdoc on every keystroke reloads the frame, which flashes black and
+    // throws away the preview's scroll position.
+    var preview = window.CharPreview.mount($('preview'), { siteRoot: SITE_ROOT });
 
     function update(){
       var d = gather();
       var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       else if (!artAltRemoved && originalEntry && originalEntry.artAlt) d.artAlt = originalEntry.artAlt;
-      var inner = window.renderCharacter(d, src);
-      var doc = '<!doctype html><html><head><meta charset="utf-8"><base href="'+SITE_ROOT+'">' +
-        '<link rel="stylesheet" href="assets/styles.css"></head><body>' +
-        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
-        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
-        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'</body></html>';
-      $('preview').srcdoc = doc;
+      preview.paint(window.renderCharacter(d, src));
     }
 
     var deb;

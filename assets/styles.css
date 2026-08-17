@@ -318,11 +318,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   padding: 0;
   min-width: 0;
 }
+/* Scrolls with the page. It used to be pinned (position:sticky) and follow
+   the reader all the way down the homepage, which meant a long list of
+   outside links sat beside everything the wiki has of its own. */
 .home-sidebar {
   grid-column: 2;
   align-self: start;
-  position: sticky;
-  top: 76px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -330,7 +331,6 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 @media (max-width: 1100px) {
   .home-layout { display: block; }
   .home-sidebar {
-    position: static;
     width: 100%;
     margin-top: 32px;
   }
