@@ -6316,7 +6316,10 @@ export default {
           const limited = await writeLimited(env, request, sess, 'character');
           if (limited) return limited;
         }
-        const c = await request.json();
+        // `let`, not `const`: the tags-only branch below replaces the posted
+        // page with the stored one, and esbuild refuses a const reassignment
+        // at build time (which is what failed the Cloudflare deploy).
+        let c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
         // The slug IS the URL (/c/{slug}), and that route only matches
