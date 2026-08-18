@@ -246,7 +246,7 @@
         : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
-        '<h3 class="collection-name">' + esc(sc.name) + starMark(sc) + draftMark(sc) + '</h3>' +
+        '<h3 class="collection-name">' + esc(sc.name) + curataMark(sc) + draftMark(sc) + '</h3>' +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + plural(n, 'character') + '</span>' +
           '<span class="collection-arrow">View &rarr;</span>' +
@@ -268,16 +268,16 @@
       var blurb = coll.tagline || coll.description || '';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
-        '<h3 class="collection-name">' + esc(name) + starMark(coll) + draftMark(coll) + '</h3>' +
+        '<h3 class="collection-name">' + esc(name) + curataMark(coll) + draftMark(coll) + '</h3>' +
         (blurb ? '<p class="collection-tile-tagline">' + esc(blurb) + '</p>' : '') +
         '<div class="collection-footer">' +
           '<span class="collection-count">' + esc(coll.author || 'Collection') + '</span>' +
           '<span class="collection-arrow">Browse &rarr;</span>' +
         '</div></a>';
     }
-    function starMark(x) {
-      return x && x.starlight
-        ? ' <span class="starlight-star" title="Awarded by the wiki admins." aria-label="Starlight">✦</span>' : '';
+    function curataMark(x) {
+      return x && x.curata
+        ? ' <span class="curata-mark" role="img" title="Awarded by the wiki admins." aria-label="Curata"></span>' : '';
     }
     function draftMark(x) {
       return x && x.status === 'draft'
@@ -541,7 +541,7 @@
         // A creator page is a browse listing, so Partial pages are hidden here
         // until the reader asks for them — as on All Characters and the tag,
         // team and homepage listings.
-        partialChip: true, starlightChip: true
+        partialChip: true, curataChip: true
       });
       if (!mounted) {
         var f = document.getElementById('cr-filters');

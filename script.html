@@ -411,14 +411,14 @@
         group.forEach(function (c, i) {
           var ability = c.ability || '';
           var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
-          var star = (window.isStarlight && window.isStarlight(c)) ? '1' : '0';
+          var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
           html += '<div class="sb-add-row" data-team="' + esc(c.team || '') + '"' +
             ' data-tags="' + esc(c.tags || '') + '"' +
             ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
             ' data-name="' + esc(c.name || '') + '"' +
             ' data-order="' + i + '"' +
             ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
-            ' data-partial="' + partial + '" data-starlight="' + star + '">' +
+            ' data-partial="' + partial + '" data-curata="' + star + '">' +
             '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
               '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) +
@@ -454,7 +454,7 @@
         count: 'sb-add-count', search: 'sb-filter',
         sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
         sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
-        label: 'Filters', partialChip: true, partialOn: true, starlightChip: true,
+        label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
         sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']]
       });
     }
