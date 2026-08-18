@@ -166,14 +166,13 @@
     if (/^https?:/i.test(p)) return p;
     return root + p.replace(/\.html$/, '');
   }
-  /* An official character has no page on this wiki and never will: its name
-     links to the official wiki instead, which is another site, so it opens in
-     a new tab and says so. Everything else stays an ordinary internal link. */
+  /* An official character has no page here, so its name links to the official
+     wiki: another site, so a new tab, and a mark saying so. */
   function offsite(c) {
     return c && c.official ? ' target="_blank" rel="noopener"' : '';
   }
   function offMark(c) {
-    return c && c.official ? ' <span class="script-char-off" title="Official character — opens the official wiki">&#8599;</span>' : '';
+    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki">&#8599;</span>' : '';
   }
 
   function sech(id, title) {
@@ -313,14 +312,10 @@
     return html;
   }
 
-  /* Both sides of a script jinx are characters on this roster, so each one
-     gets its icon and a link to its page — the same treatment the /c/ page's
-     jinx box gives, rather than the bare text pair this used to print. */
   /* Jinxes between a character on this script and an OFFICIAL character that
-     is ALSO on this script. Those are exactly the ones a storyteller has to
-     know about, and they were invisible here: findScriptJinxes only pairs two
-     wiki characters, and an official character on a script is not a wiki row
-     at all — it lands in cfg.missing as a bare name. */
+     is ALSO on it. findScriptJinxes only pairs two wiki characters, and a
+     roster slug this wiki has no row for lands in cfg.missing as a bare name,
+     so those pairs were invisible here. */
   function officialJinxesOnScript(entries, missing, root) {
     if (!missing || !missing.length) return [];
     var resolve = dep('resolveJinxTarget');
@@ -345,9 +340,9 @@
     return out;
   }
 
-  /* Bootlegger rules — the official schema's `_meta.bootlegger`: house rules
-     the app prints with the script. They belong on the page too, or a reader
-     would only find them by opening the JSON. */
+  /* Bootlegger rules: the official schema's `_meta.bootlegger`, house rules
+     the app prints with the script. On the page too, or a reader would only
+     find them by opening the JSON. */
   function renderBootlegger(rules) {
     var list = (rules || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
     if (!list.length) return '';
@@ -362,15 +357,15 @@
      A jinx normally belongs to the characters: both editors write it into the
      character's own `jinxes`, and findScriptJinxes finds the pairs where both
      ends are on this script. That is right for a rule the character carries
-     everywhere, and wrong for a script that wants to drop one, or to add a
-     rule that only holds on this script — so a script may carry `jinxEdits`:
+     everywhere, and wrong for a script that wants to drop one or add a rule
+     that only holds here, so a script may carry `jinxEdits`:
 
        {off: ["slugA|slugB"], add: [{a: slug, b: slug, text: "…"}]}
 
      `off` names an inherited pair to leave out; `add` is this script's own.
      The pair key is the two slugs sorted and joined with "|", so it reads the
      same whichever end the jinx was written on. Nothing is written back to
-     the characters — another script keeps whatever they say.
+     the characters, so another script keeps whatever they say.
 
      The page renders through this, both editors edit through it, and the
      exported JSON is built from it, so all three agree. */
@@ -391,8 +386,8 @@
     (entries || []).forEach(function (c) { bySlug[c.slug] = c; });
     (Array.isArray(edits.add) ? edits.add : []).forEach(function (j) {
       var a = bySlug[j && j.a], b = bySlug[j && j.b];
-      // A jinx whose other half has left the roster simply stops applying —
-      // it is not an error, and the entry stays put in case it comes back.
+      // A jinx whose other half has left the roster simply stops applying.
+      // Not an error, and the entry stays put in case it comes back.
       if (!a || !b || a === b) return;
       out.push({ a: a, b: b, text: (j.text || '').trim(), custom: true });
     });
@@ -407,7 +402,7 @@
          and can be switched off or rewritten like any other.
        - officialJinxesOnScript() covers the ones that cannot: a roster slug
          this wiki has no row for at all, which lands in `missing` as a bare
-         name. Those are read-only — there is no page on either side to hang
+         name. Those are read-only: there is no page on either side to hang
          an edit off. */
   function renderJinxGroup(entries, root, missing, edits) {
     root = root || '';
@@ -446,7 +441,7 @@
 
   /* ── the night order, and the single source of truth for it ──
      The page renders through this and publish-script.html arranges through
-     it, so the list the owner drags around IS the list a reader sees — the
+     it, so the list the owner drags around IS the list a reader sees, the
      same rule sortCollectionMembers follows for a collection's roster.
 
      Who acts is never a choice: a character wakes if its own firstNight /
@@ -455,10 +450,9 @@
      official-roles.js). What the owner may change is the ORDER, kept on the
      script as `nightOrder: {first: [slug], other: [slug]}`.
 
-     A character the arrangement has never heard of — added to the roster
-     after it was last saved — is not dumped at the end. It slots in after the
-     last arranged character that acts before it does, by night number, so a
-     roster that grew since the last save still reads right. */
+     A character the arrangement has not heard of, added since it was last
+     saved, is not dumped at the end: it slots in after the last arranged
+     character that acts before it does, by night number. */
   function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
     if (!buildSchema) return { first: [], other: [] };
@@ -608,7 +602,7 @@
       }).join('');
   }
 
-  /* The id the exported JSON uses for a character — the same one buildSchema
+  /* The id the exported JSON uses for a character, the same one buildSchema
      writes, so a jinx can point at it. */
   function exportId(c) {
     var slugId = dep('slugId');
@@ -655,9 +649,9 @@
       });
       // Only characters whose jinxes actually CHANGED go in the map. Switching
       // a jinx off touches both ends of the pair, but the text usually lives
-      // on one of them — and forcing the other into the map would export an
+      // on one of them, and forcing the other into the map would export an
       // official character as a full object, quietly replacing the app's own
-      // copy of it, to say nothing at all.
+      // copy of it to say nothing at all.
       var before = JSON.stringify((c.jinxes || []).map(function (j) {
         return [j.id || '', j.text || j.reason || ''];
       }));
@@ -671,8 +665,8 @@
 
   /* _meta.firstNight / _meta.otherNight: the night as a list of ids, which is
      how the official app is told a script's own order. Only written for a
-     script whose owner arranged one — left out, the app reads each
-     character's own number and reaches the same answer.
+     script whose owner arranged one. Left out, the app reads each character's
+     own number and reaches the same answer.
 
      The night is not only characters: dusk opens it, dawn closes it, and the
      first night has the minion and demon info steps in the middle. Those
@@ -712,8 +706,8 @@
   /* Official-schema export: [_meta, ...characters]. Official roles export as
      their bare id; homebrew characters as full objects (same as the builder).
 
-     `sc` is the script itself (optional — collections pass nothing), and it
-     is what fills in the rest of the _meta the official app reads:
+     `sc` is the script itself (optional; collections pass nothing), and fills
+     in the rest of the _meta the official app reads:
      background, hideTitle, almanac, bootlegger, and the firstNight /
      otherNight sequences. See the schema at
      github.com/ThePandemoniumInstitute/botc-release.
@@ -722,15 +716,15 @@
 
      - The night sequences are only written when the script's owner actually
        arranged one. Left out, the app orders the night by each character's
-       own number, which is the same answer — writing it out anyway would
+       own number, which is the same answer. Writing it out anyway would
        freeze today's answer into the file.
      - A script's own jinxes (jinxEdits) have to be pushed back onto the
        CHARACTERS, because that is where the app reads jinxes from. A character
        that gains or loses one this way is rebuilt from the script's list; one
        the script never touched is exported exactly as it always was. An
-       official character normally exports as a bare id — but if this script
-       gives it a jinx, the bare id has nowhere to carry it, so that one is
-       written out in full instead. */
+       official character normally exports as a bare id, but if this script
+       gives it a jinx the bare id has nowhere to carry it, so that one is
+       written out in full. */
   function buildPageExport(name, author, headerPath, entries, sc) {
     var buildSchema = dep('buildSchema');
     sc = sc || {};
@@ -776,22 +770,20 @@
   }
 
   /* ── owner's edit bar ──
-     The pencil in the top bar is easy to miss, and it was the only way in:
-     reaching a collection's editor otherwise meant the account page and a
-     long scroll. The Worker decides who gets this (it already knows whether
-     the reader may edit the row) and passes the href in — an empty one
-     renders nothing, so it is never shown to a reader who would only be
-     refused by the API. */
+     The pencil in the top bar is easy to miss, and was the only way in: the
+     alternative was the account page and a long scroll. The Worker decides who
+     gets this and passes the href in; an empty one renders nothing, so it is
+     never shown to a reader the API would refuse. */
   function ownerBar(editHref, label) {
     if (!editHref) return '';
     return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
       esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
   }
 
-  /* An extra Status-box row for a script or collection whose creator opened it
-     to other people, with the link to its edit log. Characters say the same
-     thing in their own info box (openEditRow in render.js). Only an opened page
-     says anything: that is how anybody finds out they are welcome to help. */
+  /* A Status-box row for a script or collection its creator opened up, with
+     the link to its edit log. Characters say the same in their own info box
+     (openEditRow in render.js). Only an opened page says anything, which is
+     how anybody finds out they are welcome to help. */
   var OPEN_EDIT_TEXT = {
     all: ['open to all', 'anyone with an account can edit this page. '],
     suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. ']

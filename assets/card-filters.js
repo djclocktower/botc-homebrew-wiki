@@ -45,7 +45,7 @@
      The markup it filters is described by four selectors, defaulting to the
      card grid renderRosterCards() produces. The Script Builder's Add sidebar
      is a compact list of rows rather than a grid of cards, so it passes its
-     own — one filter implementation, not one per page. Anything it drives has
+     own. One filter implementation, not one per page; anything it drives has
      to carry the same data-* attributes the cards do.
 
      opts.search is an optional text input: a name box that narrows the same
@@ -98,7 +98,7 @@
     // it on their script, which is a different thing entirely.
     var PARTIAL_ON = !!opts.partialOn;
     // Optional extra chip group over data-source, for a list that mixes two
-    // kinds of thing — the Script Builder's sidebar holds homebrew characters
+    // kinds of thing. The Script Builder's sidebar holds homebrew characters
     // and the official roster, and "show me only one of those" is the first
     // thing anyone wants of it.
     var SOURCES = Array.isArray(opts.sourceChips) ? opts.sourceChips : [];

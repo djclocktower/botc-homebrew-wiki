@@ -1,4 +1,4 @@
-/* char-preview.js — the live character preview on create.html + edit.html.
+/* char-preview.js: the live character preview on create.html + edit.html.
  *
  * The preview is an iframe carrying the wiki's own stylesheet, so what a
  * writer sees while typing is the page they will publish. It used to be
@@ -14,7 +14,7 @@
  *   var pv = CharPreview.mount(iframeEl, {siteRoot: SITE_ROOT});
  *   pv.paint(window.renderCharacter(d, artSrc));
  *
- * Browser only. Both editors are the same form — this is the one preview.
+ * Browser only. Both editors are the same form, so this is the one preview.
  */
 (function (global) {
   'use strict';
@@ -24,7 +24,7 @@
   /* Runs INSIDE the frame. Two jobs: the little bits of interactivity a
      character page has (the JSON box, the jinx dropdown, Copy JSON), and
      fitting the title to the width the way render.js's fitCharTitle does on
-     the real page. Both survive a repaint — the click handler is on the
+     the real page. Both survive a repaint: the click handler is on the
      document, and __cpFit is called again after each one. */
   function frameScript() {
     return '<scr' + 'ipt>' +

@@ -43,13 +43,11 @@
       (typeof window !== 'undefined' ? window.classBadgeHTML : null);
     return fn ? fn('starlight', { from: d.starlightFrom }) : '';
   }
-  /* "Appears in" — the creator's own free-text line if there is one, and
-     otherwise the collections that list this character by hand (the Worker
-     works those out on read and passes them as `appearsInFrom`; see
-     applyCollectionAppearsIn in worker.js). The typed line is linked in the
-     browser by charpage.js, which has to look the name up in collections.json;
-     the derived one arrives knowing its collection's id, so it is a link
-     already. */
+  /* "Appears in": the creator's own free-text line if there is one, else the
+     collections that list this character by hand (worked out on read as
+     `appearsInFrom`; see applyCollectionAppearsIn in worker.js). The typed
+     line is linked in the browser by charpage.js; the derived one already
+     knows its collection's id, so it arrives as a link. */
   function appearsInRow(d, root) {
     var own = (d.appearsIn || '').trim();
     if (own) {
@@ -66,12 +64,11 @@
     if (!links) return '';
     return '<dt>Appears in:</dt><dd class="info-appears-in">' + links + '</dd>';
   }
-  /* "Anyone can edit this page", and the link to its history. Only pages whose
-     creator opened them up say so — that is how anybody finds out they are
-     welcome to help. The history link rides along on the same row because the
-     two answer the same question: who has been here, and what did they do?
-     A page that is not open still has a history; it is reached from the page's
-     own Edit view and the account page. */
+  /* "Anyone can edit this page", and the link to its history. Only an opened
+     page says so, which is how anybody finds out they are welcome to help. The
+     history link shares the row because it answers the same question: who has
+     been here, and what did they do? A page that is not open still has a
+     history, reached from its Edit view and the account page. */
   var OPEN_EDIT_TEXT = {
     all: ['open to all', 'anyone with an account can edit this page. '],
     tags: ['tags open to all', 'anyone with an account can change the tags. '],
@@ -103,8 +100,9 @@
   };
   /* An id with no name behind it: `cadenza_the_academy` used to render as
      "Cadenza_the_academy" because the fallback only capitalised the first
-     letter. Split on the separators, drop the collection suffix that bulk
-     imports tack on, and title-case what is left. */
+     letter. Bulk imports build these as {character}_{collection}, so keep the
+     leading segment and capitalise it. Official ids carry no separator
+     (`plaguedoctor`), so they are unaffected. */
   function prettifyJinxId(id) {
     var parts = String(id || '').split(/[_-]+/).filter(Boolean);
     if (!parts.length) return '';
@@ -141,8 +139,8 @@
   /* Official display names, keyed the same way. Jinx names are typed by hand,
      so the wiki carries "leviathan", "pithag" and "plaguedoctor" where it
      means Leviathan, Pit-Hag and Plague Doctor. When the target is an
-     official character, its real name wins over whatever was typed — the same
-     courtesy the icon already gets. Optional: unset, the typed text stands. */
+     official character, its real name wins over whatever was typed, the same
+     courtesy the icon already gets. Unset, the typed text stands. */
   var OFFICIAL_NAMES = null;
   function setOfficialNames(map) { OFFICIAL_NAMES = map || null; }
   function officialName(id) {
@@ -154,8 +152,8 @@
   /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
      jinx naming another homebrew page can find it. Same injection pattern as
      the official icon map: the Worker sets it for SSR, the editors set it from
-     characters.json. Unset, jinx rendering is exactly what it was before —
-     official characters resolve, homebrew ones fall back to plain text. */
+     characters.json. Unset, jinx rendering is what it was before: official
+     characters resolve, homebrew ones fall back to plain text. */
   var WIKI_CHARS = null;
   function setWikiChars(map) { WIKI_CHARS = map || null; }
   function wikiChar(key) {
@@ -190,7 +188,7 @@
     var rawId = j.id || slugId(j.name || '');
     var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
 
-    // 1. An explicit slug from the picker — unambiguous, no name matching.
+    // 1. An explicit slug from the picker: unambiguous, no name matching.
     if (j.slug) {
       var pick = wikiChar(normJinxId(j.slug));
       if (pick) {

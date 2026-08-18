@@ -61,14 +61,12 @@
   var CODE_MARK = '\u0000c';
   var TOC_MARK = '\u0000toc\u0000';
 
-  /* A bare domain typed without a scheme — 'example.com',
-     'wiki.bloodontheclocktower.com/Imp', 'www.example.co.uk?x=1'. Writers type
-     these constantly and used to get a site-relative link to a page that does
-     not exist, so [text](example.com) looked like it "didn't work".
-     Deliberately narrow: the host part must be dotted labels ending in a
-     letters-only suffix that is NOT a file extension, so the wiki's own
-     extensionless links ('scripts', 'c/slug') and any stray 'page.html' stay
-     site-relative. */
+  /* A bare domain typed without a scheme: 'example.com',
+     'wiki.bloodontheclocktower.com/Imp', 'www.example.co.uk?x=1'. These used
+     to become a site-relative link to a page that does not exist, so
+     [text](example.com) looked broken. Deliberately narrow: the host must be
+     dotted labels ending in a letters-only suffix that is not a file
+     extension, so 'scripts', 'c/slug' and 'page.html' stay site-relative. */
   var FILE_EXT = /^(html?|json|php|aspx?|jpe?g|png|gif|webp|svg|js|css|txt|md|pdf|zip|xml|csv)$/i;
   function bareDomain(href) {
     var host = href.split(/[/?#]/)[0];

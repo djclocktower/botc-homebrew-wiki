@@ -44,7 +44,7 @@
 
   /* The figure's box inside an already-loaded <img>: the transparent margin
      trimmed away. Falls back to the whole image when the pixels can't be read
-     (a tainted canvas — cross-origin art without CORS headers) or the art is
+     (a tainted canvas: cross-origin art without CORS headers) or the art is
      fully transparent. Exported because art-adjust.js measures the figure the
      same way, so the hand adjuster opens on exactly what this function would
      have produced and every change there is a nudge from it. */

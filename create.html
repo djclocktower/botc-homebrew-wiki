@@ -232,7 +232,7 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in <span class="hint">(optional &mdash; the script or collection this belongs to)</span></label>
+          <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
           <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
@@ -269,7 +269,7 @@
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
           <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Resize trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons. Adjust opens the same frame with the art in your hands &mdash; drag it, and set how much of the token it fills.</div>
+          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
@@ -355,12 +355,12 @@
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Open it up and other people can help &mdash; every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Only me (and the wiki admins)</option>
-            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
-            <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
+            <option value="tags">Tags only: anyone with an account can change the tags</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -500,7 +500,7 @@
     // adjuster starts from this so zooming in stays sharp, and so a second
     // pass at the framing is a fresh placement of the original rather than a
     // resize of a resize. Null once the art came from an imported JSON's
-    // remote URL — there is no local file then.
+    // remote URL, when there is no local file.
     var artOriginal = null;
     var artAltOriginal = null;
 
@@ -783,7 +783,7 @@
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function (out) {
         btn.disabled = false;
-        if (!out) return;                 // cancelled — leave the art alone
+        if (!out) return;                 // cancelled; leave the art alone
         setUrl(out); $(thumbId).src = out; update();
         btn.textContent = '✓ Adjusted';
         setTimeout(function () { btn.textContent = label; }, 1400);
@@ -843,7 +843,7 @@
       if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(obj.special) : []);
       document.querySelectorAll('.jinx-row').forEach(function (r) { r.remove(); });
       // Official-schema JSON carries {id, reason}. The id is a slug, not a
-      // name — putting it straight in the name field is what produced pages
+      // name. Putting it straight in the name field is what produced pages
       // reading "pithag". Keep it as the id and let the renderer name it.
       (obj.jinxes || []).forEach(function (j) {
         var n = normalizeJinx(j);

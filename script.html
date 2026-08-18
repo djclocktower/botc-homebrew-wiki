@@ -389,7 +389,7 @@
 
     /* ── the "add" sidebar (all chars, grouped by team, alphabetical) ──
        Built ONCE, then filtered in place by the shared filter box
-       (assets/card-filters.js — the same one the collection and creator pages
+       (assets/card-filters.js, the same one the collection and creator pages
        use), which is why every row carries the data-* attributes the browse
        cards do. Rebuilding this list on every add would throw away whatever
        the reader had filtered to, so adding a character only repaints the
@@ -478,7 +478,7 @@
           html += '<div class="sb-script-item">' +
             '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
-              (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
+              (c.official ? ' target="_blank" rel="noopener" title="Official character; opens the official wiki"' : '') + '>' +
               esc(c.name) + (c.official ? ' <span class="sb-add-off">official &#8599;</span>' : '') + '</a>' +
             '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
             '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
@@ -486,7 +486,7 @@
         });
         html += '</div>';
       });
-      // Jinxes active between characters on this script — the characters'
+      // Jinxes active between characters on this script. The characters'
       // own, minus any this script switched off, plus any it wrote itself.
       var jinxes = (window.PageRender && window.PageRender.scriptJinxes)
         ? window.PageRender.scriptJinxes(chars, getJinxEdits())
@@ -718,7 +718,7 @@
     // to allChars, so the Add sidebar and Randomize stay homebrew-only. Non-fatal.
     function slugify(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
     function loadOfficial() {
-      // roles.json + night-order.json, merged by official-roles.js — the same
+      // roles.json + night-order.json, merged by official-roles.js: the same
       // objects the Worker builds for a script page, night positions included.
       return Promise.all([
         fetch('assets/roles.json').then(function (r) { return r.json(); }),
@@ -730,7 +730,7 @@
             bySlug[c.slug] = c;
           });
           // The non-character steps of the night sheet (dusk, minion info,
-          // demon info, dawn) — what the export needs to write a night
+          // demon info, dawn), which the export needs to write a night
           // sequence the official app can follow.
           if (window.PageRender && both[1]) window.PageRender.setNightMeta(both[1].meta);
         })
@@ -769,7 +769,7 @@
           } catch (e) { /* malformed share payload -> plain builder */ }
           history.replaceState(null, '', location.pathname);
         }
-        // The sidebar is built once, then filtered in place — so the filter
+        // The sidebar is built once, then filtered in place, so the filter
         // box is mounted here, after its rows exist, and never again.
         renderSidebar();
         mountSidebarFilters();

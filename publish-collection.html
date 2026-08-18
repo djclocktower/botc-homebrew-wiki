@@ -269,13 +269,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
-      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you say otherwise &mdash; open it up and anyone with an account can help.</span></summary>
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
-            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -361,6 +361,25 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
+
+    /* Owner-only controls, switched off for anyone else. */
+    function applyEditMode(mode, isOwner){
+      if (isOwner && mode === 'owner') return;
+      $('pc-delete').style.display = 'none';
+      if (mode === 'all'){
+        // updateButtons() already labels Publish correctly for the stored
+        // status; only the draft and delete buttons have to go.
+        pubStatus('ok', 'This collection is open for anyone with an account to edit. ' +
+          'Publishing and deleting stay with its creator.');
+        $('pc-draft').style.display = 'none';
+        return;
+      }
+      $('pc-publish').disabled = true;
+      $('pc-draft').disabled = true;
+      pubStatus('err', mode === 'suggest'
+        ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
+        : 'This collection belongs to another account, so you cannot save changes to it.');
+    }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
     function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
@@ -831,12 +850,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           updateUrlPreview(); updateButtons(); renderMembers();
           if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
           $('pc-delete').style.display = '';
-          if (res.canEdit === false){
-            pubStatus('err', 'This collection belongs to another account, so you cannot save changes to it.');
-            $('pc-publish').disabled = true;
-            $('pc-draft').disabled = true;
-            $('pc-delete').style.display = 'none';
-          }
+          /* What this account may do here, decided by the Worker. 'owner' is
+             everything; 'all' is a collection its creator opened, where the
+             text is editable but publishing and deleting are not; anything
+             else is read-only, 'suggest' included, because this page has no
+             way to send a suggestion yet. */
+          applyEditMode(res.editMode || (res.canEdit === false ? '' : 'owner'),
+                        res.isOwner !== false);
         })
         .catch(function(){ /* not found -> plain create view */ });
     }

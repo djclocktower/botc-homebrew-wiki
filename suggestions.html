@@ -160,7 +160,7 @@
           '<div class="sg-head">' +
             '<span class="sg-who">' + esc(r.by || 'someone') + '</span> ' +
             '<span class="sg-when">' + esc(when(r.ts)) + '</span> ' + statusChip(r.status) +
-            (r.stale ? '<span class="sg-chip sg-stale" title="The page has changed since this was written — approving it replaces what is there now.">written against an older version</span>' : '') +
+            (r.stale ? '<span class="sg-chip sg-stale" title="The page has changed since this was written. Approving it replaces what is there now.">written against an older version</span>' : '') +
           '</div>' +
           (r.note ? '<p class="sg-note">&ldquo;' + esc(r.note) + '&rdquo;</p>' : '') +
           (r.reply ? '<p class="sg-reply-said"><strong>' + esc(r.decidedBy || 'The creator') + ':</strong> &ldquo;' + esc(r.reply) + '&rdquo;</p>' : '') +

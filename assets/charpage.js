@@ -57,7 +57,7 @@
     var dd = document.querySelector('.info-appears-in');
     if (!dd) return;
     // A row derived from collection membership is rendered as links already,
-    // and can name more than one collection — collapsing it to a single
+    // and can name more than one collection, so collapsing it to a single
     // looked-up link would throw the rest away.
     if (dd.querySelector('a')) return;
     var raw = dd.getAttribute('data-appears-in') || dd.textContent || '';

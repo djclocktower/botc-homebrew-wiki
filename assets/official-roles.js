@@ -1,4 +1,4 @@
-/* official-roles.js — the official BotC roster, as wiki character objects.
+/* official-roles.js: the official BotC roster, as wiki character objects.
  *
  * Scripts can carry official characters alongside homebrew ones (a roster
  * slug of 'off-{id}'), and three places have to turn `assets/roles.json` into
@@ -6,15 +6,14 @@
  * script.html (the builder) and publish-script.html (the roster summary and
  * the night-order arranger). This is that conversion, once.
  *
- * The night order is the reason this file exists rather than three copies of
- * a five-line map. roles.json carries abilities, art and the night REMINDERS
- * but no wake POSITIONS — so official characters came out with firstNight and
- * otherNight of 0, which is the wiki's way of saying "does not wake", and the
- * Night Order box on a script page left every official character out of it.
- * The positions live in assets/night-order.json (see the `source` field
- * inside that file); this merges the two by name. All 120 official characters
- * that wake are in both files, so nothing is left behind — but a name that
- * fails to match simply keeps 0, exactly as before.
+ * The night order is why this file exists rather than three copies of a
+ * five-line map. roles.json carries abilities, art and the night REMINDERS but
+ * no wake POSITIONS, so official characters came out with firstNight and
+ * otherNight of 0 (the wiki's way of saying "does not wake") and a script
+ * page's Night Order box left every one of them out. The positions live in
+ * assets/night-order.json; this merges the two by name. All 120 official
+ * characters that wake are in both files, and a name that fails to match
+ * simply keeps 0, as before.
  *
  * Browser + Worker: no DOM, no fetch. Callers hand in the two parsed JSON
  * files and decide where the result goes (the builder deliberately keeps
@@ -56,7 +55,7 @@
         slug: 'off-' + key(r.id),
         // jsonId keeps the official id when a script has to export this
         // character as a full object rather than a bare id (which happens
-        // when the script gives it a jinx of its own) — the app matches
+        // when the script gives it a jinx of its own). The app matches
         // characters by id, so inventing one from the name would break it.
         official: true, id: r.id, jsonId: r.id,
         name: r.name || r.id, team: r.team || '',

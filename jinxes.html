@@ -215,7 +215,7 @@
 
   <div class="home-hero">
     <h1>Jinxes</h1>
-    <p>Every jinx on the wiki — which characters do not get along, and what happens when they meet</p>
+    <p>Which characters do not get along, and what happens when they meet</p>
   </div>
 
   <main class="home-panel">
@@ -315,18 +315,16 @@
   <script src="assets/jinx-graph.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script>
-    /* /jinxes — the whole jinx picture in one place.
+    /* /jinxes: the whole jinx picture in one place.
 
-       Everything on this page is built from GET /api/jinxes, which returns
-       {nodes, edges}: every wiki character that takes part in a jinx, plus
-       the official characters they are jinxed with, and one edge per jinx.
-       The map and the list are two views of that same payload, so they can
-       never disagree about what the wiki says.
+       Built entirely from GET /api/jinxes, which returns {nodes, edges}: every
+       wiki character that takes part in a jinx, the official characters they
+       are jinxed with, and one edge per jinx. The map and the list are two
+       views of that one payload, so they cannot disagree.
 
-       The "Add a Jinx" section only appears for a logged-in account that
-       owns at least one character — the Worker is the real gate
-       (POST /api/jinx re-checks ownership), this just avoids showing a form
-       that could only fail. */
+       "Add a Jinx" only appears for a logged-in account that owns at least one
+       character. The Worker is the real gate (POST /api/jinx re-checks
+       ownership); this just avoids showing a form that could only fail. */
     (function () {
       'use strict';
 
@@ -360,9 +358,9 @@
           GRAPH.nodeCount + ' characters, ' + GRAPH.edgeCount + ' jinxes between them.';
         if (GRAPH.baseCount) $('jg-f-base').hidden = false;
 
-        /* /jinxes?c={slug} opens focused on that character — what the "See
-           this on the jinx map" link on every /c/ page points at, and what
-           makes a view of the map shareable. */
+        /* /jinxes?c={slug} opens focused on that character: where the "See
+           this on the jinx map" link on every /c/ page points, and what makes
+           a view of the map shareable. */
         var want = new URLSearchParams(location.search).get('c');
         if (want) {
           var hit = GRAPH.focus('c:' + want);
@@ -419,18 +417,27 @@
         panel.hidden = false;
 
         $('jg-panel-body').querySelectorAll('.jg-act-edit').forEach(function (b) {
-          b.addEventListener('click', function () { editJinx(sel.jinxes[+b.dataset.i]); });
+          b.addEventListener('click', function () { editJinx(sel.jinxes[+b.dataset.i], n); });
         });
         $('jg-panel-body').querySelectorAll('.jg-act-del').forEach(function (b) {
-          b.addEventListener('click', function () { removeJinx(sel.jinxes[+b.dataset.i], b); });
+          b.addEventListener('click', function () { removeJinx(sel.jinxes[+b.dataset.i], b, n); });
         });
       }
 
-      /* Editing is the add form with the pair and the text already in it —
+      /* A jinx is saved on one of its two characters. `j.with` is the far end
+         seen from the panel that is open; when the jinx is stored on THAT end
+         (a mirrored entry) the far end from the storing page is the character
+         being viewed. Getting this wrong posts a character jinxed with
+         itself, which the Worker refuses. */
+      function otherEnd(j, viewed) {
+        return (j.storedOn.slug === j.with.slug) ? viewed : j.with;
+      }
+
+      /* Editing is the add form with the pair and the text already in it.
          POST /api/jinx overwrites the entry for that pair, so saving is the
          edit. */
-      function editJinx(j) {
-        var other = (j.storedOn.slug === j.with.slug) ? j.storedOn : j.with;
+      function editJinx(j, viewed) {
+        var other = otherEnd(j, viewed);
         $('jx-mine').value = j.storedOn.slug;
         if (window.setJinxField) {
           window.setJinxField($('jx-other'), other.name,
@@ -444,11 +451,11 @@
         $('jx-text').focus();
       }
 
-      function removeJinx(j, btn) {
+      function removeJinx(j, btn, viewed) {
+        var other = otherEnd(j, viewed);
         if (!window.confirm('Remove the jinx between ' + j.storedOn.name +
-            ' and ' + j.with.name + '?')) return;
+            ' and ' + other.name + '?')) return;
         var body = { from: j.storedOn.slug, remove: true };
-        var other = (j.storedOn.slug === j.with.slug) ? j.storedOn : j.with;
         if (other.official) body.toId = String(other.id).replace(/^o:/, '');
         else body.toSlug = other.slug;
         btn.disabled = true;
@@ -464,7 +471,7 @@
               window.alert(res.d.error || 'Could not remove that jinx.');
               return;
             }
-            btn.textContent = 'Removed — reload to update the map';
+            btn.textContent = 'Removed. Reload to update the map.';
           })
           .catch(function () {
             btn.disabled = false; btn.textContent = 'Remove';
@@ -490,8 +497,8 @@
 
       /* One place that decides what is shown, so the three controls cannot
          contradict each other. A creator filter keeps the characters they are
-         jinxed WITH as well — a creator's pages on their own are a scatter of
-         disconnected dots, and the whole point is seeing what they connect to. */
+         jinxed WITH as well. A creator's pages on their own are a scatter of
+         disconnected dots, and the point is seeing what they connect to. */
       function applyGraphFilter() {
         if (!GRAPH) return;
         if (!homebrewOnly && !officialOnly && !author) return GRAPH.filter(null);
@@ -548,9 +555,6 @@
         setTimeout(function () { btn.textContent = 'Reset layout'; }, 1400);
       });
 
-      /* Deliberately zoom past the legibility floor to see the whole shape
-         at once. The default view never does this on its own — at 172 nodes
-         it would draw every icon too small to make out. */
       $('jg-f-base').addEventListener('click', function () {
         var on = !this.classList.contains('active');
         this.classList.toggle('active', on);
@@ -559,6 +563,9 @@
         if (GRAPH) GRAPH.setBaseLayer(on);
       });
 
+      /* Deliberately zooms past the legibility floor to show the whole shape
+         at once. The default view never does that on its own: on a big map it
+         would draw every icon too small to make out. */
       $('jg-f-fit').addEventListener('click', function () {
         if (!GRAPH) return;
         GRAPH.fitAll();
@@ -575,7 +582,7 @@
       // ---------- the list ----------
       /* Grouped by the wiki character that carries the jinx, because that is
          the page the reader would go to next. An edge whose two ends are both
-         wiki characters is listed under the one that declares it — the index
+         wiki characters is listed under the one that declares it; the index
          already de-duplicates the pair, so it appears once. */
       function renderList() {
         var groups = {};
@@ -667,9 +674,8 @@
         renderList();
       });
 
-      /* Only creators who actually have a jinxed character are worth listing —
-         the wiki has hundreds of creators and a handful of them are on this
-         map at all. */
+      /* Only creators with a jinxed character are worth listing: the wiki has
+         hundreds of creators and few of them are on this map. */
       function buildAuthorList() {
         var seen = {};
         DATA.nodes.forEach(function (n) {
@@ -719,7 +725,7 @@
         var other = (mine === pair.a) ? pair.b : pair.a;
         if (!mine) {
           bar.innerHTML = '<b>' + esc(pair.a.name) + '</b> and <b>' + esc(pair.b.name) +
-            '</b> — you do not own either of these, so you cannot write a jinx between them.';
+            '</b>: you own neither of these, so you cannot write a jinx between them.';
           bar.hidden = false;
           return;
         }
@@ -744,8 +750,7 @@
 
       // ---------- add a jinx ----------
       /* Shown only when the reader has a character to hang a jinx off. The
-         Worker checks ownership again on POST — this is convenience, not
-         security. */
+         Worker checks ownership again on POST: convenience, not security. */
       function setupForm() {
         fetch('/api/account', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
@@ -799,7 +804,7 @@
           .then(function (res) {
             $('jx-save').disabled = false;
             if (!res.ok || res.d.error) { msg(res.d.error || 'Could not save that jinx.', 'err'); return; }
-            msg('Saved. It is on both character pages now — reload to see it on the map.', 'ok');
+            msg('Saved. It is on both character pages now. Reload to see it on the map.', 'ok');
             $('jx-text').value = '';
           })
           .catch(function () {

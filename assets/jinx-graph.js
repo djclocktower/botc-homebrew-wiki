@@ -4,7 +4,7 @@
    with a line to each character it is jinxed with. Official characters are
    here too as anchor nodes: most jinxes point at one, so without them the
    map would be a handful of disconnected pairs. Jinxes between two OFFICIAL
-   characters are an opt-in layer (setBaseLayer), off by default — this is a
+   characters are an opt-in layer (setBaseLayer), off by default: this is a
    map of the homebrew wiki, and the base game's own rules would drown it.
 
    Hand-rolled SVG on purpose. The repo vendors everything and has no
@@ -19,7 +19,7 @@
       remembering where things are; a layout that reshuffles on reload is
       much harder to use than a slightly worse layout that holds still.
    2. The simulation runs a fixed number of ticks and then STOPS. It is not
-      a live animation — a permanently running rAF loop on a page people
+      a live animation. A permanently running rAF loop on a page people
       leave open is a battery cost for no benefit, and dragging re-heats
       only the neighbourhood being dragged.
 
@@ -97,15 +97,15 @@
       baseLinks.push({ a: a, b: b, e: e, on: true, base: true });
     });
 
-    // A node's pull should grow with how connected it is, but slowly — the
-    // busiest character has an order of magnitude more jinxes than the median
-    // and would otherwise sit in a hole with everything else on the rim.
+    // A node's pull grows with how connected it is, but slowly: the busiest
+    // character has an order of magnitude more jinxes than the median and
+    // would otherwise sit in a hole with everything else on the rim.
     nodes.forEach(function (n) { n.r = 11 + Math.sqrt(n.deg) * 3.4; });
 
     // ---- layout ------------------------------------------------------
     /* Repulsion is an inverse-square term, so two nodes that happen to seed
        almost on top of each other produce an enormous first-tick force and
-       fling the whole map apart — 320 ticks of gravity never gets it back.
+       fling the whole map apart, and gravity never gets it back.
        REPEL_CAP is what keeps the opening tick sane; do not remove it. */
     var REPEL = 26000;
     var REPEL_CAP = 58;
@@ -187,7 +187,14 @@
         }
       }
     }
-    simulate(560);
+    /* The two O(n^2) passes per tick are the whole cost of this, and the map
+       grows with the wiki. 560 ticks is comfortable at ~150 nodes and locks a
+       phone's main thread for seconds at several hundred, with nothing on
+       screen until it finishes. Trade ticks for size past that: a bigger map
+       needs fewer of them anyway, because there is more room to spread into. */
+    simulate(nodes.length > 150
+      ? Math.max(180, Math.round(560 * Math.pow(150 / nodes.length, 1.5)))
+      : 560);
     // Where the simulation left each node. Dragging is meant to be a way to
     // untangle a corner and then put it back, so the computed layout is kept
     // and "Reset layout" restores it.
@@ -218,14 +225,17 @@
       gEdges.appendChild(l.el);
     });
 
-    nodes.forEach(function (n) {
+    nodes.forEach(function (n, ni) {
       var g = el('g', { class: 'jg-node' + (n.d.official ? ' jg-official' : '') });
       g.setAttribute('tabindex', '0');
       g.setAttribute('role', 'button');
       g.setAttribute('aria-label', n.d.name + (n.d.official ? ' (official)' : '') +
         ', ' + n.deg + ' jinx' + (n.deg === 1 ? '' : 'es'));
 
-      var clipId = 'jgclip-' + n.id.replace(/[^a-z0-9]/gi, '');
+      // Numbered, not derived from the id: two slugs that differ only in their
+      // punctuation ('pit-hag', 'pithag') would otherwise share one clip path,
+      // and the browser keeps the first, cropping one icon to the wrong circle.
+      var clipId = 'jgclip-' + ni;
       var clip = el('clipPath', { id: clipId });
       clip.appendChild(el('circle', { r: n.r }));
       defs.appendChild(clip);
@@ -278,7 +288,7 @@
     }
     /* The smallest a character icon may be drawn at when the map first
        opens. Fitting 170-odd nodes into a phone-width box mathematically
-       cannot leave them legible — it lands around 8px, which is the "grouped
+       cannot leave them legible: it lands around 8px, which is the "grouped
        so tight together it's hard to read" complaint. So the opening view is
        allowed to overflow: it zooms only as far out as MIN_ICON_PX and lets
        the reader pan. Pinching out past this is still fine (minimum zoom is
@@ -331,13 +341,13 @@
     // pointers means a pinch; one means a drag (of a node or the canvas).
     var pointers = {};
     var dragNode = null, panFrom = null, pinchFrom = null;
-    // Press and release almost always have a pointermove between them — a
-    // mouse jitters, a finger rolls. Treating any movement at all as a drag
-    // swallowed the click, so a drag only begins past this many pixels.
+    // Press and release almost always have a pointermove between them: a
+    // mouse jitters, a finger rolls. Treating any movement as a drag swallowed
+    // the click, so a drag only begins past this many pixels.
     var DRAG_SLOP = 5;
     // setPointerCapture retargets every later event to the <svg>, so pointerup
-    // cannot be asked what was under the cursor — the node has to be
-    // remembered from pointerdown.
+    // cannot be asked what was under the cursor, so the node is remembered
+    // from pointerdown.
     var downAt = null, downNode = null, dragged = false;
 
     function nodeFromEvent(ev) {
@@ -625,9 +635,10 @@
       if (n) { showTipFor(n, p); return; }
       var t = ev.target;
       if (t && t.classList && t.classList.contains('jg-edge')) {
-        for (var i = 0; i < links.length; i++) {
-          if (links[i].el === t) {
-            var l = links[i];
+        var all = links.concat(baseLinks);
+        for (var i = 0; i < all.length; i++) {
+          if (all[i].el === t) {
+            var l = all[i];
             showTip('<strong>' + escHTML(l.a.d.name) + ' &harr; ' + escHTML(l.b.d.name) + '</strong>' +
               '<span class="jg-tip-text">' + escHTML(l.e.text) + '</span>', p.x, p.y);
             return;
@@ -675,7 +686,7 @@
       fit: fit,
       fitAll: function () { select(null); fit({ all: true }); },
       /* Put every dragged character back where the simulation left it. The
-         camera is not touched — someone who has zoomed into a corner wants to
+         camera is not touched: someone who has zoomed into a corner wants to
          stay there while the tangle underneath straightens out. */
       resetLayout: function () {
         var moved = 0;

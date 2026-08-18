@@ -219,7 +219,7 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in <span class="hint">(optional &mdash; the script or collection this belongs to)</span></label>
+          <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
           <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
@@ -256,7 +256,7 @@
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
           <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Resize trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons. Adjust opens the same frame with the art in your hands &mdash; drag it, and set how much of the token it fills.</div>
+          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
@@ -341,12 +341,12 @@
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Open it up and other people can help &mdash; every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Only me (and the wiki admins)</option>
-            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
-            <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
+            <option value="tags">Tags only: anyone with an account can change the tags</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -485,7 +485,7 @@
     var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
-    // The picked file as it arrived, before the 600px working copy — what the
+    // The picked file as it arrived, before the 600px working copy: what the
     // hand adjuster opens on, so zooming in stays sharp and a second pass
     // re-places the original rather than resizing an already-resized icon.
     // Null when the art on screen came from the character's stored icon.
@@ -733,7 +733,7 @@
       btn.disabled = true;
       window.ArtAdjust.open(src, { title: title }).then(function(out){
         btn.disabled = false;
-        if (!out) return;               // cancelled — leave the art alone
+        if (!out) return;               // cancelled; leave the art alone
         $(thumbId).src = out; onDone(out); update();
         btn.textContent = '✓ Adjusted';
         setTimeout(function(){ btn.textContent = label; }, 1400);
@@ -772,10 +772,9 @@
     // 'owner' | 'all' | 'tags' | 'suggest' | false.
     var EDIT_MODE = 'owner';
 
-    /* Sending a suggestion. The art is deliberately not uploaded: an upload
-       would write into the page's own R2 slot, which is the one thing a
-       suggestion must not do before it is accepted. The rest of the page —
-       every word of it — travels in the proposal. */
+    /* Sending a suggestion. The art is deliberately not uploaded: it would
+       write into the page's own R2 slot, which is the one thing a suggestion
+       must not do before it is accepted. Everything else travels with it. */
     function sendSuggestion(d) {
       var note = ($('suggest-note') && $('suggest-note').value.trim()) || '';
       $('save').disabled = true;
@@ -807,13 +806,13 @@
       $('delete-char').style.display = 'none';
       $('save').textContent = 'Send this suggestion';
       // The art inputs would upload into the page's own R2 slot, which is
-      // exactly what an unapproved suggestion must not touch — so they are
+      // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
       ['art', 'artAlt'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
-        el.title = 'Art cannot be suggested — mention it in your note instead.';
+        el.title = 'Art cannot be suggested. Mention it in your note instead.';
       });
       // Somewhere to say why, right above the button that sends it.
       var box = document.createElement('div');
@@ -829,8 +828,8 @@
     }
 
     /* ── editing somebody else's page ──
-       A page its creator opened up. Nothing is hidden for a full public edit —
-       the form is the same one the owner sees — but it says whose page this is
+       A page its creator opened up. Nothing is hidden for a full public edit,
+       so the form is the one the owner sees, but it says whose page this is
        and that the change will be recorded, which is the difference between
        helping and trespassing. */
     function guestBanner(html) {
@@ -845,7 +844,7 @@
         'this page\u2019s history</a>';
     }
     function guestNotice(entry) {
-      // The name is the URL, and renaming a page moves it — that stays with
+      // The name is the URL, and renaming a page moves it, so that stays with
       // whoever made it. Locking the field is kinder than letting somebody
       // retitle the page and have the whole save refused.
       var nm = $('name');
@@ -880,7 +879,7 @@
       // The redesigned form groups the fields into sections with their own
       // headings (redesign-create.js), plus an Advanced Options panel. A
       // section with nothing left in it is a heading over a gap, so it goes
-      // too — and Advanced Options is the owner's toolbox either way.
+      // too, and Advanced Options is the owner's toolbox either way.
       var adv = document.querySelector('details.advanced');
       if (adv) adv.style.display = 'none';
       document.querySelectorAll('.formcard .rsec').forEach(function (sec) {
@@ -891,12 +890,16 @@
       $('save-publish').style.display = 'none';
       $('save').textContent = 'Save tags';
       guestBanner('<strong>Tags only.</strong> ' + esc(entry.creator || 'The creator') +
-        ' has opened this page\u2019s tags to anyone with an account &mdash; pick or unpick them below ' +
+        ' has opened this page\u2019s tags to anyone with an account. Pick or unpick them below ' +
         'and save. Nothing else on the page can be changed from here, and your change is ' +
         'recorded in ' + histLink(entry) + '.');
     }
 
     // ── populate form from entry ──
+    // The modes the <select> offers. Anything else stored on the page reads
+    // as closed, and an unknown mode is never silently re-saved as one.
+    var PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
+
     function populateForm(entry){
       originalEntry = entry;
       $('name').value            = entry.name || '';
@@ -931,7 +934,7 @@
       $('remindersGlobal').value = (entry.remindersGlobal || []).join('\n');
       $('setup').checked         = !!entry.setup;
       $('customJson').value      = entry.customJson || '';
-      $('publicEdit').value      = entry.publicEdit === 'all' ? 'all' : entry.publicEdit === 'tags' ? 'tags' : '';
+      $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
       if (entry.artAlt) {
         var altTh = $('artAltThumb');
         altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
@@ -1305,7 +1308,7 @@
              decided which: 'owner' (or admin) is the whole form; 'all' is a
              page whose creator opened it to anyone with an account; 'tags' is
              a page that opened its tags and nothing else. The server enforces
-             all of it — the form only has to avoid inviting somebody to type
+             all of it; the form only has to avoid inviting somebody to type
              into fields that would be thrown away. */
           var mode = res.editMode || (res.canEdit ? 'owner' : false);
           EDIT_MODE = mode;

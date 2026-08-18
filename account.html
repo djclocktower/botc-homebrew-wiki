@@ -138,7 +138,7 @@
   .feed .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
   .feed a { color: var(--maroon); }
   /* Only the first FEED_SHOWN entries are on screen until "Show all" is
-     pressed — a busy month used to put 50 lines between the top of the page
+     pressed. A busy month used to put 50 lines between the top of the page
      and the account settings below. */
   .feed li.feed-hidden { display: none; }
   .feed-toggle {
@@ -589,7 +589,7 @@
         actions += '<button class="mini-btn publish" data-act="publish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Publish</button>';
       } else {
         // A published page has a history; a draft does not (drafts are not
-        // snapshotted — see saveRevision in worker.js).
+        // snapshotted; see saveRevision in worker.js).
         actions += '<a class="mini-btn hist" href="history?type=' + type +
           '&slug=' + encodeURIComponent(r.slug) + '">History</a>';
         actions += '<button class="mini-btn draft" data-act="unpublish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Move to Drafts</button>';
@@ -673,13 +673,13 @@
 
     // Recent edits: show the newest FEED_SHOWN and hide the rest behind a
     // toggle, so the settings below stay a short scroll away however much you
-    // have been editing. Re-run on every load(), and it re-collapses — the
+    // have been editing. Re-run on every load(), and it re-collapses, so the
     // list is rebuilt from scratch each time.
     var FEED_SHOWN = 10;
     /* Suggestions waiting on pages this account owns. Its own request rather
        than part of /api/account: the panel is empty for almost everybody, and
        an account page should not pay for a join across four tables to find
-       that out — the call is cheap and it hides itself when there is nothing. */
+       that out: the call is cheap and it hides itself when there is nothing. */
     function loadSuggestions() {
       fetch('/api/suggestions?inbox=1', { credentials: 'same-origin' })
         .then(function (r) { return r.ok ? r.json() : null; })

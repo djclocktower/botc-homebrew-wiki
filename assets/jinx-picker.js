@@ -1,11 +1,10 @@
-/* Jinx character picker — create.html, edit.html and the /jinxes page.
+/* Jinx character picker: create.html, edit.html and the /jinxes page.
 
    The "Jinxed character" field used to be free text, so a typo produced a
    jinx pointing at nothing: no icon, and a link to an official wiki page that
-   does not exist. This puts a search box over both rosters — every official
-   character and every character on this wiki — and records WHICH one was
-   picked (`slug` for one of ours, `id` for an official one) instead of hoping
-   the typed name matches something later.
+   does not exist. This puts a search box over both rosters, official and
+   homebrew, and records WHICH one was picked (`slug` for one of ours, `id` for
+   an official one) instead of hoping the typed name matches later.
 
    Typing a name that matches nothing still saves as plain text, exactly as
    before, so nobody loses work mid-edit and an unusual name is still allowed.
@@ -176,8 +175,8 @@
 
     function pick(c) {
       // The editors refresh their preview off `input`, so one has to be
-      // dispatched — but this field's OWN input handler clears the recorded
-      // target (that is what makes typing over a pick drop it). The guard
+      // dispatched. But this field's OWN input handler clears the recorded
+      // target (that is what makes typing over a pick drop it), so the guard
       // marks this as a set rather than a keystroke.
       field.setAttribute('data-jxsetting', '1');
       field.value = c.name;

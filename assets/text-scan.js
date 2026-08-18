@@ -52,8 +52,7 @@
     '/reset-password', '/messages', '/news', '/profile', '/tools', '/tokens',
     '/grimforge', '/rules', '/steven-approved-order', '/script-view',
     '/normalize-icons',
-    // Nothing links to the 404 page — it is only ever reached by asking for
-    // something that isn't there — so the crawl would never find it.
+    // Nothing links to the 404 page, so the crawl would never find it.
     '/404'
   ];
 

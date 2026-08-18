@@ -1,9 +1,9 @@
-/* jinx-editor.js — the jinxes on one script, edited by its owner.
+/* jinx-editor.js: the jinxes on one script, edited by its owner.
  *
  * A jinx normally belongs to the characters: both character editors write it
  * into the character's own `jinxes`, and any script holding both ends shows
- * it. That is right for a rule the character carries everywhere — and no help
- * at all to a script that wants to drop one, or to add a rule that only holds
+ * it. That is right for a rule the character carries everywhere, and no help
+ * to a script that wants to drop one, or to add a rule that only holds
  * on this script (two homebrew characters that only meet here, a house ruling
  * between an official character and a homebrew one).
  *
@@ -14,7 +14,7 @@
  * and PageRender.scriptJinxes() is what turns characters + edits into the
  * list. This widget only edits; the resolving, the page and the exported JSON
  * all go through that one function. Nothing here is written back to the
- * characters — another script keeps whatever they say.
+ * characters, so another script keeps whatever they say.
  *
  *   JinxEditor.mount(container, {getEntries, getEdits, setEdits})
  *
@@ -63,8 +63,8 @@
       var entries = getEntries();
       var jinxes = list();
       var e = edits();
-      // Inherited jinxes that this script has switched off — listed so they
-      // can be switched back on. A pair whose characters have both left the
+      // Inherited jinxes this script has switched off, listed so they can be
+      // switched back on. A pair whose characters have both left the
       // roster is not shown (and is left in the data: it applies again if
       // they come back).
       var bySlug = {};
@@ -77,7 +77,7 @@
 
       var html = '';
       if (!entries.length) {
-        container.innerHTML = '<p class="sjx-empty">Add characters to your script first — a jinx is a rule between two of them.</p>';
+        container.innerHTML = '<p class="sjx-empty">Add characters to your script first. A jinx is a rule between two of them.</p>';
         return;
       }
       html += '<div class="sjx-list">';
@@ -111,8 +111,8 @@
         html += '</div>';
       }
 
-      // "Add a jinx" — both ends are characters already on the script, so
-      // there is no way to write a rule about somebody who is not here.
+      // "Add a jinx": both ends are already on the script, so there is no way
+      // to write a rule about somebody who is not here.
       var opts2 = entries.map(function (c) {
         return '<option value="' + esc(c.slug) + '">' + esc(c.name) +
           (c.official ? ' (official)' : '') + '</option>';

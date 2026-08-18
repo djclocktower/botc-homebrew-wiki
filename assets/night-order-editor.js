@@ -1,11 +1,11 @@
-/* night-order-editor.js — the two night lists, arranged by hand.
+/* night-order-editor.js: the two night lists, arranged by hand.
  *
  * Mounted twice: in the Script Builder (script.html), next to the roster, and
  * on the publish page (publish-script.html). Both write the same
  * `nightOrder: {first: [slug], other: [slug]}` into the script's meta, and
- * both build their lists through PageRender.nightItems — the same function
- * the published page renders through — so what is dragged here is what a
- * reader sees. See "Night order" in CLAUDE.md.
+ * both build their lists through PageRender.nightItems, the same function the
+ * published page renders through, so what is dragged here is what a reader
+ * sees. See "Night order" in CLAUDE.md.
  *
  * Two ways to move a character, on purpose:
  *   - drag a row (pointer events: mouse, pen and touch on one path)
@@ -115,7 +115,7 @@
        The lifted row leaves the flow (position:fixed, following the pointer)
        and a placeholder of the same height takes its place. Everything else
        stays exactly where it was, and the only thing that moves during the
-       drag is that placeholder — which is what makes this stable. Lifting the
+       drag is that placeholder, which is what makes this stable. Lifting the
        row but leaving it IN the flow does not work: each re-insert shifts the
        rows above the pointer, the next hit-test lands somewhere else again,
        and a drag downwards walks the wrong character to the bottom.
@@ -123,8 +123,8 @@
        The row under the pointer is found with elementFromPoint; the lifted row
        is pointer-events:none, so the hit lands on the row underneath it. On
        release the row goes back into the flow where the placeholder sits and
-       the order is read off the DOM — so the list you let go of is exactly the
-       list that gets stored. */
+       the order is read off the DOM, so the list you let go of is the list
+       that gets stored. */
     var drag = null;
 
     function rowUnder(x, y, listEl) {

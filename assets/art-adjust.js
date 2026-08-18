@@ -1,9 +1,9 @@
-/* art-adjust.js — place a character icon inside the 591x591 frame by hand.
+/* art-adjust.js: place a character icon inside the 591x591 frame by hand.
  *
  * "Resize icon" (art-normalize.js) trims the transparent margin and scales the
  * figure to a fixed 70% of the frame. That is the right answer most of the
- * time and the wrong one whenever the art is not a single tidy figure — a
- * signature in a corner, a wisp of smoke, a stray pixel — because the trim
+ * time and the wrong one whenever the art is not a single tidy figure (a
+ * signature in a corner, a wisp of smoke, a stray pixel), because the trim
  * measures all of it and the character ends up small. This is the manual way
  * out: drag the art where you want it, set how much of the token it fills,
  * rotate it if the scan was crooked, and take the result.
@@ -15,15 +15,15 @@
  *
  * Resolves with a 591x591 transparent PNG, or null when cancelled. Rejects
  * only when the image can't be loaded or can't be read back out of the canvas
- * (art hosted on another site without CORS headers taints it — the caller
+ * (art hosted on another site without CORS headers taints it; the caller
  * shows that message and the writer uploads the file instead).
  *
  * Browser-only. Loaded by create.html and edit.html, which are the same form
- * twice over — wire anything here into both. Needs art-normalize.js first
+ * twice over, so wire anything here into both. Needs art-normalize.js first
  * (artTrimBox); without it the whole image counts as the figure, which is
  * still a usable starting point.
  *
- * Styles live in styles.css under .aa-* — this file only builds the DOM.
+ * Styles live in styles.css under .aa-*; this file only builds the DOM.
  */
 (function (global) {
   'use strict';
@@ -60,7 +60,7 @@
 
         var box = (global.artTrimBox && global.artTrimBox(img)) || { x: 0, y: 0, w: iw, h: ih };
         if (!box.w || !box.h) box = { x: 0, y: 0, w: iw, h: ih };
-        // The scale at which the figure fills FILL of the frame — the whole
+        // The scale at which the figure fills FILL of the frame. The whole
         // adjustment is expressed relative to it, so "100%" on the slider is
         // the wiki's house size rather than some property of this one file.
         var fitScale = (FILL * TARGET) / Math.max(box.w, box.h);
@@ -169,7 +169,7 @@
 
         /* ── dragging and pinching ──
            The canvas is 591 px of art shown at whatever width the screen
-           allows, so every pointer distance is converted through that ratio —
+           allows, so every pointer distance is converted through that ratio:
            otherwise a drag on a phone would move the art half as far as the
            finger. Pointer events cover mouse, pen and touch in one path;
            touch-action:none on the stage stops the browser scrolling the page

@@ -858,7 +858,7 @@
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          A jinx names the character it is with, but nothing guarantees that character exists. When it does not — a typo, a bulk import that referenced a page never brought over, a character since renamed or unpublished — the reader just sees a name that does not link anywhere. There is no single page that shows these, so this counts them. It also lists pairs where <em>both</em> characters describe the same jinx in different words: only one wording is ever shown, so the other is invisible work.
+          Jinxes that point at nothing: a typo, a page that was never imported, or one since renamed or unpublished. On the page itself these just look like a name that does not link anywhere, so nothing else counts them. Also lists pairs where <em>both</em> characters wrote a rule, since only one wording is ever shown.
         </p>
         <button type="button" class="small-btn" id="jxh-scan">Scan</button>
         <div id="jxh-list"></div>
@@ -1146,7 +1146,7 @@
           var resolved = m.status === 'resolved';
           // The reply is delivered as a DM, so it can only go to a message that
           // has an account behind it. The account page's contact form needs a
-          // login, but the 404 page's broken-link box deliberately does not —
+          // login, but the 404 page's broken-link box deliberately does not,
           // those rows have no username, and the reader was asked for a handle
           // or an email in the body instead.
           var canReply = !!m.username;

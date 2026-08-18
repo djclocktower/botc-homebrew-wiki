@@ -72,7 +72,7 @@
 }
 .nf-url-note { display: block; font-size: .78rem; opacity: .6; margin-top: 6px; }
 /* Anything given an explicit `display` here would otherwise beat the browser's
-   own [hidden] rule and show through — these three are toggled from script. */
+   own [hidden] rule and show through. These three are toggled from script. */
 .nf-url-note[hidden], .nf-field[hidden], .nf-report-who[hidden] { display: none; }
 
 /* ─── "Did you mean…" ─────────────────────────────────────────── */
@@ -213,7 +213,7 @@
       <p class="nf-report-who" data-nf-who hidden></p>
       <label class="nf-field">
         <span>What were you looking for?</span>
-        <textarea data-nf-note-in maxlength="1000" placeholder="e.g. the Illusionist page — I clicked the link from the Odyssey collection"></textarea>
+        <textarea data-nf-note-in maxlength="1000" placeholder="e.g. the Illusionist page, linked from the Odyssey collection"></textarea>
       </label>
       <label class="nf-field" data-nf-contact-field>
         <span>Where can we reply? (optional)</span>
@@ -243,7 +243,7 @@
   /* ── Which address failed ────────────────────────────────────────
      This file is served AT the broken URL (no redirect), so location is
      the address the reader actually asked for. The one exception is
-     somebody opening /404 on purpose — then there is nothing broken and
+     somebody opening /404 on purpose, when nothing is broken and
      the page says so rather than pointing at itself. */
   var previewing = /^\/404(\.html)?\/?$/.test(location.pathname);
   var brokenPath = previewing
@@ -255,7 +255,7 @@
      goes wrong are a dropped letter, a swapped pair, a missing accent
      and a half-remembered name, and letter-pair scoring reads those as
      badly as it reads two unrelated words that both contain "er". The
-     feed is only fetched when the address looks like a page address —
+     feed is only fetched when the address looks like a page address:
      a stray /favicon.ico must not pull the character list down.
 
      The prefix rule earns its keep here specifically: half this wiki's
@@ -278,7 +278,7 @@
     if (!wanted || !cand) return 0;
     if (wanted === cand) return 1;
     // Containment only counts once there is enough of a word to mean
-    // something — otherwise "/c/a" is a prefix of a third of the wiki.
+    // something, or "/c/a" is a prefix of a third of the wiki.
     if (wanted.length >= 3) {
       if (cand.indexOf(wanted) === 0 || wanted.indexOf(cand) === 0) return 0.92;
       if (cand.indexOf(wanted) >= 0 || wanted.indexOf(cand) >= 0) return 0.8;
@@ -325,7 +325,7 @@
       '</span></a>';
   }
 
-  // Resolves to an HTML string (possibly empty). Never rejects — a failed
+  // Resolves to an HTML string (possibly empty). Never rejects: a failed
   // feed just means no suggestions, which is not worth an error message.
   function findSuggestions() {
     var m, feed, wanted, build;
@@ -335,7 +335,7 @@
       feed = '/characters.json?fields=card';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (c) {
-          // Built from the slug, not the feed's `page` field — that one still
+          // Built from the slug, not the feed's `page` field, which still
           // carries the legacy "c/{slug}.html" form, which only works because
           // the Worker 301s it. Link at the address the page actually lives at.
           return sugHTML('/c/' + encodeURIComponent(c.slug),
@@ -367,7 +367,7 @@
         }).join('');
       };
     } else {
-      // Not a content address — match against the site's own pages instead,
+      // Not a content address: match the site's own pages instead,
       // which costs no fetch at all.
       var PAGES = [
         ['/all-characters', 'All Characters', 'Browse'],
@@ -418,7 +418,7 @@
   if (previewing) {
     var note = document.querySelector('[data-nf-note]');
     note.hidden = false;
-    note.textContent = 'That address is an example — you opened this page directly, so nothing is actually broken.';
+    note.textContent = 'That address is only an example. You opened this page directly, so nothing is broken.';
   }
 
   // quick links
@@ -462,35 +462,35 @@
       .then(function (res) {
         if (res.ok && res.body.ok) {
           msg.className = 'nf-report-msg ok';
-          msg.textContent = res.body.message || 'Thanks — the admins have it.';
+          msg.textContent = res.body.message || 'Thanks, the admins have it.';
           noteIn.disabled = true;
           contactIn.disabled = true;
           sendBtn.textContent = 'Sent';
         } else {
           sendBtn.disabled = false;
           msg.className = 'nf-report-msg err';
-          msg.textContent = (res.body && res.body.error) || 'Could not send that — try again in a moment.';
+          msg.textContent = (res.body && res.body.error) || 'Could not send that. Try again in a moment.';
         }
       })
       .catch(function () {
         sendBtn.disabled = false;
         msg.className = 'nf-report-msg err';
-        msg.textContent = 'Could not reach the wiki — check your connection and try again.';
+        msg.textContent = 'Could not reach the wiki. Check your connection and try again.';
       });
   });
 
   // Logged in? Then the admins can already answer through the wiki's own
   // messages, and asking for a handle again is noise. Asked for after the
-  // page is already usable — nothing here waits on the network.
+  // page is already usable; nothing here waits on the network.
   fetch('/api/me', { credentials: 'same-origin' })
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (!d || !d.loggedIn) return;
       contactField.hidden = true;
       who.hidden = false;
-      who.textContent = 'Sending as @' + d.username + ' — the admins can reply straight to your messages.';
+      who.textContent = 'Sending as @' + d.username + '. The admins can reply to your messages.';
     })
-    .catch(function () { /* logged out, or offline — the form still works */ });
+    .catch(function () { /* logged out or offline; the form still works */ });
 })();
 </script>
 <script src="/assets/site.js"></script>

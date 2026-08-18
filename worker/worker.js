@@ -373,21 +373,13 @@ function clearCookie() {
 }
 
 // ---- the custom 404 page ----
-// Everything that cannot find what was asked for used to end in a bare
-// `env.ASSETS.fetch(request)`, which hands back Cloudflare's own "Not Found" —
-// a blank page with no top bar, no search and no way back to the wiki. A dead
-// character link pasted in Discord a year ago is the single most likely way a
-// stranger arrives here, so it is worth a real page.
-//
-// assetsOrNotFound() keeps the old behaviour first (a committed static file
-// still wins, which is what the legacy redirect stubs rely on) and only swaps
-// in /404.html when the assets binding says 404. The page is served AT the URL
-// that was asked for — no redirect — so it can show the broken address, and so
-// the reader can retry or copy the link they came in on.
+// assetsOrNotFound() replaces a bare `env.ASSETS.fetch(request)`. A committed
+// static file still wins (the legacy redirect stubs rely on that); only a 404
+// from the assets binding swaps in /404.html, served AT the address that was
+// asked for so the page can show it.
 //
 // Images, JSON and scripts keep the bare 404: an HTML page inside an <img> is
-// pure waste, `onerror` fires either way, and fetch() callers want the status,
-// not a document.
+// waste, and fetch() callers want the status, not a document.
 function wantsHTMLPage(request, path) {
   if (path.startsWith('/api/') || path.startsWith('/assets/')) return false;
   if (/\.(png|jpe?g|gif|webp|svg|ico|json|js|mjs|css|txt|xml|map|woff2?|ttf|otf)$/i.test(path)) return false;
@@ -669,29 +661,20 @@ async function findUserByLogin(env, identifier) {
   return findUserByShownName(env, id);
 }
 
-// People know themselves by the name the site puts on the screen, and for a
-// Discord signup that is rarely the handle: the account page says @scape while
-// every comment, profile and "Logged in as" says Cellscape, because Cellscape
-// is the display name Discord handed over. Typing the only name you have ever
-// been shown and being told your login is invalid is what this covers — the
-// display name and the Discord handle both get you in.
+// A Discord signup is shown its display name everywhere (@scape on the account
+// page, "Cellscape" on every comment), so that is the name people type to log
+// in. Display name and Discord handle both work here.
 //
-// Order is the whole safety argument, and it is in findUserByLogin above:
-// username, then email, then this. So
-//   - setting your display name to somebody's HANDLE never puts you in front
-//     of them: their handle is matched first and wins,
-//   - the same for an email address,
-//   - and a display name only counts when EXACTLY ONE account has it. Two
-//     members called "Alex" are not an identity, and picking one of them would
-//     be guessing at somebody's account, so neither is matched.
-// A match here still has to pass the password check like any other, so the
-// worst a shared name can do is fail a login that was already going to fail.
+// The order in findUserByLogin above is the safety argument: username, then
+// email, then this. A display name can never shadow somebody's handle or
+// email, and it only counts when EXACTLY ONE account has it, so two members
+// called "Alex" match neither. The password check still applies.
 async function findUserByShownName(env, id) {
   const key = usernameKey(id);
   if (!key) return null;
   // Matched in JS, folded exactly as a handle is: SQLite has no ICU, so
-  // lower() would fold "Cellscape" and leave "Céline" alone. The users table
-  // is small (tens of rows) and this only runs when nothing else matched.
+  // lower() would fold "Cellscape" and leave "Céline" alone. Only runs when
+  // nothing else matched, over a table of tens of rows.
   const { results } = await env.DB.prepare(
     `SELECT id, display_name, discord_username FROM users
       WHERE (display_name IS NOT NULL AND display_name <> '')
@@ -783,12 +766,10 @@ async function ensureRevisionsTable(env) {
   _revisionsReady = true;
 }
 
-/* What changed between two stored versions, as reader-facing labels — the
-   "what" column of a wiki history. Compares the top-level keys of the two
-   JSON blobs, which is exactly the granularity a page is edited at: a writer
-   changes the ability, or the tags, or the art. Unlabelled keys fall back to
-   their own name rather than being dropped, so a field added later still
-   shows up as having changed instead of silently reading as "no changes". */
+/* The "what changed" column of a wiki history. Compares the top-level keys of
+   two stored versions, which is the granularity a page is edited at. An
+   unlabelled key falls back to its own name rather than being dropped, so a
+   field added later still shows as changed instead of reading as no change. */
 const FIELD_LABELS = {
   name: 'name', team: 'team', creator: 'creator', ability: 'ability',
   tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
@@ -819,9 +800,8 @@ const FIELD_LABELS = {
 const DIFF_VALUE_MAX = 1200;   // per side, per field
 const DIFF_LABEL_MAX = 6;
 
-/* The same comparison as diffFieldLabels, but carrying the values — what the
-   field said before and after — so a reader can judge the edit. Values are
-   flattened to text: a list becomes one line per entry, anything else its
+/* diffFieldLabels with the values kept, so a reader can judge the edit.
+   Flattened to text: a list becomes one line per entry, anything else its
    JSON, both capped. */
 function diffFieldValues(beforeJSON, afterJSON) {
   let a, b;
@@ -872,11 +852,10 @@ function diffFieldLabels(beforeJSON, afterJSON) {
 // Snapshot an existing row before it gets overwritten. `edited_by` records
 // who made the edit that replaced this version. Never blocks the save.
 async function saveRevision(env, sess, type, row) {
-  // Drafts have no history. A draft is nobody's but its owner's, gets saved
-  // over constantly while it is being written, and none of those versions is
-  // one anybody would want back — so a page's history starts at the version
-  // that was published. What is snapshotted is the version being REPLACED, so
-  // taking a published page back to draft still records what was live.
+  // Drafts have no history: they are saved over constantly while being
+  // written and nobody wants those versions back, so a page's history starts
+  // at the version that was published. What is snapshotted is the version
+  // being REPLACED, so taking a published page to draft still records it.
   if ((row.status || 'published') !== 'published') return;
   try {
     await ensureRevisionsTable(env);
@@ -896,16 +875,14 @@ async function saveRevision(env, sess, type, row) {
 }
 
 /* ---- suggested edits ----
-   A page whose creator chose `publicEdit: 'suggest'` takes proposed versions
-   instead of direct edits. A suggestion is the whole page as the suggester
-   would have it — the same object the editor posts to save — kept apart from
-   the row until somebody who owns the page approves it. Approving is a normal
-   save: the current version is snapshotted into the history first, so an
-   approval can be rolled back like anything else.
+   A page set to `publicEdit: 'suggest'` takes proposed versions instead of
+   direct edits. A suggestion is the whole page as the suggester would have it,
+   the same object the editor posts to save, kept apart from the row until the
+   owner approves it. Approving is a normal save, snapshotted into the history
+   first, so it can be rolled back like anything else.
 
-   `base_updated_at` is the version the suggester was working from, which is
-   how the review page can say "this was written against an older version of
-   the page" rather than quietly overwriting work done since. */
+   `base_updated_at` is the version the suggester worked from, so the review
+   page can flag one written against an older copy. */
 let _suggestReady = false;
 async function ensureSuggestTable(env) {
   if (_suggestReady) return;
@@ -1659,28 +1636,20 @@ function canEditRow(sess, row) {
 }
 
 /* ---- who may edit a page ----
-   `canEditRow` above is ownership: the owner and the admins, and it still
-   governs everything that belongs to whoever made the page — renaming it,
-   publishing it, deleting it, rolling it back, and the public-editing setting
-   itself.
+   `canEditRow` above is ownership, and it still governs everything that
+   belongs to the creator: renaming, publishing, deleting, rolling back, and
+   the public-editing setting itself.
 
-   On top of that a creator may open a page up, stored on the page's data as
-   `publicEdit`:
-
-     'all'   anyone with an account may edit the page
-     'tags'  anyone with an account may change the tags, and nothing else
-
-   editPermission() answers what THIS session may do to THIS row:
+   On top of that a creator may open a page up, stored on its data as
+   `publicEdit`. editPermission() answers what THIS session may do to THIS row:
 
      'owner'  everything (the owner, or an admin)
      'all'    the page's content, but none of the owner's own settings
-     'tags'   the tags and nothing else
+     'tags'   the tags and nothing else (characters only)
      ''       nothing
 
-   Three things are deliberately never open, whatever the setting says: a
-   draft (nobody else can even see it), an admin-protected page, and a page
-   whose owner never opted in. Scripts and collections have no tags, so 'tags'
-   means nothing there and is treated as closed. */
+   Never open, whatever the setting says: a draft, an admin-protected page,
+   and a page whose owner never opted in. */
 const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
 function publicEditMode(d) {
   const v = d && d.publicEdit;
@@ -1690,12 +1659,11 @@ function sanitizePublicEdit(v) {
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
 }
 
-/* A public editor is a stranger with write access, so their save gets a
-   ceiling the owner's has never needed: a page is a few kilobytes of text and
-   nothing legitimate comes near this. Cheap insurance against somebody
-   parking a megabyte of anything in a row they do not own. */
+/* A ceiling the owner's own saves never needed. A page is a few kilobytes of
+   text, so nothing legitimate comes near this; it stops somebody parking a
+   megabyte in a row they do not own. */
 const PUBLIC_EDIT_MAX_BYTES = 120000;
-const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits — send yours for the creator to approve.';
+const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits. Send yours for the creator to approve.';
 const PUBLIC_EDIT_TAGS_MAX = 400;
 function publicEditTooBig(o) {
   try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
@@ -1712,16 +1680,15 @@ async function editPermission(env, sess, type, row) {
   return mode;
 }
 
-/* 'suggest' is not write access: it is permission to PROPOSE a version, which
-   the owner then approves or declines (POST /api/suggest). Every save handler
-   asks this before writing, so a mode that is not a writing mode can never
-   reach a row by being mistaken for one. */
+/* 'suggest' is not write access: it is permission to PROPOSE a version
+   (POST /api/suggest). Every save handler asks this before writing, so a mode
+   that is not a writing mode can never be mistaken for one. */
 function permCanWrite(perm) {
   return perm === 'owner' || perm === 'all' || perm === 'tags';
 }
 
-/* Telling a suggester what happened to their suggestion — the same DM row as
-   every other notification, so it lands in the place they already look. */
+/* Telling a suggester what happened, through the same DM row as every other
+   notification, so it lands where they already look. */
 async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, origin) {
   try {
     if (sug.user_id == null || sug.user_id === fromId) return;
@@ -1736,11 +1703,10 @@ async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, ori
   } catch { /* a notification must never break a decision */ }
 }
 
-// A page edited by somebody who does not own it: tell the owner, through the
-// notification the site already has (the unread count on /api/me and the mail
-// flag site.js puts on "My Account"). Written sender_deleted=1 so it never
-// clutters the editor's own conversation list — they edited a page, they did
-// not send a message. Same shape as notifyComment.
+// A page edited by somebody who does not own it: tell the owner through the
+// notification the site already has (the unread count on /api/me, the mail
+// flag on "My Account"). sender_deleted=1 keeps it out of the editor's own
+// conversation list: they edited a page, they did not send a message.
 async function notifyPageEdit(env, opts) {
   try {
     const { fromId, ownerId, what, name, path, origin } = opts;
@@ -1753,7 +1719,7 @@ async function notifyPageEdit(env, opts) {
     const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
       (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
       encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
-      ' , where you can put back any earlier version.';
+      ', where you can put back any earlier version.';
     await env.DB.prepare(
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
     ).bind(fromId, ownerId, text).run();
@@ -1783,7 +1749,7 @@ async function revisableRow(env, type, slug) {
   if (type === 'wikipage') {
     await ensurePagesTable(env);
     const row = await env.DB.prepare(
-      'SELECT slug, title AS name, owner_id, status, data, updated_at FROM pages WHERE slug=?'
+      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at FROM pages WHERE slug=?'
     ).bind(slug).first().catch(() => null);
     return row || null;
   }
@@ -2090,19 +2056,16 @@ async function applyCollectionStarlight(env, chars) {
 }
 
 /* ---- "Appears in", derived from collection membership ----
-   A collection's membership is either matched on the character's own
-   `appearsIn` text or listed by hand in `include[]`. The hand-listed half used
-   to leave the character page saying nothing about the collection it is in,
-   and the creator had to type the name into every character to fix it.
-   This fills that gap on READ: a character with no `appearsIn` of its own
-   picks up the collections that list it, in a separate `appearsInFrom` field.
+   A collection lists members either by matching their own `appearsIn` text or
+   by hand in `include[]`. The hand-listed half left the character page saying
+   nothing about the collection it is in. This fills that on READ: a character
+   with no `appearsIn` of its own picks up the collections that list it, in a
+   separate `appearsInFrom` field.
 
    Separate on purpose. Writing it into `appearsIn` would feed the match rule
-   that resolves membership in the first place — a collection whose match term
-   happened to equal another collection's name would start swallowing that
-   collection's characters. Nothing is stored either, so removing a character
-   from a collection takes the line off its page, and a character that later
-   gets its own `appearsIn` keeps what its creator typed. */
+   that resolves membership in the first place, so one collection could start
+   swallowing another's characters. Nothing is stored, so dropping a character
+   from a collection takes the line off its page. */
 let _inclCollCache = null;
 async function includeCollections(env) {
   const version = await contentVersion(env);
@@ -2178,8 +2141,8 @@ function sanitizeNightOrder(o) {
 }
 
 // A script's own jinx edits: {off: ["slugA|slugB"], add: [{a, b, text}]}.
-// Nothing here is written back to the characters — this is one script's view
-// of the rules between them (see scriptJinxes in render-page.js).
+// Nothing is written back to the characters: this is one script's view of the
+// rules between them (see scriptJinxes in render-page.js).
 function sanitizeJinxEdits(o) {
   if (!o || typeof o !== 'object') return null;
   const slug = v => String(v || '').slice(0, 80);
@@ -2668,11 +2631,11 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
 
 // ---- official BotC roles (assets/roles.json), for script rosters that
 // include imported official characters ('off-' slugs). Cached per isolate.
-// The wake positions come from assets/night-order.json — roles.json has none,
-// which is why an official character used to be missing from a script page's
-// Night Order box. Both files are fetched as static assets rather than
-// imported, so neither rides in the Worker bundle; a night-order.json that
-// fails to load costs the positions and nothing else.
+// Wake positions come from assets/night-order.json; roles.json has none, which
+// is why an official character used to be missing from a script page's Night
+// Order box. Both are fetched as static assets rather than imported, so
+// neither rides in the Worker bundle, and a night-order.json that fails to
+// load costs the positions and nothing else.
 let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
@@ -2685,9 +2648,9 @@ async function loadOfficialRoles(env, origin) {
     let night = null;
     try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
     // The non-character steps of the night (dusk, minion info, demon info,
-    // dawn) — what an exported script needs to write a night sequence the
+    // dawn): what an exported script needs to write a night sequence the
     // official app can follow. Without them the export leaves the sequence
-    // out entirely rather than publish one those steps are missing from.
+    // out rather than publish one those steps are missing from.
     if (night && night.meta) PageRender.setNightMeta(night.meta);
     _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
   } catch {
@@ -2729,10 +2692,9 @@ async function officialNameMap(env, origin) {
   return m;
 }
 
-// Jinxes between two OFFICIAL characters (assets/official-jinxes.json). The
-// homebrew map does not need these to make sense, so they are an opt-in layer
-// on /jinxes rather than part of the picture by default — see the `note` in
-// the file. Cached per isolate like the roles list.
+// Jinxes between two OFFICIAL characters (assets/official-jinxes.json). An
+// opt-in layer on /jinxes rather than part of the default picture: the
+// homebrew map reads fine without them. Cached per isolate.
 let _officialJinxCache = null;
 async function loadOfficialJinxes(env, origin) {
   if (_officialJinxCache) return _officialJinxCache;
@@ -2747,16 +2709,14 @@ async function loadOfficialJinxes(env, origin) {
 }
 
 // ---- the jinx index ----------------------------------------------------
-// Every jinx on the wiki as one edge list, plus the character rows the
-// renderer needs to draw them. Two things need this and neither can afford a
-// table scan of its own: a /c/ page has to know which OTHER characters
-// declare a jinx with it (jinxes are stored on one side only), and /jinxes
-// draws the whole graph.
+// Every jinx on the wiki as one edge list, plus the character rows needed to
+// draw them. Two callers, neither of which can afford its own table scan: a
+// /c/ page needs the jinxes OTHER characters declare with it (a jinx is stored
+// on one side only), and /jinxes draws the whole graph.
 //
-// Cached exactly like the JSON feeds: in-isolate, and in caches.default under
-// a key carrying contentVersion(), which logActivity() bumps on every content
-// write. So it self-invalidates with no table, no migration and no rebuild
-// tooling. Cold cost is one card-feed read, the same as a collection page.
+// Cached like the JSON feeds: in-isolate and in caches.default, under a key
+// carrying contentVersion(), which logActivity() bumps on every content write.
+// Cold cost is one card-feed read.
 let _jinxIndexCache = null;      // { version, index }
 async function jinxIndex(env, ctx) {
   const version = await contentVersion(env);
@@ -2784,13 +2744,10 @@ async function jinxIndex(env, ctx) {
   return index;
 }
 
-// The jinx list a /c/ page should show: its own, plus every jinx another
-// character declares with it, pointed back the other way. A mirrored entry
-// carries `mirrored` so the renderer can say where it is edited — the page
-// that stores it is the page that owns it.
-//
-// A pair that BOTH sides declare is shown once: the character's own entry
-// wins, because that is the text its owner wrote.
+// The jinx list a /c/ page shows: its own, plus every jinx another character
+// declares with it, pointed back the other way. A mirrored entry carries
+// `mirrored` so the renderer can say which page stores (and so owns) it.
+// A pair both sides declare is shown once, and the character's own entry wins.
 function mergeMirroredJinxes(d, slug, jx) {
   const own = Array.isArray(d.jinxes) ? d.jinxes.filter(j => j && (j.name || j.id || j.slug)) : [];
   const inbound = (jx.bySlug && jx.bySlug[slug]) || [];
@@ -2979,9 +2936,9 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
     : await cachedCardChars(env);
-  // Scripts can carry imported official roles ('off-' slugs) — resolve them.
-  // An arranged night order needs this call too even on an all-homebrew
-  // script: it is what loads the night's non-character steps.
+  // Scripts can carry imported official roles ('off-' slugs), so resolve them.
+  // An arranged night order needs this call on an all-homebrew script too: it
+  // is what loads the night's non-character steps.
   if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
     const official = await loadOfficialRoles(env, url.origin);
     chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
@@ -3012,10 +2969,9 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const editHref = isScript
     ? '../publish-script?s=' + encodeURIComponent(d.slug)
     : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
-  // The page's own Edit button, for whoever may actually use it. The pencil in
-  // the top bar shows unconditionally (the API is the enforcer); this one is
-  // gated, because it sits in the page where a reader would take it as an
-  // invitation. SSR responses are no-store, so a per-reader button is safe.
+  // The page's own Edit button, gated: it sits in the page, where a reader
+  // would take it as an invitation. (The top-bar pencil shows unconditionally;
+  // the API is the enforcer.) SSR responses are no-store, so this is safe.
   const ownerEditHref = mayEditParent ? editHref : '';
 
   const body = isScript
@@ -3057,13 +3013,13 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
 async function findCollectionRow(env, key) {
   if (!key) return null;
   let hit = await env.DB.prepare(
-    'SELECT slug, display_name AS name, owner_id, status, data FROM collections WHERE slug=?'
+    'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections WHERE slug=?'
   ).bind(key).first().catch(() => null);
   if (hit) return hit;
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const nkey = norm(key);
   const { results } = await env.DB.prepare(
-    'SELECT slug, display_name AS name, owner_id, status, data FROM collections'
+    'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections'
   ).all().catch(() => ({ results: [] }));
   for (const row of results || []) {
     try {
@@ -3943,7 +3899,7 @@ export default {
     // Nodes are every character that takes part in a jinx: the wiki pages
     // themselves, plus the official characters they are jinxed with, which are
     // what most of the edges actually point at. Official↔official jinxes are
-    // not here — this is a map of the homebrew wiki, not of the base game.
+    // not here: this is a map of the homebrew wiki, not of the base game.
     if (method === 'GET' && path === '/api/jinxes') {
       let index;
       try {
@@ -3984,7 +3940,7 @@ export default {
         const a = addWiki(e.from);
         if (!a) continue;
         // An edge whose target is neither a wiki page nor a known official
-        // character is a typo or a draft — it has no node to attach to.
+        // character is a typo or a draft, and has no node to attach to.
         let b;
         if (e.to) b = addWiki(e.to);
         else if (officialIcons[e.key] || officialNames[e.key]) b = addOfficial(e.key, e.name);
@@ -4233,18 +4189,16 @@ export default {
       if (!identifier || !password) return jsonResponse({ error: 'Missing credentials' }, { status: 400 });
       const user = await findUserByLogin(env, identifier);
       // "Invalid login" for both halves left people re-typing a password that
-      // was right all along. Which half failed is only said when the
-      // identifier is a NAME: names are public here (every profile is a page,
-      // /creators lists them all), so naming one confirms nothing that isn't
-      // already on the site. An email address is not public, so an
-      // email-shaped identifier keeps one message for both cases and gives
-      // away nothing about who is registered.
+      // was right all along. Which half failed is only said for a NAME: names
+      // are public here (every profile is a page, /creators lists them all),
+      // so naming one confirms nothing new. An email address is not public, so
+      // an email-shaped identifier keeps one message for both cases.
       const isEmailish = identifier.includes('@');
       const vague = 'That email and password don\'t match. Check both, or use "Forgot your password?" below.';
       if (!user) {
         return jsonResponse({
           error: isEmailish ? vague
-            : 'No account has that username. It\'s the @name on your account page — or log in with your email address instead.'
+            : 'No account has that username. It\'s the @name on your account page. You can also log in with your email address.'
         }, { status: 401 });
       }
       const ok = await verifyPassword(password, user.password_hash);
@@ -4431,13 +4385,12 @@ export default {
         const link = url.origin + '/reset-password?token=' + token;
         ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
           'Reset your password',
-          // The username is spelled out because half the people who ask for a
-          // reset are really stuck on the OTHER field: their display name is
-          // the only name the site ever shows them, so this is the one message
-          // that can tell them what to type in the username box.
+          // Half the people who ask for a reset are stuck on the OTHER field:
+          // their display name is the only name the site shows them, so this
+          // is the one message that can tell them what to type.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
-           <p>Your username is <b>@${escapeHtml(user.username)}</b> — that, or this email address, is what goes in the log-in box.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b>. That, or this email address, is what goes in the log-in box.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
@@ -4793,8 +4746,8 @@ export default {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      // 'owner' | 'all' | 'tags' | '' — what this reader may actually change,
-      // which is what the editor needs to know before it offers them a form.
+      // 'owner' | 'all' | 'tags' | '': what this reader may actually change,
+      // which is what the editor needs before it offers them a form.
       const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
       const editable = !!mode;
       // Soft-deleted pages read as gone; restore from the dashboard first.
@@ -5044,10 +4997,8 @@ export default {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      // A published page's history is public, the way a wiki's is: anyone
-      // reading a page can see who changed what, which is the whole point of
-      // opening pages to other people. A draft is nobody's business but its
-      // owner's — and has no history anyway (see saveRevision).
+      // A published page's history is public, the way a wiki's is. A draft is
+      // its owner's alone, and has no history anyway (see saveRevision).
       if ((row.status || 'published') !== 'published' && !owns) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
@@ -5057,10 +5008,10 @@ export default {
            FROM revisions WHERE entity_type=? AND slug=? ORDER BY id ASC`
       ).bind(type, row.slug).all();
       const revs = results || [];
-      /* Each row is a snapshot of the page as it stood BEFORE the save that
-         replaced it, stamped with who made that save. So the change one entry
-         describes is the difference between it and whatever came next — the
-         following snapshot, or the page as it stands now for the newest one. */
+      /* Each row is the page as it stood BEFORE the save that replaced it,
+         stamped with who made that save. So an entry describes the difference
+         between it and whatever came next: the following snapshot, or the page
+         as it stands now for the newest one. */
       const entries = revs.map((r, i) => {
         const after = i + 1 < revs.length ? revs[i + 1].data : row.data;
         return {
@@ -5081,9 +5032,9 @@ export default {
       });
     }
 
-    /* Suggested edits — the list for one page, or everything waiting on the
-       pages you own (?inbox=1). A page's list is for the people who can act on
-       it: its owner, an admin, and each suggester's own entries. */
+    /* Suggested edits: one page's list, or everything waiting on the pages you
+       own (?inbox=1). A page's list is for the people who can act on it: its
+       owner, an admin, and each suggester's own entries. */
     if (method === 'GET' && path === '/api/suggestions') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
@@ -5134,9 +5085,8 @@ export default {
       });
     }
 
-    /* One entry of a page's history, in detail: every field that changed, with
-       what it said before and after. This is what makes the log a wiki log
-       rather than a list of timestamps — you can read the edit before deciding
+    /* One entry of a page's history in detail: every field that changed, with
+       what it said before and after, so the edit can be read before deciding
        whether to put the old version back. Same visibility rule as the history
        itself: public for a published page. */
     if (method === 'GET' && path === '/api/page-revision') {
@@ -5513,9 +5463,9 @@ export default {
 
     // ---------- ADMIN: JINX HEALTH ----------
     // Every jinx that points at nothing: a typo, a character that was never
-    // imported, or one that has since been renamed or unpublished. These are
-    // invisible from any single page — the reader just sees a name that does
-    // not link anywhere — so they need somewhere to be counted.
+    // imported, or one since renamed or unpublished. On the page itself these
+    // just look like a name that does not link anywhere, so nothing else
+    // counts them.
     if (method === 'GET' && path === '/api/admin/jinx-health') {
       const sess = await adminSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
@@ -5690,21 +5640,19 @@ export default {
     }
 
     // ---------- BROKEN-LINK REPORT (the 404 page's contact box) ----------
-    // Deliberately OUTSIDE the logged-in write gate below. Whoever follows a
-    // dead link off Discord is exactly the person least likely to have an
-    // account here, and "make an account first, then tell us the wiki is
-    // broken" is not a report anyone files. It lands in the same dashboard
-    // inbox as /api/contact, so there is one place to read both.
+    // Deliberately OUTSIDE the logged-in write gate below: whoever follows a
+    // dead link off Discord is the person least likely to have an account, and
+    // nobody signs up to report that the wiki is broken. Lands in the same
+    // dashboard inbox as /api/contact.
     //
-    // What keeps it from being a spam hole: it writes nothing but a message
-    // row, the rate limit is per IP (or per account when there is one), and
-    // every field is capped. An anonymous row has user_id NULL, which the
-    // dashboard already handles — it just cannot be replied to, which is why
-    // the form asks for somewhere to write back.
+    // It writes nothing but a message row, the rate limit is per IP (or per
+    // account when there is one), and every field is capped. An anonymous row
+    // has user_id NULL, which the dashboard already handles; it just cannot be
+    // replied to, which is why the form asks for somewhere to write back.
     if (method === 'POST' && path === '/api/report-broken-link') {
       const sess = await getSession(env, request);
       if (await rateLimited(env, request, 'brokenlink', 4, 3600, { sess })) {
-        return tooManyResponse('Thanks — that is enough reports from here for now. Try again in an hour.', 3600);
+        return tooManyResponse('Thanks. That is enough reports from here for now; try again in an hour.', 3600);
       }
       const b = await request.json().catch(() => ({}));
       const brokenPath = String(b.path || '').trim().slice(0, 300);
@@ -5720,7 +5668,7 @@ export default {
         try {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           uname = u ? u.username : null;
-        } catch { /* non-fatal — the report is still worth keeping */ }
+        } catch { /* non-fatal: the report is still worth keeping */ }
       }
       // One readable block, because the inbox shows `body` and nothing else.
       const lines = ['Broken link: ' + (brokenPath || '(not given)')];
@@ -5731,7 +5679,7 @@ export default {
         'INSERT INTO messages (user_id, username, category, body) VALUES (?,?,?,?)'
       ).bind(sess ? sess.userId : null, uname, 'bug', lines.join('\n')).run();
       if (sess) await logActivity(env, sess, 'contact', 'message', null, 'broken-link');
-      return jsonResponse({ ok: true, message: 'Thanks — the admins have it.' });
+      return jsonResponse({ ok: true, message: 'Thanks, the admins have it.' });
     }
 
     // ---------- WRITES (logged-in users; ownership enforced) ----------
@@ -6047,8 +5995,8 @@ export default {
       // ---- comments ----
       /* ---- suggest an edit ----
          Body: {type, slug, data, note}. `data` is the whole page as the
-         suggester would have it — the same object the editor posts to save —
-         and it is stored, not applied. Nothing here touches the row. */
+         suggester would have it, the same object the editor posts to save. It
+         is stored, not applied: nothing here touches the row. */
       if (path === '/api/suggest') {
         if (acctFlags.banned) {
           return jsonResponse({ error: 'This account is suspended.' }, { status: 403 });
@@ -6064,7 +6012,7 @@ export default {
         if ((row.status || 'published') !== 'published') {
           return jsonResponse({ error: 'That page is not published.' }, { status: 400 });
         }
-        // The owner does not suggest to themselves — they just save.
+        // The owner does not suggest to themselves; they just save.
         if (canEditRow(sess, row)) {
           return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
         }
@@ -6089,7 +6037,7 @@ export default {
         delete data.renameFrom;
         delete data.appearsInFrom;
         if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
-          return jsonResponse({ error: 'That is the page exactly as it stands — nothing to suggest.' }, { status: 400 });
+          return jsonResponse({ error: 'That is the page exactly as it stands, so there is nothing to suggest.' }, { status: 400 });
         }
         await ensureSuggestTable(env);
         const open = await env.DB.prepare(
@@ -6174,7 +6122,7 @@ export default {
         try { d = JSON.parse(sug.data); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
         // Re-pin everything that belongs to the page rather than to the
-        // suggestion — the row may have changed since it was written.
+        // suggestion: the row may have changed since it was written.
         const now = parseData(row);
         d.slug = row.slug;
         d.publicEdit = now.publicEdit;
@@ -6413,9 +6361,9 @@ export default {
           c.page = 'c/' + c.slug + '.html';
         }
         const existing = await getEntityRow(env, 'character', c.slug);
-        // Ownership, or the page's own public-editing setting. Everything a
-        // page's creator owns — the URL, publishing, deleting, who may edit —
-        // needs 'owner'; 'all' and 'tags' are what somebody else was invited
+        // Ownership, or the page's own public-editing setting. Everything
+        // that belongs to the creator (the URL, publishing, deleting, who may
+        // edit) needs 'owner'. 'all' and 'tags' are what a guest was invited
         // to do.
         const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
         if (existing && !perm) {
@@ -6435,8 +6383,7 @@ export default {
         if (perm === 'tags') {
           // Tags and nothing else. Rather than compare field by field and
           // hope nothing was missed, the stored page IS the save and only the
-          // tags are taken from what was posted — anything else the client
-          // sent simply never reaches the record.
+          // tags come from what was posted, so nothing else can reach the row.
           const tags = typeof c.tags === 'string' ? c.tags : '';
           c = stored;
           c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
@@ -6470,6 +6417,17 @@ export default {
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
         const needed = Classify.missingForPublish(c);
+        // A page opened to other people can be improved, not taken down. The
+        // demotion below is meant for a creator saving their own unfinished
+        // work; applied to a guest's save it would let anybody unpublish a
+        // live page by clearing one field. Refuse that save instead.
+        if (existing && perm !== 'owner' && status === 'published' && needed.length) {
+          return jsonResponse({
+            error: 'That edit would leave the page without ' + Classify.listPhrase(needed) +
+              ', which a published page needs. Put that back and save again.',
+            missingForPublish: needed
+          }, { status: 400 });
+        }
         let iconBlocked = false;
         if (status === 'published' && needed.length) {
           status = 'draft';
@@ -6534,9 +6492,9 @@ export default {
         if (!sess.isAdmin && await isProtected(env, 'character', row.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
-        // The other side has to exist. An official id is checked against
-        // roles.json, a wiki slug against the table — a jinx pointing at
-        // nothing is exactly the breakage this whole feature is fixing.
+        // The other side has to exist: an official id checked against
+        // roles.json, a wiki slug against the table. A jinx pointing at
+        // nothing is the breakage this feature exists to fix.
         let target;
         if (b.toSlug) {
           const t = await getEntityRow(env, 'character', String(b.toSlug));
@@ -6715,12 +6673,11 @@ export default {
         s.characters = Array.isArray(s.characters)
           ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
           : [];
-        // The owner's hand-arranged night order: two lists of roster slugs and
-        // nothing else. Like a collection's `order[]` it is deliberately kept
-        // apart from the roster — a slug in here that has left the script just
-        // never matches, and a character it has never heard of is slotted in
-        // by its own night number (see sortNightItems in render-page.js), so
-        // neither list has to be kept in step with the other.
+        // The owner's hand-arranged night order: two lists of roster slugs.
+        // Like a collection's `order[]` it is kept apart from the roster, so
+        // neither list has to be kept in step with the other: a slug that has
+        // left the script never matches, and a character it has not heard of
+        // slots in by its own night number (sortNightItems in render-page.js).
         s.nightOrder = sanitizeNightOrder(s.nightOrder);
         if (!s.nightOrder) delete s.nightOrder;
         s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
@@ -6728,11 +6685,10 @@ export default {
         if (existing && perm !== 'owner' && publicEditTooBig(s)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
-        // The rest of what the official app reads out of the exported JSON
-        // (_meta.bootlegger / almanac / hideTitle — the schema lives at
+        // The rest of what the official app reads out of the exported JSON:
+        // _meta.bootlegger / almanac / hideTitle (schema at
         // github.com/ThePandemoniumInstitute/botc-release). The background and
-        // logo it shows are the page's own, already validated by
-        // sanitizePageFields, so there is nothing extra to check for those.
+        // logo are the page's own, already validated by sanitizePageFields.
         s.bootlegger = Array.isArray(s.bootlegger)
           ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
           : [];

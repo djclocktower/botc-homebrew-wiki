@@ -234,9 +234,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Night order: who acts is fixed by the characters, the ORDER is yours -->
     <details class="sb-details" id="sb-night-sec">
-      <summary>Night Order <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — the order the Night Order box on your script page lists everyone in. Starts from each character's own wake position.</span></summary>
+      <summary>Night Order <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional. The order the Night Order box lists everyone in. Starts from each character's own wake position.</span></summary>
       <div class="sb-details-body">
-        <p class="sub" id="sb-night-note">Drag a character, or use ▲▼. Only characters that wake are listed &mdash; that comes from the character, not from here.</p>
+        <p class="sub" id="sb-night-note">Drag a character, or use &#9650;&#9660;. Only characters that wake are listed, and that comes from the character.</p>
         <div class="no-cols" id="sb-night-body"></div>
         <button type="button" class="th-clear" id="sb-night-reset" style="margin-top:12px">↺ Back to the standard order</button>
       </div>
@@ -276,7 +276,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Everything else the official app reads out of the JSON -->
     <details class="sb-details" id="sb-app-sec">
-      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional &mdash; house rules, an almanac link and the title setting, all carried in the script JSON.</span></summary>
+      <summary>In the Official App <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Optional. House rules, an almanac link and the title setting, all carried in the script JSON.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label>House rules <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the app calls these bootlegger rules)</span></label>
@@ -297,13 +297,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
-      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you say otherwise &mdash; open it up and anyone with an account can help.</span></summary>
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
-            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -327,7 +327,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             <label for="sb-bg">Background <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(large image)</span></label>
             <input type="file" id="sb-bg" accept="image/*">
             <img id="sb-bg-prev" class="sb-header-prev" alt="background preview">
-            <div class="sub" style="margin-top:6px">Shown behind your script's wiki page &mdash; and behind the script in the official app, which reads it from the exported JSON.</div>
+            <div class="sub" style="margin-top:6px">Shown behind your script's wiki page, and behind the script in the official app, which reads it from the exported JSON.</div>
             <div id="sb-bg-note" class="sub" style="margin-top:6px"></div>
             <button type="button" class="th-clear" id="sb-bg-remove" style="display:none;margin-top:6px">Remove background</button>
           </div>
@@ -449,7 +449,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
        positions from assets/night-order.json, merged in by official-roles.js).
        What the owner arranges is the ORDER, stored on the script as
        nightOrder{first[],other[]} and read back by the same function that
-       renders the page — PageRender.nightItems — so this list IS the list a
+       renders the page (PageRender.nightItems), so this list IS the list a
        reader sees.
 
        The lists are rebuilt from the current roster every time this renders,
@@ -474,7 +474,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     /* ── jinxes ──
        jinxEdits{off[],add[]} on the script's meta, resolved by
-       PageRender.scriptJinxes — the same call the published page and the
+       PageRender.scriptJinxes, the same call the published page and the
        exported JSON make. */
     function getJinxEdits(){
       var m = getMeta();
@@ -496,7 +496,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     /* ── the rest of what the official app reads ──
        House rules (_meta.bootlegger), an almanac link and hideTitle. The
        background it shows behind the script is the page background from the
-       theme kit — one upload, both places. */
+       theme kit: one upload, both places. */
     function bootRows(){ return [].slice.call($('sb-boot-list').querySelectorAll('.boot-row input')); }
     function gatherBoot(){
       return bootRows().map(function(i){ return i.value.trim(); }).filter(Boolean).slice(0, 20);
@@ -528,7 +528,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // The script's own wiki page IS an almanac, so offer it rather than
       // making somebody paste their own URL back in.
       var slug = EDIT_SLUG || getMeta().editSlug;
-      if (!slug){ alert('Publish the script first — then its page has an address to point at.'); return; }
+      if (!slug){ alert('Publish the script first, so its page has an address to point at.'); return; }
       $('sb-almanac').value = SITE_ROOT + 's/' + encodeURIComponent(slug);
       $('sb-almanac').dispatchEvent(new Event('input'));
     });
@@ -998,6 +998,27 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
     });
 
+    /* Owner-only controls, switched off for anyone else. Kept in one place so
+       the two ways in (a fresh ?s= load and the badge refresh after a publish)
+       cannot disagree. */
+    function applyEditMode(mode, isOwner){
+      if (isOwner && mode === 'owner') return;
+      $('sb-delete').style.display = 'none';
+      if (mode === 'all'){
+        // updateButtons() already labels Publish correctly for the stored
+        // status; only the draft and delete buttons have to go.
+        pubStatus('ok', 'This script is open for anyone with an account to edit. ' +
+          'Publishing and deleting stay with its creator.');
+        $('sb-draft').style.display = 'none';
+        return;
+      }
+      $('sb-publish').disabled = true;
+      $('sb-draft').disabled = true;
+      pubStatus('err', mode === 'suggest'
+        ? 'This script takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
+        : 'This script belongs to another account, so you cannot save changes to it.');
+    }
+
     // ── Edit mode: ?s={slug} loads an existing script (drafts included for the
     // owner) via /api/page — the same endpoint the character editor uses. ──
     function loadForEdit(slug){
@@ -1027,12 +1048,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           setMeta(m);
           primeFields(m);
           setEditMode(slug);
-          if (res.canEdit === false){
-            pubStatus('err', 'This script belongs to another account, so you cannot save changes to it.');
-            $('sb-publish').disabled = true;
-            $('sb-draft').disabled = true;
-            $('sb-delete').style.display = 'none';
-          }
+          /* What this account may do to this script, decided by the Worker.
+             'owner' is everything. 'all' is a script whose creator opened it:
+             the text is editable, but publishing, unpublishing and deleting
+             stay with the creator. Anything else is read-only here, including
+             'suggest': this page has no way to send one, so offering Publish
+             would only produce a 403. */
+          applyEditMode(res.editMode || (res.canEdit === false ? '' : 'owner'),
+                        res.isOwner !== false);
           if (window.updateScriptBadge) window.updateScriptBadge();
         })
         .catch(function(){ /* not found / not yours -> fall through to normal publish view */ });
@@ -1077,7 +1100,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
               .then(function(res){
                 if (res){
                   currentStatus = res.status || 'published';
-                  if (res.canEdit === false){ $('sb-delete').style.display = 'none'; }
+                  applyEditMode(res.editMode || (res.canEdit === false ? '' : 'owner'),
+                                res.isOwner !== false);
                   updateButtons();
                 }
               })
