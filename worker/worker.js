@@ -2109,6 +2109,23 @@ async function applyCollectionAppearsIn(env, chars) {
   return chars;
 }
 
+// Curata was called Starlight until the rename, and rows written before it
+// carry the flag under the old key. Folding the old key into the new one on
+// READ is what makes the rename need no D1 migration: every reader sees
+// `curata`, and the next save of a row writes the new key and drops the old
+// one, so the database migrates itself a page at a time. Revision snapshots
+// and R2 backups predate the rename too and are restored through the same
+// path, so this has to stay even once every live row has been rewritten.
+// Anything that parses a row's `data` itself must call this — parseData()
+// does, and so does every raw JSON.parse of a `data` column below.
+function foldLegacyCurata(d) {
+  if (d && d.starlight !== undefined) {
+    if (d.starlight && d.curata === undefined) d.curata = true;
+    delete d.starlight;
+  }
+  return d;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
