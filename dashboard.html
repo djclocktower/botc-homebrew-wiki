@@ -531,26 +531,26 @@
         <div class="toast" id="prot-toast"></div>
       </section>
       <section class="panel">
-        <h3>Starlight</h3>
+        <h3>Curata</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Starlight marks a page as one of the wiki's best. Starlight pages carry a badge, are weighted about five times higher in the Featured Character slot, the Random Character button and the homepage collection/script strips, and readers can filter for them. Works on characters, scripts and collections. Use Bulk actions above to do a whole batch at once.
+          Curata marks a page as one of the wiki's best. Curata pages carry a badge, are weighted about five times higher in the Featured Character slot, the Random Character button and the homepage collection/script strips, and readers can filter for them. Works on characters, scripts and collections. Use Bulk actions above to do a whole batch at once.
         </p>
         <div class="act-filters">
-          <select id="star-type">
+          <select id="curata-type">
             <option value="character">Character</option>
             <option value="script">Script</option>
             <option value="collection">Collection</option>
           </select>
-          <input type="text" id="star-slug" placeholder="page slug">
-          <button type="button" class="small-btn" id="star-add">Give Starlight</button>
-          <button type="button" class="small-btn alt" id="star-remove">Remove Starlight</button>
+          <input type="text" id="curata-slug" placeholder="page slug">
+          <button type="button" class="small-btn" id="curata-add">Give Curata</button>
+          <button type="button" class="small-btn alt" id="curata-remove">Remove Curata</button>
         </div>
-        <div class="toast" id="star-toast"></div>
+        <div class="toast" id="curata-toast"></div>
       </section>
       <section class="panel">
         <h3>Bulk actions</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, grant or remove Starlight, move to trash, restore, or add/remove a tag (characters only). The second dropdown narrows the list to pages with no icon, unfinished (Partial) pages, existing Starlight pages, or pages with no owner.
+          Load a list of pages, tick the ones you want, then apply one action to all of them — reassign an owner, publish/unpublish, grant or remove Curata, move to trash, restore, or add/remove a tag (characters only). The second dropdown narrows the list to pages with no icon, unfinished (Partial) pages, existing Curata pages, or pages with no owner.
         </p>
         <div class="act-filters">
           <select id="bulk-type">
@@ -572,7 +572,7 @@
             <option value="">any status</option>
             <option value="no-icon">no icon (characters)</option>
             <option value="partial">Partial pages</option>
-            <option value="starlight">Starlight pages</option>
+            <option value="curata">Curata pages</option>
             <option value="no-owner">no owner</option>
           </select>
           <button type="button" class="small-btn" id="bulk-load">Load pages</button>
@@ -584,8 +584,8 @@
             <option value="clear-owner">Clear owner</option>
             <option value="publish">Publish</option>
             <option value="unpublish">Move to drafts</option>
-            <option value="starlight">Give Starlight ✦</option>
-            <option value="unstarlight">Remove Starlight</option>
+            <option value="curata">Give Curata</option>
+            <option value="uncurata">Remove Curata</option>
             <option value="delete">Move to trash</option>
             <option value="restore">Restore from trash</option>
             <option value="add-tag">Add tag…</option>
@@ -753,7 +753,12 @@
               <option>create</option><option>update</option><option>delete</option>
               <option>publish</option><option>unpublish</option>
               <option>restore</option><option>purge</option><option>rollback</option>
-              <option>starlight</option><option>unstarlight</option>
+              <option>curata</option><option>uncurata</option>
+              <!-- Curata was called Starlight until the rename; log rows written
+                   before it still carry the old action names, so they stay
+                   filterable here. Nothing writes them any more. -->
+              <option value="starlight">curata (old: starlight)</option>
+              <option value="unstarlight">uncurata (old: unstarlight)</option>
               <option>protect</option><option>unprotect</option>
               <option>assign-owner</option><option>clean-refs</option>
               <option value="bulk-*">any bulk action</option>
@@ -843,14 +848,14 @@
         <div class="toast" id="c2p-toast"></div>
       </section>
       <section class="panel">
-        <h3>Starlight by owner <span class="count-pill" id="sto-count"></span></h3>
+        <h3>Curata by owner <span class="count-pill" id="sto-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
-          Gives <strong>Starlight ✦</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Starlight also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
+          Gives <strong>Curata</strong> to every character an account owns, in one press instead of 200 tick-boxes in Bulk actions. Curata also lifts a page out of <em>Partial</em>, so it stops admin-written pages being hidden for want of a tag. Safe to re-run — pages that already have it are skipped. Scan first.
         </p>
         <div class="act-filters">
           <input type="text" id="sto-user" placeholder="username" value="admin">
           <button type="button" class="small-btn" id="sto-scan">Scan</button>
-          <button type="button" class="small-btn alt" id="sto-go" style="display:none">Give Starlight to all</button>
+          <button type="button" class="small-btn alt" id="sto-go" style="display:none">Give Curata to all</button>
         </div>
         <div id="sto-list"></div>
         <div class="toast" id="sto-toast"></div>
@@ -1555,21 +1560,21 @@
     $('cmt-load').addEventListener('click', loadComments);
     $('cmt-view').addEventListener('change', loadComments);
 
-    /* ---- Starlight ---- */
-    function setStarlight(on){
-      var slug = $('star-slug').value.trim();
-      if (!slug) { setToast('star-toast', false, 'Enter a page slug first.'); return; }
-      postJSON('/api/admin/starlight', { type: $('star-type').value, slug: slug, starlight: on })
+    /* ---- Curata ---- */
+    function setCurata(on){
+      var slug = $('curata-slug').value.trim();
+      if (!slug) { setToast('curata-toast', false, 'Enter a page slug first.'); return; }
+      postJSON('/api/admin/curata', { type: $('curata-type').value, slug: slug, curata: on })
         .then(function(res){
           if (res.body && res.body.ok) {
-            setToast('star-toast', true, (on ? 'Starlight given to ' : 'Starlight removed from ') + res.body.slug + '.');
-            $('star-slug').value = '';
+            setToast('curata-toast', true, (on ? 'Curata given to ' : 'Curata removed from ') + res.body.slug + '.');
+            $('curata-slug').value = '';
             loadActivity(true);
-          } else setToast('star-toast', false, (res.body && res.body.error) || 'Failed.');
+          } else setToast('curata-toast', false, (res.body && res.body.error) || 'Failed.');
         });
     }
-    $('star-add').addEventListener('click', function(){ setStarlight(true); });
-    $('star-remove').addEventListener('click', function(){ setStarlight(false); });
+    $('curata-add').addEventListener('click', function(){ setCurata(true); });
+    $('curata-remove').addEventListener('click', function(){ setCurata(false); });
 
     /* ---- gather a creator's characters into a collection ---- */
     $('cc-scan').addEventListener('click', function(){
@@ -1644,25 +1649,25 @@
       });
     });
 
-    /* ---- Starlight everything one account owns ---- */
+    /* ---- Curata everything one account owns ---- */
     $('sto-scan').addEventListener('click', function(){
       var btn = this; btn.disabled = true;
       $('sto-list').innerHTML = '<p class="note">Scanning…</p>';
-      postJSON('/api/admin/starlight-owner', { username: $('sto-user').value.trim(), dryRun: true })
+      postJSON('/api/admin/curata-owner', { username: $('sto-user').value.trim(), dryRun: true })
         .then(function(res){
           btn.disabled = false;
           var d = res.body || {};
           if (!d.ok) { $('sto-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('sto-go').style.display = 'none'; return; }
-          $('sto-count').textContent = d.count ? d.count + ' to star' : '';
+          $('sto-count').textContent = d.count ? d.count + ' to mark' : '';
           if (!d.count) {
             $('sto-list').innerHTML = '<p class="note">' + esc(d.username) + ' owns ' + d.owned +
-              ' character' + (d.owned === 1 ? '' : 's') + ', all of them already Starlight.</p>';
+              ' character' + (d.owned === 1 ? '' : 's') + ', all of them already Curata.</p>';
             $('sto-go').style.display = 'none';
             return;
           }
           $('sto-list').innerHTML =
             '<p class="note"><strong>' + d.count + '</strong> of ' + esc(d.username) + '\u2019s ' + d.owned +
-            ' character' + (d.owned === 1 ? '' : 's') + ' would get Starlight.</p>' +
+            ' character' + (d.owned === 1 ? '' : 's') + ' would get Curata.</p>' +
             d.pages.map(function(p){
               return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
                 '" target="_blank">' + esc(p.name || p.slug) + '</a></span></div>';
@@ -1673,13 +1678,13 @@
     });
     $('sto-go').addEventListener('click', function(){
       var who = $('sto-user').value.trim();
-      if (!confirm('Give Starlight to every character owned by ' + who + '?')) return;
+      if (!confirm('Give Curata to every character owned by ' + who + '?')) return;
       var btn = this; btn.disabled = true;
-      postJSON('/api/admin/starlight-owner', { username: who }).then(function(res){
+      postJSON('/api/admin/curata-owner', { username: who }).then(function(res){
         btn.disabled = false;
         var d = res.body || {};
         if (!d.ok) { setToast('sto-toast', false, d.error || 'Failed.'); return; }
-        setToast('sto-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' given Starlight.');
+        setToast('sto-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' given Curata.');
         $('sto-scan').click();
         loadActivity(true);
       });
@@ -1813,7 +1818,7 @@
           d.pages.map(function(pg){
             // Flag anything an admin would want to spot at a glance.
             var notes = [];
-            if (pg.starlight) notes.push('✦ Starlight');
+            if (pg.curata) notes.push('Curata');
             if (pg.classification === 'partial') notes.push('Partial');
             if (pg.hasIcon === false) notes.push('NO ICON');
             return '<label class="adm-row" style="cursor:pointer">' +

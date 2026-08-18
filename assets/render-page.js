@@ -246,35 +246,36 @@
       var label = '';
       for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
-      // data-partial / data-starlight let card-filters.js offer the Show
-      // Partial and Starlight-only chips. `classification` is stamped by the
+      // data-partial / data-curata let card-filters.js offer the Show
+      // Partial and Curata-only chips. `classification` is stamped by the
       // Worker on every row it serves (buildPublicJSON / /api/user), so it is
       // already here — this file never needs classify.js of its own.
       var cls = c.classification || '';
-      var starred = !!(c.starlight || cls === 'starlight');
-      // Marks on the name: the Starlight star (same bare glyph as everywhere
-      // else) and, on a creator page's drafts, what is still unpublished.
+      var hasCurata = !!(c.curata || cls === 'curata');
+      // Marks on the name: the Curata wreath (the same bare mark as
+      // everywhere else) and, on a creator page's drafts, what is still
+      // unpublished.
       var marks =
         (c.status === 'draft'
           ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
-        (starred
-          ? '<span class="starlight-star" title="' +
-            (c.starlightFrom
-              ? 'Starlight — part of the ' + esc(c.starlightFrom) + ' collection.'
+        (hasCurata
+          ? '<span class="curata-mark" role="img" title="' +
+            (c.curataFrom
+              ? 'Curata — part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
-            '" aria-label="Starlight">✦</span>' : '');
+            '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
-        // Starlight wins over Partial (same rule as Classify.isPartial): a
-        // character can be stamped 'partial' and then inherit the star from a
-        // Starlight collection, and an admin-blessed page is never hidden
+        // Curata wins over Partial (same rule as Classify.isPartial): a
+        // character can be stamped 'partial' and then inherit the wreath from a
+        // Curata collection, and an admin-blessed page is never hidden
         // behind the Show Partial chip.
-        (cls === 'partial' && !starred ? ' data-partial="1"' : '') +
-        (starred ? ' data-starlight="1"' : '') +
+        (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
+        (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
@@ -415,13 +416,13 @@
       '<dl class="info">' + rows + '</dl></div>';
   }
 
-  /* Starlight row for the Information box. Admin-awarded (assets/classify.js);
+  /* Curata row for the Information box. Admin-awarded (assets/classify.js);
      Standard pages show nothing, which is the point of Standard. */
-  function starlightRow(d) {
-    if (!d || !d.starlight) return [];
-    return ['<dt>Status:</dt><dd><span class="starlight-star" ' +
+  function curataRow(d) {
+    if (!d || !d.curata) return [];
+    return ['<dt>Status:</dt><dd><span class="curata-mark" ' +
       'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks." ' +
-      'aria-label="Starlight">\u2726</span> Starlight</dd>'];
+      'aria-label="Curata"></span> Curata</dd>'];
   }
 
   function renderJsonPanel(jsonText, actions, label, collapsed) {
@@ -601,7 +602,7 @@
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
       jsonLabel: 'Script JSON',
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(sc)
+      extraInfoRows: curataRow(sc)
     });
   }
 
@@ -628,7 +629,7 @@
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON',
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(coll)
+      extraInfoRows: curataRow(coll)
     });
   }
 

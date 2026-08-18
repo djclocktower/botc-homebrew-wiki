@@ -18,13 +18,13 @@
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
   function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
-  /* Starlight star markup, from classify.js — injected by the Worker
-     (setStarMark) or read off the global in the browser, so render.js never
+  /* Curata mark markup, from classify.js — injected by the Worker
+     (setCurataMark) or read off the global in the browser, so render.js never
      has to import classify.js itself. Partial is deliberately NOT shown on
      the page: an unfinished page is its owner's business, and the Worker
      tells them in a banner instead (renderCharacterPage in worker.js). */
-  var starMarkFn = null;
-  function setStarMark(fn) { starMarkFn = fn; }
+  var curataMarkFn = null;
+  function setCurataMark(fn) { curataMarkFn = fn; }
 
   /* The wiki markup engine (assets/render-wiki.js), used for the one field
      that takes formatting: the pronunciation line. The Worker hands it over
@@ -37,11 +37,11 @@
     var W = wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
     return (W && W.inlineFormat) ? W.inlineFormat(str, { linkRoot: R() }) : esc(str);
   }
-  function starlightMark(d) {
-    if (!d || !(d.starlight || d.classification === 'starlight')) return '';
-    var fn = starMarkFn ||
+  function curataMark(d) {
+    if (!d || !(d.curata || d.classification === 'curata')) return '';
+    var fn = curataMarkFn ||
       (typeof window !== 'undefined' ? window.classBadgeHTML : null);
-    return fn ? fn('starlight', { from: d.starlightFrom }) : '';
+    return fn ? fn('curata', { from: d.curataFrom }) : '';
   }
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
@@ -301,21 +301,21 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    // Tags row. The Starlight star hangs off the end of it behind a hairline
+    // Tags row. The Curata wreath hangs off the end of it behind a hairline
     // rule: it is a mark, not a tag, so it is never a link and never joins the
     // comma-separated list — nobody should be able to click it expecting a
-    // "Starlight" tag page. When a page is Starlight but has no tags (it can
-    // inherit the star from its collection), an em dash holds the tags side so
+    // "Curata" tag page. When a page is Curata but has no tags (it can
+    // inherit the wreath from its collection), an em dash holds the tags side so
     // the hairline still separates two things.
     var tagLinks = (d.tags && d.tags.trim()) ? d.tags.split(',').map(function (t) {
       t = t.trim(); if (!t) return '';
       var display = t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
       return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t=' + encodeURIComponent(display) + '">' + esc(display) + '</a>';
     }).filter(Boolean).join('<span class="tag-sep">, </span>') : '';
-    var star = starlightMark(d);
-    var tagsRow = (tagLinks || star)
+    var mark = curataMark(d);
+    var tagsRow = (tagLinks || mark)
       ? '<dt>Tags:</dt><dd>' + (tagLinks || '<span class="tag-none">&mdash;</span>') +
-        (star ? '<span class="info-star-sep" aria-hidden="true"></span>' + star : '') + '</dd>'
+        (mark ? '<span class="info-mark-sep" aria-hidden="true"></span>' + mark : '') + '</dd>'
       : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
@@ -590,7 +590,7 @@
     window.findScriptJinxes = findScriptJinxes;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setCreators = setCreators;
-    window.setStarMark = setStarMark;
+    window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
     window.splitCreators = splitCreators;
   }
@@ -604,7 +604,7 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       setOfficialIconUrls: setOfficialIconUrls,
-      setCreators: setCreators, setStarMark: setStarMark,
+      setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
       splitCreators: splitCreators
     };

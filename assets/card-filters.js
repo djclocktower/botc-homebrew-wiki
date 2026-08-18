@@ -4,7 +4,7 @@
    (/u/{username}, /author?a=Name). Both render the same .char-card markup via
    renderRosterCards() in render-page.js, so both can be filtered by the same
    code: no data is re-fetched, every card carries data-team / data-tags /
-   data-creator / data-name / data-order / data-partial / data-starlight, and
+   data-creator / data-name / data-order / data-partial / data-curata, and
    the page still works with JavaScript off (all cards shown).
 
    mountCardFilters({grid, bar, toggle, count, ...}) wires one filter box to one
@@ -40,7 +40,7 @@
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
   /* opts: {grid, bar, toggle, count} — elements or element ids — plus optional
-     {label, noun, partialChip, starlightChip, minCards}. Returns false when
+     {label, noun, partialChip, curataChip, minCards}. Returns false when
      there is nothing worth filtering, so the caller can hide its filter box. */
   function mountCardFilters(opts) {
     opts = opts || {};
@@ -74,7 +74,7 @@
 
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [], creator: '',
-               showPartial: false, starlightOnly: false, sort: DEFAULT_SORT };
+               showPartial: false, curataOnly: false, sort: DEFAULT_SORT };
     }
     var STATE = freshState();
 
@@ -88,13 +88,13 @@
     var teamsPresent = TEAMS.filter(function (t) {
       return cards.some(function (c) { return teamOf(c) === t[0]; });
     });
-    var tagSet = {}, creatorSet = {}, nPartial = 0, nStar = 0;
+    var tagSet = {}, creatorSet = {}, nPartial = 0, nCurata = 0;
     cards.forEach(function (c) {
       cardTags(c).forEach(function (t) { tagSet[t] = 1; });
       // Co-credited cards offer each of their creators as its own option.
       cardCredits(c).forEach(function (n) { if (n) creatorSet[n] = 1; });
       if (c.getAttribute('data-partial') === '1') nPartial++;
-      if (c.getAttribute('data-starlight') === '1') nStar++;
+      if (c.getAttribute('data-curata') === '1') nCurata++;
     });
     var tags = Object.keys(tagSet).sort();
     var creators = Object.keys(creatorSet).sort(function (a, b) {
@@ -118,14 +118,14 @@
     // wiki hides Partial from) and wrong for a collection page (which lists
     // whatever its author put in it). See "Page classification" in CLAUDE.md.
     var wantPartial = !!opts.partialChip && nPartial > 0;
-    var wantStar = !!opts.starlightChip && nStar > 0;
-    if (wantPartial || wantStar) {
+    var wantCurata = !!opts.curataChip && nCurata > 0;
+    if (wantPartial || wantCurata) {
       html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
         html += '<button type="button" class="filter-chip" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
       }
-      if (wantStar) {
-        html += '<button type="button" class="filter-chip" id="cf-starlight" title="Pages the wiki admins have marked as Starlight.">&#10022; Starlight only (' + nStar + ')</button>';
+      if (wantCurata) {
+        html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
       }
       html += '</div></div>';
     }
@@ -178,10 +178,10 @@
       partialBtn.classList.toggle('active', STATE.showPartial);
       apply();
     });
-    var starBtn = bar.querySelector('#cf-starlight');
-    if (starBtn) starBtn.addEventListener('click', function () {
-      STATE.starlightOnly = !STATE.starlightOnly;
-      starBtn.classList.toggle('active', STATE.starlightOnly);
+    var curataBtn = bar.querySelector('#cf-curata');
+    if (curataBtn) curataBtn.addEventListener('click', function () {
+      STATE.curataOnly = !STATE.curataOnly;
+      curataBtn.classList.toggle('active', STATE.curataOnly);
       apply();
     });
     var crSel = bar.querySelector('#cf-creator');
@@ -203,7 +203,7 @@
       // the chip exists to turn them back on, though: without it they would be
       // hidden with no way to reveal them.
       if (wantPartial && !STATE.showPartial && card.getAttribute('data-partial') === '1') return false;
-      if (STATE.starlightOnly && card.getAttribute('data-starlight') !== '1') return false;
+      if (STATE.curataOnly && card.getAttribute('data-curata') !== '1') return false;
       var team = teamOf(card);
       if (STATE.inTeams.length && STATE.inTeams.indexOf(team) === -1) return false;
       if (STATE.exTeams.indexOf(team) !== -1) return false;
@@ -256,7 +256,7 @@
       });
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
         STATE.exTags.length + (STATE.creator ? 1 : 0) +
-        (STATE.showPartial ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
+        (STATE.showPartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0);
       if (countEl) {
         // At rest, count what the reader can actually see: Partial pages are
         // hidden by default, and "15 of 16" with nothing filtered just reads

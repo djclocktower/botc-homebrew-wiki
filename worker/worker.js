@@ -134,17 +134,17 @@
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
  *                                (?type=&q=&owner=&status=&collection=
- *                                 &flag=no-icon|partial|starlight|no-owner)
- *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
+ *                                 &flag=no-icon|partial|curata|no-owner)
+ *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/curata ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
- *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/curata -> grant/remove Curata on one page
  *   POST /api/admin/collect-creator -> put every character by one creator into
  *                                a collection (creates it if needed)
  *   POST /api/admin/concepts-to-pages -> turn rules-construct characters into
  *                                wiki pages under a collection and retire them
- *   POST /api/admin/starlight-owner -> grant Starlight to every character one
+ *   POST /api/admin/curata-owner -> grant Curata to every character one
  *                                account owns (?dryRun to count first)
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
@@ -176,12 +176,12 @@ PageRender.init(Render);
 // Injected so SSR /c/ pages show a creator's symbol next to their name.
 import Creators from '../assets/creators.js';
 Render.setCreators(Creators);
-// Partial / Standard / Starlight rules — shared with every browser page so
+// Partial / Standard / Curata rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
-// Lets render.js emit the Starlight star without importing classify.js
+// Lets render.js emit the Curata mark without importing classify.js
 // itself (it is loaded standalone in the browser).
-Render.setStarMark(Classify.classBadgeHTML);
+Render.setCurataMark(Classify.classBadgeHTML);
 // Wiki text engine: the markdown-ish formatter + the text-first page layout,
 // shared by /p/{slug} pages, news articles and the announcement banner.
 import WikiRender from '../assets/render-wiki.js';
@@ -638,7 +638,7 @@ async function isWikiLocked(env) {
 // perfectly good cache every time somebody posted a comment.
 const FEED_CHANGING_ACTIONS = new Set([
   'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
-  'starlight', 'unstarlight', 'rollback', 'restore', 'restore-backup',
+  'curata', 'uncurata', 'rollback', 'restore', 'restore-backup',
   'assign-owner', 'protect', 'unprotect', 'purge'
 ]);
 
@@ -1694,52 +1694,68 @@ async function rewriteProfilePins(env, from, to) {
   } catch { /* pins are cosmetic; never fail a rename over them */ }
 }
 
-// ---- Starlight inheritance ----
-// A Starlight collection lends the status to every character in it: awarding
+// ---- Curata inheritance ----
+// A Curata collection lends the status to every character in it: awarding
 // it to "Ravenswood Chronicle" marks all of Ravenswood's characters too, so
-// the Starlight filter on All Characters shows them. Inherited status is
+// the Curata filter on All Characters shows them. Inherited status is
 // never written back to the character row — it is derived on read, so
-// removing Starlight from the collection takes it off the characters with
+// removing Curata from the collection takes it off the characters with
 // it, and a character keeps its own flag if it was given one directly.
-// `starlightFrom` records which collection lent it, for the tooltip.
-// The set of Starlight collections, memoised per isolate against the content
+// `curataFrom` records which collection lent it, for the tooltip.
+// The set of Curata collections, memoised per isolate against the content
 // version. This used to be a full `collections` scan on EVERY /c/, /s/ and
 // /collection/ view — a whole table read to answer a question whose answer
-// changes only when an admin toggles a star.
-let _starCollCache = null;
-async function starlightCollections(env) {
+// changes only when an admin toggles the mark.
+let _curataCollCache = null;
+async function curataCollections(env) {
   const version = await contentVersion(env);
-  if (_starCollCache && _starCollCache.version === version) return _starCollCache.rows;
+  if (_curataCollCache && _curataCollCache.version === version) return _curataCollCache.rows;
   let rows = [];
   try {
     const { results } = await env.DB.prepare(
       "SELECT data FROM collections WHERE status='published'"
     ).all();
-    rows = (results || []).map(parseData).filter(d => d && d.starlight);
+    rows = (results || []).map(parseData).filter(d => d && d.curata);
   } catch { rows = []; }
-  _starCollCache = { version, rows };
+  _curataCollCache = { version, rows };
   return rows;
 }
 
-async function applyCollectionStarlight(env, chars) {
-  const starred = await starlightCollections(env);
-  if (!starred.length) return chars;
-  for (const coll of starred) {
+async function applyCollectionCurata(env, chars) {
+  const colls = await curataCollections(env);
+  if (!colls.length) return chars;
+  for (const coll of colls) {
     const name = coll.displayName || coll.id || coll.slug || 'a collection';
     for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
-      if (c.starlight) continue;              // its own flag wins
-      c.starlight = true;
-      c.starlightFrom = name;
-      c.classification = 'starlight';
+      if (c.curata) continue;              // its own flag wins
+      c.curata = true;
+      c.curataFrom = name;
+      c.classification = 'curata';
     }
   }
   return chars;
 }
 
+// Curata was called Starlight until the rename, and rows written before it
+// carry the flag under the old key. Folding the old key into the new one on
+// READ is what makes the rename need no D1 migration: every reader sees
+// `curata`, and the next save of a row writes the new key and drops the old
+// one, so the database migrates itself a page at a time. Revision snapshots
+// and R2 backups predate the rename too and are restored through the same
+// path, so this has to stay even once every live row has been rewritten.
+// Anything that parses a row's `data` itself must call this — see readData().
+function foldLegacyCurata(d) {
+  if (d && d.starlight !== undefined) {
+    if (d.starlight && d.curata === undefined) d.curata = true;
+    delete d.starlight;
+  }
+  return d;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
-  try { return JSON.parse(row.data); } catch { return {}; }
+  try { return foldLegacyCurata(JSON.parse(row.data)); } catch { return {}; }
 }
 
 // ---- shared validation for script/collection page fields ----
@@ -1908,17 +1924,17 @@ async function buildPublicJSON(env, table, opts = {}) {
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
   const out = results.map(r => {
-    const d = JSON.parse(r.data);
+    const d = foldLegacyCurata(JSON.parse(r.data));
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
-    // Partial/Standard/Starlight is derived here rather than stored, so a
+    // Partial/Standard/Curata is derived here rather than stored, so a
     // page re-classifies itself the moment its owner adds a tag or a line of
-    // almanac text. `starlight` is the only stored half (admin-set).
-    if (d.starlight) d.starlight = true; else delete d.starlight;
+    // almanac text. `curata` is the only stored half (admin-set).
+    if (d.curata) d.curata = true; else delete d.curata;
     // NOTE: classify BEFORE trimming. Classify.classifyPage reads exactly the
     // prose fields the card feed drops (summaryBullets, howToRun, examples,
     // tips ...), so trimming first would flag every finished page as Partial.
@@ -1934,8 +1950,8 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
-  // Characters pick up Starlight from any Starlight collection they belong to.
-  if (table === 'characters') await applyCollectionStarlight(env, out);
+  // Characters pick up Curata from any Curata collection they belong to.
+  if (table === 'characters') await applyCollectionCurata(env, out);
   return out;
 }
 
@@ -2199,7 +2215,7 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
-  // Stamped here too (not just in characters.json) so the Starlight star in
+  // Stamped here too (not just in characters.json) so the Curata mark in
   // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, '../');
@@ -2256,7 +2272,7 @@ async function officialIconMap(env, origin) {
 // These pages used to call buildPublicJSON(env, 'characters') outright, which
 // meant every single /s/ and /collection/ view read and parsed the ENTIRE
 // characters table — a twelve-character script paying for five thousand rows —
-// plus a second full scan of collections for Starlight. Three fixes:
+// plus a second full scan of collections for Curata. Three fixes:
 //
 //  1. A script only ever needs its own roster, so fetch exactly those slugs.
 //  2. A collection genuinely has to look at every character (membership is
@@ -2309,7 +2325,7 @@ async function charsBySlug(env, slugs) {
       ).bind(...chunk).all();
       for (const r of results || []) {
         try {
-          const d = JSON.parse(r.data);
+          const d = foldLegacyCurata(JSON.parse(r.data));
           if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
@@ -2318,11 +2334,11 @@ async function charsBySlug(env, slugs) {
       }
     } catch { /* a transient failure: better a short roster than a 500 */ }
   }
-  // buildPublicJSON used to do this for us. A character on a Starlight
-  // collection carries the star onto every page it appears on, so a roster
-  // built by slug has to inherit it too or the star would vanish on script
+  // buildPublicJSON used to do this for us. A character on a Curata
+  // collection carries the mark onto every page it appears on, so a roster
+  // built by slug has to inherit it too or the mark would vanish on script
   // pages only. Cheap now that the collection set is memoised.
-  await applyCollectionStarlight(env, out);
+  await applyCollectionCurata(env, out);
   return out;
 }
 
@@ -2350,7 +2366,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const isDraft = row.status === 'draft';
   if (isDraft && !mayEditParent) return env.ASSETS.fetch(request); // 404 for everyone else
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
-  const d = JSON.parse(row.data);
+  const d = foldLegacyCurata(JSON.parse(row.data));
   if (!d.slug) d.slug = row.slug || slug;
 
   // A script knows its roster by slug, so it never needs the rest of the
@@ -2438,7 +2454,7 @@ async function findCollectionRow(env, key) {
   ).all().catch(() => ({ results: [] }));
   for (const row of results || []) {
     try {
-      const d = JSON.parse(row.data);
+      const d = foldLegacyCurata(JSON.parse(row.data));
       if (d.id === key || norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey) return row;
     } catch { /* skip bad rows */ }
   }
@@ -2912,16 +2928,16 @@ export default {
             return editable;
           };
           if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
-          const d = JSON.parse(row.data);
+          const d = foldLegacyCurata(JSON.parse(row.data));
           if (!d.slug) d.slug = slug;
-          // Same Starlight inheritance the JSON feeds get, so the star on the
-          // page agrees with the star in the grid it was clicked from.
-          if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          // Same Curata inheritance the JSON feeds get, so the mark on the
+          // page agrees with the mark in the grid it was clicked from.
+          if (!d.curata) await applyCollectionCurata(env, [d]);
           // "This page is Partial" is shown to the people who can act on it
           // and to nobody else (see partialNoticeHTML). It asks isIncomplete,
-          // not isPartial: Starlight lifts a page out of the public Partial
+          // not isPartial: Curata lifts a page out of the public Partial
           // tier, but it does not fill in the missing tags or almanac, and
-          // the owner is still the one who can. Most Starlight here is
+          // the owner is still the one who can. Most Curata here is
           // inherited from a collection, so no admin ever looked at the page.
           const partialNotice = Classify.isIncomplete(d) && await canEdit();
           if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
@@ -3009,7 +3025,7 @@ export default {
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------
     if (method === 'GET' && path === '/random') {
-      // Weighted by classification: Starlight pages come up more often and
+      // Weighted by classification: Curata pages come up more often and
       // Partial (unfinished) pages never do. Falls back to a plain SQL
       // RANDOM() pick if the table can't be read as JSON for any reason.
       // Uses the memoised card feed rather than a fresh full parse: this route
@@ -3152,7 +3168,7 @@ export default {
         pagesFrom('scripts', 'author')
       ]);
       // Collections keep their author in the JSON blob (no column), so they are
-      // filtered in JS — the same full-table read applyCollectionStarlight does.
+      // filtered in JS — the same full-table read applyCollectionCurata does.
       let collRows = [];
       try {
         const { results } = await env.DB.prepare(
@@ -3204,7 +3220,7 @@ export default {
           o.description = d.description || '';
           o.header = d.header || '';
         }
-        if (d.starlight) o.starlight = true;
+        if (d.curata) o.curata = true;
         const cls = Classify.classifyPage(d, type);
         if (cls !== 'standard') o.classification = cls;
         // Partial is derived per read, and the page needs the raw ingredients
@@ -3215,9 +3231,9 @@ export default {
       const characters = charRows.map(r => card(r, 'character'));
       const scripts = scriptRows.map(r => card(r, 'script'));
       const collections = collRows.map(r => card(r, 'collection'));
-      // A Starlight collection lends its status to its characters here too, so
-      // the star on a profile card agrees with the star on the character page.
-      await applyCollectionStarlight(env, characters);
+      // A Curata collection lends its status to its characters here too, so
+      // the mark on a profile card agrees with the mark on the character page.
+      await applyCollectionCurata(env, characters);
 
       const split = list => ({
         live: list.filter(x => x.status !== 'draft'),
@@ -3610,7 +3626,7 @@ export default {
         for (const r of results || []) {
           used.add(String(r.slug));
           try {
-            const d = JSON.parse(r.data);
+            const d = foldLegacyCurata(JSON.parse(r.data));
             if (d && d.id) used.add(String(d.id));
           } catch { /* skip bad rows */ }
         }
@@ -4053,7 +4069,7 @@ export default {
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
       if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
       return jsonResponse({
-        slug: row.slug, data: JSON.parse(row.data),
+        slug: row.slug, data: foldLegacyCurata(JSON.parse(row.data)),
         status: row.status || 'published', canEdit: editable,
         // The editor posts this back so the Worker can tell a save based on
         // the current row from one based on an hour-old copy.
@@ -4550,7 +4566,7 @@ export default {
       for (const r of (await env.DB.prepare(
         "SELECT slug, name, status, data FROM scripts WHERE status IS NOT 'deleted'").all()).results || []) {
         checkedScripts++;
-        let d; try { d = JSON.parse(r.data); } catch { continue; }
+        let d; try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { continue; }
         const res = checkRefs(d.characters);
         if (res.missing.length || res.deleted.length || res.draft.length) {
           issues.push({ type: 'script', slug: r.slug, name: r.name, status: r.status, ...res });
@@ -4559,7 +4575,7 @@ export default {
       for (const r of (await env.DB.prepare(
         "SELECT slug, display_name AS name, status, data FROM collections WHERE status IS NOT 'deleted'").all()).results || []) {
         checkedCollections++;
-        let d; try { d = JSON.parse(r.data); } catch { continue; }
+        let d; try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { continue; }
         const res = checkRefs((d.include || []).concat(d.exclude || []));
         if (res.missing.length || res.deleted.length || res.draft.length) {
           issues.push({ type: 'collection', slug: r.slug, name: r.name, status: r.status, ...res });
@@ -4686,7 +4702,7 @@ export default {
       // classified purely to be thrown away by the .slice(0, 400) at the end —
       // and `data` is the expensive column in this query, ~3 KB a row.
       const needsJsFilter = !!collKey ||
-        ['no-icon', 'partial', 'starlight', 'no-owner'].includes(flag);
+        ['no-icon', 'partial', 'curata', 'no-owner'].includes(flag);
       const rowLimit = needsJsFilter ? 1000 : 400;
       const { results } = await env.DB.prepare(
         `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner, p.data
@@ -4699,7 +4715,7 @@ export default {
         return {
           slug: r.slug, name: r.name, status: r.status,
           updated_at: r.updated_at, owner: r.owner,
-          starlight: !!d.starlight,
+          curata: !!d.curata,
           classification: Classify.classifyPage(d, type),
           // "hasIcon: true" for a page that does not need one, so the
           // no-icon filter only ever surfaces pages with a real gap.
@@ -4727,7 +4743,7 @@ export default {
       }
       if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
       else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
-      else if (flag === 'starlight') pages = pages.filter(p => p.starlight);
+      else if (flag === 'curata') pages = pages.filter(p => p.curata);
       else if (flag === 'no-owner') pages = pages.filter(p => !p.owner);
       return jsonResponse({ pages: pages.slice(0, 400), total: pages.length });
     }
@@ -4802,8 +4818,8 @@ export default {
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
-      // above, which left a banned user free to pin and delete comments, star
-      // pages, file reports, block people, change their public profile and
+      // above, which left a banned user free to pin and delete comments, mark
+      // pages Curata, file reports, block people, change their public profile and
       // avatar, and roll pages back — none of which is what "suspended" is
       // supposed to mean.
       //
@@ -5111,7 +5127,7 @@ export default {
         ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
         if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
         let d;
-        try { d = JSON.parse(rev.data); } catch { d = null; }
+        try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
         delete d._deleted;
         // Snapshot what is being replaced, so the rollback is itself undoable.
@@ -5320,9 +5336,9 @@ export default {
         }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
-        // Starlight is admin-only: never trust the client, always carry the
-        // stored value forward. /api/admin/starlight is the only way to set it.
-        c.starlight = existing ? !!parseData(existing).starlight : false;
+        // Curata is admin-only: never trust the client, always carry the
+        // stored value forward. /api/admin/curata is the only way to set it.
+        c.curata = existing ? !!parseData(existing).curata : false;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
@@ -5423,7 +5439,7 @@ export default {
         const status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
         // Admin-only flag: keep whatever is stored, ignore the client.
-        c.starlight = existing ? !!parseData(existing).starlight : false;
+        c.curata = existing ? !!parseData(existing).curata : false;
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -5463,7 +5479,7 @@ export default {
         const status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
         // Admin-only flag: keep whatever is stored, ignore the client.
-        s.starlight = existing ? !!parseData(existing).starlight : false;
+        s.curata = existing ? !!parseData(existing).curata : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
         await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
@@ -5638,7 +5654,7 @@ export default {
         }
         if (row.status === 'deleted') return jsonResponse({ ok: true, slug: row.slug });
         let data;
-        try { data = JSON.parse(row.data); } catch { data = {}; }
+        try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
         let byName = null;
         try {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -5664,7 +5680,7 @@ export default {
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (row.status !== 'deleted') return jsonResponse({ error: 'That page is not deleted.' }, { status: 400 });
         let data;
-        try { data = JSON.parse(row.data); } catch { data = {}; }
+        try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
         const from = (data._deleted && data._deleted.from) || 'published';
         const status = from === 'draft' ? 'draft' : 'published';
         delete data._deleted;
@@ -5715,7 +5731,7 @@ export default {
         ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
         if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
         let d;
-        try { d = JSON.parse(rev.data); } catch { d = null; }
+        try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
         delete d._deleted;
         await saveRevision(env, sess, type, row); // make the rollback undoable
@@ -6259,11 +6275,11 @@ export default {
         return jsonResponse({ ok: true, id, action });
       }
 
-      // ---- admin: Starlight status ----
-      // Starlight is the only stored half of the classification system: a
+      // ---- admin: Curata status ----
+      // Curata is the only stored half of the classification system: a
       // boolean in the page's data JSON that only this endpoint can write.
       // It works on characters, collections and scripts alike.
-      if (path === '/api/admin/starlight') {
+      if (path === '/api/admin/curata') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
         const t = CONTENT[type];
@@ -6271,15 +6287,15 @@ export default {
         let row = await getEntityRow(env, type, String(b.slug || ''));
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-        const on = !!b.starlight;
+        const on = !!b.curata;
         const d = parseData(row);
-        if (!!d.starlight === on) return jsonResponse({ ok: true, slug: row.slug, starlight: on });
-        d.starlight = on;
-        if (!on) delete d.starlight;
+        if (!!d.curata === on) return jsonResponse({ ok: true, slug: row.slug, curata: on });
+        d.curata = on;
+        if (!on) delete d.curata;
         await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(JSON.stringify(d), row.slug).run();
-        await logActivity(env, sess, on ? 'starlight' : 'unstarlight', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+        await logActivity(env, sess, on ? 'curata' : 'uncurata', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, curata: on });
       }
 
       // ---- admin: gather one creator's characters into a collection ----
@@ -6327,7 +6343,7 @@ export default {
         d.exclude = Array.isArray(d.exclude) ? d.exclude : [];
         // include[] is capped at 500 by sanitizePageFields; 258 fits today.
         d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
-        d.starlight = existing ? !!parseData(existing).starlight : false;
+        d.curata = existing ? !!parseData(existing).curata : false;
         sanitizePageFields(d, 'collections/' + id);
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
@@ -6440,13 +6456,13 @@ export default {
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
       }
 
-      // ---- admin: grant Starlight to everything one account owns ----
-      // Starlight is what says "an admin has looked at this", and it also
+      // ---- admin: grant Curata to everything one account owns ----
+      // Curata is what says "an admin has looked at this", and it also
       // lifts a page out of Partial. Doing that one page at a time through
       // Bulk actions is 200 tick-boxes at a time; this is the same write in
       // one press. Idempotent — pages that already have it are skipped — so
       // it can be re-run after adding more. {dryRun:true} just counts.
-      if (path === '/api/admin/starlight-owner') {
+      if (path === '/api/admin/curata-owner') {
         const b = await request.json().catch(() => ({}));
         const uname = String(b.username || '').trim();
         if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
@@ -6455,7 +6471,7 @@ export default {
         const { results } = await env.DB.prepare(
           "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
         ).bind(u.id).all();
-        const hits = (results || []).filter(r => !parseData(r).starlight);
+        const hits = (results || []).filter(r => !parseData(r).curata);
         if (b.dryRun) {
           return jsonResponse({
             ok: true, dryRun: true, username: u.username,
@@ -6465,11 +6481,11 @@ export default {
         }
         for (const r of hits) {
           const d = parseData(r);
-          d.starlight = true;
+          d.curata = true;
           await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
             .bind(JSON.stringify(d), r.slug).run();
         }
-        await logActivity(env, sess, 'starlight', 'character', null,
+        await logActivity(env, sess, 'curata', 'character', null,
           hits.length + ' page(s) owned by ' + u.username);
         return jsonResponse({ ok: true, username: u.username, count: hits.length });
       }
@@ -6676,7 +6692,7 @@ export default {
         const rm = new Set((Array.isArray(b.remove) ? b.remove : []).map(String));
         if (!rm.size) return jsonResponse({ error: 'Nothing to remove.' }, { status: 400 });
         let d;
-        try { d = JSON.parse(row.data); } catch { return jsonResponse({ error: 'Page data is corrupt.' }, { status: 500 }); }
+        try { d = foldLegacyCurata(JSON.parse(row.data)); } catch { return jsonResponse({ error: 'Page data is corrupt.' }, { status: 500 }); }
         await saveRevision(env, sess, type, row);
         let removed = 0;
         function strip(list) {
@@ -6761,7 +6777,7 @@ export default {
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
         const action = String(b.action || '');
         const ACTIONS = ['publish', 'unpublish', 'delete', 'restore', 'assign-owner', 'clear-owner',
-                        'add-tag', 'remove-tag', 'starlight', 'unstarlight'];
+                        'add-tag', 'remove-tag', 'curata', 'uncurata'];
         if (!ACTIONS.includes(action)) return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         const slugs = (Array.isArray(b.slugs) ? b.slugs : []).slice(0, 200).map(String);
         if (!slugs.length) return jsonResponse({ error: 'No pages selected.' }, { status: 400 });
@@ -6794,13 +6810,13 @@ export default {
                 .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
             } else if (action === 'delete') {
               if (row.status === 'deleted') { done++; continue; }
-              let data; try { data = JSON.parse(row.data); } catch { data = {}; }
+              let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
               data._deleted = { at: new Date().toISOString(), by: adminName, from: row.status || 'published' };
               await env.DB.prepare(`UPDATE ${t.table} SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(JSON.stringify(data), row.slug).run();
             } else if (action === 'restore') {
               if (row.status !== 'deleted') { done++; continue; }
-              let data; try { data = JSON.parse(row.data); } catch { data = {}; }
+              let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
               const from = (data._deleted && data._deleted.from) || 'published';
               delete data._deleted;
               await env.DB.prepare(`UPDATE ${t.table} SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`)
@@ -6808,19 +6824,19 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
-            } else if (action === 'starlight' || action === 'unstarlight') {
-              const on = action === 'starlight';
+            } else if (action === 'curata' || action === 'uncurata') {
+              const on = action === 'curata';
               const d = parseData(row);
-              if (!!d.starlight !== on) {
-                d.starlight = on;
-                if (!on) delete d.starlight;
+              if (!!d.curata !== on) {
+                d.curata = on;
+                if (!on) delete d.curata;
                 await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
                   .bind(JSON.stringify(d), row.slug).run();
               }
             } else {
               // add-tag / remove-tag: tags are a comma-separated string kept
               // in both the indexed column and the data JSON.
-              let d; try { d = JSON.parse(row.data); } catch { failed.push(slug); continue; }
+              let d; try { d = foldLegacyCurata(JSON.parse(row.data)); } catch { failed.push(slug); continue; }
               const tags = String(d.tags || '').split(',').map(s => s.trim()).filter(Boolean);
               const has = tags.some(x => x.toLowerCase() === tag.toLowerCase());
               let next = tags;

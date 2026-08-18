@@ -58,7 +58,7 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page), **wiki pages**
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), admin tools (dashboard, full activity log, report,
-  revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
+  revisions/rollback, comment moderation, Curata, wiki lock, backup, seed).
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   A character's URL **and its R2 art slot** are both derived from its name, so
@@ -131,7 +131,7 @@ assets/
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
-                       Partial, Starlight only, creator, sort). Sort offers Page
+                       Partial, Curata only, creator, sort). Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
                        built, and it reads the ability off the card rather than
@@ -143,9 +143,9 @@ assets/
                        newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
                        implementation, not one per page.
-  classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
+  classify.js          Partial / Standard / Curata rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
-                       badge builder, and the Starlight weighting used by
+                       badge builder, and the Curata weighting used by
                        Featured, /random and the homepage strips. Browser+Worker.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
@@ -260,7 +260,7 @@ assets/
   art/, collections/, scripts/  Committed images (new uploads go to R2)
   fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
-                       Featured Character rotates **Starlight pages only**,
+                       Featured Character rotates **Curata pages only**,
                        seeded by the day number so it is stable for 24 h.
                        Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
@@ -717,10 +717,10 @@ uploaded — except for the one opt-in save described below.
   a change shows on a normal refresh.
 
 
-## Page classification (Partial / Standard / Starlight)
+## Page classification (Partial / Standard / Curata)
 
 `assets/classify.js` is the **single source of truth**, shared by the browser
-and the Worker (which stamps `classification` + `starlight` onto every row in
+and the Worker (which stamps `classification` + `curata` onto every row in
 `/characters.json`, `/collections.json`, `/scripts.json`).
 
 - **Two bars, both in `classify.js`.** `PUBLISH_REQUIREMENTS` is what a page
@@ -750,32 +750,48 @@ and the Worker (which stamps `classification` + `starlight` onto every row in
   and a future "this team is different" belongs there) but no longer exempt
   anything.
 - **Standard** — the default. No badge, nothing to earn.
-- **Starlight** — admin-only, on characters, collections **and** scripts.
-  Weighted `STARLIGHT_WEIGHT` (5×) in Featured, `/random` and the homepage
-  strips, and filterable on its own (a "Starlight only" chip on All
+- **Curata** — admin-only, on characters, collections **and** scripts.
+  Weighted `CURATA_WEIGHT` (5×) in Featured, `/random` and the homepage
+  strips, and filterable on its own (a "Curata only" chip on All
   Characters, All Collections and Scripts).
-  A Starlight **collection lends the status to every character in it**
-  (`applyCollectionStarlight()` in worker.js, applied on read in
+  A Curata **collection lends the status to every character in it**
+  (`applyCollectionCurata()` in worker.js, applied on read in
   `buildPublicJSON` and on the SSR `/c/` page). Inherited status is never
   written to the character row, so un-starring the collection takes it off
   the characters too; a character's own flag always wins and carries
-  `starlightFrom` for the tooltip.
-  The visible mark is a bare `✦` that inherits the surrounding text colour
-  (`.starlight-star`) — deliberately not a coloured pill. On collection
-  tiles it sits after the character count behind a hairline `.coll-star-sep`.
+  `curataFrom` for the tooltip.
+  The visible mark is a bare **laurel wreath** that inherits the surrounding
+  text colour (`.curata-mark`) — deliberately not a coloured pill. It is
+  painted as a CSS **mask over `currentColor`**, not as an `<img>`: an image
+  would need a fixed fill and would go wrong on every surface that changes
+  text colour (theme kits, draft bars, the dark topbar). The span it lives in
+  is empty — the wreath *is* the element's background.
+  Two details there are load-bearing. The element is `display: inline` with a
+  left **padding** for its width, never an inline-block with a width: an
+  inline-block is a line break opportunity, so on a narrow collection tile the
+  wreath wraps onto a line of its own and leaves the hairline stranded at the
+  end of the line above (this was measured, not guessed — it is the same
+  reasoning as `.coll-mark-sep` below). And the wreath's SVG is inlined as a
+  `data:` URI in styles.css, so it carries no `"`, `#` or `%`; the shape is
+  generated, not hand-drawn — re-tune and re-emit it with
+  `node migration/curata-wreath.js` rather than editing path data.
+  On collection tiles the mark sits after the character count behind a
+  hairline `.coll-mark-sep`.
   On a `/c/` page it sits at the end of the **Tags** row behind the same
-  hairline (`.info-star-sep`) — it is a mark, never a link, so it can't be
-  mistaken for a clickable tag; a Starlight page with no tags of its own
+  hairline (`.info-mark-sep`) — it is a mark, never a link, so it can't be
+  mistaken for a clickable tag; a Curata page with no tags of its own
   shows an em dash (`.tag-none`) on the tags side. There is **no Status row
-  in the character info box** any more: Starlight is that star, and Partial
+  in the character info box** any more: Curata is that wreath, and Partial
   is shown only to people who can act on it — the Worker renders a
   `.page-notice-partial` banner above the topbar (`partialNoticeHTML()` in
   worker.js) for the page's owner and admins, and nobody else. Scripts and
-  collections still carry a Status row (`starlightRow()` in render-page.js);
-  they have no tags row to hang the star off.
+  collections still carry a Status row (`curataRow()` in render-page.js);
+  they have no tags row to hang the wreath off.
+  The **`<select>` on the dashboard is the one place with no mark** — an
+  `<option>` cannot carry markup — so those read as plain words.
 
-Only `starlight` is stored (a boolean in the page's `data` JSON, writable
-**only** through `POST /api/admin/starlight` or the bulk action — every save
+Only `curata` is stored (a boolean in the page's `data` JSON, writable
+**only** through `POST /api/admin/curata` or the bulk action — every save
 handler overwrites whatever the client sent with the stored value). Partial vs
 Standard is derived on every read, so nothing ever needs migrating. If you add
 a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
@@ -784,17 +800,32 @@ a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `isPartial()` self-guards on `d.ability` so a collection or script can never
 be flagged Partial — do not remove that check.
 
+**Curata was called Starlight**, and the stored flag was called `starlight`.
+Rows written before the rename still carry the old key, and **no D1 migration
+was run**: `foldLegacyCurata()` in worker.js folds `starlight` into `curata` on
+read, so every reader sees one name, and the next save of a row writes the new
+key and drops the old one — the database migrates itself a page at a time.
+Everything that parses a row's `data` blob itself, rather than going through
+`parseData()`, has to call it; revision snapshots and the nightly R2 backups
+predate the rename too and are restored through the same path, so **this stays
+even once every live row has been rewritten**. The `activity_log` keeps its old
+`starlight`/`unstarlight` action rows for the same reason — nothing writes them
+any more, and the dashboard's action filter lists them so history stays
+searchable. Anything else still saying "Starlight" on the wiki is *content*
+(the "Travel by Starlight" collection, the `"starlight": false` keys in the
+`migration/*-import.json` archives) and must be left alone.
+
 **A character that misses `PUBLISH_REQUIREMENTS` cannot be published** (Fabled
 excepted, above). `/api/character` silently saves it as a draft (and says what
 is missing, via `editor-notices.js`), and `/api/publish` refuses.
 `POST /api/admin/demote-incomplete` (old alias: `demote-no-icon`) sweeps pages
 that went live before the bar was raised; the dashboard card scans first and
 reports the count and the reasons before anything moves. Always dry-run it.
-`POST /api/admin/starlight-owner` ({username, dryRun}) grants Starlight to
+`POST /api/admin/curata-owner` ({username, dryRun}) grants Curata to
 every character one account owns. `GET /api/admin/pages` also takes
 `?collection={id}`, resolved through `resolveCollectionMembers()` — combined
 with `?owner=none` and the `assign-owner` bulk action, that is how a whole
-collection's unowned pages get handed to an account. Starlight lifts a page out of Partial, so
+collection's unowned pages get handed to an account. Curata lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
 
 ## Frontend conventions
@@ -901,10 +932,10 @@ this is how admin-written pages stop being hidden for want of a tag.
    expire, and the staleness does not look like caching. Importing a collection
    without bumping left it out of `collections.json`, so `linkAppearsIn()` in
    charpage.js found no match and every one of its characters showed "Appears
-   in" as plain text instead of a link. Granting that collection Starlight
-   without bumping left `_starCollCache` holding the pre-Starlight list, so
-   `applyCollectionStarlight()` lent the status to none of its members while the
-   collection itself already read as Starlight. Both looked like bugs in the
+   in" as plain text instead of a link. Granting that collection Curata
+   without bumping left `_curataCollCache` holding the pre-Curata list, so
+   `applyCollectionCurata()` lent the status to none of its members while the
+   collection itself already read as Curata. Both looked like bugs in the
    feature and were neither. One
    `INSERT INTO settings (key,value) VALUES ('content_version','1') ON CONFLICT
    (key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`

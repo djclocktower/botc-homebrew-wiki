@@ -99,7 +99,7 @@
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) +
-          window.classBadgeHTML(window.classifyCharacter(c), { from: c.starlightFrom }) + '</div>' +
+          window.classBadgeHTML(window.classifyCharacter(c), { from: c.curataFrom }) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(window.TEAM_LABEL[c.team] || c.team) + '</div>' +
         '<div class="char-card-ability">' + esc(c.ability || '') + '</div>' +
         '<span class="char-card-link">View Character →</span>' +
@@ -165,12 +165,12 @@
     // (click = include, click again = exclude, third click = off) — there are
     // far too many creators for a dropdown, so they get a search box instead
     // of a chip wall. `showPartial` reveals unfinished pages, which are hidden
-    // from browsing by default; `starlightOnly` narrows to admin-picked pages.
+    // from browsing by default; `curataOnly` narrows to admin-picked pages.
     function blankState(){
       return {
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: false, starlightOnly: false, sort: 'name-asc'
+        creatorQuery: '', showPartial: false, curataOnly: false, sort: 'name-asc'
       };
     }
     var STATE = blankState();
@@ -219,17 +219,17 @@
         srcPresent.forEach(function(s){ html += '<button type="button" class="filter-chip" data-source="'+esc(s[0])+'">'+esc(s[1])+'</button>'; });
         html += '</div></div>';
       }
-      // Status (Partial / Starlight). Partial pages are hidden until the
-      // reader asks for them; Starlight is a narrowing filter.
+      // Status (Partial / Curata). Partial pages are hidden until the
+      // reader asks for them; Curata is a narrowing filter.
       var nPartial = list.filter(function(c){ return window.isPartial(c); }).length;
-      var nStar = list.filter(function(c){ return window.isStarlight(c); }).length;
-      if (nPartial || nStar){
+      var nCurata = list.filter(function(c){ return window.isCurata(c); }).length;
+      if (nPartial || nCurata){
         html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
         if (nPartial){
           html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
         }
-        if (nStar){
-          html += '<button type="button" class="filter-chip" id="fc-starlight" title="Starlight — pages the wiki admins have picked out.">✦ Starlight only (' + nStar + ')</button>';
+        if (nCurata){
+          html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata — pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
         }
         html += '</div></div>';
       }
@@ -344,10 +344,10 @@
         partialBtn.classList.toggle('active', STATE.showPartial);
         render();
       });
-      var starBtn = document.getElementById('fc-starlight');
-      if (starBtn) starBtn.addEventListener('click', function(){
-        STATE.starlightOnly = !STATE.starlightOnly;
-        starBtn.classList.toggle('active', STATE.starlightOnly);
+      var curataBtn = document.getElementById('fc-curata');
+      if (curataBtn) curataBtn.addEventListener('click', function(){
+        STATE.curataOnly = !STATE.curataOnly;
+        curataBtn.classList.toggle('active', STATE.curataOnly);
         render();
       });
 
@@ -439,7 +439,7 @@
       var out = FULL.slice();
       // Partial (unfinished) pages are out of the list unless asked for.
       if (!STATE.showPartial) out = out.filter(function(c){ return !window.isPartial(c); });
-      if (STATE.starlightOnly) out = out.filter(function(c){ return window.isStarlight(c); });
+      if (STATE.curataOnly) out = out.filter(function(c){ return window.isCurata(c); });
       if (STATE.includeTeams.length) out = out.filter(function(c){ return STATE.includeTeams.indexOf(c.team) !== -1; });
       if (STATE.excludeTeams.length) out = out.filter(function(c){ return STATE.excludeTeams.indexOf(c.team) === -1; });
       if (STATE.includeTags.length) out = out.filter(function(c){
@@ -482,7 +482,7 @@
           STATE.includeTags.length + STATE.excludeTags.length +
           STATE.includeSources.length + STATE.excludeSources.length +
           STATE.includeCreators.length + STATE.excludeCreators.length +
-          (STATE.showPartial ? 1 : 0) + (STATE.starlightOnly ? 1 : 0);
+          (STATE.showPartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0);
         toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
           ' <span class="filter-toggle-arrow">&#9662;</span>';
       }
