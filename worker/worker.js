@@ -120,6 +120,12 @@
  *   GET  /api/admin/activity  -> full activity log (paginated + filterable)
  *   GET  /api/admin/report    -> activity report for the last ?days=N days
  *   GET  /api/admin/revisions -> version history for one page (?type=&slug=)
+ *   GET  /api/page-history    -> a published page's edit log (public; ?type=&slug=)
+ *   GET  /api/page-revision   -> one entry of it, field by field (?type=&slug=&id=)
+ *   POST /api/page-rollback   -> put an earlier version back (owner or admin)
+ *   POST /api/suggest         -> propose an edit to a page open to suggestions
+ *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
+ *   POST /api/suggestion      -> approve / decline / withdraw one
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
@@ -208,6 +214,11 @@ Render.init(WikiRender);
 // them — it is excluded from the asset upload. Put new server-rendered
 // wording there, not inline here, or the owner cannot edit it.
 import SYS from '../assets/system-text.js';
+// The official roster, turned into wiki character objects (night positions
+// merged in from night-order.json). Shared with script.html and
+// publish-script.html so a script page, the builder and the night-order
+// arranger all see the same official characters.
+import OfficialRoles from '../assets/official-roles.js';
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
@@ -720,7 +731,9 @@ async function isWikiLocked(env) {
 const FEED_CHANGING_ACTIONS = new Set([
   'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
   'starlight', 'unstarlight', 'rollback', 'restore', 'restore-backup',
-  'assign-owner', 'protect', 'unprotect', 'purge'
+  'assign-owner', 'protect', 'unprotect', 'purge',
+  // Approving a suggestion writes the page; 'suggest' itself changes nothing.
+  'suggestion-approve'
 ]);
 
 // ---- activity log helper ----
@@ -746,7 +759,9 @@ async function logActivity(env, sess, action, entityType, slug, name) {
 // The table is created lazily by the Worker itself, so no manual D1
 // migration is ever needed. Every content save snapshots the version it is
 // about to replace; the newest 20 revisions per page are kept.
-const REVISIONS_KEEP = 20;
+// Deep enough that a page opened to public editing keeps a usable trail, not
+// just the last handful of saves.
+const REVISIONS_KEEP = 50;
 let _revisionsReady = false;
 async function ensureRevisionsTable(env) {
   if (_revisionsReady) return;
@@ -768,9 +783,101 @@ async function ensureRevisionsTable(env) {
   _revisionsReady = true;
 }
 
+/* What changed between two stored versions, as reader-facing labels — the
+   "what" column of a wiki history. Compares the top-level keys of the two
+   JSON blobs, which is exactly the granularity a page is edited at: a writer
+   changes the ability, or the tags, or the art. Unlabelled keys fall back to
+   their own name rather than being dropped, so a field added later still
+   shows up as having changed instead of silently reading as "no changes". */
+const FIELD_LABELS = {
+  name: 'name', team: 'team', creator: 'creator', ability: 'ability',
+  tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
+  summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
+  tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
+  callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
+  artAlt: 'alternate art', jinxes: 'jinxes', reminders: 'reminders',
+  remindersGlobal: 'global reminders', firstNight: 'first-night order',
+  otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
+  otherNightReminder: 'other-nights reminder', setup: 'setup flag',
+  special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
+  appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
+  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
+  edition: 'edition', publicEdit: 'who may edit',
+  // scripts + collections
+  displayName: 'name', author: 'author', description: 'description',
+  tagline: 'tagline', version: 'version', difficulty: 'difficulty',
+  synopsis: 'synopsis', gameplay: 'gameplay', strategyGood: 'good strategy',
+  strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
+  header: 'header image', theme: 'appearance', match: 'membership rules',
+  include: 'members added', exclude: 'members removed', order: 'roster order',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  almanac: 'almanac link', hideTitle: 'app title setting',
+  // wiki pages
+  title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+};
+const DIFF_VALUE_MAX = 1200;   // per side, per field
+const DIFF_LABEL_MAX = 6;
+
+/* The same comparison as diffFieldLabels, but carrying the values — what the
+   field said before and after — so a reader can judge the edit. Values are
+   flattened to text: a list becomes one line per entry, anything else its
+   JSON, both capped. */
+function diffFieldValues(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const flat = v => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v.slice(0, DIFF_VALUE_MAX);
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (Array.isArray(v) && v.every(x => typeof x === 'string')) {
+      return v.join('\n').slice(0, DIFF_VALUE_MAX);
+    }
+    try { return JSON.stringify(v, null, 1).slice(0, DIFF_VALUE_MAX); } catch { return ''; }
+  };
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push({ field: k, label: FIELD_LABELS[k] || k, before: flat(x), after: flat(y) });
+  }
+  out.sort((p, q) => p.label.localeCompare(q.label));
+  return out.slice(0, 40);
+}
+function diffFieldLabels(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push(FIELD_LABELS[k] || k);
+  }
+  out.sort();
+  if (out.length > DIFF_LABEL_MAX) {
+    const extra = out.length - DIFF_LABEL_MAX;
+    return out.slice(0, DIFF_LABEL_MAX).concat(['and ' + extra + ' more']);
+  }
+  return out;
+}
+
 // Snapshot an existing row before it gets overwritten. `edited_by` records
 // who made the edit that replaced this version. Never blocks the save.
 async function saveRevision(env, sess, type, row) {
+  // Drafts have no history. A draft is nobody's but its owner's, gets saved
+  // over constantly while it is being written, and none of those versions is
+  // one anybody would want back — so a page's history starts at the version
+  // that was published. What is snapshotted is the version being REPLACED, so
+  // taking a published page back to draft still records what was live.
+  if ((row.status || 'published') !== 'published') return;
   try {
     await ensureRevisionsTable(env);
     let by = null;
@@ -787,6 +894,46 @@ async function saveRevision(env, sess, type, row) {
     ).bind(type, row.slug, type, row.slug).run();
   } catch { /* history must never break a write */ }
 }
+
+/* ---- suggested edits ----
+   A page whose creator chose `publicEdit: 'suggest'` takes proposed versions
+   instead of direct edits. A suggestion is the whole page as the suggester
+   would have it — the same object the editor posts to save — kept apart from
+   the row until somebody who owns the page approves it. Approving is a normal
+   save: the current version is snapshotted into the history first, so an
+   approval can be rolled back like anything else.
+
+   `base_updated_at` is the version the suggester was working from, which is
+   how the review page can say "this was written against an older version of
+   the page" rather than quietly overwriting work done since. */
+let _suggestReady = false;
+async function ensureSuggestTable(env) {
+  if (_suggestReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS suggestions (
+       id              INTEGER PRIMARY KEY AUTOINCREMENT,
+       entity_type     TEXT NOT NULL,
+       slug            TEXT NOT NULL,
+       user_id         INTEGER,
+       username        TEXT,
+       note            TEXT,
+       data            TEXT NOT NULL,
+       base_updated_at TEXT,
+       status          TEXT NOT NULL DEFAULT 'open',
+       reply           TEXT,
+       decided_by      TEXT,
+       decided_at      TEXT,
+       ts              TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_suggestions_page ON suggestions(entity_type, slug, status)'
+  ).run();
+  _suggestReady = true;
+}
+
+const SUGGEST_MAX_OPEN_PER_PAGE = 50;   // per suggester, per page: a queue, not a firehose
+const SUGGEST_NOTE_MAX = 600;
 
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
 let _viewsReady = false;
@@ -1511,6 +1658,108 @@ function canEditRow(sess, row) {
   return !!row.owner_id && row.owner_id === sess.userId;
 }
 
+/* ---- who may edit a page ----
+   `canEditRow` above is ownership: the owner and the admins, and it still
+   governs everything that belongs to whoever made the page — renaming it,
+   publishing it, deleting it, rolling it back, and the public-editing setting
+   itself.
+
+   On top of that a creator may open a page up, stored on the page's data as
+   `publicEdit`:
+
+     'all'   anyone with an account may edit the page
+     'tags'  anyone with an account may change the tags, and nothing else
+
+   editPermission() answers what THIS session may do to THIS row:
+
+     'owner'  everything (the owner, or an admin)
+     'all'    the page's content, but none of the owner's own settings
+     'tags'   the tags and nothing else
+     ''       nothing
+
+   Three things are deliberately never open, whatever the setting says: a
+   draft (nobody else can even see it), an admin-protected page, and a page
+   whose owner never opted in. Scripts and collections have no tags, so 'tags'
+   means nothing there and is treated as closed. */
+const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
+function publicEditMode(d) {
+  const v = d && d.publicEdit;
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+function sanitizePublicEdit(v) {
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+
+/* A public editor is a stranger with write access, so their save gets a
+   ceiling the owner's has never needed: a page is a few kilobytes of text and
+   nothing legitimate comes near this. Cheap insurance against somebody
+   parking a megabyte of anything in a row they do not own. */
+const PUBLIC_EDIT_MAX_BYTES = 120000;
+const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits — send yours for the creator to approve.';
+const PUBLIC_EDIT_TAGS_MAX = 400;
+function publicEditTooBig(o) {
+  try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
+}
+
+async function editPermission(env, sess, type, row) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if ((row.status || 'published') !== 'published') return '';
+  const mode = publicEditMode(parseData(row));
+  if (!mode) return '';
+  if (mode === 'tags' && type !== 'character') return '';
+  if (await isProtected(env, type, row.slug)) return '';
+  return mode;
+}
+
+/* 'suggest' is not write access: it is permission to PROPOSE a version, which
+   the owner then approves or declines (POST /api/suggest). Every save handler
+   asks this before writing, so a mode that is not a writing mode can never
+   reach a row by being mistaken for one. */
+function permCanWrite(perm) {
+  return perm === 'owner' || perm === 'all' || perm === 'tags';
+}
+
+/* Telling a suggester what happened to their suggestion — the same DM row as
+   every other notification, so it lands in the place they already look. */
+async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, origin) {
+  try {
+    if (sug.user_id == null || sug.user_id === fromId) return;
+    await ensureDmTables(env);
+    const text = 'Your suggested edit to \u201c' + (row.name || sug.slug) + '\u201d was ' + verdict + '.' +
+      (reply ? '\n\n\u201c' + reply + '\u201d' : '') +
+      '\n\n' + (origin || '') + '/suggestions?type=' + encodeURIComponent(sug.entity_type) +
+      '&slug=' + encodeURIComponent(sug.slug);
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, sug.user_id, text).run();
+  } catch { /* a notification must never break a decision */ }
+}
+
+// A page edited by somebody who does not own it: tell the owner, through the
+// notification the site already has (the unread count on /api/me and the mail
+// flag site.js puts on "My Account"). Written sender_deleted=1 so it never
+// clutters the editor's own conversation list — they edited a page, they did
+// not send a message. Same shape as notifyComment.
+async function notifyPageEdit(env, opts) {
+  try {
+    const { fromId, ownerId, what, name, path, origin } = opts;
+    if (ownerId == null || ownerId === fromId) return;
+    await ensureDmTables(env);
+    const blocked = await env.DB.prepare(
+      'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+    ).bind(ownerId, fromId).first().catch(() => null);
+    if (blocked) return;
+    const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
+      (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
+      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
+      ' , where you can put back any earlier version.';
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, ownerId, text).run();
+  } catch { /* a notification must never break a save */ }
+}
+
 async function getEntityRow(env, type, slug) {
   const t = CONTENT[type];
   if (!t || !slug) return null;
@@ -1518,7 +1767,7 @@ async function getEntityRow(env, type, slug) {
   // back as baseUpdatedAt, and a save whose base no longer matches the stored
   // row is rejected rather than silently overwriting somebody else's work.
   return env.DB.prepare(
-    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, updated_at FROM ${t.table} WHERE slug=?`
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at FROM ${t.table} WHERE slug=?`
   ).bind(slug).first().catch(() => null);
 }
 
@@ -1840,6 +2089,63 @@ async function applyCollectionStarlight(env, chars) {
   return chars;
 }
 
+/* ---- "Appears in", derived from collection membership ----
+   A collection's membership is either matched on the character's own
+   `appearsIn` text or listed by hand in `include[]`. The hand-listed half used
+   to leave the character page saying nothing about the collection it is in,
+   and the creator had to type the name into every character to fix it.
+   This fills that gap on READ: a character with no `appearsIn` of its own
+   picks up the collections that list it, in a separate `appearsInFrom` field.
+
+   Separate on purpose. Writing it into `appearsIn` would feed the match rule
+   that resolves membership in the first place — a collection whose match term
+   happened to equal another collection's name would start swallowing that
+   collection's characters. Nothing is stored either, so removing a character
+   from a collection takes the line off its page, and a character that later
+   gets its own `appearsIn` keeps what its creator typed. */
+let _inclCollCache = null;
+async function includeCollections(env) {
+  const version = await contentVersion(env);
+  if (_inclCollCache && _inclCollCache.version === version) return _inclCollCache.rows;
+  let rows = [];
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT data FROM collections WHERE status='published'"
+    ).all();
+    rows = (results || []).map(parseData)
+      .filter(d => d && Array.isArray(d.include) && d.include.length)
+      .map(d => ({
+        name: d.displayName || d.id || d.slug || '',
+        id: d.id || d.slug || '',
+        include: d.include
+      }))
+      .filter(c => c.name && c.id);
+  } catch { rows = []; }
+  _inclCollCache = { version, rows };
+  return rows;
+}
+
+const APPEARS_IN_MAX = 3;   // a character in more collections than this lists the first few
+async function applyCollectionAppearsIn(env, chars) {
+  const colls = await includeCollections(env);
+  if (!colls.length) return chars;
+  const bySlug = new Map();
+  for (const coll of colls) {
+    for (const slug of coll.include) {
+      if (typeof slug !== 'string') continue;
+      const list = bySlug.get(slug);
+      if (!list) { bySlug.set(slug, [coll]); continue; }
+      if (list.length < APPEARS_IN_MAX && !list.some(c => c.id === coll.id)) list.push(coll);
+    }
+  }
+  for (const c of chars) {
+    if (!c || (c.appearsIn && String(c.appearsIn).trim())) continue;
+    const hit = bySlug.get(c.slug);
+    if (hit) c.appearsInFrom = hit.map(x => ({ name: x.name, id: x.id }));
+  }
+  return chars;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
@@ -1855,6 +2161,43 @@ const PAGE_FIELD_CAPS = {
   version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
 };
 const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
+
+// A script's hand-arranged night order: {first: [slug], other: [slug]}, each
+// list a set of roster slugs. Returns null when there is nothing worth
+// storing, so an unarranged script keeps no key at all and sorts by the
+// characters' own night numbers, exactly as it always did.
+function sanitizeNightOrder(o) {
+  if (!o || typeof o !== 'object') return null;
+  const list = v => Array.isArray(v)
+    ? [...new Set(v.slice(0, 200).map(x => String(x).slice(0, 80)).filter(Boolean))]
+    : [];
+  const out = { first: list(o.first), other: list(o.other) };
+  if (!out.first.length) delete out.first;
+  if (!out.other.length) delete out.other;
+  return (out.first || out.other) ? out : null;
+}
+
+// A script's own jinx edits: {off: ["slugA|slugB"], add: [{a, b, text}]}.
+// Nothing here is written back to the characters — this is one script's view
+// of the rules between them (see scriptJinxes in render-page.js).
+function sanitizeJinxEdits(o) {
+  if (!o || typeof o !== 'object') return null;
+  const slug = v => String(v || '').slice(0, 80);
+  const off = Array.isArray(o.off)
+    ? [...new Set(o.off.slice(0, 200).map(k => String(k).slice(0, 165)).filter(k => k.includes('|')))]
+    : [];
+  const add = Array.isArray(o.add)
+    ? o.add.slice(0, 100).map(j => ({
+        a: slug(j && j.a), b: slug(j && j.b),
+        text: String((j && j.text) || '').slice(0, 300)
+      })).filter(j => j.a && j.b && j.a !== j.b)
+    : [];
+  const out = {};
+  if (off.length) out.off = off;
+  if (add.length) out.add = add;
+  return (out.off || out.add) ? out : null;
+}
+
 function sanitizePageFields(o, themeBase) {
   for (const k of Object.keys(PAGE_FIELD_CAPS)) {
     if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
@@ -2038,8 +2381,12 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
-  // Characters pick up Starlight from any Starlight collection they belong to.
-  if (table === 'characters') await applyCollectionStarlight(env, out);
+  // Characters pick up Starlight from any Starlight collection they belong to,
+  // and an "Appears in" from any collection that lists them by hand.
+  if (table === 'characters') {
+    await applyCollectionStarlight(env, out);
+    await applyCollectionAppearsIn(env, out);
+  }
   return out;
 }
 
@@ -2321,19 +2668,28 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
 
 // ---- official BotC roles (assets/roles.json), for script rosters that
 // include imported official characters ('off-' slugs). Cached per isolate.
+// The wake positions come from assets/night-order.json — roles.json has none,
+// which is why an official character used to be missing from a script page's
+// Night Order box. Both files are fetched as static assets rather than
+// imported, so neither rides in the Worker bundle; a night-order.json that
+// fails to load costs the positions and nothing else.
 let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
   try {
-    const res = await env.ASSETS.fetch(new Request(origin + '/assets/roles.json'));
-    const roles = await res.json();
-    _officialRolesCache = (roles || []).filter(r => r && r.id).map(r => ({
-      slug: 'off-' + String(r.id).toLowerCase().replace(/[^a-z0-9]/g, ''),
-      official: true, id: r.id,
-      name: r.name || r.id, team: r.team || '',
-      ability: r.ability || '', image: r.image || '',
-      page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
-    }));
+    const [rolesRes, nightRes] = await Promise.all([
+      env.ASSETS.fetch(new Request(origin + '/assets/roles.json')),
+      env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null)
+    ]);
+    const roles = await rolesRes.json();
+    let night = null;
+    try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
+    // The non-character steps of the night (dusk, minion info, demon info,
+    // dawn) — what an exported script needs to write a night sequence the
+    // official app can follow. Without them the export leaves the sequence
+    // out entirely rather than publish one those steps are missing from.
+    if (night && night.meta) PageRender.setNightMeta(night.meta);
+    _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
   } catch {
     _officialRolesCache = [];
   }
@@ -2623,9 +2979,12 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
     : await cachedCardChars(env);
-  // Scripts can carry imported official roles ('off-' slugs) — resolve them
-  if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
-    chars = chars.concat(await loadOfficialRoles(env, url.origin));
+  // Scripts can carry imported official roles ('off-' slugs) — resolve them.
+  // An arranged night order needs this call too even on an all-homebrew
+  // script: it is what loads the night's non-character steps.
+  if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
+    const official = await loadOfficialRoles(env, url.origin);
+    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
   }
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
@@ -2650,9 +3009,18 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-page?parentType=' + encodeURIComponent(type) + '&parentSlug=' + encodeURIComponent(pageKey)
     : '';
 
+  const editHref = isScript
+    ? '../publish-script?s=' + encodeURIComponent(d.slug)
+    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
+  // The page's own Edit button, for whoever may actually use it. The pencil in
+  // the top bar shows unconditionally (the API is the enforcer); this one is
+  // gated, because it sits in the page where a reader would take it as an
+  // invitation. SSR responses are no-store, so a per-reader button is safe.
+  const ownerEditHref = mayEditParent ? editHref : '';
+
   const body = isScript
-    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref })
-    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref });
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref });
 
   const nChars = isScript
     ? (d.characters || []).length
@@ -2662,9 +3030,6 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
      ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
   const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
-  const editHref = isScript
-    ? '../publish-script?s=' + encodeURIComponent(d.slug)
-    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
     : '';
@@ -3181,6 +3546,9 @@ export default {
           // Same Starlight inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          // Same for the "Appears in" row: a character listed by hand in a
+          // collection says so here without its creator typing the name in.
+          await applyCollectionAppearsIn(env, [d]);
           // "This page is Partial" is shown to the people who can act on it
           // and to nobody else (see partialNoticeHTML). It asks isIncomplete,
           // not isPartial: Starlight lifts a page out of the public Partial
@@ -4424,13 +4792,18 @@ export default {
       }
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const owns = canEditRow(sess, row);
+      // 'owner' | 'all' | 'tags' | '' — what this reader may actually change,
+      // which is what the editor needs to know before it offers them a form.
+      const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
+      const editable = !!mode;
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      if (row.status === 'draft' && !owns) return jsonResponse({ error: 'Not found' }, { status: 404 });
       return jsonResponse({
         slug: row.slug, data: JSON.parse(row.data),
         status: row.status || 'published', canEdit: editable,
+        editMode: mode || false, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
@@ -4663,24 +5036,135 @@ export default {
     // own second window — had to file a contact-form message and wait for
     // somebody to fix it. They can see and undo their own history now.
     if (method === 'GET' && path === '/api/page-history') {
-      const sess = await getSession(env, request);
-      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
       if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      // A published page's history is public, the way a wiki's is: anyone
+      // reading a page can see who changed what, which is the whole point of
+      // opening pages to other people. A draft is nobody's business but its
+      // owner's — and has no history anyway (see saveRevision).
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       await ensureRevisionsTable(env);
       const { results } = await env.DB.prepare(
-        `SELECT id, ts, name, status, edited_by, length(data) AS bytes
-           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC`
+        `SELECT id, ts, name, status, edited_by, data, length(data) AS bytes
+           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id ASC`
       ).bind(type, row.slug).all();
+      const revs = results || [];
+      /* Each row is a snapshot of the page as it stood BEFORE the save that
+         replaced it, stamped with who made that save. So the change one entry
+         describes is the difference between it and whatever came next — the
+         following snapshot, or the page as it stands now for the newest one. */
+      const entries = revs.map((r, i) => {
+        const after = i + 1 < revs.length ? revs[i + 1].data : row.data;
+        return {
+          id: r.id, ts: r.ts, by: r.edited_by || null,
+          name: r.name, status: r.status, bytes: r.bytes,
+          changed: diffFieldLabels(r.data, after)
+        };
+      }).reverse();
       return jsonResponse({
-        slug: row.slug,
-        current: { name: row.name, status: row.status || 'published' },
-        revisions: results || []
+        type, slug: row.slug,
+        name: row.name || row.slug,
+        status: row.status || 'published',
+        createdAt: row.created_at || null,
+        updatedAt: row.updated_at || null,
+        canRestore: owns,
+        publicEdit: publicEditMode(parseData(row)) || '',
+        entries
+      });
+    }
+
+    /* Suggested edits — the list for one page, or everything waiting on the
+       pages you own (?inbox=1). A page's list is for the people who can act on
+       it: its owner, an admin, and each suggester's own entries. */
+    if (method === 'GET' && path === '/api/suggestions') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      await ensureSuggestTable(env);
+
+      if (url.searchParams.get('inbox')) {
+        // Everything open on a page this account owns. The join is done in JS
+        // because the four content types live in four tables.
+        const out = [];
+        for (const [type, t] of Object.entries(CONTENT)) {
+          const { results } = await env.DB.prepare(
+            `SELECT s.id, s.entity_type, s.slug, s.username, s.note, s.ts, s.base_updated_at,
+                    r.${t.nameCol} AS name, r.updated_at
+               FROM suggestions s JOIN ${t.table} r ON r.slug = s.slug
+              WHERE s.entity_type=? AND s.status='open' AND r.owner_id=?
+              ORDER BY s.id DESC LIMIT 100`
+          ).bind(type, sess.userId).all().catch(() => ({ results: [] }));
+          (results || []).forEach(r => out.push(r));
+        }
+        out.sort((a, b) => (b.id - a.id));
+        return jsonResponse({ inbox: out.slice(0, 100) });
+      }
+
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const owns = canEditRow(sess, row);
+      const { results } = await env.DB.prepare(
+        `SELECT id, user_id, username, note, base_updated_at, status, reply,
+                decided_by, decided_at, ts, data
+           FROM suggestions WHERE entity_type=? AND slug=? ORDER BY id DESC LIMIT 100`
+      ).bind(type, row.slug).all().catch(() => ({ results: [] }));
+      const mine = (results || []).filter(r => owns || r.user_id === sess.userId);
+      return jsonResponse({
+        type, slug: row.slug, name: row.name || row.slug,
+        updatedAt: row.updated_at || null,
+        canReview: owns,
+        suggestions: mine.map(r => ({
+          id: r.id, by: r.username || null, mine: r.user_id === sess.userId,
+          note: r.note || '', status: r.status, reply: r.reply || '',
+          decidedBy: r.decided_by || null, decidedAt: r.decided_at || null,
+          ts: r.ts, stale: !!(r.base_updated_at && row.updated_at && r.base_updated_at !== row.updated_at),
+          // What the suggestion would change about the page as it stands now.
+          changes: diffFieldValues(row.data, r.data)
+        }))
+      });
+    }
+
+    /* One entry of a page's history, in detail: every field that changed, with
+       what it said before and after. This is what makes the log a wiki log
+       rather than a list of timestamps — you can read the edit before deciding
+       whether to put the old version back. Same visibility rule as the history
+       itself: public for a published page. */
+    if (method === 'GET' && path === '/api/page-revision') {
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      const id = parseInt(url.searchParams.get('id'), 10) || 0;
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      await ensureRevisionsTable(env);
+      const rev = await env.DB.prepare(
+        'SELECT id, ts, edited_by, data FROM revisions WHERE id=? AND entity_type=? AND slug=?'
+      ).bind(id, type, row.slug).first().catch(() => null);
+      if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
+      // The version that replaced this one: the next snapshot up, or the page
+      // as it stands now.
+      const next = await env.DB.prepare(
+        'SELECT data FROM revisions WHERE entity_type=? AND slug=? AND id>? ORDER BY id ASC LIMIT 1'
+      ).bind(type, row.slug, id).first().catch(() => null);
+      return jsonResponse({
+        id: rev.id, ts: rev.ts, by: rev.edited_by || null,
+        fields: diffFieldValues(rev.data, next ? next.data : row.data)
       });
     }
 
@@ -5561,6 +6045,154 @@ export default {
       }
 
       // ---- comments ----
+      /* ---- suggest an edit ----
+         Body: {type, slug, data, note}. `data` is the whole page as the
+         suggester would have it — the same object the editor posts to save —
+         and it is stored, not applied. Nothing here touches the row. */
+      if (path === '/api/suggest') {
+        if (acctFlags.banned) {
+          return jsonResponse({ error: 'This account is suspended.' }, { status: 403 });
+        }
+        if (await rateLimited(env, request, 'suggest', 20, 3600)) {
+          return tooManyResponse('Too many suggestions from this connection. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await revisableRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if ((row.status || 'published') !== 'published') {
+          return jsonResponse({ error: 'That page is not published.' }, { status: 400 });
+        }
+        // The owner does not suggest to themselves — they just save.
+        if (canEditRow(sess, row)) {
+          return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
+        }
+        const mode = publicEditMode(parseData(row));
+        if (mode !== 'suggest') {
+          return jsonResponse({ error: 'That page is not taking suggestions.' }, { status: 403 });
+        }
+        if (await isProtected(env, type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        const data = b.data;
+        if (!data || typeof data !== 'object') return jsonResponse({ error: 'Nothing to suggest.' }, { status: 400 });
+        if (publicEditTooBig(data)) {
+          return jsonResponse({ error: 'That suggestion is too large to send.' }, { status: 413 });
+        }
+        // Owner-only settings never ride in on a suggestion, approved or not.
+        const storedNow = parseData(row);
+        data.slug = row.slug;
+        data.publicEdit = storedNow.publicEdit;
+        data.starlight = !!storedNow.starlight;
+        delete data.status;
+        delete data.renameFrom;
+        delete data.appearsInFrom;
+        if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
+          return jsonResponse({ error: 'That is the page exactly as it stands — nothing to suggest.' }, { status: 400 });
+        }
+        await ensureSuggestTable(env);
+        const open = await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM suggestions WHERE entity_type=? AND slug=? AND user_id=? AND status='open'"
+        ).bind(type, row.slug, sess.userId).first().catch(() => ({ n: 0 }));
+        if (open && open.n >= SUGGEST_MAX_OPEN_PER_PAGE) {
+          return jsonResponse({ error: 'You already have suggestions waiting on this page.' }, { status: 429 });
+        }
+        let uname = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          uname = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        const res = await env.DB.prepare(
+          `INSERT INTO suggestions (entity_type, slug, user_id, username, note, data, base_updated_at)
+           VALUES (?,?,?,?,?,?,?)`
+        ).bind(type, row.slug, sess.userId, uname,
+               String(b.note || '').trim().slice(0, SUGGEST_NOTE_MAX) || null,
+               JSON.stringify(data), row.updated_at || null).run();
+        await logActivity(env, sess, 'suggest', type, row.slug, row.name || row.slug);
+        ctx.waitUntil(notifyPageEdit(env, {
+          fromId: sess.userId, ownerId: row.owner_id, type, slug: row.slug,
+          what: 'suggested an edit to', name: row.name || row.slug,
+          path: '/suggestions?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(row.slug),
+          origin: url.origin
+        }));
+        return jsonResponse({ ok: true, id: res.meta ? res.meta.last_row_id : null });
+      }
+
+      /* ---- approve / decline / withdraw a suggestion ----
+         Approving is an ordinary save made on the suggester's behalf: the
+         current version is snapshotted into the page's history first, so it
+         shows up in the log and can be rolled back like any other edit. */
+      if (path === '/api/suggestion') {
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10) || 0;
+        const action = String(b.action || '');
+        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        await ensureSuggestTable(env);
+        const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
+          .bind(id).first().catch(() => null);
+        if (!sug) return jsonResponse({ error: 'No such suggestion.' }, { status: 404 });
+        if (sug.status !== 'open') return jsonResponse({ error: 'That suggestion has already been dealt with.' }, { status: 409 });
+        const row = await revisableRow(env, sug.entity_type, sug.slug);
+        if (!row) return jsonResponse({ error: 'That page is gone.' }, { status: 404 });
+        const owns = canEditRow(sess, row);
+
+        if (action === 'withdraw') {
+          if (sug.user_id !== sess.userId && !owns) {
+            return jsonResponse({ error: 'That is not your suggestion.' }, { status: 403 });
+          }
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='withdrawn', decided_at=datetime('now') WHERE id=?"
+          ).bind(id).run();
+          return jsonResponse({ ok: true, status: 'withdrawn' });
+        }
+
+        if (!owns) return jsonResponse({ error: 'Only the page\u2019s creator can answer a suggestion.' }, { status: 403 });
+        const reply = String(b.reply || '').trim().slice(0, SUGGEST_NOTE_MAX) || null;
+        let by = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          by = u ? u.username : null;
+        } catch { /* non-fatal */ }
+
+        if (action === 'decline') {
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='declined', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+          ).bind(reply, by, id).run();
+          ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'declined', reply, sess.userId, url.origin));
+          return jsonResponse({ ok: true, status: 'declined' });
+        }
+
+        if (action !== 'approve') return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is in the trash. Restore it first.' }, { status: 400 });
+        }
+        if (!sess.isAdmin && await isProtected(env, sug.entity_type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        let d;
+        try { d = JSON.parse(sug.data); } catch { d = null; }
+        if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
+        // Re-pin everything that belongs to the page rather than to the
+        // suggestion — the row may have changed since it was written.
+        const now = parseData(row);
+        d.slug = row.slug;
+        d.publicEdit = now.publicEdit;
+        d.starlight = !!now.starlight;
+        delete d._deleted;
+        await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
+        try { await applyRollback(env, sug.entity_type, row, d); }
+        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not apply that suggestion.' }, { status: 500 }); }
+        await env.DB.prepare(
+          "UPDATE suggestions SET status='approved', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+        ).bind(reply, by, id).run();
+        await logActivity(env, sess, 'suggestion-approve', sug.entity_type, row.slug,
+          (d.name || d.displayName || d.title || row.name || row.slug) +
+          (sug.username ? ' (from ' + sug.username + ')' : ''));
+        ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'approved', reply, sess.userId, url.origin));
+        return jsonResponse({ ok: true, status: 'approved', slug: row.slug });
+      }
+
       // ---- roll a page back to one of its own revisions (owner or admin) ----
       // Same operation as /api/admin/rollback, gated on owning the page rather
       // than on being an admin. Outside /api/admin/ because everything under
@@ -5781,23 +6413,59 @@ export default {
           c.page = 'c/' + c.slug + '.html';
         }
         const existing = await getEntityRow(env, 'character', c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        // Ownership, or the page's own public-editing setting. Everything a
+        // page's creator owns — the URL, publishing, deleting, who may edit —
+        // needs 'owner'; 'all' and 'tags' are what somebody else was invited
+        // to do.
+        const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
           const conflict = checkEditConflict(existing, c);
           if (conflict) return conflict;
         }
+        const stored = existing ? parseData(existing) : null;
+        if (perm === 'tags') {
+          // Tags and nothing else. Rather than compare field by field and
+          // hope nothing was missed, the stored page IS the save and only the
+          // tags are taken from what was posted — anything else the client
+          // sent simply never reaches the record.
+          const tags = typeof c.tags === 'string' ? c.tags : '';
+          c = stored;
+          c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
+        }
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing && perm !== 'owner') {
+          // Publishing and unpublishing belong to the creator. Public editing
+          // only ever applies to a published page, so this keeps it published.
+          status = existing.status || 'published';
+          // As does who may edit it: a guest cannot open a page further, and
+          // cannot close it behind themselves either.
+          c.publicEdit = stored.publicEdit;
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+        }
+        if (!c.publicEdit) delete c.publicEdit;
         // Starlight is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/starlight is the only way to set it.
         c.starlight = existing ? !!parseData(existing).starlight : false;
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
+        // "Appears in" derived from collection membership is worked out on
+        // every read and belongs to no row. A client echoing back a page it
+        // read out of characters.json must not freeze it into the record.
+        delete c.appearsInFrom;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
@@ -5818,6 +6486,13 @@ export default {
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
+            what: perm === 'tags' ? 'changed the tags on' : 'edited',
+            name: c.name, path: '/c/' + c.slug, origin: url.origin
+          }));
+        }
         if (renamedFrom) {
           await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
         }
@@ -5930,10 +6605,14 @@ export default {
         // (legacy rows have display-string PK slugs, e.g. "The Academy").
         let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
         if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'collection', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -5976,10 +6655,20 @@ export default {
           ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
           : [];
         if (!c.order.length) delete c.order;
-        const status = c.status === 'draft' ? 'draft' : 'published';
+        let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        if (existing && perm !== 'owner') {
+          status = existing.status || 'published';
+          c.publicEdit = parseData(existing).publicEdit;
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+        }
+        if (!c.publicEdit) delete c.publicEdit;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.starlight = existing ? !!parseData(existing).starlight : false;
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -5988,6 +6677,12 @@ export default {
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'collection', slug: pkSlug,
+            what: 'edited', name: c.displayName, path: '/collection/' + (c.id || pkSlug), origin: url.origin
+          }));
+        }
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
       }
 
@@ -6002,10 +6697,14 @@ export default {
           return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -6016,8 +6715,42 @@ export default {
         s.characters = Array.isArray(s.characters)
           ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
           : [];
-        const status = s.status === 'draft' ? 'draft' : 'published';
+        // The owner's hand-arranged night order: two lists of roster slugs and
+        // nothing else. Like a collection's `order[]` it is deliberately kept
+        // apart from the roster — a slug in here that has left the script just
+        // never matches, and a character it has never heard of is slotted in
+        // by its own night number (see sortNightItems in render-page.js), so
+        // neither list has to be kept in step with the other.
+        s.nightOrder = sanitizeNightOrder(s.nightOrder);
+        if (!s.nightOrder) delete s.nightOrder;
+        s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
+        if (!s.jinxEdits) delete s.jinxEdits;
+        if (existing && perm !== 'owner' && publicEditTooBig(s)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
+        // The rest of what the official app reads out of the exported JSON
+        // (_meta.bootlegger / almanac / hideTitle — the schema lives at
+        // github.com/ThePandemoniumInstitute/botc-release). The background and
+        // logo it shows are the page's own, already validated by
+        // sanitizePageFields, so there is nothing extra to check for those.
+        s.bootlegger = Array.isArray(s.bootlegger)
+          ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
+          : [];
+        if (!s.bootlegger.length) delete s.bootlegger;
+        s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
+          ? s.almanac.trim().slice(0, 300) : '';
+        if (!s.almanac) delete s.almanac;
+        if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
+        let status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        if (existing && perm !== 'owner') {
+          // Publishing, and who may edit, belong to the creator.
+          status = existing.status || 'published';
+          s.publicEdit = parseData(existing).publicEdit;
+        } else {
+          s.publicEdit = sanitizePublicEdit(s.publicEdit);
+        }
+        if (!s.publicEdit) delete s.publicEdit;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.starlight = existing ? !!parseData(existing).starlight : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
@@ -6028,6 +6761,12 @@ export default {
              name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'script', slug: s.slug,
+            what: 'edited', name: s.name || s.slug, path: '/s/' + s.slug, origin: url.origin
+          }));
+        }
         return jsonResponse({ ok: true, slug: s.slug, status });
       }
 

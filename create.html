@@ -232,8 +232,9 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in</label>
+          <label for="appears">Appears in <span class="hint">(optional &mdash; the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
+          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
       </div>
       <div class="fld">
@@ -267,7 +268,8 @@
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Resize trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons. Adjust opens the same frame with the art in your hands &mdash; drag it, and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
@@ -280,6 +282,7 @@
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -351,6 +354,19 @@
       </fieldset>
 
       <fieldset>
+        <legend>Who can edit this page</legend>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Open it up and other people can help &mdash; every change is listed in the page's history, and you can put any earlier version back.</p>
+        <div class="fld" style="margin-bottom:0">
+          <select id="publicEdit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
+            <option value="tags">Tags only &mdash; anyone with an account can change the tags</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -377,7 +393,9 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
@@ -478,6 +496,13 @@
     var artDataURL   = null;
     var artAltDataURL = null;
     var importedImage = null;
+    // The file exactly as it was picked, before the 600px working copy. The
+    // adjuster starts from this so zooming in stays sharp, and so a second
+    // pass at the framing is a fresh placement of the original rather than a
+    // resize of a resize. Null once the art came from an imported JSON's
+    // remote URL — there is no local file then.
+    var artOriginal = null;
+    var artAltOriginal = null;
 
     // ── jinx rows ──────────────────────────────────────────────────
     // A jinx entry can arrive as the editor's {name, align, text} or as
@@ -612,6 +637,9 @@
         jinxDisplay: $('jinxDisplay').value,
         customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim(),
+        // Who may edit the page once it exists (Advanced Options). Owner-only
+        // unless the creator opens it up; the Worker is the enforcer.
+        publicEdit: $('publicEdit').value,
         image: importedImage || ''
       };
     }
@@ -622,36 +650,15 @@
     }
 
     // ── live preview ───────────────────────────────────────────────
-    var PREVIEW_SCRIPT =
-      '<scr' + 'ipt>document.addEventListener("click",function(e){' +
-      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
-      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
-      'var j=e.target.closest&&e.target.closest(".jinx-drop-bar");' +
-      'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
-      'var c=e.target.closest&&e.target.closest(".json-copy");' +
-      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
-      '});' +
-      // Fit the title to width (mirrors fitCharTitle in render.js).
-      '(function(){function f(){var e=document.querySelector(".gen-title");if(!e)return;' +
-      'e.style.whiteSpace="nowrap";var vw=window.innerWidth||800,m=vw<=420?66:vw<=640?78:144;' +
-      'e.style.fontSize=m+"px";var a=e.clientWidth;' +
-      'if(a&&e.scrollWidth>a){e.style.fontSize=Math.max(m*(a*0.99)/e.scrollWidth,14).toFixed(1)+"px";}}' +
-      'f();window.addEventListener("resize",f);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(f);})();</scr' + 'ipt>';
+    // Written once, then patched in place by assets/char-preview.js: assigning
+    // srcdoc on every keystroke reloads the frame, which flashes black and
+    // throws away the preview's scroll position.
+    var preview = window.CharPreview.mount($('preview'), { siteRoot: SITE_ROOT });
 
     function update() {
       var d = gather();
       if (artAltDataURL) d.imageAlt = artAltDataURL;
-      var inner = window.renderCharacter(d, artDataURL || importedImage || '');
-      var doc =
-        '<!doctype html><html><head><meta charset="utf-8">' +
-        '<base href="' + SITE_ROOT + '">' +
-        '<link rel="stylesheet" href="assets/styles.css">' +
-        '</head><body>' +
-        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
-        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
-        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">' + inner + '</main>' + PREVIEW_SCRIPT + '</body></html>';
-      $('preview').srcdoc = doc;
+      preview.paint(window.renderCharacter(d, artDataURL || importedImage || ''));
     }
     var deb;
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
@@ -712,6 +719,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artDataURL = url; importedImage = null;
           var th = $('artthumb'); th.src = url; th.style.display = 'block';
@@ -725,6 +733,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artAltOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artAltDataURL = url;
           var th = $('artAltThumb'); th.src = url; th.style.display = 'block';
@@ -734,7 +743,7 @@
       reader.readAsDataURL(file);
     });
     $('artAltClear').addEventListener('click', function () {
-      artAltDataURL = null; $('artAlt').value = '';
+      artAltDataURL = null; artAltOriginal = null; $('artAlt').value = '';
       $('artAltThumb').style.display = 'none';
       $('artAltStdWrap').style.display = 'none';
       $('artAltClear').style.display = 'none'; update();
@@ -761,6 +770,35 @@
     $('artAltStd').addEventListener('click', function () {
       standardizeInto(function () { return artAltDataURL; },
         function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltStd');
+    });
+
+    // ── the same frame, placed by hand (assets/art-adjust.js) ──────
+    // Opens on the file as it was picked, not on the working copy, so zooming
+    // in is sharp and a second visit re-places the original instead of
+    // resizing an already-resized icon.
+    function adjustInto(getSrc, setUrl, thumbId, btnId, title) {
+      var src = getSrc();
+      if (!src || !window.ArtAdjust) return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true;
+      window.ArtAdjust.open(src, { title: title }).then(function (out) {
+        btn.disabled = false;
+        if (!out) return;                 // cancelled — leave the art alone
+        setUrl(out); $(thumbId).src = out; update();
+        btn.textContent = '✓ Adjusted';
+        setTimeout(function () { btn.textContent = label; }, 1400);
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert((err && err.message) || 'That image could not be adjusted here.');
+      });
+    }
+    $('artAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artOriginal || artDataURL || $('artthumb').src; },
+        function (v) { artDataURL = v; }, 'artthumb', 'artAdjust', 'Adjust the icon');
+    });
+    $('artAltAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artAltOriginal || artAltDataURL || $('artAltThumb').src; },
+        function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltAdjust', 'Adjust the alternate icon');
     });
 
     // ── R2 image upload via the site Worker ────────────────────────
@@ -816,6 +854,9 @@
       var msg = $('importmsg');
       if (imgUrl) {
         importedImage = imgUrl;
+        // An imported icon is somebody else's URL, not a file on this machine:
+        // the adjuster has to work from the copy loaded into the canvas.
+        artOriginal = null;
         msg.className = 'work'; msg.textContent = 'Imported. Trying to load the icon from ' + imgUrl + ' …';
         loadImageToCanvas(imgUrl, true).then(function (url) {
           artDataURL = url; var th = $('artthumb'); th.src = url; th.style.display = 'block';

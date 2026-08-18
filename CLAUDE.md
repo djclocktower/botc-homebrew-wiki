@@ -35,7 +35,13 @@ Key dynamic behavior:
   The `.html` form 301-redirects to the clean URL. Legacy `/script-view?s=`
   301-redirects to `/s/{slug}`. **Collection URLs use the kebab `id`**, not the
   PK `slug` (legacy rows have display-string slugs like `"The Academy"`);
-  `findCollectionRow()` resolves either.
+  `findCollectionRow()` resolves either. Script and collection pages carry an
+  **Edit button in the page itself** (`ownerBar()` in render-page.js) as well
+  as the pencil in the top bar — but only for a reader who may actually edit
+  it: the Worker passes `editHref` in when `canEditRow()` says yes and an
+  empty one otherwise, which is safe because SSR responses are `no-store`.
+  The pencil stays unconditional (the API is the enforcer); this one sits in
+  the page, where a reader would take it as an invitation.
 - `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
   same `pageShell()`); `/news` itself is the static `news.html` index. News
   articles are admin-written and live in their own `news` table.
@@ -58,8 +64,12 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page), **wiki pages**
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` — the whole edge list for
-  the `/jinxes` page; `POST /api/jinx` — add/edit/remove one), admin tools (dashboard, full activity log, report,
-  revisions/rollback, comment moderation, Starlight, wiki lock, backup, seed).
+  the `/jinxes` page; `POST /api/jinx` — add/edit/remove one), admin tools
+  (dashboard, full activity log, report, revisions/rollback, comment
+  moderation, Starlight, wiki lock, backup, seed), plus the public page
+  history (`/api/page-history`, `/api/page-revision`), owner rollback
+  (`/api/page-rollback`) and suggested edits (`/api/suggest`,
+  `/api/suggestions`, `/api/suggestion`) — see "Public editing" below.
   Writes are ownership-checked (`owner_id`, admins bypass). All routes are
   listed in the header comment of `worker/worker.js`.
   **`POST /api/report-broken-link` is the one write that does not need a
@@ -176,7 +186,32 @@ assets/
                        mounts its own (no page order there — the creator feed is
                        newest-first, so it stays on A–Z). Reads the card
                        data-* attributes renderRosterCards() writes — one filter
-                       implementation, not one per page.
+                       implementation, not one per page. The Script Builder's
+                       Add sidebar mounts it too, over its own compact rows
+                       rather than cards: sectionSel/innerSel/cardSel/
+                       sectionCountSel/abilitySel name the markup, `search`
+                       hands it the name box so the chips and the text box
+                       narrow one list instead of fighting, and `partialOn`
+                       leaves Partial characters visible (hiding one there
+                       would put it out of reach of the script you are
+                       building).
+  jinx-editor.js       One script's jinxes: switch off one the characters
+                       carry, or write one only this script has. Stores
+                       `jinxEdits{off[],add[]}` and resolves through
+                       PageRender.scriptJinxes, which the page and the export
+                       also go through. Mounted by script.html and
+                       publish-script.html.
+  night-order-editor.js  The two night lists, arranged by hand: drag a row
+                       (pointer events, so mouse and touch are one path) or use
+                       ▲▼. Mounted by script.html AND publish-script.html over
+                       PageRender.nightItems, so both write the same
+                       `nightOrder` and neither can disagree with the page. The
+                       dragged row leaves the flow (position:fixed) and a
+                       placeholder holds its slot — lifting it but leaving it
+                       IN the flow re-shifts the rows under the pointer on
+                       every insert and walks the wrong character to the
+                       bottom. On a phone the drag starts from the grip so the
+                       list can still be scrolled with a finger.
   classify.js          Partial / Standard / Starlight rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Starlight weighting used by
@@ -195,6 +230,13 @@ assets/
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
                        paths — nothing a writer types can become raw HTML.
+                       safeHref() takes http(s), mailto, site-relative AND a
+                       bare domain ('example.com' -> https), because writers
+                       type those constantly and used to get a link to a wiki
+                       page that does not exist. The domain test is narrow on
+                       purpose — dotted labels ending in a letters-only suffix
+                       that is not a file extension — so 'scripts', 'c/slug'
+                       and a stray 'page.html' all stay site-relative.
                        Browser + Worker. Used by /p/, news, custom boxes and
                        (through render-news) the announcement banner.
   render-news.js       News article shape (head, hero, cards) around
@@ -203,6 +245,32 @@ assets/
                        In the Worker it gets the engine through init().
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
+  char-preview.js      The live preview iframe on create.html + edit.html.
+                       Written ONCE and then patched in place (only <main>'s
+                       contents are replaced): assigning `srcdoc` per keystroke
+                       reloads the frame, which flashed the frame's dark
+                       background black on every edit and threw away the
+                       preview's scroll position. The in-frame script keeps the
+                       JSON box, the jinx dropdown and the title fit working;
+                       __cpFit() is re-run after each repaint. Browser only.
+  art-normalize.js     The "Resize icon" button: trims the transparent margin
+                       to find the figure and scales it to 70% of the 591×591
+                       frame. artTrimBox() (the trim on its own) is exported
+                       for art-adjust.js. Browser only — canvas.
+  art-adjust.js        "Adjust by hand": the same frame with the art in your
+                       hands. Drag to move (pointer events, so mouse and touch
+                       are one path), a slider or a pinch for how much of the
+                       token the figure fills, a rotate slider, Start over.
+                       Opens on the automatic answer, so every change is a
+                       nudge from what Resize would have given you. Both
+                       editors pass it the file AS PICKED, not the 600px
+                       working copy, so zooming in stays sharp and a second
+                       visit re-places the original instead of resizing an
+                       already-resized icon. ArtAdjust.open(src) resolves with
+                       a 591×591 PNG or null (cancelled), and rejects only
+                       when the canvas can't be read back — art hosted on
+                       another site taints it, and the editors say so.
+                       Styles are .aa-* in styles.css; this file is DOM only.
   redesign-create.css/.js  The shared layout of the two character editors
                        (create.html + edit.html). The JS groups the flat field
                        run into Basics / The Page / Tags sections, folds credits,
@@ -222,7 +290,19 @@ assets/
   night-order.json     Official night-order positions, only characters that wake.
                        Generated from GrayPockets/Released-as-Homebrew (the
                        `source` field inside the file says where); roles.json has
-                       no night order, which is why this is separate.
+                       no night order, which is why this is separate. Read by
+                       night-order-picker.js AND official-roles.js.
+  official-roles.js    roles.json + night-order.json -> wiki character objects
+                       for the official roster ('off-{id}' slugs). The one
+                       conversion, shared by the Worker (SSR /s/ pages),
+                       script.html and publish-script.html — it used to be
+                       copied per caller, and every copy left firstNight and
+                       otherNight at 0 because roles.json has no positions, so
+                       official characters were silently absent from a script
+                       page's Night Order box. Also cleans `:reminder:` (a
+                       token-placement marker with nothing to place in a list)
+                       out of the official night reminders. Browser + Worker;
+                       the two JSON files are handed in, never fetched here.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -308,6 +388,21 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
+                       The Add sidebar holds the official roster as well as the
+                       homebrew one, told apart by a Source chip pair;
+                       Randomize stays homebrew-only on purpose (180 official
+                       characters would swamp the pool). Export goes through
+                       PageRender.buildPageExport, the same call the published
+                       page's JSON box makes, so the two cannot drift.
+                       The Add sidebar carries the shared filter box (team/tag
+                       chips, creator, sort) over the name search, so it is
+                       built ONCE and filtered in place — adding a character
+                       only repaints the ticks, because re-rendering the list
+                       would throw away whatever the reader filtered to. A
+                       Night Order panel sits under the roster, the same
+                       widget publish-script.html uses.
+                       Jinx and Night Order panels sit under the roster
+                       (shared widgets — see "Jinxes" and "Night order").
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -317,7 +412,9 @@ publish-script.html    Script publishing page: name/author/tagline/version/
                        already renders in. Moves are within a team only (the
                        page draws one section per team) and roster slugs this
                        wiki has no character for are carried along untouched,
-                       never dropped. Publish + Save as
+                       never dropped. A Night Order panel arranges the two
+                       night lists the same way (see "Night order" below).
+                       Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
@@ -379,11 +476,21 @@ tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
 login.html, account.html, dashboard.html, reset-password.html
+                       account.html shows the newest 10 of Your Recent Edits
+                       behind a "Show all N edits" toggle — a busy month used
+                       to put fifty lines between the top of the page and the
+                       settings below it.
 text-editor.html       /text-editor — admin-only. Every string the SITE writes
                        about itself, in one searchable list: filter to the em
                        dashes / curly quotes / any character you type, sort by
                        page or by length, rewrite any of it. See "System text"
                        below. Linked from a dashboard card; not in any nav.
+suggestions.html       /suggestions?type=&slug= — one page's suggested edits,
+                       with the owner's Approve/Decline; /suggestions with no
+                       page is the owner's inbox of everything waiting.
+history.html           /history?type=&slug= — one page's edit log: who changed
+                       what and when, with the owner's rollback. Public for a
+                       published page (drafts have no history at all).
 drafts.html            /drafts — your own unpublished pages as cards (the same
                        renderRosterCards markup the browse and collection pages
                        use, with the shared filter box). Characters come from
@@ -493,6 +600,20 @@ as a SEPARATE list from membership on purpose: a slug in `order[]` that is no
 longer a member just never matches, and a member missing from it falls to the
 end of its team alphabetically, so neither list has to be kept in step with the
 other. Team grouping always wins over it (the page draws one section per team).
+
+A character listed in a collection's `include[]` gets that collection as its
+**"Appears in"** without anyone typing it — `applyCollectionAppearsIn()` in
+worker.js fills `appearsInFrom` (up to 3, `{name, id}`) on read, for characters
+whose own `appearsIn` is blank, in `buildPublicJSON` and on the SSR `/c/` page.
+It is a SEPARATE field on purpose: writing it into `appearsIn` would feed the
+`match[]` rule that resolves membership, so a collection whose match term
+happened to equal another collection's name would start swallowing that
+collection's characters. Nothing is stored (the save handler deletes any
+`appearsInFrom` a client sends back), so removing a character from a collection
+takes the line off its page. `render.js`'s `appearsInRow()` prints the typed
+line or the derived links; charpage.js's `linkAppearsIn()` leaves a row that is
+already linked alone.
+
 Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
@@ -503,6 +624,179 @@ background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## Night order (script pages)
+
+Two questions, answered in two different places, and keeping them apart is the
+whole design:
+
+- **Who acts** belongs to the character. A character is on a night list because
+  its own `firstNight` / `otherNight` is above zero — nothing on the script can
+  add or remove anyone. Official characters get their positions from
+  `assets/night-order.json` through `official-roles.js`; without that merge
+  they carry 0, which is the wiki's way of saying "does not wake", and they
+  were missing from every script page's Night Order box.
+- **What order** belongs to the script's owner, as
+  `nightOrder: {first: [slug], other: [slug]}` in the script's `data` JSON
+  (`sanitizeNightOrder()` in worker.js caps it at 200 slugs a list and drops
+  the key entirely when both are empty).
+
+`PageRender.nightItems(entries, nightOrder)` in render-page.js is the single
+source of truth: the SSR page renders through it, and both arranging panels —
+the Script Builder's and publish-script.html's, one shared widget in
+`night-order-editor.js` — arrange through it, so the owner's list IS the
+reader's list. A character the arrangement has never seen — added to the roster after
+it was last saved — is **not** dumped at the end: `sortNightItems()` slots it
+in after the last arranged character that acts before it does, by night
+number. The editor re-gathers the full order on every save, but only for a
+script somebody has actually arranged; an untouched script stores no key and
+keeps following the characters' own numbers, so a creator fixing a character's
+wake position still moves it everywhere that never overrode it.
+
+## Jinxes on one script
+
+A jinx normally belongs to the characters — both character editors write it
+into the character's own `jinxes`, and any script holding both ends shows it.
+That is right for a rule the character carries everywhere, and no help to a
+script that wants to drop one, or to add a rule that only holds here. So a
+script may carry `jinxEdits: {off: ["slugA|slugB"], add: [{a, b, text}]}`;
+`sanitizeJinxEdits()` in worker.js caps it and drops the key when it is empty.
+
+`PageRender.scriptJinxes(entries, edits)` is the single source of truth: the
+page renders through it, `jinx-editor.js` edits through it, and the exported
+JSON is built from it. **Nothing is written back to the characters** — another
+script keeps whatever they say. The pair key is the two slugs sorted and
+joined with `|`, so it reads the same whichever end the jinx was written on.
+
+The export is the fiddly half, because the official app reads jinxes off the
+CHARACTERS. `jinxExportMap()` rebuilds the jinx list of only those characters
+whose jinxes actually changed — a character the script never touched exports
+byte-for-byte as before, and a jinx it carries with someone who is *not* on
+this script is left alone (that is part of the character, not of this script).
+An official character normally exports as a bare id; if this script gives it a
+jinx, the bare id has nowhere to carry it, so that one — and only that one —
+is written out in full instead.
+
+## The official app's script JSON (`_meta`)
+
+The export follows the schema at
+`github.com/ThePandemoniumInstitute/botc-release`. Beyond `name`/`author`/
+`logo` it carries:
+
+- **`background`** — the script's own page background (`theme.background`),
+  as an absolute URL. One upload serves both the wiki page and the app.
+- **`hideTitle`**, **`almanac`**, **`bootlegger[]`** — set on publish-script's
+  "In the Official App" panel. Bootlegger rules are shown on the script page
+  too, as *House Rules*, or a reader would only find them inside the JSON.
+- **`firstNight` / `otherNight`** — the arranged night order as a list of ids.
+  Only written for a script whose owner arranged one: left out, the app orders
+  the night by each character's own number and reaches the same answer, so
+  writing it anyway would freeze today's answer into the file.
+
+The night is not only characters — dusk opens it, dawn closes it, and the
+first night has the minion and demon info steps in the middle. Those live in
+`assets/night-order.json` under `meta`, positioned from their neighbours on
+the official sheet (minion info between the Magician and the Snitch, demon
+info between the Summoner and the King). Whoever loads that file hands them to
+`PageRender.setNightMeta()`; **without them the sequences are not written at
+all**, rather than publish a night order those steps are missing from.
+
+## Public editing, and page history
+
+A page belongs to whoever made it. Its creator may nevertheless open it to
+other people, stored on the page's `data` as `publicEdit`:
+
+- **`'all'`** — anyone with an account may edit the page.
+- **`'tags'`** — anyone with an account may change the tags, and nothing else.
+  Characters only: scripts and collections have no tags, so `'tags'` on one of
+  those is treated as closed.
+- **`'suggest'`** — anyone with an account may PROPOSE a version, which the
+  creator approves or declines. This is not write access: `permCanWrite()` is
+  what every save handler asks, and 'suggest' is not one of the writing modes,
+  so a suggestion can never reach a row by being mistaken for an edit.
+
+`editPermission(env, sess, type, row)` in worker.js is the single answer to
+"what may this session do to this row": `'owner'` (the owner or an admin),
+`'all'`, `'tags'`, or `''`. Three things are never open whatever the setting
+says — a **draft** (nobody else can even see it), an **admin-protected** page,
+and a page whose creator never opted in. `canEditRow()` still means ownership,
+and everything that belongs to the creator goes through it: renaming,
+publishing, unpublishing, deleting, rolling back, and the setting itself.
+`/api/publish` and `/api/delete` are deliberately left on `canEditRow`.
+
+The save handlers enforce the rest:
+
+- **Tags-only writes are not diffed, they are rebuilt.** The stored page *is*
+  the save and only `tags` is taken from what was posted, so nothing else a
+  client sends can reach the record — no field-by-field comparison to get
+  wrong. Tags are capped at `PUBLIC_EDIT_TAGS_MAX`.
+- A non-owner save carries the stored `publicEdit`, `starlight` and `status`
+  forward: a guest can neither open a page further nor close it behind
+  themselves, and cannot publish or unpublish it.
+- A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413). The
+  owner's is not size-checked — this is about a stranger, not about the format.
+- The editor makes the **name read-only** for a guest, because renaming moves
+  the URL and that stays with the creator; the rename path would refuse it
+  anyway, and refusing the whole save over a retitled page reads as a bug.
+- Every public edit sends the owner a notification (`notifyPageEdit`), the
+  same `dms` row comments use, so it rides the unread count and the mail flag
+  on "My Account".
+
+**History is public and drafts have none.** `saveRevision()` skips any row
+whose stored status is not `published`: a draft is saved over constantly while
+it is being written and none of those versions is one anybody wants back, so a
+page's history starts at the version that went live. What is snapshotted is
+the version being *replaced*, so taking a published page back to draft still
+records what was live. `REVISIONS_KEEP` is 50.
+
+- `GET /api/page-history` — the log: one entry per revision with who saved
+  over it, when, and **what changed** (`diffFieldLabels` compares the top-level
+  keys of the two JSON blobs; `FIELD_LABELS` names them for readers). Public
+  for a published page, owner-only otherwise.
+- `GET /api/page-revision` — one entry in detail: every changed field with its
+  before and after text (`diffFieldValues`).
+- `POST /api/page-rollback` — put a version back. Owner or admin, and it
+  snapshots the current version first, so a rollback is itself undoable.
+
+## Suggested edits
+
+A page set to `publicEdit: 'suggest'` collects proposed versions in the
+lazily-created `suggestions` table (`entity_type`+`slug`, the suggester, an
+optional `note`, the whole proposed page as `data`, `base_updated_at`, and a
+`status` of open/approved/declined/withdrawn). A suggestion is the same object
+the editor would have saved — stored, not applied.
+
+- `POST /api/suggest` — propose one. Refused for the page's own owner (they
+  just save), for a page not in suggest mode, for a protected or unpublished
+  page, and for a proposal identical to the page as it stands. Owner-only
+  fields (`publicEdit`, `starlight`, `status`, `slug`) are stripped on the way
+  in, so nothing can ride along and be approved by accident.
+- `GET /api/suggestions?type=&slug=` — a page's suggestions, each with the
+  field-by-field difference from the page **as it stands now** (not as it stood
+  when written) and a `stale` flag when those differ. Visible to the owner, to
+  admins, and to each suggester for their own.
+- `GET /api/suggestions?inbox=1` — everything open on pages this account owns,
+  which is what the account page's panel and `/suggestions` with no page use.
+- `POST /api/suggestion` — `approve` (owner/admin), `decline` (owner/admin,
+  with an optional reply) or `withdraw` (the suggester). **Approving is an
+  ordinary save**: the current version is snapshotted with `saveRevision()`
+  first, so the approval shows up in the page's history and can be rolled back
+  like any other edit, and owner-only fields are re-pinned from the row rather
+  than taken from the suggestion.
+
+`suggestions.html` serves both `/suggestions?type=&slug=` (one page's queue,
+with Approve / Decline / Withdraw) and `/suggestions` (the owner's inbox).
+The suggester's side is `edit.html` in suggest mode: the full form, a note box,
+the name locked and **the art inputs disabled** — an upload would write into
+the page's own R2 slot, which is the one thing an unapproved suggestion must
+not touch. Both sides are notified through the same `dms` row comments use.
+
+`history.html` (`/history?type=&slug=`) is the reader-facing page: the current
+version, every edit under it, "What changed" per entry, and "Put this version
+back" for the owner. Linked from the page itself (only an opened page advertises
+itself, via `openEditRow()` in render.js and `openEditRows()` in
+render-page.js), from the account page's row actions, and from the guest banner
+in the editor.
 
 ## Renaming a character (the old link keeps working)
 

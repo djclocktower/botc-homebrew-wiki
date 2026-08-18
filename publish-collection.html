@@ -267,6 +267,22 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- Who else may edit this page -->
+    <details class="sb-details" id="sb-open-sec">
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you say otherwise &mdash; open it up and anyone with an account can help.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-public-edit">Editing</label>
+          <select id="sb-public-edit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="suggest">Suggestions &mdash; anyone can propose an edit, you approve it</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+        <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
       <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
@@ -685,6 +701,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           include: include.slice(),
           exclude: exclude.slice(),
           order: order.slice(),
+          publicEdit: $('sb-public-edit').value,
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
@@ -782,6 +799,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-strat-evil').value = c.strategyEvil || '';
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
+          // Who else may edit this page (enforced by the Worker, not by the form).
+          $('sb-public-edit').value = (c.publicEdit === 'all' || c.publicEdit === 'suggest') ? c.publicEdit : '';
+          if (c.publicEdit) $('sb-open-sec').open = true;
           loadPages(EDIT_KEY);
           include = (c.include || []).slice();
           exclude = (c.exclude || []).slice();

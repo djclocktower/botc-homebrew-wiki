@@ -1,6 +1,13 @@
 {
   "note":"Official character night-order positions, used by the \"acts directly after\" picker on create.html / edit.html (assets/night-order-picker.js). Only characters that wake are listed. Regenerate from the source below if the official night order changes.",
   "source":"https://github.com/GrayPockets/Released-as-Homebrew — Homebrew/Released_Homebrew.json, by GrayPockets",
+  "metaNote":"The non-character steps of the night sheet, for the _meta.firstNight / _meta.otherNight arrays the official app reads (see the botc-release schema). Positions are derived from the neighbours on the official night sheet, which are in `characters` above: Minion Info sits between the Magician (18) and the Snitch (21); Demon Info & Bluffs sits between the Summoner (23) and the King (25). Dusk opens and dawn closes both nights. If the official sheet moves these, fix the numbers here.",
+  "meta": [
+    {"id":"dusk","firstNight":0,"otherNight":0},
+    {"id":"minioninfo","firstNight":19},
+    {"id":"demoninfo","firstNight":24},
+    {"id":"dawn","firstNight":9999,"otherNight":9999}
+  ],
   "characters": [
     {"name":"Acrobat","team":"townsfolk","otherNight":22},
     {"name":"Al-Hadikhia","team":"demon","otherNight":51},

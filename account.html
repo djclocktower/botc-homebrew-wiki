@@ -112,6 +112,7 @@
   .mini-btn.publish { color: #2a6e2a; border-color: rgba(42,110,42,.4); }
   .mini-btn.draft   { color: #7a5c18; border-color: rgba(154,110,20,.4); }
   .mini-btn.del     { color: #9a2c2c; border-color: rgba(154,44,44,.4); }
+  .mini-btn.hist    { color: #234f74; border-color: rgba(35,79,116,.4); text-decoration: none; }
   .mini-btn:hover   { background: rgba(255,253,248,.9); }
   .mini-btn:disabled{ opacity: .5; cursor: default; }
   .empty-note { font-size: .9rem; opacity: .75; padding: 6px 0; }
@@ -136,6 +137,17 @@
   .feed .act { font-weight: 700; color: var(--maroon); }
   .feed .when { font-size: .75rem; opacity: .65; margin-left: 6px; white-space: nowrap; }
   .feed a { color: var(--maroon); }
+  /* Only the first FEED_SHOWN entries are on screen until "Show all" is
+     pressed — a busy month used to put 50 lines between the top of the page
+     and the account settings below. */
+  .feed li.feed-hidden { display: none; }
+  .feed-toggle {
+    display: none; margin-top: 10px;
+    font-size: .82rem; font-weight: 700; color: var(--maroon);
+    background: rgba(255,253,248,.5); border: 1px solid rgba(122,45,47,.4);
+    border-radius: 5px; padding: 6px 12px; cursor: pointer;
+  }
+  .feed-toggle:hover { background: rgba(255,253,248,.95); }
 
   /* ---- settings forms ---- */
   .set-field { margin-bottom: 14px; }
@@ -281,6 +293,15 @@
         <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
       </div>
 
+      <!-- suggested edits waiting on pages you own -->
+      <div class="panel" id="sug-panel" style="display:none">
+        <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
+        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
+          Changes other people have proposed to your pages. Nothing is live until you approve it.
+        </p>
+        <table class="row-list" id="sug-table"></table>
+      </div>
+
       <!-- published pages -->
       <div class="panel">
         <h3>Your Pages <span class="count-pill" id="n-pages">0</span></h3>
@@ -292,6 +313,7 @@
       <div class="panel">
         <h3>Your Recent Edits <span class="count-pill" id="n-edits">0</span></h3>
         <ul class="feed" id="edit-feed"></ul>
+        <button type="button" class="feed-toggle" id="edits-toggle" aria-expanded="false"></button>
         <div class="empty-note" id="edits-empty" style="display:none">No activity yet.</div>
       </div>
 
@@ -566,6 +588,10 @@
       if (isDraft) {
         actions += '<button class="mini-btn publish" data-act="publish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Publish</button>';
       } else {
+        // A published page has a history; a draft does not (drafts are not
+        // snapshotted — see saveRevision in worker.js).
+        actions += '<a class="mini-btn hist" href="history?type=' + type +
+          '&slug=' + encodeURIComponent(r.slug) + '">History</a>';
         actions += '<button class="mini-btn draft" data-act="unpublish" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Move to Drafts</button>';
       }
       actions += '<button class="mini-btn del" data-act="delete" data-type="' + type + '" data-slug="' + esc(r.slug) + '">Delete</button>';
@@ -642,6 +668,53 @@
           '<span class="when">' + fmtDate(e.ts) + '</span></li>';
       }).join('');
       $('edits-empty').style.display = edits.length ? 'none' : 'block';
+      collapseFeed();
+    }
+
+    // Recent edits: show the newest FEED_SHOWN and hide the rest behind a
+    // toggle, so the settings below stay a short scroll away however much you
+    // have been editing. Re-run on every load(), and it re-collapses — the
+    // list is rebuilt from scratch each time.
+    var FEED_SHOWN = 10;
+    /* Suggestions waiting on pages this account owns. Its own request rather
+       than part of /api/account: the panel is empty for almost everybody, and
+       an account page should not pay for a join across four tables to find
+       that out — the call is cheap and it hides itself when there is nothing. */
+    function loadSuggestions() {
+      fetch('/api/suggestions?inbox=1', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          var rows = (res && res.inbox) || [];
+          if (!rows.length) return;
+          $('n-sug').textContent = rows.length;
+          $('sug-panel').style.display = '';
+          $('sug-table').innerHTML = rows.map(function (r) {
+            var href = 'suggestions?type=' + encodeURIComponent(r.entity_type) +
+              '&slug=' + encodeURIComponent(r.slug);
+            return '<tr><td><span class="row-name"><a href="' + href + '">' +
+                esc(r.name || r.slug) + '</a></span>' +
+                (r.note ? '<div class="row-date" style="opacity:.8">&ldquo;' + esc(r.note) + '&rdquo;</div>' : '') + '</td>' +
+              '<td class="row-type">from ' + esc(r.username || 'someone') + '</td>' +
+              '<td class="row-date">' + fmtDate(r.ts) + '</td>' +
+              '<td class="row-actions"><a class="mini-btn edit" href="' + href + '">Review</a></td></tr>';
+          }).join('');
+        })
+        .catch(function () { /* the panel just stays hidden */ });
+    }
+
+    function collapseFeed() {
+      var items = Array.prototype.slice.call($('edit-feed').children);
+      var btn = $('edits-toggle');
+      if (items.length <= FEED_SHOWN) { btn.style.display = 'none'; return; }
+      setFeedOpen(false);
+      btn.style.display = 'inline-block';
+      function setFeedOpen(open) {
+        items.forEach(function (li, i) { li.classList.toggle('feed-hidden', !open && i >= FEED_SHOWN); });
+        btn.textContent = open ? 'Show fewer' : 'Show all ' + items.length + ' edits';
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.setAttribute('data-open', open ? '1' : '0');
+      }
+      btn.onclick = function () { setFeedOpen(btn.getAttribute('data-open') !== '1'); };
     }
 
     // list action buttons (publish / unpublish / delete / edit)
@@ -851,6 +924,7 @@
           renderProfile(data.profile);
           renderLists(data);
           loadMyMessages();
+          loadSuggestions();
         })
         .catch(function(){
           $('gate').style.display = 'block';
