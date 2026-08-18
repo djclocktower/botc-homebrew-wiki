@@ -766,15 +766,27 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   would need a fixed fill and would go wrong on every surface that changes
   text colour (theme kits, draft bars, the dark topbar). The span it lives in
   is empty — the wreath *is* the element's background.
-  Two details there are load-bearing. The element is `display: inline` with a
+  Three details there are load-bearing. The element is `display: inline` with a
   left **padding** for its width, never an inline-block with a width: an
   inline-block is a line break opportunity, so on a narrow collection tile the
   wreath wraps onto a line of its own and leaves the hairline stranded at the
   end of the line above (this was measured, not guessed — it is the same
-  reasoning as `.coll-mark-sep` below). And the wreath's SVG is inlined as a
+  reasoning as `.coll-mark-sep` below). Its size is a **fixed 15px**, not a
+  multiple of the surrounding text: the wreath is *outlined*, and its leaves
+  need about that much room before the strokes between them fall below a pixel
+  and smear the whole thing into a ring — scaled to the text it would land at
+  11px on a collection tile. `font-size` sets the height (an inline box takes
+  its height from the font's content area) and `padding-left` the width, so the
+  two always move together. The one cost is that a 15px mark on 12.8px tile
+  text raises that line box by ~3px; every tile in a grid row grows with it, so
+  they stay aligned. And the wreath's SVG is inlined as a
   `data:` URI in styles.css, so it carries no `"`, `#` or `%`; the shape is
-  generated, not hand-drawn — re-tune and re-emit it with
-  `node migration/curata-wreath.js` rather than editing path data.
+  generated, not hand-drawn — two mirrored branches of stem arc, leaves and a
+  tied knot, re-tuned and re-emitted with `node migration/curata-wreath.js`
+  rather than edited as path data. That script's `VIEWBOX` is deliberately
+  tight around the artwork *including stroke*: the mark is drawn with
+  `mask-size: contain`, so slack in the viewBox shows up as the wreath
+  rendering smaller than the 15px it was asked for.
   On collection tiles the mark sits after the character count behind a
   hairline `.coll-mark-sep`.
   On a `/c/` page it sits at the end of the **Tags** row behind the same
