@@ -381,15 +381,31 @@ function tooManyResponse(message, retryAfterSec) {
 }
 
 // Per-account write limits. Generous enough that no real contributor will
-// notice — mass-upload.html legitimately loops /api/upload — but low enough
-// that one script cannot fill R2 or the characters table overnight.
+// notice, but low enough that one script cannot fill R2 or the characters
+// table overnight.
+//
+// The first numbers here (60 uploads, 40 characters an hour) were set by
+// guessing at what a "big" import looks like, and the guess was far too small.
+// A homebrew collection on this wiki is routinely 30–40 characters and the
+// largest are 110–155, and mass-upload.html spends TWO uploads per character
+// when the source JSON carries alt art. So a perfectly ordinary 30-character
+// import used its whole upload allowance on the last row, and anything over 40
+// characters died partway through with every remaining row going red. That is
+// not a flood — that is the tool being used exactly as intended. Size these off
+// the biggest real collection (~155 characters, ~310 uploads) with headroom, so
+// one sitting imports one collection.
+//
+// The per-image cap (8 MB, and mass-upload re-encodes to 600 px first) is what
+// actually bounds R2, not this counter.
 const WRITE_LIMITS = {
-  upload:     { bucket: 'upload',     limit: 60, window: 3600, msg: 'You have uploaded a lot of images in the last hour. Take a short break and try again.' },
-  character:  { bucket: 'wchar',      limit: 40, window: 3600, msg: 'You have saved a lot of characters in the last hour. Take a short break and try again.' },
-  collection: { bucket: 'wcoll',      limit: 20, window: 3600, msg: 'You have saved a lot of collections in the last hour. Take a short break and try again.' },
-  script:     { bucket: 'wscript',    limit: 20, window: 3600, msg: 'You have saved a lot of scripts in the last hour. Take a short break and try again.' },
-  wikipage:   { bucket: 'wpage',      limit: 20, window: 3600, msg: 'You have saved a lot of pages in the last hour. Take a short break and try again.' },
-  publish:    { bucket: 'wpublish',   limit: 60, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' }
+  upload:     { bucket: 'upload',     limit: 400, window: 3600, msg: 'You have uploaded a lot of images in the last hour. Take a short break and try again.' },
+  character:  { bucket: 'wchar',      limit: 200, window: 3600, msg: 'You have saved a lot of characters in the last hour. Take a short break and try again.' },
+  collection: { bucket: 'wcoll',      limit: 40,  window: 3600, msg: 'You have saved a lot of collections in the last hour. Take a short break and try again.' },
+  script:     { bucket: 'wscript',    limit: 40,  window: 3600, msg: 'You have saved a lot of scripts in the last hour. Take a short break and try again.' },
+  wikipage:   { bucket: 'wpage',      limit: 40,  window: 3600, msg: 'You have saved a lot of pages in the last hour. Take a short break and try again.' },
+  // Importing as drafts and then publishing them from the account page is one
+  // workflow, so this has to clear the same bar the character limit does.
+  publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' }
 };
 
 // Admins are exempt: they run the bulk tools, and locking an admin out mid
