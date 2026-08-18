@@ -6,16 +6,21 @@
 (function () {
   var TAG_INFO = {
     'Alignment Change': 'Can change a player’s alignment, or make good and evil players swap sides.',
+    'Binary Info': 'Its information has only two possible answers — a yes/no, or a choice between two things.',
     'Character Change': 'Can change a player’s character, or become another character itself.',
     'Confirmation': 'This character can confirm itself or others.',
     'Consult': 'Privately visits the Storyteller to ask questions or make decisions.',
     'Death': 'Kills players, or cares about players dying.',
     'Death Modification': 'Changes how, when, or whether deaths happen.',
+    'Demonsbane': 'A good character that can kill the Demon, or directly threaten its life.',
     'Drunkenness': 'Causes drunkenness, or interacts with drunk players.',
     'Even If Dead': 'Its ability keeps working (fully or partly) after the player dies.',
     'Execution': 'Interacts with executions — causing, preventing, or reacting to them.',
     'Execution Survival': 'Can survive execution, or lets another player survive one.',
+    'Extra Evil': 'Puts an extra evil player or evil character into the game.',
+    'False Info': 'Can give a player false or misleading information.',
     'Duplication': 'Copies itself — extra copies of this character can be in play.',
+    'Grim Peeker': 'Sees part of the Grimoire, or otherwise learns what the Storyteller can see.',
     'Hidden': 'Hides its presence, identity, or other game information from players.',
     'Information': 'The player learns something from their ability.',
     'Loss Condition': 'Adds a new way for a player or team to lose the game.',
@@ -41,9 +46,12 @@
     'Safety Net': 'Protects a team or the game from a worst-case outcome.',
     'Setup': 'Changes the game during setup (square-bracket setup text).',
     'Single-Kill': 'An evil character that kills one player per night.',
+    'Sober & Healthy': 'Cares about being sober and healthy, or makes a player sober and healthy.',
     'Social': 'Affects how players talk, behave, or interact with each other.',
+    'Subjective Info': 'Its information depends on the Storyteller’s judgement rather than a fixed rule.',
     'Think': 'Characters that think or make other players think they are different characters.',
     'Timer': 'Adds a time limit or countdown to the game.',
+    'True Info': 'Its information is always true while the player is sober and healthy.',
     'Votes': 'Interacts with voting — extra votes, blocked votes, or changed counts.',
     'Win Condition': 'Adds a new way for a player or team to win the game.',
     'You Start Knowing': 'Starts the game knowing information from their ability.'
@@ -59,11 +67,15 @@
   }
 
   /* Build the create/edit tag-picker buttons from the shared list. */
+  function escTag(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
   function buildTagPicker(container) {
     if (!container) return;
     container.innerHTML = KNOWN_TAGS.map(function (t) {
       return '<button type="button" class="tag-pick-btn" data-tag="' +
-        t.replace(/"/g, '&quot;') + '">' + t + '</button>';
+        escTag(t) + '">' + escTag(t) + '</button>';
     }).join('');
   }
 
