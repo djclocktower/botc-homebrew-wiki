@@ -116,6 +116,9 @@ assets/
                        `pronunciation` — the quiet line under the flavour quote
                        (**bold**/*italic*); without it that text still renders,
                        escaped and unformatted.
+                       Also owns buildCreditsFabled() — the botchomebrew.wiki
+                       credits Fabled the Script Builder appends to its exports
+                       (see script.html below).
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
@@ -275,6 +278,21 @@ create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
+                       Every export/copy from HERE gets one extra entry: the
+                       **botchomebrew.wiki credits Fabled** (the site's pirate
+                       skull, id `botchomebrewwiki`), whose ability reads
+                       "This script was made on botchomebrew.wiki and contains
+                       characters by: …". The "Detailed credits" tick
+                       (localStorage botc_script_credits_detail) swaps the plain
+                       name list for one naming each creator's characters. The
+                       object is built by buildCreditsFabled() in render.js;
+                       the page shows the exact line above the publish CTA.
+                       It is **builder-only on purpose** — a published /s/ or
+                       /collection/ page's JSON box (buildPageExport in
+                       render-page.js) is the author's own script and must never
+                       carry it. Both the builder's Import and mass-upload.html
+                       skip the id, so a round-trip neither reports it missing
+                       nor turns it into a character page.
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,

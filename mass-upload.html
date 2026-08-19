@@ -202,6 +202,10 @@
       data.forEach(function(item){
         if (item && typeof item === 'object' && item.id === '_meta') { meta = item; return; }
         if (typeof item === 'string') { skipped.push(item); return; }   // bare official ids carry no data
+        // The credits Fabled the Script Builder appends to its exports is the
+        // site signing the script, not a character anybody wrote — never import it.
+        if (item && typeof item === 'object' &&
+            String(item.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
         if (!item || typeof item !== 'object' || !item.name || !item.ability) {
           skipped.push((item && (item.id || item.name)) || '?'); return;
         }
