@@ -874,6 +874,29 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+   **The Discord sign-in health check is `GET /api/admin/discord-check`** (a
+   card on the dashboard's Health tab): it asks Discord whether the client
+   id/secret pair is still good and prints the exact callback URL that has to
+   be registered. Run it after touching either side; it is the only way to
+   see this break without a reader hitting it.
+11a. **The Discord `redirect_uri` is pinned to `CANONICAL_ORIGIN`
+   (`https://botchomebrew.wiki`) and must never be built from the request
+   again.** Cloudflare answers on every hostname pointed at the Worker — the
+   apex, `www.`, workers.dev, any preview name — and the OAuth routes used to
+   derive their `redirect_uri` from `url.origin`. Discord only accepts a
+   `redirect_uri` that is registered on the application **character for
+   character**, so a reader who arrived on `www.` got a bare
+   "Invalid OAuth2 redirect_uri" screen and could not sign in at all, while
+   the apex kept working — the login was broken for some people and fine for
+   others, with nothing in the repo to show for it. Now `/api/auth/discord`
+   redirects any other hostname to the canonical one before the flow starts,
+   and both the authorize call and the token exchange take their URL from
+   `discordRedirectUri(env)` — one function, so the two can never disagree
+   (Discord compares them and rejects a mismatch). If the domain ever moves,
+   set `SITE_ORIGIN` (or `DISCORD_REDIRECT_URI`) as a Secret **and** add the
+   new callback URL in the Discord Developer Portal → OAuth2 → Redirects in
+   the same sitting. Adding a hostname needs no code change and no second
+   portal entry — that is the point.
 12. **Usernames carry their own letters — fadas included — and identity is
    `users.username_key`, never `lower(username)`.** `@tir-far-thóinn` keeps its
    fada; the account code was once ASCII-only and turned it into

@@ -24,6 +24,8 @@
  *   POST /api/resend-verification
  *   GET  /api/auth/discord    -> start Discord OAuth (sign in / sign up / link)
  *   GET  /api/auth/discord/callback
+ *                              (both pin their redirect_uri to CANONICAL_ORIGIN
+ *                               — never to the request's host; see the helpers)
  *
  *   -- account --
  *   GET  /api/account         -> profile + your pages + drafts + recent edits
@@ -137,6 +139,10 @@
  *                                 &flag=no-icon|partial|starlight|no-owner)
  *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
+ *   GET  /api/admin/discord-check -> is Discord sign-in actually working: asks
+ *                                Discord whether the app credentials are still
+ *                                valid, and prints the exact callback URL the
+ *                                Developer Portal must have registered
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
  *   POST /api/admin/starlight -> grant/remove Starlight on one page
@@ -164,6 +170,16 @@
  *   MAIL_FROM             -> e.g. 'BOTC Homebrew Wiki <no-reply@yourdomain>'
  *   DISCORD_CLIENT_ID     -> enables "Sign in with Discord"
  *   DISCORD_CLIENT_SECRET
+ *   SITE_ORIGIN           -> the site's canonical origin, if it ever moves
+ *                            off https://botchomebrew.wiki (optional)
+ *   DISCORD_REDIRECT_URI  -> overrides the whole callback URL (optional; only
+ *                            needed if it cannot be SITE_ORIGIN + the callback
+ *                            path). Whatever this resolves to must be
+ *                            registered in the Discord Developer Portal.
+ *
+ * Discord sign-in is checkable without a reader: GET /api/admin/discord-check
+ * (admin) asks Discord whether the client id/secret pair is still valid and
+ * prints the exact redirect URL the portal has to hold.
  */
 
 // esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
@@ -297,6 +313,12 @@ const SESSION_TTL = 60 * 60 * 24 * 30;
 // live sessions than this has bigger problems, and the oldest simply age out
 // on their own TTL as they always did.
 const SESSION_INDEX_MAX = 40;
+
+// How long a half-finished Discord sign-in stays valid. Ten minutes used to be
+// enough for a desktop consent screen; on a phone the flow can hand off to the
+// Discord app, ask for a password and a 2FA code, and come back well after
+// that — and an expired state reads as "please try again" forever.
+const OAUTH_STATE_TTL = 60 * 30;
 
 async function indexSession(env, userId, token) {
   try {
@@ -2050,9 +2072,10 @@ function jsonResponse(obj, extraHeaders = {}) {
   });
 }
 
-function redirectResponse(location, cookie) {
+function redirectResponse(location, cookie, extraHeaders) {
   const headers = new Headers({ Location: location });
   if (cookie) headers.append('Set-Cookie', cookie);
+  for (const [k, v] of Object.entries(extraHeaders || {})) headers.set(k, v);
   return new Response(null, { status: 302, headers });
 }
 
@@ -2449,8 +2472,43 @@ async function findCollectionRow(env, key) {
 function discordConfigured(env) {
   return !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
 }
-function discordRedirectUri(origin) {
-  return origin + '/api/auth/discord/callback';
+
+// The site's canonical origin. Every hostname Cloudflare answers on serves the
+// whole wiki — the apex, www, any workers.dev or preview name — and the OAuth
+// flow used to build its redirect_uri from whichever one the reader happened to
+// arrive on. Discord only accepts a redirect_uri that is registered on the
+// application *character for character*, so a reader on www got
+// "Invalid OAuth2 redirect_uri" and no way to sign in, while the apex kept
+// working: the login was broken for some people and fine for others.
+//
+// So the flow is pinned to ONE origin instead. DISCORD_REDIRECT_URI (or
+// SITE_ORIGIN) overrides it if the domain ever changes, but nothing about the
+// incoming request does — that is the whole point. Change this and you must
+// add the new callback URL in the Discord Developer Portal (OAuth2 ->
+// Redirects) in the same breath, or sign-in stops for everybody.
+const CANONICAL_ORIGIN = 'https://botchomebrew.wiki';
+
+function canonicalOrigin(env) {
+  const raw = (env && (env.SITE_ORIGIN || '')).trim();
+  if (raw) { try { return new URL(raw).origin; } catch { /* fall through */ } }
+  return CANONICAL_ORIGIN;
+}
+
+// The one redirect_uri, used BOTH when sending the reader to Discord and when
+// exchanging the code afterwards. Discord compares the two, so they have to be
+// produced by the same function — never one from a constant and one from the
+// request.
+function discordRedirectUri(env) {
+  const raw = (env && (env.DISCORD_REDIRECT_URI || '')).trim();
+  if (raw) { try { return new URL(raw).toString(); } catch { /* fall through */ } }
+  return canonicalOrigin(env) + '/api/auth/discord/callback';
+}
+
+// Is this request already on the origin the OAuth flow lives on? A reader who
+// is not gets moved there before the flow starts, so the session cookie is set
+// on the same host that Discord returns them to.
+function onCanonicalOrigin(env, url) {
+  return url.origin === canonicalOrigin(env);
 }
 
 // Pick a free username derived from the Discord name. This is where
@@ -2486,7 +2544,26 @@ async function uniqueUsername(env, base) {
 }
 
 function loginErrorRedirect(origin, msg) {
-  return redirectResponse(origin + '/login?error=' + encodeURIComponent(msg));
+  return redirectResponse(origin + '/login?error=' + encodeURIComponent(msg), null, { 'Cache-Control': 'no-store' });
+}
+
+// Discord's own words for why a call failed, short enough to put in front of a
+// reader and specific enough to act on. Losing them is what made the last
+// outage a guessing game: every failure read "Discord sign-in failed", whether
+// the secret had been wiped, the callback URL was unregistered, or someone had
+// simply pressed Cancel.
+async function discordErrorCode(res) {
+  try {
+    const body = await res.text();
+    try {
+      const j = JSON.parse(body);
+      const code = j.error || j.message || j.code || '';
+      const desc = j.error_description || '';
+      if (code) return String(desc ? code + ': ' + desc : code).slice(0, 120);
+    } catch { /* not JSON */ }
+    if (body) return body.slice(0, 120);
+  } catch { /* body already consumed or unreadable */ }
+  return 'HTTP ' + res.status;
 }
 
 export default {
@@ -3751,35 +3828,74 @@ export default {
     // ---------- AUTH: DISCORD OAUTH ----------
     if (method === 'GET' && path === '/api/auth/discord') {
       if (!discordConfigured(env)) return loginErrorRedirect(url.origin, 'Discord sign-in is not configured on this server yet.');
-      const state = randomToken();
+      const wantsLink = url.searchParams.get('link') === '1';
+
+      // Move the reader to the origin Discord will return to BEFORE anything
+      // else happens, so the whole flow — the state token, the code, the
+      // session cookie — belongs to one host. Nothing is carried across: a
+      // handoff token would let one person's half-finished sign-in be
+      // completed by another, which is exactly the attack `state` exists to
+      // prevent. Someone linking Discord from another hostname is asked to log
+      // in here first; signing in, the common case, just works.
+      if (!onCanonicalOrigin(env, url)) {
+        return redirectResponse(
+          canonicalOrigin(env) + '/api/auth/discord' + (wantsLink ? '?link=1' : ''),
+          null,
+          { 'Cache-Control': 'no-store' }
+        );
+      }
+
       let linkUserId = 0;
-      if (url.searchParams.get('link') === '1') {
+      if (wantsLink) {
         const sess = await getSession(env, request);
         if (!sess) return loginErrorRedirect(url.origin, 'Log in first, then link Discord from your account page.');
         linkUserId = sess.userId;
       }
-      await env.SESSIONS.put('oauth:' + state, JSON.stringify({ link: linkUserId }), { expirationTtl: 600 });
+      const state = randomToken();
+      await env.SESSIONS.put(
+        'oauth:' + state,
+        JSON.stringify({ link: linkUserId }),
+        { expirationTtl: OAUTH_STATE_TTL }
+      );
+
       const auth = new URL('https://discord.com/oauth2/authorize');
       auth.searchParams.set('client_id', env.DISCORD_CLIENT_ID);
       auth.searchParams.set('response_type', 'code');
-      auth.searchParams.set('redirect_uri', discordRedirectUri(url.origin));
+      auth.searchParams.set('redirect_uri', discordRedirectUri(env));
       auth.searchParams.set('scope', 'identify email');
       auth.searchParams.set('state', state);
       auth.searchParams.set('prompt', 'none');
-      return redirectResponse(auth.toString());
+      // A cached redirect would replay a state token that KV has already
+      // expired or consumed, and the reader would be stuck on "please try
+      // again" until they cleared their browser cache.
+      return redirectResponse(auth.toString(), null, { 'Cache-Control': 'no-store' });
     }
 
     if (method === 'GET' && path === '/api/auth/discord/callback') {
       if (!discordConfigured(env)) return loginErrorRedirect(url.origin, 'Discord sign-in is not configured.');
+
+      // Discord itself refused: the reader pressed Cancel, or the application
+      // is misconfigured. Say which — this used to be reported as a state
+      // mismatch, which sent everyone looking in the wrong place.
+      const oauthErr = url.searchParams.get('error');
+      if (oauthErr) {
+        console.log('discord-oauth: authorize returned', oauthErr, url.searchParams.get('error_description') || '');
+        return loginErrorRedirect(url.origin, oauthErr === 'access_denied'
+          ? 'Discord sign-in was cancelled.'
+          : 'Discord refused the sign-in (' + oauthErr + '). Please try again.');
+      }
+
       const code = url.searchParams.get('code');
       const state = url.searchParams.get('state') || '';
       const stateRaw = state && await env.SESSIONS.get('oauth:' + state);
-      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in failed (state mismatch). Please try again.');
+      if (!code || !stateRaw) return loginErrorRedirect(url.origin, 'Discord sign-in failed (the sign-in took too long, or the link was reused). Please try again.');
       await env.SESSIONS.delete('oauth:' + state);
       let linkUserId = 0;
       try { linkUserId = (JSON.parse(stateRaw).link | 0); } catch {}
 
-      // Exchange the code for a token.
+      // Exchange the code for a token. The redirect_uri here must match the
+      // one sent to /authorize character for character, which is why both come
+      // from discordRedirectUri(env) and neither is built from this request.
       const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -3788,16 +3904,28 @@ export default {
           client_secret: env.DISCORD_CLIENT_SECRET,
           grant_type: 'authorization_code',
           code,
-          redirect_uri: discordRedirectUri(url.origin)
+          redirect_uri: discordRedirectUri(env)
         })
       });
-      if (!tokenRes.ok) return loginErrorRedirect(url.origin, 'Discord sign-in failed (token exchange). Please try again.');
+      if (!tokenRes.ok) {
+        // Discord's own reason, in the Worker log and in the message. The
+        // three that matter: invalid_client (the secret is wrong or was wiped
+        // by a deploy), invalid_grant (a stale or reused code) and
+        // invalid_request (usually the redirect_uri is not registered).
+        const detail = await discordErrorCode(tokenRes);
+        console.log('discord-oauth: token exchange failed', tokenRes.status, detail);
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (' + detail + '). Please tell an admin if it keeps happening.');
+      }
       const tok = await tokenRes.json();
 
       const userRes = await fetch('https://discord.com/api/users/@me', {
         headers: { Authorization: 'Bearer ' + tok.access_token }
       });
-      if (!userRes.ok) return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch). Please try again.');
+      if (!userRes.ok) {
+        const detail = await discordErrorCode(userRes);
+        console.log('discord-oauth: profile fetch failed', userRes.status, detail);
+        return loginErrorRedirect(url.origin, 'Discord sign-in failed (profile fetch: ' + detail + '). Please try again.');
+      }
       const du = await userRes.json();
       const discordId = String(du.id);
       const discordName = du.global_name || du.username || 'user';
@@ -4059,6 +4187,80 @@ export default {
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
       });
+    }
+
+    // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
+    // Discord sign-in has two failure modes nothing on the wiki can see on its
+    // own, because both happen outside the repo: a Git deploy wiping a
+    // dashboard variable that was typed as "Text" instead of "Secret", and the
+    // callback URL going missing from the Discord Developer Portal. Both look
+    // identical from a reader's seat — the button just stops working — and
+    // neither shows up in any test. This asks Discord directly, so the answer
+    // is one tap on the dashboard instead of an afternoon of guessing.
+    if (method === 'GET' && path === '/api/admin/discord-check') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+
+      const redirectUri = discordRedirectUri(env);
+      const out = {
+        clientId: !!env.DISCORD_CLIENT_ID,
+        clientSecret: !!env.DISCORD_CLIENT_SECRET,
+        redirectUri,
+        canonicalOrigin: canonicalOrigin(env),
+        requestOrigin: url.origin,
+        // A reader on this hostname is handed over to the canonical one before
+        // the flow starts, so this is a note, not a fault.
+        originPinned: onCanonicalOrigin(env, url)
+      };
+      if (!out.clientId || !out.clientSecret) {
+        out.ok = false;
+        out.status = 'Not configured: ' +
+          (!out.clientId && !out.clientSecret ? 'both DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET are missing'
+            : !out.clientId ? 'DISCORD_CLIENT_ID is missing' : 'DISCORD_CLIENT_SECRET is missing') +
+          '. Re-add them in the Cloudflare dashboard as type Secret (a Text variable is deleted by the next Git deploy).';
+        return jsonResponse(out);
+      }
+
+      // Ask Discord whether the ID and secret are still a valid pair. This
+      // grant needs no reader and no consent screen, so it can be run any time.
+      try {
+        const res = await fetch('https://discord.com/api/oauth2/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Authorization: 'Basic ' + btoa(env.DISCORD_CLIENT_ID + ':' + env.DISCORD_CLIENT_SECRET)
+          },
+          body: new URLSearchParams({ grant_type: 'client_credentials', scope: 'identify' })
+        });
+        if (res.ok) {
+          out.ok = true;
+          out.status = 'Discord accepted the app credentials.';
+        } else {
+          const detail = await discordErrorCode(res);
+          out.ok = false;
+          if (/invalid_client/i.test(detail)) {
+            out.status = 'Discord rejected the app credentials (' + detail + '). The client secret is wrong or has been reset — copy it again from the Discord Developer Portal and re-save it in Cloudflare as type Secret.';
+          } else {
+            // Anything else is Discord declining THIS grant, which is not the
+            // same as sign-in being broken. Saying so keeps the check from
+            // crying wolf and sending someone off to re-set a working secret.
+            out.inconclusive = true;
+            out.status = 'Could not confirm either way — Discord answered ' + res.status + ' (' + detail + ') to the credential check. This does not mean sign-in is broken; check the callback URL below.';
+          }
+        }
+      } catch (e) {
+        out.ok = false;
+        out.inconclusive = true;
+        out.status = 'Could not reach Discord: ' + String(e && e.message || e).slice(0, 120);
+      }
+
+      // Credentials being valid does NOT mean the callback URL is registered —
+      // that list is only readable from the portal, and an unregistered URL is
+      // exactly what produces "Invalid OAuth2 redirect_uri". So the check
+      // always hands over the string to compare against, character for
+      // character, rather than implying it has checked it.
+      out.note = 'Discord Developer Portal -> your application -> OAuth2 -> Redirects must contain this exact URL: ' + redirectUri;
+      return jsonResponse(out);
     }
 
     // ---------- ADMIN DASHBOARD (read, admin only) ----------
