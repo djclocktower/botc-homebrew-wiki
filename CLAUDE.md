@@ -258,7 +258,8 @@ assets/
                        migration/icon-forge-guide.md for the engine reference.
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
-  fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
+  fonts/, pyodide/, tokens/     Fonts (Dumbledor2, Trade Gothic, OptimusPrinceps,
+                       LHF Unlovable); Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
                        Featured Character rotates **Starlight pages only**,
                        seeded by the day number so it is stable for 24 h.
