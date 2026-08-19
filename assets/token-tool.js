@@ -857,8 +857,20 @@
     var meta = null, wiki = [], ext = [], official = [], unknown = [];
     var byNorm = {}, extSlugs = {};
     allChars.forEach(function (c) { byNorm[norm(c.slug)] = c.slug; byNorm[norm(c.name)] = c.slug; });
+    // The Script Builder signs its exports with a botchomebrew.wiki credits
+    // Fabled (buildCreditsFabled in assets/render.js). It is the site crediting
+    // the creators, not a character anybody plays, so it never becomes a token.
+    var CREDITS_ID = (typeof window !== 'undefined' && window.CREDITS_FABLED_ID) || 'botchomebrewwiki';
+    function isCreditsFabled(item) {
+      if (typeof item === 'string') return norm(item) === CREDITS_ID;
+      if (!item || typeof item !== 'object') return false;
+      return norm(item.id) === CREDITS_ID || norm(item.name) === CREDITS_ID;
+    }
     data.forEach(function (item) {
       if (item && typeof item === 'object' && item.id === '_meta') { meta = item; return; }
+      // Skipped silently — listing it as unknown would be reporting the wiki's
+      // own signature back to the reader as a missing character.
+      if (isCreditsFabled(item)) return;
       if (typeof item === 'string') {
         if (byNorm[norm(item)]) { wiki.push(byNorm[norm(item)]); return; }
         var offS = officialExt(item, extSlugs);
