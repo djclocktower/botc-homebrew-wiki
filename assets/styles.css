@@ -1629,8 +1629,16 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    the plain wiki face — the tile's own name below it, and every tile that has
    a real logo, stay in Dumbledor. */
 .script-card-header-empty span {
-  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon); font-size: 1.2rem;
+  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon); font-size: 2.4rem;
   text-align: center; padding: 12px;
+  /* Tiles are ~275-325px wide at every breakpoint, so a name wraps to two
+     lines here at most — the longest logo-less script on the wiki is 15
+     characters and clears the 21:9 box comfortably. A name long enough to
+     need a third line would be clipped by the box: don't reach for
+     -webkit-line-clamp to catch that, it does nothing here (the span is a
+     flex item, so its display is blockified and the clamp never applies).
+     The full name is spelled out in the tile's heading directly below. */
+  overflow-wrap: anywhere;
 }
 .script-tile-desc {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: .95rem;
