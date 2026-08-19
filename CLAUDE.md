@@ -133,6 +133,9 @@ assets/
                        `pronunciation` (the quiet line under the flavour quote)
                        and jinx rule text; without it both still render, escaped
                        and unformatted.
+                       Also owns buildCreditsFabled() — the botchomebrew.wiki
+                       credits Fabled the Script Builder appends to its exports
+                       (see script.html below).
   official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
                        base-game layer on /jinxes. Generated, partial, with a
                        `source` field inside; same treatment as night-order.json.
@@ -372,7 +375,8 @@ assets/
                        migration/icon-forge-guide.md for the engine reference.
   icons/               Official BotC role icons (never change; long-cached)
   art/, collections/, scripts/  Committed images (new uploads go to R2)
-  fonts/, pyodide/, tokens/     Fonts; Token Tool engine (Pyodide) + assets
+  fonts/, pyodide/, tokens/     Fonts (Dumbledor2, Trade Gothic, OptimusPrinceps,
+                       LHF Unlovable); Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
                        Featured Character rotates **Curata pages only**,
                        seeded by the day number so it is stable for 24 h.
@@ -403,6 +407,23 @@ script.html            Script Builder — roster only (localStorage botc_script;
                        widget publish-script.html uses.
                        Jinx and Night Order panels sit under the roster
                        (shared widgets; see "Jinxes" and "Night order").
+                       Every export/copy from HERE gets one extra entry, and
+                       nowhere else does: the **botchomebrew.wiki credits
+                       Fabled** (the site's pirate skull, id
+                       `botchomebrewwiki`), whose ability reads "This script was
+                       made on botchomebrew.wiki and contains characters by: …".
+                       The "Detailed credits" tick (localStorage
+                       botc_script_credits_detail) swaps the plain name list for
+                       one naming each creator's characters; the page shows the
+                       exact line above the publish CTA. buildCreditsFabled() in
+                       render.js builds the object and buildPageExport takes it
+                       as `opts.credits`, which ONLY this page passes — a
+                       published /s/ or /collection/ JSON box is the author's own
+                       script and must never carry the wiki's signature. The
+                       builder's Import, mass-upload.html and the Token Tool all
+                       skip the id, so a round-trip neither reports it missing,
+                       nor turns it into a character page, nor prints a token
+                       for it.
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -1308,6 +1329,29 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+   **The Discord sign-in health check is `GET /api/admin/discord-check`** (a
+   card on the dashboard's Health tab): it asks Discord whether the client
+   id/secret pair is still good and prints the exact callback URL that has to
+   be registered. Run it after touching either side; it is the only way to
+   see this break without a reader hitting it.
+11a. **The Discord `redirect_uri` is pinned to `CANONICAL_ORIGIN`
+   (`https://botchomebrew.wiki`) and must never be built from the request
+   again.** Cloudflare answers on every hostname pointed at the Worker — the
+   apex, `www.`, workers.dev, any preview name — and the OAuth routes used to
+   derive their `redirect_uri` from `url.origin`. Discord only accepts a
+   `redirect_uri` that is registered on the application **character for
+   character**, so a reader who arrived on `www.` got a bare
+   "Invalid OAuth2 redirect_uri" screen and could not sign in at all, while
+   the apex kept working — the login was broken for some people and fine for
+   others, with nothing in the repo to show for it. Now `/api/auth/discord`
+   redirects any other hostname to the canonical one before the flow starts,
+   and both the authorize call and the token exchange take their URL from
+   `discordRedirectUri(env)` — one function, so the two can never disagree
+   (Discord compares them and rejects a mismatch). If the domain ever moves,
+   set `SITE_ORIGIN` (or `DISCORD_REDIRECT_URI`) as a Secret **and** add the
+   new callback URL in the Discord Developer Portal → OAuth2 → Redirects in
+   the same sitting. Adding a hostname needs no code change and no second
+   portal entry — that is the point.
 12. **Usernames carry their own letters — fadas included — and identity is
    `users.username_key`, never `lower(username)`.** `@tir-far-thóinn` keeps its
    fada; the account code was once ASCII-only and turned it into

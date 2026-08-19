@@ -330,6 +330,67 @@
     return JSON.stringify([meta, buildSchema(d)], null, 2);
   }
 
+  /* ── the botchomebrew.wiki credits Fabled ──
+     Every script exported from the Script Builder (script.html) carries one
+     extra Fabled entry: the wiki's pirate skull, crediting the site and the
+     people whose characters are on the script. Deliberately BUILDER-ONLY —
+     a published script's own JSON box (buildPageExport in render-page.js) is
+     the author's script and must stay exactly what they published.
+
+     Two forms, chosen by the reader's "Detailed credits" tick:
+       plain     ... contains characters by: Hystrex, Ma'ayan, Tir.
+       detailed  ... contains characters by: Hystrex (Cheerleader, Nomad);
+                     Ma'ayan (Sculptor).
+     Characters with no creator credited are left out of the list (official
+     roles export as bare ids and never reach here); a script where nobody is
+     credited still gets the Fabled, just without the "by:" half. */
+  var CREDITS_FABLED_ID = 'botchomebrewwiki';
+  var CREDITS_FABLED_NAME = 'botchomebrew.wiki';
+  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull.png';
+  var CREDITS_FABLED_LEAD = 'This script was made on botchomebrew.wiki';
+
+  /* [{ creator, characters[] }] in order of first appearance on the script.
+     A page can credit several people ("Taiyi (太一), Saki") — each of them is
+     credited separately, and a co-written character is listed under each. */
+  function creditsByCreator(chars) {
+    var order = [], byName = {};
+    (chars || []).forEach(function (c) {
+      if (!c || c.official) return;
+      splitCreators(c.creator).forEach(function (name) {
+        var key = name.toLowerCase();
+        if (!byName[key]) { byName[key] = { creator: name, characters: [] }; order.push(byName[key]); }
+        var nm = stripCreatorMark(c.name, name) || c.name || '';
+        if (nm && byName[key].characters.indexOf(nm) === -1) byName[key].characters.push(nm);
+      });
+    });
+    return order;
+  }
+
+  function creditsAbility(chars, detailed) {
+    var groups = creditsByCreator(chars);
+    if (!groups.length) return CREDITS_FABLED_LEAD + '.';
+    var list = detailed
+      ? groups.map(function (g) {
+          return g.creator + (g.characters.length ? ' (' + g.characters.join(', ') + ')' : '');
+        }).join('; ')
+      : groups.map(function (g) { return g.creator; }).join(', ');
+    return CREDITS_FABLED_LEAD + ' and contains characters by: ' + list + '.';
+  }
+
+  /* The official-schema object to append to an exported script.
+     opts: {detailed} — one line per creator with their characters named. */
+  function buildCreditsFabled(chars, opts) {
+    return {
+      id: CREDITS_FABLED_ID,
+      name: CREDITS_FABLED_NAME,
+      team: 'fabled',
+      image: CREDITS_FABLED_IMAGE,
+      ability: creditsAbility(chars, !!(opts && opts.detailed)),
+      firstNight: 0,
+      otherNight: 0
+    };
+  }
+
   /* ── Find jinxes that are active between characters on the same script ──
      Takes an array of character objects; returns [{a, b, text}] where `a`
      carries the jinx and `b` is the matching character also in the list. */
@@ -734,6 +795,9 @@
     window.renderJsonBox = renderJsonBox;
     window.buildSchema = buildSchema;
     window.schemaJSON = schemaJSON;
+    window.buildCreditsFabled = buildCreditsFabled;
+    window.creditsByCreator = creditsByCreator;
+    window.CREDITS_FABLED_ID = CREDITS_FABLED_ID;
     window.sanitizeSpecial = sanitizeSpecial;
     window.SPECIAL_TYPES = SPECIAL_TYPES;
     window.SPECIAL_TIMES = SPECIAL_TIMES;
@@ -755,6 +819,8 @@
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
+      buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
+      CREDITS_FABLED_ID: CREDITS_FABLED_ID,
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
@@ -762,7 +828,7 @@
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
-      setCreators: setCreators, setStarMark: setStarMark,
+      setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
       splitCreators: splitCreators
     };

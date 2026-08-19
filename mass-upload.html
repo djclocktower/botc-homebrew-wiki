@@ -150,6 +150,31 @@
       return ok[t] ? t : 'townsfolk';
     }
 
+    // ── hitting the hourly write limit ──
+    // The site caps how much one account may write in an hour. The caps are
+    // sized so a whole collection fits in one run, but a big enough file — or a
+    // second import in the same hour — can still reach one, and what used to
+    // happen then was the worst possible thing: the batch marched on through
+    // every remaining character, each request bouncing off the same limit, and
+    // left a screen of red rows that read like the file was broken. Stop
+    // instead. The rows that never ran stay "waiting", and re-running the same
+    // file later picks up where it stopped, because resolveSlug() lands a
+    // re-import back on the pages the first run made rather than stepping
+    // around them into duplicates.
+    var halted = null;
+    function limitError(r, j){
+      var e = new Error((j && j.error) || 'You have hit the hourly limit. Take a short break and try again.');
+      e.rateLimited = true;
+      e.retryAfter = parseInt(r.headers.get('Retry-After') || '3600', 10) || 3600;
+      return e;
+    }
+    function waitPhrase(sec){
+      var min = Math.ceil((sec || 3600) / 60);
+      if (min >= 55) return 'in about an hour';
+      if (min <= 1) return 'in a minute';
+      return 'in about ' + min + ' minutes';
+    }
+
     // ── login gate ──
     fetch('/api/me', { credentials:'same-origin' }).then(function(r){ return r.json(); }).then(function(d){
       me = d;
@@ -177,6 +202,10 @@
       data.forEach(function(item){
         if (item && typeof item === 'object' && item.id === '_meta') { meta = item; return; }
         if (typeof item === 'string') { skipped.push(item); return; }   // bare official ids carry no data
+        // The credits Fabled the Script Builder appends to its exports is the
+        // site signing the script, not a character anybody wrote — never import it.
+        if (item && typeof item === 'object' &&
+            String(item.id || '').toLowerCase().replace(/[^a-z0-9]/g, '') === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
         if (!item || typeof item !== 'object' || !item.name || !item.ability) {
           skipped.push((item && (item.id || item.name)) || '?'); return;
         }
@@ -246,9 +275,15 @@
       return fetch('/api/upload', {
         method:'POST', headers:{'Content-Type':'application/json'},
         credentials:'same-origin', body: JSON.stringify({ key:key, data:dataUrl })
-      }).then(function(r){ return r.json(); }).then(function(j){
-        if (!j || j.error) throw new Error((j && j.error) || 'upload failed');
-        return j;
+      }).then(function(r){
+        return r.json().catch(function(){ return {}; }).then(function(j){
+          // A 429 must not be swallowed by the "keep the remote URL" fallback:
+          // the art did not fail to load, the account ran out of uploads, and
+          // every character after this one would silently lose its art too.
+          if (r.status === 429) throw limitError(r, j);
+          if (!j || j.error) throw new Error((j && j.error) || 'upload failed');
+          return j;
+        });
       });
     }
 
@@ -257,6 +292,15 @@
       var td = row.querySelector('.mu-state');
       td.className = 'mu-state mu-state-' + cls;
       td.innerHTML = text;
+    }
+    // A row that already says done, from an earlier press of Create All Pages
+    // in this same sitting. Re-running a file after a halt used to re-save every
+    // character it had already made — same data, no visible harm, but it spent
+    // the write allowance a second time on work that was finished, which is
+    // exactly the allowance the run stopped for want of. Skip them instead.
+    function rowDone(i){
+      var row = $('mu-row-' + i);
+      return !!(row && row.querySelector('.mu-state.mu-state-ok'));
     }
     function rowSlug(i, slug){
       var row = $('mu-row-' + i); if (!row) return;
@@ -342,7 +386,8 @@
             entry.image = ART_BASE + slug + '.png';
             return 'uploaded';
           });
-        }).catch(function(){
+        }).catch(function(err){
+          if (err && err.rateLimited) throw err;
           // host blocks cross-origin reads — keep the remote URL so the page still shows art
           entry.image = imgUrl;
           return 'remote';
@@ -356,7 +401,10 @@
             entry.imageAlt = ART_BASE + slug + '-alt.png';
             return artHow;
           });
-        }).catch(function(){ entry.imageAlt = altUrl; return artHow; });
+        }).catch(function(err){
+          if (err && err.rateLimited) throw err;
+          entry.imageAlt = altUrl; return artHow;
+        });
       });
 
       return altJob.then(function(artHow){
@@ -367,12 +415,18 @@
         }).then(function(r){
           return r.json().then(function(j){
             if (r.status === 401) throw new Error('not logged in');
+            if (r.status === 429) throw limitError(r, j);
             if (!r.ok) throw new Error(j.error || 'save failed');
             rowState(i, 'ok', '&#10003; <a href="c/' + esc(slug) + '" target="_blank">view page</a>' + (artHow==='remote' && imgUrl ? ' (art from remote URL)' : ''));
             return true;
           });
         });
       }).catch(function(err){
+        if (err && err.rateLimited) {
+          halted = err;
+          rowState(i, 'err', '&#10007; stopped &mdash; hourly limit reached');
+          return false;
+        }
         rowState(i, 'err', '&#10007; ' + esc(err.message));
         return false;
       });
@@ -391,15 +445,29 @@
       // say) must be able to land on the pages the first run created rather
       // than stepping around them into duplicates.
       usedThisRun = {};
+      halted = null;
       setStatus('work', 'Creating ' + parsed.length + ' pages&hellip;');
       var i = 0, ok = 0, fail = 0;
-      (function next(){
-        if (i >= parsed.length) {
-          $('go').disabled = false; $('parse').disabled = false;
-          if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
-          else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them under <a href="all-characters">All Characters</a>' + (opts.status==='draft' ? ' via <a href="account">your account page</a> (drafts)' : '') + '.');
+      function finish(){
+        $('go').disabled = false; $('parse').disabled = false;
+        if (halted) {
+          // The row that hit the limit was counted as attempted but never
+          // made a page, so what is left to do is everything minus what landed.
+          var left = parsed.length - ok;
+          setStatus('err',
+            esc(halted.message) +
+            '<br>Stopped after ' + ok + ' of ' + parsed.length + ' &mdash; ' + left +
+            ' still to go. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
+            ' and press Create All Pages again: the ' + ok +
+            ' already made are skipped and the rest carry on from here.');
           return;
         }
+        if (fail) setStatus('err', 'Done: ' + ok + ' created, ' + fail + ' failed (see the table above).');
+        else setStatus('ok', '&#10003; All ' + ok + ' pages created! Find them under <a href="all-characters">All Characters</a>' + (opts.status==='draft' ? ' via <a href="account">your account page</a> (drafts)' : '') + '.');
+      }
+      (function next(){
+        if (i >= parsed.length || halted) { finish(); return; }
+        if (rowDone(i)) { ok++; i++; next(); return; }
         var c = parsed[i], idx = i;
         rowState(idx, 'work', 'checking URL&hellip;');
         resolveSlug(c.name, opts.appearsIn).then(function(slug){

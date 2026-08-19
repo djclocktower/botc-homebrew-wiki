@@ -44,12 +44,17 @@ Script-specific art proving the style; also the default demo sheet the tool open
 
 | Role | PSD font | Shipped | Substitute |
 |---|---|---|---|
-| Title | LHF Unlovable | ❌ commercial | **Dumbledor** (`dum2.ttf`, already self-hosted) + canvas gradient/bevel |
+| Title | LHF Unlovable | ✅ `../fonts/lhf-unlovable.ttf` | — (self-hosted; also the logo-less script card banner) |
 | Names & headers | OptimusPrinceps | ✅ `OptimusPrinceps.ttf` + SemiBold | — |
 | Ability text | Helvetica | ❌ commercial | **Trade Gothic LT Std** (already self-hosted) |
 
 OptimusPrinceps is Manfred Klein freeware (free for private/charity use — fine for the wiki).
-LHF Unlovable must not be redistributed; the demo title ships only as a rasterized image.
+LHF Unlovable is licensed for use on this site and self-hosted at
+`assets/fonts/lhf-unlovable.ttf` (the copy came from OnlineWebFonts, CC BY 4.0). It is
+ASCII-only — no accented letters, curly quotes, em dashes or ellipses — so every font
+stack that names it keeps Dumbledor2 immediately behind it and the browser falls back one
+character at a time. `demo/title-nogreaterjoy.jpg` stays as a rasterized reference of the
+PSD's exact treatment (gradient + bevel), which the font on its own does not give.
 
 ## Team palette (sampled from the PSD type layers)
 

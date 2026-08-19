@@ -68,6 +68,27 @@
 .sb-btn-share { background: linear-gradient(180deg,#3a6d9e,#23486b); }
 .sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); text-decoration:none; display:inline-flex; align-items:center; }
 
+/* ─── Credits Fabled (added to every exported script) ────── */
+.sb-credits {
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px 14px;
+  background:var(--parch); border:2px solid var(--parch-frame);
+  padding:10px 14px; margin-bottom:14px;
+}
+.sb-credits-head { display:flex; align-items:center; gap:8px; font-size:.86rem; color:var(--ink); }
+.sb-credits-skull { width:26px; height:auto; flex:none; }
+.sb-credits-head strong { color:var(--maroon); }
+.sb-credits-detail {
+  display:flex; align-items:center; gap:6px; font-size:.84rem;
+  color:var(--ink); cursor:pointer; user-select:none; margin-left:auto;
+}
+.sb-credits-detail input { width:16px; height:16px; accent-color:var(--maroon); cursor:pointer; }
+.sb-credits-text {
+  flex-basis:100%; margin:0; font-size:.8rem; line-height:1.5; font-style:italic;
+  color:var(--ink); background:rgba(243,239,229,.55);
+  border-top:1px solid rgba(180,160,120,.25); padding-top:8px;
+}
+@media (max-width: 560px) { .sb-credits-detail { margin-left:0; } }
+
 /* ─── Publish call-to-action banner ──────────────────────── */
 .sb-publish-cta {
   display:flex; flex-wrap:wrap; align-items:center; gap:12px;
@@ -227,6 +248,18 @@
         </div>
       </div>
 
+      <!-- Credits Fabled: every export from the builder carries it. -->
+      <div class="sb-credits">
+        <span class="sb-credits-head">
+          <img class="sb-credits-skull" src="assets/logo_skull.png" alt="">
+          <span>Your exported JSON includes a <strong>botchomebrew.wiki</strong> Fabled crediting everyone whose characters are on the script.</span>
+        </span>
+        <label class="sb-credits-detail">
+          <input type="checkbox" id="sb-credits-detail"> Detailed credits (name each creator's characters)
+        </label>
+        <p class="sb-credits-text" id="sb-credits-text"></p>
+      </div>
+
       <!-- Ready to publish? Everything about naming + publishing lives on its own page. -->
       <div class="sb-publish-cta">
         <p>Happy with your line-up? <strong>Publish it to the wiki</strong> to give it a name, description, and a public page other players can view.</p>
@@ -265,6 +298,9 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- creators.js first: render.js reads the credit-mark registry off it, so
+       the detailed credits list "Cheerleader", not "Cheerleader ∇". -->
+  <script src="assets/creators.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/official-roles.js"></script>
@@ -508,6 +544,32 @@
       renderScript();
       if (nightUI) nightUI.render();
       if (jinxUI) jinxUI.render();
+      renderCredits();
+    }
+
+    // ── the botchomebrew.wiki credits Fabled ──
+    // Appended to every script the BUILDER exports (JSON / clipboard), and to
+    // nothing else: buildPageExport only adds it when it is handed one, and the
+    // published /s/ and /collection/ JSON boxes never hand it one — their JSON
+    // is the author's own script. The object is built by buildCreditsFabled()
+    // in assets/render.js.
+    var CREDITS_KEY = 'botc_script_credits_detail';
+    function creditsDetailed() {
+      try { return localStorage.getItem(CREDITS_KEY) === '1'; } catch (e) { return false; }
+    }
+    function setCreditsDetailed(on) {
+      try { localStorage.setItem(CREDITS_KEY, on ? '1' : '0'); } catch (e) {}
+    }
+    function creditsFabled() {
+      if (!window.buildCreditsFabled) return null;
+      return window.buildCreditsFabled(rosterChars(), { detailed: creditsDetailed() });
+    }
+    // Show the reader the exact line their export will carry.
+    function renderCredits() {
+      var box = document.getElementById('sb-credits-text');
+      if (!box) return;
+      var f = creditsFabled();
+      box.textContent = f ? f.ability : '';
     }
 
     /* ── the official-schema export ──
@@ -516,12 +578,16 @@
        downloads there cannot drift apart. Everything the official app reads
        rides in the meta: logo, background, hideTitle, almanac, bootlegger and
        the night order (see the schema at
-       github.com/ThePandemoniumInstitute/botc-release). */
+       github.com/ThePandemoniumInstitute/botc-release).
+       The one thing only the builder adds is the credits Fabled, handed over
+       here so the published page's own JSON box stays exactly what its author
+       published. */
     function buildExport() {
       var m = getMeta();
       return window.PageRender.buildPageExport(
         (m.name || '').trim() || 'My Homebrew Script',
-        (m.author || '').trim(), m.header || '', rosterChars(), m);
+        (m.author || '').trim(), m.header || '', rosterChars(), m,
+        { credits: creditsFabled() });
     }
 
     function download(filename, text) {
@@ -556,6 +622,15 @@
       var rm = e.target.closest('.sb-script-remove');
       if (rm) removeSlug(rm.getAttribute('data-slug'));
     });
+    (function () {
+      var cb = document.getElementById('sb-credits-detail');
+      if (!cb) return;
+      cb.checked = creditsDetailed();
+      cb.addEventListener('change', function () {
+        setCreditsDetailed(this.checked);
+        renderCredits();
+      });
+    })();
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
       var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
@@ -674,6 +749,9 @@
         var id = (typeof entry === 'string') ? entry : (entry && entry.id);
         if (!id || id === '_meta') return;
         var key = String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Our own credits Fabled: rebuilt on every export, so importing a
+        // script this builder wrote must not report it as unrecognised.
+        if (key === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
         var slug = map[key];
         if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
         else { missing.push((entry && entry.name) || id); }

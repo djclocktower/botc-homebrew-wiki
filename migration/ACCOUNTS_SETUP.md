@@ -46,14 +46,22 @@ verification emails are silently skipped.
 
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
    and create a **New Application** (e.g. "BOTC Homebrew Wiki").
-2. Under **OAuth2 → General**, add this Redirect URI (exactly, including scheme):
+2. Under **OAuth2 → Redirects**, add this Redirect URI — exactly, including the
+   scheme, with no trailing slash:
 
    ```
-   https://YOUR-DOMAIN/api/auth/discord/callback
+   https://botchomebrew.wiki/api/auth/discord/callback
    ```
 
-   Add one entry per hostname the site is served from (custom domain +
-   workers.dev if you use both).
+   **One entry, not one per hostname.** The Worker pins the whole sign-in flow
+   to that single origin (`CANONICAL_ORIGIN` in `worker/worker.js`) and moves a
+   reader who arrived on any other hostname — `www.`, workers.dev, a preview
+   name — over to it before the flow starts. Discord matches this string
+   character for character, and an unregistered one gives readers a bare
+   **"Invalid OAuth2 redirect_uri"** screen with no way to sign in.
+
+   If the site ever moves domain, set `SITE_ORIGIN` to the new origin and add
+   the matching callback URL here in the same sitting.
 3. Copy the **Client ID** and **Client Secret**, then:
 
 ```bash
@@ -61,8 +69,20 @@ wrangler secret put DISCORD_CLIENT_ID
 wrangler secret put DISCORD_CLIENT_SECRET
 ```
 
+Set from the Cloudflare dashboard instead? Use type **Secret**, never "Text" —
+a Git deploy deletes Text variables, which silently turns Discord sign-in off.
+
 **Without these secrets** the "Continue with Discord" button redirects back
 with a "not configured" message; everything else works.
+
+### Checking it without trying to log in
+
+Both of the settings above live outside the repo, so nothing in a deploy or a
+test can tell you they are still right. The dashboard's **Health** tab has a
+**Discord sign-in** card (`GET /api/admin/discord-check`, admin only) that asks
+Discord whether the client id/secret pair is still valid and prints the exact
+callback URL the portal has to hold. Run it after changing either side, or when
+someone reports that the button does not work.
 
 ## 4. Deploy
 

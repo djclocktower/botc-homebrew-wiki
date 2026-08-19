@@ -653,6 +653,14 @@
 
       <div class="dash-tab-panel" id="tab-health" role="tabpanel" aria-labelledby="dashtab-health" hidden>
       <section class="panel">
+        <h3>Discord sign-in</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Checks that the "Continue with Discord" button still works, without anyone having to try it. Discord sign-in depends on two settings that live outside the wiki — the app credentials in Cloudflare and the callback URL in the Discord Developer Portal — and if either goes missing the button simply stops working with nothing to see from this end. Run this after any change to either, or whenever someone says they can't log in.
+        </p>
+        <button type="button" class="small-btn" id="dc-check">Check Discord sign-in</button>
+        <div id="dc-result"></div>
+      </section>
+      <section class="panel">
         <h3>Broken references <span class="count-pill" id="br-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Finds scripts and collections that point at characters which no longer exist (or sit in the trash / drafts), so pages don't quietly show gaps.
@@ -1912,6 +1920,33 @@
           $('bulk-load').click();
           loadActivity(true);
         } else setToast('bulk-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+
+    /* ---- discord sign-in check ---- */
+    $('dc-check').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      var box = $('dc-result');
+      box.innerHTML = '<p class="note">Asking Discord…</p>';
+      getJSON('/api/admin/discord-check').then(function(d){
+        btn.disabled = false;
+        if (!d || d.error) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Check failed.') + '</p>'; return; }
+        var colour = d.ok ? '#3a7a4a' : (d.inconclusive ? '#8a6310' : '#9a2c2c');
+        var mark = d.ok ? '✓ ' : (d.inconclusive ? '? ' : '✕ ');
+        var bits = ['<div class="adm-row"><span class="grow" style="color:' + colour + ';font-weight:700">' +
+          mark + esc(d.status) + '</span></div>'];
+        // The callback URL gets its own line: it has to be compared with the
+        // Developer Portal character for character, and a URL buried in a
+        // sentence is hard to read and harder to copy on a phone.
+        bits.push('<p class="note">The Discord Developer Portal → your application → OAuth2 → Redirects must contain this exact URL:</p>');
+        bits.push('<p class="note"><code style="word-break:break-all;user-select:all">' + esc(d.redirectUri || '') + '</code></p>');
+        // Every hostname the site answers on is sent through that one origin
+        // before sign-in starts, so only that one URL is ever registered.
+        bits.push('<p class="note">Sign-in always runs on <strong>' + esc(d.canonicalOrigin) + '</strong>, whichever address a reader arrives on — so this stays a single entry even if the site gains another address.</p>');
+        box.innerHTML = bits.join('');
+      }).catch(function(){
+        btn.disabled = false;
+        box.innerHTML = '<p class="note">Check failed.</p>';
       });
     });
 

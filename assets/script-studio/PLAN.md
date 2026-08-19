@@ -86,10 +86,11 @@ again). Script pages then get a "View sheet" render.
 
 Everything extracted from the PSD into `assets/script-studio/` (see `README.md`):
 chrome, demo icons, night minis, 29 hidden alternates, `template.json` with exact
-coordinates, reference render. OptimusPrinceps (free) pushed to `assets/fonts/`. LHF
-Unlovable (title) and Helvetica are commercial and not shipped — titles render in
-Dumbledor with a canvas gradient/bevel treatment; ability text uses Trade Gothic. If the
-exact title look matters enough, buying an LHF Unlovable web license is a later option.
+coordinates, reference render. OptimusPrinceps (free) pushed to `assets/fonts/`. **LHF
+Unlovable is now licensed and self-hosted** (`assets/fonts/lhf-unlovable.ttf`), so titles
+can use the PSD's own face plus the canvas gradient/bevel treatment; it is also what the
+stand-in banner on a logo-less script card is set in. Helvetica is still commercial and
+not shipped — ability text uses Trade Gothic.
 
 ## 8. Build phases (each ends in a working push)
 
@@ -112,5 +113,6 @@ exact title look matters enough, buying an LHF Unlovable web license is a later 
 2. **Mobile transform ergonomics** — phase 2's hardest part; expect an iteration loop.
 3. **Default icon look**: raw wiki art won't match the watercolor style until Icon Studio
    exists. Acceptable for v1?
-4. **Fonts**: OK with Dumbledor titles + Trade Gothic abilities, or buy LHF Unlovable?
+4. ~~**Fonts**: OK with Dumbledor titles + Trade Gothic abilities, or buy LHF Unlovable?~~
+   Settled: LHF Unlovable is licensed and self-hosted; abilities stay Trade Gothic.
 5. Sheet is portrait 5:7 — also want a landscape/two-column-page variant eventually?

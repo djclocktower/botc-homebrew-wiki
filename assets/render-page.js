@@ -725,10 +725,15 @@
        the script never touched is exported exactly as it always was. An
        official character normally exports as a bare id, but if this script
        gives it a jinx the bare id has nowhere to carry it, so that one is
-       written out in full. */
-  function buildPageExport(name, author, headerPath, entries, sc) {
+       written out in full.
+     - `opts.credits` appends one extra entry at the very end — the
+       botchomebrew.wiki credits Fabled (buildCreditsFabled in render.js). Only
+       the Script Builder passes it: a published page's JSON box is the
+       author's own script and never carries the wiki's signature. */
+  function buildPageExport(name, author, headerPath, entries, sc, opts) {
     var buildSchema = dep('buildSchema');
     sc = sc || {};
+    opts = opts || {};
     var meta = { id: '_meta', name: name || 'Homebrew Script' };
     if (author) meta.author = author;
     if (headerPath) meta.logo = 'https://botchomebrew.wiki/assets/' + headerPath;
@@ -751,6 +756,8 @@
     });
     var seq = nightSequences(entries, sc.nightOrder);
     if (seq) { meta.firstNight = seq.first; meta.otherNight = seq.other; }
+    // Last, so it reads as the script's footer and never joins a night list.
+    if (opts.credits) arr.push(opts.credits);
     return JSON.stringify(arr, null, 2);
   }
 

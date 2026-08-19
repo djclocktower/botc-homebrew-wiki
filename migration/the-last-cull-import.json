@@ -1,0 +1,2128 @@
+{
+ "source": "https://www.bloodstar.xyz/p/BakedIce/The_Last_Cull__/almanac.html (and the script.json beside it).",
+ "note": "Import record for “The Last Cull”, BakedIce’s homebrew script, written from its Bloodstar almanac. Game data (ability, team, night order, night reminders, reminder tokens, setup) comes from the script.json; the prose (flavour line, overview, examples, how to run, tips, attribution) from each character’s almanac page beside it. Nothing was written that the source does not say. Notes:\n- 14 of the names already belong to other creators here (Alphera, Candlemaker, Captain, Carpenter, Conductor, Conspiracist, Cultist, Gentleman, Medium, Paperboy, Photographer, Shade, Shankaar, Shepherd), so those take a -the-last-cull URL in the wiki’s existing duplicate style. The other 20 keep their plain slug.\n- The script has TWO characters named Shankaar, and both belong on it: the ability reads “[A good neighbor is an evil Shankaar]”, so there is a second token, with its own night positions (16/7 and 17/8) and its own flavour line. They are two pages, shankaar-the-last-cull and shankaar-the-last-cull-2, following the Worker’s own ladder for a name taken twice in one run. Neither overwrites the other.\n- Bloodstar’s Overview is one opening line then the detail. That splits the way this wiki is shaped: the line is the lede, the rest is the summary.\n- This almanac contains no bold anywhere, so unlike The Princess’ Requiem there were no bolded reminder names to turn into the wiki’s [[TOKEN]] pills. The absence is the source’s, not the import’s; reminder names appear in How to Run as the author quoted them.\n- The Alphera’s flavour field is not text but a <script> that cycles one sentence, walking the capital letter along it. A quote is plain text on this wiki, so the whole program would have printed as literal code; it is reduced to the sentence it animates, the author’s own words, typo included (“how if feels”). No other field in the set contains markup.\n- Attribution is stated bare here, without the “**Icon:**” label the previous import used. Every character’s Attribution section is kept verbatim in a custom box, but iconBy — which renders as “Icon by …” — is filled only where the credit is actually about the artwork (game-icons.net, “Art by …”). “Almanac page by Nyctophonik”, “Inspired by Hivemind by Patters!” and “TheDarkArtist for the final wording and art touch ups” are in the box only, since none of them is an icon credit.\n- The night order numbers are the author’s own and are positions within this script (first nights run 11 to 26, other nights 2 to 23) rather than on the official global scale the wiki’s night-order picker uses. They sort this script exactly as intended but do not interleave with official characters in a mixed script.\n- The script’s Overview page maps onto the wiki’s own sections: the description into Gameplay, the author’s two “When playing The Last Cull…” halves into Playing Good and Playing Evil, and the credits paragraph into a Credits box. The almanac says “Expert.”; this wiki’s difficulty field has three rungs, so it is stored as veteran, the top one, and the author’s own word stays in Gameplay.\n- Three Fabled ship with the script (Photographer, Scavenger, Attendee) and are imported as Fabled, as the source has them.\n- There are no tags in the source and none were invented, so all 34 pages are Partial and hidden from browsing unless a reader ticks “Show Partial”. No Starlight was set. Every character otherwise has a lede, a summary, how-to-run and examples.\n- No collection was created, because only the script was asked for. The characters carry appearsIn “The Last Cull” as plain text.\n- No account named BakedIce exists on the wiki, so every row is written with owner_id NULL; an admin can hand them over from the dashboard once there is one.\n- Written straight to D1, so settings.content_version was bumped by hand after each write.",
+ "script": {
+  "slug": "the-last-cull",
+  "name": "The Last Cull",
+  "header": "scripts/the-last-cull.png",
+  "author": "BakedIce",
+  "description": "",
+  "characters": [
+   "paperboy-the-last-cull",
+   "violinist",
+   "trapper",
+   "foreman",
+   "conspiracist-the-last-cull",
+   "conductor-the-last-cull",
+   "carpenter-the-last-cull",
+   "iconoclast",
+   "savant",
+   "nightwatchman",
+   "candlemaker-the-last-cull",
+   "ragpicker",
+   "medium-the-last-cull",
+   "captain-the-last-cull",
+   "shade-the-last-cull",
+   "shepherd-the-last-cull",
+   "cultist-the-last-cull",
+   "gentleman-the-last-cull",
+   "shankaar-the-last-cull",
+   "shankaar-the-last-cull-2",
+   "cryomancer",
+   "alphera-the-last-cull",
+   "zabb-yani",
+   "rat-king",
+   "grimm-reaper",
+   "creepsye",
+   "coalcrusher",
+   "loom-weaver",
+   "lumberman",
+   "horse-hearer",
+   "face-stealer",
+   "photographer-the-last-cull",
+   "scavenger",
+   "attendee"
+  ],
+  "tagline": "",
+  "version": "",
+  "difficulty": "veteran",
+  "synopsis": "Another harsh winter befalls Crowsky City, and perhaps, it's last. Over the past week, all but the last few citizens have been destroyed by a horrid demon living within the town. It is only when these last few survivors are left, do they realize that the demon is hiding amongst them. Beasts that can level cities will need to be carefully worked out through a group that cannot afford to trust each other. The final denizens will need to scheme, conspire, and lie in order to kill, run, or die. The apocalypse awaits those on The Last Cull.",
+  "gameplay": "The Last Cull brings forth players' ability to scheme and conspire. Both teams see some of the most destructive power they've ever had, with victory constantly at a moments notice for both teams. Evil players are incentivized to be honest and good players are incentivized to lie! The apocalypse is not for the faint of heart!\n\nMany characters reorient who the good team wants to be killing, and who ought to be left alive. Demons will often have more plans behind their kills, sometimes betray their own allies. Players will often have to trust each other with no evidence, and accuse with evidence too risky to share.\n\nExpert. Recommended for players who love risk, and developing strategies. No two games of The Last Cull will feel the same, and your plans will have to change on the fly from game to game.\n\nThe Fabled characters on this script are optional tools for Storytellers to improve their play experience, just like the official ones.",
+  "strategyGood": "Good Players will need to consider carefully who they trust. The subtlest information or lack of declaration regarding your ability can spell doom for your team if you're unprepared. Consider who you tell anything to very carefully, and keep a laundry list of back up plans at the ready. Outsiders will radically change who is alive, who is dead, and who the good team wants to be killing.",
+  "strategyEvil": "Evil Players will need to develop trust with good players, and find out as much as they can without being found out themselves. A well informed evil team is an extremely dangerous evil team, and can use their vicious, game warping, abilities to hold on long past the point of defeat. Evil players will, just like the good team, need to conspire and develop a plan for victory, and use honesty as a rare but powerful tool.",
+  "customBoxes": [
+   {
+    "title": "Credits",
+    "content": "This script was made by BakedIce (she/her). This is fan content for Blood on the Clocktower by The Pandemonium Institute. This script uses art by Pynstripe, Aidan Roberts, & Chloe McDougal. Character textures provided by ALonelyTaco. Script Image made by Luis S. Almanac style code by TheDarkArtist. Flavor text coding by SuperGD. This script has had a ton of help from the A Pint of Clocktower Discord server. When using characters from this script, please make sure to provide proper credit. Do not use the character images present for other characters. This script was made with love for myself and love of those who I love.\n\nThank you to the A Pint Of Clocktower Discord Server for all of your help making this script! It wouldn't be half as awesome without all you lovely folks!"
+   }
+  ],
+  "starlight": false
+ },
+ "characters": [
+  {
+   "name": "Paperboy",
+   "team": "townsfolk",
+   "ability": "You start knowing 3 not-in-play characters.",
+   "lede": "The Paperboy can announce who is lying!",
+   "summaryBullets": [
+    "The paperboy, on the 1st night, learns 3 characters which are not in play.",
+    "These can be Townsfolk, Outsiders, Minions, or Demons.",
+    "These can overlap with the Demon's bluffs.",
+    "If the Zabb-Yani kills the Paperboy, any of the learned characters can enter play. All 3 could, but 1 is usually enough."
+   ],
+   "howToRun": [
+    "During the first night, wake the Paperboy. Show them the character token of 3 characters, none of which are in play. Put the Paperboy to sleep."
+   ],
+   "examples": [
+    "The Paperboy learns the Conductor, Nightwatchmen, and Shade. When Emily claims to be the Conductor killed by the Shade, who saw another player as the Nightwatchmen, the Paperboy points out that she cannot be telling the truth!",
+    "The Paperboy learns the Savant, Captain, and Gentleman. They claim to be the Captain, until an evil player attempts to use the ability, at which point the Paperboy claims to instead be the Savant. This confuses the Zabb-Yani, because they learned that there wasn't a Savant in play.",
+    "The Paperboy learns the Zabb-Yani, the Shankaar, and the Gentleman. Later, when a player claiming to be the Shade comes under suspicion, the Paperboy points out that neither a Shankaar or Zabb-Yani can be in play, and the Outsider count appears to be normal."
+   ],
+   "tips": [
+    "Giving the bluffs of the evil team isn't nearly as detrimental as it may seem, since good players are likely to claim out of play characters as well, and the evil team is more likely to claim to be in-play ones. Be especially careful showing the Alphera, Grimm Reaper, or Shankaar; there are absolutely times to do it, but the main threat they pose is the ambiguity of whether or not they're in play."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Extra, extra! Read all about it! A pestilence spreads in the north! Sadness spreads in the south! Lies spread from your mouth!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "paperboy1_the_last_cull__",
+   "firstNight": 21,
+   "firstNightReminder": "Show the Paperboy the character token of 3 characters, none of which are in play.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "paperboy-the-last-cull",
+   "page": "c/paperboy-the-last-cull",
+   "art": "art/paperboy-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/paperboy-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Violinist",
+   "team": "townsfolk",
+   "ability": "You start knowing an in-play character & how many evil players are between you 2 (least steps).",
+   "lede": "The Violinist accompanies a player.",
+   "summaryBullets": [
+    "On the first night, the violinist learns an in-play character, & then how many players between the Violinist and that character are evil.",
+    "The Violinist always learns from the shortest distance. If it is tied, the Violinist learns either direction.",
+    "The Violinist can learn any in-play character, including Townsfolk, Outsiders, Minions, or Demons. Due to the Zabb-Yani, it's often best to avoid showing Outsiders, and showing Demons is rarely wise.",
+    "If the Violinist is killed by the Zabb-Yani, the character they learned might exit play."
+   ],
+   "howToRun": [
+    "When setting up the first night, choose a player. Mark them with the \"Known\" reminder token.",
+    "During the first night, wake the Violinist. Show them the character token of the player marked \"Known\". Count which direction between this character and the Violinist has the least steps. Then count how many evil players are between the Violinist and that character in this direction. Show fingers (1, 2 etc.) equaling the number of evil players you counted. Put the Violinist to sleep."
+   ],
+   "examples": [
+    "Kate, the Violinist, learns that the Carpenter has 1 evil player between them and Kate. This is because Micheal is 3 steps clockwise from Kate, is the Carpenter, and the Creepsye is 2 steps clockwise from her.",
+    "Kyle, the Violinist, learns that the Savant has 2 evil players between them and himself. This is because the Savant is 5 steps counterclockwise from the Violinist (in a 12 player game), and there are 2 evil players evil players between them in that direction.",
+    "Nico, the Violinist, learns that there is 1 evil player between themselves and the Gentleman. This is because the Gentleman is 2 steps clockwise from the Violinist, and the clockwise neighbor of the Violinist is the Rat King."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Do you hear that? The higher notes in your deeper notes. No, that's a good thing, lean into it. From the top!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "violinist1_the_last_cull__",
+   "firstNight": 22,
+   "firstNightReminder": "Show the Violinist the character token of the player marked \"Known\". Count which direction between this character and the Violinist has the least steps. Then count how many evil players are between the Violinist and that character in this direction. Show fingers (1, 2 etc.) equaling the number of evil players you counted.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Known"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "violinist",
+   "page": "c/violinist",
+   "art": "art/violinist.png",
+   "image": "https://botchomebrew.wiki/assets/art/violinist.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Trapper",
+   "team": "townsfolk",
+   "ability": "You start knowing a Minion's character. On the 3rd night, learn the character they're mad they are.",
+   "lede": "The Trapper catches a Minion.",
+   "summaryBullets": [
+    "The Trapper learns on the first night the character of a Minion.",
+    "On the 3rd night the Trapper learns the character that the Minion is mad that they are.",
+    "If the Minion is pretending to be a Traveller, Minion, or Demon character, the Trapper can learn this. You should only show the Trapper such a character if the Minion is making it explicitly clear to people they are this character, such as using the Alphera ability."
+   ],
+   "howToRun": [
+    "During the first night, wake the Trapper. Show them the character of a Minion player -- Mark them with the \"known\" reminder. Put the Beast Master to sleep.",
+    "When preparing the second night, put the Beast Master's \"Night 2\" reminder by the Beast Master. When preparing the third night, put the Beast Master's \"Night 3\" reminder by the Beast Master.",
+    "During the night, if the Beast Master has the \"Night 3\" reminder, wake them. Show them the character that the player marked \"known\" is currently mad that they are, and then remove the \"Night 3\" reminder token."
+   ],
+   "examples": [
+    "The Trapper learns on the 1st night that there's an Alphera in play. On the 3rd night, the Trapper learns that the Alphera is mad as the Iconoclast. When they find a player who was claiming to be the Iconoclast on the first few days, they bring this to the group's attention.",
+    "There is no Trapper in play, but the Gentleman doesn't know that, and so he switches the character he is claiming to be on the 3rd day. He isn't very subtle, and so the good team is convinced he is a Minion.",
+    "The Trapper is poisoned by the Cryomancer on the first night, and so learns that a Warden is in play. The Cryomancer is mad that they are the Shepherd, and so is executed on the 2nd day. On the 3rd night, the Trapper is no longer poisoned, and so they learn that a Minion is mad was mad that they were the Shepherd."
+   ],
+   "tips": [
+    "If the Minion seen by the Trapper is pretending they are an evil character, feel free to show the Trapper that evil character! If anything, this can be more powerful than information they would otherwise learn."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Did you just implicate that there's only 1 way to skin a cat? Allow me to give a quick presentation on how impossibly incorrect you are.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "trapper_the_last_cull__",
+   "firstNight": 23,
+   "firstNightReminder": "Wake the Trapper. Show them the character token of the Minion marked \"Known\". Put the Beastmaster to sleep.",
+   "otherNight": 19,
+   "otherNightReminder": "If the Trapper has the Night 3 reminder token, wake the Trapper. Think about what character the Minion marked \"Known\" has been mad that they are. Show the Trapper the character token of this character, and then put them to sleep.",
+   "reminders": [
+    "Known",
+    "Night 2",
+    "Night 3"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "trapper",
+   "page": "c/trapper",
+   "art": "art/trapper.png",
+   "image": "https://botchomebrew.wiki/assets/art/trapper.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Foreman",
+   "team": "townsfolk",
+   "ability": "Each night, choose 3 neighboring players (none you've chosen): you learn if exactly 1 is evil.",
+   "lede": "The Foreman knows who is conflicting with their neighbors.",
+   "summaryBullets": [
+    "The Foreman chooses 3 players each night who all neighbor each other. They then learn whether or not there is exactly one evil player within those 3.",
+    "If there are 3 evil players, 2 evil players, or 0 evil players amongst those 3, they learn that there isn't exactly 1 evil player.",
+    "The Foreman can't choose any players they've chosen already. If there are no more players that they can choose, the Foreman stops waking. This could include situations where the last unchosen players are ones where both of their neighbors have been chosen."
+   ],
+   "howToRun": [
+    "Each night, wake the Foreman. They point to three players who all neighbor each other. If one, and only one, is evil then nod your head yes. If this is not the case, shake your head no. Put the Foreman to sleep.",
+    "If the Foreman chooses a player that they've already chosen, point to the player(s) they've already chosen, and prompt them to choose again. If there is no set of 3 neighboring players that they haven't chosen, then do not wake the Foreman."
+   ],
+   "examples": [
+    "The Foreman chooses the Creepsye, the Candlemaker, and the Shade. They learn that yes, exactly 1 is evil.",
+    "The Foreman chooses the Shankaar, another Shankaar, and themselves. They learn that no, there isn't exactly 1 evil player.",
+    "The Foreman chooses the Shade, Savant, and Conductor. They learn that no, there isn't exactly 1 evil player."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "You've been a great employee. Truly. You're like the son I never had. You always get here on time, you give us your effort, and you go home when you're done. Understand this hurts me just as much, maybe more, than it hurts you....but we're paying you 5 nickels an hour, and money is getting tight. I think you'll understand I don't mean anything against ya...but I'm afraid we're gonna have to let you go.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "foreman_the_last_cull__",
+   "firstNight": 26,
+   "firstNightReminder": "The Foreman points to three players who all neighbor each other. If one, and only one, is evil then nod your head yes. If this is not the case, shake your head no.",
+   "otherNight": 23,
+   "otherNightReminder": "The Foreman points to three players who all neighbor each other. If one, and only one, is evil then nod your head yes. If this is not the case, shake your head no.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "foreman",
+   "page": "c/foreman",
+   "art": "art/foreman.png",
+   "image": "https://botchomebrew.wiki/assets/art/foreman.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Conspiracist",
+   "team": "townsfolk",
+   "ability": "Each night, learn an evil player or Outsider. If a (non-Traveller) neighbor is evil, you get false info.",
+   "lede": "The Conspiracist knows who's in cahoots, but little about who they work for.",
+   "summaryBullets": [
+    "Each night, the Conspiracist learns a player who is either evil, an Outsider, or both. The Conspiracist does not know which this player is.",
+    "If the Conspiracist neighbors an evil player (skipping travellers), they learn false info. This means that the players they learn each night cannot be evil or an Outsider. Most players that meet this description are Townsfolk, but not all (such as Good Travellers).",
+    "If the Conspiracist is poisoned or drunk, they can learn false or true info.",
+    "The Conspiracist does not know if they are getting true or false info, they must deduce this for themselves.",
+    "The Conspiracist skips Travellers when determining if they get true or false info. The Conspiracist only checks their neighbors, not their alive neighbors."
+   ],
+   "howToRun": [
+    "When setting up the game, check if either neighbor of the Conspiracist is evil. If one or both neighbors, skipping travellers, are evil, the Conspiracist learns mark the Conspiracist with the \"false info\" reminder token.",
+    "Each night, wake the conspiracist. Point to an evil player or an Outsider. Recall that if they have the \"false info\" reminder token, that you must show them a player which is neither (most of the time, this is a Townsfolk). Put the Conspiracist to sleep."
+   ],
+   "examples": [
+    "On the 1st night, the Conspiracist learns the Shade. On the 2nd, they learn the Shankaar. On the 3rd, they learn the Rat King.",
+    "On the 1st night, the Conspiracist learns the Iconoclast. This is because the Conspiracist neighbors the Creepsye.",
+    "On the 1st night, the Conspiracist learns the Cryomancer. On the 3rd night, the Conspiracist is poisoned by the Cryomancer, and so may now begin getting false info, or true info, as the Storyteller pleases."
+   ],
+   "tips": [
+    "When giving a Conspiracist false info, keep in mind that the Demons on this script affect how many Outsiders (and thus, how many unique names) you show them."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Don't you see it? Just beyond the edge of our eyes? They're working together...everyone is working together...I'm so glad you believe and trust me.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "conspiracist_the_last_cull__",
+   "firstNight": 20,
+   "firstNightReminder": "Point to an evil player or an Outsider. Recall that if they have the \"false info\" reminder token, that you must show them a player which is neither (most of the time, this is a Townsfolk).",
+   "otherNight": 18,
+   "otherNightReminder": "Point to an evil player or an Outsider. Recall that if they have the \"false info\" reminder token, that you must show them a player which is neither (most of the time, this is a Townsfolk).",
+   "reminders": [
+    "False info"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "conspiracist-the-last-cull",
+   "page": "c/conspiracist-the-last-cull",
+   "art": "art/conspiracist-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/conspiracist-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Conductor",
+   "team": "townsfolk",
+   "ability": "Each night, choose up to 2 players: if evil, they learn you. If you chose all other Townsfolk & Outsiders, your team wins.",
+   "lede": "The conductor can win the game for good, simply by knowing who is and isn't trustworthy.",
+   "summaryBullets": [
+    "Each night, the Conductor chooses up to 2 players. They can choose less, or no players. Evil players they choose, that night, learn who the Conductor is.",
+    "If the Conductor chooses every Townsfolk & Outsider player, their team (usually the good team) will immediately win.",
+    "If the Conductor is poisoned, they still count as choosing players for the sake of their ability. Poison does prevent the winning itself, and the alerting of evil players, but if the Conductor would've won if they were never poisoned, they will immediately win once they become healthy.",
+    "The Conductor is not told how close they are to winning through their ability, and good players they choose do not learn anything."
+   ],
+   "howToRun": [
+    "When setting up the first night, count 1 step clockwise from the Conductor for each Minion, Demon, Traveller, and for the Conductor themselves. Place the \"Train\" reminder token on the player this many steps away.",
+    "Each night, wake the Conductor. They choose up to 2 players -- Mark chosen evil players with the \"Alerted\" reminder. For each Townsfolk or Outsider player chosen, which isn't the Conductor (or a player already chosen), move the \"Train\" reminder one step clockwise. Put the Conductor to sleep. Wake all players with the \"Alerted\" reminder (separately). Show them the \"This player is\" info token and show them the Conductor character token, and point to the Conductor. Remove the \"Alerted\" reminder and put them to sleep.",
+    "If the \"Train\" reminder is on the Conductor, immediately declare the victory of the Conductor's team (usually, the good team). If the game, for some reason (such as the Conductor being poisoned) does not end, then do not move the \"Train\" reminder token for the rest of the game."
+   ],
+   "examples": [
+    "In an 8 player game, the Conductor chooses the Micheal and Steve on the 1st night. On the 2nd, they choose Greg and Emma. On the 3rd night, they choose Bailey and Rose. Nico (the Conductor), Micheal, Steve, Greg, Emma, and Bailey are all of the Townsfolk & Outsiders this game, so the good team wins.",
+    "On the 2nd night, the Conductor picks Jack, the Cryomancer. Jack learns who the Conductor is, and the Rat King kills the Conductor the night after."
+   ],
+   "tips": [
+    "In a Creepsye game, if the Conductor chooses an evil player, you should usually kill them the night after. While this isn't always the best, it will simulate the choice a different Demon would make, and prevents the evil team from feeling like there's nothing they can do against the Conductor."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "This is the last call, all passengers on board immediately!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "conductor_the_last_cull__",
+   "firstNight": 25,
+   "firstNightReminder": "Each night, wake the Conductor. They choose up to 2 players -- Mark chosen evil players with the \"Alerted\" reminder. For each Townsfolk or Outsider player chosen, which isn't the Conductor (or a player already chosen), move the \"Train\" reminder one step clockwise. Put the Conductor to sleep. Wake all players with the \"Alerted\" reminder (separately). Show them the \"This player is\" info token and show them the Conductor character token, and point to the Conductor. Remove the \"Alerted\" reminder and put them to sleep.",
+   "otherNight": 22,
+   "otherNightReminder": "Each night, wake the Conductor. They choose up to 2 players -- Mark chosen evil players with the \"Alerted\" reminder. For each Townsfolk or Outsider player chosen, which isn't the Conductor (or a player already chosen), move the \"Train\" reminder one step clockwise. Put the Conductor to sleep. Wake all players with the \"Alerted\" reminder (separately). Show them the \"This player is\" info token and show them the Conductor character token, and point to the Conductor. Remove the \"Alerted\" reminder and put them to sleep.",
+   "reminders": [
+    "Alerted",
+    "Alerted",
+    "Train"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "conductor-the-last-cull",
+   "page": "c/conductor-the-last-cull",
+   "art": "art/conductor-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/conductor-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Carpenter",
+   "team": "townsfolk",
+   "ability": "Each night*, learn if 1 of the Demon’s 2 alive neighbors died tonight.",
+   "lede": "The Carpenter learns when the Demon betrays those closest to them.",
+   "summaryBullets": [
+    "Each night, after the first, the Carpenter learns whether or not an alive neighbor of the Demon died tonight.",
+    "The Carpenter learns information about all players who died tonight. If any of them were an alive neighbor of the Demon, the Carpenter learns a yes. This can include players not killed by the Demon, or evil players.",
+    "If no one dies at night, the Carpenter learns a no. If both alive neighbors of the Demon die at night, the Carpenter would learn a yes that night.",
+    "If a player dies during the day, the Carpenter does not learn about them, even if the Demon caused their death."
+   ],
+   "howToRun": [
+    "Each night, if an alive neighbor of the Demon dies, mark the Carpenter with the “Betrayal” reminder token.",
+    "Each night, except for the first, wake the Carpenter. If they have the “Betrayal” reminder token, nod your head yes and remove it. If not, shake your head no. Put the Carpenter to sleep."
+   ],
+   "examples": [
+    "The Grimm Reaper kills the Cultist, who neighbors them. The Carpenter learns that yes, the Demon's living neighbor died tonight.",
+    "The Rat King kills the Nightwatchmen, who isn't one of their alive neighbors. The Carpenter learns that a living neighbor of the Demon didn't die tonight.",
+    "The Creepsye kills the Cultist, who's alive neighbors are the Savant and the Iconoclast. Since the Creepsye makes the Townsfolk \"the Demon\", the Carpenter learns that yes, an alive neighbor of the Demon has died tonight."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "כדי לבנות בית, כל פיסת עץ חייבת לסמוך זה על זה. לא הצלחתי לבנות כבר זמן מה...יש בוגד בתוכנו.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "carpenter_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 17,
+   "otherNightReminder": "Check to see if either of the Demon's alive neighbors have since died. If this is the case, nod to the Carpenter yes, and if not, shake your head to the Carpenter no.",
+   "reminders": [
+    "Betrayal"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "carpenter-the-last-cull",
+   "page": "c/carpenter-the-last-cull",
+   "art": "art/carpenter-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/carpenter-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Iconoclast",
+   "team": "townsfolk",
+   "ability": "Each night* learn the character of a player who voted for your 1st nomination.",
+   "lede": "The Iconoclast knows who follows their lead.",
+   "summaryBullets": [
+    "Each night except the first, the Iconoclast learns a character who voted for the first nomination the Iconoclast made.",
+    "The Iconoclast learns a character, but not the player that character is. The character can be good or evil.",
+    "The Iconoclast receives information regardless of who they nominated or if the nominee was executed that day or not.",
+    "If no player voted for the Iconoclast’s first nomination, the Iconoclast learns nothing.",
+    "If the player who voted for the Iconoclast’s nomination changes character, the Iconoclast learns their current character."
+   ],
+   "howToRun": [
+    "During the Iconoclast's first nomination mark each player who votes with the \"Voted\" reminder.",
+    "Each night, except for the first, wake up the Iconoclast. Show them a character token of a player with the \"Voted\" reminder. Put the Iconoclast to sleep.",
+    "If no players have the \"voted\" reminder, do not wake the Iconoclast. If an Iconoclast is created in the middle of a game, or a player gains the Iconoclast ability, then mark the players who vote for their next nomination with the \"voted\" reminder."
+   ],
+   "examples": [
+    "The Iconoclast nominates the Cultist, and the Savant, Candlemaker, and Shankaar vote for them. That night, the Iconoclast learns that the Savant voted on their nomination. The next night, they learn that the Shankaar voted on their nomination. The next night, they learn that the Candlemaker voted on their nomination.",
+    "The Iconoclast nominates the Creepsye. The majority of players vote for it, and the Creepsye is executed that day. One of the player's who voted was the Gentleman, and the Iconoclast learns this that night.",
+    "The Iconoclast's first nominations is of the Nightwatchmen, and no one votes. The Iconoclast does not wake up that night."
+   ],
+   "tips": [
+    "The Iconoclast has 7 reminder tokens. This is both a whole friggin' lot, and much less than you might need. Here's some advice on how to use them! If most players voted, you might be better off indicating who didn't vote, just remember to give some sort of signal to yourself (such as turning the reminder tokens some). If all players voted, you can keep things easy on yourself by placing 1 reminder token in the center of the Grimoire. Worst case scenario, it's in the Iconoclast's interest to keep a fine eye on who voted. If you're worried about it, you can always ask them who they lead, and they should hopefully be able to clue you in."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Your kings, they are dead. Your leaders have forsaken you. The trustworthy have turned traitorous. But you have yourself, and your community. There is a fire in all of us, and I plan to bring it forward! Follow my lead, our lead! Carry your banners like you carry your names! Carry your heart as you carry your flame! Die as you live, brothers, impossible to conquer! We live as one, and die as one! Onwards!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "iconoclast_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 20,
+   "otherNightReminder": "Show the Iconoclast a character token of a player with the \"Voted\" reminder.",
+   "reminders": [
+    "Voted",
+    "Voted",
+    "Voted",
+    "Voted",
+    "Voted",
+    "Voted",
+    "Voted"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Almanac page by Nyctophonik"
+    }
+   ],
+   "customJson": "",
+   "slug": "iconoclast",
+   "page": "c/iconoclast",
+   "art": "art/iconoclast.png",
+   "image": "https://botchomebrew.wiki/assets/art/iconoclast.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Savant",
+   "team": "townsfolk",
+   "ability": "Each day, you may visit the Storyteller to learn 2 things in private: 1 is true & 1 is false.",
+   "lede": "The Savant gets crazy, amazing information that is different every day and every game, but exactly half of it is completely false.",
+   "summaryBullets": [
+    "Each day, the Storyteller chooses two pieces of information to give the Savant... so get creative! One must be true, and one must be false, and the Savant won’t know which is which.",
+    "It is up to the Savant to talk with the Storyteller, not the other way around. This isn’t a public conversation, and the group can’t listen in. It’s private.",
+    "The Savant can choose to not visit the Storyteller if they wish.",
+    "A drunk or poisoned Savant might get two pieces of true information or two pieces of false information."
+   ],
+   "howToRun": [
+    "Once per day, if the Savant requests a private chat with you, take them away from the circle so you cannot be overheard. Whisper two pieces of information, one true and one false, to the Savant. (If you cannot think of two straight away, either take your time or ask them to come back in a few minutes.)"
+   ],
+   "examples": [
+    "The Savant learns that \"All players wearing glasses are good\" and that \"One player sitting on the black couch is a Minion.\"",
+    "The Savant learns that \"A Candlemaker is in play\" and \"Everybody got true information last night.\"",
+    "The Savant learns that \"The Demon is a woman\" and \"Benjamin is evil.”",
+    "The Savant learns that \"Evin and Amy are the same alignment\" and \"There is one Outsider in play.”"
+   ],
+   "tips": [
+    "Keep the information you give helpful and related to the game. Avoid saying who exactly the Demon is, or it could be a very short game. If you need help on choosing what to say, give information similar to what Townsfolk abilities would provide."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Seventy-two matchsticks on the floor... the sun sets early but the moon is unchanged... a torn piece of cloth... evil in the manor house... three by three... the one we trusted is not what he seems... green light means magnesium... residue, but the pattern is wrong... Seventy-two matchsticks on the floor...",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "The Pandemonium Institute. Art by Aiden Roberts.",
+   "edition": "The Last Cull",
+   "jsonId": "savant_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "The Pandemonium Institute. Art by Aiden Roberts."
+    }
+   ],
+   "customJson": "",
+   "slug": "savant",
+   "page": "c/savant",
+   "art": "art/savant.png",
+   "image": "https://botchomebrew.wiki/assets/art/savant.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Nightwatchman",
+   "team": "townsfolk",
+   "ability": "Once per game, at night, choose a player: they learn who you are.",
+   "lede": "The Nightwatchman is known by one player.",
+   "summaryBullets": [
+    "Once per game, the Nighwatchman chooses a player, who learns who the Night watchman is.",
+    "A chosen evil player still learns who the Nightwatchman is.",
+    "If the Nightwatchman is poisoned or drunk, they choose a player but that player does not wake.",
+    "If the Zabb-Yani kills the player that the Nightwatchmen chose, the Nightwatchman might become a different character."
+   ],
+   "howToRun": [
+    "Each night, wake the Nightwatchman. If they shake their head, put them back to sleep. If they point at a player, put the Nightwatchman to sleep, wake the chosen player and show them the “This character selected you” info token and the Nightwatchman token, then point to the Nightwatchman player before putting them back to sleep. Mark the Nightwatchman with the “No ability” reminder token.",
+    "If the Nightwatchman is drunk or poisoned when they choose a player, put them back to sleep, do not wake the chosen player and mark that they have used their once per game ability."
+   ],
+   "examples": [
+    "Lachlan is the Nightwatchman. He chooses Abdallah. Abdallah learns that Lachlan is the Nightwatchman.",
+    "Marianna is the poisoned Nightwatchman. She chooses Amy. Amy does not wake, and does not learn that Marianna is the Nightwatchman, because the Nightwatchman has no ability."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The night is cold and lonely, but I have the moon, the stars, the crisp wind and the soft thud of leather boots on cobbled stone for company. Yonder, candlelight flickers behind a murky window...",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "The Pandemonium Institute. Art by Chloe McDougal.",
+   "edition": "The Last Cull",
+   "jsonId": "nightwatchman_the_last_cull__",
+   "firstNight": 19,
+   "firstNightReminder": "The Nightwatchman may point to a player. Wake that player, show the 'This character selected you' card and the Nightwatchman token, then point to the Nightwatchman player.",
+   "otherNight": 15,
+   "otherNightReminder": "The Nightwatchman may point to a player. Wake that player, show the 'This character selected you' card and the Nightwatchman token, then point to the Nightwatchman player.",
+   "reminders": [
+    "No ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "The Pandemonium Institute. Art by Chloe McDougal."
+    }
+   ],
+   "customJson": "",
+   "slug": "nightwatchman",
+   "page": "c/nightwatchman",
+   "art": "art/nightwatchman.png",
+   "image": "https://botchomebrew.wiki/assets/art/nightwatchman.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Candlemaker",
+   "team": "townsfolk",
+   "ability": "Once per game, even if dead, publicly choose a player: chosen Minions, while alive, win if (& only if) you do.",
+   "lede": "The Candlemaker can guide a Minion to the good team.",
+   "summaryBullets": [
+    "Once per game, even if the Candlemaker is dead, they can publicly choose a player. If this player is a Minion then they will win & lose with the Candlemaker's team until they die.",
+    "If a Minion chosen by the Candlemaker is dead, they still win and lose with their team.",
+    "If the Candlemaker chooses a Minion, and then another player's ability ends the game, that player wins or loses with the Good team.",
+    "If the Minion chosen by the Candlemaker would cause their own team to win through their ability, then nothing occurs.",
+    "Minions chosen by the Candlemaker are not good. To abilities they still register as evil, they are still a Minion, and they do not learn of their alignment changing, since their alignment hasn't."
+   ],
+   "howToRun": [
+    "Once per game, the Candlemaker will publicly choose a player. Mark the Candlemaker with the \"No ability\" reminder. Mark the chosen player with the \"Blessed\" reminder token. If the Candlemaker's team wins, and the chosen player is an alive Minion, declare that they've won as well. If the Candlemaker's team loses, and the chosen player is an alive Minion, declare that they've lost as well."
+   ],
+   "examples": [
+    "The Candlemaker chooses the Alphera. The Alphera can only win with the good team while they live, so they tell the group who their Demon is.",
+    "The Candlemaker chooses the Gentleman. The Demon kills the Gentleman, returning the Gentleman's win conditions to normal.",
+    "The Candlemaker chooses the Ragpicker. The Ragpicker confirms to the group that they are not a Minion. The Candlemaker gives the Ragpicker a high five, to celebrate their comradery."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "There is hope for you yet. The seeds of darkness have not fully entangled your heart, and I can offer you light forward.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "candlemaker_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Blessed",
+    "No ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "candlemaker-the-last-cull",
+   "page": "c/candlemaker-the-last-cull",
+   "art": "art/candlemaker-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/candlemaker-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Ragpicker",
+   "team": "townsfolk",
+   "ability": "Once per game, at night, choose a character (not a Demon). You learn who they are if in-play, but false info if not.",
+   "lede": "The Rag Picker gets amazing information, if they can sort through the rubbish.",
+   "summaryBullets": [
+    "Once per game, at night, the Ragpicker chooses a character. If this character is in play, the Ragpicker learns who they are, but if not, the Ragpicker learns false info.",
+    "The Ragpicker cannot choose a Demon character. They can choose any Townsfolk, Outsider, or Minion."
+   ],
+   "howToRun": [
+    "Each night, wake the Ragpicker. They either shake their head no or point to a character on their character sheet that isn't a Demon.",
+    "If they shake their head no, nothing happens. Put the Ragpicker to sleep.",
+    "If they choose a character, point to the player with that character. If no one has that character, point to any player. Put the Ragpicker to sleep. The Ragpicker loses their ability - mark them with the \"No ability\" reminder and remove their night token from the night sheet."
+   ],
+   "examples": [
+    "The Ragpicker chooses the Alphera. They learn that Micheal, the Alphera, is the Alphera.",
+    "The Ragpicker chooses the Alphera. They learn that Micheal, the Paperboy, is the Alphera. There is no Alphera in play, so this is false information.",
+    "The Ragpicker chooses the Iconoclast. They learn that Steven, the Iconoclast, is the Iconoclast."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Yes, this is a real job, now let me get back to my garbage!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "ragpicker_the_last_cull__",
+   "firstNight": 24,
+   "firstNightReminder": "The Ragpicker may point to a character. Point to the player with that character token. If there are none, point to any player.",
+   "otherNight": 21,
+   "otherNightReminder": "The Ragpicker may point to a character. Point to the player with that character token. If there are none, point to any player.",
+   "reminders": [
+    "No ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "ragpicker",
+   "page": "c/ragpicker",
+   "art": "art/ragpicker.png",
+   "image": "https://botchomebrew.wiki/assets/art/ragpicker.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Medium",
+   "team": "townsfolk",
+   "ability": "Once per game, at night*, learn which dead players are evil.",
+   "lede": "The Medium can learn which dead players are evil.",
+   "summaryBullets": [
+    "Once per game, the Medium can use their ability. When they do so, they learn every dead evil player.",
+    "If no dead players are evil, you tell the Medium a \"No\".",
+    "The Medium can learn players that they'd think are alive, such as those killed by the Shade, or the player who died tonight.",
+    "The Zabb-Yani can cause a learned evil player to be revived."
+   ],
+   "howToRun": [
+    "Each night, after the first, wake the Medium. They will either nod or shake their head. If they nod, point to every dead player that is evil. If there are no dead evil players, shake your head \"no\" instead. Put the Medium to sleep.",
+    "If they nod, the Medium loses their ability — mark them with the \"No Ability\" reminder and remove their night token from the night sheet. (The Medium won’t wake again.)"
+   ],
+   "examples": [
+    "Adrian, the Medium, uses their ability on the 3rd night. They learn that Markus, the Shankaar, is evil. They don't learn that any other player is evil, since no other dead players are evil.",
+    "The Medium uses their ability on the 2nd night. There are no dead evil players, so they learn this.",
+    "The Medium uses their ability on the 4th night. They learn that Bobby, who they thought was alive, is actually a dead evil player. This is because the Shade killed him, and he said nothing about it."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I like to be honest with my clients. Your grandfather is a real حمار.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "medium_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 16,
+   "otherNightReminder": "The Medium will either nod or shake their head. If they nod, point to every dead player that is evil. If there are no dead evil players, shake your head \"no\" instead. Put the Medium to sleep. If they nod, the Medium loses their ability — mark them with the \"No Ability\" reminder and remove their night token from the night sheet. (The Medium won’t wake again.)",
+   "reminders": [
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "medium-the-last-cull",
+   "page": "c/medium-the-last-cull",
+   "art": "art/medium-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/medium-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Captain",
+   "team": "outsider",
+   "ability": "Each day, before nominations, a living player may publicly choose another: they die. Good players who do this lose.",
+   "lede": "The Captain lets evil players kill during the day if they're willing to reveal themselves.",
+   "summaryBullets": [
+    "Each day, before nominations, a living player can publicly choose a different living player. The chosen player dies immediately.",
+    "If a good player attempts to choose a player using the Captain ability, the good team immediately loses.",
+    "The Captain can be killed by their own ability, as can evil players and Travellers.",
+    "Travellers can use the Captain ability."
+   ],
+   "howToRun": [
+    "Once per day, before you have called for nominations, a living player may publicly choose a different living player. If a good player does this, then end the game and declare the victory of the evil team. If the 1st living player is evil, instead the player they chose dies."
+   ],
+   "examples": [
+    "The Alphera chooses the Candlemaker with the Captain ability, and the Candlemaker dies.",
+    "The Shankaar chooses the Creepsye with the Captain ability, and the Creepsye dies.",
+    "On the last day, the Cryomancer tries using the Captain ability on themself, but the Captain ability only allows living players to choose other living players, not themselves. The Warden uses the ability on the Captain, and the Captain dies."
+   ],
+   "tips": [
+    "Make sure you clarify which character's ability a player is using when they publicly choose a player."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Hello, friends! I believe I have finally found an appropriate context where war IS the solution! Allow me to test my theory-",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "captain_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "captain-the-last-cull",
+   "page": "c/captain-the-last-cull",
+   "art": "art/captain-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/captain-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shade",
+   "team": "outsider",
+   "ability": "Once per game, a player you vote for might die tonight (& learn this), but appear alive until executed.",
+   "lede": "The Shade kills a player who is the only one that knows they died.",
+   "summaryBullets": [
+    "When a player is nominated, if the Shade votes, the nominee might die that night, and learn that the Shade killed them.",
+    "That morning, it is not publicly declared that they are dead, even if the Demon attacked them at night. It is the dead player's responsibility to tell the group that they are dead (if they want to).",
+    "Players killed by the Shade only appear alive, they do not register as alive. This means that they cannot nominate, can only vote once, and will register as dead to abilities.",
+    "If the player killed by the Shade is executed, it will be declared that they die, even though they are already dead. If they voted before this, they do not gain another vote, but only the player killed by the Shade knows this.",
+    "The player killed by the Shade will continue to appear alive until they are executed, even if the Shade is poisoned, drunk, or dead."
+   ],
+   "howToRun": [
+    "Once per game, if the Shade votes on a nomination, mark the nominee with the \"Dead\" reminder token (they are not yet dead) and mark the Shade with the \"No Ability\" reminder. That night, wake the player marked \"Dead\". Show them the \"This character selected you\" info token, and then the Shade character token. Put them to sleep. They die, but do not announce this tomorrow morning.",
+    "If the player with the \"Dead\" reminder token is executed, declare that they die. This player appears as alive to other players (but not their abilities!) until they are executed, even if the Shade dies or becomes drunk or poisoned.",
+    "If the dead player nominates or votes multiple times, do not draw attention to it, but make sure they understand how the Shade works and that this is cheating. If something afterwards would kill this player, do not announce them as having died, even if the Shade is dead."
+   ],
+   "examples": [
+    "The Shade votes for the Savant. In the night, the Savant dies and learns this, and in the morning nothing is announced. The Savant wants to nominate Kelly, but cannot due to being dead, so he has to ask Micheal to nominate her.",
+    "The Creepsye was nominated and the Shade voted for it. That night, the Creepsye dies and learns this, but does not say anything to the good team, letting them think an extra player is alive than there really is.",
+    "The Alphera was nominated, but the Shade did not vote. In spite of this, the Alphera still claims to be dead, as though they were killed by the Shade in the night."
+   ],
+   "tips": [
+    "Don't kill the Demon with the Shade's ability."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I worry that when I'm not looking, people I love are dying, and they aren't around to tell me.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "shade_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 6,
+   "otherNightReminder": "Wake the player marked \"Dead\". Show them the \"This character selected you\" info token, and then the Shade character token. Put them to sleep. They die, but do not announce this tomorrow morning.",
+   "reminders": [
+    "Dead",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "shade-the-last-cull",
+   "page": "c/shade-the-last-cull",
+   "art": "art/shade-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/shade-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shepherd",
+   "team": "outsider",
+   "ability": "If only 3 players live (including the Demon, but not Travellers), your team loses.",
+   "lede": "The Shepherd must die before the end of the game, or their team loses.",
+   "summaryBullets": [
+    "The Shepherd loses their ability if they are dead, so if 3 players live that doesn’t include the Shepherd, their team does not lose.",
+    "The Shepherd ability does not activate if the Demon is not one of the living players.",
+    "If there are 3 living players, including the Shepherd and the Demon, then the game immediately ends, even at night.",
+    "Travellers don’t count towards the Shepherd’s ability."
+   ],
+   "howToRun": [
+    "Once 3 (or less) players who aren’t travellers live, one of whom is the demon, declare that the game ends and that the Shepherd’s team loses."
+   ],
+   "examples": [
+    "The last 3 living players are the Rat King, the Nightwatchmen, and the Shepherd. The good team loses.",
+    "The last 3 living players are the Foreman, the Grimm Reaper, and the Savant. The Shepherd is dead, so the game resumes.",
+    "The last 3 living players are the Gentleman, the Shankaar, and the Shepherd. None of these players are the demon, so the good team wins."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Look, I'm just used to taking care of my sheep and my dog. I don't know anythin' about these here demons! Get em away from me I say, get em away from me!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "Art by Pynstripe",
+   "edition": "The Last Cull",
+   "jsonId": "shepherd_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Art by Pynstripe, thank you!"
+    }
+   ],
+   "customJson": "",
+   "slug": "shepherd-the-last-cull",
+   "page": "c/shepherd-the-last-cull",
+   "art": "art/shepherd-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/shepherd-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Cultist",
+   "team": "outsider",
+   "ability": "If no Outsiders live, all but 3 players die tonight (even if you're dead).",
+   "lede": "The Cultist must hide the Outsiders, or else risk ending the game prematurely",
+   "summaryBullets": [
+    "If there are no living Outsiders, all but 3 players will die that night. This occurs even if more players would die, and even if the Cultist is dead.",
+    "The Cultist ability can only activate once per game.",
+    "Since the Cultist themselves are an Outsider, they must be dead for their ability to activate. This also means that if the Cultist is the only Outsider, their ability only needs for them to die."
+   ],
+   "howToRun": [
+    "When the last Outsider dies, mark the Cultist with the \"Apocalypse\" reminder. If the Cultist has the \"Apocalypse\" reminder, mark 3 players with the \"Survives\" reminder. That night, every player who doesn't have the \"Survives\" reminder dies. If only 3 players live, remove the Cultist's \"Apocalypse\" reminder token. Remember that the Cultist keeps this ability even after dying."
+   ],
+   "examples": [
+    "On the first day, the Cultist is executed. The Cultist is the only Outsider, so that night all players except the Grimm Reaper, the Iconoclast, and the Conspiracist die.",
+    "On the first day, the Cultist is executed. That night, the Demon kills the Shepherd, the only other Outsider. All but 3 players die in the night.",
+    "When only 4 players live, the Cultist is executed. All Outsiders are dead, so all but 3 players die, or rather, no one dies in the night."
+   ],
+   "tips": [
+    "Don't kill the Demon using the Cultist ability."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The ritual is too far gone to prevent it anymore. All I can do is warn those in it's wake.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "cultist_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 14,
+   "otherNightReminder": "If the Cultist has the \"Apocalypse\" reminder, mark 3 players with the \"Survives\" reminder. That night, every player who doesn't have the \"Survives\" reminder dies. If only 3 players live, remove the Cultist's \"Apocalypse\" reminder token. Remember that the Cultist keeps this ability even after dying.",
+   "reminders": [
+    "Apocalypse",
+    "Survives",
+    "Survives",
+    "Survives"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "cultist-the-last-cull",
+   "page": "c/cultist-the-last-cull",
+   "art": "art/cultist-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/cultist-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Gentleman",
+   "team": "minion",
+   "ability": "You start knowing 1 good player, & once per game, may publicly order them. They follow, or might be executed.",
+   "lede": "The Gentleman can charm good players into helping the evil team.",
+   "summaryBullets": [
+    "The Gentleman learns a good player on the 1st night. Once per game, the Gentleman can publicly give this player an order. If they do not follow it, they might be executed.",
+    "The Gentleman can execute players at night, and give orders which extend into the night phase.",
+    "Usually, the Storyteller should verify which orders they would be willing to execute for, especially if directly asked, and especially if asked by the Gentleman.",
+    "The learned player doesn’t know they’ve been learned, and it is not confirmed whether or not the Gentleman has actually used their ability. This means they could order any player, and that player will have to assess the risks before choosing to follow or not.",
+    "If the player learned by the Gentleman becomes evil, they do not learn a new player."
+   ],
+   "howToRun": [
+    "When setting up the first night, mark a good player with the \"Admirer\" reminder token. On the first night, wake the gentleman, and then point to that player. Then put the Gentleman to sleep.",
+    "Once per game, the Gentleman will order a player. If that player is the player they learned, then mark the Gentleman with the \"No Ability\" reminder token. You may want to turn the \"Admirer\" reminder token, to indicate which player is affected by the order. If this player does not follow the order provided, mark them with the \"Disobeyed\" reminder token, they might be executed at any point in the game."
+   ],
+   "examples": [
+    "Abby, the Gentleman, learns Sandra, the Trapper. On the final day, Abby orders that Sandra does not to nominate. Sandra chooses to nominate anyway. She is executed immediately. The Evil Team has won.",
+    "Clark, the Gentleman, learns Mike. On the first day, he orders that Bethany says her character. Bethany says that she won't, and nothing happens. He then orders that Mike doesn’t vote today, and Mike chooses not to vote that day."
+   ],
+   "tips": [
+    "Make sure to always be clear with your players whether or not you'd be willing to execute a player for disobeying a Gentleman order, even if it's an evil player pretending to use the Gentleman ability. When accepting orders as valid, make sure you are ready to answer any questions about it, especially ones the Gentleman themselves might ask you beforehand. While actions which would guarantee the loss of the player's team given the context (for example, \"Do not nominate today.\") should be ones you are willing to execute for, commands which would always result in the loss of the Admirer’s team tend to be less enjoyable (such as, \"Use the Captain ability\". Do not execute players for disobeying that!)."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "If looks could kill, we’d both be dead. Let’s keep our beautiful eyes closed.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "gentleman1_the_last_cull__",
+   "firstNight": 15,
+   "firstNightReminder": "Point to the player marked 'Admirer'.",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Admirer",
+    "No Ability",
+    "Disobeyed"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "gentleman-the-last-cull",
+   "page": "c/gentleman-the-last-cull",
+   "art": "art/gentleman-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/gentleman-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shankaar",
+   "team": "minion",
+   "ability": "Each night, evil players secretly communicate for 1 minute. [A good neighbor is an evil Shankaar]",
+   "lede": "The Shankaar’s allies commune in the shadows.",
+   "summaryBullets": [
+    "The 2nd Shankaar drew a good character token, meaning they get it as a bluff!",
+    "The Shankaar can replace a Townsfolk or an Outsider.",
+    "The secret communication can take whatever form you want, so long as it is indeed secret and for approximately a minute! Online, usually setting up a group chat or private conversation works. For in person play, you’ll often have to get more creative. Don’t underestimate the power of frantic miming and pointing!",
+    "Both Shankaars get normal minion info, but the 2nd Shankaar knows they can bluff the character they started as!"
+   ],
+   "howToRun": [
+    "Never place more than 1 Shankaar token into the bag. After receiving tokens, look at where the Shankaar is. Choose a good player who neighbors them, and swap their token for the other Shankaar token.",
+    "At the start of the first night, wake this player and show them the “You are” card and the thumbs down hand signal and then the Shankaar character token. This occurs before anything else, so the new Shankaar participates in minion/demon info.",
+    "Each night, wake all evil players. Show them the \"This character chose you\" info token and then the Shankaar character token. Give them a silent countdown of “3, 2, 1…”. They can then secretly communicate for 1 minute. Ensure no other players can hear what the evil team is saying, or the fact they are communicating. When the minute ends, put all evil players to sleep."
+   ],
+   "examples": [
+    "During the 1st night, Steven mimes to the evil team an eyeball and a hand. Everyone picks up that he means he is the Creepsye. Joseph quietly lifts his character sheet and points to the Warden, to show the group he is the Warden. The 2 Shankaars understand sign language, and so sign out \"Fire Ghost\" to try to tell the evil team that they're the Shankaars.",
+    "During the 2nd night, the evil team quietly get up and move to a nearby area, where they whisper as quietly as they can for the minute.",
+    "During the night, the evil team discusses what bluffs they're giving to the good team, what characters they think players have, if any of them have heard of a Conductor or Nightwatchmen, how they plan to deal with the Candlemaker, and if anyone should claim to use the Captain ability or be the Gentleman."
+   ],
+   "tips": [
+    "Generally, it is most balanced to give the Demon the character that one of the Shankaars drew as a bluff. For example, if the 2nd Shankaar drew the Shepherd token initially, it is best to give Shepherd as a Demon bluff.",
+    "Having 2 Shankaars with their ability is the same as having 1 for the sake of the Shankaar ability. Remember that if both are dead or lack their ability, then the night time communication does not occur. If there is no Shankaar in play, it is reccomended that you wait a little bit before waking any good players, so that they're unsure if it is."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "In fire we were born...In unity we live...",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "shankaar_the_last_cull__",
+   "firstNight": 16,
+   "firstNightReminder": "Wake all evil players. Show them the 'This character chose you' info token and then the Shankaar character token. Give them a silent countdown of '3, 2, 1…'. They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "otherNight": 7,
+   "otherNightReminder": "Wake all evil players. Show them the 'This character chose you' info token and then the Shankaar character token. Give them a silent countdown of '3, 2, 1…'. They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Inspired by Hivemind by Patters!"
+    }
+   ],
+   "customJson": "",
+   "slug": "shankaar-the-last-cull",
+   "page": "c/shankaar-the-last-cull",
+   "art": "art/shankaar-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/shankaar-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Shankaar",
+   "team": "minion",
+   "ability": "Each night, evil players secretly communicate for 1 minute. [A good neighbor is an evil Shankaar]",
+   "lede": "The Shankaar’s allies commune in the shadows.",
+   "summaryBullets": [
+    "The 2nd Shankaar drew a good character token, meaning they get it as a bluff!",
+    "The Shankaar can replace a Townsfolk or an Outsider.",
+    "The secret communication can take whatever form you want, so long as it is indeed secret and for approximately a minute! Online, usually setting up a group chat or private conversation works. For in person play, you’ll often have to get more creative. Don’t underestimate the power of frantic miming and pointing!",
+    "Both Shankaars get normal minion info, but the 2nd Shankaar knows they can bluff the character they started as!"
+   ],
+   "howToRun": [
+    "Never place more than 1 Shankaar token into the bag. After receiving tokens, look at where the Shankaar is. Choose a good player who neighbors them, and swap their token for the other Shankaar token.",
+    "At the start of the first night, wake this player and show them the “You are” card and the thumbs down hand signal and then the Shankaar character token. This occurs before anything else, so the new Shankaar participates in minion/demon info.",
+    "Each night, wake all evil players. Show them the \"This character chose you\" info token and then the Shankaar character token. Give them a silent countdown of “3, 2, 1…”. They can then secretly communicate for 1 minute. Ensure no other players can hear what the evil team is saying, or the fact they are communicating. When the minute ends, put all evil players to sleep."
+   ],
+   "examples": [
+    "During the 1st night, Steven mimes to the evil team an eyeball and a hand. Everyone picks up that he means he is the Creepsye. Joseph quietly lifts his character sheet and points to the Warden, to show the group he is the Warden. The 2 Shankaars understand sign language, and so sign out \"Fire Ghost\" to try to tell the evil team that they're the Shankaars.",
+    "During the 2nd night, the evil team quietly get up and move to a nearby area, where they whisper as quietly as they can for the minute.",
+    "During the night, the evil team discusses what bluffs they're giving to the good team, what characters they think players have, if any of them have heard of a Conductor or Nightwatchmen, how they plan to deal with the Candlemaker, and if anyone should claim to use the Captain ability or be the Gentleman."
+   ],
+   "tips": [
+    "Generally, it is most balanced to give the Demon the character that one of the Shankaars drew as a bluff. For example, if the 2nd Shankaar drew the Shepherd token initially, it is best to give Shepherd as a Demon bluff.",
+    "Having 2 Shankaars with their ability is the same as having 1 for the sake of the Shankaar ability. Remember that if both are dead or lack their ability, then the night time communication does not occur. If there is no Shankaar in play, it is reccomended that you wait a little bit before waking any good players, so that they're unsure if it is."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "In unity we live...In fire we were born...",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "shankaar2_the_last_cull__",
+   "firstNight": 17,
+   "firstNightReminder": "Wake all evil players. Show them the 'This character chose you' info token and then the Shankaar character token. Give them a silent countdown of '3, 2, 1…'. They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "otherNight": 8,
+   "otherNightReminder": "Wake all evil players. Show them the 'This character chose you' info token and then the Shankaar character token. Give them a silent countdown of '3, 2, 1…'. They can then secretly communicate for 1 minute. When the minute ends, put all evil players to sleep.",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "Inspired by Hivemind by Patters!"
+    }
+   ],
+   "customJson": "",
+   "slug": "shankaar-the-last-cull-2",
+   "page": "c/shankaar-the-last-cull-2",
+   "art": "art/shankaar-the-last-cull-2.png",
+   "image": "https://botchomebrew.wiki/assets/art/shankaar-the-last-cull-2.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Cryomancer",
+   "team": "minion",
+   "ability": "Each night, you may choose a character: they're poisoned. A good player (while alive) learns your choices.",
+   "lede": "The Cryomancer slowly freezes the good team from their abilities.",
+   "summaryBullets": [
+    "The Cryomancer may choose a character each night. If it is in play, they are poisoned until the Cryomancer dies.",
+    "If the Cryomancer chooses a character, there is a good player that learns this character. This good player does not change, and if they die they no longer learn the chosen characters.",
+    "The good player isn't woken by the Cryomancer if the Cryomancer doesn't choose a character that night, or if the Cryomacer is poisoned, drunk, or dead.",
+    "If a character enters play after the Cryomancer chose them, they are not poisoned.",
+    "If the Zabb-Yani kills the player who learns the Cryomancer's choices, then 1 of those choices can change! This can mean that if the Cryomancer chose an out of play character, then an in play 1 is poisoned. This can also cause a poisoned character to become healthy by poisoning another one (which can, but often shouldn't be, and out of play one).",
+    "If there's multiple of the same character in play, only 1 is poisoned for each time the Cryomancer chooses that character."
+   ],
+   "howToRun": [
+    "When setting up the 1st night, choose a good player -- Mark them with the \"Frozen\" reminder token.",
+    "Each night, wake the Cryomancer. They either shake their head or point to a character on their sheet. If the chosen character is in play, they are poisoned -- Mark them with one of the \"Poisoned\" reminder tokens. Keep in mind, this poison is permanent. Put the Cryomancer to sleep.",
+    "If the player marked \"Frozen\" is alive, wake them. Show them the \"This character selected you\" info token, and then the Cryomancer character token. Then, show them the character token of the character the Cryomancer pointed to. Put them to sleep. If the Cryomancer didn't choose a character tonight, don't wake the player marked \"Frozen\"."
+   ],
+   "examples": [
+    "On the 1st night, the Cryomancer chooses the Foreman. Max, the Savant, learns that there is a Cryomancer that chose the Foreman. On the 2nd night, the Cryomancer doesn't choose a character, and Max learns nothing. On the 3rd night, the Cryomancer chooses the Ragpicker, but Max is dead, so Max still learns nothing.",
+    "On the 1st night, the Cryomancer chooses the Nightwatchmen. On the 4th night, the Nightwatchmen uses their ability, but nothing happens since they are poisoned.",
+    "On the 1st night, the Cryomancer chooses the Violinist. There is no Violinist, so nothing happens."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "The final winter brings with it an infinite famine that lasts until the end of the earth.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "cryomancer_the_last_cull__",
+   "firstNight": 18,
+   "firstNightReminder": "The Cryomancer either shakes their head or points to a character on their sheet. If the chosen character is in play, they are poisoned -- Mark them with one of the \"Poisoned\" reminder tokens. Put the Cryomancer to sleep. If the player marked \"Frozen\" is alive, wake them. Show them the \"This character selected you\" info token, and then the Cryomancer character token. Then, show them the character token of the character the Cryomancer pointed to. Put them to sleep. Put them to sleep. If the Cryomancer didn't choose a character tonight, don't wake the player marked \"Frozen\".",
+   "otherNight": 9,
+   "otherNightReminder": "The Cryomancer either shakes their head or points to a character on their sheet. If the chosen character is in play, they are poisoned -- Mark them with one of the \"Poisoned\" reminder tokens. Put the Cryomancer to sleep. If the player marked \"Frozen\" is alive, wake them. Show them the \"This character selected you\" info token, and then the Cryomancer character token. Then, show them the character token of the character the Cryomancer pointed to. Put them to sleep. Put them to sleep. If the Cryomancer didn't choose a character tonight, don't wake the player marked \"Frozen\".",
+   "reminders": [
+    "Frozen",
+    "Poisoned",
+    "Poisoned",
+    "Poisoned",
+    "Poisoned",
+    "Poisoned",
+    "Poisoned"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "cryomancer",
+   "page": "c/cryomancer",
+   "art": "art/cryomancer.png",
+   "image": "https://botchomebrew.wiki/assets/art/cryomancer.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Alphera",
+   "team": "minion",
+   "ability": "Each day you may publicly guess every player's character: if all are correct, your team wins.",
+   "lede": "The Alphera can end the game at any moment.",
+   "summaryBullets": [
+    "Each day, the Alphera, if they want to, can publicly guess every player's character. If every character (good and evil) is correct, their team immediately wins.",
+    "If they get any wrong, nothing happens. It is not explained why nothing happens.",
+    "If they get any characters wrong, they can try again the next day.",
+    "Evil players (or anyone, really) can pretend to be the Alphera. Only the Alphera can win by correctly guessing every player, other players doing this will not cause the Alphera ability to activate."
+   ],
+   "howToRun": [
+    "During the day, the Alphera may declare they are the Alphera and begin guessing player's characters. You may want to ask players not to nominate during this time, in order to allow all players to focus, but this is not required. If they guess a player incorrectly, mark the the Alphera with the INCORRECT token, but do not stop the Alphera until they themself declare they are finished. If the Alphera has guessed every player and does not have the INCORRECT token, then declare that their team has won.",
+    "Before starting the day, check if the Alphera is marked with the INCORRECT reminder token. If they are, remove it. Keep in mind that the Alphera does not need to use their ability each day, and they are not told why their ability didn't activate if it doesn't.",
+    "The Alphera is meant to only be able to guess a player's character once, but if there is confusion regarding what the Alphera has said then as the storyteller feel free to resolve it however you think is most fair."
+   ],
+   "examples": [
+    "Misha is the Alphera and once Scott is about to be executed, guesses that Scott is the Rat King, Jamie is the Cultist, Phil is the Medium, Jon is the Iconoclast, Mike is the Paperboy, and that Misha is the Alphera. Because this is all true, her team wins.",
+    "Sophie is the Alphera and guesses that Joe is the Carpenter, even though he is the Candlemaker, and guesses every other player correctly. When she concludes, nothing happens.",
+    "Tim is the Demon, and pretends to be the Alphera. He gets every player's character correct, but does not win, since he isn't the Alphera."
+   ],
+   "tips": [
+    "Sometimes you can permit small mistakes, such as calling a character by a known synonym or forgetting to guess yourself. Always try to clarify the Alphera's intent if there is any confusion."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Let me show you how if feels to be your mirror image!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "alphera_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Incorrect"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "alphera-the-last-cull",
+   "page": "c/alphera-the-last-cull",
+   "art": "art/alphera-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/alphera-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Zabb-Yani",
+   "team": "demon",
+   "ability": "Each night* choose a player: they die, & something they learned might become false. [No Outsiders]",
+   "lede": "The Zabb-Yani uses Townsfolk abilities against them.",
+   "summaryBullets": [
+    "The Zabb-Yani will, each night after the first, choose a player who dies. Something that this player has learned due to an ability might become false.",
+    "The Storyteller can make any changes they need to make information false, including resurrecting players, killing players, changing player characters, swapping player characters, and changing alignments. This list is far from comprehensive.",
+    "While the Zabb-Yani will usually use that player's ability, they can cause changes using other abilities if that caused the player to learn something, such as the Cryomancer or Nightwatchman.",
+    "Information derived from an ability does not count for the Zabb-Yani. For example, the Candlemaker might deduce that a player is a Minion because they claimed to be a Minion after being chosen by the Candlemaker. This deduction does not count as something they learned, since they did not learn this directly.",
+    "The Zabb-Yani cannot make false things true.",
+    "The Zabb-Yani can only turn something a player learned false if they killed that player. This mainly means that choosing a dead player cannot activate the Zabb-Yani's ability.",
+    "If the Zabb-Yani is in play, there are no Outsiders in play. Even if there are other characters in play that can modify the Outsider count, there are still no Outsiders. The Zabb-Yani ability, however, can bring Outsiders into play."
+   ],
+   "howToRun": [
+    "When setting up the game, remove all Outsider tokens and replace them with townsfolk. Even if other characters in play modify the Outsider count, you must keep removing Outsider tokens until there are no Outsiders in play.",
+    "Each night, except for the first, wake the Zabb-Yani. They choose a player, that player dies -- Mark them with the \"dead\" reminder token. Put the Zabb-Yani to sleep.",
+    "Think about what information this player has gained from abilities or game rules (such as Minion Info) this game. You may take one set of their information (for example: one night of Carpenter information), and make whatever changes are needed to make that set of information false (were it to be learned tonight). You may use the Zabb-Yani's \"?\" reminder to aid you in this process. You cannot use the Zabb-Yani ability to make false information true. If the Zabb-Yani kills themselves with their ability, then they have no ability to make something they learned false, and so the game would be over."
+   ],
+   "examples": [
+    "The Violinist learns that there is a Candlemaker in play. When the Violinist is killed by the Zabb-Yani, the Candlemaker becomes the Captain.",
+    "The Savant learns that either they neighbor the Shepherd, or Bill is the Ragpicker. There are no Outsiders in play, so the Zabb-Yani knows the second statement is true. When the Savant is killed by the Zabb-Yani, Bill becomes the Shepherd. The first statement could not be made true, as the Zabb-Yani can only turn true things false.",
+    "On the 1st night, the Shankaar learns that Micheal is the Demon. When the Shankaar is killed by the Zabb-Yani, Micheal becomes the Savant, and Sally becomes the Rat King."
+   ],
+   "tips": [
+    "If you must cause extra deaths for the Zabb-Yani's ability, you may want to emulate the Shade's ability. Try to minimize the total number of good players the Zabb-Yani affects, so that evil players can pretend it has affected them (especially in games without a Zabb-Yani)."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Less is more. Less body is more spirit. Less will to defy creation is more to create miracles. Less truth is more possibilities. Less hope is more obedience to fate.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "zabbyani_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 10,
+   "otherNightReminder": "The Zabb-Yani chooses a player, that player dies -- Mark them with the \"dead\" reminder token. Think about what information this player has gained from abilities or game rules (such as Minion Info) this game. You may take one set of their information, and make whatever changes are needed to make that set of information false (were it to be learned tonight). You may use the Zabb-Yani's \"?\" reminder to aid you in this process.",
+   "reminders": [
+    "Dead",
+    "?"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "zabb-yani",
+   "page": "c/zabb-yani",
+   "art": "art/zabb-yani.png",
+   "image": "https://botchomebrew.wiki/assets/art/zabb-yani.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Rat King",
+   "team": "demon",
+   "ability": "Each night*, choose a player: they die. The Townsfolk neighbors of the first player who dies this way are poisoned.",
+   "lede": "The Rat King spreads disease alongside death.",
+   "summaryBullets": [
+    "The closest clockwise and counterclockwise Townsfolk to the first player killed by the Rat King are poisoned, even if they die.",
+    "This skips over Outsiders, Minions, Demons (most notably, the Rat King themselves), & Travellers. This does not skip over poisoned Townsfolk (such as those poisoned by the Cryomancer), and this ability activates regardless of the character type or alignment of the 1st player killed by the Rat King.",
+    "The first player killed by the Rat King ability is not necessarily the first player chosen. The Rat King ability must be what killed them in order for the poisoning to activate."
+   ],
+   "howToRun": [
+    "Each night, after the first, wake the Rat King. They choose a player, that player dies -- Mark them with the \"dead\" reminder token. If this is the first player who's died due to the Rat King ability, their Townsfolk neighbors are poisoned -- Mark them with the \"poisoned\" reminder tokens. Put the Rat King to sleep.",
+    "If a Townsfolk poisoned by the Rat King becomes a non-Townsfolk character, the new Townsfolk neighbors of the player 1st killed by the Rat King become poisoned, and (as applicable) the old neighbors become healthy -- move the Rat King's \"poisoned\" reminders immediately if needed."
+   ],
+   "examples": [
+    "On the 2nd night, the Rat King kills the Iconoclast. Their neighbors, the Nightwatchmen and the Conspiracist, are poisoned for the rest of the game.",
+    "On the 2nd night, the Rat King kills the Shepherd. They neighbor the Cultist, who neighbors the Alphera, who neighbors the Rat King, who neighbors the Foreman. The Foreman is poisoned for the rest of the game.",
+    "On the 2nd night, the Rat King kills the Shade, who was executed on the 1st day. The next night, they kill the Foreman, who's Townsfolk neighbors are then poisoned for the rest of the game."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "It started with one exiled man, yes that is true. But one man presumed dead quickly turned into two. And once there was three then it became a crowd. Who rued the fourth man, for he screamed so loud. The fifth man was lonely, had the crowd worried sick. So all the soiled men cheered when they threw down the sixth. Crushing the seventh man's head, the eighth man cried. \"More bodies in the pit!\" as they tossed in number nine.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "ratking_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 11,
+   "otherNightReminder": "The Rat King chooses a player, that player dies -- Mark them with the \"dead\" reminder token. If this is the first player who's died due to the Rat King ability, their Townsfolk neighbors are poisoned -- Mark them with the \"poisoned\" reminder tokens.",
+   "reminders": [
+    "Dead",
+    "Poisoned",
+    "Poisoned"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "rat-king",
+   "page": "c/rat-king",
+   "art": "art/rat-king.png",
+   "image": "https://botchomebrew.wiki/assets/art/rat-king.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Grimm Reaper",
+   "team": "demon",
+   "ability": "Each night*, choose a player: they die. You & a Townsfolk know of each other. If 1 publicly guesses the other (once), their team wins.",
+   "lede": "The Grimm Reaper forces a player to hide their true identity, but must hide themself as well.",
+   "summaryBullets": [
+    "The Grimm Reaper starts knowing the character of a Townsfolk player. That Townsfolk also knows the Grimm Reaper's character (or more importantly, the fact that one is in play, and that the Grimm Reaper is looking for them).",
+    "If the Grimm Reaper publicly guesses which player is the character they learned, and is correct, the evil team wins. If the Townsfolk publicly guesses which player is the Grimm Reaper, the good team wins.",
+    "Other players don't know that the Grimm Reaper is in play.",
+    "Players can pretend to be the learned character, or the Grimm Reaper. They must clarify what character they are guessing a player to be. Double check player intention before taking action."
+   ],
+   "howToRun": [
+    "When preparing the first night, choose a Townsfolk player. Mark them with the \"Known\" reminder.",
+    "During the first night, before they receive their Demon info, show the Grimm Reaper the character token of the player marked \"Known\". If there are less than 7 players, put the Grimm Reaper to sleep. If there are 7 or more players, provide the Grimm Reaper the rest of their Demon info, and then put them to sleep. After putting the Grimm Reaper to sleep, wake the player marked \"Known\" player, and show them the \"This character selected you\" info token and then the Grimm Reaper token. Put this player to sleep.",
+    "Each night, after the first, wake the Grimm Reaper. They point at any player. The chosen player dies—mark them with the \"Dead\" reminder token. Put the Grimm Reaper to sleep",
+    "During the day, the Grimm Reaper or the player marked \"Known\" may guess that a player is the other (They need to clarify the character they are guessing the player to be. You can be somewhat flexible in this regard, such as letting the Known player guess the Grimm Reaper as \"the Demon\"). If either is correct, immediately declare that the game is over and that the team of the guesser wins. If either guess incorrectly, they cannot guess again -- Mark them with the \"Guess Used\" reminder token. If they guess that a player is not the character they saw (for example, if the Grimm Reaper pretends to guess the Grimm Reaper), they can still guess again."
+   ],
+   "examples": [
+    "The Grimm Reaper learns there is a Medium in play. Stevie, the Medium, learns that there is a Grimm Reaper in play. On the third day, before any nominations occurred, Stevie guesses Alex is the Grimm Reaper, and is correct. The good team wins.",
+    "Lachlan is the Grimm Reaper, who knows there is a Nightwatchman in play. Felix, The Nightwatchman, is executed and dies. The next day Lachlan guesses Felix is the Nightwatchman. The evil team wins.",
+    "Stella, the Alphera, claims to be the Grimm Reaper and guesses Lance, the Iconoclast, is the Foreman. Chad, the player who's actually the Foreman, guesses that Stella is the Grimm Reaper. Chase, the actual Grimm Reaper, guesses Chad is the Foreman. The evil team wins."
+   ],
+   "tips": [
+    "Make sure that players are very clear what they are guessing a player to be."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Your time has come, mortal. Do not run, for you shall rip your neck open in the cacophony. Only those who face death directly stand a chance against their end.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "grimmreaper_the_last_cull__",
+   "firstNight": 14,
+   "firstNightReminder": "During the first night, before they receive their Demon info, show the Grimm Reaper the character token of the player marked \"Known\". If there are less than 7 players, put the Grimm Reaper to sleep. If there are 7 or more players, provide the Grimm Reaper the rest of their Demon info, and then put them to sleep. After putting the Grimm Reaper to sleep, wake the player marked \"Known\" player, and show them the \"This character selected you\" info token and then the Grimm Reaper token. Put this player to sleep.",
+   "otherNight": 12,
+   "otherNightReminder": "The Grimm Reaper points at any player. The chosen player dies—mark them with the \"Dead\" reminder token. Put the Grimm Reaper to sleep",
+   "reminders": [
+    "Known",
+    "Guess Used",
+    "Guess Used",
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [],
+   "customJson": "",
+   "slug": "grimm-reaper",
+   "page": "c/grimm-reaper",
+   "art": "art/grimm-reaper.png",
+   "image": "https://botchomebrew.wiki/assets/art/grimm-reaper.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Creepsye",
+   "team": "demon",
+   "ability": "From the 1st day onwards, even if dead: Townsfolk are \"the Demon\" & you're not, a player dies each night*. [+1 Outsider]",
+   "lede": "The Creepsye hides within the town, and can only be killed alongside it.",
+   "summaryBullets": [
+    "All Townsfolk become \"The Demon\" for the sake of win conditions and abilities, but the Creepsye does not.",
+    "Townsfolk are still good, still Townsfolk, and do not learn that they are \"The Demon\".",
+    "The Creepsye still has a Demon character and registers as such to abilities. The same applies to Townsfolk.",
+    "In order for the good team to win, all Townsfolk must be dead. In order for the evil team to win, only 2 players must be alive, 1 of whom is a Townsfolk.",
+    "The Creepsye adds an extra Outsider into play.",
+    "The Storyteller chooses who dies at night in a Creepsye game.",
+    "The Creepsye's ability still works in it's entirety after the Creepsye's death, and does not activate until the start of the first day."
+   ],
+   "howToRun": [
+    "While setting up the game, before putting character tokens in the bag, add one extra Outsider character token and remove one Townsfolk character token.",
+    "Once the first day begins, even if the Creepsye is dead, all Townsfolk are \"the Demon\" and the Creepsye is not. This means that if the Creepsye dies, the game resumes. Once all Townsfolk die instead, however, then the good team wins.",
+    "Each night, except the first, choose a player who dies--mark them with the \"Dead\" reminder token. Remember that the Creepsye does not choose this player."
+   ],
+   "examples": [
+    "Mark is the Creepsye. He is executed on the first day. Because all Townsfolk are \"the Demon\", and Mark is not, the game resumes as normal.",
+    "Amber is the Creepsye. The final living players are Micheal, the Alphera; Joseph, the Cultist; and Amber the Creepsye. Because no Townsfolk are alive, and Amber is not \"the Demon\", the good team wins."
+   ],
+   "tips": [
+    "This is a complicated Demon, and a critical one for strategizing on The Last Cull, as it is fundamental to the script's shifting wincons. Make sure all players fully understand how it works, and be prepared to explain. Drawing parallels to the Heretic (which is not on this script) usually explains it fairly well."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "No, doctor I don't think you're listening to me! I understand that rapid eye movement is normal whilst you sleep, but I don't think I am asleep. Am I?",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "",
+   "edition": "The Last Cull",
+   "jsonId": "creepsye_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 13,
+   "otherNightReminder": "Choose a player who dies--mark them with the \"Dead\" reminder token. Remember that the Creepsye does not choose this player.",
+   "reminders": [
+    "Dead"
+   ],
+   "remindersGlobal": [],
+   "setup": true,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "TheDarkArtist for the final wording and art touch ups."
+    }
+   ],
+   "customJson": "",
+   "slug": "creepsye",
+   "page": "c/creepsye",
+   "art": "art/creepsye.png",
+   "image": "https://botchomebrew.wiki/assets/art/creepsye.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Coalcrusher",
+   "team": "traveller",
+   "ability": "Each night, choose a player (not yourself): if they nominate another player tomorrow, that player dies at dusk.",
+   "lede": "The Coalcrusher powers up others with the ability to crush their foes.",
+   "summaryBullets": [
+    "Each night, the Coalcrusher chooses a player. If this player nominates the next day, then the player they nominated dies at dusk.",
+    "A death caused by the Coalcrusher can be prevented by exiling them.",
+    "A player cannot kill themselves using the Coalcrusher's ability."
+   ],
+   "howToRun": [
+    "Each night, remove the \"Empowered\" reminder token, wake the Coal Crusher. They choose a player who isn't themself -- Mark this player with the \"Empowered\" reminder token. Put the Coalcrusher to sleep.",
+    "If the player marked \"Empowered\" nominates a different player tomorrow, mark the nominee with the \"Will Die\" reminder token. At dusk, before putting players to sleep, the player marked \"Will Die\" dies -- Place a Shroud. Don't forget to declare their death."
+   ],
+   "examples": [
+    "The good Coal Crusher chooses the Shade. Tomorrow, the Shade nominates the Rat King. At dusk, alongside the executee, the Rat King dies."
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I'VE BEEN IN THE BLOODY MINES FOR 48 HOURS TODAY",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "coalcrusher_the_last_cull__",
+   "firstNight": 13,
+   "firstNightReminder": "remove the \"Empowered\" reminder token. The Coalcrusher chooses a player who isn't themself -- Mark this player with the \"Empowered\" reminder token.",
+   "otherNight": 5,
+   "otherNightReminder": "remove the \"Empowered\" reminder token. The Coalcrusher chooses a player who isn't themself -- Mark this player with the \"Empowered\" reminder token.",
+   "reminders": [
+    "Empowered",
+    "Will Die"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "coalcrusher",
+   "page": "c/coalcrusher",
+   "art": "art/coalcrusher.png",
+   "image": "https://botchomebrew.wiki/assets/art/coalcrusher.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Loom Weaver",
+   "team": "traveller",
+   "ability": "Twice per game, choose 2 players: they swap characters, but only if they're allies.",
+   "lede": "The Loom Weaver stitches players together",
+   "summaryBullets": [
+    "The Loom Weaver can, twice per game, choose 2 players. If these players are the same alignment, they swap characters.",
+    "The Loom Weaver can still only use their ability twice per game, even if it doesn't cause any characters to swap.",
+    "The Loom Weaver does not learn whether or not their ability caused any characters to swap. Players who's character changes don't learn why this has happened."
+   ],
+   "howToRun": [
+    "Each night, wake the Loom weaver. They will either shake their head, or point to 2 players. If they point to 2 players, mark the Loom Weaver with the \"Once\" reminder token. If they already have this reminder token, mark them with the \"No Ability\" reminder token. If those 2 players are of the same alignments, swap their character tokens and mark both with the \"Swapped\" reminder tokens. Put the Loom Weaver to sleep. If the Loom Weaver has the \"No ability\" reminder token, remove their night token from the night sheet.",
+    "Wake any players with the \"Swapped\" reminder token (separately from other players with the \"Swapped\" reminder token). Show them the \"You are\" Info Token, and then the character token of their new character. Remove the \"Swapped\" reminder token, and then put this player to sleep."
+   ],
+   "examples": [
+    "The Loom Weaver chooses Bill and Gabby. Gabby is the Iconoclast, and Bill is the Shepherd. They swap characters.",
+    "The Loom Weaver chooses Ahmed and Gabby. Gabby is the Shepherd, and Ahmed is the Gentleman. Their characters do not swap"
+   ],
+   "tips": [],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Oh you didn't hear the news? Nono, it's nothing important...but-",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "loomweaver_the_last_cull__",
+   "firstNight": 12,
+   "firstNightReminder": "Each night, wake the Loom weaver. They will either shake their head, or point to 2 players. If they point to 2 players, mark the Loom Weaver with the \"Once\" reminder token. If they already have this reminder token, mark them with the \"No Ability\" reminder token. If those 2 players are of the same alignments, swap their character tokens and mark both with the \"Swapped\" reminder tokens. Put the Loom Weaver to sleep. If the Loom Weaver has the \"No ability\" reminder token, remove their night token from the night sheet.",
+   "otherNight": 4,
+   "otherNightReminder": "Each night, wake the Loom weaver. They will either shake their head, or point to 2 players. If they point to 2 players, mark the Loom Weaver with the \"Once\" reminder token. If they already have this reminder token, mark them with the \"No Ability\" reminder token. If those 2 players are of the same alignments, swap their character tokens and mark both with the \"Swapped\" reminder tokens. Put the Loom Weaver to sleep. If the Loom Weaver has the \"No ability\" reminder token, remove their night token from the night sheet.",
+   "reminders": [
+    "Swapped",
+    "Swapped",
+    "Once",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "loom-weaver",
+   "page": "c/loom-weaver",
+   "art": "art/loom-weaver.png",
+   "image": "https://botchomebrew.wiki/assets/art/loom-weaver.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Lumberman",
+   "team": "traveller",
+   "ability": "Once per game, publicly guess a player's good character: If correct, opposing votes secretly don't count today.",
+   "lede": "The Lumberman's team chooses who dies if they can find a piece of truth.",
+   "summaryBullets": [
+    "Once per game, the Lumberman may publicly guess that a player is a particular Townsfolk or Outsider. If this player is that character, votes from the alignment opposing the Lumberman secretly don't count that day.",
+    "The Storyteller does not publicly announce which votes aren't counted. It isn't announced which player is actually about to be executed until the execution itself occurs."
+   ],
+   "howToRun": [
+    "Once per game, the Lumberman will publicly choose a player, and names a Townsfolk or Outsider character. If correct, place the \"About To Die\" reminder token on the player currently about to be executed. Either way, mark the Lumberman with the \"No Ability\" reminder token.",
+    "If no player is currently going to be executed, place the reminder in the center of the Grimoire, and place it on the next nominated player.",
+    "If a player is nominated, pay attention to how many of the Lumberman's allies voted. If it's more than the amount for the player that currently has the \"About To Die\" reminder token, move it to the nominated player (if the reminder token is yet to move since the Lumberman's guess, only compare the total votes of the previous executee with the current nominee. Opposing votes still counted when they were nominated). At the end of the day, instead of executing the player who'd normally be executed, execute the player who has the \"About To Die\" reminder token."
+   ],
+   "examples": [
+    "The good Lumberman guesses that Bill, the Shepherd, is the Shepherd. 5 good players vote for Bill that day, and 4 vote for Irena, but 2 evil players also vote for Irena. Evil votes don't count today, so Bill is executed.",
+    "The evil Lumberman guesses that Joey, the Carpenter, is the Carpenter. 9 good players vote for Frank that day, but 4 evil players vote for Joey. Since good player's votes don't count today, Joey is executed."
+   ],
+   "tips": [
+    "When showing the Lumberman's alignment in a physical Grimoire, point the appropriate colored axe head upwards."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Measure once, cut twice.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "lumberman_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "About To Die",
+    "No Ability"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "lumberman",
+   "page": "c/lumberman",
+   "art": "art/lumberman.png",
+   "image": "https://botchomebrew.wiki/assets/art/lumberman.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Horse Hearer",
+   "team": "traveller",
+   "ability": "Each night, choose a player: if they agree, they are drunk until dusk (& you learn this).",
+   "lede": "The Horse Hearer lets those who want to listen to nonsense be able to.",
+   "summaryBullets": [
+    "Each night, the Horse Hearer will choose a player, who is then woken up. If that player agrees, they will be drunk until dusk.",
+    "The horse hearer learns whether or not the chosen player agreed to be drunk."
+   ],
+   "howToRun": [
+    "Each night, wake the Horse Hearer. They point at a player -- Mark them with the \"Drunk\" reminder token, they are drunk. Put the Horse Hearer to sleep.",
+    "Wake the chosen player. Show them the \"This character selected you\" info token, and then the Horse Hearer character token. They will either nod or shake their head. If they shake their head, they are no longer drunk -- remove the \"Drunk\" reminder token. Put them to sleep.",
+    "Wake the Horse Hearer. Show them what the chosen player did (so if they shook their head, you then shake yours). Put the Horse Hearer to sleep."
+   ],
+   "examples": [
+    "The Horse Hearer chooses the Savant. The Savant refuses to be drunk, and the Horse Hearer learns this.",
+    "The Horse Hearer chooses the Iconoclast. The Iconoclast agrees to be drunk, and the Horse Hearer learns this. The Iconoclast learns a character that did not vote for their first nomination."
+   ],
+   "tips": [
+    "Players will often want to work with the Horse Hearer in order to prove that they aren't the demon. Giving true info to players made drunk by the Horse Hearer can be especially fun."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "I can hear them. You could too. Just listen a little harder...A little more...A little more...A little more...",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "horsehearer_the_last_cull__",
+   "firstNight": 11,
+   "firstNightReminder": "Wake the Horse Hearer. They point at a player -- Mark them with the \"Drunk\" reminder token, they are drunk. Put the Horse Hearer to sleep. Wake the chosen player. Show them the \"This character selected you\" info token, and then the Horse Hearer character token. They will either nod or shake their head. If they shake their head, they are no longer drunk -- remove the \"Drunk\" reminder token. Put them to sleep. Wake the Horse Hearer. Show them what the chosen player did (so if they shook their head, you then shake yours). Put the Horse Hearer to sleep.",
+   "otherNight": 3,
+   "otherNightReminder": "Wake the Horse Hearer. They point at a player -- Mark them with the \"Drunk\" reminder token, they are drunk. Put the Horse Hearer to sleep. Wake the chosen player. Show them the \"This character selected you\" info token, and then the Horse Hearer character token. They will either nod or shake their head. If they shake their head, they are no longer drunk -- remove the \"Drunk\" reminder token. Put them to sleep. Wake the Horse Hearer. Show them what the chosen player did (so if they shook their head, you then shake yours). Put the Horse Hearer to sleep.",
+   "reminders": [
+    "Drunk"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "horse-hearer",
+   "page": "c/horse-hearer",
+   "art": "art/horse-hearer.png",
+   "image": "https://botchomebrew.wiki/assets/art/horse-hearer.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Face Stealer",
+   "team": "traveller",
+   "ability": "You have the ability (if any) of the player you're currently mad that you are, if they're your ally.",
+   "lede": "The Face Stealer copies players by pretending to be them.",
+   "summaryBullets": [
+    "The Face Stealer has the ability of the allied player that they are currently mad that they are, if this player is their ally.",
+    "If this player is of a different alignment from the Face Stealer, they do not gain the ability. Nothing happens.",
+    "If this player has no ability, then the Face Stealer does not gain an ability.",
+    "If a character only learns information once (such as the Violinist), or has an ability they can use once per game, the Face Stealer has those same constraints, even if they lose that ability and regain it.",
+    "The Face Stealer doesn't pretend to be a character, they pretend to be a different player!",
+    "While impersonating the Storyteller is always fun, the Storyteller is not a player."
+   ],
+   "howToRun": [
+    "Each day, pay attention to who the Face Stealer is pretending to be. Mark that player with the \"Mad\" reminder token. the Face Stealer has their ability if they are allies (so, if the Face Stealer is good, they cannot gain an evil player's ability).",
+    "If they gain an ability that only works once, such as the Violinist's, then it will only work once per game. If the chosen player has no ability (such as being poisoned, dead, or having the \"no ability\" reminder token), then the Face Stealer does not gain their ability (or rather, gains their ability, which is nothing)."
+   ],
+   "examples": [
+    "On the 1st day, Mark the good Face Stealer pretends that he's Clara, the Paperboy. Clara has been obvious about being the Paperboy, and has been boldly accusing various players based on limited evidence. Mark decides to do the same, proclaiming that he is really the Paperboy, and that Clara must be evil since she's acting suspicious! That night, Mark gains the Paperboy ability, and learns 3 not-in-play characters. 3 nights later, he has the Paperboy ability again, but does not learn more out of play characters, since he already did.",
+    "On the final day, the evil Face Stealer pretends to be Sarah, the Candlemaker. The Face Stealer pretends to use Sarah's ability to convert Bailey, the demon, to the good team, and she pretends that the last living good player is the demon. The Face Stealer doesn't actually have the Candlemaker's ability, but the town, thinking the Face Stealer is good, assumes otherwise."
+   ],
+   "tips": [
+    "The Face Stealer need not perfectly copy the player they are mad they are. Generally, attempting to copy mannerisms, act confused when that player's name is said, and copy their social ques and mechanical info should be enough."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Hey guys! Slow down, you got really far ahead of me. If there where anything out here, you guys could've lost me!",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "facestealer_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [
+    "Mad"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "face-stealer",
+   "page": "c/face-stealer",
+   "art": "art/face-stealer.png",
+   "image": "https://botchomebrew.wiki/assets/art/face-stealer.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Photographer",
+   "team": "fabled",
+   "ability": "Each night*, the Storyteller may wake a player to ask for 1 they trust.",
+   "lede": "The Photographer lets the Storyteller know more about the players.",
+   "summaryBullets": [
+    "The Photographer lets the Storyteller ask a player for a player that they trust.",
+    "If they truly only trust themselves, they can express this to the Storyteller.",
+    "No direct mechanical effect occurs due to the Photographer, it's just a nice way to give the Storyteller information that might otherwise be difficult to get."
+   ],
+   "howToRun": [
+    "During the game, when you notice that it would be a good idea to add it, declare that the Photographer is in play.",
+    "Each night, except for the first, wake a player. Show them the \"This character selected you\" Info Token and the Photographer Character Token. They then point to a player that they trust -- Mark them with the \"Trusted\" reminder token. Put this player to sleep."
+   ],
+   "examples": [
+    "The Storyteller likes providing detailed descriptions at the end of their games, and so wants to know how close the Alphera is to winning through their ability. One of few players who haven't publicly stated their character is Ben the Paperboy. The Storyteller wakes Ben using the Photographer ability and they point to Sallie, the Alphera. The Storyteller knows that the game is likely to end soon, and so prepares accordingly.",
+    "The Cultist ability is activating, and the Storyteller wants to leave a trusted Townsfolk alive, since no one believes it is a Creepsye game. The dead Savant seems to be generally trusted by the town, and so the Storyteller wants to know who they trust. The Savant points to the Freddy, the Carpenter, and so Freddy remains alive on the final day."
+   ],
+   "tips": [
+    "Make sure that players are willing to be fully honest with the Storyteller! The purpose of the Photographer is to make the game more fun, by letting the Storyteller's decisions be more informed. Avoid building a pattern of bad things happening to the trusted player, as this will very quickly lead to players not giving you truthful responses.",
+    "Don't forget to ask the opinions of evil players as well! Sometimes, knowing that the evil team is falling hook, line, & sinker for a lie can be just as important for you to know."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "Nonono, you were smiling in that picture! We're gonna have to take another one, ugh.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "photographer_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 2,
+   "otherNightReminder": "Show the player you choose the \"This character selected you\" Info Token and the Photographer Character Token. They then point to a player that they trust -- Mark them with the \"Trusted\" reminder token.",
+   "reminders": [
+    "Trusted"
+   ],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "photographer-the-last-cull",
+   "page": "c/photographer-the-last-cull",
+   "art": "art/photographer-the-last-cull.png",
+   "image": "https://botchomebrew.wiki/assets/art/photographer-the-last-cull.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Scavenger",
+   "team": "fabled",
+   "ability": "The final day lasts longer.",
+   "lede": "The Scavenger ensures players have time for private discussion on the final day.",
+   "summaryBullets": [
+    "The final day will last longer than it otherwise would.",
+    "This will usually mean that players have time to commune in private before nominations open.",
+    "You can put this Fabled into play earlier so that players can plan around having time to discuss on the final day."
+   ],
+   "howToRun": [
+    "During the game, when you notice that it would be a good idea to add it, declare that the Scavenger is in play. Add the Scavenger token to the Grimoire. At the start of the final day, remind players that there will be more time until the day ends. Make sure that the final day has more time for players to discuss than you usually do, or than players might assume."
+   ],
+   "examples": [
+    "The Storyteller usually likes to open nominations immediately on the final day, and due to this players are really concerned about saying all they need to in private before then. So concerned that it seems to be making the game less fun for them. To alleviate their worries, the Storyteller declares that the Scavenger is in play, and the final day will last longer."
+   ],
+   "tips": [
+    "The length of the days you run is up to you as the Storyteller, but many prefer to run the final day as significantly shorter than others, sometimes removing any time for discussion before nominations. On The Last Cull, this is less likely to be fun for your players, as many will still have important things to discuss in private. If you usually run shorter final days, you may want to bring the Scavenger into play so that players can account for having extra time on the final day."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "In the moments when the fire's brightest, are when those most desperate to survive do anything to live.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "scavenger_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "scavenger",
+   "page": "c/scavenger",
+   "art": "art/scavenger.png",
+   "image": "https://botchomebrew.wiki/assets/art/scavenger.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  },
+  {
+   "name": "Attendee",
+   "team": "fabled",
+   "ability": "Players must raise their hand & be called on before making public actions.",
+   "lede": "The Attendee makes sure that players are patient when taking public actions.",
+   "summaryBullets": [
+    "Players must raise their hand (or some other method of silently communicating) in order to publicly use an ability.",
+    "This player must then also be called on.",
+    "This Fabled is generally meant to make the game more structured and calm in situations where it can get intense."
+   ],
+   "howToRun": [
+    "At any time, declare that the Attendee is in play. If a player attempts to do a public action without raising their hand and being called on by the Storyteller, nothing will happen and the ability will not work. If a player wants to publicly use an ability, they must raise their hand, and then the Storyteller may declare that they can use the public ability."
+   ],
+   "examples": [
+    "There is a Captain in play, and the Alphera has been repeatedly interrupting the Storyteller to use the Captain ability. The Storyteller brings the Attendee into play, so the Alphera can raise their hand while the Storyteller is talking, and the Storyteller can process their public action after they have finished speaking."
+   ],
+   "tips": [
+    "The Attendee works best for groups where players are being disruptive in order to use their public abilities. For public abilities being used in the middle of a nomination, you may want to double check with players who have their hand raised before voting begins, or agree on an alternate gesture during nominations, such as sticking their tongue out, or raising both hands."
+   ],
+   "bluffing": [],
+   "fighting": [],
+   "callout": "",
+   "quote": "hey, hah, guys ah, you'll uh, you'll never guess. ugh. You'll never guess who was going to wake at 6 in the Afternoon instead of the morning. I uh, hah, am glad that I'm finally here.",
+   "flavor": "",
+   "appearsIn": "The Last Cull",
+   "tags": "",
+   "creator": "BakedIce",
+   "translatedBy": "",
+   "iconBy": "game-icons.net",
+   "edition": "The Last Cull",
+   "jsonId": "attendee_the_last_cull__",
+   "firstNight": 0,
+   "firstNightReminder": "",
+   "otherNight": 0,
+   "otherNightReminder": "",
+   "reminders": [],
+   "remindersGlobal": [],
+   "setup": false,
+   "special": [],
+   "jinxes": [],
+   "jinxDisplay": "sidebar",
+   "customBoxes": [
+    {
+     "title": "Attribution",
+     "content": "game-icons.net"
+    }
+   ],
+   "customJson": "",
+   "slug": "attendee",
+   "page": "c/attendee",
+   "art": "art/attendee.png",
+   "image": "https://botchomebrew.wiki/assets/art/attendee.png",
+   "pronunciation": "",
+   "ipa": "",
+   "respelling": "",
+   "starlight": false
+  }
+ ]
+}
