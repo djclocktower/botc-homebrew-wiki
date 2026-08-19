@@ -7,6 +7,20 @@
   font-style: normal;
   font-display: swap;
 }
+/* LHF Unlovable — the display face for the stand-in banner a script tile
+   draws when it has no logo of its own. Licensed for this site (see
+   assets/script-studio/README.md). It is an ASCII-only face: no accented
+   letters, curly quotes, em dashes or ellipses, so every stack that names it
+   keeps 'Dumbledor2' right behind it and the browser falls back one character
+   at a time — an accented name renders mixed rather than as tofu. */
+@font-face {
+  font-family: 'LHFUnlovable';
+  src: url('fonts/lhf-unlovable.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Trade Gothic LT Std - self-hosted, licensed for free personal & commercial use */
 @font-face {
   font-family: 'TradeGothicLT';
@@ -1610,8 +1624,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
 .script-card-header img { width: 100%; height: 100%; object-fit: contain; }
+/* The stand-in banner a script tile draws when its creator gave it no header
+   image. It is standing in for a logo, so it wears LHF Unlovable rather than
+   the plain wiki face — the tile's own name below it, and every tile that has
+   a real logo, stay in Dumbledor. */
 .script-card-header-empty span {
-  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.2rem;
+  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon); font-size: 1.2rem;
   text-align: center; padding: 12px;
 }
 .script-tile-desc {
