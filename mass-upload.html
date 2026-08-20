@@ -225,7 +225,7 @@
       return '<tr id="mu-row-' + i + '">' +
         '<td><strong>' + esc(c.name) + '</strong>' + exists + '</td>' +
         '<td class="mu-team">' + esc(normTeam(c.team)) + '</td>' +
-        '<td class="mu-page">c/' + esc(slug) + '</td>' +
+        '<td class="mu-page">' + esc(slug) + '</td>' +
         '<td>' + (img ? 'from URL' + (alt ? ' + alt' : '') : '—') + '</td>' +
         '<td class="mu-state mu-state-wait">waiting</td>' +
         '</tr>';
@@ -305,7 +305,7 @@
     function rowSlug(i, slug){
       var row = $('mu-row-' + i); if (!row) return;
       var td = row.querySelector('.mu-page');
-      if (td) td.textContent = 'c/' + slug;
+      if (td) td.textContent = slug;
     }
 
     // ── which URL should this character get? ──
@@ -373,7 +373,6 @@
         // with them came back out of the wiki's own JSON export without them.
         special: window.sanitizeSpecial ? window.sanitizeSpecial(c.special) : [],
         jinxes: Array.isArray(c.jinxes) ? c.jinxes : [],
-        page: 'c/' + slug + '.html',
         status: opts.status
       };
 
@@ -417,7 +416,9 @@
             if (r.status === 401) throw new Error('not logged in');
             if (r.status === 429) throw limitError(r, j);
             if (!r.ok) throw new Error(j.error || 'save failed');
-            rowState(i, 'ok', '&#10003; <a href="c/' + esc(slug) + '" target="_blank">view page</a>' + (artHow==='remote' && imgUrl ? ' (art from remote URL)' : ''));
+            var page = (j && j.page) || ('c/' + slug);
+            rowSlug(i, page);
+            rowState(i, 'ok', '&#10003; <a href="' + esc(page) + '" target="_blank">view page</a>' + (artHow==='remote' && imgUrl ? ' (art from remote URL)' : ''));
             return true;
           });
         });

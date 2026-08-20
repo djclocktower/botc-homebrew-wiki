@@ -216,9 +216,14 @@
       .then(function (list) {
         var map = {};
         var norm = function (s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); };
+        // render-wiki builds `c/{value}`, so the value is the character's
+        // ADDRESS (page, minus its own c/ prefix) rather than its identity.
+        var addr = function (c) {
+          return c.page ? String(c.page).replace(/^\//, '').replace(/^c\//, '').replace(/\.html$/, '') : c.slug;
+        };
         (list || []).forEach(function (c) {
-          if (c.slug) map[norm(c.slug)] = c.slug;
-          if (c.name) map[norm(c.name)] = c.slug;
+          if (c.slug) map[norm(c.slug)] = addr(c);
+          if (c.name) map[norm(c.name)] = addr(c);
         });
         window.WikiRender.setCharLinks(map);
         return map;

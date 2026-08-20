@@ -951,7 +951,6 @@
 
     function saveCharacter(d, slug, saveStatus) {
       d.art   = 'art/' + slug + '.png';
-      d.page  = 'c/' + slug + '.html';
       d.image = ART_BASE + slug + '.png';
 
       var isDraft = saveStatus === 'draft';
@@ -970,7 +969,7 @@
           setStatus('work', verb + '&hellip; saving to database');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
-            art: d.art, page: d.page, image: d.image, creator: d.creator,
+            art: d.art, image: d.image, creator: d.creator,
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
@@ -1002,7 +1001,9 @@
           });
         })
         .then(function (saved) {
-          var url = SITE_ROOT + 'c/' + slug;
+          // The Worker decides the address (/c/{set}/{character}) and hands
+          // it back; `slug` is only the page's identity and its art slot.
+          var url = SITE_ROOT + ((saved && saved.page) || ('c/' + slug));
           // The Worker downgrades a publish to a draft when there is no icon,
           // so trust what came back rather than what we asked for.
           if (saved && saved.status === 'draft') {

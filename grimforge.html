@@ -999,7 +999,7 @@
           credentials: 'same-origin',
           body: JSON.stringify({
             slug: slug, name: name, team: teamBox.value, ability: ability,
-            page: 'c/' + slug + '.html', status: 'draft'
+            status: 'draft'
           })
         }).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (j) {

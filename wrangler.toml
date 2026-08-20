@@ -25,7 +25,10 @@ directory = "."
 binding = "ASSETS"
 run_worker_first = [
   "/characters.json", "/collections.json", "/scripts.json", "/api/*",
-  "/c/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
+  # /c/*/* is listed alongside /c/* because character addresses are nested
+  # now (/c/{set}/{character}); a single-star pattern that stops at the
+  # slash would hand the whole nested space to the static assets binding.
+  "/c/*", "/c/*/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
   "/author", "/author.html",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",

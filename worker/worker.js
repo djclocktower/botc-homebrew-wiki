@@ -84,7 +84,9 @@
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
- *   GET  /api/slug-check      -> is this page URL free? (?type=&name=&appearsIn=)
+ *   GET  /api/slug-check      -> is this page's identity free? (?type=&name=&appearsIn=)
+ *                                For a character that is the PK and the art slot,
+ *                                NOT the URL — see CHARACTER ADDRESSES below.
  *                                returns {taken, mine, suggestion} so an editor
  *                                can pick a free URL before uploading art
  *   POST /api/character       -> create/update a character; {renameFrom} moves
@@ -173,6 +175,8 @@
  *                                (alias: /api/admin/demote-no-icon)
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
+ *   POST /api/admin/nest-urls -> give every character a nested /c/{set}/{character}
+ *                                address ({dryRun:true} to preview; re-runnable)
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -1258,16 +1262,21 @@ async function wikiParentRow(env, type, key) {
 
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
 // Only the indexed columns are read, so this stays cheap even at 1000 rows.
+// [[Character Name]] -> the path segment render-wiki builds `c/{value}` from,
+// so the value is the ADDRESS. Both the identity and the name are keys, so a
+// writer can type either and still get a link.
 async function loadCharLinks(env) {
   const map = {};
   try {
+    await ensureUrlSlugColumn(env);
     const { results } = await env.DB.prepare(
-      "SELECT slug, name FROM characters WHERE status='published'"
+      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
     ).all();
     const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     for (const r of results || []) {
-      if (r.slug) map[norm(r.slug)] = r.slug;
-      if (r.name) map[norm(r.name)] = r.slug;
+      const addr = charAddress(r);
+      if (r.slug) map[norm(r.slug)] = addr;
+      if (r.name) map[norm(r.name)] = addr;
     }
   } catch { /* links just fall back to token pills */ }
   return map;
@@ -1372,7 +1381,7 @@ async function commentTarget(env, type, slug) {
   if (!row || row.status !== 'published') return null;
   // Collection URLs use the kebab id from the JSON, never the PK slug —
   // legacy rows have display-string slugs like "The Academy".
-  const path = type === 'character' ? '/c/' + row.slug
+  const path = type === 'character' ? '/c/' + charAddress(row)
     : type === 'script' ? '/s/' + row.slug
     : '/collection/' + (parseData(row).id || row.slug);
   return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path };
@@ -1770,8 +1779,15 @@ async function getEntityRow(env, type, slug) {
   // updated_at rides along for the edit-conflict check: the editors send it
   // back as baseUpdatedAt, and a save whose base no longer matches the stored
   // row is rejected rather than silently overwriting somebody else's work.
+  // Characters also carry url_slug, so anything holding a row can build a link
+  // to it without a second query (charAddress).
+  let addr = '';
+  if (type === 'character') {
+    await ensureUrlSlugColumn(env);
+    addr = ', url_slug';
+  }
   return env.DB.prepare(
-    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at FROM ${t.table} WHERE slug=?`
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at${addr} FROM ${t.table} WHERE slug=?`
   ).bind(slug).first().catch(() => null);
 }
 
@@ -1914,12 +1930,305 @@ function retargetArtPaths(obj, from, to) {
   }
 }
 
+// ===================== CHARACTER ADDRESSES =====================
+//
+// A character has an IDENTITY and an ADDRESS, and they are two different
+// strings:
+//
+//   identity  characters.slug (the PK)   witcher-odyssey    never changes
+//   address   characters.url_slug        odyssey/witcher    free to change
+//
+// Everything that points AT a character points at the identity — comments,
+// page_views, revisions, activity_log, script rosters, collection
+// include/exclude, profile pins, the art objects in R2. So renaming a page is
+// an address change and nothing else, which is why renameCharacter() below is
+// a few lines instead of the twelve-target migration it used to be, and why a
+// new feature can store a character reference without registering itself
+// anywhere.
+//
+// The two namespaces cannot collide, because an address always carries a slash
+// and an identity never does. /c/{one-segment} is therefore always an identity
+// (or a flat address from before nesting) and 301s to the canonical
+// /c/{set}/{name}; no redirect row is needed to keep the old flat URLs alive,
+// the primary key itself does that.
+//
+// Old ADDRESSES are remembered in `redirects` and always point at the
+// IDENTITY, never at another address — so a page that moves twice needs no
+// chain rewriting: every address it ever had still resolves through the row to
+// wherever it lives now.
+
+const CHAR_ADDR_FALLBACK = 'misc';
+
+function kebab(s) {
+  return String(s || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 80);
+}
+
+let _urlSlugReady = false;
+async function ensureUrlSlugColumn(env) {
+  if (_urlSlugReady) return;
+  // Lazily ALTERed, the same way users.banned and users.username_key are:
+  // there are no manual migrations on this project.
+  try { await env.DB.prepare('ALTER TABLE characters ADD COLUMN url_slug TEXT').run(); }
+  catch { /* already there */ }
+  try {
+    await env.DB.prepare(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_url_slug ON characters(url_slug)'
+    ).run();
+  } catch { /* index exists; NULLs are distinct in SQLite so unset rows are fine */ }
+  _urlSlugReady = true;
+}
+
+// The address a character should be read at. Falls back to the identity for a
+// row the backfill has not reached, so a half-finished migration can never
+// 404 a page — the worst case is a page still answering on its old flat URL.
+function charAddress(row) {
+  if (!row) return '';
+  return String(row.url_slug || row.slug || '');
+}
+
+// character identity -> the script whose roster lists it. First script wins,
+// so a character on two scripts is filed under the one that was created first.
+// Cached on content_version like the collection maps beside it.
+let _scriptRosterCache = null;
+async function scriptRosterMap(env) {
+  const version = await contentVersion(env);
+  if (_scriptRosterCache && _scriptRosterCache.version === version) return _scriptRosterCache.map;
+  const map = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, data FROM scripts WHERE status='published' ORDER BY created_at, slug"
+    ).all();
+    for (const r of results || []) {
+      const q = kebab(r.slug);
+      if (!q) continue;
+      let d = {};
+      try { d = JSON.parse(r.data); } catch { continue; }
+      for (const s of (Array.isArray(d.characters) ? d.characters : [])) {
+        // Official roles ride along in a roster as `off-` ids; they are not
+        // wiki pages and have no address to give.
+        if (typeof s === 'string' && !s.startsWith('off-') && !map.has(s)) map.set(s, q);
+      }
+    }
+  } catch { /* no scripts, or no status column yet */ }
+  _scriptRosterCache = { version, map };
+  return map;
+}
+
+// Scripts, matched the loose way findCollectionRow matches collections, so
+// "The Princess' Requiem" finds the-princess-requiem.
+async function findScriptRowLoose(env, key) {
+  if (!key) return null;
+  const hit = await env.DB.prepare('SELECT slug, data FROM scripts WHERE slug=?')
+    .bind(kebab(key)).first().catch(() => null);
+  if (hit) return hit;
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const nkey = norm(key);
+  if (!nkey) return null;
+  const { results } = await env.DB.prepare('SELECT slug, data FROM scripts')
+    .all().catch(() => ({ results: [] }));
+  for (const row of results || []) {
+    if (norm(row.slug) === nkey) return row;
+    try {
+      const d = JSON.parse(row.data);
+      if (d && (norm(d.name) === nkey || norm(d.displayName) === nkey || norm(d.id) === nkey)) return row;
+    } catch { /* skip bad rows */ }
+  }
+  return null;
+}
+
+// The set segment of a character's address, in the order the wiki reads:
+//
+//   1. a collection it appears in       odyssey/witcher
+//   2. a script it appears in           fall-of-rome/actor
+//   3. the set named in "Appears in" even when this wiki has no page for it —
+//      "Trouble Homebrewing" is a real set that nobody registered, and its 36
+//      characters read far better under it than scattered under six authors
+//   4. the author                       gobinator/archer
+//   5. their account, then `misc` for a page with none of the above
+//
+// Collections beat scripts outright for the 22 characters that name both.
+// Steps 1 and 2 match loosely (case, punctuation and apostrophes are ignored)
+// because `appears_in` is free text that people typed: "Tales from Tir-Far's
+// Archive" has to find tales-from-tir-fars-archive, or a whole collection
+// would land in step 3 under a near-miss of its own name.
+async function characterQualifier(env, entry, ownerId) {
+  const segs = String((entry && entry.appearsIn) || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  for (const s of segs) {
+    const row = await findCollectionRow(env, s);
+    if (row) {
+      const d = parseData(row);
+      const q = kebab((d && d.id) || row.slug);
+      if (q) return q;
+    }
+  }
+  for (const s of segs) {
+    const row = await findScriptRowLoose(env, s);
+    if (row) {
+      const q = kebab(row.slug);
+      if (q) return q;
+    }
+  }
+  if (segs.length) {
+    const q = kebab(segs[0]);
+    if (q) return q;
+  }
+  // No "Appears in" of its own — but a collection may list it by hand, which
+  // is exactly what the page itself shows in that row (applyCollectionAppearsIn).
+  // The address agrees with the page rather than contradicting it.
+  if (entry && entry.slug) {
+    try {
+      for (const coll of await includeCollections(env)) {
+        if (coll.include.includes(entry.slug)) {
+          const q = kebab(coll.id);
+          if (q) return q;
+        }
+      }
+    } catch { /* fall through to the script rosters */ }
+    // Then a script that lists it. The Blood on the TARDIS cast is the case
+    // this catches: thirty characters with no "Appears in" of their own that
+    // plainly belong to one script, and would otherwise be filed under the
+    // account that happens to own them.
+    try {
+      const q = (await scriptRosterMap(env)).get(String(entry.slug));
+      if (q) return q;
+    } catch { /* fall through to the author */ }
+  }
+  // A credit can name several people ("Taiyi (太一), Saki"); the first is the
+  // one the address is filed under, same as everywhere else on the wiki.
+  const cred = creditNames((entry && entry.creator) || '')[0];
+  if (cred) {
+    const q = kebab(cred);
+    if (q) return q;
+  }
+  if (ownerId) {
+    try {
+      const u = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+        .bind(ownerId).first();
+      const q = kebab(u && u.username);
+      if (q) return q;
+    } catch { /* fall through */ }
+  }
+  return CHAR_ADDR_FALLBACK;
+}
+
+// The first free address under `qualifier`. Two characters with the same name
+// in the same set get `.../carpenter` and `.../carpenter-2` — there is nothing
+// left to tell them apart by, and it is 60 pages across the whole wiki.
+async function freeCharAddress(env, qualifier, base, exceptUid) {
+  await ensureUrlSlugColumn(env);
+  const q = kebab(qualifier) || CHAR_ADDR_FALLBACK;
+  const name = kebab(base) || 'character';
+  const first = q + '/' + name;
+  const taken = new Set();
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT url_slug FROM characters WHERE slug<>? AND (url_slug=? OR url_slug LIKE ?)'
+    ).bind(String(exceptUid || ''), first, first + '-%').all();
+    for (const r of results || []) if (r.url_slug) taken.add(String(r.url_slug));
+  } catch { /* column not there yet: nothing is taken */ }
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT from_slug, to_slug FROM redirects WHERE entity_type='character' AND (from_slug=? OR from_slug LIKE ?)"
+    ).bind(first, first + '-%').all();
+    for (const r of results || []) {
+      // An address this same page used to live at is not in the way: moving
+      // back onto it just undoes the redirect.
+      if (exceptUid && String(r.to_slug) === String(exceptUid)) continue;
+      if (r.from_slug) taken.add(String(r.from_slug));
+    }
+  } catch { /* nothing has ever moved */ }
+  if (!taken.has(first)) return first;
+  for (let i = 2; i < 500; i++) {
+    const candidate = first + '-' + i;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return first + '-' + Date.now().toString(36);
+}
+
+// The address a character's current name and set ask for. `current` is the
+// address it already has, if any.
+async function characterAddress(env, uid, entry, ownerId, current) {
+  const q = kebab(await characterQualifier(env, entry, ownerId)) || CHAR_ADDR_FALLBACK;
+  const name = kebab((entry && entry.name) || uid) || 'character';
+  const first = q + '/' + name;
+  // Already filed under the right set under the right name — including as a
+  // numbered duplicate. Keep it. Recomputing the address on every save is what
+  // makes a rename automatic, but a save that changed neither the name nor the
+  // set must not shuffle the page onto a different URL just because a sibling
+  // moved away and freed up the unnumbered form.
+  if (current === first) return current;
+  if (current && current.startsWith(first + '-') && /^\d+$/.test(current.slice(first.length + 1))) {
+    return current;
+  }
+  return freeCharAddress(env, q, name, uid);
+}
+
+// Move a character to a new address, remembering the old one. This is the
+// whole of what renaming does now: one UPDATE and one redirect row. Nothing
+// else in the database, and nothing in R2, is touched.
+async function setCharAddress(env, uid, address) {
+  await ensureUrlSlugColumn(env);
+  const prev = await env.DB.prepare('SELECT url_slug FROM characters WHERE slug=?')
+    .bind(uid).first().catch(() => null);
+  const from = prev && prev.url_slug ? String(prev.url_slug) : '';
+  if (from === address) return false;
+  await env.DB.prepare('UPDATE characters SET url_slug=? WHERE slug=?')
+    .bind(address, uid).run();
+  if (from) {
+    await ensureRedirectsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+       ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+    ).bind(from, uid).run();
+  }
+  // An address that is a live page again must stop being a redirect.
+  try {
+    await env.DB.prepare(
+      "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
+    ).bind(address).run();
+  } catch { /* no redirects table yet */ }
+  return true;
+}
+
+// Resolve whatever followed /c/ to a character row, and say where that page
+// should canonically be read. Callers 301 when the reader arrived elsewhere.
+async function resolveCharacterPath(env, key) {
+  if (!key) return null;
+  await ensureUrlSlugColumn(env);
+  const cols = 'slug, url_slug, data, status, owner_id';
+  const bySlug = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE slug=?`)
+    .bind(v).first().catch(() => null);
+  const byAddr = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE url_slug=?`)
+    .bind(v).first().catch(() => null);
+
+  let row = key.includes('/') ? await byAddr(key) : (await bySlug(key)) || (await byAddr(key));
+  if (!row) {
+    // An address this page used to live at. Redirect rows written since the
+    // split hold the identity; the 39 written before it hold what was then
+    // the new slug, which IS the identity — but try both, cheaply.
+    const moved = await lookupRedirect(env, 'character', key);
+    if (moved) row = (await bySlug(moved)) || (await byAddr(moved));
+  }
+  if (!row) return null;
+  return { row, canonical: charAddress(row) };
+}
+
 // Move a character from one slug to another, taking everything that points at
 // it along: comments, view counts, revisions, the activity log, admin page
 // protection, its art in R2, and the slug lists inside scripts, collections
 // and profile pins. Callers must have checked ownership and that `to` is free.
 // Reports whether the art actually moved — art that is not in R2 (the
 // bulk-imported pages point at committed files) keeps its old path.
+//
+// NOTE: identities do not move any more — an ordinary rename is an address
+// change (setCharAddress) and never comes through here. This is kept for the
+// one case that still moves a primary key: an admin deliberately re-keying a
+// row. Everything it does is still correct, it is simply no longer on the
+// path a creator's rename takes.
 async function renameCharacter(env, from, to) {
   let artMoved = false;
   await env.DB.prepare('UPDATE characters SET slug=? WHERE slug=?').bind(to, from).run();
@@ -2362,10 +2671,18 @@ const CARD_DROP_FIELDS = new Set([
 async function buildPublicJSON(env, table, opts = {}) {
   const drafts = !!opts.includeDrafts;
   const cardOnly = opts.fields === 'card' && table === 'characters';
+  const chars = table === 'characters';
   const where = drafts ? "status IN ('published','draft')" : "status='published'";
+  // Characters carry their identity and their address from the row itself, so
+  // every consumer gets both without either being able to drift: `slug` is the
+  // PK (what references are keyed on) and `page` is built from `url_slug`
+  // (what links go to). Twelve pages already link through `page`, which is why
+  // this one line is most of the frontend's share of nesting.
+  if (chars) await ensureUrlSlugColumn(env);
+  const cols = chars ? 'data, status, slug, url_slug' : 'data, status';
   let results;
   try {
-    ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
+    ({ results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all());
   } catch {
     // status column not migrated yet -> serve everything (legacy behaviour)
     ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
@@ -2377,6 +2694,12 @@ async function buildPublicJSON(env, table, opts = {}) {
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
+    if (chars && r.slug) {
+      d.slug = String(r.slug);
+      // The address, derived on every read. The stored `page` is whatever some
+      // editor wrote there years ago and is never trusted for a character.
+      d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
+    }
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
@@ -2537,12 +2860,18 @@ function attr(s) {
 function pageShell(o) {
   // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
   //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner,
-  //     noindex}
+  //     noindex, root}
+  // `root` is how far up the site root is from this page's URL. Every path in
+  // the shell is relative, and all of /s/, /collection/, /news/ and /p/ sit
+  // one level deep, so it defaults to '../'. Character addresses are nested
+  // (/c/{set}/{character}) and pass '../../' — without it the stylesheet, the
+  // logo and every nav link on a character page resolve inside /c/.
   // `noindex` keeps a page out of search engines — used by the custom wiki
   // pages, which are reachable only from their parent page and their author's.
   // The nav row is identical on every page (built into the shell below);
   // site.js appends Tools + the Account/Login button, and moves the
   // Edit button to the end of the row on editable pages.
+  const R = o.root || '../';
   const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
   const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
@@ -2565,27 +2894,27 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link re
 <meta name="twitter:title" content="${attr(o.title)}">
 <meta name="twitter:description" content="${attr(o.desc)}">
 <meta name="twitter:image" content="${attr(o.ogImage)}">
-<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
-<link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css">
-<link rel="stylesheet" href="../assets/header-redesign.css">
+<link rel="icon" type="image/png" sizes="64x64" href="${R}assets/favicon.png">
+<link rel="apple-touch-icon" href="${R}assets/favicon.png">
+<link rel="stylesheet" href="${R}assets/styles.css">
+<link rel="stylesheet" href="${R}assets/header-redesign.css">
 </head>
 <body${bodyAttrs}>
 ${o.draftBanner || ''}
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="../">
-        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
-        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <a class="brand" href="${R}">
+        <img class="brand-skull" src="${R}assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="${R}assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
     </div>
     <nav class="crumb" aria-label="Primary">
-      <a href="../all-characters">All Characters</a>
-      <a href="../scripts">Scripts</a>
-      <a href="../all-collections">Collections</a>
-      <a href="../script">Script Builder</a>
+      <a href="${R}all-characters">All Characters</a>
+      <a href="${R}scripts">Scripts</a>
+      <a href="${R}all-collections">Collections</a>
+      <a href="${R}script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -2599,11 +2928,11 @@ ${o.draftBanner || ''}
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="../">Home</a>
-  <a href="../all-characters">All Characters</a>
-  <a href="../scripts">Scripts</a>
-  <a href="../all-collections">Collections</a>
-  <a href="../script">Script Builder</a>
+  <a href="${R}">Home</a>
+  <a href="${R}all-characters">All Characters</a>
+  <a href="${R}scripts">Scripts</a>
+  <a href="${R}all-collections">Collections</a>
+  <a href="${R}script">Script Builder</a>
 </nav>
 
   <main${mainAttrs} id="content">${o.body}</main>
@@ -2611,7 +2940,7 @@ ${o.draftBanner || ''}
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script>${o.bootstrap || ''}</script>
-${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').join('\n')}
+${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + s + '"></script>').join('\n')}
 </body>
 </html>`;
 }
@@ -2633,7 +2962,8 @@ const PARTIAL_PREHIDE =
   'if(m[n.getAttribute("data-partial-slug")]===n.getAttribute("data-partial-sig"))n.remove();' +
   '}catch(e){}})();<\/script>';
 
-function partialNoticeHTML(d) {
+function partialNoticeHTML(d, root) {
+  const R = root || '../';
   const bits = Classify.missingBits(d);
   const missing = Classify.listPhrase(bits);
   // data-partial-sig is what is still outstanding. Dismissal is remembered
@@ -2645,7 +2975,7 @@ function partialNoticeHTML(d) {
     ' data-partial-sig="' + attr(bits.join('|')) + '">' +
     '<strong>' + SYS.partialLabel + '</strong> ' + SYS.partialBody +
     (missing ? ' ' + SYS.partialFix.replace('{missing}', escapeHtml(missing)) : '') +
-    ' <a href="../edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a>' +
+    ' <a href="' + R + 'edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a>' +
     '<button type="button" class="page-notice-close" aria-label="' +
     attr(SYS.partialDismiss) + '">&times;</button>' +
     '</div>' + PARTIAL_PREHIDE;
@@ -2664,7 +2994,14 @@ async function serveProfileShell(env, request, url) {
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
-  const pageUrl = origin + '/c/' + d.slug;
+  // d.page is the address the /c/ route resolved; d.slug is the identity and
+  // is only the address for a row the backfill has not reached.
+  const pageUrl = origin + '/' + String(d.page || ('c/' + d.slug)).replace(/^\//, '');
+  // Every path in the shell and the body is relative, and a nested address
+  // (/c/{set}/{character}) is one level deeper than the flat one this page
+  // used to have. Count the depth off the address rather than assuming it.
+  const depth = String(d.page || ('c/' + d.slug)).replace(/^\//, '').split('/').length - 1;
+  const root = '../'.repeat(Math.max(1, depth));
   const imgRaw = Array.isArray(d.image) ? d.image[0] : d.image;
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
@@ -2672,14 +3009,14 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   // Stamped here too (not just in characters.json) so the Curata mark in
   // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
-  const body = Render.renderCharacter(d, artSrc, '../');
+  const body = Render.renderCharacter(d, artSrc, root);
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
-    : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + root + 'edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+    : '') + (showPartialNotice ? partialNoticeHTML(d, root) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
-    body, draftBanner,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
+    body, draftBanner, root,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
     scripts: ['render.js', 'tags.js', 'charpage.js', 'comments.js', 'site.js']
   });
@@ -2825,7 +3162,7 @@ function mergeMirroredJinxes(d, slug, jx) {
         claimed.has(Render.normJinxId(other.name))) continue;
     out.push({
       slug: other.slug, name: other.name, align: e.align, text: e.text,
-      mirrored: true, mirroredFrom: { slug: other.slug, name: other.name }
+      mirrored: true, mirroredFrom: { slug: other.slug, name: other.name, page: other.page || '' }
     });
   }
   return out;
@@ -2841,7 +3178,10 @@ function buildJinxIndex(chars) {
     const row = {
       slug: c.slug, name: c.name || c.slug, team: c.team || '',
       art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
-      creator: c.creator || ''
+      creator: c.creator || '',
+      // The address. `slug` stays the identity, which is what edges and
+      // the mirroring are keyed on; this is only ever used to build a link.
+      page: typeof c.page === 'string' ? c.page : ''
     };
     bySlugRow[c.slug] = row;
     for (const k of [Render.normJinxId(c.slug), Render.normJinxId(c.name)]) {
@@ -2914,12 +3254,15 @@ async function cachedCharLinkMap(env) {
   const map = {};
   const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   try {
+    await ensureUrlSlugColumn(env);
     const { results } = await env.DB.prepare(
-      "SELECT slug, name FROM characters WHERE status='published'"
+      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
     ).all();
     for (const r of results || []) {
-      if (r.slug) map[nkey(r.slug)] = r.slug;
-      if (r.name) map[nkey(r.name)] = r.slug;
+      // The ADDRESS: render-wiki turns this into `c/{value}`.
+      const addr = charAddress(r);
+      if (r.slug) map[nkey(r.slug)] = addr;
+      if (r.name) map[nkey(r.name)] = addr;
     }
   } catch { /* an empty map just means [[Name]] renders as a plain token */ }
   _charLinkCache = { version, map };
@@ -3583,15 +3926,11 @@ export default {
           headers: { Location: url.origin + '/c/' + slug + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-        let row = null;
-        try {
-          row = await env.DB.prepare('SELECT data, status, owner_id FROM characters WHERE slug = ?')
-            .bind(slug).first();
-        } catch {
-          row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
-            .bind(slug).first();
-        }
+      // One segment is an identity or a flat address from before nesting; two
+      // is a nested address, /c/{set}/{character}.
+      if (slug && /^[a-z0-9-]+(\/[a-z0-9-]+)?$/i.test(slug)) {
+        const found = await resolveCharacterPath(env, slug);
+        const row = found ? found.row : null;
         if (row && row.data) {
           // Soft-deleted pages are hidden from everyone (incl. owner/admin);
           // recovery happens on the admin dashboard, not the live page.
@@ -3607,8 +3946,25 @@ export default {
             return editable;
           };
           if (isDraft && !(await canEdit())) return assetsOrNotFound(env, request); // 404 for everyone else
+          // Read at the canonical address, whichever door they came in by.
+          // This has to come AFTER the draft and deleted gates: a 301 where a
+          // stranger should get a 404 tells them the page exists and where it
+          // now lives, and the site never reveals that unpublished pages exist.
+          if (found.canonical && found.canonical !== slug) {
+            return new Response(null, {
+              status: 301,
+              headers: {
+                Location: url.origin + '/c/' + found.canonical + url.search,
+                'Cache-Control': 'no-store'
+              }
+            });
+          }
           const d = foldLegacyCurata(JSON.parse(row.data));
-          if (!d.slug) d.slug = slug;
+          // The row is the truth for both: `slug` is the identity (the art
+          // paths and every reference are keyed on it) and `page` is the
+          // address, which is what the canonical link and the OG tags use.
+          d.slug = String(row.slug);
+          d.page = 'c/' + found.canonical;
           // Same Curata inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.curata) await applyCollectionCurata(env, [d]);
@@ -3622,7 +3978,9 @@ export default {
           // the owner is still the one who can. Most Curata here is
           // inherited from a collection, so no admin ever looked at the page.
           const partialNotice = Classify.isIncomplete(d) && await canEdit();
-          if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
+          // Views are counted against the IDENTITY, so a page's history
+          // survives every rename it ever has.
+          if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', String(row.slug)));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           Render.setOfficialNames(await officialNameMap(env, url.origin));
           // [[Character Name]] inside a jinx rule or a custom box links to
@@ -3633,21 +3991,14 @@ export default {
           try {
             const jx = await jinxIndex(env, ctx);
             Render.setWikiChars(jx.chars);
-            d.jinxes = mergeMirroredJinxes(d, slug, jx);
+            d.jinxes = mergeMirroredJinxes(d, String(row.slug), jx);
           } catch { /* the page's own jinxes still render */ }
           return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }
-        // No page here — but this may be the address a renamed character used
-        // to live at, and every link out in the world still points at it.
-        const moved = await lookupRedirect(env, 'character', slug);
-        if (moved) {
-          return new Response(null, {
-            status: 301,
-            headers: { Location: url.origin + '/c/' + moved + url.search, 'Cache-Control': 'no-store' }
-          });
-        }
+        // Nothing here. resolveCharacterPath already followed the `redirects`
+        // table, so an address a renamed page used to live at has been tried.
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
       return assetsOrNotFound(env, request);
@@ -3728,19 +4079,21 @@ export default {
       try {
         picked = Classify.weightedPick(await cachedCardChars(env));
       } catch { /* fall through */ }
-      let row = picked && picked.slug ? { slug: picked.slug } : null;
+      let row = picked && picked.slug ? { slug: picked.slug, page: picked.page } : null;
       if (!row) {
+        await ensureUrlSlugColumn(env);
         try {
           row = await env.DB.prepare(
-            "SELECT slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
+            "SELECT slug, url_slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
           ).first();
         } catch {
           row = await env.DB.prepare(
             'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
           ).first();
         }
+        if (row) row.page = 'c/' + charAddress(row);
       }
-      const dest = row ? '/c/' + row.slug : '/all-characters';
+      const dest = row ? '/' + String(row.page || ('c/' + row.slug)).replace(/^\//, '') : '/all-characters';
       return new Response(null, {
         status: 302,
         headers: { Location: url.origin + dest, 'Cache-Control': 'no-store' }
@@ -4028,7 +4381,7 @@ export default {
           id: 'c:' + slug, slug: r.slug, name: r.name, team: r.team,
           creator: r.creator, official: false,
           icon: r.art ? (url.origin + '/assets/' + r.art) : (r.image || ''),
-          href: '/c/' + r.slug
+          href: '/' + String(r.page || ('c/' + r.slug)).replace(/^\//, '')
         });
         return 'c:' + slug;
       }
@@ -4181,8 +4534,12 @@ export default {
     if (method === 'GET' && path === '/sitemap.xml') {
       const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       async function pub(table) {
+        // Characters are listed at their address, not their identity, or
+        // every URL in the sitemap would be one the site 301s away from.
+        const addr = table === 'characters' ? ', url_slug' : '';
+        if (table === 'characters') await ensureUrlSlugColumn(env);
         try {
-          return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table} WHERE status='published'`).all()).results;
+          return (await env.DB.prepare(`SELECT slug, updated_at${addr} FROM ${table} WHERE status='published'`).all()).results;
         } catch {
           return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
         }
@@ -4211,7 +4568,7 @@ export default {
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + charAddress(r)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
@@ -4365,14 +4722,21 @@ export default {
       });
     }
 
-    // ---- is this page URL still free? (editor helper) ----
-    // The create page builds a character's URL from its name, uploads the art
-    // to art/{slug}.png and only then writes the row — so a name another
+    // ---- is this page's identity still free? (editor helper) ----
+    // The create page builds a character's identity from its name, uploads the
+    // art to art/{slug}.png and only then writes the row — so a name another
     // account already used failed at the *upload* step with a confusing "that
     // art slot belongs to a character owned by another account". This lets an
-    // editor find that out before it uploads anything, and offers a free URL
+    // editor find that out before it uploads anything, and offers a free one
     // in the style the wiki already uses for duplicate names
     // (witcher-odyssey, sculptor-fall-of-rome, illusionist-megalomania).
+    //
+    // For characters this is about the IDENTITY, not the URL: the reader-facing
+    // address is /c/{set}/{character} and the Worker derives it on save, so a
+    // duplicate name never needs a different identity to get its own page.
+    // Identities still have to be unique because they name the art slot, which
+    // is why the suffix ladder is still here and still looks like a URL.
+    // Scripts and collections are unchanged: for them the slug IS the URL.
     // Login required: whether a slug is taken can betray someone's draft.
     if (method === 'GET' && path === '/api/slug-check') {
       const sess = await getSession(env, request);
@@ -4898,6 +5262,12 @@ export default {
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+      // A character can be asked for by identity or by address, so an editor
+      // opened from a copied /c/{set}/{name} URL finds the page too.
+      if (!row && type === 'character') {
+        const found = await resolveCharacterPath(env, slug);
+        if (found) row = await getEntityRow(env, 'character', found.row.slug);
+      }
       // A renamed page answers on its old slug here too, so an editor opened
       // from a stale link (edit?c={old}) still finds it.
       if (!row) {
@@ -6173,9 +6543,10 @@ export default {
             const row = await getEntityRow(env, 'character', slug);
             if (row && !canEditRow(sess, row)) {
               // Almost always a name clash on a brand-new character: the art
-              // slot is named after the URL, and /c/{slug} is already someone
-              // else's page. Say so, so the fix (a different name) is obvious.
-              return jsonResponse({ error: 'The URL /c/' + slug + ' already belongs to a character on another account, and its art slot goes with it. Give your character a different name and save again.' }, { status: 403 });
+              // slot is named after the character's identity, which is derived
+              // from its name, and that one is already someone else's page.
+              // Say so, so the fix (a different name) is obvious.
+              return jsonResponse({ error: 'The art slot for "' + slug + '" already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'character', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -6557,21 +6928,24 @@ export default {
         let c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
-        // The slug IS the URL (/c/{slug}), and that route only matches
-        // [a-z0-9-]. Anything else saves a page nobody can ever open.
+        // The slug is the character's IDENTITY: the primary key, the art slot
+        // in R2, and what every reference to this page is stored as. It is
+        // also the one-segment URL that 301s to the page's real address, and
+        // that route only matches [a-z0-9-].
         if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
           return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
         }
-        // Renaming: the editor sends the page's current URL in renameFrom and
-        // the one its new name asks for in slug. The page moves — with its
-        // comments, views, history and art — and /c/{old} 301s to it forever,
-        // so links that are already out in the world keep working.
+        // Renaming: the editor sends the page's identity in renameFrom and the
+        // slug its new name asks for in `slug`. The IDENTITY does not move —
+        // it is what the art in R2, the comments, the view history and every
+        // script roster are keyed on — so a rename is an address change, made
+        // after the save below. The page keeps its primary key and simply gets
+        // a new /c/{set}/{name}, with the old address 301ing to it forever.
         const renameFrom = String(c.renameFrom || '');
         delete c.renameFrom;
-        let renamedFrom = null, renamedArt = false;
+        let renamedFrom = null;
+        const renamedArt = false;
         if (renameFrom && renameFrom !== c.slug) {
-          // Slugs only, same shape as the URL — this string is also built into
-          // the art-path pattern below.
           if (!/^[a-z0-9-]{1,80}$/.test(renameFrom)) {
             return jsonResponse({ error: 'Invalid page URL to rename from.' }, { status: 400 });
           }
@@ -6585,18 +6959,11 @@ export default {
           if (!sess.isAdmin && await isProtected(env, 'character', renameFrom)) {
             return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
           }
-          // Never rename onto a live page — that would overwrite it.
-          if (await getEntityRow(env, 'character', c.slug)) {
-            return jsonResponse({ error: 'The URL /c/' + c.slug + ' is already in use. Try a slightly different name.' }, { status: 409 });
-          }
-          const move = await renameCharacter(env, renameFrom, c.slug);
-          renamedFrom = renameFrom;
-          // The editor posts the whole page back, including the art paths it
-          // loaded before the move; point them at where the art now lives.
-          // Art that stayed put (a committed file) keeps the path it had.
-          renamedArt = move.artMoved;
-          if (renamedArt) retargetArtPaths(c, renameFrom, c.slug);
-          c.page = 'c/' + c.slug + '.html';
+          // Write back to the row that already exists. Nothing is moved, so
+          // the old "is the target slug free?" check has nothing to guard:
+          // two characters can share a name and still get their own address.
+          renamedFrom = charAddress(src);
+          c.slug = renameFrom;
         }
         const existing = await getEntityRow(env, 'character', c.slug);
         // Ownership, or the page's own public-editing setting. Everything
@@ -6681,20 +7048,45 @@ export default {
              data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
+        // The address this page's name and set now ask for, recomputed on every
+        // save — that is what makes renaming automatic, and what moves a
+        // character's URL when it joins or leaves a collection. setCharAddress
+        // leaves a 301 behind whenever it actually moves.
+        let address = charAddress(existing) || c.slug;
+        let movedFrom = null;
+        try {
+          const prevAddress = charAddress(existing);
+          address = await characterAddress(
+            env, c.slug, c,
+            existing ? existing.owner_id : sess.userId,
+            prevAddress
+          );
+          const changed = await setCharAddress(env, c.slug, address);
+          // A page that had an address and now has a different one has moved,
+          // and the editor says so. A page getting its first one has not.
+          if (changed && prevAddress && prevAddress !== address) movedFrom = prevAddress;
+        } catch {
+          // Never lose a save over an address. The page is still reachable at
+          // /c/{identity} until the next save, or the admin backfill, gives it
+          // a nested one.
+          address = charAddress(existing) || c.slug;
+        }
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
             what: perm === 'tags' ? 'changed the tags on' : 'edited',
-            name: c.name, path: '/c/' + c.slug, origin: url.origin
+            name: c.name, path: '/c/' + address, origin: url.origin
           }));
         }
-        if (renamedFrom) {
-          await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
+        if (movedFrom) {
+          await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + movedFrom + ')');
         }
         const savedRow = await getEntityRow(env, 'character', c.slug);
         return jsonResponse({
-          ok: true, slug: c.slug, status, renamedFrom, renamedArt,
+          ok: true, slug: c.slug, page: 'c/' + address, address,
+          // The address it used to have, when this save moved it.
+          movedFrom, status, renamedFrom: movedFrom || renamedFrom, renamedArt,
           updatedAt: savedRow ? savedRow.updated_at : null,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
@@ -7964,6 +8356,203 @@ export default {
       }
 
       // ---- admin: sweep published characters that miss the publish bar ----
+      // ---- give every character a nested address ----
+      // Retroactive /c/{set}/{character} for the whole wiki, so no page keeps a
+      // bare first-come URL: the first Priest stops owning /c/priest and every
+      // Priest is filed under the set (or the author) it belongs to.
+      //
+      // ALWAYS dry-run it first: {dryRun:true} reports what it would do,
+      // including the qualifier each page resolved to, and writes nothing.
+      //
+      // Everything is resolved from maps built once, not per row: 1,647
+      // characters × a collection scan each would be thousands of queries.
+      // `taken` is held in memory for the same reason, and because two rows in
+      // the same run must not be handed the same address.
+      //
+      // Re-runnable. Rows that already sit at the address they ask for are left
+      // alone, so a second pass after registering a collection only moves the
+      // pages that collection just claimed.
+      if (path === '/api/admin/nest-urls') {
+        const b = await request.json().catch(() => ({}));
+        const dryRun = b.dryRun !== false;
+        const limit = Math.max(1, Math.min(5000, Number(b.limit) || 5000));
+        await ensureUrlSlugColumn(env);
+        await ensureRedirectsTable(env);
+
+        // --- lookup maps, built once ---
+        const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const setKey = new Map();       // normalised set name -> {q, kind}
+        const includedIn = new Map();   // character identity -> qualifier
+        try {
+          const { results } = await env.DB.prepare('SELECT slug, data FROM collections').all();
+          for (const r of results || []) {
+            let d = {};
+            try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { /* skip bad rows */ }
+            const q = kebab(d.id || r.slug);
+            if (!q) continue;
+            for (const k of [r.slug, d.id, d.displayName, d.name]) {
+              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'collection' });
+            }
+            for (const s of (Array.isArray(d.include) ? d.include : [])) {
+              if (typeof s === 'string' && !includedIn.has(s)) includedIn.set(s, q);
+            }
+          }
+        } catch { /* no collections is survivable */ }
+        try {
+          const { results } = await env.DB.prepare('SELECT slug, data FROM scripts').all();
+          for (const r of results || []) {
+            let d = {};
+            try { d = JSON.parse(r.data); } catch { /* skip bad rows */ }
+            const q = kebab(r.slug);
+            if (!q) continue;
+            // Collections win outright, so a name both claim keeps the
+            // collection it already resolved to.
+            for (const k of [r.slug, d.id, d.displayName, d.name]) {
+              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'script' });
+            }
+          }
+        } catch { /* no scripts is survivable */ }
+        // Rosters, for characters with no "Appears in" of their own that a
+        // script plainly owns (the Blood on the TARDIS cast).
+        try {
+          const { results } = await env.DB.prepare(
+            'SELECT slug, data FROM scripts ORDER BY created_at, slug'
+          ).all();
+          for (const r of results || []) {
+            const q = kebab(r.slug);
+            if (!q) continue;
+            let d = {};
+            try { d = JSON.parse(r.data); } catch { continue; }
+            for (const x of (Array.isArray(d.characters) ? d.characters : [])) {
+              // Collections were indexed first and keep the character.
+              if (typeof x === 'string' && !x.startsWith('off-') && !includedIn.has(x)) {
+                includedIn.set(x, q);
+              }
+            }
+          }
+        } catch { /* no rosters is survivable */ }
+        const userName = new Map();
+        try {
+          const { results } = await env.DB.prepare('SELECT id, username FROM users').all();
+          for (const r of results || []) userName.set(Number(r.id), kebab(r.username));
+        } catch { /* fall through to the misc bucket */ }
+
+        // --- every character, oldest first, so a run is deterministic ---
+        const { results: rows } = await env.DB.prepare(
+          `SELECT slug, url_slug, name, creator, appears_in, owner_id, status
+             FROM characters ORDER BY created_at, slug`
+        ).all();
+
+        // Addresses already spoken for, plus every address any page has ever
+        // had — taking one of those back would hijack a live redirect.
+        const taken = new Set();
+        for (const r of rows || []) if (r.url_slug) taken.add(String(r.url_slug));
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT from_slug FROM redirects WHERE entity_type='character'"
+          ).all();
+          for (const r of results || []) if (r.from_slug) taken.add(String(r.from_slug));
+        } catch { /* nothing has ever moved */ }
+
+        const kinds = { collection: 0, script: 0, unregistered: 0, listed: 0, creator: 0, account: 0, fallback: 0 };
+        const plan = [];
+        for (const r of rows || []) {
+          const segs = String(r.appears_in || '').split(',').map(x => x.trim()).filter(Boolean);
+          let q = '', kind = '';
+          for (const s of segs) {
+            const hit = setKey.get(norm(s));
+            if (hit && hit.kind === 'collection') { q = hit.q; kind = 'collection'; break; }
+          }
+          if (!q) for (const s of segs) {
+            const hit = setKey.get(norm(s));
+            if (hit) { q = hit.q; kind = hit.kind; break; }
+          }
+          // A set this wiki has no page for is still a set, and reads far
+          // better than scattering its characters under their authors.
+          if (!q && segs.length) { q = kebab(segs[0]); if (q) kind = 'unregistered'; }
+          // Listed by hand in a collection, or on a script's roster.
+          if (!q && includedIn.has(String(r.slug))) {
+            q = includedIn.get(String(r.slug)); kind = 'listed';
+          }
+          if (!q) {
+            const cred = creditNames(r.creator || '')[0];
+            q = kebab(cred); if (q) kind = 'creator';
+          }
+          if (!q && r.owner_id != null) {
+            q = userName.get(Number(r.owner_id)) || ''; if (q) kind = 'account';
+          }
+          if (!q) { q = CHAR_ADDR_FALLBACK; kind = 'fallback'; }
+
+          const base = kebab(r.name) || kebab(r.slug) || 'character';
+          const first = q + '/' + base;
+          const current = r.url_slug ? String(r.url_slug) : '';
+          // Already filed correctly, including as a numbered duplicate.
+          const settled = current === first ||
+            (!!current && current.startsWith(first + '-') &&
+             /^\d+$/.test(current.slice(first.length + 1)));
+          // Nothing to do, and nothing a re-run could improve: a settled row
+          // already sits under the qualifier and name it resolves to.
+          if (settled) { kinds[kind]++; continue; }
+
+          let address = first;
+          if (taken.has(address)) {
+            for (let i = 2; i < 500; i++) {
+              if (!taken.has(first + '-' + i)) { address = first + '-' + i; break; }
+            }
+          }
+          if (taken.has(address)) continue;   // 500 of one name in one set: leave it
+          // Reserved for good, including the address this page is leaving:
+          // that one is about to become a redirect pointing here, and
+          // handing it to another character in the same run would send
+          // every old link to the wrong page.
+          taken.add(address);
+          if (current) taken.add(current);
+          kinds[kind]++;
+          plan.push({ slug: String(r.slug), from: current, to: address, kind });
+          if (plan.length >= limit) break;
+        }
+
+        if (dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, scanned: (rows || []).length,
+            wouldChange: plan.length, kinds,
+            samples: plan.slice(0, 40)
+          });
+        }
+
+        let changed = 0;
+        for (let i = 0; i < plan.length; i += 40) {
+          const chunk = plan.slice(i, i + 40);
+          const stmts = [];
+          for (const p of chunk) {
+            stmts.push(env.DB.prepare('UPDATE characters SET url_slug=? WHERE slug=?')
+              .bind(p.to, p.slug));
+            // Only a real previous ADDRESS needs remembering. A page that has
+            // never had one is still reachable at /c/{identity} through the
+            // primary key, so the first nesting needs no redirect row at all.
+            if (p.from) {
+              stmts.push(env.DB.prepare(
+                `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+                 ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+              ).bind(p.from, p.slug));
+            }
+            stmts.push(env.DB.prepare(
+              "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
+            ).bind(p.to));
+          }
+          try { await env.DB.batch(stmts); changed += chunk.length; }
+          catch { /* keep going: a failed chunk is retried by the next run */ }
+        }
+        // Written straight to D1, so the feeds and the in-isolate caches have
+        // to be told, or every page keeps serving its old address.
+        await bumpContentVersion(env);
+        await logActivity(env, sess, 'nest-urls', 'character', '', changed + ' addresses');
+        return jsonResponse({
+          ok: true, dryRun: false, scanned: (rows || []).length,
+          changed, kinds, samples: plan.slice(0, 40)
+        });
+      }
+
       // The bar (name, icon, ability, tags — Classify.missingForPublish) only
       // bites on save/publish, so this catches the pages that went live before
       // it existed or before it was raised. Every affected page becomes a

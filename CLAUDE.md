@@ -27,7 +27,8 @@ Key dynamic behavior:
   the site never reveals that unpublished pages exist. The repo copies of these files are
   stale seed backups kept only for `/api/seed` disaster recovery — never edit
   them expecting the site to change.
-- `GET /c/{slug}` (characters), `GET /s/{slug}` (scripts) and
+- `GET /c/{set}/{character}` (characters — nested, see "Character identity vs
+  address"; `/c/{identity}` 301s to it), `GET /s/{slug}` (scripts) and
   `GET /collection/{id}` (collections) are all **server-side rendered** by the
   Worker from D1. Characters use `assets/render.js`; scripts/collections use
   `assets/render-page.js`. Both are bundled into the Worker via `import` and
@@ -78,14 +79,15 @@ Key dynamic behavior:
   a `messages` row like `/api/contact` (same dashboard inbox) with
   `user_id NULL`, which the inbox already renders as unrepliable; the form asks
   for a handle or an email in the body instead. Rate-limited per IP.
-  A character's URL **and its R2 art slot** are both derived from its name, so
-  both editors **and the mass uploader** ask `GET /api/slug-check` before
-  uploading anything and take the
-  first free URL automatically, in the wiki's existing duplicate style
-  (`illusionist-megalomania`, `witcher-odyssey`, then `-2`, `-3`). No prompt,
-  no dialog — the character keeps its name, the page just gets its own address.
-  A URL that is only *parked* by a redirect counts as taken. The Worker is
-  still the enforcer — the check only decides which slug the editor asks for.
+  A character's **identity** and its R2 art slot are both derived from its
+  name, so both editors **and the mass uploader** ask `GET /api/slug-check`
+  before uploading anything and take the first free one automatically, in the
+  wiki's existing duplicate style (`illusionist-megalomania`, `witcher-odyssey`,
+  then `-2`, `-3`). That identity is **not** the URL — see "Character identity
+  vs address" below; the reader-facing address is `/c/{set}/{character}` and
+  the Worker derives it on save. An identity only *parked* by a redirect counts
+  as taken. The Worker is still the enforcer — the check only decides which
+  slug the editor asks for.
   `mass-upload.html` additionally tracks the slugs **its own run** has just
   taken, so two characters with the same name in one file get two pages
   instead of the second overwriting the first.
@@ -595,7 +597,8 @@ view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
-a renamed page used to live at — see "Renaming a character" below),
+a renamed page used to live at — for characters `to_slug` is the page's
+**identity**, never another address, see "Character identity vs address" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
 actually CHANGED, keyed `(scope, original)`; see "System text" below), and a
 lazily ALTERed `users.banned` column. `settings` also holds
@@ -605,7 +608,8 @@ Bans and admin promote/demote take effect immediately: POST requests and
 admin GETs re-read `is_admin`/`banned` from D1 instead of trusting the
 30-day session cookie. Content tables use the **hybrid JSON blob** design: a few
 indexed columns (slug PK, name, team, creator, owner_id, tags, appears_in,
-status) plus the **full object as JSON in `data`**. New character fields never
+status — plus a lazily-ALTERed `characters.url_slug`, the page's address)
+plus the **full object as JSON in `data`**. New character fields never
 need a migration — just put them in the JSON; render.js decides what shows.
 `status` is `published` or `draft`; public JSON and SSR only expose published
 rows (drafts visible to owner/admin). Character data schema: see the sample
@@ -809,37 +813,94 @@ advertises itself, via `openEditRow()` in render.js and `openEditRows()` in
 render-page.js), from the account page's row actions, and from the guest banner
 in the editor.
 
-## Renaming a character (the old link keeps working)
+## Character identity vs address (`/c/{set}/{character}`)
 
-A character's URL is built from its name, so `edit.html` renames the page when
-the name changes: it works out the URL the new name wants, asks
-`/api/slug-check` for a free one, and posts `renameFrom` alongside the save.
-`renameCharacter()` in worker.js does the move, and **everything that points at
-the page moves with it** — comments, `page_views`, `revisions`, the activity
-log, admin protection, the art objects in R2 (and the `art`/`image` paths in
-the row), the roster slugs inside `scripts.data.characters`, collection
-`include[]`/`exclude[]`, and profile pins. Add any new place a character slug
-is stored to `rewriteSlugRefs()`, or a rename will silently drop the page out
-of it.
+A character has **two** strings and they do different jobs:
 
-The old slug is kept in the `redirects` table and `/c/{old}` **301s** to the
-new page forever — bookmarks, Discord posts and forum links must not rot.
-`/api/page` follows a redirect too, so `edit?c={old}` still opens the editor.
-Renaming A→B→C leaves A *and* B pointing straight at C (no chains), and a slug
-that becomes a live page again stops being a redirect. Details worth keeping:
+| | column | example | changes? |
+|---|---|---|---|
+| **identity** | `characters.slug` (PK) | `witcher-odyssey` | never |
+| **address** | `characters.url_slug` | `odyssey/witcher` | freely |
 
-- Rename only fires when the **name actually changed** in that editing session
-  (compared against the loaded row, not against the slug) — otherwise every
-  save of `sculptor-fall-of-rome` would try to move it to `sculptor`.
-- A disambiguating suffix is **preserved**: "Sculptor" at
-  `/c/sculptor-fall-of-rome` renamed to "Stonecutter" becomes
-  `/c/stonecutter-fall-of-rome`.
-- A name that slugifies to nothing (a fully non-Latin name) never renames.
-- A rename never moves a page onto a live URL, **including one of your own**
-  (`mine` from slug-check is not a free pass here, unlike on the create page).
-- When a rename and an art upload happen in the same save, the **row moves
-  first** — the move carries the old art to the new slot, so new art has to
-  land after it or it gets overwritten. `edit.html` orders it that way.
+**Everything that points at a character points at the identity** — `comments`,
+`page_views`, `revisions`, `activity_log`, the roster slugs in
+`scripts.data.characters`, collection `include[]`/`exclude[]`, profile pins,
+admin protection, and the art objects in R2 (`art/{identity}.png`). So renaming
+a page is an address change and **nothing else**: one `UPDATE` plus one
+`redirects` row. A new feature can store a character reference without
+registering itself anywhere — the old `rewriteSlugRefs()` warning is gone,
+because nothing has to be rewritten.
+
+`url_slug` is a lazily-ALTERed column (`ensureUrlSlugColumn()`), unique-indexed.
+A row without one still resolves at `/c/{identity}`, so a half-finished backfill
+can never 404 a page.
+
+**The two namespaces cannot collide**: an address always carries a slash and an
+identity never does. `/c/{one-segment}` is therefore always an identity (or a
+flat address from before nesting) and **301s** to the canonical nested URL — no
+redirect row needed, the primary key does that job. Old *addresses* live in
+`redirects` and always point at the **identity**, never at another address, so a
+page that moves twice needs no chain rewriting.
+
+### Which set a character is filed under
+
+`characterQualifier()` in worker.js, in this order:
+
+1. a **collection** named in `appearsIn` → `odyssey/witcher`
+2. a **script** named in `appearsIn` → `fall-of-rome/actor`
+3. the set named in `appearsIn` even when this wiki has **no page for it** —
+   "Master Observatory Character Collection" is a real set nobody registered,
+   and its 38 characters read better under it than scattered under six authors
+4. a collection's `include[]`, then a **script roster** that lists it (this is
+   what catches the Blood on the TARDIS cast: 71 characters with no `appearsIn`
+   that plainly belong to one script)
+5. the **author** (`creditNames()[0]`) → `gobinator/archer`
+6. their account, then `misc`
+
+Steps 1–2 match **loosely** (case, punctuation and apostrophes ignored, and
+`display_name` counts) because `appearsIn` is free text people typed: "Tales
+from Tir-Far's Archive" has to find `tales-from-tir-fars-archive`, and
+"Trouble Homebrewing" is the display name of the `imppreposterous` collection.
+Collections beat scripts outright. Two characters with the same name in the same
+set get `.../carpenter` and `.../carpenter-2`; there is nothing left to tell
+them apart by.
+
+The address is recomputed on **every save** — that is what makes renaming
+automatic, and it also means moving a character into a collection moves its URL,
+with a 301 left behind. A save that changed neither the name nor the set keeps
+the address it has, numbered suffix included, so nothing shuffles when a sibling
+moves away.
+
+### Retroactive nesting
+
+`POST /api/admin/nest-urls` ({dryRun:true} first; dashboard card "Nested
+character URLs") files every existing character. It builds its lookup maps
+**once** and holds `taken` in memory — 1,647 characters times a collection scan
+each would be thousands of queries — and reserves every address it touches,
+including ones it vacates, so nothing in a run can hijack another page's
+redirect. Re-runnable: settled rows are skipped, so a second pass after
+registering a collection only moves the pages that collection just claimed.
+It bumps `content_version` (see Gotcha 13) — without that the feeds keep
+serving the old addresses.
+
+### Other things worth keeping
+
+- `/api/page` resolves a character by identity **or** address, so `edit?c=` works
+  from a copied URL.
+- The canonical 301 in the `/c/` route fires **after** the draft and deleted
+  gates. A 301 where a stranger should get a 404 would reveal that an
+  unpublished page exists.
+- `pageShell({root})`: every path in the shell is relative. `/s/`, `/collection/`,
+  `/news/` and `/p/` are one level deep and default to `../`; a nested character
+  page passes `../../`, computed from the address depth. `window.LINK_ROOT`
+  carries the same value, and `site.js` derives its own `ROOT` from the
+  stylesheet href, so both follow automatically.
+- `/api/slug-check` is about the **identity** (the PK and the art slot), not the
+  URL. Its suffix ladder still looks like a URL and still matters, because
+  identities name the art slot. For scripts and collections the slug **is** still
+  the URL and nothing about them changed.
+- `renameCharacter()` still exists for the one case that moves a primary key (an
+  admin re-keying a row). An ordinary rename never goes through it.
 
 ## Creator identity (which names belong to which account)
 

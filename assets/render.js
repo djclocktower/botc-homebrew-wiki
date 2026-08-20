@@ -182,6 +182,15 @@
      homebrew page that happens to share a name (there is more than one
      "Sculptor") must not steal their link. An entry written by the jinx
      picker carries an explicit `slug`, which skips the guessing entirely. */
+  // A wiki character's link. `slug` is the identity; `page` is the address
+  // the Worker resolved (c/{set}/{character}). Falling back to the identity
+  // still reaches the page — /c/{identity} 301s to the address — but the
+  // address avoids the extra hop.
+  function charHref(c, root) {
+    var p = (c && c.page) ? String(c.page) : ('c/' + ((c && c.slug) || ''));
+    return (root || '') + p.replace(/^\//, '').replace(/\.html$/, '');
+  }
+
   function resolveJinxTarget(j, root) {
     root = root || '';
     var nm = jinxDisplayName(j);
@@ -192,7 +201,7 @@
     if (j.slug) {
       var pick = wikiChar(normJinxId(j.slug));
       if (pick) {
-        return { name: pick.name || nm, href: root + 'c/' + pick.slug,
+        return { name: pick.name || nm, href: charHref(pick, root),
                  iconSrc: wikiCharIcon(pick, root), external: false,
                  slug: pick.slug, team: pick.team || '' };
       }
@@ -210,7 +219,7 @@
     // 3. One of ours, matched by id or by name.
     var hit = wikiChar(normJinxId(rawId)) || wikiChar(normJinxId(nm));
     if (hit) {
-      return { name: hit.name || nm, href: root + 'c/' + hit.slug,
+      return { name: hit.name || nm, href: charHref(hit, root),
                iconSrc: wikiCharIcon(hit, root), external: false,
                slug: hit.slug, team: hit.team || '' };
     }
@@ -567,7 +576,7 @@
       // A mirrored jinx is stored on the OTHER character's page. It reads the
       // same, but the line underneath says where to go to edit it.
       var from = (j.mirrored && j.mirroredFrom) ?
-        '<span class="jfrom">declared on <a href="' + esc(root + 'c/' + j.mirroredFrom.slug) +
+        '<span class="jfrom">declared on <a href="' + esc(charHref(j.mirroredFrom, root)) +
         '">' + esc(j.mirroredFrom.name) + '</a></span>' : '';
       return '<div class="jinx' + (t.iconSrc ? '' : ' noicon') + '">' +
         (t.iconSrc ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(t.iconSrc) + '" alt=""' +

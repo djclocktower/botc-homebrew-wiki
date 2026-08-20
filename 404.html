@@ -330,15 +330,17 @@
   function findSuggestions() {
     var m, feed, wanted, build;
 
-    if ((m = location.pathname.match(/^\/c\/([^/]+)/))) {
+    // Character addresses are nested (/c/{set}/{character}), so the part
+    // worth matching suggestions against is the LAST segment, not the set.
+    if ((m = location.pathname.match(/^\/c\/(?:[^/]+\/)?([^/]+)/))) {
       wanted = slugify(decodeURIComponent(m[1]));
       feed = '/characters.json?fields=card';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (c) {
-          // Built from the slug, not the feed's `page` field, which still
-          // carries the legacy "c/{slug}.html" form, which only works because
-          // the Worker 301s it. Link at the address the page actually lives at.
-          return sugHTML('/c/' + encodeURIComponent(c.slug),
+          // The feed's `page` is the character's address (c/{set}/{name}),
+          // derived by the Worker on every read. c.slug is the identity and
+          // only a fallback — it 301s to the same place.
+          return sugHTML('/' + String(c.page || ('c/' + c.slug)).replace(/^\//, ''),
             c.art ? '/assets/' + c.art : '',
             c.name,
             (TEAM_LABEL[c.team] || c.team || '') + (c.creator ? ' · ' + c.creator : ''));
