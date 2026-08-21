@@ -50,6 +50,8 @@
    host worker.js will copy art from, and that is on purpose: the URL comes
    from whoever is using the tool, and an unrestricted server-side fetch is a
    way to make the Worker knock on doors it was never meant to reach. */
+import OfficialRoles from '../assets/official-roles.js';
+
 export const BLOODSTAR_HOSTS = ['bloodstar.xyz', 'www.bloodstar.xyz'];
 
 export function isBloodstarHost(host) {
@@ -453,10 +455,15 @@ export function buildBundle(scriptJson, almanac, source, official) {
     const team = normTeam(row.team) || normTeam(page.team);
     if (!team) warnings.push('“' + (row.name || id) + '” has no team the wiki recognises; it was filed as Townsfolk.');
 
-    const off = officialByName.get(normKey(row.name));
-    let match = '';
-    if (off) match = normKey(off.ability) === normKey(row.ability) ? 'exact' : 'named';
-    else if (looksOfficialCredit(row.attribution)) match = 'credit';
+    // One test, shared with the character editors, /api/character's guard and
+    // the admin sweep — see officialMatch() in assets/official-roles.js. It
+    // reads '&' and 'and' as the same word, which a plain punctuation strip
+    // does not: the official Dreamer came through here as homebrew because
+    // "1 good & 1 evil" and "1 good and 1 evil" did not compare equal.
+    const graded = OfficialRoles.officialMatch(official || [], row);
+    const off = graded ? graded.role : null;
+    let match = graded ? graded.match : '';
+    if (!match && looksOfficialCredit(row.attribution)) match = 'credit';
 
     characters.push({
       id,

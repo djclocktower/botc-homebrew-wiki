@@ -75,7 +75,14 @@
       // reader nothing. Tagging everything at once is still reachable, but as a
       // deliberate act (select all, then assign) rather than the default.
       tagsById: {},
-      official: 'link',           // link | import | skip
+      // There is deliberately no option for an EXACT official match. This wiki
+      // is for homebrew: an official character has a page on the official wiki
+      // already, its art is not ours to host, and a copy here fragments search
+      // and takes the name from whoever writes a real homebrew character of
+      // it. So it is never made into a page — the roster points at off-{id}
+      // and the script page links the name straight to the official wiki.
+      // What IS an option is the name-only match: a character wearing a
+      // familiar name with a different ability is ordinary homebrew.
       reworked: 'import',         // import | link | skip
       art: true,
       logo: true,
@@ -182,9 +189,11 @@
     if (entry.bare) return 'link';
     var match = entry.official && entry.official.match;
     if (!match) return 'create';
-    var choice = match === 'exact' ? opts.official : opts.reworked;
-    if (choice === 'link' && entry.official.slug) return 'link';
-    if (choice === 'skip') return 'skip';
+    // An exact match IS the official character. Not a choice: it never becomes
+    // a page here, whoever is importing and whatever they would prefer.
+    if (match === 'exact') return entry.official.slug ? 'link' : 'skip';
+    if (opts.reworked === 'link' && entry.official.slug) return 'link';
+    if (opts.reworked === 'skip') return 'skip';
     return 'create';
   }
 

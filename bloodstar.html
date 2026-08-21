@@ -225,18 +225,12 @@
       <div class="bs-card">
         <h2>Official characters</h2>
         <p class="bs-sub">Scripts carry official characters alongside homebrew ones, and Bloodstar
-          exports them as ordinary entries. The wiki already knows the official roster, so those do
-          not need pages of their own.</p>
+          exports them as ordinary entries. This wiki is for homebrew, so an official character
+          <strong>never gets a page here</strong> — it already has one on the official wiki, and its
+          art is not ours to host. The script keeps it: the roster points at the official character
+          and its name on the page links straight through. That is not a setting.</p>
         <div class="bs-fld">
-          <label for="bs-official">Characters that ARE the official one <span class="hint">(same name, same ability)</span></label>
-          <select id="bs-official">
-            <option value="link">Point the roster at the official character (recommended)</option>
-            <option value="import">Make a wiki page for it anyway</option>
-            <option value="skip">Leave it out</option>
-          </select>
-        </div>
-        <div class="bs-fld">
-          <label for="bs-reworked">Characters with an official NAME but a changed ability</label>
+          <label for="bs-reworked">Characters with an official NAME but a different ability</label>
           <select id="bs-reworked">
             <option value="import">Make a wiki page for it (recommended)</option>
             <option value="link">Point the roster at the official character</option>
@@ -564,7 +558,6 @@
       o.creator = $('bs-creator').value.trim();
       o.appearsIn = $('bs-appears').value.trim();
       o.tagsById = tagsById;
-      o.official = $('bs-official').value;
       o.reworked = $('bs-reworked').value;
       o.flavour = $('bs-flavour').value;
       o.overview = $('bs-overview').value;
@@ -704,7 +697,7 @@
           ? '<span class="bs-chip link">official</span>'
           : '<span class="bs-chip skip">left out</span>';
       var note = '';
-      if (r.official && r.official.match === 'named') note = ' <span class="bs-chip warn">reworked</span>';
+      if (r.official && r.official.match === 'named') note = ' <span class="bs-chip warn">shares an official name</span>';
       if (r.official && r.official.match === 'credit') note = ' <span class="bs-chip warn">credited to TPI</span>';
       var tags = BI.tagsFor(tagsById, r.id);
       return '<tr id="bs-row-' + i + '">' +

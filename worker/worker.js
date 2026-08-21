@@ -191,6 +191,13 @@
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
+ *   POST /api/admin/official-cleanup -> find pages that ARE official
+ *                                characters (same name AND ability) and retire
+ *                                them: script rosters are repointed at
+ *                                'off-{id}', collections drop them, and the
+ *                                pages are soft-deleted so they can be
+ *                                restored. {dryRun:true} first. Pages that
+ *                                only share a NAME are reported, never touched.
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/admin/nest-urls -> give every character a nested /c/{set}/{character}
@@ -7318,6 +7325,25 @@ export default {
         if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
           return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
         }
+        // No page on this wiki may BE an official character. Enforced here, at
+        // the one door every route goes through — the two editors, the mass
+        // uploader, the Bloodstar importer and the Grimoire Forge draft button
+        // all end up at /api/character — so there is one rule rather than five
+        // that can drift. Admins included: "never" is the point, and an admin
+        // saving one is how two of the three already on the wiki got there.
+        //
+        // A shared NAME is fine and always was (this wiki has a Pope and a
+        // Nightwatchman that are nothing like the official ones); it is the
+        // name AND the ability together that mean the page is a copy.
+        {
+          const graded = OfficialRoles.officialMatch(
+            await loadOfficialRoles(env, url.origin), { name: c.name, ability: c.ability });
+          if (graded && graded.match === 'exact') {
+            return jsonResponse({
+              error: OfficialRoles.officialRefusal(graded.role), official: graded.role.id
+            }, { status: 400 });
+          }
+        }
         // Renaming: the editor sends the page's identity in renameFrom and the
         // slug its new name asks for in `slug`. The IDENTITY does not move —
         // it is what the art in R2, the comments, the view history and every
@@ -9104,6 +9130,143 @@ export default {
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' incomplete page(s) moved to draft');
         return jsonResponse({ ok: true, count: hits.length, byReason, pages: hits.map(h => h.slug) });
+      }
+
+      /* ---- official characters that have slipped onto the wiki ----
+         This wiki is for homebrew. A page that IS an official character is a
+         duplicate of one the official wiki already has, hosts art that is not
+         ours, and takes the name from anyone writing a real homebrew character
+         of it. /api/character refuses to make another one; this finds the ones
+         made before that guard existed.
+
+         Two lists, and only one of them is ever acted on:
+           exact  name AND ability are the official character's. These are
+                  repointed and retired.
+           named  the name is shared, the ability is not. Reported only — this
+                  wiki has a Pope and a Nightwatchman that are nothing like the
+                  official ones, and telling a reworked character from a
+                  retyped one is a judgement no comparison should make alone.
+
+         Retiring one is a SOFT delete, the same one /api/delete does, so it
+         sits in the dashboard's deleted list and can be restored. Nothing is
+         purged and no art is removed. Always {dryRun:true} first. */
+      if (path === '/api/admin/official-cleanup') {
+        const b = await request.json().catch(() => ({}));
+        const roster = await loadOfficialRoles(env, url.origin);
+        if (!roster.length) {
+          return jsonResponse({ error: 'The official roster could not be loaded, so nothing was compared.' }, { status: 503 });
+        }
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, status, owner_id, data FROM characters WHERE status != 'deleted'"
+        ).all();
+        const exact = [], named = [];
+        for (const r of results || []) {
+          const d = parseData(r);
+          const graded = OfficialRoles.officialMatch(roster, { name: r.name, ability: d.ability });
+          if (!graded) continue;
+          const row = {
+            slug: r.slug, name: r.name, status: r.status || 'published',
+            creator: d.creator || '', officialId: graded.role.id,
+            officialSlug: graded.role.slug, usedBy: []
+          };
+          (graded.match === 'exact' ? exact : named).push(row);
+        }
+
+        // Which scripts and collections point at each one, so the report can
+        // say what moves and the run knows what to rewrite. Both tables are
+        // small (tens of rows), so one scan each is cheaper than a query per
+        // hit.
+        const bySlug = new Map(exact.map(h => [h.slug, h]));
+        const scriptRows = bySlug.size
+          ? (await env.DB.prepare("SELECT slug, name, data FROM scripts WHERE status != 'deleted'").all()).results || []
+          : [];
+        const collRows = bySlug.size
+          ? (await env.DB.prepare("SELECT slug, display_name, data FROM collections WHERE status != 'deleted'").all()).results || []
+          : [];
+        const scriptEdits = [], collEdits = [];
+        for (const sc of scriptRows) {
+          const d = parseData(sc);
+          const list = Array.isArray(d.characters) ? d.characters : [];
+          if (!list.some(x => bySlug.has(String(x)))) continue;
+          // The roster keeps the character: the slug is swapped for the
+          // official one ('off-{id}'), which is what every other script on the
+          // wiki already uses, so the page still lists it and the name links
+          // to the official wiki instead of to a page that is about to go.
+          const next = [];
+          for (const x of list) {
+            const hit = bySlug.get(String(x));
+            const val = hit ? hit.officialSlug : String(x);
+            if (!next.includes(val)) next.push(val);
+          }
+          d.characters = next;
+          scriptEdits.push({ slug: sc.slug, name: sc.name, data: d });
+          for (const x of list) { const h = bySlug.get(String(x)); if (h) h.usedBy.push('script:' + sc.slug); }
+        }
+        for (const cl of collRows) {
+          const d = parseData(cl);
+          let touched = false;
+          // A collection holds pages on THIS wiki, and 'off-' resolves to none
+          // of them — so here the character is dropped rather than swapped.
+          for (const field of ['include', 'exclude', 'order']) {
+            if (!Array.isArray(d[field])) continue;
+            const next = d[field].filter(x => !bySlug.has(String(x)));
+            if (next.length !== d[field].length) { d[field] = next; touched = true; }
+          }
+          if (!touched) continue;
+          collEdits.push({ slug: cl.slug, name: cl.display_name, data: d });
+          for (const field of ['include', 'exclude', 'order']) {
+            for (const x of (parseData(cl)[field] || [])) {
+              const h = bySlug.get(String(x));
+              if (h && !h.usedBy.includes('collection:' + cl.slug)) h.usedBy.push('collection:' + cl.slug);
+            }
+          }
+        }
+
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true,
+            exact, named,
+            scripts: scriptEdits.map(e => ({ slug: e.slug, name: e.name })),
+            collections: collEdits.map(e => ({ slug: e.slug, name: e.name }))
+          });
+        }
+        if (!exact.length) {
+          return jsonResponse({ ok: true, exact: [], named, scripts: [], collections: [] });
+        }
+        for (const e of scriptEdits) {
+          await env.DB.prepare("UPDATE scripts SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(e.data), e.slug).run();
+        }
+        for (const e of collEdits) {
+          await env.DB.prepare("UPDATE collections SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(e.data), e.slug).run();
+        }
+        // Retire the pages the same way /api/delete does, so they land in the
+        // dashboard's deleted list and can be put back.
+        let byName = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          byName = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        for (const h of exact) {
+          const row = await getEntityRow(env, 'character', h.slug);
+          if (!row) continue;
+          const d = parseData(row);
+          d._deleted = {
+            at: new Date().toISOString(), by: byName, from: row.status || 'published',
+            reason: 'official character (' + h.officialId + ')'
+          };
+          await env.DB.prepare(
+            "UPDATE characters SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?"
+          ).bind(JSON.stringify(d), row.slug).run();
+        }
+        await logActivity(env, sess, 'delete', 'character', null,
+          exact.length + ' official character page(s) retired');
+        return jsonResponse({
+          ok: true, exact, named,
+          scripts: scriptEdits.map(e => ({ slug: e.slug, name: e.name })),
+          collections: collEdits.map(e => ({ slug: e.slug, name: e.name }))
+        });
       }
 
       // ---- admin: one-time Odyssey text cleanup ----

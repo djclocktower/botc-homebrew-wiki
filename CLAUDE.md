@@ -334,6 +334,10 @@ assets/
                        token-placement marker with nothing to place in a list)
                        out of the official night reminders. Browser + Worker;
                        the two JSON files are handed in, never fetched here.
+                       Also owns officialMatch() — the ONE answer to "is this
+                       character an official one", asked by /api/character's
+                       guard, the Bloodstar importer and the admin sweep. See
+                       "No official characters" below.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -1108,6 +1112,49 @@ caps and whitelists the fields on save.
   where both characters wrote a rule, since only one wording is ever shown and the
   other is invisible. Dashboard card: "Jinx health".
 
+## No official characters
+
+The wiki is for homebrew. A page that **is** an official character duplicates
+one the official wiki already has, hosts art that is not ours, and takes the
+name from anyone writing a real homebrew character of it. So nothing here may
+be one, and that is enforced rather than asked politely.
+
+**`OfficialRoles.officialMatch(roster, {name, ability})`** in
+`assets/official-roles.js` is the single answer, and it grades rather than
+guessing:
+
+- **`exact`** — the name **and** the ability are the official character's. This
+  IS that character. Refused everywhere, retired retroactively.
+- **`named`** — the name matches, the ability does not. Ordinary homebrew: this
+  wiki has a Pope and a Nightwatchman that are nothing like the official ones.
+  **Never refused on this basis**, only ever reported for a person to look at.
+
+Abilities are compared through `abilityKey()`, which turns **`&` into `and`**
+before dropping punctuation. Without that the official Dreamer imports as
+homebrew, because `1 good & 1 evil` and `1 good and 1 evil` fold to different
+strings — which is exactly how it got onto the wiki. Numbers are left alone:
+"choose 2 players" and "choose 3 players" are different rules.
+
+Three places ask:
+
+- **`POST /api/character`** refuses an exact match, for everyone including
+  admins — "never" is the point, and an admin saving one is how two of the
+  three already on the wiki got there. It is the one door every route goes
+  through (both editors, `mass-upload.html`, `/bloodstar`, Grimoire Forge's
+  "+ Add to Drafts"), so there is one rule rather than five that can drift.
+- **`/bloodstar`** has no option for it: an exact match is always pointed at
+  `off-{id}` and never becomes a page. A script keeps the character either
+  way — `charHref()` in render-page.js sends an official roster entry to the
+  official wiki, `offsite()` opens it in a new tab and `offMark()` adds the ↗.
+- **`POST /api/admin/official-cleanup`** ({dryRun:true} first; dashboard card
+  "Official characters on the wiki") retires the ones made before the guard.
+  Script rosters are **repointed** at `off-{id}`, so the script still lists the
+  character and the name links out; collections **drop** it, because a
+  collection resolves against pages on this wiki and `off-` matches none of
+  them. The page itself is **soft-deleted** the same way `/api/delete` does it,
+  so it lands in the dashboard's deleted list and can be restored. Nothing is
+  purged and no art is removed.
+
 ## Importing from Bloodstar (`/bloodstar`)
 
 Bloodstar (bloodstar.xyz) is where a lot of homebrew is actually written, and a
@@ -1209,12 +1256,12 @@ one pointed at the official character, goes nowhere.
 
 - **Official characters are graded, not guessed.** A script carries official
   characters alongside homebrew ones and Bloodstar exports them as ordinary
-  entries. `'exact'` (the name **and** the ability match the official
-  character) defaults to pointing the roster at `off-{id}` — the wiki does not
-  need its 400th Chambermaid. `'named'` (the name matches, the ability does
-  not) is a *reworked* character wearing a familiar name and defaults to its
-  own page: linking it would put an ability on the script the author never
-  wrote. `'credit'` is the attribution alone, which is usually a rename (this
+  entries. `'exact'` (the name **and** the ability match) always points the
+  roster at `off-{id}` and never makes a page — see "No official characters"
+  above; there is no option for it. `'named'` (the name matches, the ability
+  does not) is a character wearing a familiar name and defaults to its own
+  page: linking it would put an ability on the script the author never wrote.
+  `'credit'` is the attribution alone, which is usually a rename (this
   sample's Agent is the Spy) and is homebrew.
 - **Identities are settled before anything is written.** A jinx names the other
   character's identity, so half a list of identities cannot resolve one. The
