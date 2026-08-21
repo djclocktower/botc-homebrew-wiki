@@ -2832,6 +2832,35 @@ a:hover .curata-mark { opacity: .9; }
 /* flex containers holding one of those need to be allowed to shrink too */
 .creator-pill, .creator-name, .title-row, .wiki-pagelink { min-width: 0; }
 
+/* ─── …and so must the prose on a script or collection page ────────
+   Same failure as the block above, one layer in: the synopsis, the gameplay
+   notes, the house rules and the night reminders are all free text somebody
+   typed, and people put URLs in them. A bare URL is one unbreakable token, so
+   `overflow-wrap: normal` sent it straight past the panel and dragged the
+   whole document sideways — a 106-character link in one script's Gameplay
+   section made the page 899px wide in a 390px viewport, which zooms the phone
+   out, shrinks the top bar to a third of the screen and leaves the fixed page
+   background covering only part of what you can see. None of that looks like
+   a wrapping bug, which is why it went unnoticed.
+   `.wiki-body`, `.news-body` and `.custom-box-body` already do this; these
+   are the script/collection page's own text, which was simply missed. */
+.sv-section p, .sv-section li,
+.sv-tagline, .script-desc, .script-meta-line,
+.sv-boot-list li,
+.sv-night-reminder, .sv-night-empty,
+.sv-credits-sub, .script-missing,
+/* And a character page's almanac, which had it just as badly: the ability,
+   the flavour line, the summary bullets, the how-to-run paragraphs, the
+   examples, the tips. Scoped to the parchment because that IS the almanac —
+   one rule instead of eight, and a prose field added to render.js later is
+   covered without anyone remembering to come back here. Live example before
+   this: /c/imbecile, whose tips carry a 124-character Reddit link, rendered
+   903px wide in a 390px viewport. */
+.char-parchment p, .char-parchment li,
+.char-parchment .ex, .char-parchment .callout {
+  overflow-wrap: anywhere; word-break: break-word;
+}
+
 /* ── Live text editing (admin only, opt-in from /text-editor) ──────────────
    Nothing here applies until text-live.js puts .textedit-on on <html>, and
    that file is only ever fetched for a logged-in admin who turned the mode

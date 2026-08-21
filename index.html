@@ -297,8 +297,12 @@
 
     function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
-      var topHTML = header
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(header) + '" alt="' + esc(name) + '"></div>'
+      // Header image, then the author's logo, then the scatter of member
+      // icons — the logo beats the scatter, and matches what the collection's
+      // own page shows at the top.
+      var banner = header || (coll && coll.logo);
+      var topHTML = banner
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
@@ -500,8 +504,10 @@
         var html = pool.slice(0, 7).map(function(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
-          var headerHTML = sc.header
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+          // Header image, then the logo, then the name drawn as a banner —
+          // the same order the /s/ page itself falls back through.
+          var headerHTML = sc.header || sc.logo
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +

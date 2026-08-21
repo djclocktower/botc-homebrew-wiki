@@ -241,8 +241,10 @@
     function scriptTile(sc) {
       var n = sc.characters || 0;
       var href = '/s/' + encodeURIComponent(sc.slug);
-      var headerHTML = sc.header
-        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+      // Header image, then the logo, then the name drawn as a banner —
+      // the same order the /s/ page itself falls back through.
+      var headerHTML = sc.header || sc.logo
+        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
@@ -257,8 +259,11 @@
       // Collections live at /collection/{kebab id} — the PK slug is a display
       // string on legacy rows, so always link the id.
       var href = '/collection/' + encodeURIComponent(coll.id || coll.slug);
-      var topHTML = coll.header
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(coll.header) + '" alt="' + esc(name) + '"></div>'
+      // Header image, then the author's logo — the same order the
+      // collection's own page falls back through.
+      var collBanner = coll.header || coll.logo;
+      var topHTML = collBanner
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(collBanner) + '" alt="' + esc(name) + '"></div>'
         : '';
       // The blurb goes in the tagline paragraph, the same slot (and the same
       // three-line cutoff) every other collection tile on the site uses. It

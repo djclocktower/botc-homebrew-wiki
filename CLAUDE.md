@@ -1559,6 +1559,25 @@ this is how admin-written pages stop being hidden for want of a tag.
   into steven-approved-order.html. More-specific prefixes ("Each night*") must
   come before less-specific ("Each night") in the array — do not reorder.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Every string a user typed needs a wrap rule.** A bare URL is one
+  unbreakable token, and the default `overflow-wrap: normal` will not break it
+  — so it runs past its panel, past the viewport, and widens the whole
+  DOCUMENT. That last part is why it never looks like a wrapping bug: the
+  phone zooms out to fit, the top bar shrinks to a third of the screen, and
+  the fixed page background stops covering what you can see. Two blocks near
+  the end of styles.css hold every selector that needs it (one for names, one
+  for prose); a new field that prints author text goes in one of them. Use
+  `anywhere`, not `break-word` — several are flex/grid items and only
+  `anywhere` shrinks their min-content width so the container stops being
+  stretched.
+- **A script or collection tile's banner is `header || logo`, then the
+  fallback.** That order matches what the `/s/` and `/collection/` pages
+  themselves fall back through, and it is hand-copied into **five** places:
+  `scripts.html`, `index.html` (twice — scripts strip and collections grid),
+  `all-collections.html` and `profile.html` (twice). Change one, change all
+  five. The tiles used to read `header` only, so every page with a logo and no
+  header — which is every Bloodstar import — drew the text banner on its card
+  while its own page showed the logo.
 
 ## Caching
 
