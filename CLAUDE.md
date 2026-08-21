@@ -887,8 +887,16 @@ those two editors or take 'suggest' out of their dropdowns.
 version, every edit under it, "What changed" per entry, and "Put this version
 back" for the owner. Linked from the page itself (only an opened page
 advertises itself, via `openEditRow()` in render.js and `openEditRows()` in
-render-page.js), from the account page's row actions, and from the guest banner
-in the editor.
+render-page.js), from the account page's row actions, from the guest banner
+in the editor, and — for the person who can actually act on it — from the
+**Sharing** section of `edit.html`, which fills a panel from `/api/page-history`
+so it says how many edits there are and who made the last one instead of being
+a link into the unknown. A draft says why it has none rather than showing an
+empty list. That panel and the "Who can edit this page" control are one
+section now (`redesign-create.js`'s `sharing` group): the sharing control used
+to be swept into Advanced Options with the jinxes and the custom JSON, where
+the one setting deciding who else may touch a page sat under a summary that
+never mentioned it.
 
 ## Character identity vs address (`/c/{set}/{character}`)
 
@@ -1396,7 +1404,14 @@ is missing, via `editor-notices.js`), and `/api/publish` refuses.
 that went live before the bar was raised; the dashboard card scans first and
 reports the count and the reasons before anything moves. Always dry-run it.
 `POST /api/admin/curata-owner` ({username, dryRun}) grants Curata to
-every character one account owns. `GET /api/admin/pages` also takes
+every character one account owns. `POST /api/admin/tags-open-owner`
+({username, dryRun}) is the same shape for the other bulk gap: it sets
+`publicEdit: 'tags'` on every **untagged** character an account owns, so
+strangers can supply the one field they can get right without knowing the
+character. It skips a page that already has tags and a page whose owner
+already chose a sharing mode — it must never quietly NARROW an open page to
+tags-only — and it is re-runnable and undoable one page at a time from the
+editor. Dashboard card: "Open tag editing". `GET /api/admin/pages` also takes
 `?collection={id}`, resolved through `resolveCollectionMembers()` — combined
 with `?owner=none` and the `assign-owner` bulk action, that is how a whole
 collection's unowned pages get handed to an account. Curata lifts a page out of Partial, so

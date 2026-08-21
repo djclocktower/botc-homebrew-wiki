@@ -172,6 +172,10 @@
  *                                wiki pages under a collection and retire them
  *   POST /api/admin/curata-owner -> grant Curata to every character one
  *                                account owns (?dryRun to count first)
+ *   POST /api/admin/tags-open-owner -> open TAG editing on every untagged
+ *                                character one account owns ({dryRun:true}
+ *                                first; never touches a page that already
+ *                                names a sharing mode)
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
@@ -8617,6 +8621,77 @@ export default {
         await logActivity(env, sess, 'curata', 'character', null,
           hits.length + ' page(s) owned by ' + u.username);
         return jsonResponse({ ok: true, username: u.username, count: hits.length });
+      }
+
+      /* ---- admin: open tag editing on one account's untagged characters ----
+         A bulk import leaves hundreds of pages owned by one account with no
+         tags, and tags are the one thing a page needs that a stranger can
+         supply correctly without knowing the character: they are picked from a
+         fixed list (tags.js), and 'tags' is the narrowest sharing mode there
+         is. The save handler rebuilds the stored page and takes ONLY the tags
+         from the request, so opening this costs nothing else.
+
+         Two rules keep it safe to run:
+         - Only pages with no tags at all. A page somebody already tagged is
+           left shut; this is for filling a gap, not for reopening finished work.
+         - Only pages with no sharing mode set. A page already on 'all',
+           'suggest' or 'approved' keeps what its owner chose — this must never
+           quietly NARROW an open page to tags-only.
+         Re-runnable, and reversible one page at a time from the editor. */
+      if (path === '/api/admin/tags-open-owner') {
+        const b = await request.json().catch(() => ({}));
+        const uname = String(b.username || '').trim();
+        if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
+        const u = await findUserByUsername(env, uname);
+        if (!u) return jsonResponse({ error: 'No account named "' + uname + '".' }, { status: 404 });
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, tags, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
+        ).bind(u.id).all();
+        const owned = results || [];
+        /* parseData() answers {} for a blob it cannot read, which is right for
+           rendering and wrong for a read-modify-write: this handler writes the
+           object back, so a row whose JSON is broken would come out as
+           {"publicEdit":"tags"} with the whole character gone. Parse it here
+           instead and skip anything that is not a readable object. */
+        const readData = r => {
+          if (!r || !r.data) return null;
+          try {
+            const d = JSON.parse(r.data);
+            return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+          } catch { return null; }
+        };
+        // The tags column and the blob can disagree on a hand-written row, so a
+        // page counts as tagged if EITHER says so.
+        const untagged = (r, d) => !String(r.tags || '').trim() && !String(d.tags || '').trim();
+        const hits = [], skipped = [];
+        let alreadyOpen = 0, untaggedTotal = 0;
+        for (const r of owned) {
+          const d = readData(r);
+          if (!d) { skipped.push(r.slug); continue; }
+          if (!untagged(r, d)) continue;
+          untaggedTotal++;
+          if (publicEditMode(d)) { alreadyOpen++; continue; }
+          hits.push({ row: r, data: d });
+        }
+        if (b.dryRun !== false) {
+          return jsonResponse({
+            ok: true, dryRun: true, username: u.username,
+            owned: owned.length,
+            untagged: untaggedTotal,
+            alreadyOpen,
+            skipped,
+            count: hits.length,
+            pages: hits.slice(0, 300).map(h => ({ slug: h.row.slug, name: h.row.name }))
+          });
+        }
+        for (const h of hits) {
+          h.data.publicEdit = 'tags';
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(h.data), h.row.slug).run();
+        }
+        await logActivity(env, sess, 'tags-open', 'character', null,
+          'tag editing opened on ' + hits.length + ' untagged page(s) owned by ' + u.username);
+        return jsonResponse({ ok: true, username: u.username, count: hits.length, alreadyOpen, skipped });
       }
 
       // ---- admin: sweep published characters that miss the publish bar ----

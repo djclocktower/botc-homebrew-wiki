@@ -3283,6 +3283,20 @@ html.textedit-on .te-live-hit {
 }
 .hist-page-link:hover { color: var(--evil); }
 
+/* The owner's history panel in the character editor. It sits in the Sharing
+   section beside "Who can edit this page", so it is styled as a form control
+   rather than as prose: a button-shaped link the thumb can find on a phone.
+   NOT .hist-open — that is already the "this page is open to editing" line on
+   /history itself, and a second rule under the same name would restyle it. */
+.hist-open-link {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .82rem;
+  letter-spacing: .03em; color: var(--maroon); text-decoration: none;
+  background: #fffdf8; border: 1px solid var(--rule); border-radius: 4px;
+  padding: 7px 12px; min-height: 34px; line-height: 1.4;
+}
+.hist-open-link:hover { background: #fff; color: var(--evil); }
+.hist-open-link:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+
 /* Editing a page somebody else opened up (edit.html) */
 .guest-bar {
   background: rgba(47,111,184,.09); border: 1px solid rgba(47,111,184,.45);

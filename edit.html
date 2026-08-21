@@ -358,6 +358,11 @@
         </div>
       </fieldset>
 
+      <div class="fld" id="hist-fld" style="display:none">
+        <label>Page history</label>
+        <div id="hist-summary"></div>
+      </div>
+
       <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
@@ -852,6 +857,61 @@
       return '<a href="history?type=character&slug=' + encodeURIComponent(originalSlug) + '">' +
         'this page\u2019s history</a>';
     }
+
+    /* ── the page's own history, for the person who owns it ──
+       Until now the only way an ordinary creator reached /history was the row
+       of buttons on the account page: the editor linked it for guests and not
+       for the owner, which is backwards — the owner is the one who can put a
+       version back. The panel is filled from the same endpoint /history reads,
+       so it can say how many edits there are and who made the last one rather
+       than being a link into the unknown.
+
+       Drafts are skipped, and that is not an oversight: saveRevision() does not
+       snapshot an unpublished row, so a draft genuinely has no history to show. */
+    function histPageHref() {
+      return 'history?type=character&slug=' + encodeURIComponent(originalSlug);
+    }
+    function showOwnerHistory() {
+      var fld = $('hist-fld'), box = $('hist-summary');
+      if (!fld || !box) return;
+      if (isDraftPage) {
+        fld.style.display = '';
+        box.innerHTML = '<p class="sub" style="margin:0">A draft keeps no history: it would be ' +
+          'every save you made while writing it. Recording starts when the page is published.</p>';
+        return;
+      }
+      fld.style.display = '';
+      box.innerHTML = '<p class="sub" style="margin:0">Loading\u2026</p>';
+      fetch('/api/page-history?type=character&slug=' + encodeURIComponent(originalSlug),
+            { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || d.error) throw new Error(d && d.error);
+          var n = (d.entries || []).length;
+          var link = '<a class="hist-open-link" href="' + histPageHref() + '">' +
+            (n ? 'View history and restore' : 'Open the history page') + '</a>';
+          if (!n) {
+            box.innerHTML = '<p class="sub" style="margin:0 0 8px">No edits recorded yet. Every save ' +
+              'from here on is listed, with what changed, and you can put any earlier version ' +
+              'back.</p>' + link;
+            return;
+          }
+          var last = d.entries[0];
+          var who = last.by ? esc(last.by) : 'someone';
+          var when = last.ts ? new Date(last.ts.replace(' ', 'T') + 'Z').toLocaleDateString(undefined,
+            { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+          box.innerHTML = '<p class="sub" style="margin:0 0 8px">' +
+            '<strong>' + n + ' edit' + (n === 1 ? '' : 's') + '</strong> recorded. Most recent: ' +
+            who + (last.changed && last.changed.length
+              ? ' changed ' + esc(last.changed.join(', '))
+              : ' saved this page') +
+            (when ? ', ' + esc(when) : '') + '. You can put any earlier version back.</p>' + link;
+        })
+        .catch(function () {
+          box.innerHTML = '<p class="sub" style="margin:0 0 8px">Could not load the history just now.</p>' +
+            '<a class="hist-open-link" href="' + histPageHref() + '">Open the history page</a>';
+        });
+    }
     function guestNotice(entry) {
       // The name is the URL, and renaming a page moves it, so that stays with
       // whoever made it. Locking the field is kinder than letting somebody
@@ -1338,6 +1398,9 @@
           else if (mode === 'approved') approvedNotice(entry);
           else if (mode === 'all') guestNotice(entry);
           else if (mode === 'suggest') suggestMode(entry);
+          // The owner (and an admin, who reaches this page the same way) is the
+          // only one who can roll a version back, so the panel is theirs.
+          else if (mode === 'owner') showOwnerHistory();
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';
