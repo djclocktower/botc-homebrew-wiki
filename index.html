@@ -118,6 +118,12 @@
           <p class="browse-card-desc">Wincon, Setup, Mobility, Public Action — find characters by mechanic.</p>
           <span class="browse-card-count" id="bc-tag">—</span>
         </a>
+        <a class="browse-card" href="jinxes">
+          <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="6" r="2.6"/><circle cx="19" cy="6" r="2.6"/><circle cx="12" cy="18.5" r="2.6"/><path d="M7.4 7.3 9.9 16.3"/><path d="M16.6 7.3 14.1 16.3"/><path d="M7.6 6h8.8"/></svg></div>
+          <h3 class="browse-card-title">Jinxes</h3>
+          <p class="browse-card-desc">Which characters do not get along, as a list and a map.</p>
+          <span class="browse-card-count" id="bc-jinx">&hellip;</span>
+        </a>
         <a class="browse-card" href="script">
           <div class="browse-card-sym"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></div>
           <h3 class="browse-card-title">Script Builder</h3>
@@ -300,11 +306,11 @@
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
           // Same footer shape as the script tiles below: count, then who made
-          // it, then the Starlight star behind a hairline.
+          // it, then the Curata wreath behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
             ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
-              window.classBadgeHTML('starlight') : '') + '</span>' +
+            ((coll && coll.curata) ? '<span class="coll-mark-sep"></span>' +
+              window.classBadgeHTML('curata') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';
@@ -332,7 +338,7 @@
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
-            (c.starlight ? window.classBadgeHTML('starlight', { from: c.starlightFrom }) : '') + '</h3>' +
+            (c.curata ? window.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
           (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
           (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
           '<div class="featured-meta">' +
@@ -357,7 +363,7 @@
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
                 header:c.header||'',include:c.include||[],exclude:c.exclude||[],
-                author:c.author||'',starlight:!!c.starlight};
+                author:c.author||'',curata:!!c.curata};
       });
         // ── Stats ─────────────────────────────────────────────
         // Membership honors hybrid include/exclude via the shared resolver.
@@ -395,7 +401,7 @@
         var featuredPool = COLLECTIONS.filter(function(coll){
           return (collected[coll.slug] || []).length;
         });
-        // Starlight collections surface more often (assets/classify.js).
+        // Curata collections surface more often (assets/classify.js).
         featuredPool = window.weightedShuffle(featuredPool);
         var html = '';
         featuredPool.slice(0, 7).forEach(function(coll){
@@ -435,6 +441,12 @@
           });
         });
         document.getElementById('bc-tag').textContent = Object.keys(tagSet).length + ' tags';
+        // Jinx count: characters carrying at least one. The card feed keeps
+        // `jinxes` (see CARD_DROP_FIELDS in worker.js), so this needs no
+        // second request.
+        var nJinxed = list.filter(function(c){ return c.jinxes && c.jinxes.length; }).length;
+        document.getElementById('bc-jinx').textContent =
+          nJinxed ? nJinxed + ' jinxed characters' : 'See the map';
 
         // ── Recently added (last 8 in array order) ────────────
         // Partial (unfinished) pages stay off the front page.
@@ -442,13 +454,13 @@
         document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
 
         // ── Featured (rotates daily) ──────────────────────────
-        // Starlight only: Featured is the wiki's shop window, so it shows
+        // Curata only: Featured is the wiki's shop window, so it shows
         // pages the admins have actually picked out rather than whatever the
         // weighting happened to land on. Still needs art and something to
         // read. The RNG is seeded from the day number so the pick is stable
         // for everyone for 24 hours instead of changing on every refresh.
         var featureable = list.filter(function(c){
-          return c.starlight && c.art && (c.lede || c.ability) && c.name;
+          return c.curata && c.art && (c.lede || c.ability) && c.name;
         });
         var picked = window.weightedPick(featureable, (function(){
           var s = (Math.floor(Date.now() / 86400000) * 2654435761) % 4294967296;
@@ -484,7 +496,7 @@
         }
         // Featured scripts: 7 picked at random and reshuffled on every page
         // load, plus an "All Scripts" tile (8 total). Full list lives on
-        // /scripts. Starlight scripts are weighted to the front of the shuffle.
+        // /scripts. Curata scripts are weighted to the front of the shuffle.
         var pool = window.weightedShuffle(scripts);
         var html = pool.slice(0, 7).map(function(sc){
           var n = (sc.characters || []).length;
@@ -497,11 +509,11 @@
             '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
             '<div class="collection-footer">' +
               // Same footer shape as the collection tiles above: count, then
-              // who made it, then the Starlight star behind a hairline.
+              // who made it, then the Curata wreath behind a hairline.
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
                 (sc.author ? ' · ' + esc(sc.author) : '') +
-                (sc.starlight ? '<span class="coll-star-sep"></span>' +
-                  window.classBadgeHTML('starlight') : '') + '</span>' +
+                (sc.curata ? '<span class="coll-mark-sep"></span>' +
+                  window.classBadgeHTML('curata') : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }).join('');

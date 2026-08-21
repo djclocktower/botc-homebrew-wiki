@@ -219,8 +219,9 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in</label>
+          <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
+          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
       </div>
       <div class="fld">
@@ -254,7 +255,8 @@
         <img id="artthumb" class="artthumb" alt="current art">
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
@@ -267,6 +269,7 @@
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -337,6 +340,25 @@
       </fieldset>
 
       <fieldset>
+        <legend>Who can edit this page</legend>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <div class="fld" style="margin-bottom:0">
+          <select id="publicEdit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
+            <option value="tags">Tags only: anyone with an account can change the tags</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+        <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
+          <label>Approved editors</label>
+          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <div id="editors-box"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -364,9 +386,13 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
+  <script src="assets/jinx-picker.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
@@ -383,19 +409,100 @@
           }
         });
         window.setOfficialIconUrls(m);
+        var names = {};
+        (roles || []).forEach(function(r){
+          if (!r || !r.name) return;
+          names[window.slugId(r.id)] = r.name;
+          names[window.slugId(r.name)] = r.name;
+        });
+        window.setOfficialNames(names);
         if (typeof update === 'function') update();
       }).catch(function(){});
+
+    // This wiki's own characters, so a jinx with another homebrew page shows
+    // its art and links to /c/ instead of falling back to plain text.
+    var INBOUND = null;
+    fetch(SITE_ROOT + 'characters.json?fields=card').then(function(r){ return r.json(); })
+      .then(function(list){
+        var w = {};
+        (list || []).forEach(function(c){
+          if (!c || !c.slug) return;
+          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
+          [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function(k){
+            if (k && !w[k]) w[k] = row;
+          });
+        });
+        window.setWikiChars(w);
+        // Who already declares a jinx with the character being edited. A jinx
+        // is stored on one side only, so without this you can write a second,
+        // conflicting rule for a pair and never know: the other page's text
+        // is the one that shows, and yours silently loses.
+        INBOUND = {};
+        (list || []).forEach(function(c){
+          if (!c || !c.slug || !c.jinxes) return;
+          c.jinxes.forEach(function(j){
+            var k = (j.slug && window.normJinxId(j.slug)) ||
+              window.normJinxId(j.id || window.slugId(j.name || ''));
+            if (!k) return;
+            (INBOUND[k] = INBOUND[k] || []).push({ slug: c.slug, name: c.name, text: j.text || j.reason || '' });
+          });
+        });
+        checkJinxConflicts();
+        if (typeof update === 'function') update();
+      }).catch(function(){});
+
+    /* Flag any jinx row whose pair the OTHER character already describes. */
+    function jxEsc(x) {
+      return String(x == null ? '' : x).replace(/[&<>"]/g, function(c){
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+    function checkJinxConflicts() {
+      if (!INBOUND) return;
+      var meKeys = {};
+      var nameEl = document.getElementById('name');
+      [nameEl ? nameEl.value : '', originalSlug].forEach(function(v){
+        var k = window.normJinxId(window.slugId(v) || v);
+        if (k) meKeys[k] = 1;
+      });
+      document.querySelectorAll('.jinx-row').forEach(function(row){
+        var f = row.querySelector('.jx-name');
+        var warn = row.querySelector('.jx-conflict');
+        var key = (f.dataset.slug && window.normJinxId(f.dataset.slug)) ||
+          window.normJinxId(f.dataset.id || window.slugId(f.value || ''));
+        var hit = null;
+        (INBOUND[key] || []).forEach(function(src){
+          if (meKeys[window.normJinxId(src.slug)] || meKeys[window.normJinxId(src.name)]) hit = src;
+        });
+        if (!hit) { if (warn) warn.remove(); return; }
+        if (!warn) {
+          warn = document.createElement('p');
+          warn.className = 'jx-conflict';
+          row.appendChild(warn);
+        }
+        warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
+          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 the page shows their wording, not yours. ' +
+          '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
+      });
+    }
+    window.checkJinxConflicts = checkJinxConflicts;
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
     var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
+    // The picked file as it arrived, before the 600px working copy: what the
+    // hand adjuster opens on, so zooming in stays sharp and a second pass
+    // re-places the original rather than resizing an already-resized icon.
+    // Null when the art on screen came from the character's stored icon.
+    var artOriginal   = null;
+    var artAltOriginal = null;
     var artAltDataURL = null;   // newly uploaded alternate art (data URL)
     var artAltRemoved = false;  // user removed the existing alternate art
 
     // ── jinx rows ──
-    function addJinx(name, align, text){
+    function addJinx(name, align, text, slug, id){
       var row = document.createElement('div'); row.className = 'jinx-row';
       row.innerHTML =
         '<input type="text" class="jx-name" placeholder="Jinxed character">' +
@@ -403,7 +510,8 @@
         '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
-      if(name)  row.querySelector('.jx-name').value  = name;
+      if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
+      else if (name) row.querySelector('.jx-name').value = name;
       if(align) row.querySelector('.jx-align').value = align;
       if(text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function(){ row.remove(); update(); });
@@ -413,6 +521,11 @@
         ta.addEventListener('input', function() { autoExpand(ta); });
         autoExpand(ta);
       });
+      if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
+      row.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () { if (window.checkJinxConflicts) window.checkJinxConflicts(); });
+      });
+      if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function(){ addJinx(); });
 
@@ -455,9 +568,16 @@
     function gather(){
       var jinxes = [];
       document.querySelectorAll('.jinx-row').forEach(function(r){
-        var n = r.querySelector('.jx-name').value.trim();
-        if(n) jinxes.push({name:n, align:r.querySelector('.jx-align').value,
-                           text:r.querySelector('.jx-text').value.trim()});
+        var f = r.querySelector('.jx-name');
+        var n = f.value.trim();
+        if(!n) return;
+        // The picker records WHICH character was chosen; a hand-typed name
+        // carries neither and is matched by name the old way.
+        var j = {name:n, align:r.querySelector('.jx-align').value,
+                 text:r.querySelector('.jx-text').value.trim()};
+        if (f.dataset.slug) j.slug = f.dataset.slug;
+        else if (f.dataset.id) j.id = f.dataset.id;
+        jinxes.push(j);
       });
       return {
         name: $('name').value.trim(), team: $('team').value,
@@ -482,40 +602,24 @@
         special: specialUI ? specialUI.gather() : [],
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
-        customJson: $('customJson').value.trim()
+        customJson: $('customJson').value.trim(),
+        publicEdit: $('publicEdit').value,
+        editors: editorsUI ? editorsUI.get() : []
       };
     }
 
     // ── live preview ──
-    var PREVIEW_SCRIPT =
-      '<scr'+'ipt>document.addEventListener("click",function(e){' +
-      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
-      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
-      'var j=e.target.closest&&e.target.closest(".jinx-drop-bar");' +
-      'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
-      'var c=e.target.closest&&e.target.closest(".json-copy");' +
-      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
-      '});' +
-      // Fit the title to width (mirrors fitCharTitle in render.js).
-      '(function(){function f(){var e=document.querySelector(".gen-title");if(!e)return;' +
-      'e.style.whiteSpace="nowrap";var vw=window.innerWidth||800,m=vw<=420?66:vw<=640?78:144;' +
-      'e.style.fontSize=m+"px";var a=e.clientWidth;' +
-      'if(a&&e.scrollWidth>a){e.style.fontSize=Math.max(m*(a*0.99)/e.scrollWidth,14).toFixed(1)+"px";}}' +
-      'f();window.addEventListener("resize",f);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(f);})();<\/scr'+'ipt>';
+    // Written once, then patched in place by assets/char-preview.js: assigning
+    // srcdoc on every keystroke reloads the frame, which flashes black and
+    // throws away the preview's scroll position.
+    var preview = window.CharPreview.mount($('preview'), { siteRoot: SITE_ROOT });
 
     function update(){
       var d = gather();
       var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       else if (!artAltRemoved && originalEntry && originalEntry.artAlt) d.artAlt = originalEntry.artAlt;
-      var inner = window.renderCharacter(d, src);
-      var doc = '<!doctype html><html><head><meta charset="utf-8"><base href="'+SITE_ROOT+'">' +
-        '<link rel="stylesheet" href="assets/styles.css"></head><body>' +
-        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
-        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
-        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">'+inner+'</main>'+PREVIEW_SCRIPT+'</body></html>';
-      $('preview').srcdoc = doc;
+      preview.paint(window.renderCharacter(d, src));
     }
 
     var deb;
@@ -571,6 +675,7 @@
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
+        artOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
@@ -584,6 +689,7 @@
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
+        artAltOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function(url){
           artAltDataURL = url; artAltRemoved = false;
           var th=$('artAltThumb'); th.src=url; th.style.display='block';
@@ -594,7 +700,7 @@
       reader.readAsDataURL(file);
     });
     $('artAltClear').addEventListener('click', function(){
-      artAltDataURL = null; artAltRemoved = true; $('artAlt').value='';
+      artAltDataURL = null; artAltOriginal = null; artAltRemoved = true; $('artAlt').value='';
       $('artAltThumb').style.display='none';
       $('artAltStdWrap').style.display='none';
       $('artAltClear').style.display='none';
@@ -624,11 +730,221 @@
       standardizeArt('artAltThumb', 'artAltStd', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
+    // ── the same frame, placed by hand (assets/art-adjust.js) ──────
+    // Reads the freshly picked file when there is one and the thumbnail
+    // otherwise, so it works on the icon the character already has (served
+    // same-origin, so the canvas can be read back).
+    function adjustArt(getSrc, thumbId, btnId, title, onDone) {
+      var src = getSrc();
+      if (!src || !window.ArtAdjust) return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true;
+      window.ArtAdjust.open(src, { title: title }).then(function(out){
+        btn.disabled = false;
+        if (!out) return;               // cancelled; leave the art alone
+        $(thumbId).src = out; onDone(out); update();
+        btn.textContent = '✓ Adjusted';
+        setTimeout(function(){ btn.textContent = label; }, 1400);
+      }).catch(function(err){
+        btn.disabled = false;
+        alert((err && err.message) || 'That image could not be adjusted here.');
+      });
+    }
+    $('artAdjust').addEventListener('click', function(){
+      adjustArt(function(){ return artOriginal || $('artthumb').src; }, 'artthumb', 'artAdjust',
+        'Adjust the icon', function(out){ artDataURL = out; artChanged = true; });
+    });
+    $('artAltAdjust').addEventListener('click', function(){
+      adjustArt(function(){ return artAltOriginal || $('artAltThumb').src; }, 'artAltThumb', 'artAltAdjust',
+        'Adjust the alternate icon', function(out){ artAltDataURL = out; artAltRemoved = false; });
+    });
+
     function normalizeJinx(j){
-      return { name: j.name||j.id||'', align: j.align||'good', text: j.text||j.reason||'' };
+      // `slug`/`id` say WHICH character was picked; keep them so re-saving a
+      // page does not downgrade a resolved jinx back to a name guess.
+      var nm = (j.name || '').trim();
+      if (!nm && window.resolveJinxTarget) {
+        nm = window.resolveJinxTarget({ id: j.id || '', slug: j.slug || '' }, '').name || '';
+      }
+      if (!nm) nm = j.id || '';
+      return { name: nm, align: j.align === 'evil' ? 'evil' : 'good',
+               text: j.text || j.reason || '', slug: j.slug || '', id: j.id || '' };
     }
 
+    function esc(x) {
+      return String(x == null ? '' : x).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // What this account may do to this page, as the Worker answered it:
+    // 'owner' | 'approved' | 'all' | 'tags' | 'suggest' | false.
+    var EDIT_MODE = 'owner';
+
+    /* Sending a suggestion. The art is deliberately not uploaded: it would
+       write into the page's own R2 slot, which is the one thing a suggestion
+       must not do before it is accepted. Everything else travels with it. */
+    function sendSuggestion(d) {
+      var note = ($('suggest-note') && $('suggest-note').value.trim()) || '';
+      $('save').disabled = true;
+      setStatus('work', 'Sending your suggestion&hellip;');
+      delete d.publicEdit;
+      delete d.editors;
+      fetch('/api/suggest', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'character', slug: originalSlug, data: d, note: note })
+      })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (!res || res.error) throw new Error((res && res.error) || 'Could not send that suggestion.');
+          setStatus('ok', '\u2713 Sent. ' + esc(originalEntry && originalEntry.creator || 'The creator') +
+            ' will see it on <a href="suggestions?type=character&slug=' + encodeURIComponent(originalSlug) +
+            '">the suggestions page</a>, and you will get a message either way.');
+        })
+        .catch(function(err){
+          $('save').disabled = false;
+          setStatus('err', err.message);
+        });
+    }
+    function suggestMode(entry) {
+      hideOwnerOnly();
+      var nm = $('name');
+      nm.readOnly = true;
+      nm.title = 'Only the page\u2019s creator can rename it.';
+      $('save-publish').style.display = 'none';
+      $('delete-char').style.display = 'none';
+      $('save').textContent = 'Send this suggestion';
+      // The art inputs would upload into the page's own R2 slot, which is
+      // exactly what an unapproved suggestion must not touch, so they are
+      // closed rather than left there to be filled in and ignored.
+      ['art', 'artAlt'].forEach(function (id) {
+        var el = $(id);
+        if (!el) return;
+        el.disabled = true;
+        el.title = 'Art cannot be suggested. Mention it in your note instead.';
+      });
+      // Somewhere to say why, right above the button that sends it.
+      var box = document.createElement('div');
+      box.className = 'fld suggest-note-fld';
+      box.innerHTML = '<label for="suggest-note">A note for the creator <span class="hint">(optional)</span></label>' +
+        '<textarea id="suggest-note" maxlength="600" placeholder="What you changed, and why."></textarea>';
+      var save = $('save');
+      if (save && save.parentNode) save.parentNode.insertBefore(box, save);
+      guestBanner('<strong>This page takes suggestions.</strong> ' +
+        esc(entry.creator || 'The creator') + ' reviews changes before they go live: edit the page ' +
+        'as you think it should read, then send it. Nothing changes until they approve it, and ' +
+        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>');
+    }
+
+    /* ── editing somebody else's page ──
+       A page its creator opened up. Nothing is hidden for a full public edit,
+       so the form is the one the owner sees, but it says whose page this is
+       and that the change will be recorded, which is the difference between
+       helping and trespassing. */
+    function guestBanner(html) {
+      var bar = document.createElement('div');
+      bar.className = 'guest-bar';
+      bar.innerHTML = html;
+      var card = document.querySelector('.formcard');
+      if (card) card.insertBefore(bar, card.firstChild);
+    }
+    function histLink(entry) {
+      return '<a href="history?type=character&slug=' + encodeURIComponent(originalSlug) + '">' +
+        'this page\u2019s history</a>';
+    }
+    function guestNotice(entry) {
+      // The name is the URL, and renaming a page moves it, so that stays with
+      // whoever made it. Locking the field is kinder than letting somebody
+      // retitle the page and have the whole save refused.
+      var nm = $('name');
+      nm.readOnly = true;
+      nm.title = 'Only the page\u2019s creator can rename it.';
+      hideOwnerOnly();
+      guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
+        'opened for anyone with an account to edit. Everything but the name is yours to improve. ' +
+        'Your username and every field you change are recorded in ' + histLink(entry) +
+        ', and the creator can put an earlier version back.');
+    }
+    // Controls that only mean something to the page's owner. The Worker carries
+    // the stored value forward whatever a guest posts, so leaving these on
+    // screen would just be a promise the save does not keep.
+    function hideOwnerOnly() {
+      var sel = $('publicEdit');
+      var fs = sel && sel.closest('fieldset');
+      if (fs) fs.style.display = 'none';
+    }
+    /* Tags only. The save is filtered server-side whatever gets posted, so the
+       point of hiding the rest is honesty: a form you can type into but whose
+       text is silently discarded is worse than no form at all. */
+    function tagsOnlyMode(entry) {
+      hideOwnerOnly();
+      var keep = document.getElementById('tag-picker');
+      var keepFld = keep && keep.closest('.fld');
+      document.querySelectorAll('.formcard .fld, .formcard fieldset').forEach(function (el) {
+        if (keepFld && (el === keepFld || el.contains(keepFld))) return;
+        el.style.display = 'none';
+      });
+      if (keepFld) keepFld.style.display = '';
+      // The redesigned form groups the fields into sections with their own
+      // headings (redesign-create.js), plus an Advanced Options panel. A
+      // section with nothing left in it is a heading over a gap, so it goes
+      // too, and Advanced Options is the owner's toolbox either way.
+      var adv = document.querySelector('details.advanced');
+      if (adv) adv.style.display = 'none';
+      document.querySelectorAll('.formcard .rsec').forEach(function (sec) {
+        var live = [].slice.call(sec.querySelectorAll('.fld, fieldset'))
+          .some(function (el) { return el.style.display !== 'none'; });
+        if (!live) sec.style.display = 'none';
+      });
+      $('save-publish').style.display = 'none';
+      $('save').textContent = 'Save tags';
+      guestBanner('<strong>Tags only.</strong> ' + esc(entry.creator || 'The creator') +
+        ' has opened this page\u2019s tags to anyone with an account. Pick or unpick them below ' +
+        'and save. Nothing else on the page can be changed from here, and your change is ' +
+        'recorded in ' + histLink(entry) + '.');
+    }
+
+    /* ── an editor the creator named by hand ──
+       Approved editing, the mode that shares a page with specific accounts
+       rather than with everyone. The form is the owner's form, the name field
+       included: this is somebody the creator picked out, and the Worker lets
+       them rename as the creator would. What it does NOT let them do is
+       publish, unpublish or delete, and it carries the editor list forward
+       whatever gets posted — so the two controls for that go, the same way
+       they do for a guest. A shared DRAFT reaches here too, and saying so
+       matters: it explains why there is no Publish button on a page that
+       plainly is not live yet. */
+    function approvedNotice(entry) {
+      hideOwnerOnly();
+      $('save-publish').style.display = 'none';
+      guestBanner('<strong>' + esc(entry.creator || 'The creator') +
+        ' made you an editor of this page.</strong> Edit it as they would \u2014 everything ' +
+        'on this form is yours to change, and it saves straight to the page. ' +
+        (isDraftPage
+          ? 'It is still a draft, so only they can put it live. '
+          : 'Publishing, deleting and the editor list stay with them. ') +
+        'Your username and every field you change are recorded in ' + histLink(entry) + '.');
+    }
+    // Set from the Worker's answer before the banners are drawn.
+    var isDraftPage = false;
+
     // ── populate form from entry ──
+    // The modes the <select> offers. Anything else stored on the page reads
+    // as closed, and an unknown mode is never silently re-saved as one.
+    var PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
+
+    /* The named-editor list, mounted once and shown only while "Approved
+       editing" is the chosen mode. It is mounted whatever the mode is, so
+       switching to it and back does not lose the names you just typed. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
+      : null;
+    function syncEditorsBox() {
+      var on = $('publicEdit').value === 'approved';
+      $('editors-fld').style.display = on ? '' : 'none';
+    }
+    $('publicEdit').addEventListener('change', syncEditorsBox);
+
     function populateForm(entry){
       originalEntry = entry;
       $('name').value            = entry.name || '';
@@ -663,6 +979,9 @@
       $('remindersGlobal').value = (entry.remindersGlobal || []).join('\n');
       $('setup').checked         = !!entry.setup;
       $('customJson').value      = entry.customJson || '';
+      $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
+      if (editorsUI) editorsUI.set(entry.editors || []);
+      syncEditorsBox();
       if (entry.artAlt) {
         var altTh = $('artAltThumb');
         altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
@@ -677,7 +996,7 @@
       $('jinxDisplay').value = (entry.jinxDisplay === 'dropdown') ? 'dropdown' : 'sidebar';
 
       document.querySelectorAll('.jinx-row').forEach(function(r){ r.remove(); });
-      (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text); });
+      (entry.jinxes || []).forEach(function(j){ var n=normalizeJinx(j); addJinx(n.name,n.align,n.text,n.slug,n.id); });
       if(!(entry.jinxes||[]).length) addJinx();
 
       document.querySelectorAll('.box-row').forEach(function(r){ r.remove(); });
@@ -777,43 +1096,14 @@
     function setStatus(cls,html){ var s=$('status'); s.className=cls; s.innerHTML=html; }
 
     // ── renaming ──
-    // A character's URL is built from its name, so a renamed character should
-    // move to a URL that matches — /c/soul-eater, not /c/soulkeeper forever.
-    // The Worker does the move and leaves a 301 behind, so every old link
-    // still works; here we only work out which URL to ask for.
-    function slugify(s){
-      return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-    }
-    // Pages that had to disambiguate keep their suffix: "Sculptor" at
-    // /c/sculptor-fall-of-rome renamed to "Stonecutter" becomes
-    // /c/stonecutter-fall-of-rome, not /c/stonecutter.
-    function wantedSlug(newName){
-      var oldBase = slugify((originalEntry && originalEntry.name) || '');
-      var newBase = slugify(newName);
-      // A name that slugifies to nothing (a fully non-Latin name) keeps the
-      // URL it was given by hand.
-      if(!oldBase || !newBase) return originalSlug;
-      var suffix = originalSlug.indexOf(oldBase + '-') === 0 ? originalSlug.slice(oldBase.length) : '';
-      return (newBase + suffix).slice(0, 80);
-    }
-    // Resolves to the slug this save should use: the current one when nothing
-    // was renamed, otherwise the first free URL for the new name.
-    function resolveSlug(d){
-      var wanted = wantedSlug(d.name);
-      if(!wanted || wanted === originalSlug) return Promise.resolve(originalSlug);
-      var q = '/api/slug-check?type=character&slug=' + encodeURIComponent(wanted) +
-              '&appearsIn=' + encodeURIComponent(d.appearsIn || '');
-      return fetch(q, { credentials: 'same-origin' })
-        .then(function(r){ return r.json(); })
-        .catch(function(){ return null; })
-        .then(function(j){
-          if(!j || j.error) return originalSlug;      // check unavailable: stay put
-          if(!j.taken) return wanted;
-          // Taken — including by another page of your own, which a rename must
-          // never move onto. Take the next free URL instead.
-          return j.suggestion || originalSlug;
-        });
+    // A character's IDENTITY never changes: the art in R2, the comments, the
+    // view history and every script roster are keyed on it, so renaming moves
+    // none of them. What a rename moves is the page's ADDRESS
+    // (/c/{set}/{character}), and the Worker works that out on every save from
+    // the name and the set — leaving a 301 behind whenever it changes. So
+    // there is nothing to resolve here any more: save to the same row.
+    function resolveSlug(){
+      return Promise.resolve(originalSlug);
     }
 
     // ── save ──
@@ -822,17 +1112,19 @@
       var d = gather();
       if(!d.name)    return setStatus('err','A character name is required.');
       if(!d.ability) return setStatus('err','An ability line is required.');
+      // A page that takes suggestions is not saved from here at all: the same
+      // form is posted as a proposal for its creator to answer.
+      if (EDIT_MODE === 'suggest') return sendSuggestion(d);
       var saveStatus = newStatus || currentStatus;
 
       $('save').disabled = true;
       $('save-publish').disabled = true;
       setStatus('work','Saving&hellip;');
 
-      resolveSlug(d).then(function(slug){ writeCharacter(d, slug, saveStatus); });
+      resolveSlug().then(function(slug){ writeCharacter(d, slug, saveStatus); });
     }
 
     function writeCharacter(d, slug, saveStatus){
-      var renamed = slug !== originalSlug;
 
       function uploadArt(){
         var p = Promise.resolve();
@@ -872,12 +1164,15 @@
           special: d.special, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
           customJson: d.customJson,
+          // Explicit for the same reason special[] is: Object.assign would
+          // otherwise keep whatever the LOADED row said, so changing "Who can
+          // edit this page" would show in the form and never reach the save.
+          publicEdit: d.publicEdit, editors: d.editors,
           status: saveStatus,
           baseUpdatedAt: loadedUpdatedAt
         });
         // Renaming: the Worker moves the page (and its art, comments, views
         // and history) from here, and leaves /c/{old} redirecting to it.
-        if(renamed) entry.renameFrom = originalSlug;
         if(artAltDataURL){
           entry.artAlt   = 'art/'+slug+'-alt.png';
           entry.imageAlt = ART_BASE+slug+'-alt.png';
@@ -912,13 +1207,10 @@
         });
       }
 
-      // A rename moves the page's art with it, so when the URL is changing the
-      // row has to move BEFORE new art is uploaded — otherwise the move would
-      // drop the old icon on top of the one just uploaded. Nothing moving:
-      // upload first, exactly as before, so a failed upload saves nothing.
-      var p = renamed
-        ? writeRow().then(function(saved){ return uploadArt().then(function(){ return saved; }); })
-        : uploadArt().then(writeRow);
+      // Art is uploaded first so a failed upload saves nothing. There is no
+      // ordering hazard left: the art slot is named after the identity, which
+      // a rename no longer moves, so nothing can land on top of anything.
+      var p = uploadArt().then(writeRow);
 
       p.then(function(saved){
         // The Worker forces a draft when the page has no icon, so take the
@@ -927,29 +1219,23 @@
         updatePublishButton();
         // The page may have just moved: carry on editing the new URL, and
         // leave the address bar on it so a refresh finds the right page.
-        var movedFrom = (saved && saved.renamedFrom) || null;
+        var movedFrom = (saved && saved.movedFrom) || null;
         originalSlug = (saved && saved.slug) || slug;
-        if (originalEntry) {
-          originalEntry.name = d.name;
-          // The art moved with the page; keep the copy this form saves from
-          // in step with it, or the next save would write the old paths back.
-          // Art that stayed put (a committed file) keeps its old path.
-          if (movedFrom && saved.renamedArt) {
-            var re = new RegExp('art/' + movedFrom + '(?=[-.])', 'g');
-            ['art','image','artAlt','imageAlt'].forEach(function(k){
-              if (typeof originalEntry[k] === 'string') {
-                originalEntry[k] = originalEntry[k].replace(re, 'art/' + originalSlug);
-              }
-            });
-          }
-        }
-        if (movedFrom && window.history && history.replaceState) {
-          history.replaceState(null, '', 'edit?c=' + encodeURIComponent(originalSlug));
-        }
+        // The art slot is named after the identity, which did not move, so
+        // there are no paths to retarget here any more.
+        if (originalEntry) originalEntry.name = d.name;
         if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
-        var url = SITE_ROOT + 'c/' + originalSlug;
+        // The Worker resolves the editor list again and drops names no account
+        // answers to. Say which, or the owner walks away believing they shared
+        // the page with somebody who never got it.
+        if (editorsUI) {
+          editorsUI.set((saved && saved.editors) || []);
+          editorsUI.reportUnknown(saved && saved.editorsUnknown);
+        }
+        var page = (saved && saved.page) || ('c/' + originalSlug);
+        var url = SITE_ROOT + page;
         var movedNote = movedFrom
-          ? ' This page moved to <strong>/c/' + originalSlug + '</strong>; the old link still redirects here.'
+          ? ' This page moved to <strong>/' + page + '</strong>; the old link still redirects here.'
           : '';
         if (currentStatus === 'draft') {
           setStatus('ok','&#10003; Draft saved (not public).' + movedNote + ' <a href="'+url+'" target="_blank">Preview &rarr;</a> or manage it from <a href="account">your account</a>.');
@@ -1029,16 +1315,29 @@
           // instead of silently reverting whatever changed in the meantime.
           loadedUpdatedAt = res.updatedAt || null;
           updatePublishButton();
-          if(res.canEdit === false){
+          /* Three ways this editor can open, and the Worker has already
+             decided which: 'owner' (or admin) is the whole form; 'all' is a
+             page whose creator opened it to anyone with an account; 'tags' is
+             a page that opened its tags and nothing else. The server enforces
+             all of it; the form only has to avoid inviting somebody to type
+             into fields that would be thrown away. */
+          var mode = res.editMode || (res.canEdit ? 'owner' : false);
+          EDIT_MODE = mode;
+          isDraftPage = (res.status || 'published') === 'draft';
+          if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
             $('save').disabled = true;
             $('save-publish').disabled = true;
-          } else {
+          } else if (mode === 'owner') {
             $('delete-char').style.display = '';
           }
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
           populateForm(entry);
+          if (mode === 'tags') tagsOnlyMode(entry);
+          else if (mode === 'approved') approvedNotice(entry);
+          else if (mode === 'all') guestNotice(entry);
+          else if (mode === 'suggest') suggestMode(entry);
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';

@@ -25,6 +25,11 @@ directory = "."
 binding = "ASSETS"
 run_worker_first = [
   "/characters.json", "/collections.json", "/scripts.json", "/api/*",
+  # Character addresses are nested now (/c/{set}/{character}), and "/c/*"
+  # already covers them: the glob matches through slashes, so it needs no
+  # second pattern. Do NOT add "/c/*/*" back: Wrangler rejects a rule that
+  # another rule makes redundant, and the whole build fails in 0s before any
+  # code is compiled ("Invalid routes in `run_worker_first`").
   "/c/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
   "/author", "/author.html",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",

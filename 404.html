@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Page Not Found — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="That page isn't on the wiki. Search, browse, or tell the admins if a link brought you here by mistake.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Page Not Found">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon.png">
+<link rel="apple-touch-icon" href="/assets/favicon.png">
+<!-- EVERY path on this page must be root-absolute. The Worker serves this file
+     at whatever URL was asked for (/c/foo, /s/bar/baz, anything), so a relative
+     href would resolve against that address and break. site.js derives its own
+     ROOT from the stylesheet href below, which is why that one is "/…" too. -->
+<link rel="stylesheet" href="/assets/styles.css">
+<link rel="stylesheet" href="/assets/header-redesign.css">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   404 page. A character token on the page background, then the parts
+   that do the actual work: the address that failed, a "did you mean",
+   somewhere to go, and a box for telling the admins about a dead link.
+   ══════════════════════════════════════════════════════════════════ */
+
+.nf-main { padding-top: clamp(24px, 5vw, 56px); text-align: center; }
+
+/* ─── The token ───────────────────────────────────────────────── */
+.nf-token {
+  position: relative; width: min(76vw, 300px); aspect-ratio: 1;
+  margin: 0 auto clamp(18px,3vw,28px);
+  border-radius: 50%;
+  background-color: var(--parch);
+  background-image: url('/assets/parchment.jpg');
+  background-size: cover;
+  border: 3px solid var(--parch-frame);
+  box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 0 0 7px rgba(255,255,255,.35), inset 0 0 0 9px var(--parch-frame);
+  display: grid; place-items: center;
+}
+.nf-ring { position: absolute; inset: 0; width: 100%; height: 100%; }
+.nf-arc-text {
+  font-family: 'Dumbledor2', serif; font-size: 17px; letter-spacing: .18em;
+  fill: var(--maroon); opacity: .78;
+}
+.nf-face { display: grid; place-items: center; gap: 2px; margin-top: -8%; }
+.nf-num {
+  font-family: 'Dumbledor2', serif; font-size: clamp(2.6rem, 11vw, 4rem);
+  line-height: 1; color: var(--maroon); letter-spacing: .04em;
+}
+.nf-mark {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .22em;
+  text-transform: uppercase; color: rgba(91,31,33,.6);
+}
+.nf-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: clamp(1.3rem, 4.4vw, 2rem); letter-spacing: .05em;
+  color: var(--parch); margin: 0 0 .45em; text-shadow: 0 3px 12px rgba(0,0,0,.5);
+}
+.nf-sub {
+  color: rgba(236,225,200,.78); max-width: 48ch; margin: 0 auto;
+  font-size: clamp(.94rem, 2.2vw, 1.04rem);
+}
+.nf-rule { height: 1px; max-width: 520px; margin: 22px auto 0; background: linear-gradient(90deg, transparent, var(--rule), transparent); }
+
+/* ─── The address that was asked for ──────────────────────────── */
+.nf-url {
+  display: inline-block; max-width: 100%; overflow-wrap: anywhere;
+  font-family: 'Oswald', sans-serif; font-size: .92em; letter-spacing: .02em;
+  background: rgba(0,0,0,.3); border: 1px solid rgba(214,196,150,.3);
+  padding: 1px 7px; color: #f0e0b8;
+}
+.nf-url-note { display: block; font-size: .78rem; opacity: .6; margin-top: 6px; }
+/* Anything given an explicit `display` here would otherwise beat the browser's
+   own [hidden] rule and show through. These three are toggled from script. */
+.nf-url-note[hidden], .nf-field[hidden], .nf-report-who[hidden] { display: none; }
+
+/* ─── "Did you mean…" ─────────────────────────────────────────── */
+.nf-suggest { margin: clamp(18px,3vw,26px) auto 0; max-width: 560px; text-align: left; }
+.nf-suggest-head {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .14em;
+  text-transform: uppercase; color: rgba(236,225,200,.55); margin: 0 0 8px; text-align: center;
+}
+.nf-sug {
+  display: flex; align-items: center; gap: 11px; text-decoration: none;
+  padding: 8px 10px; border-top: 1px solid rgba(214,196,150,.18); color: var(--parch);
+}
+.nf-sug:first-of-type { border-top: none; }
+.nf-sug:hover { background: rgba(236,225,200,.07); }
+.nf-sug-thumb { width: 38px; height: 38px; object-fit: contain; flex-shrink: 0; }
+.nf-sug-text { min-width: 0; }
+.nf-sug-name { display: block; font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .02em; }
+.nf-sug-meta {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .72rem;
+  letter-spacing: .08em; text-transform: uppercase; color: rgba(236,225,200,.6);
+}
+
+/* ─── Quick links ─────────────────────────────────────────────── */
+.nf-links { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: clamp(18px,3vw,26px) 0 0; }
+.nf-links a {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .08em;
+  text-transform: uppercase; text-decoration: none;
+  padding: 7px 14px; border: 1px solid rgba(214,196,150,.3); color: var(--parch);
+}
+.nf-links a:hover { background: rgba(236,225,200,.1); }
+
+/* ─── Report box ──────────────────────────────────────────────── */
+.nf-report {
+  max-width: 620px; margin: clamp(26px,4vw,40px) auto 0; text-align: left;
+  background: rgba(20,7,18,.5); border: 1px solid rgba(214,196,150,.28);
+  backdrop-filter: blur(4px);
+  padding: clamp(16px,3vw,24px);
+}
+.nf-report-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem;
+  letter-spacing: .05em; color: var(--parch); margin: 0 0 6px;
+}
+.nf-report-note, .nf-report-who { color: rgba(236,225,200,.72); }
+.nf-report-note { font-size: .88rem; margin: 0 0 14px; }
+.nf-report-who { font-size: .78rem; margin: 0 0 12px; }
+.nf-field { display: block; margin-bottom: 12px; }
+.nf-field > span {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .74rem;
+  letter-spacing: .1em; text-transform: uppercase; color: rgba(236,225,200,.6); margin-bottom: 4px;
+}
+.nf-report textarea, .nf-report input {
+  width: 100%; font: inherit; font-size: .93rem;
+  background: rgba(0,0,0,.28); border: 1px solid rgba(214,196,150,.3);
+  color: var(--parch); padding: 8px 10px; border-radius: 0;
+}
+.nf-report textarea { min-height: 84px; resize: vertical; }
+.nf-report-send {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  background: linear-gradient(180deg, #8a3526, #5B1F21); color: #f3ead4;
+  border: none; padding: 10px 22px; cursor: pointer; font-size: .95rem;
+}
+.nf-report-send[disabled] { opacity: .6; cursor: default; }
+.nf-report-msg { font-size: .86rem; margin-top: 9px; min-height: 1.1em; }
+.nf-report-msg.ok  { color: #8fd08f; }
+.nf-report-msg.err { color: #e79aa0; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="/assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="/assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="/all-characters">All Characters</a>
+      <a href="/scripts">Scripts</a>
+      <a href="/all-collections">Collections</a>
+      <a href="/script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="/all-characters">All Characters</a>
+    <a href="/scripts">Scripts</a>
+    <a href="/all-collections">Collections</a>
+    <a href="/script">Script Builder</a>
+  </nav>
+
+  <main class="home-panel nf-main">
+
+    <div class="nf-token">
+      <svg class="nf-ring" viewBox="0 0 300 300" aria-hidden="true">
+        <defs>
+          <!-- Left → right through the BOTTOM of the circle, so the glyphs
+               sit upright along the curve the way a real token's text does.
+               Sweep-flag 0 is what puts the arc under the centre; flipping
+               it to 1 turns the words upside down over the top. -->
+          <path id="nf-arc" d="M 33,150 A 117,117 0 0 0 267,150" fill="none"></path>
+        </defs>
+        <text class="nf-arc-text">
+          <textPath href="#nf-arc" startOffset="50%" text-anchor="middle">NOT IN THE BAG</textPath>
+        </text>
+      </svg>
+      <div class="nf-face">
+        <span class="nf-num">404</span>
+        <span class="nf-mark">page not found</span>
+      </div>
+    </div>
+
+    <h1 class="nf-head">This character isn&rsquo;t in play</h1>
+    <p class="nf-sub">
+      Nothing lives at <span class="nf-url" data-nf-url></span>. The page may have been renamed,
+      it may still be a draft, or the link may simply be wrong.
+      <span class="nf-url-note" data-nf-note hidden></span>
+    </p>
+
+    <div data-nf-suggest></div>
+    <div class="nf-links" data-nf-links></div>
+    <div class="nf-rule"></div>
+
+    <div class="nf-report">
+      <h2 class="nf-report-head">Think this is a mistake?</h2>
+      <p class="nf-report-note">If a link on the wiki brought you here, or a page you know exists has gone missing, tell the admins and they&rsquo;ll look into it.</p>
+      <p class="nf-report-who" data-nf-who hidden></p>
+      <label class="nf-field">
+        <span>What were you looking for?</span>
+        <textarea data-nf-note-in maxlength="1000" placeholder="e.g. the Illusionist page, linked from the Odyssey collection"></textarea>
+      </label>
+      <label class="nf-field" data-nf-contact-field>
+        <span>Where can we reply? (optional)</span>
+        <input type="text" data-nf-contact maxlength="120" placeholder="Discord handle or email">
+      </label>
+      <button type="button" class="nf-report-send" data-nf-send>Send to the admins</button>
+      <div class="nf-report-msg" data-nf-msg></div>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+<script>
+(function () {
+  'use strict';
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  var TEAM_LABEL = {
+    townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
+    demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
+  };
+
+  /* ── Which address failed ────────────────────────────────────────
+     This file is served AT the broken URL (no redirect), so location is
+     the address the reader actually asked for. The one exception is
+     somebody opening /404 on purpose, when nothing is broken and
+     the page says so rather than pointing at itself. */
+  var previewing = /^\/404(\.html)?\/?$/.test(location.pathname);
+  var brokenPath = previewing
+    ? '/c/a-page-that-isnt-here'
+    : location.pathname + (location.search || '');
+
+  /* ── "Did you mean…" ─────────────────────────────────────────────
+     Edit distance, not a bigram score: the ways a wiki address actually
+     goes wrong are a dropped letter, a swapped pair, a missing accent
+     and a half-remembered name, and letter-pair scoring reads those as
+     badly as it reads two unrelated words that both contain "er". The
+     feed is only fetched when the address looks like a page address:
+     a stray /favicon.ico must not pull the character list down.
+
+     The prefix rule earns its keep here specifically: half this wiki's
+     slugs carry a disambiguating suffix, so /c/sculptor should find
+     sculptor-fall-of-rome. */
+  function lev(a, b) {
+    var m = a.length, n = b.length, i, j, prev = [], cur = [];
+    for (j = 0; j <= n; j++) prev[j] = j;
+    for (i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      }
+      for (j = 0; j <= n; j++) prev[j] = cur[j];
+    }
+    return prev[n];
+  }
+  function similar(wanted, cand) {
+    if (!wanted || !cand) return 0;
+    if (wanted === cand) return 1;
+    // Containment only counts once there is enough of a word to mean
+    // something, or "/c/a" is a prefix of a third of the wiki.
+    if (wanted.length >= 3) {
+      if (cand.indexOf(wanted) === 0 || wanted.indexOf(cand) === 0) return 0.92;
+      if (cand.indexOf(wanted) >= 0 || wanted.indexOf(cand) >= 0) return 0.8;
+    }
+    var score = 1 - lev(wanted, cand) / Math.max(wanted.length, cand.length);
+    // A whole word in common is worth more than the letter maths says.
+    var w = wanted.split('-'), c = cand.split('-');
+    for (var i = 0; i < w.length; i++) {
+      if (w[i].length >= 4 && c.indexOf(w[i]) >= 0) { score = Math.max(score, 0.7); break; }
+    }
+    return score;
+  }
+  function slugify(s) {
+    return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  }
+
+  // 0.62 is set where a real typo still lands and an unrelated name does
+  // not: "sculpter" finds the Sculptor, "snake-charmer" (an official
+  // character, not a homebrew one) correctly finds nothing rather than
+  // offering the nearest thing with the same letters in it.
+  function best(rows, wanted, keys) {
+    var scored = [];
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i], top = 0;
+      for (var k = 0; k < keys.length; k++) {
+        var sc = similar(wanted, slugify(r[keys[k]]));
+        if (sc > top) top = sc;
+      }
+      if (top >= 0.62) scored.push({ row: r, score: top });
+    }
+    scored.sort(function (x, y) { return y.score - x.score; });
+    return scored.slice(0, 4).map(function (s) { return s.row; });
+  }
+
+  function sugHTML(href, thumb, name, meta) {
+    return '<a class="nf-sug" href="' + esc(href) + '">' +
+      (thumb
+        ? '<img class="nf-sug-thumb" src="' + esc(thumb) + '" alt="" loading="lazy" decoding="async" ' +
+          'onerror="this.src=\'/assets/favicon.png\'">'
+        : '') +
+      '<span class="nf-sug-text">' +
+        '<span class="nf-sug-name">' + esc(name) + '</span>' +
+        '<span class="nf-sug-meta">' + esc(meta) + '</span>' +
+      '</span></a>';
+  }
+
+  // Resolves to an HTML string (possibly empty). Never rejects: a failed
+  // feed just means no suggestions, which is not worth an error message.
+  function findSuggestions() {
+    var m, feed, wanted, build;
+
+    // Character addresses are nested (/c/{set}/{character}), so the part
+    // worth matching suggestions against is the LAST segment, not the set.
+    if ((m = location.pathname.match(/^\/c\/(?:[^/]+\/)?([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/characters.json?fields=card';
+      build = function (rows) {
+        return best(rows, wanted, ['slug', 'name']).map(function (c) {
+          // The feed's `page` is the character's address (c/{set}/{name}),
+          // derived by the Worker on every read. c.slug is the identity and
+          // only a fallback — it 301s to the same place.
+          return sugHTML('/' + String(c.page || ('c/' + c.slug)).replace(/^\//, ''),
+            c.art ? '/assets/' + c.art : '',
+            c.name,
+            (TEAM_LABEL[c.team] || c.team || '') + (c.creator ? ' · ' + c.creator : ''));
+        }).join('');
+      };
+    } else if ((m = location.pathname.match(/^\/s\/([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/scripts.json';
+      build = function (rows) {
+        return best(rows, wanted, ['slug', 'name']).map(function (s) {
+          return sugHTML('/s/' + encodeURIComponent(s.slug),
+            s.logo || s.header ? '/assets/' + (s.logo || s.header) : '',
+            s.name,
+            'Script' + (s.author ? ' · ' + s.author : ''));
+        }).join('');
+      };
+    } else if ((m = location.pathname.match(/^\/collection\/([^/]+)/))) {
+      wanted = slugify(decodeURIComponent(m[1]));
+      feed = '/collections.json';
+      build = function (rows) {
+        return best(rows, wanted, ['id', 'slug', 'name', 'displayName']).map(function (c) {
+          return sugHTML('/collection/' + encodeURIComponent(c.id || c.slug),
+            c.logo || c.header ? '/assets/' + (c.logo || c.header) : '',
+            c.displayName || c.name,
+            'Collection' + (c.author ? ' · ' + c.author : ''));
+        }).join('');
+      };
+    } else {
+      // Not a content address: match the site's own pages instead,
+      // which costs no fetch at all.
+      var PAGES = [
+        ['/all-characters', 'All Characters', 'Browse'],
+        ['/all-collections', 'Collections', 'Browse'],
+        ['/scripts', 'Scripts', 'Browse'],
+        ['/tags', 'Tags', 'Browse'],
+        ['/creators', 'Creators', 'Browse'],
+        ['/script', 'Script Builder', 'Tool'],
+        ['/tokens', 'Token Tool', 'Tool'],
+        ['/grimforge', 'Grimoire Forge', 'Tool'],
+        ['/iconforge', 'Icon Forge', 'Tool'],
+        ['/tools', 'Tools', 'Tool'],
+        ['/create', 'Create a Character', 'Tool'],
+        ['/news', 'News', 'Wiki'],
+        ['/account', 'My Account', 'Account'],
+        ['/messages', 'Messages', 'Account'],
+        ['/login', 'Log In', 'Account']
+      ];
+      wanted = slugify(decodeURIComponent(location.pathname));
+      if (!wanted) return Promise.resolve('');
+      var hits = PAGES.filter(function (p) {
+        return similar(wanted, slugify(p[0])) >= 0.62;
+      }).slice(0, 4);
+      return Promise.resolve(hits.map(function (p) {
+        return sugHTML(p[0], '', p[1], p[2]);
+      }).join(''));
+    }
+
+    return fetch(feed)
+      .then(function (r) { return r.json(); })
+      .then(function (rows) { return Array.isArray(rows) ? build(rows) : ''; })
+      .catch(function () { return ''; });
+  }
+
+  /* ── The page ────────────────────────────────────────────────── */
+  var LINKS = [
+    ['/', 'Home'],
+    ['/all-characters', 'All Characters'],
+    ['/all-collections', 'Collections'],
+    ['/scripts', 'Scripts'],
+    ['/tools', 'Tools'],
+    ['/random', 'Random Character']
+  ];
+
+  // the broken address
+  var urlEls = document.querySelectorAll('[data-nf-url]');
+  for (var i = 0; i < urlEls.length; i++) urlEls[i].textContent = brokenPath;
+  if (previewing) {
+    var note = document.querySelector('[data-nf-note]');
+    note.hidden = false;
+    note.textContent = 'That address is only an example. You opened this page directly, so nothing is broken.';
+  }
+
+  // quick links
+  document.querySelector('[data-nf-links]').innerHTML = LINKS.map(function (l) {
+    return '<a href="' + esc(l[0]) + '">' + esc(l[1]) + '</a>';
+  }).join('');
+
+  // suggestions
+  if (!previewing) {
+    var slot = document.querySelector('[data-nf-suggest]');
+    findSuggestions().then(function (html) {
+      if (!html) return;
+      slot.innerHTML = '<div class="nf-suggest"><p class="nf-suggest-head">Did you mean…</p>' + html + '</div>';
+    });
+  }
+
+  /* ── The report box ──────────────────────────────────────────── */
+  var noteIn = document.querySelector('[data-nf-note-in]');
+  var contactIn = document.querySelector('[data-nf-contact]');
+  var contactField = document.querySelector('[data-nf-contact-field]');
+  var sendBtn = document.querySelector('[data-nf-send]');
+  var msg = document.querySelector('[data-nf-msg]');
+  var who = document.querySelector('[data-nf-who]');
+
+  sendBtn.addEventListener('click', function () {
+    sendBtn.disabled = true;
+    msg.className = 'nf-report-msg';
+    msg.textContent = 'Sending…';
+    fetch('/api/report-broken-link', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path: brokenPath,
+        note: noteIn.value.trim(),
+        contact: contactField.hidden ? '' : contactIn.value.trim(),
+        from: document.referrer || ''
+      })
+    })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (res.ok && res.body.ok) {
+          msg.className = 'nf-report-msg ok';
+          msg.textContent = res.body.message || 'Thanks, the admins have it.';
+          noteIn.disabled = true;
+          contactIn.disabled = true;
+          sendBtn.textContent = 'Sent';
+        } else {
+          sendBtn.disabled = false;
+          msg.className = 'nf-report-msg err';
+          msg.textContent = (res.body && res.body.error) || 'Could not send that. Try again in a moment.';
+        }
+      })
+      .catch(function () {
+        sendBtn.disabled = false;
+        msg.className = 'nf-report-msg err';
+        msg.textContent = 'Could not reach the wiki. Check your connection and try again.';
+      });
+  });
+
+  // Logged in? Then the admins can already answer through the wiki's own
+  // messages, and asking for a handle again is noise. Asked for after the
+  // page is already usable; nothing here waits on the network.
+  fetch('/api/me', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d || !d.loggedIn) return;
+      contactField.hidden = true;
+      who.hidden = false;
+      who.textContent = 'Sending as @' + d.username + '. The admins can reply to your messages.';
+    })
+    .catch(function () { /* logged out or offline; the form still works */ });
+})();
+</script>
+<script src="/assets/site.js"></script>
+</body>
+</html>

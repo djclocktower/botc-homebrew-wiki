@@ -68,6 +68,27 @@
 .sb-btn-share { background: linear-gradient(180deg,#3a6d9e,#23486b); }
 .sb-btn-publish { background:linear-gradient(180deg,#b07d1a,#7a5310); text-decoration:none; display:inline-flex; align-items:center; }
 
+/* ─── Credits Fabled (added to every exported script) ────── */
+.sb-credits {
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px 14px;
+  background:var(--parch); border:2px solid var(--parch-frame);
+  padding:10px 14px; margin-bottom:14px;
+}
+.sb-credits-head { display:flex; align-items:center; gap:8px; font-size:.86rem; color:var(--ink); }
+.sb-credits-skull { width:26px; height:auto; flex:none; }
+.sb-credits-head strong { color:var(--maroon); }
+.sb-credits-detail {
+  display:flex; align-items:center; gap:6px; font-size:.84rem;
+  color:var(--ink); cursor:pointer; user-select:none; margin-left:auto;
+}
+.sb-credits-detail input { width:16px; height:16px; accent-color:var(--maroon); cursor:pointer; }
+.sb-credits-text {
+  flex-basis:100%; margin:0; font-size:.8rem; line-height:1.5; font-style:italic;
+  color:var(--ink); background:rgba(243,239,229,.55);
+  border-top:1px solid rgba(180,160,120,.25); padding-top:8px;
+}
+@media (max-width: 560px) { .sb-credits-detail { margin-left:0; } }
+
 /* ─── Publish call-to-action banner ──────────────────────── */
 .sb-publish-cta {
   display:flex; flex-wrap:wrap; align-items:center; gap:12px;
@@ -76,6 +97,67 @@
 }
 .sb-publish-cta p { margin:0; font-size:.86rem; color:var(--ink); flex:1; min-width:200px; }
 .sb-publish-cta strong { color:var(--maroon); }
+
+/* ─── Add-sidebar filter box ──────────────────────────────
+   The shared filter box (assets/card-filters.js) in a 300px column: always
+   behind its toggle (the site-wide rule only collapses it on phones), and
+   laid out in one column instead of a wide row. */
+.sb-add-filters { margin-bottom: 8px; }
+.sb-add-filters .filter-toggle {
+  display: block; width: 100%; margin: 0;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-weight: 400; letter-spacing: .05em; font-size: .88rem; cursor: pointer;
+  background: var(--parch); color: var(--maroon);
+  border: 2px solid var(--parch-frame); padding: 8px 12px; text-align: left;
+}
+.sb-add-filters .filter-toggle-arrow { float: right; transition: transform .2s ease; }
+.sb-add-filters .filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+.sb-add-filters .filter-bar { display: none; }
+.sb-add-filters .filter-bar.open {
+  display: flex; flex-direction: column; align-items: stretch;
+  /* nowrap matters: the shared bar is a wrapping ROW, and a wrapping COLUMN
+     with a capped height packs the later groups into a second column off to
+     the side, where they cannot be reached. */
+  flex-wrap: nowrap;
+  gap: 10px; padding: 10px 12px; margin: 8px 0 0;
+  max-height: 46vh; overflow-y: auto;
+}
+.sb-add-filters .filter-chip { font-size: .74rem; padding: 3px 8px; }
+.sb-add-filters .filter-select { font-size: .82rem; padding: 5px 8px; width: 100%; }
+.sb-add-count {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;
+  color: #6b5d49; margin: 0 0 6px;
+}
+.sb-add-count:empty { display: none; }
+
+/* ─── Night order panel (widget markup + CSS in styles.css) ── */
+.sb-night {
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  margin-top: 18px;
+}
+.sb-night > summary {
+  cursor: pointer; list-style: none; padding: 12px 16px;
+  font-family: 'Dumbledor2', serif; color: var(--maroon); font-size: 1.1rem;
+}
+.sb-night > summary::-webkit-details-marker { display: none; }
+.sb-night-arrow { float: right; transition: transform .15s; }
+.sb-night[open] > summary .sb-night-arrow { transform: rotate(180deg); }
+.sb-night-sub {
+  display: block; font-family: 'Libre Franklin', sans-serif;
+  font-size: .78rem; color: #6b5d49; margin-top: 2px;
+}
+.sb-night-body { padding: 0 16px 16px; }
+.sb-btn-nightreset {
+  margin-top: 12px; background: linear-gradient(180deg,#6b5d49,#4a4133);
+}
+
+/* Official characters sit in the same list as homebrew ones, so they say so */
+.sb-add-off {
+  font-family:'Oswald',sans-serif; font-size:.62rem; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:#6b5d49;
+  border:1px solid rgba(180,160,120,.6); border-radius:3px;
+  padding:0 4px; margin-left:4px; vertical-align:1px; white-space:nowrap;
+}
 
 /* ─── Jinxes between characters on the script ─────────────── */
 .sb-jinx-row { padding:8px 10px; border-bottom:1px solid rgba(180,160,120,.25); display:flex; flex-direction:column; gap:2px; }
@@ -131,7 +213,14 @@
           <h2 class="sb-add-title">All Characters</h2>
           <button class="sb-close-mobile" id="sb-close-mobile" type="button" aria-label="Close">✕</button>
         </div>
-        <input class="sb-filter" id="sb-filter" type="search" placeholder="Filter…" autocomplete="off">
+        <input class="sb-filter" id="sb-filter" type="search" placeholder="Search by name…" autocomplete="off">
+        <!-- The same filter box the collection and creator pages use
+             (assets/card-filters.js), mounted on the list below. -->
+        <div class="sb-add-filters" id="sb-add-filters">
+          <button type="button" class="filter-toggle" id="sb-filter-toggle" aria-expanded="false" aria-controls="sb-filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+          <div class="filter-bar" id="sb-filter-bar" hidden></div>
+        </div>
+        <p class="sb-add-count" id="sb-add-count"></p>
         <div id="sb-add-list" class="sb-add-list">
           <p class="sb-loading">Loading…</p>
         </div>
@@ -159,6 +248,18 @@
         </div>
       </div>
 
+      <!-- Credits Fabled: every export from the builder carries it. -->
+      <div class="sb-credits">
+        <span class="sb-credits-head">
+          <img class="sb-credits-skull" src="assets/logo_skull.png" alt="">
+          <span>Your exported JSON includes a <strong>botchomebrew.wiki</strong> Fabled crediting everyone whose characters are on the script.</span>
+        </span>
+        <label class="sb-credits-detail">
+          <input type="checkbox" id="sb-credits-detail"> Detailed credits (name each creator's characters)
+        </label>
+        <p class="sb-credits-text" id="sb-credits-text"></p>
+      </div>
+
       <!-- Ready to publish? Everything about naming + publishing lives on its own page. -->
       <div class="sb-publish-cta">
         <p>Happy with your line-up? <strong>Publish it to the wiki</strong> to give it a name, description, and a public page other players can view.</p>
@@ -168,14 +269,48 @@
       <div id="sb-script" class="sb-script">
         <p class="sb-empty">Your script is empty. Add characters from the sidebar.</p>
       </div>
+
+      <!-- Jinxes on this script: the ones the characters carry, plus any this
+           script writes for itself. Same widget as the publish page. -->
+      <details class="sb-night" id="sb-jinx-sec">
+        <summary>Jinxes <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub">Rules between two characters on this script. Remove one you do not want, or write your own.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div id="sb-jinx-body"></div>
+        </div>
+      </details>
+
+      <!-- Night order: who acts comes from the characters, the order is yours.
+           Same widget (and same stored arrangement) as the publish page. -->
+      <details class="sb-night" id="sb-night-sec">
+        <summary>Night Order <span class="sb-night-arrow">&#9662;</span>
+          <span class="sb-night-sub">The order your script page lists the night in. Drag a character, or use &#9650;&#9660;.</span>
+        </summary>
+        <div class="sb-night-body">
+          <div class="no-cols" id="sb-night-body"></div>
+          <button type="button" class="sb-btn sb-btn-nightreset" id="sb-night-reset" type="button">&#8634; Back to the standard order</button>
+        </div>
+      </details>
     </main>
 
   </div>
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- creators.js first: render.js reads the credit-mark registry off it, so
+       the detailed credits list "Cheerleader", not "Cheerleader ∇". -->
+  <script src="assets/creators.js"></script>
   <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/official-roles.js"></script>
+  <script src="assets/classify.js"></script>
+  <!-- sao.js before card-filters.js: the filter box only offers Steven
+       Approved Order when window.saoCompare is already there. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/card-filters.js"></script>
+  <script src="assets/night-order-editor.js"></script>
+  <script src="assets/jinx-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -205,6 +340,75 @@
     function setMeta(m) {
       try { localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
     }
+    /* ── night order ──
+       Stored on the script's meta, so the arrangement made here is the one
+       publish-script.html saves and the one the published page renders.
+       Who acts is not editable: a character is on a night list because its
+       own firstNight / otherNight says so. See "Night order" in CLAUDE.md. */
+    var nightUI = null;
+    function getNightOrder() {
+      var m = getMeta();
+      return (m.nightOrder && typeof m.nightOrder === 'object') ? m.nightOrder : {};
+    }
+    function setNightOrder(o) {
+      var m = getMeta();
+      if (o && ((o.first && o.first.length) || (o.other && o.other.length))) m.nightOrder = o;
+      else delete m.nightOrder;
+      setMeta(m);
+    }
+    // The roster in the order the script page draws it: by team, keeping the
+    // stored order inside each team (Array.sort is stable).
+    function rosterChars() {
+      var teamIdx = {};
+      TEAMS.forEach(function (t, i) { teamIdx[t[0]] = i; });
+      return getScript().map(function (slug) { return bySlug[slug]; }).filter(Boolean)
+        .sort(function (a, b) {
+          var ta = teamIdx[a.team] != null ? teamIdx[a.team] : 99;
+          var tb = teamIdx[b.team] != null ? teamIdx[b.team] : 99;
+          return ta - tb;
+        });
+    }
+    /* ── jinxes ──
+       Stored on the script's meta as jinxEdits{off[],add[]} and resolved by
+       PageRender.scriptJinxes, the same call the published page and the
+       exported JSON go through. */
+    var jinxUI = null;
+    function getJinxEdits() {
+      var m = getMeta();
+      return (m.jinxEdits && typeof m.jinxEdits === 'object') ? m.jinxEdits : {};
+    }
+    function setJinxEdits(e) {
+      var m = getMeta();
+      if (e && ((e.off && e.off.length) || (e.add && e.add.length))) m.jinxEdits = e;
+      else delete m.jinxEdits;
+      setMeta(m);
+      renderScript();
+    }
+    function mountJinxEditor() {
+      if (!window.JinxEditor) return;
+      jinxUI = window.JinxEditor.mount(document.getElementById('sb-jinx-body'), {
+        getEntries: rosterChars,
+        getEdits: getJinxEdits,
+        setEdits: setJinxEdits
+      });
+    }
+
+    function mountNightEditor() {
+      if (!window.NightOrderEditor) return;
+      nightUI = window.NightOrderEditor.mount(document.getElementById('sb-night-body'), {
+        getEntries: rosterChars,
+        getOrder: getNightOrder,
+        setOrder: setNightOrder,
+        onEmpty: function (empty) {
+          document.getElementById('sb-night-reset').style.display = empty ? 'none' : '';
+        }
+      });
+      document.getElementById('sb-night-reset').addEventListener('click', function () {
+        setNightOrder(null);
+        nightUI.render();
+      });
+    }
+
     function onScript(slug) { return getScript().indexOf(slug) !== -1; }
     function toggle(slug) {
       var s = getScript();
@@ -219,26 +423,42 @@
       if (i !== -1) { s.splice(i, 1); setScript(s); if (window.updateScriptBadge) window.updateScriptBadge(); renderAll(); }
     }
 
-    // ── render the "add" sidebar (all chars, grouped by team, alphabetical) ──
-    function renderSidebar(filter) {
-      filter = (filter || '').trim().toLowerCase();
+    /* ── the "add" sidebar (all chars, grouped by team, alphabetical) ──
+       Built ONCE, then filtered in place by the shared filter box
+       (assets/card-filters.js, the same one the collection and creator pages
+       use), which is why every row carries the data-* attributes the browse
+       cards do. Rebuilding this list on every add would throw away whatever
+       the reader had filtered to, so adding a character only repaints the
+       selected state of the rows. */
+    function renderSidebar() {
       var html = '';
+      // Homebrew AND the official roster: a script is usually a mix, and the
+      // Source chips in the filter box are how you narrow it to one or the
+      // other. Randomize stays homebrew-only (see below).
+      var browsable = allChars.concat(officialChars);
       TEAMS.forEach(function (t) {
         var key = t[0], label = t[1];
-        var group = allChars.filter(function (c) {
-          if (c.team !== key) return false;
-          if (filter && (c.name || '').toLowerCase().indexOf(filter) === -1) return false;
-          return true;
-        }).sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
+        var group = browsable.filter(function (c) { return c.team === key; })
+          .sort(function (a, b) { return (a.name||'').localeCompare(b.name||''); });
         if (!group.length) return;
-        html += '<div class="sb-add-group"><h3 class="sb-add-grouphead">' + esc(label) + '</h3>';
-        group.forEach(function (c) {
-          var on = onScript(c.slug);
+        html += '<div class="sb-add-group" data-team="' + esc(key) + '">' +
+          '<h3 class="sb-add-grouphead">' + esc(label) + ' <span class="sb-add-groupcount">(' + group.length + ')</span></h3>' +
+          '<div class="sb-add-rows">';
+        group.forEach(function (c, i) {
           var ability = c.ability || '';
-          html += '<div class="sb-add-row">' +
-            '<button type="button" class="sb-add-item' + (on ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-              '<span class="sb-add-name">' + esc(c.name) + '</span>' +
+          var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
+          var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
+          html += '<div class="sb-add-row" data-team="' + esc(c.team || '') + '"' +
+            ' data-tags="' + esc(c.tags || '') + '"' +
+            ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
+            ' data-name="' + esc(c.name || '') + '"' +
+            ' data-order="' + i + '"' +
+            ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
+            ' data-partial="' + partial + '" data-curata="' + star + '">' +
+            '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
+              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<span class="sb-add-name">' + esc(c.name) +
+                (c.official ? ' <span class="sb-add-off">official</span>' : '') + '</span>' +
             '</button>' +
             (ability
               ? '<button type="button" class="sb-add-chevron" data-slug="' + esc(c.slug) + '" aria-label="Show ability" aria-expanded="false">&#9662;</button>' +
@@ -246,9 +466,33 @@
               : '') +
             '</div>';
         });
-        html += '</div>';
+        html += '</div></div>';
       });
-      document.getElementById('sb-add-list').innerHTML = html || '<p class="sb-loading">No matches.</p>';
+      document.getElementById('sb-add-list').innerHTML = html || '<p class="sb-loading">No characters found.</p>';
+    }
+
+    // Adding or removing a character repaints the ticks, nothing else.
+    function syncSidebarSelection() {
+      var on = {};
+      getScript().forEach(function (slug) { on[slug] = 1; });
+      document.querySelectorAll('#sb-add-list .sb-add-item').forEach(function (btn) {
+        btn.classList.toggle('on', !!on[btn.getAttribute('data-slug')]);
+      });
+    }
+
+    // The filter box, mounted on the sidebar once its rows exist. Partial
+    // characters stay visible here (partialOn): this is the list you build a
+    // script from, so hiding one would put it out of reach.
+    function mountSidebarFilters() {
+      if (!window.mountCardFilters) return;
+      window.mountCardFilters({
+        grid: 'sb-add-list', bar: 'sb-filter-bar', toggle: 'sb-filter-toggle',
+        count: 'sb-add-count', search: 'sb-filter',
+        sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
+        sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
+        label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
+        sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']]
+      });
     }
 
     // ── render the current script (main area, grouped by team) ──
@@ -269,15 +513,20 @@
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
             '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-            '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '">' + esc(c.name) + '</a>' +
+            '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
+              (c.official ? ' target="_blank" rel="noopener" title="Official character; opens the official wiki"' : '') + '>' +
+              esc(c.name) + (c.official ? ' <span class="sb-add-off">official &#8599;</span>' : '') + '</a>' +
             '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
             '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
             '</div>';
         });
         html += '</div>';
       });
-      // Jinxes active between characters on this script
-      var jinxes = window.findScriptJinxes ? window.findScriptJinxes(chars) : [];
+      // Jinxes active between characters on this script. The characters'
+      // own, minus any this script switched off, plus any it wrote itself.
+      var jinxes = (window.PageRender && window.PageRender.scriptJinxes)
+        ? window.PageRender.scriptJinxes(chars, getJinxEdits())
+        : (window.findScriptJinxes ? window.findScriptJinxes(chars) : []);
       if (jinxes.length) {
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">Jinxes <span>(' + jinxes.length + ')</span></h3>';
         jinxes.forEach(function (j) {
@@ -291,27 +540,54 @@
     }
 
     function renderAll() {
-      renderSidebar(document.getElementById('sb-filter').value);
+      syncSidebarSelection();
       renderScript();
+      if (nightUI) nightUI.render();
+      if (jinxUI) jinxUI.render();
+      renderCredits();
     }
 
-    // ── build export JSON in official format ──
+    // ── the botchomebrew.wiki credits Fabled ──
+    // Appended to every script the BUILDER exports (JSON / clipboard), and to
+    // nothing else: buildPageExport only adds it when it is handed one, and the
+    // published /s/ and /collection/ JSON boxes never hand it one — their JSON
+    // is the author's own script. The object is built by buildCreditsFabled()
+    // in assets/render.js.
+    var CREDITS_KEY = 'botc_script_credits_detail';
+    function creditsDetailed() {
+      try { return localStorage.getItem(CREDITS_KEY) === '1'; } catch (e) { return false; }
+    }
+    function setCreditsDetailed(on) {
+      try { localStorage.setItem(CREDITS_KEY, on ? '1' : '0'); } catch (e) {}
+    }
+    function creditsFabled() {
+      if (!window.buildCreditsFabled) return null;
+      return window.buildCreditsFabled(rosterChars(), { detailed: creditsDetailed() });
+    }
+    // Show the reader the exact line their export will carry.
+    function renderCredits() {
+      var box = document.getElementById('sb-credits-text');
+      if (!box) return;
+      var f = creditsFabled();
+      box.textContent = f ? f.ability : '';
+    }
+
+    /* ── the official-schema export ──
+       Built by PageRender.buildPageExport, the same call the published script
+       page's JSON box uses, so what you download here and what a reader
+       downloads there cannot drift apart. Everything the official app reads
+       rides in the meta: logo, background, hideTitle, almanac, bootlegger and
+       the night order (see the schema at
+       github.com/ThePandemoniumInstitute/botc-release).
+       The one thing only the builder adds is the credits Fabled, handed over
+       here so the published page's own JSON box stays exactly what its author
+       published. */
     function buildExport() {
-      var s = getScript();
-      var chars = s.map(function (slug) { return bySlug[slug]; }).filter(Boolean);
       var m = getMeta();
-      var meta = { id: '_meta', name: (m.name || '').trim() || 'My Homebrew Script' };
-      if ((m.author || '').trim()) meta.author = m.author.trim();
-      // logo: use an already-published header path if we have one
-      if (m.header) meta.logo = 'https://botchomebrew.wiki/assets/' + m.header;
-      var arr = [meta];
-      chars.forEach(function (c) {
-        // Official roles export as their bare id (official tools re-fetch the data);
-        // homebrew characters export as a full object.
-        if (c.official) { arr.push(c.slug.replace(/^off-/, '')); return; }
-        if (window.buildSchema) arr.push(window.buildSchema(c));
-      });
-      return JSON.stringify(arr, null, 2);
+      return window.PageRender.buildPageExport(
+        (m.name || '').trim() || 'My Homebrew Script',
+        (m.author || '').trim(), m.header || '', rosterChars(), m,
+        { credits: creditsFabled() });
     }
 
     function download(filename, text) {
@@ -346,9 +622,15 @@
       var rm = e.target.closest('.sb-script-remove');
       if (rm) removeSlug(rm.getAttribute('data-slug'));
     });
-    document.getElementById('sb-filter').addEventListener('input', function () {
-      renderSidebar(this.value);
-    });
+    (function () {
+      var cb = document.getElementById('sb-credits-detail');
+      if (!cb) return;
+      cb.checked = creditsDetailed();
+      cb.addEventListener('change', function () {
+        setCreditsDetailed(this.checked);
+        renderCredits();
+      });
+    })();
     document.getElementById('sb-export').addEventListener('click', function () {
       if (!getScript().length) { alert('Your script is empty.'); return; }
       var fname = (getMeta().name || 'homebrew-script').trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'homebrew-script';
@@ -412,6 +694,9 @@
         }
         return arr;
       }
+      // Homebrew only, deliberately: 180-odd official characters in the pool
+      // would swamp a random homebrew script. Add officials by hand from the
+      // sidebar.
       var byTeam = {};
       allChars.forEach(function (c) {
         if (!byTeam[c.team]) byTeam[c.team] = [];
@@ -464,6 +749,9 @@
         var id = (typeof entry === 'string') ? entry : (entry && entry.id);
         if (!id || id === '_meta') return;
         var key = String(id).toLowerCase().replace(/[^a-z0-9]/g, '');
+        // Our own credits Fabled: rebuilt on every export, so importing a
+        // script this builder wrote must not report it as unrecognised.
+        if (key === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
         var slug = map[key];
         if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
         else { missing.push((entry && entry.name) || id); }
@@ -508,21 +796,21 @@
     // to allChars, so the Add sidebar and Randomize stay homebrew-only. Non-fatal.
     function slugify(x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
     function loadOfficial() {
-      return fetch('assets/roles.json')
-        .then(function (r) { return r.json(); })
-        .then(function (roles) {
-          (roles || []).forEach(function (role) {
-            if (!role || !role.id) return;
-            var id = slugify(role.id);
-            var c = {
-              slug: 'off-' + id, official: true, id: role.id,
-              name: role.name || role.id, team: role.team || '',
-              ability: role.ability || '', image: role.image || '',
-              page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(role.name || role.id).replace(/ /g, '_'))
-            };
+      // roles.json + night-order.json, merged by official-roles.js: the same
+      // objects the Worker builds for a script page, night positions included.
+      return Promise.all([
+        fetch('assets/roles.json').then(function (r) { return r.json(); }),
+        fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; })
+      ])
+        .then(function (both) {
+          window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function (c) {
             officialChars.push(c);
             bySlug[c.slug] = c;
           });
+          // The non-character steps of the night sheet (dusk, minion info,
+          // demon info, dawn), which the export needs to write a night
+          // sequence the official app can follow.
+          if (window.PageRender && both[1]) window.PageRender.setNightMeta(both[1].meta);
         })
         .catch(function () { /* officials just won't resolve */ });
     }
@@ -559,6 +847,12 @@
           } catch (e) { /* malformed share payload -> plain builder */ }
           history.replaceState(null, '', location.pathname);
         }
+        // The sidebar is built once, then filtered in place, so the filter
+        // box is mounted here, after its rows exist, and never again.
+        renderSidebar();
+        mountSidebarFilters();
+        mountNightEditor();
+        mountJinxEditor();
         renderAll();
       })
       .catch(function () {

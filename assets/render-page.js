@@ -166,6 +166,14 @@
     if (/^https?:/i.test(p)) return p;
     return root + p.replace(/\.html$/, '');
   }
+  /* An official character has no page here, so its name links to the official
+     wiki: another site, so a new tab, and a mark saying so. */
+  function offsite(c) {
+    return c && c.official ? ' target="_blank" rel="noopener"' : '';
+  }
+  function offMark(c) {
+    return c && c.official ? ' <span class="script-char-off" title="Official character; opens the official wiki">&#8599;</span>' : '';
+  }
 
   function sech(id, title) {
     return '<div class="gen-sech-wrap" id="' + id + '"><h2 class="gen-sech">' +
@@ -191,9 +199,9 @@
         t[1] + ' <span class="script-team-count">(' + grp.length + ')</span></h3>' +
         '<div class="script-char-list">';
       grp.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '">' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
-          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + '</span>' +
+          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
       html += '</div></div>';
@@ -205,9 +213,9 @@
     if (other.length) {
       html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
-        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '">' +
+        html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
           '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="">' +
-          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + '</span>' +
+          '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
       html += '</div></div>';
@@ -246,35 +254,36 @@
       var label = '';
       for (var i = 0; i < TEAMS.length; i++) { if (TEAMS[i][0] === c.team) { label = TEAMS[i][1]; break; } }
       if (!label) label = c.team || '';
-      // data-partial / data-starlight let card-filters.js offer the Show
-      // Partial and Starlight-only chips. `classification` is stamped by the
+      // data-partial / data-curata let card-filters.js offer the Show
+      // Partial and Curata-only chips. `classification` is stamped by the
       // Worker on every row it serves (buildPublicJSON / /api/user), so it is
       // already here — this file never needs classify.js of its own.
       var cls = c.classification || '';
-      var starred = !!(c.starlight || cls === 'starlight');
-      // Marks on the name: the Starlight star (same bare glyph as everywhere
-      // else) and, on a creator page's drafts, what is still unpublished.
+      var hasCurata = !!(c.curata || cls === 'curata');
+      // Marks on the name: the Curata wreath (the same bare mark as
+      // everywhere else) and, on a creator page's drafts, what is still
+      // unpublished.
       var marks =
         (c.status === 'draft'
           ? '<span class="draft-mark" title="Unpublished — only its owner and the admins can see this page.">Draft</span>' : '') +
-        (starred
-          ? '<span class="starlight-star" title="' +
-            (c.starlightFrom
-              ? 'Starlight — part of the ' + esc(c.starlightFrom) + ' collection.'
+        (hasCurata
+          ? '<span class="curata-mark" role="img" title="' +
+            (c.curataFrom
+              ? 'Curata — part of the ' + esc(c.curataFrom) + ' collection.'
               : 'Awarded by the wiki admins. Shown more often on the homepage and in Featured picks.') +
-            '" aria-label="Starlight">✦</span>' : '');
+            '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
         ' data-name="' + esc(c.name || '') + '"' +
-        // Starlight wins over Partial (same rule as Classify.isPartial): a
-        // character can be stamped 'partial' and then inherit the star from a
-        // Starlight collection, and an admin-blessed page is never hidden
+        // Curata wins over Partial (same rule as Classify.isPartial): a
+        // character can be stamped 'partial' and then inherit the wreath from a
+        // Curata collection, and an admin-blessed page is never hidden
         // behind the Show Partial chip.
-        (cls === 'partial' && !starred ? ' data-partial="1"' : '') +
-        (starred ? ' data-starlight="1"' : '') +
+        (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
+        (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
         '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
@@ -304,39 +313,196 @@
     return html;
   }
 
-  function renderJinxGroup(entries) {
+  /* Jinxes between a character on this script and an OFFICIAL character that
+     is ALSO on it. findScriptJinxes only pairs two wiki characters, and a
+     roster slug this wiki has no row for lands in cfg.missing as a bare name,
+     so those pairs were invisible here. */
+  function officialJinxesOnScript(entries, missing, root) {
+    if (!missing || !missing.length) return [];
+    var resolve = dep('resolveJinxTarget');
+    var normJinxId = dep('normJinxId');
+    if (!resolve || !normJinxId) return [];
+    var onScript = {};
+    missing.forEach(function (n) { var k = normJinxId(n); if (k) onScript[k] = n; });
+
+    var out = [], seen = {};
+    entries.forEach(function (c) {
+      (c.jinxes || []).forEach(function (j) {
+        var t = resolve(j, root);
+        if (!t.external) return;                 // a wiki pair, already listed
+        var key = normJinxId(t.name);
+        if (!onScript[key]) return;
+        var id = c.slug + '|' + key;
+        if (seen[id]) return;
+        seen[id] = 1;
+        out.push({ a: c, target: t, text: j.text || j.reason || '' });
+      });
+    });
+    return out;
+  }
+
+  /* Bootlegger rules: the official schema's `_meta.bootlegger`, house rules
+     the app prints with the script. On the page too, or a reader would only
+     find them by opening the JSON. */
+  function renderBootlegger(rules) {
+    var list = (rules || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
+    if (!list.length) return '';
+    return '<div class="sv-section sv-bootlegger" id="sec-bootlegger">' +
+      sech('sec-bootlegger', 'House Rules') +
+      '<ul class="sv-boot-list">' + list.map(function (r) {
+        return '<li>' + tok(r) + '</li>';
+      }).join('') + '</ul></div>';
+  }
+
+  /* ── jinxes on one script, and the single source of truth for them ──
+     A jinx normally belongs to the characters: both editors write it into the
+     character's own `jinxes`, and findScriptJinxes finds the pairs where both
+     ends are on this script. That is right for a rule the character carries
+     everywhere, and wrong for a script that wants to drop one or add a rule
+     that only holds here, so a script may carry `jinxEdits`:
+
+       {off: ["slugA|slugB"], add: [{a: slug, b: slug, text: "…"}]}
+
+     `off` names an inherited pair to leave out; `add` is this script's own.
+     The pair key is the two slugs sorted and joined with "|", so it reads the
+     same whichever end the jinx was written on. Nothing is written back to
+     the characters, so another script keeps whatever they say.
+
+     The page renders through this, both editors edit through it, and the
+     exported JSON is built from it, so all three agree. */
+  function jinxKey(a, b) { return [a, b].sort().join('|'); }
+
+  function scriptJinxes(entries, edits) {
     var findScriptJinxes = dep('findScriptJinxes');
-    var jinxes = findScriptJinxes ? findScriptJinxes(entries) : [];
-    if (!jinxes.length) return '';
-    var html = '<div class="script-team-group" id="sec-jinxes"><h3 class="script-team-head">Jinxes <span class="script-team-count">(' + jinxes.length + ')</span></h3>' +
+    var list = findScriptJinxes ? findScriptJinxes(entries || []) : [];
+    edits = edits || {};
+    var off = {};
+    (Array.isArray(edits.off) ? edits.off : []).forEach(function (k) { off[k] = 1; });
+    var out = list.filter(function (j) {
+      return !off[jinxKey(j.a.slug || j.a.name, j.b.slug || j.b.name)];
+    }).map(function (j) {
+      return { a: j.a, b: j.b, text: j.text, custom: false };
+    });
+    var bySlug = {};
+    (entries || []).forEach(function (c) { bySlug[c.slug] = c; });
+    (Array.isArray(edits.add) ? edits.add : []).forEach(function (j) {
+      var a = bySlug[j && j.a], b = bySlug[j && j.b];
+      // A jinx whose other half has left the roster simply stops applying.
+      // Not an error, and the entry stays put in case it comes back.
+      if (!a || !b || a === b) return;
+      out.push({ a: a, b: b, text: (j.text || '').trim(), custom: true });
+    });
+    return out;
+  }
+
+  /* One script's jinxes, from both directions at once:
+
+       - scriptJinxes() covers every pair the roster holds, with this script's
+         own edits applied. Official characters resolve into the roster now
+         (official-roles.js), so an official/homebrew pair comes through here
+         and can be switched off or rewritten like any other.
+       - officialJinxesOnScript() covers the ones that cannot: a roster slug
+         this wiki has no row for at all, which lands in `missing` as a bare
+         name. Those are read-only: there is no page on either side to hang
+         an edit off. */
+  function renderJinxGroup(entries, root, missing, edits) {
+    root = root || '';
+    var jinxes = scriptJinxes(entries, edits);
+    var official = officialJinxesOnScript(entries, missing, root);
+    if (!jinxes.length && !official.length) return '';
+    var html = '<div class="script-team-group" id="sec-jinxes"><h3 class="script-team-head">Jinxes <span class="script-team-count">(' +
+      (jinxes.length + official.length) + ')</span></h3>' +
       '<div class="script-char-list">';
+    function side(c) {
+      return '<a class="jx-pair-side" href="' + esc(charHref(c, root)) + '">' +
+        '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' + esc(artSrc(c, root)) + '" alt=""' +
+        ' onerror="this.style.display=\'none\'">' +
+        '<span class="jx-pair-name">' + esc(c.name) + '</span></a>';
+    }
     jinxes.forEach(function (j) {
-      html += '<div class="script-char-row"><div class="script-char-text">' +
-        '<span class="script-char-name">' + esc(j.a.name) + ' ↔ ' + esc(j.b.name) + '</span>' +
+      html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
+        '<span class="script-char-name jx-pair">' +
+          side(j.a) + '<span class="jx-pair-link">&harr;</span>' + side(j.b) +
+        '</span>' +
+        '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
+    });
+    official.forEach(function (j) {
+      html += '<div class="script-char-row jx-pair-row"><div class="script-char-text">' +
+        '<span class="script-char-name jx-pair">' +
+          side(j.a) + '<span class="jx-pair-link">&harr;</span>' +
+          '<a class="jx-pair-side" href="' + esc(j.target.href) + '" target="_blank" rel="noopener noreferrer">' +
+            (j.target.iconSrc ? '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' +
+              esc(j.target.iconSrc) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+            '<span class="jx-pair-name">' + esc(j.target.name) + '</span></a>' +
+        '</span>' +
         '<span class="script-char-ability">' + esc(j.text) + '</span></div></div>';
     });
     return html + '</div></div>';
   }
 
-  function renderNightOrder(entries, root) {
+  /* ── the night order, and the single source of truth for it ──
+     The page renders through this and publish-script.html arranges through
+     it, so the list the owner drags around IS the list a reader sees, the
+     same rule sortCollectionMembers follows for a collection's roster.
+
+     Who acts is never a choice: a character wakes if its own firstNight /
+     otherNight is above zero, and the numbers come from the character (for
+     official ones, from assets/night-order.json, merged in by
+     official-roles.js). What the owner may change is the ORDER, kept on the
+     script as `nightOrder: {first: [slug], other: [slug]}`.
+
+     A character the arrangement has not heard of, added since it was last
+     saved, is not dumped at the end: it slots in after the last arranged
+     character that acts before it does, by night number. */
+  function nightItems(entries, order) {
     var buildSchema = dep('buildSchema');
-    if (!buildSchema) return '';
+    if (!buildSchema) return { first: [], other: [] };
     var first = [], other = [];
-    entries.forEach(function (c) {
+    (entries || []).forEach(function (c) {
       var s;
       try { s = buildSchema(c); } catch (e) { return; }
       if (s.firstNight > 0) first.push({ c: c, n: s.firstNight, r: s.firstNightReminder || '' });
       if (s.otherNight > 0) other.push({ c: c, n: s.otherNight, r: s.otherNightReminder || '' });
     });
+    order = order || {};
+    return {
+      first: sortNightItems(first, order.first),
+      other: sortNightItems(other, order.other)
+    };
+  }
+
+  function sortNightItems(items, orderList) {
+    var idx = {};
+    (Array.isArray(orderList) ? orderList : []).forEach(function (slug, i) {
+      if (idx[slug] == null) idx[slug] = i;
+    });
+    var arranged = items.filter(function (it) { return idx[it.c.slug] != null; })
+      .sort(function (a, b) { return idx[a.c.slug] - idx[b.c.slug]; });
+    var keyed = arranged.map(function (it, i) { return { it: it, key: i }; });
+    items.forEach(function (it) {
+      if (idx[it.c.slug] != null) return;
+      var key = -0.5;                    // acts before everything arranged
+      for (var i = 0; i < arranged.length; i++) {
+        if (arranged[i].n <= it.n) key = i + 0.5;
+      }
+      keyed.push({ it: it, key: key });
+    });
+    return keyed.sort(function (a, b) {
+      return a.key - b.key || a.it.n - b.it.n ||
+        (a.it.c.name || '').localeCompare(b.it.c.name || '');
+    }).map(function (x) { return x.it; });
+  }
+
+  function renderNightOrder(entries, root, order) {
+    var lists = nightItems(entries, order);
+    var first = lists.first, other = lists.other;
     if (!first.length && !other.length) return '';
-    function cmp(a, b) { return a.n - b.n || (a.c.name || '').localeCompare(b.c.name || ''); }
-    first.sort(cmp); other.sort(cmp);
     function list(items) {
       if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
         return '<li class="sv-night-item">' +
           '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(artSrc(it.c, root)) + '" alt="" onerror="this.style.display=\'none\'">' +
-          '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '">' + esc(it.c.name) + '</a>' +
+          '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '"' + offsite(it.c) + '>' + esc(it.c.name) + offMark(it.c) + '</a>' +
           (it.r ? '<span class="sv-night-reminder">' + esc(it.r) + '</span>' : '') +
           '</div></li>';
       }).join('') + '</ol>';
@@ -415,13 +581,13 @@
       '<dl class="info">' + rows + '</dl></div>';
   }
 
-  /* Starlight row for the Information box. Admin-awarded (assets/classify.js);
+  /* Curata row for the Information box. Admin-awarded (assets/classify.js);
      Standard pages show nothing, which is the point of Standard. */
-  function starlightRow(d) {
-    if (!d || !d.starlight) return [];
-    return ['<dt>Status:</dt><dd><span class="starlight-star" ' +
+  function curataRow(d) {
+    if (!d || !d.curata) return [];
+    return ['<dt>Status:</dt><dd><span class="curata-mark" ' +
       'title="Awarded by the wiki admins. Shown more often on the homepage and in Featured picks." ' +
-      'aria-label="Starlight">\u2726</span> Starlight</dd>'];
+      'aria-label="Curata"></span> Curata</dd>'];
   }
 
   function renderJsonPanel(jsonText, actions, label, collapsed) {
@@ -437,18 +603,161 @@
       }).join('');
   }
 
+  /* The id the exported JSON uses for a character, the same one buildSchema
+     writes, so a jinx can point at it. */
+  function exportId(c) {
+    var slugId = dep('slugId');
+    return c.jsonId || (slugId ? slugId(c.name) : String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+  }
+
+  /* Per-character jinx lists for the export, but ONLY for the characters this
+     script's own jinx edits actually touch. Everyone else exports exactly what
+     they always did. Returns null when the script has no jinx edits at all. */
+  function jinxExportMap(entries, edits) {
+    edits = edits || {};
+    var off = Array.isArray(edits.off) ? edits.off : [];
+    var add = Array.isArray(edits.add) ? edits.add : [];
+    if (!off.length && !add.length) return null;
+
+    var bySlug = {}, byId = {};
+    (entries || []).forEach(function (c) {
+      bySlug[c.slug] = c;
+      byId[exportId(c)] = c;
+      byId[String(c.slug || '').replace(/-/g, '')] = c;
+    });
+    var touched = {};
+    off.forEach(function (k) {
+      String(k).split('|').forEach(function (s) { if (bySlug[s]) touched[s] = 1; });
+    });
+    add.forEach(function (j) { if (j && bySlug[j.a]) touched[j.a] = 1; });
+
+    var final = scriptJinxes(entries, edits);
+    var map = {};
+    Object.keys(touched).forEach(function (slug) {
+      var c = bySlug[slug];
+      // Jinxes this character carries with someone who is NOT on this script
+      // stay exactly as written: they are part of the character, and this
+      // script has no business editing them out of it.
+      var kept = (c.jinxes || []).filter(function (j) {
+        var idKey = String(j.id || j.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return !byId[idKey];
+      }).map(function (j) {
+        return { id: j.id || exportId({ name: j.name }), reason: j.text || j.reason || '' };
+      });
+      final.forEach(function (j) {
+        if (j.a !== c) return;
+        kept.push({ id: exportId(j.b), reason: j.text });
+      });
+      // Only characters whose jinxes actually CHANGED go in the map. Switching
+      // a jinx off touches both ends of the pair, but the text usually lives
+      // on one of them, and forcing the other into the map would export an
+      // official character as a full object, quietly replacing the app's own
+      // copy of it to say nothing at all.
+      var before = JSON.stringify((c.jinxes || []).map(function (j) {
+        return [j.id || '', j.text || j.reason || ''];
+      }));
+      var after = JSON.stringify(kept.map(function (j) {
+        return [j.id || '', j.reason || ''];
+      }));
+      if (before !== after) map[slug] = { list: kept };
+    });
+    return map;
+  }
+
+  /* _meta.firstNight / _meta.otherNight: the night as a list of ids, which is
+     how the official app is told a script's own order. Only written for a
+     script whose owner arranged one. Left out, the app reads each character's
+     own number and reaches the same answer.
+
+     The night is not only characters: dusk opens it, dawn closes it, and the
+     first night has the minion and demon info steps in the middle. Those
+     positions live in assets/night-order.json (`meta`) and are handed in by
+     whoever loaded that file; without them this returns null rather than
+     write a sequence that would silently drop those steps from the app's
+     night sheet. */
+  var NIGHT_META = null;
+  function setNightMeta(list) { NIGHT_META = Array.isArray(list) ? list : null; }
+
+  function nightSequences(entries, nightOrder) {
+    if (!nightOrder || (!(nightOrder.first || []).length && !(nightOrder.other || []).length)) return null;
+    if (!NIGHT_META || !NIGHT_META.length) return null;
+    var lists = nightItems(entries, nightOrder);
+    // `which` names the list ('first' / 'other'); the markers carry their
+    // positions under the character field names ('firstNight' / 'otherNight').
+    function seq(which) {
+      var field = which === 'first' ? 'firstNight' : 'otherNight';
+      var marks = NIGHT_META.map(function (m) {
+        return { id: m.id, n: Number(m[field]) };
+      }).filter(function (m) { return isFinite(m.n); });
+      var out = [];
+      var items = lists[which].map(function (it) { return { id: exportId(it.c), n: it.n }; });
+      // Each marker goes in front of the first character that acts after it.
+      marks.sort(function (a, b) { return a.n - b.n; });
+      var mi = 0;
+      items.forEach(function (it) {
+        while (mi < marks.length && marks[mi].n <= it.n) out.push(marks[mi++].id);
+        out.push(it.id);
+      });
+      while (mi < marks.length) out.push(marks[mi++].id);
+      return out;
+    }
+    return { first: seq('first'), other: seq('other') };
+  }
+
   /* Official-schema export: [_meta, ...characters]. Official roles export as
-     their bare id; homebrew characters as full objects (same as the builder). */
-  function buildPageExport(name, author, headerPath, entries) {
+     their bare id; homebrew characters as full objects (same as the builder).
+
+     `sc` is the script itself (optional; collections pass nothing), and fills
+     in the rest of the _meta the official app reads:
+     background, hideTitle, almanac, bootlegger, and the firstNight /
+     otherNight sequences. See the schema at
+     github.com/ThePandemoniumInstitute/botc-release.
+
+     Two things here are not just copying fields across:
+
+     - The night sequences are only written when the script's owner actually
+       arranged one. Left out, the app orders the night by each character's
+       own number, which is the same answer. Writing it out anyway would
+       freeze today's answer into the file.
+     - A script's own jinxes (jinxEdits) have to be pushed back onto the
+       CHARACTERS, because that is where the app reads jinxes from. A character
+       that gains or loses one this way is rebuilt from the script's list; one
+       the script never touched is exported exactly as it always was. An
+       official character normally exports as a bare id, but if this script
+       gives it a jinx the bare id has nowhere to carry it, so that one is
+       written out in full.
+     - `opts.credits` appends one extra entry at the very end — the
+       botchomebrew.wiki credits Fabled (buildCreditsFabled in render.js). Only
+       the Script Builder passes it: a published page's JSON box is the
+       author's own script and never carries the wiki's signature. */
+  function buildPageExport(name, author, headerPath, entries, sc, opts) {
     var buildSchema = dep('buildSchema');
+    sc = sc || {};
+    opts = opts || {};
     var meta = { id: '_meta', name: name || 'Homebrew Script' };
     if (author) meta.author = author;
     if (headerPath) meta.logo = 'https://botchomebrew.wiki/assets/' + headerPath;
+    var bg = sc.theme && sc.theme.background;
+    if (bg) meta.background = 'https://botchomebrew.wiki/assets/' + bg;
+    if (sc.hideTitle) meta.hideTitle = true;
+    if (sc.almanac) meta.almanac = sc.almanac;
+    var boot = (sc.bootlegger || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
+    if (boot.length) meta.bootlegger = boot;
+
+    var jinxMap = jinxExportMap(entries, sc.jinxEdits);
     var arr = [meta];
     entries.forEach(function (c) {
-      if (c.official) { arr.push(String(c.slug).replace(/^off-/, '')); return; }
-      if (buildSchema) arr.push(buildSchema(c));
+      var own = jinxMap && jinxMap[c.slug];
+      if (c.official && !own) { arr.push(String(c.slug).replace(/^off-/, '')); return; }
+      if (!buildSchema) return;
+      var src = c;
+      if (own) { src = {}; for (var k in c) src[k] = c[k]; src.jinxes = own.list; }
+      arr.push(buildSchema(src));
     });
+    var seq = nightSequences(entries, sc.nightOrder);
+    if (seq) { meta.firstNight = seq.first; meta.otherNight = seq.other; }
+    // Last, so it reads as the script's footer and never joins a night list.
+    if (opts.credits) arr.push(opts.credits);
     return JSON.stringify(arr, null, 2);
   }
 
@@ -466,6 +775,40 @@
         ? '<a class="cta-secondary wiki-pages-new" href="' + esc(newPageHref) + '">+ Write a page</a>'
         : '') +
       '</div>';
+  }
+
+  /* ── owner's edit bar ──
+     The pencil in the top bar is easy to miss, and was the only way in: the
+     alternative was the account page and a long scroll. The Worker decides who
+     gets this and passes the href in; an empty one renders nothing, so it is
+     never shown to a reader the API would refuse. */
+  function ownerBar(editHref, label) {
+    if (!editHref) return '';
+    return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
+      esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
+  }
+
+  /* A Status-box row for a script or collection its creator opened up, with
+     the link to its edit log. Characters say the same in their own info box
+     (openEditRow in render.js). Only an opened page says anything, which is
+     how anybody finds out they are welcome to help. */
+  var OPEN_EDIT_TEXT = {
+    all: ['open to all', 'anyone with an account can edit this page. '],
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
+    // Named accounts, not an open door — see the same table in render.js.
+    approved: ['shared', 'the creator has named the people who may edit this page. ']
+  };
+  function openEditRows(d, root, type) {
+    var t = OPEN_EDIT_TEXT[d.publicEdit];
+    if (!t) return [];
+    var key = type === 'script' ? (d.slug || '') : (d.id || d.slug || '');
+    var q = 'type=' + esc(type) + '&amp;slug=' + encodeURIComponent(key);
+    var links = '<a class="hist-page-link" href="' + esc(root) + 'history?' + q + '">Edit history</a>';
+    if (d.publicEdit === 'suggest') {
+      links = '<a class="hist-page-link" href="' + esc(root) + 'suggestions?' + q + '">Suggestions</a> ' + links;
+    }
+    return ['<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
+      t[1] + links + '</dd>'];
   }
 
   /* ── shared page body ── */
@@ -487,6 +830,7 @@
     if (cfg.version) metaParts.push('v' + esc(String(cfg.version).replace(/^v/i, '')));
     if (cfg.difficulty && DIFFICULTY_LABEL[cfg.difficulty]) metaParts.push(DIFFICULTY_LABEL[cfg.difficulty]);
     top += '<p class="script-meta-line">' + metaParts.join(' · ') + '</p>';
+    top += ownerBar(cfg.editHref, 'Edit this script');
 
     var main = '';
     if (cfg.synopsis) main += '<div class="sv-section">' + sech('sec-synopsis', 'Synopsis') + prose(cfg.synopsis) + '</div>';
@@ -500,8 +844,9 @@
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
       renderRoster(cfg.entries, root) +
-      renderJinxGroup(cfg.entries) + '</div>';
-    main += renderNightOrder(cfg.entries, root);
+      renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits) + '</div>';
+    main += renderBootlegger(cfg.bootlegger);
+    main += renderNightOrder(cfg.entries, root, cfg.nightOrder);
     if (cfg.missing && cfg.missing.length) {
       main += '<p class="script-missing">⚠ ' + cfg.missing.length + ' character' + (cfg.missing.length === 1 ? '' : 's') + ' on this page ' +
         (cfg.missing.length === 1 ? 'is' : 'are') + ' not in the wiki: ' + cfg.missing.map(esc).join(', ') + '</p>';
@@ -538,6 +883,7 @@
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
+    top += ownerBar(cfg.editHref, 'Edit this collection');
 
     // Information + JSON/tokens boxes — moved to the top. The author credit
     // lives prominently inside the Information box (linked to their page).
@@ -571,7 +917,7 @@
     var chars = '<section class="coll-chars" id="sec-characters">' + count +
       '<div id="coll-grid">' + renderRosterCards(cfg.entries, root, cfg.orderMap) + '</div></section>';
 
-    var jinx = renderJinxGroup(cfg.entries);
+    var jinx = renderJinxGroup(cfg.entries, root, cfg.missing, cfg.jinxEdits);
     var jinxPanel = jinx ? '<section class="script-chars-panel coll-jinx">' + jinx + '</section>' : '';
 
     return top + meta + prosePanel + filters + chars + jinxPanel;
@@ -585,7 +931,7 @@
     (allChars || []).forEach(function (c) { bySlug[c.slug] = c; });
     var entries = (sc.characters || []).map(function (s) { return bySlug[s]; }).filter(Boolean);
     var missing = (sc.characters || []).filter(function (s) { return !bySlug[s]; });
-    var jsonText = buildPageExport(sc.name, sc.author, sc.header, entries);
+    var jsonText = buildPageExport(sc.name, sc.author, sc.header, entries, sc);
 
     var share = b64url(JSON.stringify({ n: sc.name || '', a: sc.author || '', c: (sc.characters || []) }));
     var actions = [
@@ -599,9 +945,10 @@
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
       entries: entries, missing: missing, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Script JSON',
+      jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
+      jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(sc)
+      extraInfoRows: curataRow(sc).concat(openEditRows(sc, root, 'script'))
     });
   }
 
@@ -626,9 +973,9 @@
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
-      jsonLabel: 'Collection JSON',
+      jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: starlightRow(coll)
+      extraInfoRows: curataRow(coll).concat(openEditRows(coll, root, 'collection'))
     });
   }
 
@@ -637,7 +984,11 @@
     renderScriptPage: renderScriptPage,
     renderCollectionPage: renderCollectionPage,
     renderRosterCards: renderRosterCards,
+    nightItems: nightItems,
     filterBoxHTML: filterBoxHTML,
+    scriptJinxes: scriptJinxes,
+    jinxKey: jinxKey,
+    setNightMeta: setNightMeta,
     resolveCollectionMembers: resolveCollectionMembers,
     sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,

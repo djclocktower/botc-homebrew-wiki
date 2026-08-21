@@ -1,5 +1,5 @@
 /* Page classification — the single source of truth for Partial / Standard /
-   Starlight.
+   Curata.
 
    Used in the browser (all-characters, tag/team/author pages, the homepage,
    the create/edit editors, the dashboard) AND bundled into the Worker, which
@@ -21,9 +21,9 @@
              Syncretastrophy, and the 31 Fabled left are ordinary characters
              with icons and almanacs like any other.
    standard  Every requirement met. No badge, nothing to earn.
-   starlight Admin-awarded, on characters, collections or scripts. Weighted
+   curata Admin-awarded, on characters, collections or scripts. Weighted
              higher in Featured / random picks and filterable on its own.
-             Starlight OVERRIDES Partial: an admin has looked at the page, so
+             Curata OVERRIDES Partial: an admin has looked at the page, so
              it is never also flagged unfinished.
 
    Two different bars
@@ -35,8 +35,8 @@
    Everything in the publish bar is also in the standard bar, so a published
    page can only ever be missing the almanac half.
 
-   Nothing here is stored except `starlight` (a boolean in the page's data
-   JSON, writable only through /api/admin/starlight). partial vs standard is
+   Nothing here is stored except `curata` (a boolean in the page's data
+   JSON, writable only through /api/admin/curata). partial vs standard is
    derived from the content every time, so a page upgrades itself the moment
    its owner adds a tag or a line of almanac text — no migration, no cron.
 
@@ -163,13 +163,13 @@
     return false;
   }
 
-  function isStarlight(d) {
-    return !!(d && d.starlight);
+  function isCurata(d) {
+    return !!(d && d.curata);
   }
 
   /* Incomplete = some part of a finished almanac entry is still missing.
-     This asks only about the content, so a Starlight page can be incomplete
-     — and often is, because Starlight is frequently inherited from a
+     This asks only about the content, so a Curata page can be incomplete
+     — and often is, because Curata is frequently inherited from a
      collection rather than earned page by page. It drives the notice the
      Worker shows the page's OWNER (partialNoticeHTML in worker.js), who is
      the one person who can act on it.
@@ -196,26 +196,26 @@
      Rows built in an editor carry no stamp and are computed as normal. */
   function stampedClass(d) {
     var c = d && d.classification;
-    return (c === 'partial' || c === 'standard' || c === 'starlight') ? c : '';
+    return (c === 'partial' || c === 'standard' || c === 'curata') ? c : '';
   }
 
   /* Partial is the PUBLIC tier: incomplete, and not lifted out of it by
-     Starlight. Starlight still wins here — an admin has looked at the page,
+     Curata. Curata still wins here — an admin has looked at the page,
      so readers are never told it is unfinished and it keeps its place in
      browsing. Only the owner's notice uses isIncomplete instead.
-     isStarlight is asked first, and before the stamp: Starlight inherited
+     isCurata is asked first, and before the stamp: Curata inherited
      from a collection is applied after the row was classified, so a row can
-     be stamped 'partial' and still be Starlight by the time a reader sees it. */
+     be stamped 'partial' and still be Curata by the time a reader sees it. */
   function isPartial(d) {
-    if (!d || isStarlight(d)) return false;
+    if (!d || isCurata(d)) return false;
     var stamp = stampedClass(d);
     if (stamp) return stamp === 'partial';
     return isIncomplete(d);
   }
 
-  /* 'starlight' | 'partial' | 'standard' for a character. */
+  /* 'curata' | 'partial' | 'standard' for a character. */
   function classifyCharacter(d) {
-    if (isStarlight(d)) return 'starlight';
+    if (isCurata(d)) return 'curata';
     if (isPartial(d)) return 'partial';
     return 'standard';
   }
@@ -224,7 +224,7 @@
      no tags of their own, so "Partial" would be meaningless for them. */
   function classifyPage(d, type) {
     if (type === 'character') return classifyCharacter(d);
-    return isStarlight(d) ? 'starlight' : 'standard';
+    return isCurata(d) ? 'curata' : 'standard';
   }
 
   /* What still needs doing before a page counts as Standard. Drives the
@@ -235,29 +235,33 @@
   var LABELS = {
     partial: 'Partial',
     standard: 'Standard',
-    starlight: 'Starlight'
+    curata: 'Curata'
   };
   var DESCRIPTIONS = {
     partial: 'Unfinished — still missing part of its almanac entry. Hidden ' +
              'from browsing unless the “Partial” filter is on.',
     standard: 'A normal, complete page.',
-    starlight: 'Awarded by the wiki admins. Shown more often on the homepage ' +
+    curata: 'Awarded by the wiki admins. Shown more often on the homepage ' +
                'and in Featured picks.'
   };
 
   /* Marks for grids and page headers. Standard pages get nothing — that is
      the whole point of Standard.
 
-     Starlight is a bare star that inherits the surrounding text colour, so
-     it reads as part of the title rather than a pill bolted onto it. Partial
-     stays a word because "unfinished" is not something a glyph can say. */
+     Curata is a bare laurel wreath that inherits the surrounding text colour
+     (it is a CSS mask over currentColor — see .curata-mark in styles.css), so
+     it reads as part of the title rather than a pill bolted onto it. The span
+     is deliberately empty: the wreath is the element's own background, which
+     is what lets it stay an inline box and never wrap onto a line by itself.
+     Partial stays a word because "unfinished" is not something a mark can
+     say. */
   function classBadgeHTML(cls, opts) {
-    if (cls === 'starlight') {
+    if (cls === 'curata') {
       var title = (opts && opts.from)
-        ? 'Starlight — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
-        : DESCRIPTIONS.starlight;
-      return '<span class="starlight-star" title="' + title.replace(/"/g, '&quot;') +
-        '" aria-label="Starlight">\u2726</span>';
+        ? 'Curata — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
+        : DESCRIPTIONS.curata;
+      return '<span class="curata-mark" role="img" title="' +
+        title.replace(/"/g, '&quot;') + '" aria-label="Curata"></span>';
     }
     if (cls === 'partial') {
       return '<span class="page-class page-class-partial" title="' +
@@ -266,11 +270,11 @@
     return '';
   }
 
-  /* Weighted pick used by Featured / random rotations. Starlight entries get
-     STARLIGHT_WEIGHT tickets in the hat instead of one; Partial entries are
+  /* Weighted pick used by Featured / random rotations. Curata entries get
+     CURATA_WEIGHT tickets in the hat instead of one; Partial entries are
      not in the hat at all. `rand` defaults to Math.random so the Worker can
      pass a seeded generator for its daily rotation. */
-  var STARLIGHT_WEIGHT = 5;
+  var CURATA_WEIGHT = 5;
 
   function weightedPick(list, rand) {
     var pool = eligible(list);
@@ -286,7 +290,7 @@
   }
 
   function weightOf(d) {
-    return isStarlight(d) ? STARLIGHT_WEIGHT : 1;
+    return isCurata(d) ? CURATA_WEIGHT : 1;
   }
 
   /* Everything a reader should see by default: drops Partial pages. Only
@@ -297,7 +301,7 @@
     return (list || []).filter(function (d) { return !isPartial(d); });
   }
 
-  /* Shuffle that floats Starlight entries towards the front without pinning
+  /* Shuffle that floats Curata entries towards the front without pinning
      them there — used for the homepage collection/script strips. */
   function weightedShuffle(list, rand) {
     var r = rand || Math.random;
@@ -317,12 +321,12 @@
     canPublish: canPublish, missingForPublish: missingForPublish,
     PUBLISH_REQUIREMENTS: PUBLISH_REQUIREMENTS,
     STANDARD_REQUIREMENTS: STANDARD_REQUIREMENTS,
-    isPartial: isPartial, isIncomplete: isIncomplete, isStarlight: isStarlight,
+    isPartial: isPartial, isIncomplete: isIncomplete, isCurata: isCurata,
     classifyCharacter: classifyCharacter, classifyPage: classifyPage,
     missingBits: missingBits, classBadgeHTML: classBadgeHTML,
     weightedPick: weightedPick, weightedShuffle: weightedShuffle,
     eligible: eligible, weightOf: weightOf,
-    STARLIGHT_WEIGHT: STARLIGHT_WEIGHT,
+    CURATA_WEIGHT: CURATA_WEIGHT,
     CLASS_LABELS: LABELS, CLASS_DESCRIPTIONS: DESCRIPTIONS
   };
 

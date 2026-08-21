@@ -267,6 +267,28 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- Who else may edit this page -->
+    <details class="sb-details" id="sb-open-sec">
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
+      <div class="sb-details-body">
+        <div class="sb-fld">
+          <label for="sb-public-edit">Editing</label>
+          <select id="sb-public-edit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+        <div class="sb-fld" id="sb-editors-fld" style="display:none">
+          <label>Approved editors</label>
+          <div id="sb-editors-box"></div>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included.</p>
+        </div>
+        <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
+      </div>
+    </details>
+
     <!-- Optional page appearance / theme -->
     <details class="sb-details" id="sb-appearance">
       <summary>Page Appearance <span class="sb-sum-arrow">▾</span><span class="sb-sum-sub">Optional — logo, background image, fonts and colors for the collection's wiki page.</span></summary>
@@ -322,6 +344,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/sao.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
   (function () {
     var allChars = [];
@@ -345,6 +368,55 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,''); }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
+
+    /* The modes the <select> offers. Anything else stored on the row reads as
+       closed, and is never silently re-saved as something it is not. */
+    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
+    /* The named-account list behind "Approved editing". Mounted whatever the
+       mode is, so switching away and back keeps the names; shown only while
+       that mode is chosen. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount($('sb-editors-box'), {})
+      : null;
+    function syncEditorsBox(){
+      $('sb-editors-fld').style.display = $('sb-public-edit').value === 'approved' ? '' : 'none';
+    }
+    $('sb-public-edit').addEventListener('change', syncEditorsBox);
+
+    /* Owner-only controls, switched off for anyone else. */
+    // What the Worker said this account may do here, so updateButtons() can
+    // label itself honestly however many times it re-runs.
+    var editRole = 'owner';
+    function applyEditMode(mode, isOwner){
+      editRole = mode || '';
+      if (isOwner && mode === 'owner') return;
+      $('pc-delete').style.display = 'none';
+      // The whole "who can edit" panel goes: the Worker carries the stored
+      // setting and the stored editor list forward whatever a guest posts, so
+      // leaving them editable would be a promise the save breaks.
+      $('sb-open-sec').style.display = 'none';
+      if (mode === 'approved'){
+        pubStatus('ok', currentStatus === 'draft'
+          ? 'The creator made you an editor of this collection. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
+          : 'The creator made you an editor of this collection. Everything here is yours to change; publishing and deleting stay with them.');
+        $('pc-draft').style.display = 'none';
+        updateButtons();   // relabel now that editRole is set
+        return;
+      }
+      if (mode === 'all'){
+        // updateButtons() already labels Publish correctly for the stored
+        // status; only the draft and delete buttons have to go.
+        pubStatus('ok', 'This collection is open for anyone with an account to edit. ' +
+          'Publishing and deleting stay with its creator.');
+        $('pc-draft').style.display = 'none';
+        return;
+      }
+      $('pc-publish').disabled = true;
+      $('pc-draft').disabled = true;
+      pubStatus('err', mode === 'suggest'
+        ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
+        : 'This collection belongs to another account, so you cannot save changes to it.');
+    }
     function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
     function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
@@ -593,7 +665,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     function updateButtons(){
       var pub = $('pc-publish'), draft = $('pc-draft'), pill = $('pub-status-pill');
-      pub.textContent   = currentStatus === 'published' ? '★ Save Changes' : '★ Publish to Wiki';
+      // An approved editor saves the page but never publishes it: the Worker
+      // pins the stored status for anyone but the owner. A button reading
+      // "Publish to Wiki" on a shared draft would be a promise the save
+      // does not keep, so it says what pressing it actually does.
+      pub.textContent   = (editRole === 'approved' || currentStatus === 'published')
+        ? '★ Save Changes' : '★ Publish to Wiki';
       draft.textContent = currentStatus === 'draft' ? 'Save Draft'
                         : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
       pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
@@ -685,6 +762,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           include: include.slice(),
           exclude: exclude.slice(),
           order: order.slice(),
+          publicEdit: $('sb-public-edit').value,
+          editors: editorsUI ? editorsUI.get() : [],
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
@@ -782,6 +861,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           $('pc-strat-evil').value = c.strategyEvil || '';
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
+          // Who else may edit this page (enforced by the Worker, not by the form).
+          $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
+          if (editorsUI) editorsUI.set(c.editors || []);
+          syncEditorsBox();
+          if (c.publicEdit) $('sb-open-sec').open = true;
           loadPages(EDIT_KEY);
           include = (c.include || []).slice();
           exclude = (c.exclude || []).slice();
@@ -811,12 +895,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           updateUrlPreview(); updateButtons(); renderMembers();
           if (window.autosizeTextareas) window.autosizeTextareas();  // fit the just-loaded text
           $('pc-delete').style.display = '';
-          if (res.canEdit === false){
-            pubStatus('err', 'This collection belongs to another account, so you cannot save changes to it.');
-            $('pc-publish').disabled = true;
-            $('pc-draft').disabled = true;
-            $('pc-delete').style.display = 'none';
-          }
+          /* What this account may do here, decided by the Worker. 'owner' is
+             everything; 'all' is a collection its creator opened, where the
+             text is editable but publishing and deleting are not; anything
+             else is read-only, 'suggest' included, because this page has no
+             way to send a suggestion yet. */
+          applyEditMode(res.editMode || (res.canEdit === false ? '' : 'owner'),
+                        res.isOwner !== false);
         })
         .catch(function(){ /* not found -> plain create view */ });
     }

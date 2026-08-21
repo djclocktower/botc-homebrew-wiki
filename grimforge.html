@@ -256,6 +256,61 @@
   color: #1c5429; font-style: italic;
 }
 
+/* ── Scanning a whole script or collection ──────────────────────
+   The findings list above is one ability; this is the same checks over a
+   whole set, as a list you tick. Every checkbox is a fix that will be
+   written to that character's page, so they are sized for a thumb. */
+.gf-scan-pick { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.gf-scan-pick select {
+  flex: 1 1 220px; min-width: 0; padding: 8px 10px; font-size: .92rem;
+  font-family: inherit; border: 1px solid rgba(140,120,90,.65);
+  border-radius: 5px; background: rgba(255,253,245,.9); color: inherit;
+}
+.gf-scan-sub { font-size: .88rem; line-height: 1.45; color: rgba(0,0,0,.68); margin-top: 10px; }
+.gf-scan-sub.err { color: var(--evil); }
+.gf-scan-sub.ok { color: #1c5429; }
+.gf-scan-bar {
+  display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(180,160,120,.5);
+}
+.gf-scan-bar .sb-btn:disabled { opacity: .42; cursor: default; filter: none; }
+.gf-scan-char {
+  border-top: 1px solid rgba(180,160,120,.45);
+  padding: 12px 0 10px;
+}
+.gf-scan-char:first-child { border-top: none; }
+.gf-scan-head {
+  display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; letter-spacing: .02em;
+}
+.gf-scan-head input { margin: 3px 0 0; width: 17px; height: 17px; flex-shrink: 0; }
+.gf-scan-name { font-weight: 600; font-size: 1rem; }
+.gf-scan-name a { color: var(--maroon); text-decoration: none; }
+.gf-scan-name a:hover { text-decoration: underline; }
+.gf-scan-meta {
+  font-family: Georgia, serif; font-size: .82rem; color: rgba(0,0,0,.6);
+  margin-left: auto; text-align: right; flex-shrink: 0;
+}
+.gf-scan-ability {
+  font-size: .88rem; line-height: 1.5; color: rgba(0,0,0,.75);
+  margin: 6px 0 6px 26px; font-style: italic;
+}
+.gf-scan-issues { list-style: none; margin: 0 0 0 26px; padding: 0; }
+.gf-scan-issues li { padding: 3px 0; }
+.gf-scan-issue { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.gf-scan-issue input { margin: 3px 0 0; width: 17px; height: 17px; flex-shrink: 0; }
+.gf-scan-issue.noop { cursor: default; padding-left: 25px; }
+.gf-scan-body { font-size: .88rem; line-height: 1.45; }
+.gf-scan-body .gf-cat { margin-right: 6px; }
+.gf-scan-body s { opacity: .75; }
+.gf-scan-state { font-size: .84rem; margin: 6px 0 0 26px; }
+.gf-scan-state.ok { color: #1c5429; }
+.gf-scan-state.err { color: var(--evil); }
+.gf-scan-more {
+  font-size: .84rem; color: rgba(0,0,0,.6); font-style: italic;
+  margin: 10px 0 0; padding-top: 8px; border-top: 1px dashed rgba(180,160,120,.6);
+}
+
 /* Category chips + rule list */
 .gf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .gf-chip {
@@ -486,6 +541,30 @@
       </div>
     </section>
 
+    <!-- ── SCAN A WHOLE SET ─────────────────────────────────── -->
+    <section class="landing-section">
+      <h2 class="type-header">Scan a Script or Collection</h2>
+      <div class="type-rule"></div>
+      <div class="gf-card">
+        <p class="gf-hint">Run every ability on a set through the checks below, tick the fixes you want, and apply them to the pages in one go. Anything you cannot edit is listed and skipped.</p>
+        <div class="gf-scan-pick">
+          <select id="gf-scan-set" aria-label="Script or collection to scan">
+            <option value="">Loading sets&hellip;</option>
+          </select>
+          <button type="button" class="sb-btn sb-btn-import" id="gf-scan-go">Scan</button>
+        </div>
+        <div class="gf-scan-sub" id="gf-scan-msg">Pick a script or a collection, then Scan.</div>
+
+        <div class="gf-scan-bar" id="gf-scan-bar" hidden>
+          <button type="button" class="gf-mini gf-mini-accept" id="gf-scan-all">Check all</button>
+          <button type="button" class="gf-mini gf-mini-dismiss" id="gf-scan-none">Clear</button>
+          <button type="button" class="sb-btn sb-btn-export" id="gf-scan-apply" disabled>Apply 0 fixes</button>
+        </div>
+
+        <div id="gf-scan-results"></div>
+      </div>
+    </section>
+
     <!-- ── CHECKS ───────────────────────────────────────────── -->
     <section class="landing-section">
       <h2 class="type-header">Checks</h2>
@@ -506,6 +585,8 @@
   <p class="gf-foot-note">Grimoire Forge by Ma'ayan · ruleset drawn from the official corpus, the Main Rulebook and the Homebrewer's Field Guide</p>
 
   <script src="assets/grimforge.js"></script>
+  <!-- resolveCollectionMembers(): the one rule for what a collection contains -->
+  <script src="assets/render-page.js"></script>
   <script>
   (function () {
     var G = window.Grimforge;
@@ -999,7 +1080,7 @@
           credentials: 'same-origin',
           body: JSON.stringify({
             slug: slug, name: name, team: teamBox.value, ability: ability,
-            page: 'c/' + slug + '.html', status: 'draft'
+            status: 'draft'
           })
         }).then(function (r) {
           return r.json().catch(function () { return {}; }).then(function (j) {
@@ -1088,6 +1169,440 @@
       closePop();
     });
     window.addEventListener('resize', closePop);
+
+    /* ── Scanning a whole script or collection ─────────────────
+       The Findings list above is one ability. This is the same rules over a
+       whole set, as a list you tick: check the fixes you want, press Apply,
+       and each one is written to that character's page.
+
+       Three deliberate choices:
+
+       - It reuses the SAME `enabled` rule set as everything else on the page.
+         Switching a category off in Checks below switches it off here, so the
+         scan and the single-ability editor can never disagree.
+       - Only `fix` findings get a checkbox. `warn` findings and whole-text
+         notices are listed underneath, because they are exactly the calls that
+         should not be made in bulk (the official cards disagree with each
+         other on them); nothing on this page will rewrite one for you.
+       - Applying re-lints the ability AS STORED before it writes. The scan may
+         be minutes old and the page may have moved on, so a finding is matched
+         by its `key` (rule + found + suggestion), never by the character
+         offsets the scan happened to see. A fix that no longer applies is
+         reported as already done rather than pushed through. */
+
+    var scanSets = null;      // [{kind, key, name}] from scripts.json/collections.json
+    var scanRows = [];        // one per scanned character that had findings
+    var scanPicked = {};      // slug -> { issueKey: 1 }
+
+    /* Collapse findings that share a `key` — same rule, same words, same
+       replacement — into one entry carrying how many places it covers. */
+    function dedupeByKey(list) {
+      var out = [], at = {};
+      list.forEach(function (i) {
+        if (at[i.key] != null) { out[at[i.key]].count++; return; }
+        at[i.key] = out.length;
+        out.push({ key: i.key, rule: i.rule, sev: i.sev, cat: i.cat, found: i.found,
+                   suggest: i.suggest, note: i.note, count: 1 });
+      });
+      return out;
+    }
+
+    function scanMsg(cls, html) {
+      var el = $('gf-scan-msg');
+      el.className = 'gf-scan-sub' + (cls ? ' ' + cls : '');
+      el.innerHTML = html;
+    }
+
+    /* Scripts and collections are a few KB in total (see CLAUDE.md), so both
+       feeds are fetched on load. characters.json is the big one and stays
+       lazy — loadWikiChars() above already owns it, and the name checker
+       shares the result.
+
+       ?drafts=1 only adds drafts for a logged-in admin; everybody else
+       silently gets the published-only feed, which is what keeps the site from
+       admitting that unpublished pages exist. Same call the name checker
+       makes. */
+    function loadScanSets() {
+      if (scanSets) return Promise.resolve(scanSets);
+      return Promise.all([
+        fetch('scripts.json?drafts=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); }),
+        fetch('collections.json?drafts=1', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+      ]).then(function (both) {
+        function label(name, x) {
+          // `status` only rides along on the admin feed, so this says "(draft)"
+          // exactly where a draft is visible in the first place.
+          return String(name) + (x.status === 'draft' ? ' (draft)' : '');
+        }
+        var scripts = (both[0] || []).map(function (x) {
+          return { kind: 'script', key: String(x.slug || ''),
+                   name: label(x.name || x.slug, x), def: x };
+        }).filter(function (x) { return x.key; });
+        var colls = (both[1] || []).map(function (x) {
+          // A collection is addressed by its kebab id, not its PK slug.
+          return { kind: 'collection', key: String(x.id || x.slug || ''),
+                   name: label(x.displayName || x.name || x.id || x.slug, x), def: x };
+        }).filter(function (x) { return x.key; });
+        function byName(a, b) { return String(a.name).localeCompare(String(b.name)); }
+        scanSets = scripts.sort(byName).concat(colls.sort(byName));
+        var sel = $('gf-scan-set');
+        function group(label, list) {
+          if (!list.length) return '';
+          return '<optgroup label="' + esc(label) + '">' + list.map(function (x) {
+            return '<option value="' + esc(x.kind + ':' + x.key) + '">' + esc(x.name) + '</option>';
+          }).join('') + '</optgroup>';
+        }
+        sel.innerHTML = '<option value="">Pick a script or collection&hellip;</option>' +
+          group('Scripts', scripts.sort(byName)) + group('Collections', colls.sort(byName));
+        return scanSets;
+      }).catch(function () {
+        $('gf-scan-set').innerHTML = '<option value="">Could not load the wiki&rsquo;s sets</option>';
+        return [];
+      });
+    }
+
+    /* The roster of one set, as character objects out of characters.json.
+       A script names its roster by slug; a collection matches on appearsIn
+       plus manual include/exclude, which PageRender owns — resolving it here
+       by hand would be a second copy of the membership rule. */
+    function scanMembers(set, chars) {
+      var bySlug = {};
+      chars.forEach(function (c) { if (c.slug) bySlug[c.slug] = c; });
+      if (set.kind === 'script') {
+        return (set.def.characters || []).map(function (sl) { return bySlug[sl]; })
+          .filter(Boolean);
+      }
+      if (window.PageRender && window.PageRender.resolveCollectionMembers) {
+        return window.PageRender.resolveCollectionMembers(set.def, chars);
+      }
+      return [];
+    }
+
+    function scanCharHref(c) {
+      return c.page ? String(c.page).replace(/\.html$/, '') : ('c/' + c.slug);
+    }
+
+    function runScan() {
+      var raw = $('gf-scan-set').value;
+      if (!raw) { scanMsg('err', 'Pick a script or collection first.'); return; }
+      var set = null;
+      (scanSets || []).forEach(function (x) { if (x.kind + ':' + x.key === raw) set = x; });
+      if (!set) { scanMsg('err', 'That set is no longer on the wiki.'); return; }
+
+      scanMsg('', 'Loading the wiki&rsquo;s characters&hellip;');
+      $('gf-scan-go').disabled = true;
+      loadWikiChars().then(function (chars) {
+        var members = scanMembers(set, chars);
+        // Official characters ride along on a script roster as `off-` slugs and
+        // never reach characters.json, so they are simply not here. Homebrew
+        // pages with no ability yet have nothing to check.
+        var scanned = 0, clean = 0;
+        scanRows = [];
+        scanPicked = {};
+        members.forEach(function (c) {
+          var ability = String(c.ability || '').trim();
+          if (!ability) return;
+          scanned++;
+          var res = G.lint(ability, { enabled: enabled });
+          // One ability can hit the same rule on the same word twice ("pick a
+          // player... pick again"), and both findings carry the same `key`.
+          // The list shows each key ONCE, with how many places it covers,
+          // because that is what ticking it does: applyOne re-lints the stored
+          // ability and applies every finding with that key, so a repeated
+          // wording is corrected everywhere it occurs or nowhere.
+          var fixes = dedupeByKey(res.issues.filter(function (i) {
+            return i.sev === 'fix' && i.suggest !== null && i.suggest !== undefined;
+          }));
+          var warns = dedupeByKey(res.issues.filter(function (i) {
+            return !(i.sev === 'fix' && i.suggest !== null && i.suggest !== undefined);
+          }));
+          if (!fixes.length && !warns.length && !res.notices.length) { clean++; return; }
+          scanRows.push({ char: c, ability: ability, fixes: fixes, warns: warns,
+                          notices: res.notices, state: null });
+        });
+        renderScan(set, scanned, clean, members.length);
+      }).catch(function () {
+        scanMsg('err', 'Could not reach the wiki to load its characters.');
+      }).then(function () {
+        $('gf-scan-go').disabled = false;
+      });
+    }
+
+    function countPicked() {
+      var n = 0;
+      Object.keys(scanPicked).forEach(function (slug) {
+        n += Object.keys(scanPicked[slug]).length;
+      });
+      return n;
+    }
+
+    function issueLine(i) {
+      var swap = (i.suggest === null || i.suggest === undefined)
+        ? '<b>' + esc(i.found) + '</b>'
+        : '<s>' + esc(i.found) + '</s> &rarr; <b>' +
+          (i.suggest === '' ? '(remove)' : esc(i.suggest)) + '</b>';
+      return '<span class="gf-scan-body"><span class="gf-cat" style="color:' + color(i.cat) + '">' +
+        esc(i.cat) + '</span>' + swap +
+        (i.count > 1 ? ' <span class="gf-note">&times;' + i.count + '</span>' : '') +
+        (i.note ? ' <span class="gf-note">&mdash; ' + esc(i.note) + '</span>' : '') + '</span>';
+    }
+
+    function renderScan(set, scanned, clean, total) {
+      var box = $('gf-scan-results');
+      if (!scanned) {
+        $('gf-scan-bar').hidden = true;
+        box.innerHTML = '';
+        scanMsg('err', 'Nothing to check in <strong>' + esc(set.name) + '</strong>' +
+          (total ? ' &mdash; none of its ' + total + ' characters has an ability on the wiki yet.' : '.'));
+        return;
+      }
+      if (!scanRows.length) {
+        $('gf-scan-bar').hidden = true;
+        box.innerHTML = '<p class="gf-clean">All ' + scanned + ' abilities in ' + esc(set.name) +
+          ' pass every check that is switched on.</p>';
+        scanMsg('ok', 'Nothing to fix.');
+        return;
+      }
+
+      var nFix = 0, nWarn = 0;
+      scanRows.forEach(function (r) {
+        r.fixes.forEach(function (i) { nFix += i.count; });
+        r.warns.forEach(function (i) { nWarn += i.count; });
+        nWarn += r.notices.length;
+      });
+      scanMsg('', '<strong>' + esc(set.name) + '</strong>: ' + scanRows.length + ' of ' + scanned +
+        ' abilities have something to look at &mdash; ' + nFix + (nFix === 1 ? ' fix' : ' fixes') +
+        ' and ' + nWarn + (nWarn === 1 ? ' warning' : ' warnings') + '. ' +
+        (clean ? clean + ' came back clean.' : ''));
+
+      box.innerHTML = scanRows.map(function (r, ri) {
+        var c = r.char;
+        var counts = [];
+        var f = 0; r.fixes.forEach(function (i) { f += i.count; });
+        if (f) counts.push(f + (f === 1 ? ' fix' : ' fixes'));
+        var w = r.notices.length; r.warns.forEach(function (i) { w += i.count; });
+        if (w) counts.push(w + (w === 1 ? ' warning' : ' warnings'));
+        var head =
+          '<label class="gf-scan-head">' +
+            (r.fixes.length
+              ? '<input type="checkbox" data-scan-char="' + ri + '" aria-label="Select every fix for ' + esc(c.name) + '">'
+              : '<span style="width:17px;flex-shrink:0"></span>') +
+            '<span class="gf-scan-name"><a href="' + esc(scanCharHref(c)) + '">' + esc(c.name) + '</a></span>' +
+            '<span class="gf-scan-meta">' + esc(teamLabel(c.team)) + '<br>' + counts.join(' &middot; ') + '</span>' +
+          '</label>';
+        var items = r.fixes.map(function (i) {
+          return '<li><label class="gf-scan-issue">' +
+            '<input type="checkbox" data-scan-fix="' + ri + '" data-key="' + esc(i.key) + '">' +
+            issueLine(i) + '</label></li>';
+        }).concat(r.warns.map(function (i) {
+          // Warnings, plus the `fix` rules that only flag and offer no
+          // replacement — either way there is nothing to tick.
+          return '<li><span class="gf-scan-issue noop">' + issueLine(i) +
+            ' <span class="gf-sev ' + esc(i.sev) + '">' + esc(i.sev) + '</span></span></li>';
+        })).concat(r.notices.map(function (n) {
+          return '<li><span class="gf-scan-issue noop"><span class="gf-scan-body">' +
+            '<span class="gf-cat" style="color:' + color(n.cat) + '">' + esc(n.cat) + '</span>' +
+            esc(n.note) + '</span></span></li>';
+        }));
+        return '<div class="gf-scan-char">' + head +
+          '<p class="gf-scan-ability">' + esc(r.ability) + '</p>' +
+          '<ul class="gf-scan-issues">' + items.join('') + '</ul>' +
+          '<div class="gf-scan-state" data-scan-state="' + ri + '"></div>' +
+        '</div>';
+      }).join('') +
+      '<p class="gf-scan-more">Ticked fixes are written straight to each character page, one save each. ' +
+      'Warnings are never applied for you &mdash; open a page and use the box at the top for those.</p>';
+
+      $('gf-scan-bar').hidden = false;
+      syncScanBar();
+    }
+
+    /* The header checkbox is the character's own "check all": on when every
+       fix under it is ticked, indeterminate when only some are. */
+    function syncScanBar() {
+      var n = countPicked();
+      var btn = $('gf-scan-apply');
+      btn.disabled = !n;
+      btn.textContent = 'Apply ' + n + (n === 1 ? ' fix' : ' fixes');
+      scanRows.forEach(function (r, ri) {
+        var head = document.querySelector('[data-scan-char="' + ri + '"]');
+        if (!head) return;
+        var picked = scanPicked[r.char.slug] || {};
+        var on = r.fixes.filter(function (i) { return picked[i.key]; }).length;
+        head.checked = on > 0 && on === r.fixes.length;
+        head.indeterminate = on > 0 && on < r.fixes.length;
+      });
+    }
+
+    function setPicked(slug, key, on) {
+      if (!scanPicked[slug]) scanPicked[slug] = {};
+      if (on) scanPicked[slug][key] = 1; else delete scanPicked[slug][key];
+      if (!Object.keys(scanPicked[slug]).length) delete scanPicked[slug];
+    }
+
+    function checkAllScan(on) {
+      scanRows.forEach(function (r, ri) {
+        r.fixes.forEach(function (i) { setPicked(r.char.slug, i.key, on); });
+        document.querySelectorAll('[data-scan-fix="' + ri + '"]').forEach(function (cb) {
+          cb.checked = on;
+        });
+      });
+      syncScanBar();
+    }
+
+    $('gf-scan-results').addEventListener('change', function (e) {
+      var cb = e.target;
+      if (cb.hasAttribute && cb.hasAttribute('data-scan-fix')) {
+        var r = scanRows[Number(cb.getAttribute('data-scan-fix'))];
+        if (!r) return;
+        setPicked(r.char.slug, cb.getAttribute('data-key'), cb.checked);
+        syncScanBar();
+        return;
+      }
+      if (cb.hasAttribute && cb.hasAttribute('data-scan-char')) {
+        var ri = Number(cb.getAttribute('data-scan-char'));
+        var row = scanRows[ri];
+        if (!row) return;
+        var on = cb.checked;
+        row.fixes.forEach(function (i) { setPicked(row.char.slug, i.key, on); });
+        document.querySelectorAll('[data-scan-fix="' + ri + '"]').forEach(function (x) { x.checked = on; });
+        syncScanBar();
+      }
+    });
+
+    $('gf-scan-all').addEventListener('click', function () { checkAllScan(true); });
+    $('gf-scan-none').addEventListener('click', function () { checkAllScan(false); });
+    $('gf-scan-go').addEventListener('click', runScan);
+    $('gf-scan-set').addEventListener('change', function () {
+      $('gf-scan-bar').hidden = true;
+      $('gf-scan-results').innerHTML = '';
+      scanRows = []; scanPicked = {};
+      scanMsg('', $('gf-scan-set').value ? 'Press Scan.' : 'Pick a script or a collection, then Scan.');
+    });
+
+    function scanState(ri, cls, text) {
+      var el = document.querySelector('[data-scan-state="' + ri + '"]');
+      if (!el) return;
+      el.className = 'gf-scan-state' + (cls ? ' ' + cls : '');
+      el.innerHTML = text;
+    }
+
+    /* One character: load the page as it stands, re-lint it, apply only the
+       ticked findings that STILL apply, and save. The whole stored row goes
+       back with the ability swapped, exactly as the editor saves it — the
+       status comes off the response so an icon-less draft is not pushed live,
+       and baseUpdatedAt lets the Worker refuse a save based on a stale copy
+       rather than silently overwriting somebody. */
+    function applyOne(r, ri) {
+      var slug = r.char.slug;
+      var wanted = scanPicked[slug] || {};
+      if (!Object.keys(wanted).length) return Promise.resolve('skip');
+      scanState(ri, '', 'Saving&hellip;');
+      return fetch('/api/page?type=character&slug=' + encodeURIComponent(slug), { credentials: 'same-origin' })
+        .then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (j) {
+            if (res.status === 401) throw new Error('LOGIN');
+            if (!res.ok || !j || j.error) throw new Error((j && j.error) || 'Could not open that page.');
+            return j;
+          });
+        })
+        .then(function (page) {
+          if (!page.canEdit) throw new Error('SKIP:That page belongs to another account.');
+          var entry = page.data || {};
+          var current = String(entry.ability || '');
+          var fresh = G.lint(current, { enabled: enabled }).issues.filter(function (i) {
+            return wanted[i.key] && i.sev === 'fix' && i.suggest !== null && i.suggest !== undefined;
+          });
+          if (!fresh.length) throw new Error('SKIP:Already fixed on the page.');
+          var next = G.applyFixes(current, fresh);
+          if (next === current) throw new Error('SKIP:Nothing changed.');
+          var body = Object.assign({}, entry, {
+            slug: page.slug || slug,
+            ability: next,
+            status: page.status || 'published',
+            baseUpdatedAt: page.updatedAt || null
+          });
+          return fetch('/api/character', {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          }).then(function (res) {
+            return res.json().catch(function () { return {}; }).then(function (j) {
+              if (res.status === 401) throw new Error('LOGIN');
+              if (!res.ok) throw new Error((j && j.error) || 'Save failed.');
+              return fresh.length;
+            });
+          });
+        })
+        .then(function (n) {
+          // The page has moved on, so the stale rows go: what is on screen is
+          // now a scan of a version that no longer exists.
+          delete scanPicked[slug];
+          scanState(ri, 'ok', '✓ ' + n + (n === 1 ? ' fix' : ' fixes') + ' saved. ' +
+            '<a href="' + esc(scanCharHref(r.char)) + '">View page</a>');
+          return 'ok';
+        })
+        .catch(function (err) {
+          var m = (err && err.message) || 'Save failed.';
+          if (m === 'LOGIN') throw err;                  // stops the whole run
+          if (m.indexOf('SKIP:') === 0) {
+            delete scanPicked[slug];
+            scanState(ri, '', m.slice(5));
+            return 'skip';
+          }
+          scanState(ri, 'err', esc(m));
+          return 'fail';
+        });
+    }
+
+    $('gf-scan-apply').addEventListener('click', function () {
+      var jobs = [];
+      scanRows.forEach(function (r, ri) {
+        if (scanPicked[r.char.slug]) jobs.push({ r: r, ri: ri });
+      });
+      if (!jobs.length) return;
+      if (!confirm('Apply ' + countPicked() + ' fixes to ' + jobs.length +
+                   (jobs.length === 1 ? ' character page' : ' character pages') +
+                   '? Every change is recorded in each page’s history and can be put back.')) return;
+
+      $('gf-scan-apply').disabled = true;
+      $('gf-scan-all').disabled = true;
+      $('gf-scan-none').disabled = true;
+      var done = 0, ok = 0, failed = 0, skipped = 0;
+
+      // One at a time: these are writes to other people's pages and the Worker
+      // rate-limits them. A queue that finishes slowly beats one that half
+      // finishes fast.
+      function step() {
+        if (!jobs.length) return Promise.resolve();
+        var job = jobs.shift();
+        scanMsg('', 'Saving&hellip; ' + (done + 1) + ' of ' + (done + jobs.length + 1));
+        return applyOne(job.r, job.ri).then(function (res) {
+          done++;
+          if (res === 'ok') ok++; else if (res === 'fail') failed++; else skipped++;
+          return step();
+        });
+      }
+
+      step().then(function () {
+        var parts = [ok + (ok === 1 ? ' page saved' : ' pages saved')];
+        if (skipped) parts.push(skipped + ' skipped');
+        if (failed) parts.push(failed + ' failed');
+        scanMsg(failed ? 'err' : 'ok', parts.join(', ') + '. Scan again to see where it stands now.');
+      }).catch(function (err) {
+        if (err && err.message === 'LOGIN') {
+          scanMsg('err', 'You need to be logged in to save changes. ' +
+            '<a href="login?next=grimforge">Log in</a> and scan again.');
+        } else {
+          scanMsg('err', 'Stopped: ' + esc((err && err.message) || 'something went wrong.'));
+        }
+      }).then(function () {
+        $('gf-scan-all').disabled = false;
+        $('gf-scan-none').disabled = false;
+        syncScanBar();
+      });
+    });
+
+    loadScanSets();
 
     /* ── Category chips + individual rules ─────────────────── */
     function rulesIn(cat) {

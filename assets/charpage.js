@@ -56,6 +56,10 @@
   (function linkAppearsIn() {
     var dd = document.querySelector('.info-appears-in');
     if (!dd) return;
+    // A row derived from collection membership is rendered as links already,
+    // and can name more than one collection, so collapsing it to a single
+    // looked-up link would throw the rest away.
+    if (dd.querySelector('a')) return;
     var raw = dd.getAttribute('data-appears-in') || dd.textContent || '';
     if (!raw.trim()) return;
     function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }

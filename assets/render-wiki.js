@@ -22,7 +22,9 @@
    Inline marks:
 
      **bold**   *italic*   `code`   ~~strike~~
-     [label](https://…)            link (href whitelisted, see safeHref)
+     [label](https://…)            link (href whitelisted, see safeHref; a
+                                   bare 'example.com' becomes https, and
+                                   '/c/imp' stays inside the wiki)
      [[Character Name]]            links to that character's page if the wiki
                                    has one, otherwise renders as a reminder
                                    token pill — the same [[TOKEN]] convention
@@ -59,6 +61,21 @@
   var CODE_MARK = '\u0000c';
   var TOC_MARK = '\u0000toc\u0000';
 
+  /* A bare domain typed without a scheme: 'example.com',
+     'wiki.bloodontheclocktower.com/Imp', 'www.example.co.uk?x=1'. These used
+     to become a site-relative link to a page that does not exist, so
+     [text](example.com) looked broken. Deliberately narrow: the host must be
+     dotted labels ending in a letters-only suffix that is not a file
+     extension, so 'scripts', 'c/slug' and 'page.html' stay site-relative. */
+  var FILE_EXT = /^(html?|json|php|aspx?|jpe?g|png|gif|webp|svg|js|css|txt|md|pdf|zip|xml|csv)$/i;
+  function bareDomain(href) {
+    var host = href.split(/[/?#]/)[0];
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(host)) return '';
+    var tld = host.slice(host.lastIndexOf('.') + 1);
+    if (!/^[a-z]{2,24}$/i.test(tld) || FILE_EXT.test(tld)) return '';
+    return 'https://' + href;
+  }
+
   /* Only these can ever come out the other side of a [label](href). */
   function safeHref(raw) {
     var href = String(raw || '').trim();
@@ -69,8 +86,11 @@
     if (href.indexOf('//') === 0) return '';
     // Site-relative: '/scripts', 'c/slug', '#sec-x'. Reject anything with a
     // scheme (a colon before the first slash) — that's how javascript: hides.
-    if (/^[#/]/.test(href) || !/^[a-z0-9+.-]*:/i.test(href)) return href;
-    return '';
+    if (/^[#/]/.test(href)) return href;
+    if (/^[a-z0-9+.-]*:/i.test(href)) return '';
+    // No scheme and not rooted: an unschemed domain becomes https, anything
+    // else stays a link relative to the site.
+    return bareDomain(href) || href;
   }
 
   /* Image sources are tighter than links: a remote https image, or one of the

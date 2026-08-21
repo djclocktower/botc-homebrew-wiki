@@ -15,7 +15,8 @@
  *
  *   -- auth --
  *   POST /api/signup          -> create an account (username/email/password)
- *   POST /api/login           -> log in (username OR email + password)
+ *   POST /api/login           -> log in (username, email, or the display name
+ *                                the site shows you, + password)
  *   POST /api/logout          -> clears session
  *   GET  /api/me              -> who am I
  *   POST /api/forgot-password -> email a password-reset link
@@ -36,6 +37,9 @@
  *   POST /api/account/unlink-discord
  *   GET  /api/contact         -> your own messages to the admins
  *   POST /api/contact         -> send a message to the admins (bug/suggestion/…)
+ *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
+ *                                box; same inbox as /api/contact, but works
+ *                                without an account (rate-limited per IP)
  *   GET  /api/announcement    -> current site-wide announcement (public)
  *   GET  /api/site-text       -> the site's rewritten system text, as a map
  *                                site.js applies in the browser (public,
@@ -80,7 +84,9 @@
  *
  *   -- content (any logged-in user; edits restricted to owner/admin) --
  *   GET  /api/page            -> fetch one page for editing (drafts incl.)
- *   GET  /api/slug-check      -> is this page URL free? (?type=&name=&appearsIn=)
+ *   GET  /api/slug-check      -> is this page's identity free? (?type=&name=&appearsIn=)
+ *                                For a character that is the PK and the art slot,
+ *                                NOT the URL — see CHARACTER ADDRESSES below.
  *                                returns {taken, mine, suggestion} so an editor
  *                                can pick a free URL before uploading art
  *   POST /api/character       -> create/update a character; {renameFrom} moves
@@ -96,6 +102,12 @@
  *                                name): owned + credited pages, drafts for the
  *                                owner/admins
  *   GET  /api/creators        -> every creator with counts + linked account
+ *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
+ *                                the /jinxes index and its relationship graph
+ *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
+ *                                (or admin) just one of the two characters
+ *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
+ *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
  *   GET  /author?a={name}     -> same page; 302 to /u/{username} when the name
  *                                belongs to an account
@@ -112,6 +124,14 @@
  *   GET  /api/admin/activity  -> full activity log (paginated + filterable)
  *   GET  /api/admin/report    -> activity report for the last ?days=N days
  *   GET  /api/admin/revisions -> version history for one page (?type=&slug=)
+ *   GET  /api/page-history    -> a published page's edit log (public; ?type=&slug=)
+ *   GET  /api/page-revision   -> one entry of it, field by field (?type=&slug=&id=)
+ *   POST /api/page-rollback   -> put an earlier version back (owner or admin)
+ *   POST /api/suggest         -> propose an edit to a page open to suggestions
+ *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
+ *   POST /api/suggestion      -> approve / decline / withdraw one
+ *   GET  /api/shared-pages    -> pages this account is an approved editor of
+ *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
@@ -136,8 +156,8 @@
  *   POST /api/admin/restore-page -> restore one page from a backup date
  *   GET  /api/admin/pages     -> page list for bulk actions
  *                                (?type=&q=&owner=&status=&collection=
- *                                 &flag=no-icon|partial|starlight|no-owner)
- *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/starlight ops
+ *                                 &flag=no-icon|partial|curata|no-owner)
+ *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/curata ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
  *   GET  /api/admin/discord-check -> is Discord sign-in actually working: asks
  *                                Discord whether the app credentials are still
@@ -145,18 +165,20 @@
  *                                Developer Portal must have registered
  *   GET  /api/admin/comments  -> moderation queue (?view=reported|recent|removed)
  *   POST /api/admin/comment   -> remove/restore/resolve/purge one comment
- *   POST /api/admin/starlight -> grant/remove Starlight on one page
+ *   POST /api/admin/curata -> grant/remove Curata on one page
  *   POST /api/admin/collect-creator -> put every character by one creator into
  *                                a collection (creates it if needed)
  *   POST /api/admin/concepts-to-pages -> turn rules-construct characters into
  *                                wiki pages under a collection and retire them
- *   POST /api/admin/starlight-owner -> grant Starlight to every character one
+ *   POST /api/admin/curata-owner -> grant Curata to every character one
  *                                account owns (?dryRun to count first)
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
+ *   POST /api/admin/nest-urls -> give every character a nested /c/{set}/{character}
+ *                                address ({dryRun:true} to preview; re-runnable)
  *   POST /api/lock            -> lock/unlock the wiki
  *   POST /api/backup          -> run a D1 -> R2 backup now
  *   POST /api/seed            -> one-time data load from repo JSON
@@ -192,12 +214,12 @@ PageRender.init(Render);
 // Injected so SSR /c/ pages show a creator's symbol next to their name.
 import Creators from '../assets/creators.js';
 Render.setCreators(Creators);
-// Partial / Standard / Starlight rules — shared with every browser page so
+// Partial / Standard / Curata rules — shared with every browser page so
 // the badges and filters agree with what the Worker serves.
 import Classify from '../assets/classify.js';
-// Lets render.js emit the Starlight star without importing classify.js
+// Lets render.js emit the Curata mark without importing classify.js
 // itself (it is loaded standalone in the browser).
-Render.setStarMark(Classify.classBadgeHTML);
+Render.setCurataMark(Classify.classBadgeHTML);
 // Wiki text engine: the markdown-ish formatter + the text-first page layout,
 // shared by /p/{slug} pages, news articles and the announcement banner.
 import WikiRender from '../assets/render-wiki.js';
@@ -214,6 +236,11 @@ Render.init(WikiRender);
 // them — it is excluded from the asset upload. Put new server-rendered
 // wording there, not inline here, or the owner cannot edit it.
 import SYS from '../assets/system-text.js';
+// The official roster, turned into wiki character objects (night positions
+// merged in from night-order.json). Shared with script.html and
+// publish-script.html so a script page, the builder and the night-order
+// arranger all see the same official characters.
+import OfficialRoles from '../assets/official-roles.js';
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
@@ -371,6 +398,45 @@ function sessionCookie(token) {
 }
 function clearCookie() {
   return 'botc_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
+}
+
+// ---- the custom 404 page ----
+// assetsOrNotFound() replaces a bare `env.ASSETS.fetch(request)`. A committed
+// static file still wins (the legacy redirect stubs rely on that); only a 404
+// from the assets binding swaps in /404.html, served AT the address that was
+// asked for so the page can show it.
+//
+// Images, JSON and scripts keep the bare 404: an HTML page inside an <img> is
+// waste, and fetch() callers want the status, not a document.
+function wantsHTMLPage(request, path) {
+  if (path.startsWith('/api/') || path.startsWith('/assets/')) return false;
+  if (/\.(png|jpe?g|gif|webp|svg|ico|json|js|mjs|css|txt|xml|map|woff2?|ttf|otf)$/i.test(path)) return false;
+  return (request.headers.get('Accept') || '').includes('text/html');
+}
+
+async function notFoundResponse(env, request, fallback) {
+  const url = new URL(request.url);
+  if (!wantsHTMLPage(request, url.pathname)) return fallback || new Response('Not found', { status: 404 });
+  try {
+    // A bare GET, deliberately: forwarding the caller's headers would carry
+    // their If-None-Match along and could turn this into a 304 with no body.
+    const page = await env.ASSETS.fetch(new Request(url.origin + '/404.html'));
+    if (page.ok) {
+      return new Response(await page.text(), {
+        status: 404,
+        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+      });
+    }
+  } catch { /* fall through to whatever the assets binding said */ }
+  return fallback || new Response('Not found', { status: 404 });
+}
+
+// The drop-in replacement for `return env.ASSETS.fetch(request)` on any path
+// that might not exist.
+async function assetsOrNotFound(env, request) {
+  const res = await env.ASSETS.fetch(request);
+  if (res.status !== 404) return res;
+  return notFoundResponse(env, request, res);
 }
 
 // ---- basic rate limiting (KV counter; best-effort) ----
@@ -631,9 +697,40 @@ async function findUserByLogin(env, identifier) {
   // the handle is now matched on the folded key and the email is not.
   const byName = await selectUserByName(env, '*', id);
   if (byName) return byName;
-  return env.DB.prepare(
+  const byEmail = await env.DB.prepare(
     'SELECT * FROM users WHERE email IS NOT NULL AND lower(email) = lower(?)'
   ).bind(id).first().catch(() => null);
+  if (byEmail) return byEmail;
+  // Last: the name the SITE shows them. See findUserByShownName below.
+  return findUserByShownName(env, id);
+}
+
+// A Discord signup is shown its display name everywhere (@scape on the account
+// page, "Cellscape" on every comment), so that is the name people type to log
+// in. Display name and Discord handle both work here.
+//
+// The order in findUserByLogin above is the safety argument: username, then
+// email, then this. A display name can never shadow somebody's handle or
+// email, and it only counts when EXACTLY ONE account has it, so two members
+// called "Alex" match neither. The password check still applies.
+async function findUserByShownName(env, id) {
+  const key = usernameKey(id);
+  if (!key) return null;
+  // Matched in JS, folded exactly as a handle is: SQLite has no ICU, so
+  // lower() would fold "Cellscape" and leave "Céline" alone. Only runs when
+  // nothing else matched, over a table of tens of rows.
+  const { results } = await env.DB.prepare(
+    `SELECT id, display_name, discord_username FROM users
+      WHERE (display_name IS NOT NULL AND display_name <> '')
+         OR (discord_username IS NOT NULL AND discord_username <> '')`
+  ).all().catch(() => ({ results: [] }));
+  const hits = new Set();
+  for (const r of results || []) {
+    if (usernameKey(r.display_name) === key || usernameKey(r.discord_username) === key) hits.add(r.id);
+  }
+  if (hits.size !== 1) return null;
+  return env.DB.prepare('SELECT * FROM users WHERE id=?')
+    .bind([...hits][0]).first().catch(() => null);
 }
 
 // Is this handle taken — or close enough to an existing one to read as it?
@@ -660,8 +757,10 @@ async function isWikiLocked(env) {
 // perfectly good cache every time somebody posted a comment.
 const FEED_CHANGING_ACTIONS = new Set([
   'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
-  'starlight', 'unstarlight', 'rollback', 'restore', 'restore-backup',
-  'assign-owner', 'protect', 'unprotect', 'purge'
+  'curata', 'uncurata', 'rollback', 'restore', 'restore-backup',
+  'assign-owner', 'protect', 'unprotect', 'purge',
+  // Approving a suggestion writes the page; 'suggest' itself changes nothing.
+  'suggestion-approve'
 ]);
 
 // ---- activity log helper ----
@@ -687,7 +786,9 @@ async function logActivity(env, sess, action, entityType, slug, name) {
 // The table is created lazily by the Worker itself, so no manual D1
 // migration is ever needed. Every content save snapshots the version it is
 // about to replace; the newest 20 revisions per page are kept.
-const REVISIONS_KEEP = 20;
+// Deep enough that a page opened to public editing keeps a usable trail, not
+// just the last handful of saves.
+const REVISIONS_KEEP = 50;
 let _revisionsReady = false;
 async function ensureRevisionsTable(env) {
   if (_revisionsReady) return;
@@ -709,9 +810,97 @@ async function ensureRevisionsTable(env) {
   _revisionsReady = true;
 }
 
+/* The "what changed" column of a wiki history. Compares the top-level keys of
+   two stored versions, which is the granularity a page is edited at. An
+   unlabelled key falls back to its own name rather than being dropped, so a
+   field added later still shows as changed instead of reading as no change. */
+const FIELD_LABELS = {
+  name: 'name', team: 'team', creator: 'creator', ability: 'ability',
+  tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
+  summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
+  tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
+  callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
+  artAlt: 'alternate art', jinxes: 'jinxes', reminders: 'reminders',
+  remindersGlobal: 'global reminders', firstNight: 'first-night order',
+  otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
+  otherNightReminder: 'other-nights reminder', setup: 'setup flag',
+  special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
+  appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
+  respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
+  edition: 'edition', publicEdit: 'who may edit',
+  // scripts + collections
+  displayName: 'name', author: 'author', description: 'description',
+  tagline: 'tagline', version: 'version', difficulty: 'difficulty',
+  synopsis: 'synopsis', gameplay: 'gameplay', strategyGood: 'good strategy',
+  strategyEvil: 'evil strategy', characters: 'roster', logo: 'logo',
+  header: 'header image', theme: 'appearance', match: 'membership rules',
+  include: 'members added', exclude: 'members removed', order: 'roster order',
+  nightOrder: 'night order', jinxEdits: 'script jinxes', bootlegger: 'house rules',
+  almanac: 'almanac link', hideTitle: 'app title setting',
+  // wiki pages
+  title: 'title', subtitle: 'subtitle', blurb: 'blurb', body: 'page text',
+  images: 'images', boxes: 'side boxes', infobox: 'fact box', toc: 'contents box'
+};
+const DIFF_VALUE_MAX = 1200;   // per side, per field
+const DIFF_LABEL_MAX = 6;
+
+/* diffFieldLabels with the values kept, so a reader can judge the edit.
+   Flattened to text: a list becomes one line per entry, anything else its
+   JSON, both capped. */
+function diffFieldValues(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const flat = v => {
+    if (v == null) return '';
+    if (typeof v === 'string') return v.slice(0, DIFF_VALUE_MAX);
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    if (Array.isArray(v) && v.every(x => typeof x === 'string')) {
+      return v.join('\n').slice(0, DIFF_VALUE_MAX);
+    }
+    try { return JSON.stringify(v, null, 1).slice(0, DIFF_VALUE_MAX); } catch { return ''; }
+  };
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push({ field: k, label: FIELD_LABELS[k] || k, before: flat(x), after: flat(y) });
+  }
+  out.sort((p, q) => p.label.localeCompare(q.label));
+  return out.slice(0, 40);
+}
+function diffFieldLabels(beforeJSON, afterJSON) {
+  let a, b;
+  try { a = JSON.parse(beforeJSON) || {}; } catch { a = {}; }
+  try { b = JSON.parse(afterJSON) || {}; } catch { b = {}; }
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  const out = [];
+  for (const k of keys) {
+    if (k === 'slug' || k === 'page' || k === 'id') continue;
+    const x = a[k] === undefined ? null : a[k];
+    const y = b[k] === undefined ? null : b[k];
+    if (JSON.stringify(x) === JSON.stringify(y)) continue;
+    out.push(FIELD_LABELS[k] || k);
+  }
+  out.sort();
+  if (out.length > DIFF_LABEL_MAX) {
+    const extra = out.length - DIFF_LABEL_MAX;
+    return out.slice(0, DIFF_LABEL_MAX).concat(['and ' + extra + ' more']);
+  }
+  return out;
+}
+
 // Snapshot an existing row before it gets overwritten. `edited_by` records
 // who made the edit that replaced this version. Never blocks the save.
 async function saveRevision(env, sess, type, row) {
+  // Drafts have no history: they are saved over constantly while being
+  // written and nobody wants those versions back, so a page's history starts
+  // at the version that was published. What is snapshotted is the version
+  // being REPLACED, so taking a published page to draft still records it.
+  if ((row.status || 'published') !== 'published') return;
   try {
     await ensureRevisionsTable(env);
     let by = null;
@@ -728,6 +917,44 @@ async function saveRevision(env, sess, type, row) {
     ).bind(type, row.slug, type, row.slug).run();
   } catch { /* history must never break a write */ }
 }
+
+/* ---- suggested edits ----
+   A page set to `publicEdit: 'suggest'` takes proposed versions instead of
+   direct edits. A suggestion is the whole page as the suggester would have it,
+   the same object the editor posts to save, kept apart from the row until the
+   owner approves it. Approving is a normal save, snapshotted into the history
+   first, so it can be rolled back like anything else.
+
+   `base_updated_at` is the version the suggester worked from, so the review
+   page can flag one written against an older copy. */
+let _suggestReady = false;
+async function ensureSuggestTable(env) {
+  if (_suggestReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS suggestions (
+       id              INTEGER PRIMARY KEY AUTOINCREMENT,
+       entity_type     TEXT NOT NULL,
+       slug            TEXT NOT NULL,
+       user_id         INTEGER,
+       username        TEXT,
+       note            TEXT,
+       data            TEXT NOT NULL,
+       base_updated_at TEXT,
+       status          TEXT NOT NULL DEFAULT 'open',
+       reply           TEXT,
+       decided_by      TEXT,
+       decided_at      TEXT,
+       ts              TEXT NOT NULL DEFAULT (datetime('now'))
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_suggestions_page ON suggestions(entity_type, slug, status)'
+  ).run();
+  _suggestReady = true;
+}
+
+const SUGGEST_MAX_OPEN_PER_PAGE = 50;   // per suggester, per page: a queue, not a firehose
+const SUGGEST_NOTE_MAX = 600;
 
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
 let _viewsReady = false;
@@ -1037,16 +1264,21 @@ async function wikiParentRow(env, type, key) {
 
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
 // Only the indexed columns are read, so this stays cheap even at 1000 rows.
+// [[Character Name]] -> the path segment render-wiki builds `c/{value}` from,
+// so the value is the ADDRESS. Both the identity and the name are keys, so a
+// writer can type either and still get a link.
 async function loadCharLinks(env) {
   const map = {};
   try {
+    await ensureUrlSlugColumn(env);
     const { results } = await env.DB.prepare(
-      "SELECT slug, name FROM characters WHERE status='published'"
+      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
     ).all();
     const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
     for (const r of results || []) {
-      if (r.slug) map[norm(r.slug)] = r.slug;
-      if (r.name) map[norm(r.name)] = r.slug;
+      const addr = charAddress(r);
+      if (r.slug) map[norm(r.slug)] = addr;
+      if (r.name) map[norm(r.name)] = addr;
     }
   } catch { /* links just fall back to token pills */ }
   return map;
@@ -1061,6 +1293,29 @@ function sanitizeBoxes(boxes) {
     title: String((b && b.title) || '').slice(0, 120),
     content: String((b && b.content) || '').slice(0, 4000)
   })).filter(b => b.title.trim() || b.content.trim());
+}
+
+// Jinxes on a character. Everything else a user can post arrives sanitized;
+// this one used to be stored verbatim, so a malformed blob could sit in the
+// row forever. Keep the five fields the renderer reads, cap them, and drop
+// anything that names nobody. `mirrored`/`mirroredFrom` are deliberately NOT
+// kept: those are added on read, and a client must never be able to fake one.
+const JINX_MAX = 60;
+function sanitizeJinxes(jinxes) {
+  if (!Array.isArray(jinxes)) return [];
+  return jinxes.slice(0, JINX_MAX).map(j => {
+    const o = {
+      name: String((j && j.name) || '').slice(0, 120).trim(),
+      align: (j && j.align) === 'evil' ? 'evil' : 'good',
+      text: String((j && (j.text || j.reason)) || '').slice(0, 2000)
+    };
+    // `slug` points at a page on this wiki, `id` at an official character.
+    const slug = String((j && j.slug) || '');
+    if (/^[a-z0-9-]{1,80}$/.test(slug)) o.slug = slug;
+    const id = String((j && j.id) || '');
+    if (/^[a-z0-9_-]{1,80}$/.test(id)) o.id = id;
+    return o;
+  }).filter(j => j.name || j.slug || j.id);
 }
 
 // The fact box on a wiki page / news article: a title, an image and rows.
@@ -1128,7 +1383,7 @@ async function commentTarget(env, type, slug) {
   if (!row || row.status !== 'published') return null;
   // Collection URLs use the kebab id from the JSON, never the PK slug —
   // legacy rows have display-string slugs like "The Academy".
-  const path = type === 'character' ? '/c/' + row.slug
+  const path = type === 'character' ? '/c/' + charAddress(row)
     : type === 'script' ? '/s/' + row.slug
     : '/collection/' + (parseData(row).id || row.slug);
   return { slug: row.slug, name: row.name, ownerId: row.owner_id, type, path };
@@ -1429,14 +1684,214 @@ function canEditRow(sess, row) {
   return !!row.owner_id && row.owner_id === sess.userId;
 }
 
+/* ---- who may edit a page ----
+   `canEditRow` above is ownership, and it still governs everything that
+   belongs to the creator: renaming, publishing, deleting, rolling back, and
+   the public-editing setting itself.
+
+   On top of that a creator may open a page up, stored on its data as
+   `publicEdit`. editPermission() answers what THIS session may do to THIS row:
+
+     'owner'    everything (the owner, or an admin)
+     'approved' the page's content, for an account the owner named by hand
+     'all'      the page's content, but none of the owner's own settings
+     'tags'     the tags and nothing else (characters only)
+     ''         nothing
+
+   Never open, whatever the setting says: a draft, an admin-protected page,
+   and a page whose owner never opted in. 'approved' is the one exception to
+   the draft half of that — see editPermission below. */
+const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
+function publicEditMode(d) {
+  const v = d && d.publicEdit;
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+function sanitizePublicEdit(v) {
+  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+
+/* ---- approved editing: the accounts the owner named ----
+   `publicEdit: 'approved'` opens a page to a list rather than to everyone.
+   The list lives on the page's data as `editors`, one `{id, username}` per
+   account:
+
+     - the **id** is the authority. It is what every permission check reads,
+       it costs no lookup (a session already carries `userId`), and it keeps
+       working when somebody changes their handle.
+     - the **username** is only what the owner's editor shows back, so the
+       list reads as names rather than numbers.
+
+   A client may post either form — the pairs it read back, or the bare names
+   the owner typed into the box. Both go through sanitizeEditors(), which
+   resolves every entry against `users` and drops what it cannot find, so a
+   typo can never become a permission. */
+const PAGE_EDITORS_MAX = 20;
+
+function approvedEditors(d) {
+  return (Array.isArray(d && d.editors) ? d.editors : []).filter(e => e && typeof e === 'object');
+}
+function isApprovedEditor(sess, d) {
+  if (!sess || sess.userId == null) return false;
+  return approvedEditors(d).some(e => Number(e.id) === Number(sess.userId));
+}
+
+/* Returns { list, unknown }: the resolved editors, and the names no account
+   answered to. The caller reports `unknown` back to the owner — silently
+   dropping a name would leave them believing they had shared the page. */
+async function sanitizeEditors(env, v, ownerId) {
+  const list = [], unknown = [], seen = new Set();
+  if (!Array.isArray(v)) return { list, unknown };
+  for (const raw of v.slice(0, PAGE_EDITORS_MAX * 2)) {
+    const name = typeof raw === 'string' ? raw
+      : (raw && typeof raw === 'object' ? String(raw.username || '') : '');
+    if (!name.trim()) continue;
+    const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+    if (!u) { if (unknown.length < PAGE_EDITORS_MAX) unknown.push(normUsername(name)); continue; }
+    // The owner is not a guest on their own page, and an account listed twice
+    // (once by name, once by pair) is one editor.
+    if (ownerId != null && Number(u.id) === Number(ownerId)) continue;
+    if (seen.has(Number(u.id))) continue;
+    seen.add(Number(u.id));
+    list.push({ id: Number(u.id), username: String(u.username) });
+    if (list.length >= PAGE_EDITORS_MAX) break;
+  }
+  return { list, unknown };
+}
+
+/* Being named as an editor is news, so it arrives the way every other
+   notification on the wiki does: a `dms` row that rides the unread count on
+   /api/me and the mail flag site.js puts on "My Account". sender_deleted=1
+   keeps it out of the owner's own conversation list — they shared a page,
+   they did not start a conversation. */
+async function notifyEditorsAdded(env, opts) {
+  try {
+    const { fromId, added, name, path, origin } = opts;
+    if (!added || !added.length) return;
+    await ensureDmTables(env);
+    const from = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+      .bind(fromId).first().catch(() => null);
+    const who = from && from.username ? '@' + from.username : 'Someone';
+    for (const e of added) {
+      if (e.id == null || Number(e.id) === Number(fromId)) continue;
+      const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
+        ' You can now edit it exactly as they would \u2014 publishing, deleting and the editor' +
+        ' list itself stay with them.' +
+        (path ? '\n\n' + (origin || '') + path : '');
+      await env.DB.prepare(
+        'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+      ).bind(fromId, e.id, text).run();
+    }
+  } catch { /* a notification must never break a save */ }
+}
+
+/* A ceiling the owner's own saves never needed. A page is a few kilobytes of
+   text, so nothing legitimate comes near this; it stops somebody parking a
+   megabyte in a row they do not own. */
+const PUBLIC_EDIT_MAX_BYTES = 120000;
+const SUGGEST_INSTEAD = 'This page takes suggestions rather than direct edits. Send yours for the creator to approve.';
+const PUBLIC_EDIT_TAGS_MAX = 400;
+function publicEditTooBig(o) {
+  try { return JSON.stringify(o).length > PUBLIC_EDIT_MAX_BYTES; } catch { return true; }
+}
+
+async function editPermission(env, sess, type, row) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if ((row.status || 'published') === 'deleted') return '';
+  const d = parseData(row);
+  const mode = publicEditMode(d);
+  if (!mode) return '';
+  /* Approved editors are named one account at a time, so they reach a DRAFT
+     too — a collaborator is most use before the page goes live, and there is
+     no stranger here to hide it from. They still cannot publish it: the save
+     handlers carry the stored status forward for everyone but the owner, so
+     what goes live stays the creator's call. */
+  if (mode === 'approved') {
+    if (!isApprovedEditor(sess, d)) return '';
+    if (await isProtected(env, type, row.slug)) return '';
+    return 'approved';
+  }
+  if ((row.status || 'published') !== 'published') return '';
+  if (mode === 'tags' && type !== 'character') return '';
+  if (await isProtected(env, type, row.slug)) return '';
+  return mode;
+}
+
+/* Ownership, or an approved editor the owner named. This is the gate on
+   everything an approved editor has to be able to SEE: a draft page they were
+   invited to work on, and the Edit button that takes them into it. It is
+   deliberately not `canEditRow` — that still means ownership, and still
+   governs publishing, deleting, renaming and the editor list itself. */
+async function canEditPage(env, sess, type, row) {
+  if (canEditRow(sess, row)) return true;
+  if (!sess || !row) return false;
+  const d = parseData(row);
+  if (publicEditMode(d) !== 'approved' || !isApprovedEditor(sess, d)) return false;
+  if ((row.status || 'published') === 'deleted') return false;
+  return !(await isProtected(env, type, row.slug));
+}
+
+/* 'suggest' is not write access: it is permission to PROPOSE a version
+   (POST /api/suggest). Every save handler asks this before writing, so a mode
+   that is not a writing mode can never be mistaken for one. */
+function permCanWrite(perm) {
+  return perm === 'owner' || perm === 'approved' || perm === 'all' || perm === 'tags';
+}
+
+/* Telling a suggester what happened, through the same DM row as every other
+   notification, so it lands where they already look. */
+async function notifySuggestionAnswer(env, sug, row, verdict, reply, fromId, origin) {
+  try {
+    if (sug.user_id == null || sug.user_id === fromId) return;
+    await ensureDmTables(env);
+    const text = 'Your suggested edit to \u201c' + (row.name || sug.slug) + '\u201d was ' + verdict + '.' +
+      (reply ? '\n\n\u201c' + reply + '\u201d' : '') +
+      '\n\n' + (origin || '') + '/suggestions?type=' + encodeURIComponent(sug.entity_type) +
+      '&slug=' + encodeURIComponent(sug.slug);
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, sug.user_id, text).run();
+  } catch { /* a notification must never break a decision */ }
+}
+
+// A page edited by somebody who does not own it: tell the owner through the
+// notification the site already has (the unread count on /api/me, the mail
+// flag on "My Account"). sender_deleted=1 keeps it out of the editor's own
+// conversation list: they edited a page, they did not send a message.
+async function notifyPageEdit(env, opts) {
+  try {
+    const { fromId, ownerId, what, name, path, origin } = opts;
+    if (ownerId == null || ownerId === fromId) return;
+    await ensureDmTables(env);
+    const blocked = await env.DB.prepare(
+      'SELECT 1 FROM dm_blocks WHERE user_id=? AND blocked_id=?'
+    ).bind(ownerId, fromId).first().catch(() => null);
+    if (blocked) return;
+    const text = what + ' \u201c' + (name || '') + '\u201d, which you have open for edits.\n\n' +
+      (origin || '') + path + '\n\nEvery change is listed at ' + (origin || '') + '/history?type=' +
+      encodeURIComponent(opts.type) + '&slug=' + encodeURIComponent(opts.slug) +
+      ', where you can put back any earlier version.';
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, ownerId, text).run();
+  } catch { /* a notification must never break a save */ }
+}
+
 async function getEntityRow(env, type, slug) {
   const t = CONTENT[type];
   if (!t || !slug) return null;
   // updated_at rides along for the edit-conflict check: the editors send it
   // back as baseUpdatedAt, and a save whose base no longer matches the stored
   // row is rejected rather than silently overwriting somebody else's work.
+  // Characters also carry url_slug, so anything holding a row can build a link
+  // to it without a second query (charAddress).
+  let addr = '';
+  if (type === 'character') {
+    await ensureUrlSlugColumn(env);
+    addr = ', url_slug';
+  }
   return env.DB.prepare(
-    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, updated_at FROM ${t.table} WHERE slug=?`
+    `SELECT slug, ${t.nameCol} AS name, owner_id, status, data, created_at, updated_at${addr} FROM ${t.table} WHERE slug=?`
   ).bind(slug).first().catch(() => null);
 }
 
@@ -1452,7 +1907,7 @@ async function revisableRow(env, type, slug) {
   if (type === 'wikipage') {
     await ensurePagesTable(env);
     const row = await env.DB.prepare(
-      'SELECT slug, title AS name, owner_id, status, data, updated_at FROM pages WHERE slug=?'
+      'SELECT slug, title AS name, owner_id, status, data, created_at, updated_at FROM pages WHERE slug=?'
     ).bind(slug).first().catch(() => null);
     return row || null;
   }
@@ -1579,12 +2034,305 @@ function retargetArtPaths(obj, from, to) {
   }
 }
 
+// ===================== CHARACTER ADDRESSES =====================
+//
+// A character has an IDENTITY and an ADDRESS, and they are two different
+// strings:
+//
+//   identity  characters.slug (the PK)   witcher-odyssey    never changes
+//   address   characters.url_slug        odyssey/witcher    free to change
+//
+// Everything that points AT a character points at the identity — comments,
+// page_views, revisions, activity_log, script rosters, collection
+// include/exclude, profile pins, the art objects in R2. So renaming a page is
+// an address change and nothing else, which is why renameCharacter() below is
+// a few lines instead of the twelve-target migration it used to be, and why a
+// new feature can store a character reference without registering itself
+// anywhere.
+//
+// The two namespaces cannot collide, because an address always carries a slash
+// and an identity never does. /c/{one-segment} is therefore always an identity
+// (or a flat address from before nesting) and 301s to the canonical
+// /c/{set}/{name}; no redirect row is needed to keep the old flat URLs alive,
+// the primary key itself does that.
+//
+// Old ADDRESSES are remembered in `redirects` and always point at the
+// IDENTITY, never at another address — so a page that moves twice needs no
+// chain rewriting: every address it ever had still resolves through the row to
+// wherever it lives now.
+
+const CHAR_ADDR_FALLBACK = 'misc';
+
+function kebab(s) {
+  return String(s || '').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '').slice(0, 80);
+}
+
+let _urlSlugReady = false;
+async function ensureUrlSlugColumn(env) {
+  if (_urlSlugReady) return;
+  // Lazily ALTERed, the same way users.banned and users.username_key are:
+  // there are no manual migrations on this project.
+  try { await env.DB.prepare('ALTER TABLE characters ADD COLUMN url_slug TEXT').run(); }
+  catch { /* already there */ }
+  try {
+    await env.DB.prepare(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_characters_url_slug ON characters(url_slug)'
+    ).run();
+  } catch { /* index exists; NULLs are distinct in SQLite so unset rows are fine */ }
+  _urlSlugReady = true;
+}
+
+// The address a character should be read at. Falls back to the identity for a
+// row the backfill has not reached, so a half-finished migration can never
+// 404 a page — the worst case is a page still answering on its old flat URL.
+function charAddress(row) {
+  if (!row) return '';
+  return String(row.url_slug || row.slug || '');
+}
+
+// character identity -> the script whose roster lists it. First script wins,
+// so a character on two scripts is filed under the one that was created first.
+// Cached on content_version like the collection maps beside it.
+let _scriptRosterCache = null;
+async function scriptRosterMap(env) {
+  const version = await contentVersion(env);
+  if (_scriptRosterCache && _scriptRosterCache.version === version) return _scriptRosterCache.map;
+  const map = new Map();
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, data FROM scripts WHERE status='published' ORDER BY created_at, slug"
+    ).all();
+    for (const r of results || []) {
+      const q = kebab(r.slug);
+      if (!q) continue;
+      let d = {};
+      try { d = JSON.parse(r.data); } catch { continue; }
+      for (const s of (Array.isArray(d.characters) ? d.characters : [])) {
+        // Official roles ride along in a roster as `off-` ids; they are not
+        // wiki pages and have no address to give.
+        if (typeof s === 'string' && !s.startsWith('off-') && !map.has(s)) map.set(s, q);
+      }
+    }
+  } catch { /* no scripts, or no status column yet */ }
+  _scriptRosterCache = { version, map };
+  return map;
+}
+
+// Scripts, matched the loose way findCollectionRow matches collections, so
+// "The Princess' Requiem" finds the-princess-requiem.
+async function findScriptRowLoose(env, key) {
+  if (!key) return null;
+  const hit = await env.DB.prepare('SELECT slug, data FROM scripts WHERE slug=?')
+    .bind(kebab(key)).first().catch(() => null);
+  if (hit) return hit;
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const nkey = norm(key);
+  if (!nkey) return null;
+  const { results } = await env.DB.prepare('SELECT slug, data FROM scripts')
+    .all().catch(() => ({ results: [] }));
+  for (const row of results || []) {
+    if (norm(row.slug) === nkey) return row;
+    try {
+      const d = JSON.parse(row.data);
+      if (d && (norm(d.name) === nkey || norm(d.displayName) === nkey || norm(d.id) === nkey)) return row;
+    } catch { /* skip bad rows */ }
+  }
+  return null;
+}
+
+// The set segment of a character's address, in the order the wiki reads:
+//
+//   1. a collection it appears in       odyssey/witcher
+//   2. a script it appears in           fall-of-rome/actor
+//   3. the set named in "Appears in" even when this wiki has no page for it —
+//      "Trouble Homebrewing" is a real set that nobody registered, and its 36
+//      characters read far better under it than scattered under six authors
+//   4. the author                       gobinator/archer
+//   5. their account, then `misc` for a page with none of the above
+//
+// Collections beat scripts outright for the 22 characters that name both.
+// Steps 1 and 2 match loosely (case, punctuation and apostrophes are ignored)
+// because `appears_in` is free text that people typed: "Tales from Tir-Far's
+// Archive" has to find tales-from-tir-fars-archive, or a whole collection
+// would land in step 3 under a near-miss of its own name.
+async function characterQualifier(env, entry, ownerId) {
+  const segs = String((entry && entry.appearsIn) || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  for (const s of segs) {
+    const row = await findCollectionRow(env, s);
+    if (row) {
+      const d = parseData(row);
+      const q = kebab((d && d.id) || row.slug);
+      if (q) return q;
+    }
+  }
+  for (const s of segs) {
+    const row = await findScriptRowLoose(env, s);
+    if (row) {
+      const q = kebab(row.slug);
+      if (q) return q;
+    }
+  }
+  if (segs.length) {
+    const q = kebab(segs[0]);
+    if (q) return q;
+  }
+  // No "Appears in" of its own — but a collection may list it by hand, which
+  // is exactly what the page itself shows in that row (applyCollectionAppearsIn).
+  // The address agrees with the page rather than contradicting it.
+  if (entry && entry.slug) {
+    try {
+      for (const coll of await includeCollections(env)) {
+        if (coll.include.includes(entry.slug)) {
+          const q = kebab(coll.id);
+          if (q) return q;
+        }
+      }
+    } catch { /* fall through to the script rosters */ }
+    // Then a script that lists it. The Blood on the TARDIS cast is the case
+    // this catches: thirty characters with no "Appears in" of their own that
+    // plainly belong to one script, and would otherwise be filed under the
+    // account that happens to own them.
+    try {
+      const q = (await scriptRosterMap(env)).get(String(entry.slug));
+      if (q) return q;
+    } catch { /* fall through to the author */ }
+  }
+  // A credit can name several people ("Taiyi (太一), Saki"); the first is the
+  // one the address is filed under, same as everywhere else on the wiki.
+  const cred = creditNames((entry && entry.creator) || '')[0];
+  if (cred) {
+    const q = kebab(cred);
+    if (q) return q;
+  }
+  if (ownerId) {
+    try {
+      const u = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+        .bind(ownerId).first();
+      const q = kebab(u && u.username);
+      if (q) return q;
+    } catch { /* fall through */ }
+  }
+  return CHAR_ADDR_FALLBACK;
+}
+
+// The first free address under `qualifier`. Two characters with the same name
+// in the same set get `.../carpenter` and `.../carpenter-2` — there is nothing
+// left to tell them apart by, and it is 60 pages across the whole wiki.
+async function freeCharAddress(env, qualifier, base, exceptUid) {
+  await ensureUrlSlugColumn(env);
+  const q = kebab(qualifier) || CHAR_ADDR_FALLBACK;
+  const name = kebab(base) || 'character';
+  const first = q + '/' + name;
+  const taken = new Set();
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT url_slug FROM characters WHERE slug<>? AND (url_slug=? OR url_slug LIKE ?)'
+    ).bind(String(exceptUid || ''), first, first + '-%').all();
+    for (const r of results || []) if (r.url_slug) taken.add(String(r.url_slug));
+  } catch { /* column not there yet: nothing is taken */ }
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT from_slug, to_slug FROM redirects WHERE entity_type='character' AND (from_slug=? OR from_slug LIKE ?)"
+    ).bind(first, first + '-%').all();
+    for (const r of results || []) {
+      // An address this same page used to live at is not in the way: moving
+      // back onto it just undoes the redirect.
+      if (exceptUid && String(r.to_slug) === String(exceptUid)) continue;
+      if (r.from_slug) taken.add(String(r.from_slug));
+    }
+  } catch { /* nothing has ever moved */ }
+  if (!taken.has(first)) return first;
+  for (let i = 2; i < 500; i++) {
+    const candidate = first + '-' + i;
+    if (!taken.has(candidate)) return candidate;
+  }
+  return first + '-' + Date.now().toString(36);
+}
+
+// The address a character's current name and set ask for. `current` is the
+// address it already has, if any.
+async function characterAddress(env, uid, entry, ownerId, current) {
+  const q = kebab(await characterQualifier(env, entry, ownerId)) || CHAR_ADDR_FALLBACK;
+  const name = kebab((entry && entry.name) || uid) || 'character';
+  const first = q + '/' + name;
+  // Already filed under the right set under the right name — including as a
+  // numbered duplicate. Keep it. Recomputing the address on every save is what
+  // makes a rename automatic, but a save that changed neither the name nor the
+  // set must not shuffle the page onto a different URL just because a sibling
+  // moved away and freed up the unnumbered form.
+  if (current === first) return current;
+  if (current && current.startsWith(first + '-') && /^\d+$/.test(current.slice(first.length + 1))) {
+    return current;
+  }
+  return freeCharAddress(env, q, name, uid);
+}
+
+// Move a character to a new address, remembering the old one. This is the
+// whole of what renaming does now: one UPDATE and one redirect row. Nothing
+// else in the database, and nothing in R2, is touched.
+async function setCharAddress(env, uid, address) {
+  await ensureUrlSlugColumn(env);
+  const prev = await env.DB.prepare('SELECT url_slug FROM characters WHERE slug=?')
+    .bind(uid).first().catch(() => null);
+  const from = prev && prev.url_slug ? String(prev.url_slug) : '';
+  if (from === address) return false;
+  await env.DB.prepare('UPDATE characters SET url_slug=? WHERE slug=?')
+    .bind(address, uid).run();
+  if (from) {
+    await ensureRedirectsTable(env);
+    await env.DB.prepare(
+      `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+       ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+    ).bind(from, uid).run();
+  }
+  // An address that is a live page again must stop being a redirect.
+  try {
+    await env.DB.prepare(
+      "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
+    ).bind(address).run();
+  } catch { /* no redirects table yet */ }
+  return true;
+}
+
+// Resolve whatever followed /c/ to a character row, and say where that page
+// should canonically be read. Callers 301 when the reader arrived elsewhere.
+async function resolveCharacterPath(env, key) {
+  if (!key) return null;
+  await ensureUrlSlugColumn(env);
+  const cols = 'slug, url_slug, data, status, owner_id';
+  const bySlug = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE slug=?`)
+    .bind(v).first().catch(() => null);
+  const byAddr = async v => env.DB.prepare(`SELECT ${cols} FROM characters WHERE url_slug=?`)
+    .bind(v).first().catch(() => null);
+
+  let row = key.includes('/') ? await byAddr(key) : (await bySlug(key)) || (await byAddr(key));
+  if (!row) {
+    // An address this page used to live at. Redirect rows written since the
+    // split hold the identity; the 39 written before it hold what was then
+    // the new slug, which IS the identity — but try both, cheaply.
+    const moved = await lookupRedirect(env, 'character', key);
+    if (moved) row = (await bySlug(moved)) || (await byAddr(moved));
+  }
+  if (!row) return null;
+  return { row, canonical: charAddress(row) };
+}
+
 // Move a character from one slug to another, taking everything that points at
 // it along: comments, view counts, revisions, the activity log, admin page
 // protection, its art in R2, and the slug lists inside scripts, collections
 // and profile pins. Callers must have checked ownership and that `to` is free.
 // Reports whether the art actually moved — art that is not in R2 (the
 // bulk-imported pages point at committed files) keeps its old path.
+//
+// NOTE: identities do not move any more — an ordinary rename is an address
+// change (setCharAddress) and never comes through here. This is kept for the
+// one case that still moves a primary key: an admin deliberately re-keying a
+// row. Everything it does is still correct, it is simply no longer on the
+// path a creator's rename takes.
 async function renameCharacter(env, from, to) {
   let artMoved = false;
   await env.DB.prepare('UPDATE characters SET slug=? WHERE slug=?').bind(to, from).run();
@@ -1716,52 +2464,123 @@ async function rewriteProfilePins(env, from, to) {
   } catch { /* pins are cosmetic; never fail a rename over them */ }
 }
 
-// ---- Starlight inheritance ----
-// A Starlight collection lends the status to every character in it: awarding
+// ---- Curata inheritance ----
+// A Curata collection lends the status to every character in it: awarding
 // it to "Ravenswood Chronicle" marks all of Ravenswood's characters too, so
-// the Starlight filter on All Characters shows them. Inherited status is
+// the Curata filter on All Characters shows them. Inherited status is
 // never written back to the character row — it is derived on read, so
-// removing Starlight from the collection takes it off the characters with
+// removing Curata from the collection takes it off the characters with
 // it, and a character keeps its own flag if it was given one directly.
-// `starlightFrom` records which collection lent it, for the tooltip.
-// The set of Starlight collections, memoised per isolate against the content
+// `curataFrom` records which collection lent it, for the tooltip.
+// The set of Curata collections, memoised per isolate against the content
 // version. This used to be a full `collections` scan on EVERY /c/, /s/ and
 // /collection/ view — a whole table read to answer a question whose answer
-// changes only when an admin toggles a star.
-let _starCollCache = null;
-async function starlightCollections(env) {
+// changes only when an admin toggles the mark.
+let _curataCollCache = null;
+async function curataCollections(env) {
   const version = await contentVersion(env);
-  if (_starCollCache && _starCollCache.version === version) return _starCollCache.rows;
+  if (_curataCollCache && _curataCollCache.version === version) return _curataCollCache.rows;
   let rows = [];
   try {
     const { results } = await env.DB.prepare(
       "SELECT data FROM collections WHERE status='published'"
     ).all();
-    rows = (results || []).map(parseData).filter(d => d && d.starlight);
+    rows = (results || []).map(parseData).filter(d => d && d.curata);
   } catch { rows = []; }
-  _starCollCache = { version, rows };
+  _curataCollCache = { version, rows };
   return rows;
 }
 
-async function applyCollectionStarlight(env, chars) {
-  const starred = await starlightCollections(env);
-  if (!starred.length) return chars;
-  for (const coll of starred) {
+async function applyCollectionCurata(env, chars) {
+  const colls = await curataCollections(env);
+  if (!colls.length) return chars;
+  for (const coll of colls) {
     const name = coll.displayName || coll.id || coll.slug || 'a collection';
     for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
-      if (c.starlight) continue;              // its own flag wins
-      c.starlight = true;
-      c.starlightFrom = name;
-      c.classification = 'starlight';
+      if (c.curata) continue;              // its own flag wins
+      c.curata = true;
+      c.curataFrom = name;
+      c.classification = 'curata';
     }
   }
   return chars;
 }
 
+/* ---- "Appears in", derived from collection membership ----
+   A collection lists members either by matching their own `appearsIn` text or
+   by hand in `include[]`. The hand-listed half left the character page saying
+   nothing about the collection it is in. This fills that on READ: a character
+   with no `appearsIn` of its own picks up the collections that list it, in a
+   separate `appearsInFrom` field.
+
+   Separate on purpose. Writing it into `appearsIn` would feed the match rule
+   that resolves membership in the first place, so one collection could start
+   swallowing another's characters. Nothing is stored, so dropping a character
+   from a collection takes the line off its page. */
+let _inclCollCache = null;
+async function includeCollections(env) {
+  const version = await contentVersion(env);
+  if (_inclCollCache && _inclCollCache.version === version) return _inclCollCache.rows;
+  let rows = [];
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT data FROM collections WHERE status='published'"
+    ).all();
+    rows = (results || []).map(parseData)
+      .filter(d => d && Array.isArray(d.include) && d.include.length)
+      .map(d => ({
+        name: d.displayName || d.id || d.slug || '',
+        id: d.id || d.slug || '',
+        include: d.include
+      }))
+      .filter(c => c.name && c.id);
+  } catch { rows = []; }
+  _inclCollCache = { version, rows };
+  return rows;
+}
+
+const APPEARS_IN_MAX = 3;   // a character in more collections than this lists the first few
+async function applyCollectionAppearsIn(env, chars) {
+  const colls = await includeCollections(env);
+  if (!colls.length) return chars;
+  const bySlug = new Map();
+  for (const coll of colls) {
+    for (const slug of coll.include) {
+      if (typeof slug !== 'string') continue;
+      const list = bySlug.get(slug);
+      if (!list) { bySlug.set(slug, [coll]); continue; }
+      if (list.length < APPEARS_IN_MAX && !list.some(c => c.id === coll.id)) list.push(coll);
+    }
+  }
+  for (const c of chars) {
+    if (!c || (c.appearsIn && String(c.appearsIn).trim())) continue;
+    const hit = bySlug.get(c.slug);
+    if (hit) c.appearsInFrom = hit.map(x => ({ name: x.name, id: x.id }));
+  }
+  return chars;
+}
+
+// Curata was called Starlight until the rename, and rows written before it
+// carry the flag under the old key. Folding the old key into the new one on
+// READ is what makes the rename need no D1 migration: every reader sees
+// `curata`, and the next save of a row writes the new key and drops the old
+// one, so the database migrates itself a page at a time. Revision snapshots
+// and R2 backups predate the rename too and are restored through the same
+// path, so this has to stay even once every live row has been rewritten.
+// Anything that parses a row's `data` itself must call this — parseData()
+// does, and so does every raw JSON.parse of a `data` column below.
+function foldLegacyCurata(d) {
+  if (d && d.starlight !== undefined) {
+    if (d.starlight && d.curata === undefined) d.curata = true;
+    delete d.starlight;
+  }
+  return d;
+}
+
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
 function parseData(row) {
   if (!row || !row.data) return {};
-  try { return JSON.parse(row.data); } catch { return {}; }
+  try { return foldLegacyCurata(JSON.parse(row.data)); } catch { return {}; }
 }
 
 // ---- shared validation for script/collection page fields ----
@@ -1773,6 +2592,43 @@ const PAGE_FIELD_CAPS = {
   version: 32, synopsis: 4000, gameplay: 4000, strategyGood: 2000, strategyEvil: 2000
 };
 const PAGE_IMG_RE = /^(scripts|collections)\/[a-z0-9._ -]+\.(png|jpe?g|webp)$/i;
+
+// A script's hand-arranged night order: {first: [slug], other: [slug]}, each
+// list a set of roster slugs. Returns null when there is nothing worth
+// storing, so an unarranged script keeps no key at all and sorts by the
+// characters' own night numbers, exactly as it always did.
+function sanitizeNightOrder(o) {
+  if (!o || typeof o !== 'object') return null;
+  const list = v => Array.isArray(v)
+    ? [...new Set(v.slice(0, 200).map(x => String(x).slice(0, 80)).filter(Boolean))]
+    : [];
+  const out = { first: list(o.first), other: list(o.other) };
+  if (!out.first.length) delete out.first;
+  if (!out.other.length) delete out.other;
+  return (out.first || out.other) ? out : null;
+}
+
+// A script's own jinx edits: {off: ["slugA|slugB"], add: [{a, b, text}]}.
+// Nothing is written back to the characters: this is one script's view of the
+// rules between them (see scriptJinxes in render-page.js).
+function sanitizeJinxEdits(o) {
+  if (!o || typeof o !== 'object') return null;
+  const slug = v => String(v || '').slice(0, 80);
+  const off = Array.isArray(o.off)
+    ? [...new Set(o.off.slice(0, 200).map(k => String(k).slice(0, 165)).filter(k => k.includes('|')))]
+    : [];
+  const add = Array.isArray(o.add)
+    ? o.add.slice(0, 100).map(j => ({
+        a: slug(j && j.a), b: slug(j && j.b),
+        text: String((j && j.text) || '').slice(0, 300)
+      })).filter(j => j.a && j.b && j.a !== j.b)
+    : [];
+  const out = {};
+  if (off.length) out.off = off;
+  if (add.length) out.add = add;
+  return (out.off || out.add) ? out : null;
+}
+
 function sanitizePageFields(o, themeBase) {
   for (const k of Object.keys(PAGE_FIELD_CAPS)) {
     if (o[k] != null) o[k] = String(o[k]).slice(0, PAGE_FIELD_CAPS[k]);
@@ -1919,10 +2775,18 @@ const CARD_DROP_FIELDS = new Set([
 async function buildPublicJSON(env, table, opts = {}) {
   const drafts = !!opts.includeDrafts;
   const cardOnly = opts.fields === 'card' && table === 'characters';
+  const chars = table === 'characters';
   const where = drafts ? "status IN ('published','draft')" : "status='published'";
+  // Characters carry their identity and their address from the row itself, so
+  // every consumer gets both without either being able to drift: `slug` is the
+  // PK (what references are keyed on) and `page` is built from `url_slug`
+  // (what links go to). Twelve pages already link through `page`, which is why
+  // this one line is most of the frontend's share of nesting.
+  if (chars) await ensureUrlSlugColumn(env);
+  const cols = chars ? 'data, status, slug, url_slug' : 'data, status';
   let results;
   try {
-    ({ results } = await env.DB.prepare(`SELECT data, status FROM ${table} WHERE ${where}`).all());
+    ({ results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all());
   } catch {
     // status column not migrated yet -> serve everything (legacy behaviour)
     ({ results } = await env.DB.prepare(`SELECT data FROM ${table}`).all());
@@ -1930,17 +2794,28 @@ async function buildPublicJSON(env, table, opts = {}) {
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
   const out = results.map(r => {
-    const d = JSON.parse(r.data);
+    const d = foldLegacyCurata(JSON.parse(r.data));
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
+    // The approved-editor list is the creator's own administration, not page
+    // content, and it stores account ids. Nothing public reads it — the
+    // editors load their page through /api/page — so it never goes on the
+    // wire. `publicEdit` stays: that is what the page's Editing row renders.
+    delete d.editors;
+    if (chars && r.slug) {
+      d.slug = String(r.slug);
+      // The address, derived on every read. The stored `page` is whatever some
+      // editor wrote there years ago and is never trusted for a character.
+      d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
+    }
     // clean URLs: stored page paths end in .html, but the site serves them
     // extensionless now — strip it so every consumer links the clean form
     if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
-    // Partial/Standard/Starlight is derived here rather than stored, so a
+    // Partial/Standard/Curata is derived here rather than stored, so a
     // page re-classifies itself the moment its owner adds a tag or a line of
-    // almanac text. `starlight` is the only stored half (admin-set).
-    if (d.starlight) d.starlight = true; else delete d.starlight;
+    // almanac text. `curata` is the only stored half (admin-set).
+    if (d.curata) d.curata = true; else delete d.curata;
     // NOTE: classify BEFORE trimming. Classify.classifyPage reads exactly the
     // prose fields the card feed drops (summaryBullets, howToRun, examples,
     // tips ...), so trimming first would flag every finished page as Partial.
@@ -1956,8 +2831,12 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
-  // Characters pick up Starlight from any Starlight collection they belong to.
-  if (table === 'characters') await applyCollectionStarlight(env, out);
+  // Characters pick up Curata from any Curata collection they belong to,
+  // and an "Appears in" from any collection that lists them by hand.
+  if (table === 'characters') {
+    await applyCollectionCurata(env, out);
+    await applyCollectionAppearsIn(env, out);
+  }
   return out;
 }
 
@@ -2090,12 +2969,18 @@ function attr(s) {
 function pageShell(o) {
   // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
   //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner,
-  //     noindex}
+  //     noindex, root}
+  // `root` is how far up the site root is from this page's URL. Every path in
+  // the shell is relative, and all of /s/, /collection/, /news/ and /p/ sit
+  // one level deep, so it defaults to '../'. Character addresses are nested
+  // (/c/{set}/{character}) and pass '../../' — without it the stylesheet, the
+  // logo and every nav link on a character page resolve inside /c/.
   // `noindex` keeps a page out of search engines — used by the custom wiki
   // pages, which are reachable only from their parent page and their author's.
   // The nav row is identical on every page (built into the shell below);
   // site.js appends Tools + the Account/Login button, and moves the
   // Edit button to the end of the row on editable pages.
+  const R = o.root || '../';
   const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
   const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
@@ -2118,27 +3003,27 @@ ${o.noindex ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link re
 <meta name="twitter:title" content="${attr(o.title)}">
 <meta name="twitter:description" content="${attr(o.desc)}">
 <meta name="twitter:image" content="${attr(o.ogImage)}">
-<link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon.png">
-<link rel="apple-touch-icon" href="../assets/favicon.png">
-<link rel="stylesheet" href="../assets/styles.css">
-<link rel="stylesheet" href="../assets/header-redesign.css">
+<link rel="icon" type="image/png" sizes="64x64" href="${R}assets/favicon.png">
+<link rel="apple-touch-icon" href="${R}assets/favicon.png">
+<link rel="stylesheet" href="${R}assets/styles.css">
+<link rel="stylesheet" href="${R}assets/header-redesign.css">
 </head>
 <body${bodyAttrs}>
 ${o.draftBanner || ''}
   <header class="topbar">
     <div class="brand-group">
-      <a class="brand" href="../">
-        <img class="brand-skull" src="../assets/logo_skull.png" alt="">
-        <img class="brand-header-text" src="../assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      <a class="brand" href="${R}">
+        <img class="brand-skull" src="${R}assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="${R}assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="../assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="${R}assets/ccc-parchment.png" alt="Community Created Content">
       <a class="edit-link" id="edit-btn" style="display:none" href="#">&#9998; Edit</a>
     </div>
     <nav class="crumb" aria-label="Primary">
-      <a href="../all-characters">All Characters</a>
-      <a href="../scripts">Scripts</a>
-      <a href="../all-collections">Collections</a>
-      <a href="../script">Script Builder</a>
+      <a href="${R}all-characters">All Characters</a>
+      <a href="${R}scripts">Scripts</a>
+      <a href="${R}all-collections">Collections</a>
+      <a href="${R}script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
     <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
@@ -2152,11 +3037,11 @@ ${o.draftBanner || ''}
   <div class="nav-dropdown-search">
     <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
   </div>
-  <a href="../">Home</a>
-  <a href="../all-characters">All Characters</a>
-  <a href="../scripts">Scripts</a>
-  <a href="../all-collections">Collections</a>
-  <a href="../script">Script Builder</a>
+  <a href="${R}">Home</a>
+  <a href="${R}all-characters">All Characters</a>
+  <a href="${R}scripts">Scripts</a>
+  <a href="${R}all-collections">Collections</a>
+  <a href="${R}script">Script Builder</a>
 </nav>
 
   <main${mainAttrs} id="content">${o.body}</main>
@@ -2164,7 +3049,7 @@ ${o.draftBanner || ''}
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script>${o.bootstrap || ''}</script>
-${(o.scripts || []).map(s => '  <script src="../assets/' + s + '"></script>').join('\n')}
+${(o.scripts || []).map(s => '  <script src="' + R + 'assets/' + s + '"></script>').join('\n')}
 </body>
 </html>`;
 }
@@ -2186,7 +3071,8 @@ const PARTIAL_PREHIDE =
   'if(m[n.getAttribute("data-partial-slug")]===n.getAttribute("data-partial-sig"))n.remove();' +
   '}catch(e){}})();<\/script>';
 
-function partialNoticeHTML(d) {
+function partialNoticeHTML(d, root) {
+  const R = root || '../';
   const bits = Classify.missingBits(d);
   const missing = Classify.listPhrase(bits);
   // data-partial-sig is what is still outstanding. Dismissal is remembered
@@ -2198,7 +3084,7 @@ function partialNoticeHTML(d) {
     ' data-partial-sig="' + attr(bits.join('|')) + '">' +
     '<strong>' + SYS.partialLabel + '</strong> ' + SYS.partialBody +
     (missing ? ' ' + SYS.partialFix.replace('{missing}', escapeHtml(missing)) : '') +
-    ' <a href="../edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a>' +
+    ' <a href="' + R + 'edit?c=' + attr(d.slug) + '">' + SYS.partialEdit + '</a>' +
     '<button type="button" class="page-notice-close" aria-label="' +
     attr(SYS.partialDismiss) + '">&times;</button>' +
     '</div>' + PARTIAL_PREHIDE;
@@ -2217,22 +3103,29 @@ async function serveProfileShell(env, request, url) {
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
   const desc = (d.ability || d.lede || '').trim();
-  const pageUrl = origin + '/c/' + d.slug;
+  // d.page is the address the /c/ route resolved; d.slug is the identity and
+  // is only the address for a row the backfill has not reached.
+  const pageUrl = origin + '/' + String(d.page || ('c/' + d.slug)).replace(/^\//, '');
+  // Every path in the shell and the body is relative, and a nested address
+  // (/c/{set}/{character}) is one level deeper than the flat one this page
+  // used to have. Count the depth off the address rather than assuming it.
+  const depth = String(d.page || ('c/' + d.slug)).replace(/^\//, '').split('/').length - 1;
+  const root = '../'.repeat(Math.max(1, depth));
   const imgRaw = Array.isArray(d.image) ? d.image[0] : d.image;
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
   // bulk-imported characters may only have a remote image URL, no local art
   const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
-  // Stamped here too (not just in characters.json) so the Starlight star in
+  // Stamped here too (not just in characters.json) so the Curata mark in
   // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
-  const body = Render.renderCharacter(d, artSrc, '../');
+  const body = Render.renderCharacter(d, artSrc, root);
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="../edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
-    : '') + (showPartialNotice ? partialNoticeHTML(d) : '');
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + root + 'edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+    : '') + (showPartialNotice ? partialNoticeHTML(d, root) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
-    body, draftBanner,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
+    body, draftBanner, root,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
     scripts: ['render.js', 'tags.js', 'charpage.js', 'comments.js', 'site.js']
   });
@@ -2240,19 +3133,28 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
 
 // ---- official BotC roles (assets/roles.json), for script rosters that
 // include imported official characters ('off-' slugs). Cached per isolate.
+// Wake positions come from assets/night-order.json; roles.json has none, which
+// is why an official character used to be missing from a script page's Night
+// Order box. Both are fetched as static assets rather than imported, so
+// neither rides in the Worker bundle, and a night-order.json that fails to
+// load costs the positions and nothing else.
 let _officialRolesCache = null;
 async function loadOfficialRoles(env, origin) {
   if (_officialRolesCache) return _officialRolesCache;
   try {
-    const res = await env.ASSETS.fetch(new Request(origin + '/assets/roles.json'));
-    const roles = await res.json();
-    _officialRolesCache = (roles || []).filter(r => r && r.id).map(r => ({
-      slug: 'off-' + String(r.id).toLowerCase().replace(/[^a-z0-9]/g, ''),
-      official: true, id: r.id,
-      name: r.name || r.id, team: r.team || '',
-      ability: r.ability || '', image: r.image || '',
-      page: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(String(r.name || r.id).replace(/ /g, '_'))
-    }));
+    const [rolesRes, nightRes] = await Promise.all([
+      env.ASSETS.fetch(new Request(origin + '/assets/roles.json')),
+      env.ASSETS.fetch(new Request(origin + '/assets/night-order.json')).catch(() => null)
+    ]);
+    const roles = await rolesRes.json();
+    let night = null;
+    try { night = nightRes ? await nightRes.json() : null; } catch { night = null; }
+    // The non-character steps of the night (dusk, minion info, demon info,
+    // dawn): what an exported script needs to write a night sequence the
+    // official app can follow. Without them the export leaves the sequence
+    // out rather than publish one those steps are missing from.
+    if (night && night.meta) PageRender.setNightMeta(night.meta);
+    _officialRolesCache = OfficialRoles.buildOfficialRoles(roles, night);
   } catch {
     _officialRolesCache = [];
   }
@@ -2275,11 +3177,168 @@ async function officialIconMap(env, origin) {
   return m;
 }
 
+// Map of slugId(id/name) -> official display name. Jinx names are typed by
+// hand, so the wiki holds "leviathan" and "plaguedoctor" where it means
+// Leviathan and Plague Doctor; resolveJinxTarget() uses this to print the
+// real name whenever the target turns out to be an official character.
+let _officialNameMapCache = null;
+async function officialNameMap(env, origin) {
+  if (_officialNameMapCache) return _officialNameMapCache;
+  const m = {};
+  for (const r of await loadOfficialRoles(env, origin)) {
+    if (!r.name) continue;
+    m[Render.slugId(r.id)] = r.name;
+    m[Render.slugId(r.name)] = r.name;
+  }
+  _officialNameMapCache = m;
+  return m;
+}
+
+// Jinxes between two OFFICIAL characters (assets/official-jinxes.json). An
+// opt-in layer on /jinxes rather than part of the default picture: the
+// homebrew map reads fine without them. Cached per isolate.
+let _officialJinxCache = null;
+async function loadOfficialJinxes(env, origin) {
+  if (_officialJinxCache) return _officialJinxCache;
+  try {
+    const res = await env.ASSETS.fetch(new Request(origin + '/assets/official-jinxes.json'));
+    const doc = await res.json();
+    _officialJinxCache = Array.isArray(doc && doc.jinxes) ? doc.jinxes : [];
+  } catch {
+    _officialJinxCache = [];
+  }
+  return _officialJinxCache;
+}
+
+// ---- the jinx index ----------------------------------------------------
+// Every jinx on the wiki as one edge list, plus the character rows needed to
+// draw them. Two callers, neither of which can afford its own table scan: a
+// /c/ page needs the jinxes OTHER characters declare with it (a jinx is stored
+// on one side only), and /jinxes draws the whole graph.
+//
+// Cached like the JSON feeds: in-isolate and in caches.default, under a key
+// carrying contentVersion(), which logActivity() bumps on every content write.
+// Cold cost is one card-feed read.
+let _jinxIndexCache = null;      // { version, index }
+async function jinxIndex(env, ctx) {
+  const version = await contentVersion(env);
+  if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
+
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  try {
+    const hit = await caches.default.match(cacheKey);
+    if (hit) {
+      const index = await hit.json();
+      _jinxIndexCache = { version, index };
+      return index;
+    }
+  } catch { /* cache miss is not an error */ }
+
+  const rows = await buildPublicJSON(env, 'characters', { fields: 'card' });
+  const index = buildJinxIndex(rows);
+  _jinxIndexCache = { version, index };
+  try {
+    const stored = new Response(JSON.stringify(index), {
+      headers: { ...JSON_HEADERS, 'Cache-Control': FEED_CACHE_CONTROL }
+    });
+    if (ctx) ctx.waitUntil(caches.default.put(cacheKey, stored).catch(() => {}));
+  } catch { /* the in-isolate copy is enough */ }
+  return index;
+}
+
+// The jinx list a /c/ page shows: its own, plus every jinx another character
+// declares with it, pointed back the other way. A mirrored entry carries
+// `mirrored` so the renderer can say which page stores (and so owns) it.
+// A pair both sides declare is shown once, and the character's own entry wins.
+function mergeMirroredJinxes(d, slug, jx) {
+  const own = Array.isArray(d.jinxes) ? d.jinxes.filter(j => j && (j.name || j.id || j.slug)) : [];
+  const inbound = (jx.bySlug && jx.bySlug[slug]) || [];
+  if (!inbound.length) return own;
+
+  // What this page already points at, so a mutual jinx is not listed twice.
+  const claimed = new Set();
+  for (const j of own) {
+    const k = (j.slug && Render.normJinxId(j.slug)) ||
+      Render.normJinxId(j.id || Render.slugId(j.name || ''));
+    if (k) claimed.add(k);
+  }
+
+  const out = own.slice();
+  for (const e of inbound) {
+    const other = jx.rows[e.from];
+    if (!other) continue;
+    if (claimed.has(Render.normJinxId(other.slug)) ||
+        claimed.has(Render.normJinxId(other.name))) continue;
+    out.push({
+      slug: other.slug, name: other.name, align: e.align, text: e.text,
+      mirrored: true, mirroredFrom: { slug: other.slug, name: other.name, page: other.page || '' }
+    });
+  }
+  return out;
+}
+
+// Pure, so it can be reasoned about (and tested) without a database.
+// `chars` -> { chars: {key: row}, bySlug: {slug: [edge]}, edges: [edge] }.
+function buildJinxIndex(chars) {
+  const byKey = {};                 // normJinxId(slug|name) -> compact row
+  const bySlugRow = {};
+  for (const c of chars || []) {
+    if (!c || !c.slug) continue;
+    const row = {
+      slug: c.slug, name: c.name || c.slug, team: c.team || '',
+      art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
+      creator: c.creator || '',
+      // The address. `slug` stays the identity, which is what edges and
+      // the mirroring are keyed on; this is only ever used to build a link.
+      page: typeof c.page === 'string' ? c.page : ''
+    };
+    bySlugRow[c.slug] = row;
+    for (const k of [Render.normJinxId(c.slug), Render.normJinxId(c.name)]) {
+      if (k && !byKey[k]) byKey[k] = row;
+    }
+  }
+
+  const edges = [];
+  const bySlug = {};                // slug -> edges where it is the TARGET
+  const seen = new Set();
+  for (const c of chars || []) {
+    if (!c || !c.slug || !Array.isArray(c.jinxes)) continue;
+    for (const j of c.jinxes) {
+      if (!j || !(j.name || j.id || j.slug)) continue;
+      const key = Render.normJinxId(j.slug || '') && byKey[Render.normJinxId(j.slug)]
+        ? Render.normJinxId(j.slug)
+        : Render.normJinxId(j.id || Render.slugId(j.name || ''));
+      const target = byKey[key];
+      // A page jinxed with itself is a data slip, not a relationship.
+      if (target && target.slug === c.slug) continue;
+      const text = j.text || j.reason || '';
+      // One edge per unordered pair per rule text, matching findScriptJinxes.
+      const pairKey = [c.slug, target ? target.slug : key].sort().join('|') + '|' + text;
+      if (seen.has(pairKey)) continue;
+      seen.add(pairKey);
+      const edge = {
+        from: c.slug,
+        to: target ? target.slug : '',
+        key,
+        name: j.name || '',
+        id: j.id || '',
+        align: j.align === 'evil' ? 'evil' : 'good',
+        text
+      };
+      edges.push(edge);
+      if (target) {
+        (bySlug[target.slug] = bySlug[target.slug] || []).push(edge);
+      }
+    }
+  }
+  return { chars: byKey, rows: bySlugRow, bySlug, edges };
+}
+
 // ---- character data for the SSR script/collection pages ----
 // These pages used to call buildPublicJSON(env, 'characters') outright, which
 // meant every single /s/ and /collection/ view read and parsed the ENTIRE
 // characters table — a twelve-character script paying for five thousand rows —
-// plus a second full scan of collections for Starlight. Three fixes:
+// plus a second full scan of collections for Curata. Three fixes:
 //
 //  1. A script only ever needs its own roster, so fetch exactly those slugs.
 //  2. A collection genuinely has to look at every character (membership is
@@ -2304,12 +3363,15 @@ async function cachedCharLinkMap(env) {
   const map = {};
   const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   try {
+    await ensureUrlSlugColumn(env);
     const { results } = await env.DB.prepare(
-      "SELECT slug, name FROM characters WHERE status='published'"
+      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
     ).all();
     for (const r of results || []) {
-      if (r.slug) map[nkey(r.slug)] = r.slug;
-      if (r.name) map[nkey(r.name)] = r.slug;
+      // The ADDRESS: render-wiki turns this into `c/{value}`.
+      const addr = charAddress(r);
+      if (r.slug) map[nkey(r.slug)] = addr;
+      if (r.name) map[nkey(r.name)] = addr;
     }
   } catch { /* an empty map just means [[Name]] renders as a plain token */ }
   _charLinkCache = { version, map };
@@ -2332,7 +3394,7 @@ async function charsBySlug(env, slugs) {
       ).bind(...chunk).all();
       for (const r of results || []) {
         try {
-          const d = JSON.parse(r.data);
+          const d = foldLegacyCurata(JSON.parse(r.data));
           if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
@@ -2341,11 +3403,11 @@ async function charsBySlug(env, slugs) {
       }
     } catch { /* a transient failure: better a short roster than a 500 */ }
   }
-  // buildPublicJSON used to do this for us. A character on a Starlight
-  // collection carries the star onto every page it appears on, so a roster
-  // built by slug has to inherit it too or the star would vanish on script
+  // buildPublicJSON used to do this for us. A character on a Curata
+  // collection carries the mark onto every page it appears on, so a roster
+  // built by slug has to inherit it too or the mark would vanish on script
   // pages only. Cheap now that the collection set is memoised.
-  await applyCollectionStarlight(env, out);
+  await applyCollectionCurata(env, out);
   return out;
 }
 
@@ -2361,19 +3423,26 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     row = await env.DB.prepare(`SELECT slug, data FROM ${table} WHERE slug=?`).bind(slug).first();
   }
   if (!isScript && !row) row = await findCollectionRow(env, slug);
-  if (!row || !row.data) return env.ASSETS.fetch(request);
+  if (!row || !row.data) return assetsOrNotFound(env, request);
 
   // Soft-deleted pages are hidden from everyone; recovery is on the dashboard.
-  if (row.status === 'deleted') return env.ASSETS.fetch(request);
+  if (row.status === 'deleted') return assetsOrNotFound(env, request);
 
   // One session read serves both the draft check and the "may this reader see
   // draft wiki pages / the new-page button" check further down.
   const pageSess = await getSession(env, request);
+  // Ownership. It gates the wiki-page half of this page: listing a parent's
+  // draft pages, and the button that writes a new one, both need the parent's
+  // OWNER (that is what /api/wiki-page enforces), so an approved editor must
+  // not be offered either.
   const mayEditParent = canEditRow(pageSess, row);
+  // Ownership or an approved editor: what this reader may do to the page
+  // itself. That is the draft gate and the Edit button.
+  const mayEditPage = mayEditParent || await canEditPage(env, pageSess, type, row);
   const isDraft = row.status === 'draft';
-  if (isDraft && !mayEditParent) return env.ASSETS.fetch(request); // 404 for everyone else
+  if (isDraft && !mayEditPage) return assetsOrNotFound(env, request); // 404 for everyone else
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
-  const d = JSON.parse(row.data);
+  const d = foldLegacyCurata(JSON.parse(row.data));
   if (!d.slug) d.slug = row.slug || slug;
 
   // A script knows its roster by slug, so it never needs the rest of the
@@ -2382,9 +3451,12 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
     : await cachedCardChars(env);
-  // Scripts can carry imported official roles ('off-' slugs) — resolve them
-  if (isScript && (d.characters || []).some(s => String(s).indexOf('off-') === 0)) {
-    chars = chars.concat(await loadOfficialRoles(env, url.origin));
+  // Scripts can carry imported official roles ('off-' slugs), so resolve them.
+  // An arranged night order needs this call on an all-homebrew script too: it
+  // is what loads the night's non-character steps.
+  if (isScript && ((d.characters || []).some(s => String(s).indexOf('off-') === 0) || d.nightOrder)) {
+    const official = await loadOfficialRoles(env, url.origin);
+    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
   }
 
   const themeBase = isScript ? ('scripts/' + d.slug) : ('collections/' + (d.id || d.slug));
@@ -2409,9 +3481,17 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ? '../publish-page?parentType=' + encodeURIComponent(type) + '&parentSlug=' + encodeURIComponent(pageKey)
     : '';
 
+  const editHref = isScript
+    ? '../publish-script?s=' + encodeURIComponent(d.slug)
+    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
+  // The page's own Edit button, gated: it sits in the page, where a reader
+  // would take it as an invitation. (The top-bar pencil shows unconditionally;
+  // the API is the enforcer.) SSR responses are no-store, so this is safe.
+  const ownerEditHref = mayEditPage ? editHref : '';
+
   const body = isScript
-    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref })
-    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref });
+    ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref })
+    : PageRender.renderCollectionPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref });
 
   const nChars = isScript
     ? (d.characters || []).length
@@ -2421,9 +3501,6 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
      ' for Blood on the Clocktower' + (d.author ? ', by ' + d.author : '') + '.');
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
   const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
-  const editHref = isScript
-    ? '../publish-script?s=' + encodeURIComponent(d.slug)
-    : '../publish-collection?c=' + encodeURIComponent(d.id || d.slug);
   const draftBanner = isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
     : '';
@@ -2451,17 +3528,17 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
 async function findCollectionRow(env, key) {
   if (!key) return null;
   let hit = await env.DB.prepare(
-    'SELECT slug, display_name AS name, owner_id, status, data FROM collections WHERE slug=?'
+    'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections WHERE slug=?'
   ).bind(key).first().catch(() => null);
   if (hit) return hit;
   const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   const nkey = norm(key);
   const { results } = await env.DB.prepare(
-    'SELECT slug, display_name AS name, owner_id, status, data FROM collections'
+    'SELECT slug, display_name AS name, owner_id, status, data, created_at, updated_at FROM collections'
   ).all().catch(() => ({ results: [] }));
   for (const row of results || []) {
     try {
-      const d = JSON.parse(row.data);
+      const d = foldLegacyCurata(JSON.parse(row.data));
       if (d.id === key || norm(d.id) === nkey || norm(row.slug) === nkey || norm(d.displayName) === nkey) return row;
     } catch { /* skip bad rows */ }
   }
@@ -2713,12 +3790,12 @@ export default {
           headers: { Location: url.origin + '/news/' + slug + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
       await ensureNewsTable(env);
       const row = await env.DB.prepare('SELECT * FROM news WHERE slug=?').bind(slug).first().catch(() => null);
-      if (!row) return env.ASSETS.fetch(request);
+      if (!row) return assetsOrNotFound(env, request);
       const isDraft = row.status !== 'published';
-      if (isDraft && !(await adminSession(env, request))) return env.ASSETS.fetch(request);
+      if (isDraft && !(await adminSession(env, request))) return assetsOrNotFound(env, request);
       if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'news', row.slug));
 
       const d = parseData(row);
@@ -2836,15 +3913,15 @@ export default {
           headers: { Location: url.origin + '/p/' + encodeURIComponent(slug) + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return env.ASSETS.fetch(request);
+      if (!slug || !/^[a-z0-9-]+$/i.test(slug)) return assetsOrNotFound(env, request);
       await ensurePagesTable(env);
       const row = await env.DB.prepare('SELECT * FROM pages WHERE slug=?')
         .bind(slug).first().catch(() => null);
-      if (!row) return env.ASSETS.fetch(request);
+      if (!row) return assetsOrNotFound(env, request);
       const isDraft = row.status !== 'published';
       if (isDraft) {
         const sess = await getSession(env, request);
-        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+        if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
       }
       if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
 
@@ -2856,7 +3933,7 @@ export default {
       // parent brings everything back.
       if (parent && parent.status === 'deleted') {
         const sess = await getSession(env, request);
-        if (!canEditRow(sess, row)) return env.ASSETS.fetch(request);
+        if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
       }
       WikiRender.setCharLinks(await loadCharLinks(env));
       const page = {
@@ -2965,19 +4042,15 @@ export default {
           headers: { Location: url.origin + '/c/' + slug + url.search, 'Cache-Control': 'no-store' }
         });
       }
-      if (slug && /^[a-z0-9-]+$/i.test(slug)) {
-        let row = null;
-        try {
-          row = await env.DB.prepare('SELECT data, status, owner_id FROM characters WHERE slug = ?')
-            .bind(slug).first();
-        } catch {
-          row = await env.DB.prepare('SELECT data FROM characters WHERE slug = ?')
-            .bind(slug).first();
-        }
+      // One segment is an identity or a flat address from before nesting; two
+      // is a nested address, /c/{set}/{character}.
+      if (slug && /^[a-z0-9-]+(\/[a-z0-9-]+)?$/i.test(slug)) {
+        const found = await resolveCharacterPath(env, slug);
+        const row = found ? found.row : null;
         if (row && row.data) {
           // Soft-deleted pages are hidden from everyone (incl. owner/admin);
           // recovery happens on the admin dashboard, not the live page.
-          if (row.status === 'deleted') return env.ASSETS.fetch(request);
+          if (row.status === 'deleted') return assetsOrNotFound(env, request);
           const isDraft = row.status === 'draft';
           // Two things want to know whether this viewer owns the page: the
           // draft gate and the Partial nudge. Resolve it at most once, and
@@ -2985,40 +4058,68 @@ export default {
           // finished page never pays for a session lookup.
           let editable = null;
           const canEdit = async () => {
-            if (editable === null) editable = canEditRow(await getSession(env, request), row);
+            if (editable === null) {
+              editable = await canEditPage(env, await getSession(env, request), 'character', row);
+            }
             return editable;
           };
-          if (isDraft && !(await canEdit())) return env.ASSETS.fetch(request); // 404 for everyone else
-          const d = JSON.parse(row.data);
-          if (!d.slug) d.slug = slug;
-          // Same Starlight inheritance the JSON feeds get, so the star on the
+          if (isDraft && !(await canEdit())) return assetsOrNotFound(env, request); // 404 for everyone else
+          // Read at the canonical address, whichever door they came in by.
+          // This has to come AFTER the draft and deleted gates: a 301 where a
+          // stranger should get a 404 tells them the page exists and where it
+          // now lives, and the site never reveals that unpublished pages exist.
+          if (found.canonical && found.canonical !== slug) {
+            return new Response(null, {
+              status: 301,
+              headers: {
+                Location: url.origin + '/c/' + found.canonical + url.search,
+                'Cache-Control': 'no-store'
+              }
+            });
+          }
+          const d = foldLegacyCurata(JSON.parse(row.data));
+          // The row is the truth for both: `slug` is the identity (the art
+          // paths and every reference are keyed on it) and `page` is the
+          // address, which is what the canonical link and the OG tags use.
+          d.slug = String(row.slug);
+          d.page = 'c/' + found.canonical;
+          // Same Curata inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
-          if (!d.starlight) await applyCollectionStarlight(env, [d]);
+          if (!d.curata) await applyCollectionCurata(env, [d]);
+          // Same for the "Appears in" row: a character listed by hand in a
+          // collection says so here without its creator typing the name in.
+          await applyCollectionAppearsIn(env, [d]);
           // "This page is Partial" is shown to the people who can act on it
           // and to nobody else (see partialNoticeHTML). It asks isIncomplete,
-          // not isPartial: Starlight lifts a page out of the public Partial
+          // not isPartial: Curata lifts a page out of the public Partial
           // tier, but it does not fill in the missing tags or almanac, and
-          // the owner is still the one who can. Most Starlight here is
+          // the owner is still the one who can. Most Curata here is
           // inherited from a collection, so no admin ever looked at the page.
           const partialNotice = Classify.isIncomplete(d) && await canEdit();
-          if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', slug));
+          // Views are counted against the IDENTITY, so a page's history
+          // survives every rename it ever has.
+          if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', String(row.slug)));
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
+          Render.setOfficialNames(await officialNameMap(env, url.origin));
+          // [[Character Name]] inside a jinx rule or a custom box links to
+          // that character. Cheap cached name->slug query, not the corpus.
+          WikiRender.setCharLinks(await cachedCharLinkMap(env));
+          // Jinxes are a property of the pair, so this page shows the ones it
+          // declares AND the ones other characters declare with it.
+          try {
+            const jx = await jinxIndex(env, ctx);
+            Render.setWikiChars(jx.chars);
+            d.jinxes = mergeMirroredJinxes(d, String(row.slug), jx);
+          } catch { /* the page's own jinxes still render */ }
           return new Response(renderCharacterPage(d, url.origin, isDraft, partialNotice), {
             headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
           });
         }
-        // No page here — but this may be the address a renamed character used
-        // to live at, and every link out in the world still points at it.
-        const moved = await lookupRedirect(env, 'character', slug);
-        if (moved) {
-          return new Response(null, {
-            status: 301,
-            headers: { Location: url.origin + '/c/' + moved + url.search, 'Cache-Control': 'no-store' }
-          });
-        }
+        // Nothing here. resolveCharacterPath already followed the `redirects`
+        // table, so an address a renamed page used to live at has been tried.
       }
       // Unknown slug -> fall back to a committed static page (if any), else 404.
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- SCRIPT PAGES (server-side rendered from D1) ----------
@@ -3034,7 +4135,7 @@ export default {
       if (slug && /^[a-z0-9-]+$/i.test(slug)) {
         return renderContentPage(env, ctx, request, url, 'script', slug);
       }
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- COLLECTION PAGES (server-side rendered from D1) ----------
@@ -3050,7 +4151,7 @@ export default {
       if (key) {
         return renderContentPage(env, ctx, request, url, 'collection', key);
       }
-      return env.ASSETS.fetch(request);
+      return assetsOrNotFound(env, request);
     }
 
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
@@ -3086,7 +4187,7 @@ export default {
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------
     if (method === 'GET' && path === '/random') {
-      // Weighted by classification: Starlight pages come up more often and
+      // Weighted by classification: Curata pages come up more often and
       // Partial (unfinished) pages never do. Falls back to a plain SQL
       // RANDOM() pick if the table can't be read as JSON for any reason.
       // Uses the memoised card feed rather than a fresh full parse: this route
@@ -3096,19 +4197,21 @@ export default {
       try {
         picked = Classify.weightedPick(await cachedCardChars(env));
       } catch { /* fall through */ }
-      let row = picked && picked.slug ? { slug: picked.slug } : null;
+      let row = picked && picked.slug ? { slug: picked.slug, page: picked.page } : null;
       if (!row) {
+        await ensureUrlSlugColumn(env);
         try {
           row = await env.DB.prepare(
-            "SELECT slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
+            "SELECT slug, url_slug FROM characters WHERE status='published' ORDER BY RANDOM() LIMIT 1"
           ).first();
         } catch {
           row = await env.DB.prepare(
             'SELECT slug FROM characters ORDER BY RANDOM() LIMIT 1'
           ).first();
         }
+        if (row) row.page = 'c/' + charAddress(row);
       }
-      const dest = row ? '/c/' + row.slug : '/all-characters';
+      const dest = row ? '/' + String(row.page || ('c/' + row.slug)).replace(/^\//, '') : '/all-characters';
       return new Response(null, {
         status: 302,
         headers: { Location: url.origin + dest, 'Cache-Control': 'no-store' }
@@ -3229,7 +4332,7 @@ export default {
         pagesFrom('scripts', 'author')
       ]);
       // Collections keep their author in the JSON blob (no column), so they are
-      // filtered in JS — the same full-table read applyCollectionStarlight does.
+      // filtered in JS — the same full-table read applyCollectionCurata does.
       let collRows = [];
       try {
         const { results } = await env.DB.prepare(
@@ -3281,7 +4384,7 @@ export default {
           o.description = d.description || '';
           o.header = d.header || '';
         }
-        if (d.starlight) o.starlight = true;
+        if (d.curata) o.curata = true;
         const cls = Classify.classifyPage(d, type);
         if (cls !== 'standard') o.classification = cls;
         // Partial is derived per read, and the page needs the raw ingredients
@@ -3292,9 +4395,9 @@ export default {
       const characters = charRows.map(r => card(r, 'character'));
       const scripts = scriptRows.map(r => card(r, 'script'));
       const collections = collRows.map(r => card(r, 'collection'));
-      // A Starlight collection lends its status to its characters here too, so
-      // the star on a profile card agrees with the star on the character page.
-      await applyCollectionStarlight(env, characters);
+      // A Curata collection lends its status to its characters here too, so
+      // the mark on a profile card agrees with the mark on the character page.
+      await applyCollectionCurata(env, characters);
 
       const split = list => ({
         live: list.filter(x => x.status !== 'draft'),
@@ -3373,6 +4476,85 @@ export default {
     }
 
     // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
+    // ---------- JINX INDEX (the /jinxes page: list + relationship graph) ----------
+    // Nodes are every character that takes part in a jinx: the wiki pages
+    // themselves, plus the official characters they are jinxed with, which are
+    // what most of the edges actually point at. Official↔official jinxes are
+    // not here: this is a map of the homebrew wiki, not of the base game.
+    if (method === 'GET' && path === '/api/jinxes') {
+      let index;
+      try {
+        index = await jinxIndex(env, ctx);
+      } catch {
+        return jsonResponse({ nodes: [], edges: [] });
+      }
+      const officialIcons = await officialIconMap(env, url.origin).catch(() => ({}));
+      const officialNames = await officialNameMap(env, url.origin).catch(() => ({}));
+
+      const nodes = new Map();
+      function addWiki(slug) {
+        const r = index.rows[slug];
+        if (!r || nodes.has('c:' + slug)) return 'c:' + slug;
+        nodes.set('c:' + slug, {
+          id: 'c:' + slug, slug: r.slug, name: r.name, team: r.team,
+          creator: r.creator, official: false,
+          icon: r.art ? (url.origin + '/assets/' + r.art) : (r.image || ''),
+          href: '/' + String(r.page || ('c/' + r.slug)).replace(/^\//, '')
+        });
+        return 'c:' + slug;
+      }
+      function addOfficial(key, name) {
+        const id = 'o:' + key;
+        name = name || '';
+        if (nodes.has(id)) return id;
+        const nm = officialNames[key] || name || key;
+        nodes.set(id, {
+          id, slug: '', name: nm, team: '', creator: '', official: true,
+          icon: officialIcons[key] || (url.origin + '/assets/icons/' + key + '.png'),
+          href: 'https://wiki.bloodontheclocktower.com/' + encodeURIComponent(nm.replace(/ /g, '_'))
+        });
+        return id;
+      }
+
+      const edges = [];
+      for (const e of index.edges) {
+        const a = addWiki(e.from);
+        if (!a) continue;
+        // An edge whose target is neither a wiki page nor a known official
+        // character is a typo or a draft, and has no node to attach to.
+        let b;
+        if (e.to) b = addWiki(e.to);
+        else if (officialIcons[e.key] || officialNames[e.key]) b = addOfficial(e.key, e.name);
+        else continue;
+        edges.push({ a, b, align: e.align, text: e.text });
+      }
+
+      // The base-game layer. Marked `base` so the page can switch it on and
+      // off without another request, and only drawn between characters that
+      // are already anchors on the map or brought in with it.
+      const baseEdges = [];
+      for (const j of await loadOfficialJinxes(env, url.origin)) {
+        if (!officialNames[j.a] || !officialNames[j.b]) continue;
+        baseEdges.push({
+          a: addOfficial(j.a), b: addOfficial(j.b),
+          align: 'good', text: j.text || '', base: true
+        });
+      }
+
+      const body = JSON.stringify({
+        nodes: [...nodes.values()], edges, baseEdges
+      });
+      // Same edge-cache treatment as the JSON feeds: the index underneath is
+      // already keyed by contentVersion, so the response can be too.
+      const etag = `W/"jinxes-v${await contentVersion(env)}"`;
+      if ((request.headers.get('If-None-Match') || '') === etag) {
+        return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL } });
+      }
+      return new Response(body, {
+        headers: { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL }
+      });
+    }
+
     if (method === 'GET' && path === '/api/creators') {
       const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
       // One credit string can name several people; each of them gets their own
@@ -3470,8 +4652,12 @@ export default {
     if (method === 'GET' && path === '/sitemap.xml') {
       const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       async function pub(table) {
+        // Characters are listed at their address, not their identity, or
+        // every URL in the sitemap would be one the site 301s away from.
+        const addr = table === 'characters' ? ', url_slug' : '';
+        if (table === 'characters') await ensureUrlSlugColumn(env);
         try {
-          return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table} WHERE status='published'`).all()).results;
+          return (await env.DB.prepare(`SELECT slug, updated_at${addr} FROM ${table} WHERE status='published'`).all()).results;
         } catch {
           return (await env.DB.prepare(`SELECT slug, updated_at FROM ${table}`).all()).results;
         }
@@ -3496,11 +4682,11 @@ export default {
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
         'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
-        'steven-approved-order', 'rules', 'news'];
+        'steven-approved-order', 'rules', 'news', 'jinxes'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
-        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + r.slug) + '</loc>' + lastmod(r) + '</url>');
+        urls.push('<url><loc>' + xmlEsc(url.origin + '/c/' + charAddress(r)) + '</loc>' + lastmod(r) + '</url>');
       }
       for (const r of scripts) {
         urls.push('<url><loc>' + xmlEsc(url.origin + '/s/' + encodeURIComponent(r.slug)) + '</loc>' + lastmod(r) + '</url>');
@@ -3587,13 +4773,28 @@ export default {
       const password = String(body.password || '');
       if (!identifier || !password) return jsonResponse({ error: 'Missing credentials' }, { status: 400 });
       const user = await findUserByLogin(env, identifier);
-      if (!user) return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+      // "Invalid login" for both halves left people re-typing a password that
+      // was right all along. Which half failed is only said for a NAME: names
+      // are public here (every profile is a page, /creators lists them all),
+      // so naming one confirms nothing new. An email address is not public, so
+      // an email-shaped identifier keeps one message for both cases.
+      const isEmailish = identifier.includes('@');
+      const vague = 'That email and password don\'t match. Check both, or use "Forgot your password?" below.';
+      if (!user) {
+        return jsonResponse({
+          error: isEmailish ? vague
+            : 'No account has that username. It\'s the @name on your account page. You can also log in with your email address.'
+        }, { status: 401 });
+      }
       const ok = await verifyPassword(password, user.password_hash);
       if (!ok) {
         if (!user.password_hash && user.discord_id) {
           return jsonResponse({ error: 'This account signs in with Discord. Use the Discord button (you can set a password afterwards on your account page).' }, { status: 401 });
         }
-        return jsonResponse({ error: 'Invalid login' }, { status: 401 });
+        return jsonResponse({
+          error: isEmailish ? vague
+            : 'That password doesn\'t match this account. Try again, or use "Forgot your password?" below.'
+        }, { status: 401 });
       }
       if (user.banned) {
         return jsonResponse({ error: 'This account has been suspended. Contact the admins if you think this is a mistake.' }, { status: 403 });
@@ -3639,14 +4840,21 @@ export default {
       });
     }
 
-    // ---- is this page URL still free? (editor helper) ----
-    // The create page builds a character's URL from its name, uploads the art
-    // to art/{slug}.png and only then writes the row — so a name another
+    // ---- is this page's identity still free? (editor helper) ----
+    // The create page builds a character's identity from its name, uploads the
+    // art to art/{slug}.png and only then writes the row — so a name another
     // account already used failed at the *upload* step with a confusing "that
     // art slot belongs to a character owned by another account". This lets an
-    // editor find that out before it uploads anything, and offers a free URL
+    // editor find that out before it uploads anything, and offers a free one
     // in the style the wiki already uses for duplicate names
     // (witcher-odyssey, sculptor-fall-of-rome, illusionist-megalomania).
+    //
+    // For characters this is about the IDENTITY, not the URL: the reader-facing
+    // address is /c/{set}/{character} and the Worker derives it on save, so a
+    // duplicate name never needs a different identity to get its own page.
+    // Identities still have to be unique because they name the art slot, which
+    // is why the suffix ladder is still here and still looks like a URL.
+    // Scripts and collections are unchanged: for them the slug IS the URL.
     // Login required: whether a slug is taken can betray someone's draft.
     if (method === 'GET' && path === '/api/slug-check') {
       const sess = await getSession(env, request);
@@ -3687,7 +4895,7 @@ export default {
         for (const r of results || []) {
           used.add(String(r.slug));
           try {
-            const d = JSON.parse(r.data);
+            const d = foldLegacyCurata(JSON.parse(r.data));
             if (d && d.id) used.add(String(d.id));
           } catch { /* skip bad rows */ }
         }
@@ -3769,8 +4977,12 @@ export default {
         const link = url.origin + '/reset-password?token=' + token;
         ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
           'Reset your password',
+          // Half the people who ask for a reset are stuck on the OTHER field:
+          // their display name is the only name the site shows them, so this
+          // is the one message that can tell them what to type.
           `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
            <p>Someone (hopefully you) asked to reset the password for your ${APP_NAME} account.</p>
+           <p>Your username is <b>@${escapeHtml(user.username)}</b>. That, or this email address, is what goes in the log-in box.</p>
            <p><a href="${link}" style="color:#5b1f21;font-weight:bold">Choose a new password</a></p>
            <p>This link expires in 1 hour and can be used once.</p>`
         )));
@@ -4168,6 +5380,12 @@ export default {
       let row = await getEntityRow(env, type, slug);
       // Legacy collection rows have display-string PK slugs; resolve by id too.
       if (!row && type === 'collection') row = await findCollectionRow(env, slug);
+      // A character can be asked for by identity or by address, so an editor
+      // opened from a copied /c/{set}/{name} URL finds the page too.
+      if (!row && type === 'character') {
+        const found = await resolveCharacterPath(env, slug);
+        if (found) row = await getEntityRow(env, 'character', found.row.slug);
+      }
       // A renamed page answers on its old slug here too, so an editor opened
       // from a stale link (edit?c={old}) still finds it.
       if (!row) {
@@ -4176,17 +5394,98 @@ export default {
       }
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const owns = canEditRow(sess, row);
+      // 'owner' | 'approved' | 'all' | 'tags' | '': what this reader may
+      // actually change, which is what the editor needs before it offers them
+      // a form.
+      const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
+      const editable = !!mode;
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (row.status === 'draft' && !editable) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      // A draft is invisible to everyone but the people who may work on it —
+      // its owner, and the editors the owner named by hand.
+      if (row.status === 'draft' && !owns && mode !== 'approved') {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       return jsonResponse({
-        slug: row.slug, data: JSON.parse(row.data),
+        slug: row.slug, data: foldLegacyCurata(JSON.parse(row.data)),
         status: row.status || 'published', canEdit: editable,
+        editMode: mode || false, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
       });
+    }
+
+    /* ---------- DOES THIS HANDLE EXIST? (the approved-editor picker) -------
+       The owner types a username into the editor list and wants to know THERE
+       whether it landed, rather than after a save. Deliberately thin: it
+       answers with the handle as the site spells it and nothing else, and it
+       needs a session — every account here already has a public /u/ page, so
+       this reveals nothing new, but there is no reason to hand a stranger a
+       name-checking loop.
+
+       The lookup goes through selectUserByName, so `tir-far-thoinn` finds
+       `@tir-far-thóinn` exactly as a link would. */
+    if (method === 'GET' && path === '/api/account-lookup') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const name = (url.searchParams.get('u') || '').trim();
+      if (!name) return jsonResponse({ error: 'Missing username' }, { status: 400 });
+      const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+      if (!u) return jsonResponse({ found: false });
+      return jsonResponse({ found: true, id: Number(u.id), username: String(u.username) });
+    }
+
+    /* ---------- PAGES SHARED WITH THIS ACCOUNT (approved editing) ----------
+       Being named as an editor arrives as a message with a link, but a message
+       scrolls away. This is the standing list, and without it an editor has no
+       way back to a page they were invited to — a shared DRAFT in particular
+       is in no feed, no search and no browse page by design.
+
+       Its own request rather than part of /api/account, for the same reason
+       the suggestions inbox is: it is empty for almost everybody.
+
+       The LIKE is a coarse filter that only has to be cheap and never miss:
+       sanitizePublicEdit + JSON.stringify are the only writers of this field,
+       so the stored form is exactly `"publicEdit":"approved"`. isApprovedEditor
+       below is what actually decides. */
+    if (method === 'GET' && path === '/api/shared-pages') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const tables = [
+        ['character', 'characters', 'name'],
+        ['script', 'scripts', 'name'],
+        ['collection', 'collections', 'display_name']
+      ];
+      const out = [];
+      for (const [type, table, nameCol] of tables) {
+        let rows = [];
+        try {
+          ({ results: rows } = await env.DB.prepare(
+            `SELECT slug, ${nameCol} AS name, owner_id, status, data, updated_at FROM ${table}
+              WHERE status IN ('published','draft') AND data LIKE '%"publicEdit":"approved"%'`
+          ).all());
+        } catch { rows = []; }
+        for (const r of rows || []) {
+          // A page this account already owns belongs in its own drafts and its
+          // own page list, not here. Admins own everything for this purpose,
+          // so their list is empty, which is right: they are not guests.
+          if (canEditRow(sess, r)) continue;
+          if (!isApprovedEditor(sess, parseData(r))) continue;
+          if (!(await canEditPage(env, sess, type, r))) continue;   // protection, mostly
+          const d = parseData(r);
+          out.push({
+            type, slug: r.slug,
+            key: type === 'collection' ? (d.id || r.slug) : r.slug,
+            name: r.name || r.slug,
+            status: r.status || 'published',
+            updatedAt: r.updated_at || null
+          });
+        }
+      }
+      out.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+      return jsonResponse({ pages: out.slice(0, 100) });
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -4489,24 +5788,132 @@ export default {
     // own second window — had to file a contact-form message and wait for
     // somebody to fix it. They can see and undo their own history now.
     if (method === 'GET' && path === '/api/page-history') {
-      const sess = await getSession(env, request);
-      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
       const type = url.searchParams.get('type') || '';
       const slugParam = (url.searchParams.get('slug') || '').trim();
       if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
       if (!slugParam) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
       const row = await revisableRow(env, type, slugParam);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (!canEditRow(sess, row)) return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      // A published page's history is public, the way a wiki's is. A draft is
+      // its owner's alone, and has no history anyway (see saveRevision).
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       await ensureRevisionsTable(env);
       const { results } = await env.DB.prepare(
-        `SELECT id, ts, name, status, edited_by, length(data) AS bytes
-           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id DESC`
+        `SELECT id, ts, name, status, edited_by, data, length(data) AS bytes
+           FROM revisions WHERE entity_type=? AND slug=? ORDER BY id ASC`
       ).bind(type, row.slug).all();
+      const revs = results || [];
+      /* Each row is the page as it stood BEFORE the save that replaced it,
+         stamped with who made that save. So an entry describes the difference
+         between it and whatever came next: the following snapshot, or the page
+         as it stands now for the newest one. */
+      const entries = revs.map((r, i) => {
+        const after = i + 1 < revs.length ? revs[i + 1].data : row.data;
+        return {
+          id: r.id, ts: r.ts, by: r.edited_by || null,
+          name: r.name, status: r.status, bytes: r.bytes,
+          changed: diffFieldLabels(r.data, after)
+        };
+      }).reverse();
       return jsonResponse({
-        slug: row.slug,
-        current: { name: row.name, status: row.status || 'published' },
-        revisions: results || []
+        type, slug: row.slug,
+        name: row.name || row.slug,
+        status: row.status || 'published',
+        createdAt: row.created_at || null,
+        updatedAt: row.updated_at || null,
+        canRestore: owns,
+        publicEdit: publicEditMode(parseData(row)) || '',
+        entries
+      });
+    }
+
+    /* Suggested edits: one page's list, or everything waiting on the pages you
+       own (?inbox=1). A page's list is for the people who can act on it: its
+       owner, an admin, and each suggester's own entries. */
+    if (method === 'GET' && path === '/api/suggestions') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in.' }, { status: 401 });
+      await ensureSuggestTable(env);
+
+      if (url.searchParams.get('inbox')) {
+        // Everything open on a page this account owns. The join is done in JS
+        // because the four content types live in four tables.
+        const out = [];
+        for (const [type, t] of Object.entries(CONTENT)) {
+          const { results } = await env.DB.prepare(
+            `SELECT s.id, s.entity_type, s.slug, s.username, s.note, s.ts, s.base_updated_at,
+                    r.${t.nameCol} AS name, r.updated_at
+               FROM suggestions s JOIN ${t.table} r ON r.slug = s.slug
+              WHERE s.entity_type=? AND s.status='open' AND r.owner_id=?
+              ORDER BY s.id DESC LIMIT 100`
+          ).bind(type, sess.userId).all().catch(() => ({ results: [] }));
+          (results || []).forEach(r => out.push(r));
+        }
+        out.sort((a, b) => (b.id - a.id));
+        return jsonResponse({ inbox: out.slice(0, 100) });
+      }
+
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      if (!REVISABLE[type] || !slugParam) return jsonResponse({ error: 'Missing type or slug' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const owns = canEditRow(sess, row);
+      const { results } = await env.DB.prepare(
+        `SELECT id, user_id, username, note, base_updated_at, status, reply,
+                decided_by, decided_at, ts, data
+           FROM suggestions WHERE entity_type=? AND slug=? ORDER BY id DESC LIMIT 100`
+      ).bind(type, row.slug).all().catch(() => ({ results: [] }));
+      const mine = (results || []).filter(r => owns || r.user_id === sess.userId);
+      return jsonResponse({
+        type, slug: row.slug, name: row.name || row.slug,
+        updatedAt: row.updated_at || null,
+        canReview: owns,
+        suggestions: mine.map(r => ({
+          id: r.id, by: r.username || null, mine: r.user_id === sess.userId,
+          note: r.note || '', status: r.status, reply: r.reply || '',
+          decidedBy: r.decided_by || null, decidedAt: r.decided_at || null,
+          ts: r.ts, stale: !!(r.base_updated_at && row.updated_at && r.base_updated_at !== row.updated_at),
+          // What the suggestion would change about the page as it stands now.
+          changes: diffFieldValues(row.data, r.data)
+        }))
+      });
+    }
+
+    /* One entry of a page's history in detail: every field that changed, with
+       what it said before and after, so the edit can be read before deciding
+       whether to put the old version back. Same visibility rule as the history
+       itself: public for a published page. */
+    if (method === 'GET' && path === '/api/page-revision') {
+      const type = url.searchParams.get('type') || '';
+      const slugParam = (url.searchParams.get('slug') || '').trim();
+      const id = parseInt(url.searchParams.get('id'), 10) || 0;
+      if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+      if (!slugParam || !id) return jsonResponse({ error: 'Missing slug or id' }, { status: 400 });
+      const row = await revisableRow(env, type, slugParam);
+      if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      const sess = await getSession(env, request);
+      const owns = canEditRow(sess, row);
+      if ((row.status || 'published') !== 'published' && !owns) {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
+      await ensureRevisionsTable(env);
+      const rev = await env.DB.prepare(
+        'SELECT id, ts, edited_by, data FROM revisions WHERE id=? AND entity_type=? AND slug=?'
+      ).bind(id, type, row.slug).first().catch(() => null);
+      if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
+      // The version that replaced this one: the next snapshot up, or the page
+      // as it stands now.
+      const next = await env.DB.prepare(
+        'SELECT data FROM revisions WHERE entity_type=? AND slug=? AND id>? ORDER BY id ASC LIMIT 1'
+      ).bind(type, row.slug, id).first().catch(() => null);
+      return jsonResponse({
+        id: rev.id, ts: rev.ts, by: rev.edited_by || null,
+        fields: diffFieldValues(rev.data, next ? next.data : row.data)
       });
     }
 
@@ -4752,7 +6159,7 @@ export default {
       for (const r of (await env.DB.prepare(
         "SELECT slug, name, status, data FROM scripts WHERE status IS NOT 'deleted'").all()).results || []) {
         checkedScripts++;
-        let d; try { d = JSON.parse(r.data); } catch { continue; }
+        let d; try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { continue; }
         const res = checkRefs(d.characters);
         if (res.missing.length || res.deleted.length || res.draft.length) {
           issues.push({ type: 'script', slug: r.slug, name: r.name, status: r.status, ...res });
@@ -4761,7 +6168,7 @@ export default {
       for (const r of (await env.DB.prepare(
         "SELECT slug, display_name AS name, status, data FROM collections WHERE status IS NOT 'deleted'").all()).results || []) {
         checkedCollections++;
-        let d; try { d = JSON.parse(r.data); } catch { continue; }
+        let d; try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { continue; }
         const res = checkRefs((d.include || []).concat(d.exclude || []));
         if (res.missing.length || res.deleted.length || res.draft.length) {
           issues.push({ type: 'collection', slug: r.slug, name: r.name, status: r.status, ...res });
@@ -4853,6 +6260,58 @@ export default {
       return jsonResponse({ view, comments: results || [], openReports: (open && open.n) || 0 });
     }
 
+    // ---------- ADMIN: JINX HEALTH ----------
+    // Every jinx that points at nothing: a typo, a character that was never
+    // imported, or one since renamed or unpublished. On the page itself these
+    // just look like a name that does not link anywhere, so nothing else
+    // counts them.
+    if (method === 'GET' && path === '/api/admin/jinx-health') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+
+      const index = await jinxIndex(env, ctx);
+      const icons = await officialIconMap(env, url.origin).catch(() => ({}));
+      const names = await officialNameMap(env, url.origin).catch(() => ({}));
+
+      const broken = new Map();      // key -> {key, label, count, on[]}
+      let official = 0, wiki = 0;
+      for (const e of index.edges) {
+        if (e.to) { wiki++; continue; }
+        if (icons[e.key] || names[e.key]) { official++; continue; }
+        const row = broken.get(e.key) ||
+          { key: e.key, label: e.name || e.id || e.key, count: 0, on: [] };
+        row.count++;
+        const from = index.rows[e.from];
+        if (from && row.on.length < 25) {
+          row.on.push({ slug: from.slug, name: from.name, creator: from.creator });
+        }
+        broken.set(e.key, row);
+      }
+
+      // A pair both sides wrote a rule for: only one of the two is ever
+      // shown, so the other is invisible work. Worth surfacing.
+      const texts = new Map();
+      const conflicts = [];
+      for (const e of index.edges) {
+        if (!e.to) continue;
+        const pair = [e.from, e.to].sort().join('|');
+        const prev = texts.get(pair);
+        if (prev === undefined) { texts.set(pair, e); continue; }
+        if ((prev.text || '').trim() !== (e.text || '').trim()) {
+          conflicts.push({
+            a: index.rows[prev.from], b: index.rows[e.from],
+            aText: prev.text, bText: e.text
+          });
+        }
+      }
+
+      return jsonResponse({
+        totals: { official, wiki, broken: [...broken.values()].reduce((n, r) => n + r.count, 0) },
+        broken: [...broken.values()].sort((a, b) => b.count - a.count),
+        conflicts
+      });
+    }
+
     // ---------- ADMIN: PAGE LIST FOR BULK ACTIONS ----------
     if (method === 'GET' && path === '/api/admin/pages') {
       const sess = await adminSession(env, request);
@@ -4888,7 +6347,7 @@ export default {
       // classified purely to be thrown away by the .slice(0, 400) at the end —
       // and `data` is the expensive column in this query, ~3 KB a row.
       const needsJsFilter = !!collKey ||
-        ['no-icon', 'partial', 'starlight', 'no-owner'].includes(flag);
+        ['no-icon', 'partial', 'curata', 'no-owner'].includes(flag);
       const rowLimit = needsJsFilter ? 1000 : 400;
       const { results } = await env.DB.prepare(
         `SELECT p.slug, p.${t.nameCol} AS name, p.status, p.updated_at, u.username AS owner, p.data
@@ -4901,7 +6360,7 @@ export default {
         return {
           slug: r.slug, name: r.name, status: r.status,
           updated_at: r.updated_at, owner: r.owner,
-          starlight: !!d.starlight,
+          curata: !!d.curata,
           classification: Classify.classifyPage(d, type),
           // "hasIcon: true" for a page that does not need one, so the
           // no-icon filter only ever surfaces pages with a real gap.
@@ -4929,7 +6388,7 @@ export default {
       }
       if (flag === 'no-icon') pages = pages.filter(p => !p.hasIcon);
       else if (flag === 'partial') pages = pages.filter(p => p.classification === 'partial');
-      else if (flag === 'starlight') pages = pages.filter(p => p.starlight);
+      else if (flag === 'curata') pages = pages.filter(p => p.curata);
       else if (flag === 'no-owner') pages = pages.filter(p => !p.owner);
       return jsonResponse({ pages: pages.slice(0, 400), total: pages.length });
     }
@@ -4979,6 +6438,49 @@ export default {
       return jsonResponse({ overrides: rows.results || [] });
     }
 
+    // ---------- BROKEN-LINK REPORT (the 404 page's contact box) ----------
+    // Deliberately OUTSIDE the logged-in write gate below: whoever follows a
+    // dead link off Discord is the person least likely to have an account, and
+    // nobody signs up to report that the wiki is broken. Lands in the same
+    // dashboard inbox as /api/contact.
+    //
+    // It writes nothing but a message row, the rate limit is per IP (or per
+    // account when there is one), and every field is capped. An anonymous row
+    // has user_id NULL, which the dashboard already handles; it just cannot be
+    // replied to, which is why the form asks for somewhere to write back.
+    if (method === 'POST' && path === '/api/report-broken-link') {
+      const sess = await getSession(env, request);
+      if (await rateLimited(env, request, 'brokenlink', 4, 3600, { sess })) {
+        return tooManyResponse('Thanks. That is enough reports from here for now; try again in an hour.', 3600);
+      }
+      const b = await request.json().catch(() => ({}));
+      const brokenPath = String(b.path || '').trim().slice(0, 300);
+      const note = String(b.note || '').trim().slice(0, 1000);
+      const replyTo = String(b.contact || '').trim().slice(0, 120);
+      const cameFrom = String(b.from || '').trim().slice(0, 300);
+      if (!brokenPath && !note) {
+        return jsonResponse({ error: 'Tell us what you were looking for first.' }, { status: 400 });
+      }
+      await ensureMessagesTable(env);
+      let uname = null;
+      if (sess) {
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          uname = u ? u.username : null;
+        } catch { /* non-fatal: the report is still worth keeping */ }
+      }
+      // One readable block, because the inbox shows `body` and nothing else.
+      const lines = ['Broken link: ' + (brokenPath || '(not given)')];
+      if (note) lines.push('', note);
+      if (cameFrom) lines.push('', 'Came from: ' + cameFrom);
+      if (replyTo && !uname) lines.push('', 'Reply to: ' + replyTo);
+      await env.DB.prepare(
+        'INSERT INTO messages (user_id, username, category, body) VALUES (?,?,?,?)'
+      ).bind(sess ? sess.userId : null, uname, 'bug', lines.join('\n')).run();
+      if (sess) await logActivity(env, sess, 'contact', 'message', null, 'broken-link');
+      return jsonResponse({ ok: true, message: 'Thanks, the admins have it.' });
+    }
+
     // ---------- WRITES (logged-in users; ownership enforced) ----------
     if (method === 'POST' && path.startsWith('/api/')) {
       const sess = await getSession(env, request);
@@ -5000,12 +6502,12 @@ export default {
       // Posting a comment counts as a content write: a wiki locked because of
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments'].includes(path);
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments', '/api/jinx'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
-      // above, which left a banned user free to pin and delete comments, star
-      // pages, file reports, block people, change their public profile and
+      // above, which left a banned user free to pin and delete comments, mark
+      // pages Curata, file reports, block people, change their public profile and
       // avatar, and roll pages back — none of which is what "suspended" is
       // supposed to mean.
       //
@@ -5209,6 +6711,15 @@ export default {
         }
 
         if (!sess.isAdmin) {
+          /* Set when this upload is aimed at the image slot of a page this
+             session may actually edit — its owner, or an approved editor the
+             owner named. It switches off the catch-all "somebody else's file
+             is already here" check further down, which is about slots with no
+             page behind them: once the page has said yes, whoever uploaded the
+             previous file is not a second opinion. Approved editing needs this
+             or a shared character can never get its icon, which is the one
+             thing that keeps it out of drafts. */
+          let ownedSlot = false;
           // tokens/ is reserved for admin tooling; news/ for the news editor,
           // which is admin-only anyway.
           if (key.startsWith('tokens/') || key.startsWith('news/')) {
@@ -5233,11 +6744,13 @@ export default {
           if (key.startsWith('art/')) {
             const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
             const row = await getEntityRow(env, 'character', slug);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               // Almost always a name clash on a brand-new character: the art
-              // slot is named after the URL, and /c/{slug} is already someone
-              // else's page. Say so, so the fix (a different name) is obvious.
-              return jsonResponse({ error: 'The URL /c/' + slug + ' already belongs to a character on another account, and its art slot goes with it. Give your character a different name and save again.' }, { status: 403 });
+              // slot is named after the character's identity, which is derived
+              // from its name, and that one is already someone else's page.
+              // Say so, so the fix (a different name) is obvious.
+              return jsonResponse({ error: 'The art slot for "' + slug + '" already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'character', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -5249,7 +6762,8 @@ export default {
           if (key.startsWith('scripts/')) {
             const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
             const row = await getEntityRow(env, 'script', base);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'script', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'script', row.slug)) {
@@ -5259,15 +6773,17 @@ export default {
           if (key.startsWith('collections/')) {
             const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
             const row = await findCollectionRow(env, base);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'collection', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'collection', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
             }
           }
-          // Never allow silently replacing someone else's uploaded file.
-          const existing = await env.ART.head(key).catch(() => null);
+          // Never allow silently replacing someone else's uploaded file —
+          // unless the page that owns this slot has already said yes above.
+          const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
           if (existing) {
             const owner = existing.customMetadata && existing.customMetadata.owner;
             if (owner !== String(sess.userId)) {
@@ -5290,6 +6806,154 @@ export default {
       }
 
       // ---- comments ----
+      /* ---- suggest an edit ----
+         Body: {type, slug, data, note}. `data` is the whole page as the
+         suggester would have it, the same object the editor posts to save. It
+         is stored, not applied: nothing here touches the row. */
+      if (path === '/api/suggest') {
+        if (acctFlags.banned) {
+          return jsonResponse({ error: 'This account is suspended.' }, { status: 403 });
+        }
+        if (await rateLimited(env, request, 'suggest', 20, 3600)) {
+          return tooManyResponse('Too many suggestions from this connection. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        if (!REVISABLE[type]) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        const row = await revisableRow(env, type, String(b.slug || ''));
+        if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
+        if ((row.status || 'published') !== 'published') {
+          return jsonResponse({ error: 'That page is not published.' }, { status: 400 });
+        }
+        // The owner does not suggest to themselves; they just save.
+        if (canEditRow(sess, row)) {
+          return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
+        }
+        const mode = publicEditMode(parseData(row));
+        if (mode !== 'suggest') {
+          return jsonResponse({ error: 'That page is not taking suggestions.' }, { status: 403 });
+        }
+        if (await isProtected(env, type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        const data = b.data;
+        if (!data || typeof data !== 'object') return jsonResponse({ error: 'Nothing to suggest.' }, { status: 400 });
+        if (publicEditTooBig(data)) {
+          return jsonResponse({ error: 'That suggestion is too large to send.' }, { status: 413 });
+        }
+        // Owner-only settings never ride in on a suggestion, approved or not.
+        const storedNow = parseData(row);
+        data.slug = row.slug;
+        data.publicEdit = storedNow.publicEdit;
+        data.curata = !!storedNow.curata;
+        delete data.status;
+        delete data.renameFrom;
+        delete data.appearsInFrom;
+        if (!diffFieldLabels(row.data, JSON.stringify(data)).length) {
+          return jsonResponse({ error: 'That is the page exactly as it stands, so there is nothing to suggest.' }, { status: 400 });
+        }
+        await ensureSuggestTable(env);
+        const open = await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM suggestions WHERE entity_type=? AND slug=? AND user_id=? AND status='open'"
+        ).bind(type, row.slug, sess.userId).first().catch(() => ({ n: 0 }));
+        if (open && open.n >= SUGGEST_MAX_OPEN_PER_PAGE) {
+          return jsonResponse({ error: 'You already have suggestions waiting on this page.' }, { status: 429 });
+        }
+        let uname = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          uname = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        const res = await env.DB.prepare(
+          `INSERT INTO suggestions (entity_type, slug, user_id, username, note, data, base_updated_at)
+           VALUES (?,?,?,?,?,?,?)`
+        ).bind(type, row.slug, sess.userId, uname,
+               String(b.note || '').trim().slice(0, SUGGEST_NOTE_MAX) || null,
+               JSON.stringify(data), row.updated_at || null).run();
+        await logActivity(env, sess, 'suggest', type, row.slug, row.name || row.slug);
+        ctx.waitUntil(notifyPageEdit(env, {
+          fromId: sess.userId, ownerId: row.owner_id, type, slug: row.slug,
+          what: 'suggested an edit to', name: row.name || row.slug,
+          path: '/suggestions?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(row.slug),
+          origin: url.origin
+        }));
+        return jsonResponse({ ok: true, id: res.meta ? res.meta.last_row_id : null });
+      }
+
+      /* ---- approve / decline / withdraw a suggestion ----
+         Approving is an ordinary save made on the suggester's behalf: the
+         current version is snapshotted into the page's history first, so it
+         shows up in the log and can be rolled back like any other edit. */
+      if (path === '/api/suggestion') {
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10) || 0;
+        const action = String(b.action || '');
+        if (!id) return jsonResponse({ error: 'Missing suggestion id.' }, { status: 400 });
+        await ensureSuggestTable(env);
+        const sug = await env.DB.prepare('SELECT * FROM suggestions WHERE id=?')
+          .bind(id).first().catch(() => null);
+        if (!sug) return jsonResponse({ error: 'No such suggestion.' }, { status: 404 });
+        if (sug.status !== 'open') return jsonResponse({ error: 'That suggestion has already been dealt with.' }, { status: 409 });
+        const row = await revisableRow(env, sug.entity_type, sug.slug);
+        if (!row) return jsonResponse({ error: 'That page is gone.' }, { status: 404 });
+        const owns = canEditRow(sess, row);
+
+        if (action === 'withdraw') {
+          if (sug.user_id !== sess.userId && !owns) {
+            return jsonResponse({ error: 'That is not your suggestion.' }, { status: 403 });
+          }
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='withdrawn', decided_at=datetime('now') WHERE id=?"
+          ).bind(id).run();
+          return jsonResponse({ ok: true, status: 'withdrawn' });
+        }
+
+        if (!owns) return jsonResponse({ error: 'Only the page\u2019s creator can answer a suggestion.' }, { status: 403 });
+        const reply = String(b.reply || '').trim().slice(0, SUGGEST_NOTE_MAX) || null;
+        let by = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          by = u ? u.username : null;
+        } catch { /* non-fatal */ }
+
+        if (action === 'decline') {
+          await env.DB.prepare(
+            "UPDATE suggestions SET status='declined', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+          ).bind(reply, by, id).run();
+          ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'declined', reply, sess.userId, url.origin));
+          return jsonResponse({ ok: true, status: 'declined' });
+        }
+
+        if (action !== 'approve') return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is in the trash. Restore it first.' }, { status: 400 });
+        }
+        if (!sess.isAdmin && await isProtected(env, sug.entity_type, row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        let d;
+        try { d = foldLegacyCurata(JSON.parse(sug.data)); } catch { d = null; }
+        if (!d) return jsonResponse({ error: 'That suggestion is corrupt and cannot be applied.' }, { status: 500 });
+        // Re-pin everything that belongs to the page rather than to the
+        // suggestion: the row may have changed since it was written.
+        const now = parseData(row);
+        d.slug = row.slug;
+        d.publicEdit = now.publicEdit;
+        d.curata = !!now.curata;
+        delete d._deleted;
+        await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
+        try { await applyRollback(env, sug.entity_type, row, d); }
+        catch (e) { return jsonResponse({ error: (e && e.message) || 'Could not apply that suggestion.' }, { status: 500 }); }
+        await env.DB.prepare(
+          "UPDATE suggestions SET status='approved', reply=?, decided_by=?, decided_at=datetime('now') WHERE id=?"
+        ).bind(reply, by, id).run();
+        await logActivity(env, sess, 'suggestion-approve', sug.entity_type, row.slug,
+          (d.name || d.displayName || d.title || row.name || row.slug) +
+          (sug.username ? ' (from ' + sug.username + ')' : ''));
+        ctx.waitUntil(notifySuggestionAnswer(env, sug, row, 'approved', reply, sess.userId, url.origin));
+        return jsonResponse({ ok: true, status: 'approved', slug: row.slug });
+      }
+
       // ---- roll a page back to one of its own revisions (owner or admin) ----
       // Same operation as /api/admin/rollback, gated on owning the page rather
       // than on being an admin. Outside /api/admin/ because everything under
@@ -5313,7 +6977,7 @@ export default {
         ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
         if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
         let d;
-        try { d = JSON.parse(rev.data); } catch { d = null; }
+        try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
         delete d._deleted;
         // Snapshot what is being replaced, so the rollback is itself undoable.
@@ -5465,24 +7129,30 @@ export default {
           const limited = await writeLimited(env, request, sess, 'character');
           if (limited) return limited;
         }
-        const c = await request.json();
+        // `let`, not `const`: the tags-only branch below replaces the posted
+        // page with the stored one, and esbuild refuses a const reassignment
+        // at build time (which is what failed the Cloudflare deploy).
+        let c = await request.json();
         if (!c || !c.slug || !c.name || !c.team || !c.ability)
           return jsonResponse({ error: 'Missing required fields' }, { status: 400 });
-        // The slug IS the URL (/c/{slug}), and that route only matches
-        // [a-z0-9-]. Anything else saves a page nobody can ever open.
+        // The slug is the character's IDENTITY: the primary key, the art slot
+        // in R2, and what every reference to this page is stored as. It is
+        // also the one-segment URL that 301s to the page's real address, and
+        // that route only matches [a-z0-9-].
         if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
           return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
         }
-        // Renaming: the editor sends the page's current URL in renameFrom and
-        // the one its new name asks for in slug. The page moves — with its
-        // comments, views, history and art — and /c/{old} 301s to it forever,
-        // so links that are already out in the world keep working.
+        // Renaming: the editor sends the page's identity in renameFrom and the
+        // slug its new name asks for in `slug`. The IDENTITY does not move —
+        // it is what the art in R2, the comments, the view history and every
+        // script roster are keyed on — so a rename is an address change, made
+        // after the save below. The page keeps its primary key and simply gets
+        // a new /c/{set}/{name}, with the old address 301ing to it forever.
         const renameFrom = String(c.renameFrom || '');
         delete c.renameFrom;
-        let renamedFrom = null, renamedArt = false;
+        let renamedFrom = null;
+        const renamedArt = false;
         if (renameFrom && renameFrom !== c.slug) {
-          // Slugs only, same shape as the URL — this string is also built into
-          // the art-path pattern below.
           if (!/^[a-z0-9-]{1,80}$/.test(renameFrom)) {
             return jsonResponse({ error: 'Invalid page URL to rename from.' }, { status: 400 });
           }
@@ -5496,39 +7166,91 @@ export default {
           if (!sess.isAdmin && await isProtected(env, 'character', renameFrom)) {
             return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
           }
-          // Never rename onto a live page — that would overwrite it.
-          if (await getEntityRow(env, 'character', c.slug)) {
-            return jsonResponse({ error: 'The URL /c/' + c.slug + ' is already in use. Try a slightly different name.' }, { status: 409 });
-          }
-          const move = await renameCharacter(env, renameFrom, c.slug);
-          renamedFrom = renameFrom;
-          // The editor posts the whole page back, including the art paths it
-          // loaded before the move; point them at where the art now lives.
-          // Art that stayed put (a committed file) keeps the path it had.
-          renamedArt = move.artMoved;
-          if (renamedArt) retargetArtPaths(c, renameFrom, c.slug);
-          c.page = 'c/' + c.slug + '.html';
+          // Write back to the row that already exists. Nothing is moved, so
+          // the old "is the target slug free?" check has nothing to guard:
+          // two characters can share a name and still get their own address.
+          renamedFrom = charAddress(src);
+          c.slug = renameFrom;
         }
         const existing = await getEntityRow(env, 'character', c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        // Ownership, or the page's own public-editing setting. Everything
+        // that belongs to the creator (the URL, publishing, deleting, who may
+        // edit) needs 'owner'. 'all' and 'tags' are what a guest was invited
+        // to do.
+        const perm = existing ? await editPermission(env, sess, 'character', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'A character with that name already exists and belongs to another account. Pick a different name.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'character', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
           const conflict = checkEditConflict(existing, c);
           if (conflict) return conflict;
         }
+        const stored = existing ? parseData(existing) : null;
+        if (perm === 'tags') {
+          // Tags and nothing else. Rather than compare field by field and
+          // hope nothing was missed, the stored page IS the save and only the
+          // tags come from what was posted, so nothing else can reach the row.
+          const tags = typeof c.tags === 'string' ? c.tags : '';
+          c = stored;
+          c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
+        }
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
-        // Starlight is admin-only: never trust the client, always carry the
-        // stored value forward. /api/admin/starlight is the only way to set it.
-        c.starlight = existing ? !!parseData(existing).starlight : false;
+        let editorsAdded = [], editorsUnknown = [];
+        if (existing && perm !== 'owner') {
+          // Publishing and unpublishing belong to the creator. An approved
+          // editor reaches a draft, so this is what keeps a draft a draft
+          // rather than keeping a published page published.
+          status = existing.status || 'published';
+          // As does who may edit it: a guest cannot open a page further, and
+          // cannot close it behind themselves either.
+          c.publicEdit = stored.publicEdit;
+          // The approved-editor list travels with it. An editor cannot add a
+          // friend to somebody else's page, and cannot take the others off.
+          c.editors = approvedEditors(stored);
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(stored).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          c.editors = eds.list;
+        }
+        if (!c.publicEdit) delete c.publicEdit;
+        if (!c.editors || !c.editors.length) delete c.editors;
+        // Curata is admin-only: never trust the client, always carry the
+        // stored value forward. /api/admin/curata is the only way to set it.
+        c.curata = existing ? !!parseData(existing).curata : false;
+        c.jinxes = sanitizeJinxes(c.jinxes);
+        if (!c.jinxes.length) delete c.jinxes;
+        // "Appears in" derived from collection membership is worked out on
+        // every read and belongs to no row. A client echoing back a page it
+        // read out of characters.json must not freeze it into the record.
+        delete c.appearsInFrom;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.
         const needed = Classify.missingForPublish(c);
+        // A page opened to other people can be improved, not taken down. The
+        // demotion below is meant for a creator saving their own unfinished
+        // work; applied to a guest's save it would let anybody unpublish a
+        // live page by clearing one field. Refuse that save instead.
+        if (existing && perm !== 'owner' && status === 'published' && needed.length) {
+          return jsonResponse({
+            error: 'That edit would leave the page without ' + Classify.listPhrase(needed) +
+              ', which a published page needs. Put that back and save again.',
+            missingForPublish: needed
+          }, { status: 400 });
+        }
         let iconBlocked = false;
         if (status === 'published' && needed.length) {
           status = 'draft';
@@ -5544,16 +7266,58 @@ export default {
              data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(c.slug, c.name, c.team, c.creator || null, sess.userId,
                c.tags || null, c.appearsIn || null, JSON.stringify(c), status).run();
+        // The address this page's name and set now ask for, recomputed on every
+        // save — that is what makes renaming automatic, and what moves a
+        // character's URL when it joins or leaves a collection. setCharAddress
+        // leaves a 301 behind whenever it actually moves.
+        let address = charAddress(existing) || c.slug;
+        let movedFrom = null;
+        try {
+          const prevAddress = charAddress(existing);
+          address = await characterAddress(
+            env, c.slug, c,
+            existing ? existing.owner_id : sess.userId,
+            prevAddress
+          );
+          const changed = await setCharAddress(env, c.slug, address);
+          // A page that had an address and now has a different one has moved,
+          // and the editor says so. A page getting its first one has not.
+          if (changed && prevAddress && prevAddress !== address) movedFrom = prevAddress;
+        } catch {
+          // Never lose a save over an address. The page is still reachable at
+          // /c/{identity} until the next save, or the admin backfill, gives it
+          // a nested one.
+          address = charAddress(existing) || c.slug;
+        }
         await logActivity(env, sess, existing ? 'update' : 'create', 'character', c.slug, c.name);
-        if (renamedFrom) {
-          await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + renamedFrom + ')');
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'character', slug: c.slug,
+            what: perm === 'tags' ? 'changed the tags on' : 'edited',
+            name: c.name, path: '/c/' + address, origin: url.origin
+          }));
+        }
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: c.name,
+            path: '/c/' + address, origin: url.origin
+          }));
+        }
+        if (movedFrom) {
+          await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + movedFrom + ')');
         }
         const savedRow = await getEntityRow(env, 'character', c.slug);
         return jsonResponse({
-          ok: true, slug: c.slug, status, renamedFrom, renamedArt,
+          ok: true, slug: c.slug, page: 'c/' + address, address,
+          // The address it used to have, when this save moved it.
+          movedFrom, status, renamedFrom: movedFrom || renamedFrom, renamedArt,
           updatedAt: savedRow ? savedRow.updated_at : null,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
+          editors: c.editors || [],
+          // Names the owner typed that no account answered to. Dropping them
+          // silently would leave them believing they had shared the page.
+          editorsUnknown,
           iconBlocked,
           missingForPublish: needed,
           notice: iconBlocked
@@ -5561,6 +7325,87 @@ export default {
               ' before it can be published. Add that and publish again.'
             : undefined
         });
+      }
+
+      // ---- add / edit / remove a single jinx, from the /jinxes page ----
+      // A jinx is a relationship, so it can be created from either end: you
+      // need to own (or admin) just ONE of the two characters. It is stored on
+      // the side you own, and the other page shows it mirrored on read.
+      if (path === '/api/jinx') {
+        {
+          const limited = await writeLimited(env, request, sess, 'character');
+          if (limited) return limited;
+        }
+        const b = await request.json().catch(() => null);
+        if (!b || !b.from) return jsonResponse({ error: 'Missing character' }, { status: 400 });
+        if (!b.toSlug && !b.toId) {
+          return jsonResponse({ error: 'Pick the character this jinx is with.' }, { status: 400 });
+        }
+
+        const row = await getEntityRow(env, 'character', String(b.from));
+        if (!row) return jsonResponse({ error: 'No such character' }, { status: 404 });
+        if (!canEditRow(sess, row)) {
+          return jsonResponse({ error: 'That character belongs to another account.' }, { status: 403 });
+        }
+        if (!sess.isAdmin && await isProtected(env, 'character', row.slug)) {
+          return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+        }
+        // The other side has to exist: an official id checked against
+        // roles.json, a wiki slug against the table. A jinx pointing at
+        // nothing is the breakage this feature exists to fix.
+        let target;
+        if (b.toSlug) {
+          const t = await getEntityRow(env, 'character', String(b.toSlug));
+          if (!t) return jsonResponse({ error: 'No such character' }, { status: 404 });
+          if (t.slug === row.slug) {
+            return jsonResponse({ error: 'A character cannot be jinxed with itself.' }, { status: 400 });
+          }
+          target = { slug: t.slug, name: t.name };
+        } else {
+          const names = await officialNameMap(env, url.origin).catch(() => ({}));
+          const key = Render.slugId(String(b.toId));
+          if (!names[key]) {
+            return jsonResponse({ error: 'No official character by that name.' }, { status: 404 });
+          }
+          target = { id: key, name: names[key] };
+        }
+
+        const d = parseData(row);
+        const list = Array.isArray(d.jinxes) ? d.jinxes.slice() : [];
+        // Match on whichever key identifies the target, so editing and
+        // removing find the same entry adding created.
+        const wanted = Render.normJinxId(target.slug || target.id);
+        const at = list.findIndex(j => {
+          const k = (j.slug && Render.normJinxId(j.slug)) ||
+            Render.normJinxId(j.id || Render.slugId(j.name || ''));
+          return k === wanted;
+        });
+
+        if (b.remove) {
+          if (at === -1) return jsonResponse({ error: 'That jinx is not on this character.' }, { status: 404 });
+          list.splice(at, 1);
+        } else {
+          const entry = {
+            name: target.name,
+            align: b.align === 'evil' ? 'evil' : 'good',
+            text: String(b.text || '')
+          };
+          if (target.slug) entry.slug = target.slug; else entry.id = target.id;
+          if (!entry.text.trim()) {
+            return jsonResponse({ error: 'A jinx needs its rule text.' }, { status: 400 });
+          }
+          if (at === -1) list.push(entry); else list[at] = entry;
+        }
+
+        d.jinxes = sanitizeJinxes(list);
+        if (!d.jinxes.length) delete d.jinxes;
+
+        await saveRevision(env, sess, 'character', row);
+        await env.DB.prepare(
+          `UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?`
+        ).bind(JSON.stringify(d), row.slug).run();
+        await logActivity(env, sess, 'update', 'character', row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, jinxes: d.jinxes || [] });
       }
 
       if (path === '/api/collection') {
@@ -5576,10 +7421,14 @@ export default {
         // (legacy rows have display-string PK slugs, e.g. "The Academy").
         let existing = c.slug ? await getEntityRow(env, 'collection', c.slug) : null;
         if (!existing) existing = await findCollectionRow(env, c.id || c.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'collection', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That collection belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'collection', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -5622,10 +7471,29 @@ export default {
           ? [...new Set(c.order.slice(0, 500).map(x => String(x).slice(0, 80)).filter(Boolean))]
           : [];
         if (!c.order.length) delete c.order;
-        const status = c.status === 'draft' ? 'draft' : 'published';
+        let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        const storedColl = existing ? parseData(existing) : null;
+        let editorsAdded = [], editorsUnknown = [];
+        if (existing && perm !== 'owner') {
+          status = existing.status || 'published';
+          c.publicEdit = storedColl.publicEdit;
+          c.editors = approvedEditors(storedColl);
+        } else {
+          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(storedColl).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          c.editors = eds.list;
+        }
+        if (!c.publicEdit) delete c.publicEdit;
+        if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
-        c.starlight = existing ? !!parseData(existing).starlight : false;
+        c.curata = existing ? !!parseData(existing).curata : false;
+        if (existing && perm !== 'owner' && publicEditTooBig(c)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -5634,7 +7502,20 @@ export default {
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
-        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'collection', slug: pkSlug,
+            what: 'edited', name: c.displayName, path: '/collection/' + (c.id || pkSlug), origin: url.origin
+          }));
+        }
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: c.displayName,
+            path: '/collection/' + (c.id || pkSlug), origin: url.origin
+          }));
+        }
+        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
+                              editors: c.editors || [], editorsUnknown });
       }
 
       if (path === '/api/script') {
@@ -5648,10 +7529,14 @@ export default {
           return jsonResponse({ error: 'Invalid script slug.' }, { status: 400 });
         }
         const existing = await getEntityRow(env, 'script', s.slug);
-        if (existing && !canEditRow(sess, existing)) {
+        const perm = existing ? await editPermission(env, sess, 'script', existing) : 'owner';
+        if (existing && !perm) {
           return jsonResponse({ error: 'That script belongs to another account.' }, { status: 403 });
         }
-        if (existing && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
+        if (existing && !permCanWrite(perm)) {
+          return jsonResponse({ error: SUGGEST_INSTEAD, suggest: true }, { status: 403 });
+        }
+        if (existing && perm === 'owner' && !sess.isAdmin && await isProtected(env, 'script', existing.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         {
@@ -5662,10 +7547,51 @@ export default {
         s.characters = Array.isArray(s.characters)
           ? s.characters.slice(0, 100).map(x => String(x).slice(0, 80))
           : [];
-        const status = s.status === 'draft' ? 'draft' : 'published';
+        // The owner's hand-arranged night order: two lists of roster slugs.
+        // Like a collection's `order[]` it is kept apart from the roster, so
+        // neither list has to be kept in step with the other: a slug that has
+        // left the script never matches, and a character it has not heard of
+        // slots in by its own night number (sortNightItems in render-page.js).
+        s.nightOrder = sanitizeNightOrder(s.nightOrder);
+        if (!s.nightOrder) delete s.nightOrder;
+        s.jinxEdits = sanitizeJinxEdits(s.jinxEdits);
+        if (!s.jinxEdits) delete s.jinxEdits;
+        if (existing && perm !== 'owner' && publicEditTooBig(s)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
+        // The rest of what the official app reads out of the exported JSON:
+        // _meta.bootlegger / almanac / hideTitle (schema at
+        // github.com/ThePandemoniumInstitute/botc-release). The background and
+        // logo are the page's own, already validated by sanitizePageFields.
+        s.bootlegger = Array.isArray(s.bootlegger)
+          ? s.bootlegger.slice(0, 20).map(r => String(r).slice(0, 300).trim()).filter(Boolean)
+          : [];
+        if (!s.bootlegger.length) delete s.bootlegger;
+        s.almanac = typeof s.almanac === 'string' && /^https?:\/\//i.test(s.almanac.trim())
+          ? s.almanac.trim().slice(0, 300) : '';
+        if (!s.almanac) delete s.almanac;
+        if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
+        let status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        const storedScript = existing ? parseData(existing) : null;
+        let editorsAdded = [], editorsUnknown = [];
+        if (existing && perm !== 'owner') {
+          // Publishing, and who may edit, belong to the creator.
+          status = existing.status || 'published';
+          s.publicEdit = storedScript.publicEdit;
+          s.editors = approvedEditors(storedScript);
+        } else {
+          s.publicEdit = sanitizePublicEdit(s.publicEdit);
+          const eds = await sanitizeEditors(env, s.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(storedScript).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          s.editors = eds.list;
+        }
+        if (!s.publicEdit) delete s.publicEdit;
+        if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
-        s.starlight = existing ? !!parseData(existing).starlight : false;
+        s.curata = existing ? !!parseData(existing).curata : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
         await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
@@ -5674,7 +7600,20 @@ export default {
              name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
-        return jsonResponse({ ok: true, slug: s.slug, status });
+        if (existing && perm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing.owner_id, type: 'script', slug: s.slug,
+            what: 'edited', name: s.name || s.slug, path: '/s/' + s.slug, origin: url.origin
+          }));
+        }
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: s.name || s.slug,
+            path: '/s/' + s.slug, origin: url.origin
+          }));
+        }
+        return jsonResponse({ ok: true, slug: s.slug, status,
+                              editors: s.editors || [], editorsUnknown });
       }
 
       // ---- custom wiki pages (text-first pages under a script/collection) ----
@@ -5840,7 +7779,7 @@ export default {
         }
         if (row.status === 'deleted') return jsonResponse({ ok: true, slug: row.slug });
         let data;
-        try { data = JSON.parse(row.data); } catch { data = {}; }
+        try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
         let byName = null;
         try {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
@@ -5866,7 +7805,7 @@ export default {
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         if (row.status !== 'deleted') return jsonResponse({ error: 'That page is not deleted.' }, { status: 400 });
         let data;
-        try { data = JSON.parse(row.data); } catch { data = {}; }
+        try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
         const from = (data._deleted && data._deleted.from) || 'published';
         const status = from === 'draft' ? 'draft' : 'published';
         delete data._deleted;
@@ -5917,7 +7856,7 @@ export default {
         ).bind(parseInt(b.id, 10) || 0, type, row.slug).first();
         if (!rev) return jsonResponse({ error: 'No such revision for that page.' }, { status: 404 });
         let d;
-        try { d = JSON.parse(rev.data); } catch { d = null; }
+        try { d = foldLegacyCurata(JSON.parse(rev.data)); } catch { d = null; }
         if (!d) return jsonResponse({ error: 'That revision is corrupt and cannot be restored.' }, { status: 500 });
         delete d._deleted;
         await saveRevision(env, sess, type, row); // make the rollback undoable
@@ -6461,11 +8400,11 @@ export default {
         return jsonResponse({ ok: true, id, action });
       }
 
-      // ---- admin: Starlight status ----
-      // Starlight is the only stored half of the classification system: a
+      // ---- admin: Curata status ----
+      // Curata is the only stored half of the classification system: a
       // boolean in the page's data JSON that only this endpoint can write.
       // It works on characters, collections and scripts alike.
-      if (path === '/api/admin/starlight') {
+      if (path === '/api/admin/curata') {
         const b = await request.json().catch(() => ({}));
         const type = String(b.type || '');
         const t = CONTENT[type];
@@ -6473,15 +8412,15 @@ export default {
         let row = await getEntityRow(env, type, String(b.slug || ''));
         if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
-        const on = !!b.starlight;
+        const on = !!b.curata;
         const d = parseData(row);
-        if (!!d.starlight === on) return jsonResponse({ ok: true, slug: row.slug, starlight: on });
-        d.starlight = on;
-        if (!on) delete d.starlight;
+        if (!!d.curata === on) return jsonResponse({ ok: true, slug: row.slug, curata: on });
+        d.curata = on;
+        if (!on) delete d.curata;
         await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(JSON.stringify(d), row.slug).run();
-        await logActivity(env, sess, on ? 'starlight' : 'unstarlight', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, starlight: on });
+        await logActivity(env, sess, on ? 'curata' : 'uncurata', type, row.slug, row.name);
+        return jsonResponse({ ok: true, slug: row.slug, curata: on });
       }
 
       // ---- admin: gather one creator's characters into a collection ----
@@ -6529,7 +8468,7 @@ export default {
         d.exclude = Array.isArray(d.exclude) ? d.exclude : [];
         // include[] is capped at 500 by sanitizePageFields; 258 fits today.
         d.include = [...new Set([...(Array.isArray(d.include) ? d.include : []), ...slugs])];
-        d.starlight = existing ? !!parseData(existing).starlight : false;
+        d.curata = existing ? !!parseData(existing).curata : false;
         sanitizePageFields(d, 'collections/' + id);
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
@@ -6642,13 +8581,13 @@ export default {
         return jsonResponse({ ok: true, made, skipped, parent: parent.name });
       }
 
-      // ---- admin: grant Starlight to everything one account owns ----
-      // Starlight is what says "an admin has looked at this", and it also
+      // ---- admin: grant Curata to everything one account owns ----
+      // Curata is what says "an admin has looked at this", and it also
       // lifts a page out of Partial. Doing that one page at a time through
       // Bulk actions is 200 tick-boxes at a time; this is the same write in
       // one press. Idempotent — pages that already have it are skipped — so
       // it can be re-run after adding more. {dryRun:true} just counts.
-      if (path === '/api/admin/starlight-owner') {
+      if (path === '/api/admin/curata-owner') {
         const b = await request.json().catch(() => ({}));
         const uname = String(b.username || '').trim();
         if (!uname) return jsonResponse({ error: 'Which account?' }, { status: 400 });
@@ -6657,7 +8596,7 @@ export default {
         const { results } = await env.DB.prepare(
           "SELECT slug, name, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
         ).bind(u.id).all();
-        const hits = (results || []).filter(r => !parseData(r).starlight);
+        const hits = (results || []).filter(r => !parseData(r).curata);
         if (b.dryRun) {
           return jsonResponse({
             ok: true, dryRun: true, username: u.username,
@@ -6667,16 +8606,213 @@ export default {
         }
         for (const r of hits) {
           const d = parseData(r);
-          d.starlight = true;
+          d.curata = true;
           await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
             .bind(JSON.stringify(d), r.slug).run();
         }
-        await logActivity(env, sess, 'starlight', 'character', null,
+        await logActivity(env, sess, 'curata', 'character', null,
           hits.length + ' page(s) owned by ' + u.username);
         return jsonResponse({ ok: true, username: u.username, count: hits.length });
       }
 
       // ---- admin: sweep published characters that miss the publish bar ----
+      // ---- give every character a nested address ----
+      // Retroactive /c/{set}/{character} for the whole wiki, so no page keeps a
+      // bare first-come URL: the first Priest stops owning /c/priest and every
+      // Priest is filed under the set (or the author) it belongs to.
+      //
+      // ALWAYS dry-run it first: {dryRun:true} reports what it would do,
+      // including the qualifier each page resolved to, and writes nothing.
+      //
+      // Everything is resolved from maps built once, not per row: 1,647
+      // characters × a collection scan each would be thousands of queries.
+      // `taken` is held in memory for the same reason, and because two rows in
+      // the same run must not be handed the same address.
+      //
+      // Re-runnable. Rows that already sit at the address they ask for are left
+      // alone, so a second pass after registering a collection only moves the
+      // pages that collection just claimed.
+      if (path === '/api/admin/nest-urls') {
+        const b = await request.json().catch(() => ({}));
+        const dryRun = b.dryRun !== false;
+        const limit = Math.max(1, Math.min(5000, Number(b.limit) || 5000));
+        await ensureUrlSlugColumn(env);
+        await ensureRedirectsTable(env);
+
+        // --- lookup maps, built once ---
+        const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        const setKey = new Map();       // normalised set name -> {q, kind}
+        const includedIn = new Map();   // character identity -> qualifier
+        try {
+          const { results } = await env.DB.prepare('SELECT slug, data FROM collections').all();
+          for (const r of results || []) {
+            let d = {};
+            try { d = foldLegacyCurata(JSON.parse(r.data)); } catch { /* skip bad rows */ }
+            const q = kebab(d.id || r.slug);
+            if (!q) continue;
+            for (const k of [r.slug, d.id, d.displayName, d.name]) {
+              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'collection' });
+            }
+            for (const s of (Array.isArray(d.include) ? d.include : [])) {
+              if (typeof s === 'string' && !includedIn.has(s)) includedIn.set(s, q);
+            }
+          }
+        } catch { /* no collections is survivable */ }
+        try {
+          const { results } = await env.DB.prepare('SELECT slug, data FROM scripts').all();
+          for (const r of results || []) {
+            let d = {};
+            try { d = JSON.parse(r.data); } catch { /* skip bad rows */ }
+            const q = kebab(r.slug);
+            if (!q) continue;
+            // Collections win outright, so a name both claim keeps the
+            // collection it already resolved to.
+            for (const k of [r.slug, d.id, d.displayName, d.name]) {
+              if (k && !setKey.has(norm(k))) setKey.set(norm(k), { q, kind: 'script' });
+            }
+          }
+        } catch { /* no scripts is survivable */ }
+        // Rosters, for characters with no "Appears in" of their own that a
+        // script plainly owns (the Blood on the TARDIS cast).
+        try {
+          const { results } = await env.DB.prepare(
+            'SELECT slug, data FROM scripts ORDER BY created_at, slug'
+          ).all();
+          for (const r of results || []) {
+            const q = kebab(r.slug);
+            if (!q) continue;
+            let d = {};
+            try { d = JSON.parse(r.data); } catch { continue; }
+            for (const x of (Array.isArray(d.characters) ? d.characters : [])) {
+              // Collections were indexed first and keep the character.
+              if (typeof x === 'string' && !x.startsWith('off-') && !includedIn.has(x)) {
+                includedIn.set(x, q);
+              }
+            }
+          }
+        } catch { /* no rosters is survivable */ }
+        const userName = new Map();
+        try {
+          const { results } = await env.DB.prepare('SELECT id, username FROM users').all();
+          for (const r of results || []) userName.set(Number(r.id), kebab(r.username));
+        } catch { /* fall through to the misc bucket */ }
+
+        // --- every character, oldest first, so a run is deterministic ---
+        const { results: rows } = await env.DB.prepare(
+          `SELECT slug, url_slug, name, creator, appears_in, owner_id, status
+             FROM characters ORDER BY created_at, slug`
+        ).all();
+
+        // Addresses already spoken for, plus every address any page has ever
+        // had — taking one of those back would hijack a live redirect.
+        const taken = new Set();
+        for (const r of rows || []) if (r.url_slug) taken.add(String(r.url_slug));
+        try {
+          const { results } = await env.DB.prepare(
+            "SELECT from_slug FROM redirects WHERE entity_type='character'"
+          ).all();
+          for (const r of results || []) if (r.from_slug) taken.add(String(r.from_slug));
+        } catch { /* nothing has ever moved */ }
+
+        const kinds = { collection: 0, script: 0, unregistered: 0, listed: 0, creator: 0, account: 0, fallback: 0 };
+        const plan = [];
+        for (const r of rows || []) {
+          const segs = String(r.appears_in || '').split(',').map(x => x.trim()).filter(Boolean);
+          let q = '', kind = '';
+          for (const s of segs) {
+            const hit = setKey.get(norm(s));
+            if (hit && hit.kind === 'collection') { q = hit.q; kind = 'collection'; break; }
+          }
+          if (!q) for (const s of segs) {
+            const hit = setKey.get(norm(s));
+            if (hit) { q = hit.q; kind = hit.kind; break; }
+          }
+          // A set this wiki has no page for is still a set, and reads far
+          // better than scattering its characters under their authors.
+          if (!q && segs.length) { q = kebab(segs[0]); if (q) kind = 'unregistered'; }
+          // Listed by hand in a collection, or on a script's roster.
+          if (!q && includedIn.has(String(r.slug))) {
+            q = includedIn.get(String(r.slug)); kind = 'listed';
+          }
+          if (!q) {
+            const cred = creditNames(r.creator || '')[0];
+            q = kebab(cred); if (q) kind = 'creator';
+          }
+          if (!q && r.owner_id != null) {
+            q = userName.get(Number(r.owner_id)) || ''; if (q) kind = 'account';
+          }
+          if (!q) { q = CHAR_ADDR_FALLBACK; kind = 'fallback'; }
+
+          const base = kebab(r.name) || kebab(r.slug) || 'character';
+          const first = q + '/' + base;
+          const current = r.url_slug ? String(r.url_slug) : '';
+          // Already filed correctly, including as a numbered duplicate.
+          const settled = current === first ||
+            (!!current && current.startsWith(first + '-') &&
+             /^\d+$/.test(current.slice(first.length + 1)));
+          // Nothing to do, and nothing a re-run could improve: a settled row
+          // already sits under the qualifier and name it resolves to.
+          if (settled) { kinds[kind]++; continue; }
+
+          let address = first;
+          if (taken.has(address)) {
+            for (let i = 2; i < 500; i++) {
+              if (!taken.has(first + '-' + i)) { address = first + '-' + i; break; }
+            }
+          }
+          if (taken.has(address)) continue;   // 500 of one name in one set: leave it
+          // Reserved for good, including the address this page is leaving:
+          // that one is about to become a redirect pointing here, and
+          // handing it to another character in the same run would send
+          // every old link to the wrong page.
+          taken.add(address);
+          if (current) taken.add(current);
+          kinds[kind]++;
+          plan.push({ slug: String(r.slug), from: current, to: address, kind });
+          if (plan.length >= limit) break;
+        }
+
+        if (dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true, scanned: (rows || []).length,
+            wouldChange: plan.length, kinds,
+            samples: plan.slice(0, 40)
+          });
+        }
+
+        let changed = 0;
+        for (let i = 0; i < plan.length; i += 40) {
+          const chunk = plan.slice(i, i + 40);
+          const stmts = [];
+          for (const p of chunk) {
+            stmts.push(env.DB.prepare('UPDATE characters SET url_slug=? WHERE slug=?')
+              .bind(p.to, p.slug));
+            // Only a real previous ADDRESS needs remembering. A page that has
+            // never had one is still reachable at /c/{identity} through the
+            // primary key, so the first nesting needs no redirect row at all.
+            if (p.from) {
+              stmts.push(env.DB.prepare(
+                `INSERT INTO redirects (entity_type, from_slug, to_slug) VALUES ('character',?,?)
+                 ON CONFLICT(entity_type, from_slug) DO UPDATE SET to_slug=excluded.to_slug`
+              ).bind(p.from, p.slug));
+            }
+            stmts.push(env.DB.prepare(
+              "DELETE FROM redirects WHERE entity_type='character' AND from_slug=?"
+            ).bind(p.to));
+          }
+          try { await env.DB.batch(stmts); changed += chunk.length; }
+          catch { /* keep going: a failed chunk is retried by the next run */ }
+        }
+        // Written straight to D1, so the feeds and the in-isolate caches have
+        // to be told, or every page keeps serving its old address.
+        await bumpContentVersion(env);
+        await logActivity(env, sess, 'nest-urls', 'character', '', changed + ' addresses');
+        return jsonResponse({
+          ok: true, dryRun: false, scanned: (rows || []).length,
+          changed, kinds, samples: plan.slice(0, 40)
+        });
+      }
+
       // The bar (name, icon, ability, tags — Classify.missingForPublish) only
       // bites on save/publish, so this catches the pages that went live before
       // it existed or before it was raised. Every affected page becomes a
@@ -6878,7 +9014,7 @@ export default {
         const rm = new Set((Array.isArray(b.remove) ? b.remove : []).map(String));
         if (!rm.size) return jsonResponse({ error: 'Nothing to remove.' }, { status: 400 });
         let d;
-        try { d = JSON.parse(row.data); } catch { return jsonResponse({ error: 'Page data is corrupt.' }, { status: 500 }); }
+        try { d = foldLegacyCurata(JSON.parse(row.data)); } catch { return jsonResponse({ error: 'Page data is corrupt.' }, { status: 500 }); }
         await saveRevision(env, sess, type, row);
         let removed = 0;
         function strip(list) {
@@ -6963,7 +9099,7 @@ export default {
         if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
         const action = String(b.action || '');
         const ACTIONS = ['publish', 'unpublish', 'delete', 'restore', 'assign-owner', 'clear-owner',
-                        'add-tag', 'remove-tag', 'starlight', 'unstarlight'];
+                        'add-tag', 'remove-tag', 'curata', 'uncurata'];
         if (!ACTIONS.includes(action)) return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         const slugs = (Array.isArray(b.slugs) ? b.slugs : []).slice(0, 200).map(String);
         if (!slugs.length) return jsonResponse({ error: 'No pages selected.' }, { status: 400 });
@@ -6996,13 +9132,13 @@ export default {
                 .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
             } else if (action === 'delete') {
               if (row.status === 'deleted') { done++; continue; }
-              let data; try { data = JSON.parse(row.data); } catch { data = {}; }
+              let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
               data._deleted = { at: new Date().toISOString(), by: adminName, from: row.status || 'published' };
               await env.DB.prepare(`UPDATE ${t.table} SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(JSON.stringify(data), row.slug).run();
             } else if (action === 'restore') {
               if (row.status !== 'deleted') { done++; continue; }
-              let data; try { data = JSON.parse(row.data); } catch { data = {}; }
+              let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }
               const from = (data._deleted && data._deleted.from) || 'published';
               delete data._deleted;
               await env.DB.prepare(`UPDATE ${t.table} SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`)
@@ -7010,19 +9146,19 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
-            } else if (action === 'starlight' || action === 'unstarlight') {
-              const on = action === 'starlight';
+            } else if (action === 'curata' || action === 'uncurata') {
+              const on = action === 'curata';
               const d = parseData(row);
-              if (!!d.starlight !== on) {
-                d.starlight = on;
-                if (!on) delete d.starlight;
+              if (!!d.curata !== on) {
+                d.curata = on;
+                if (!on) delete d.curata;
                 await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
                   .bind(JSON.stringify(d), row.slug).run();
               }
             } else {
               // add-tag / remove-tag: tags are a comma-separated string kept
               // in both the indexed column and the data JSON.
-              let d; try { d = JSON.parse(row.data); } catch { failed.push(slug); continue; }
+              let d; try { d = foldLegacyCurata(JSON.parse(row.data)); } catch { failed.push(slug); continue; }
               const tags = String(d.tags || '').split(',').map(s => s.trim()).filter(Boolean);
               const has = tags.some(x => x.toLowerCase() === tag.toLowerCase());
               let next = tags;
@@ -7048,7 +9184,7 @@ export default {
 
     // ---------- STATIC ASSETS (pass through to Pages) ----------
     // env.ASSETS is the static site binding (Cloudflare Pages / Workers Assets)
-    return env.ASSETS.fetch(request);
+    return assetsOrNotFound(env, request);
   },
 
   // Nightly cron (see [triggers] in wrangler.toml): back up D1 to R2, and

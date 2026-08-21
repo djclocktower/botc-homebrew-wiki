@@ -1,0 +1,362 @@
+{
+ "source": "https://github.com/bra1n/townsquare (src/hatred.json), fetched 2026-08-13",
+ "note": "Jinxes between two OFFICIAL characters, for the optional base-game layer on /jinxes. Partial: this list predates several recent official jinxes. Homebrew jinxes are not here - they live on the characters themselves in D1.",
+ "pairs": 71,
+ "jinxes": [
+  {
+   "a": "chambermaid",
+   "b": "mathematician",
+   "text": "The Chambermaid learns if the Mathematician wakes tonight or not, even though the Chambermaid wakes first."
+  },
+  {
+   "a": "butler",
+   "b": "cannibal",
+   "text": "If the Cannibal gains the Butler ability, the Cannibal learns this."
+  },
+  {
+   "a": "lunatic",
+   "b": "mathematician",
+   "text": "The Mathematician learns if the Lunatic attacks a different player(s) than the real Demon attacked."
+  },
+  {
+   "a": "pithag",
+   "b": "heretic",
+   "text": "A Pit-Hag can not create a Heretic. "
+  },
+  {
+   "a": "pithag",
+   "b": "damsel",
+   "text": "If a Pit-Hag creates a Damsel, the Storyteller chooses which player it is."
+  },
+  {
+   "a": "pithag",
+   "b": "politician",
+   "text": "A Pit-hag can not create an evil Politician."
+  },
+  {
+   "a": "cerenovus",
+   "b": "goblin",
+   "text": "The Cerenovus may choose to make a player mad that they are the Goblin."
+  },
+  {
+   "a": "leviathan",
+   "b": "soldier",
+   "text": "If Leviathan nominates and executes the Soldier, the Soldier does not die."
+  },
+  {
+   "a": "leviathan",
+   "b": "monk",
+   "text": "If Leviathan nominates and executes the player the Monk chose, that player does not die."
+  },
+  {
+   "a": "leviathan",
+   "b": "innkeeper",
+   "text": "If Leviathan nominates and executes a player the Innkeeper chose, that player does not die."
+  },
+  {
+   "a": "leviathan",
+   "b": "ravenkeeper",
+   "text": "If Leviathan is in play & the Ravenkeeper dies by execution, they wake that night to use their ability."
+  },
+  {
+   "a": "leviathan",
+   "b": "sage",
+   "text": "If Leviathan is in play & the Sage dies by execution, they wake that night to use their ability."
+  },
+  {
+   "a": "leviathan",
+   "b": "farmer",
+   "text": "If Leviathan is in play & a Farmer dies by execution, a good player becomes a Farmer that night."
+  },
+  {
+   "a": "leviathan",
+   "b": "mayor",
+   "text": "If Leviathan is in play & no execution occurs on day 5, good wins."
+  },
+  {
+   "a": "alhadikhia",
+   "b": "scarletwoman",
+   "text": "If there are two living Al-Hadikhias, the Scarlet Woman Al-Hadikhia becomes the Scarlet Woman again."
+  },
+  {
+   "a": "alhadikhia",
+   "b": "mastermind",
+   "text": "Only 1 jinxed character can be in play. Evil players start knowing which player and character it is."
+  },
+  {
+   "a": "lilmonsta",
+   "b": "poppygrower",
+   "text": "If the Poppy Grower is in play, Minions don't wake together. They are woken one by one, until one of them chooses to take the Lil' Monsta token."
+  },
+  {
+   "a": "lilmonsta",
+   "b": "magician",
+   "text": "Only 1 jinxed character can be in play. "
+  },
+  {
+   "a": "lilmonsta",
+   "b": "scarletwoman",
+   "text": "If there are 5 or more players alive and the player holding the Lil' Monsta token dies, the Scarlet Woman is given the Lil' Monsta token tonight."
+  },
+  {
+   "a": "lycanthrope",
+   "b": "gambler",
+   "text": "If the Lycanthrope is alive and the Gambler kills themself at night, no other players can die tonight."
+  },
+  {
+   "a": "legion",
+   "b": "engineer",
+   "text": "Legion and the Engineer can not both be in play at the start of the game. If the Engineer creates Legion, most players (including all evil players) become evil Legion."
+  },
+  {
+   "a": "legion",
+   "b": "preacher",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "fanggu",
+   "b": "scarletwoman",
+   "text": "If the Fang Gu chooses an Outsider and dies, the Scarlet Woman does not become the Fang Gu."
+  },
+  {
+   "a": "spy",
+   "b": "magician",
+   "text": "When the Spy sees the Grimoire, the Demon and Magician's character tokens are removed."
+  },
+  {
+   "a": "spy",
+   "b": "alchemist",
+   "text": "The Alchemist can not have the Spy ability."
+  },
+  {
+   "a": "spy",
+   "b": "poppygrower",
+   "text": "If the Poppy Grower is in play, the Spy does not see the Grimoire until the Poppy Grower dies."
+  },
+  {
+   "a": "spy",
+   "b": "damsel",
+   "text": "Only 1 jinxed character can be in play. "
+  },
+  {
+   "a": "spy",
+   "b": "heretic",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "widow",
+   "b": "magician",
+   "text": "When the Widow sees the Grimoire, the Demon and Magician's character tokens are removed."
+  },
+  {
+   "a": "widow",
+   "b": "poppygrower",
+   "text": "If the Poppy Grower is in play, the Widow does not see the Grimoire until the Poppy Grower dies."
+  },
+  {
+   "a": "widow",
+   "b": "alchemist",
+   "text": "The Alchemist can not have the Widow ability."
+  },
+  {
+   "a": "widow",
+   "b": "damsel",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "widow",
+   "b": "heretic",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "godfather",
+   "b": "heretic",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "baron",
+   "b": "heretic",
+   "text": "The Baron might only add 1 Outsider, not 2."
+  },
+  {
+   "a": "marionette",
+   "b": "lilmonsta",
+   "text": "The Marionette neighbors a Minion, not the Demon. The Marionette is not woken to choose who takes the Lil' Monsta token."
+  },
+  {
+   "a": "marionette",
+   "b": "poppygrower",
+   "text": "When the Poppy Grower dies, the Demon learns the Marionette but the Marionette learns nothing."
+  },
+  {
+   "a": "marionette",
+   "b": "snitch",
+   "text": "The Marionette does not learn 3 not in-play characters. The Demon learns an extra 3 instead."
+  },
+  {
+   "a": "marionette",
+   "b": "balloonist",
+   "text": "If the Marionette thinks that they are the Balloonist, +1 Outsider was added."
+  },
+  {
+   "a": "marionette",
+   "b": "damsel",
+   "text": "The Marionette does not learn that a Damsel is in play."
+  },
+  {
+   "a": "marionette",
+   "b": "huntsman",
+   "text": "If the Marionette thinks that they are the Huntsman, the Damsel was added."
+  },
+  {
+   "a": "riot",
+   "b": "engineer",
+   "text": "Riot and the Engineer can not both be in play at the start of the game. \nIf the Engineer creates Riot, the evil players become Riot."
+  },
+  {
+   "a": "riot",
+   "b": "golem",
+   "text": "If The Golem nominates Riot, the Riot player does not die."
+  },
+  {
+   "a": "riot",
+   "b": "snitch",
+   "text": "If the Snitch is in play, each Riot player gets an extra 3 bluffs."
+  },
+  {
+   "a": "riot",
+   "b": "saint",
+   "text": "If a good player nominates and kills the Saint, the Saint's team loses."
+  },
+  {
+   "a": "riot",
+   "b": "butler",
+   "text": "The Butler can not nominate their master."
+  },
+  {
+   "a": "riot",
+   "b": "pithag",
+   "text": "If the Pit-Hag creates Riot, all evil players become Riot. \nIf the Pit-Hag creates Riot after day 3, the game continues for one more day."
+  },
+  {
+   "a": "riot",
+   "b": "mayor",
+   "text": "If the 3rd day begins with just three players alive, the players may choose (as a group) not to nominate at all. If so (and a Mayor is alive) then the Mayor's team wins."
+  },
+  {
+   "a": "riot",
+   "b": "monk",
+   "text": "If a Riot player nominates and kills the Monk-protected-player, the Monk-protected-player does not die."
+  },
+  {
+   "a": "riot",
+   "b": "farmer",
+   "text": "If a Riot player nominates and kills a Farmer, the Farmer uses their ability tonight."
+  },
+  {
+   "a": "riot",
+   "b": "innkeeper",
+   "text": "If a Riot player nominates an Innkeeper-protected-player, the Innkeeper-protected-player does not die."
+  },
+  {
+   "a": "riot",
+   "b": "sage",
+   "text": "If a Riot player nominates and kills a Sage, the Sage uses their ability tonight."
+  },
+  {
+   "a": "riot",
+   "b": "ravenkeeper",
+   "text": "If a Riot player nominates and kills the Ravenkeeper, the Ravenkeeper uses their ability tonight."
+  },
+  {
+   "a": "riot",
+   "b": "soldier",
+   "text": "If a Riot player nominates the Soldier, the Soldier does not die."
+  },
+  {
+   "a": "riot",
+   "b": "grandmother",
+   "text": "If a Riot player nominates and kills the Grandchild, the Grandmother dies too."
+  },
+  {
+   "a": "riot",
+   "b": "king",
+   "text": "If a Riot player nominates and kills the King and the Choirboy is alive, the Choirboy uses their ability tonight."
+  },
+  {
+   "a": "riot",
+   "b": "exorcist",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "riot",
+   "b": "minstrel",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "riot",
+   "b": "flowergirl",
+   "text": "Only 1 jinxed character can be in play."
+  },
+  {
+   "a": "riot",
+   "b": "undertaker",
+   "text": "Players that die by nomination register as being executed to the Undertaker."
+  },
+  {
+   "a": "riot",
+   "b": "cannibal",
+   "text": "Players that die by nomination register as being executed to the Cannibal."
+  },
+  {
+   "a": "riot",
+   "b": "pacifist",
+   "text": "Players that die by nomination register as being executed to the Pacifist."
+  },
+  {
+   "a": "riot",
+   "b": "devilsadvocate",
+   "text": "Players that die by nomination register as being executed to the Devil's Advocate."
+  },
+  {
+   "a": "riot",
+   "b": "investigator",
+   "text": "Riot registers as a Minion to the Investigator."
+  },
+  {
+   "a": "riot",
+   "b": "clockmaker",
+   "text": "Riot registers as a Minion to the Clockmaker."
+  },
+  {
+   "a": "riot",
+   "b": "towncrier",
+   "text": "Riot registers as a Minion to the Town Crier."
+  },
+  {
+   "a": "riot",
+   "b": "damsel",
+   "text": "Riot registers as a Minion to the Damsel."
+  },
+  {
+   "a": "riot",
+   "b": "preacher",
+   "text": "Riot registers as a Minion to the Preacher."
+  },
+  {
+   "a": "lleech",
+   "b": "mastermind",
+   "text": "If the Mastermind is alive and the Lleech's host dies by execution, the Lleech lives but loses their ability. "
+  },
+  {
+   "a": "lleech",
+   "b": "slayer",
+   "text": "If the Slayer slays the Lleech's host, the host dies. "
+  },
+  {
+   "a": "lleech",
+   "b": "heretic",
+   "text": "If the Lleech has poisoned the Heretic then the Lleech dies, the Heretic remains poisoned."
+  }
+ ]
+}

@@ -42,6 +42,28 @@
     return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
   }
 
+  /* The figure's box inside an already-loaded <img>: the transparent margin
+     trimmed away. Falls back to the whole image when the pixels can't be read
+     (a tainted canvas: cross-origin art without CORS headers) or the art is
+     fully transparent. Exported because art-adjust.js measures the figure the
+     same way, so the hand adjuster opens on exactly what this function would
+     have produced and every change there is a nudge from it. */
+  function artTrimBox(img) {
+    var iw = img.naturalWidth || img.width;
+    var ih = img.naturalHeight || img.height;
+    var whole = { x: 0, y: 0, w: iw, h: ih };
+    if (!iw || !ih) return whole;
+    var read = document.createElement('canvas');
+    read.width = iw; read.height = ih;
+    var rctx = read.getContext('2d');
+    rctx.drawImage(img, 0, 0);
+    try {
+      return alphaBBox(rctx.getImageData(0, 0, iw, ih).data, iw, ih) || whole;
+    } catch (e) {
+      return whole;
+    }
+  }
+
   function normalizeArtDataURL(src, opts) {
     opts = opts || {};
     var target = opts.target || TARGET;
@@ -55,22 +77,9 @@
         var ih = img.naturalHeight || img.height;
         if (!iw || !ih) { reject(new Error('Image has no dimensions.')); return; }
 
-        // Read pixels to locate the figure (trim transparent padding).
-        var read = document.createElement('canvas');
-        read.width = iw; read.height = ih;
-        var rctx = read.getContext('2d');
-        rctx.drawImage(img, 0, 0);
-        var box;
-        try {
-          var pixels = rctx.getImageData(0, 0, iw, ih).data;
-          box = alphaBBox(pixels, iw, ih);
-        } catch (e) {
-          // getImageData can throw on a tainted canvas (cross-origin art without
-          // CORS headers). Fall back to using the whole image, contain-fit.
-          box = null;
-        }
-        // No figure found (fully transparent or unreadable) -> use whole image.
-        if (!box) box = { x: 0, y: 0, w: iw, h: ih };
+        // Locate the figure (trim transparent padding). An unreadable or
+        // fully transparent image comes back as the whole frame, contain-fit.
+        var box = artTrimBox(img);
 
         // Scale so the figure's longest side spans fill * target, centered.
         var scale = (fill * target) / Math.max(box.w, box.h);
@@ -96,4 +105,7 @@
   }
 
   global.normalizeArtDataURL = normalizeArtDataURL;
+  global.artTrimBox = artTrimBox;
+  global.ART_TARGET = TARGET;
+  global.ART_FILL = FILL;
 })(typeof window !== 'undefined' ? window : this);

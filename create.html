@@ -232,8 +232,9 @@
           <input type="text" id="quote">
         </div>
         <div class="fld">
-          <label for="appears">Appears in</label>
+          <label for="appears">Appears in <span class="hint">(optional: the script or collection this belongs to)</span></label>
           <input type="text" id="appears">
+          <div class="sub" style="margin-top:4px">Leave it blank and any collection that lists this character fills it in for you.</div>
         </div>
       </div>
       <div class="fld">
@@ -267,7 +268,8 @@
         <img id="artthumb" class="artthumb" alt="art preview">
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
-          <div class="sub" style="margin-top:4px">Trims the empty space and fits your art to the standard 591&times;591 frame, so it matches other icons.</div>
+          <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
+          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
@@ -280,6 +282,7 @@
         <img id="artAltThumb" class="artthumb" alt="alternate art preview">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artAltStd">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
@@ -351,6 +354,25 @@
       </fieldset>
 
       <fieldset>
+        <legend>Who can edit this page</legend>
+        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <div class="fld" style="margin-bottom:0">
+          <select id="publicEdit">
+            <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
+            <option value="tags">Tags only: anyone with an account can change the tags</option>
+            <option value="all">Anyone with an account can edit this page</option>
+          </select>
+        </div>
+        <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
+          <label>Approved editors</label>
+          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <div id="editors-box"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Custom JSON (optional)</legend>
         <p class="sub" style="margin:0 0 10px">Paste your own JSON here to replace the auto-generated JSON box on the character page. Leave blank to keep the auto-generated one.</p>
         <div class="fld" style="margin-bottom:0"><textarea id="customJson" placeholder="[ { &quot;id&quot;: &quot;_meta&quot;, &hellip; } ]"></textarea></div>
@@ -377,9 +399,13 @@
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/tags.js"></script>
+  <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-adjust.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
+  <script src="assets/jinx-picker.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
@@ -396,14 +422,114 @@
           }
         });
         window.setOfficialIconUrls(m);
+        var names = {};
+        (roles || []).forEach(function (r) {
+          if (!r || !r.name) return;
+          names[window.slugId(r.id)] = r.name;
+          names[window.slugId(r.name)] = r.name;
+        });
+        window.setOfficialNames(names);
         if (typeof update === 'function') update();
       }).catch(function () {});
+    // This wiki's own characters, so a jinx with another homebrew page shows
+    // its art and links to /c/ instead of falling back to plain text.
+    fetch(SITE_ROOT + 'characters.json?fields=card').then(function (r) { return r.json(); })
+      .then(function (list) {
+        var w = {};
+        (list || []).forEach(function (c) {
+          if (!c || !c.slug) return;
+          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
+          [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function (k) {
+            if (k && !w[k]) w[k] = row;
+          });
+        });
+        window.setWikiChars(w);
+        // Who already declares a jinx with the character being edited. A jinx
+        // is stored on one side only, so without this you can write a second,
+        // conflicting rule for a pair and never know: the other page's text
+        // is the one that shows, and yours silently loses.
+        INBOUND = {};
+        (list || []).forEach(function (c) {
+          if (!c || !c.slug || !c.jinxes) return;
+          c.jinxes.forEach(function (j) {
+            var k = (j.slug && window.normJinxId(j.slug)) ||
+              window.normJinxId(j.id || window.slugId(j.name || ''));
+            if (!k) return;
+            (INBOUND[k] = INBOUND[k] || []).push({ slug: c.slug, name: c.name, text: j.text || j.reason || '' });
+          });
+        });
+        checkJinxConflicts();
+        if (typeof update === 'function') update();
+      }).catch(function () {});
+
+    /* Flag any jinx row whose pair the OTHER character already describes. */
+    var INBOUND = null;
+    function checkJinxConflicts() {
+      if (!INBOUND) return;
+      var meKeys = {};
+      var myName = document.getElementById('name');
+      [myName ? myName.value : '', window.CURRENT_SLUG || ''].forEach(function (v) {
+        var k = window.normJinxId(window.slugId(v) || v);
+        if (k) meKeys[k] = 1;
+      });
+      document.querySelectorAll('.jinx-row').forEach(function (row) {
+        var f = row.querySelector('.jx-name');
+        var warn = row.querySelector('.jx-conflict');
+        var key = (f.dataset.slug && window.normJinxId(f.dataset.slug)) ||
+          window.normJinxId(f.dataset.id || window.slugId(f.value || ''));
+        var hit = null;
+        (INBOUND[key] || []).forEach(function (src) {
+          // Does the character named in this row already declare a jinx
+          // pointing back at us?
+          if (meKeys[window.normJinxId(src.slug)] || meKeys[window.normJinxId(src.name)]) hit = src;
+        });
+        if (!hit) { if (warn) warn.remove(); return; }
+        if (!warn) {
+          warn = document.createElement('p');
+          warn.className = 'jx-conflict';
+          row.appendChild(warn);
+        }
+        warn.innerHTML = '\u26a0 <b>' + esc(hit.name) + '</b> already writes this jinx: \u201c' +
+          esc(String(hit.text).slice(0, 140)) + '\u201d \u2014 the page shows their wording, not yours. ' +
+          '<a href="c/' + esc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
+      });
+    }
+    function esc(x) {
+      return String(x == null ? '' : x).replace(/[&<>"]/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+      });
+    }
+    window.checkJinxConflicts = checkJinxConflicts;
     var artDataURL   = null;
     var artAltDataURL = null;
     var importedImage = null;
+    // The file exactly as it was picked, before the 600px working copy. The
+    // adjuster starts from this so zooming in stays sharp, and so a second
+    // pass at the framing is a fresh placement of the original rather than a
+    // resize of a resize. Null once the art came from an imported JSON's
+    // remote URL, when there is no local file.
+    var artOriginal = null;
+    var artAltOriginal = null;
 
     // ── jinx rows ──────────────────────────────────────────────────
-    function addJinx(name, align, text) {
+    // A jinx entry can arrive as the editor's {name, align, text} or as
+    // official-schema {id, reason}. One shape in, one shape out.
+    function normalizeJinx(j) {
+      var nm = (j.name || '').trim();
+      if (!nm && window.resolveJinxTarget) {
+        nm = window.resolveJinxTarget({ id: j.id || '', slug: j.slug || '' }, '').name || '';
+      }
+      if (!nm) nm = j.id || '';
+      return {
+        name: nm,
+        align: j.align === 'evil' ? 'evil' : 'good',
+        text: j.text || j.reason || '',
+        slug: j.slug || '',
+        id: j.id || ''
+      };
+    }
+
+    function addJinx(name, align, text, slug, id) {
       var row = document.createElement('div');
       row.className = 'jinx-row';
       row.innerHTML =
@@ -412,7 +538,8 @@
         '<button type="button" class="btn btn-del btn-sm jx-del">&#10005;</button>' +
         '<textarea class="jx-text" placeholder="Jinx rule text&hellip;"></textarea>';
       $('jinxes').appendChild(row);
-      if (name)  row.querySelector('.jx-name').value  = name;
+      if (window.setJinxField) window.setJinxField(row.querySelector('.jx-name'), name, slug, id);
+      else if (name) row.querySelector('.jx-name').value = name;
       if (align) row.querySelector('.jx-align').value = align;
       if (text)  row.querySelector('.jx-text').value  = text;
       row.querySelector('.jx-del').addEventListener('click', function () { row.remove(); update(); });
@@ -422,6 +549,11 @@
         ta.addEventListener('input', function() { autoExpand(ta); });
         autoExpand(ta);
       });
+      if (window.mountJinxPicker) window.mountJinxPicker(row.querySelector('.jx-name'));
+      row.querySelectorAll('input,select').forEach(function (el) {
+        el.addEventListener('input', function () { if (window.checkJinxConflicts) window.checkJinxConflicts(); });
+      });
+      if (window.checkJinxConflicts) window.checkJinxConflicts();
     }
     $('addjinx').addEventListener('click', function () { addJinx(); });
 
@@ -467,9 +599,16 @@
     function gather() {
       var jinxes = [];
       document.querySelectorAll('.jinx-row').forEach(function (r) {
-        var n = r.querySelector('.jx-name').value.trim();
-        if (n) jinxes.push({ name: n, align: r.querySelector('.jx-align').value,
-                             text: r.querySelector('.jx-text').value.trim() });
+        var f = r.querySelector('.jx-name');
+        var n = f.value.trim();
+        if (!n) return;
+        // The picker records WHICH character was chosen; a hand-typed name
+        // carries neither and is matched by name the old way.
+        var j = { name: n, align: r.querySelector('.jx-align').value,
+                  text: r.querySelector('.jx-text').value.trim() };
+        if (f.dataset.slug) j.slug = f.dataset.slug;
+        else if (f.dataset.id) j.id = f.dataset.id;
+        jinxes.push(j);
       });
       return {
         name: $('name').value.trim(),
@@ -505,9 +644,25 @@
         jinxDisplay: $('jinxDisplay').value,
         customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim(),
+        // Who may edit the page once it exists (Advanced Options). Owner-only
+        // unless the creator opens it up; the Worker is the enforcer.
+        publicEdit: $('publicEdit').value,
+        editors: editorsUI ? editorsUI.get() : [],
         image: importedImage || ''
       };
     }
+
+    /* The named-editor list that goes with "Approved editing". Mounted
+       whatever the mode is, so switching away and back does not throw away
+       names that have just been typed in. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
+      : null;
+    function syncEditorsBox() {
+      $('editors-fld').style.display = $('publicEdit').value === 'approved' ? '' : 'none';
+    }
+    $('publicEdit').addEventListener('change', syncEditorsBox);
+    syncEditorsBox();
 
     function slugify(s) {
       return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -515,36 +670,15 @@
     }
 
     // ── live preview ───────────────────────────────────────────────
-    var PREVIEW_SCRIPT =
-      '<scr' + 'ipt>document.addEventListener("click",function(e){' +
-      'var t=e.target.closest&&e.target.closest(".json-bar-toggle");' +
-      'if(t){var b=t.closest(".json-box");var o=b.classList.toggle("open");b.querySelector(".json-body").hidden=!o;}' +
-      'var j=e.target.closest&&e.target.closest(".jinx-drop-bar");' +
-      'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
-      'var c=e.target.closest&&e.target.closest(".json-copy");' +
-      'if(c){var b=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(b.querySelector("code").textContent);}' +
-      '});' +
-      // Fit the title to width (mirrors fitCharTitle in render.js).
-      '(function(){function f(){var e=document.querySelector(".gen-title");if(!e)return;' +
-      'e.style.whiteSpace="nowrap";var vw=window.innerWidth||800,m=vw<=420?66:vw<=640?78:144;' +
-      'e.style.fontSize=m+"px";var a=e.clientWidth;' +
-      'if(a&&e.scrollWidth>a){e.style.fontSize=Math.max(m*(a*0.99)/e.scrollWidth,14).toFixed(1)+"px";}}' +
-      'f();window.addEventListener("resize",f);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(f);})();</scr' + 'ipt>';
+    // Written once, then patched in place by assets/char-preview.js: assigning
+    // srcdoc on every keystroke reloads the frame, which flashes black and
+    // throws away the preview's scroll position.
+    var preview = window.CharPreview.mount($('preview'), { siteRoot: SITE_ROOT });
 
     function update() {
       var d = gather();
       if (artAltDataURL) d.imageAlt = artAltDataURL;
-      var inner = window.renderCharacter(d, artDataURL || importedImage || '');
-      var doc =
-        '<!doctype html><html><head><meta charset="utf-8">' +
-        '<base href="' + SITE_ROOT + '">' +
-        '<link rel="stylesheet" href="assets/styles.css">' +
-        '</head><body>' +
-        '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
-        '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
-        '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
-        '<main class="wrap">' + inner + '</main>' + PREVIEW_SCRIPT + '</body></html>';
-      $('preview').srcdoc = doc;
+      preview.paint(window.renderCharacter(d, artDataURL || importedImage || ''));
     }
     var deb;
     function schedule() { clearTimeout(deb); deb = setTimeout(update, 250); }
@@ -605,6 +739,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artDataURL = url; importedImage = null;
           var th = $('artthumb'); th.src = url; th.style.display = 'block';
@@ -618,6 +753,7 @@
       var file = e.target.files[0]; if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
+        artAltOriginal = ev.target.result;
         loadImageToCanvas(ev.target.result, false).then(function (url) {
           artAltDataURL = url;
           var th = $('artAltThumb'); th.src = url; th.style.display = 'block';
@@ -627,7 +763,7 @@
       reader.readAsDataURL(file);
     });
     $('artAltClear').addEventListener('click', function () {
-      artAltDataURL = null; $('artAlt').value = '';
+      artAltDataURL = null; artAltOriginal = null; $('artAlt').value = '';
       $('artAltThumb').style.display = 'none';
       $('artAltStdWrap').style.display = 'none';
       $('artAltClear').style.display = 'none'; update();
@@ -654,6 +790,35 @@
     $('artAltStd').addEventListener('click', function () {
       standardizeInto(function () { return artAltDataURL; },
         function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltStd');
+    });
+
+    // ── the same frame, placed by hand (assets/art-adjust.js) ──────
+    // Opens on the file as it was picked, not on the working copy, so zooming
+    // in is sharp and a second visit re-places the original instead of
+    // resizing an already-resized icon.
+    function adjustInto(getSrc, setUrl, thumbId, btnId, title) {
+      var src = getSrc();
+      if (!src || !window.ArtAdjust) return;
+      var btn = $(btnId), label = btn.textContent;
+      btn.disabled = true;
+      window.ArtAdjust.open(src, { title: title }).then(function (out) {
+        btn.disabled = false;
+        if (!out) return;                 // cancelled; leave the art alone
+        setUrl(out); $(thumbId).src = out; update();
+        btn.textContent = '✓ Adjusted';
+        setTimeout(function () { btn.textContent = label; }, 1400);
+      }).catch(function (err) {
+        btn.disabled = false;
+        alert((err && err.message) || 'That image could not be adjusted here.');
+      });
+    }
+    $('artAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artOriginal || artDataURL || $('artthumb').src; },
+        function (v) { artDataURL = v; }, 'artthumb', 'artAdjust', 'Adjust the icon');
+    });
+    $('artAltAdjust').addEventListener('click', function () {
+      adjustInto(function () { return artAltOriginal || artAltDataURL || $('artAltThumb').src; },
+        function (v) { artAltDataURL = v; }, 'artAltThumb', 'artAltAdjust', 'Adjust the alternate icon');
     });
 
     // ── R2 image upload via the site Worker ────────────────────────
@@ -697,12 +862,21 @@
       // wiki's own export come back missing what the imported JSON arrived with.
       if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(obj.special) : []);
       document.querySelectorAll('.jinx-row').forEach(function (r) { r.remove(); });
-      (obj.jinxes || []).forEach(function (j) { addJinx(j.id || '', 'good', j.reason || ''); });
+      // Official-schema JSON carries {id, reason}. The id is a slug, not a
+      // name. Putting it straight in the name field is what produced pages
+      // reading "pithag". Keep it as the id and let the renderer name it.
+      (obj.jinxes || []).forEach(function (j) {
+        var n = normalizeJinx(j);
+        addJinx(n.name, n.align, n.text, n.slug, n.id);
+      });
       if (!(obj.jinxes || []).length) addJinx();
       var imgUrl = Array.isArray(obj.image) ? obj.image[0] : obj.image;
       var msg = $('importmsg');
       if (imgUrl) {
         importedImage = imgUrl;
+        // An imported icon is somebody else's URL, not a file on this machine:
+        // the adjuster has to work from the copy loaded into the canvas.
+        artOriginal = null;
         msg.className = 'work'; msg.textContent = 'Imported. Trying to load the icon from ' + imgUrl + ' …';
         loadImageToCanvas(imgUrl, true).then(function (url) {
           artDataURL = url; var th = $('artthumb'); th.src = url; th.style.display = 'block';
@@ -797,7 +971,6 @@
 
     function saveCharacter(d, slug, saveStatus) {
       d.art   = 'art/' + slug + '.png';
-      d.page  = 'c/' + slug + '.html';
       d.image = ART_BASE + slug + '.png';
 
       var isDraft = saveStatus === 'draft';
@@ -816,7 +989,7 @@
           setStatus('work', verb + '&hellip; saving to database');
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
-            art: d.art, page: d.page, image: d.image, creator: d.creator,
+            art: d.art, image: d.image, creator: d.creator,
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
@@ -828,6 +1001,10 @@
             setup: d.setup, special: d.special, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
             customJson: d.customJson,
+            // Who may edit the page once it exists, and (for approved editing)
+            // exactly who. Both were gathered and then never posted, so the
+            // controls in Advanced Options could be set and never took effect.
+            publicEdit: d.publicEdit, editors: d.editors,
             status: saveStatus
           };
           if (artAltDataURL) {
@@ -848,7 +1025,9 @@
           });
         })
         .then(function (saved) {
-          var url = SITE_ROOT + 'c/' + slug;
+          // The Worker decides the address (/c/{set}/{character}) and hands
+          // it back; `slug` is only the page's identity and its art slot.
+          var url = SITE_ROOT + ((saved && saved.page) || ('c/' + slug));
           // The Worker downgrades a publish to a draft when there is no icon,
           // so trust what came back rather than what we asked for.
           if (saved && saved.status === 'draft') {
@@ -858,6 +1037,13 @@
           }
           // Partial-page warning / missing-icon explanation.
           if (window.showSaveNotice) window.showSaveNotice(saved, slug);
+          // Names the Worker could not match to an account. Saying so beats
+          // dropping them in silence: the point of the list is knowing who has
+          // it, and a typo would otherwise look like a success.
+          if (editorsUI) {
+            editorsUI.set((saved && saved.editors) || []);
+            editorsUI.reportUnknown(saved && saved.editorsUnknown);
+          }
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         })

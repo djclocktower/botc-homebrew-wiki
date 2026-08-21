@@ -18,13 +18,13 @@
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
   function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
-  /* Starlight star markup, from classify.js — injected by the Worker
-     (setStarMark) or read off the global in the browser, so render.js never
+  /* Curata mark markup, from classify.js — injected by the Worker
+     (setCurataMark) or read off the global in the browser, so render.js never
      has to import classify.js itself. Partial is deliberately NOT shown on
      the page: an unfinished page is its owner's business, and the Worker
      tells them in a banner instead (renderCharacterPage in worker.js). */
-  var starMarkFn = null;
-  function setStarMark(fn) { starMarkFn = fn; }
+  var curataMarkFn = null;
+  function setCurataMark(fn) { curataMarkFn = fn; }
 
   /* The wiki markup engine (assets/render-wiki.js), used for the one field
      that takes formatting: the pronunciation line. The Worker hands it over
@@ -37,12 +37,60 @@
     var W = wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
     return (W && W.inlineFormat) ? W.inlineFormat(str, { linkRoot: R() }) : esc(str);
   }
-  function starlightMark(d) {
-    if (!d || !(d.starlight || d.classification === 'starlight')) return '';
-    var fn = starMarkFn ||
+  function curataMark(d) {
+    if (!d || !(d.curata || d.classification === 'curata')) return '';
+    var fn = curataMarkFn ||
       (typeof window !== 'undefined' ? window.classBadgeHTML : null);
-    return fn ? fn('starlight', { from: d.starlightFrom }) : '';
+    return fn ? fn('curata', { from: d.curataFrom }) : '';
   }
+  /* "Appears in": the creator's own free-text line if there is one, else the
+     collections that list this character by hand (worked out on read as
+     `appearsInFrom`; see applyCollectionAppearsIn in worker.js). The typed
+     line is linked in the browser by charpage.js; the derived one already
+     knows its collection's id, so it arrives as a link. */
+  function appearsInRow(d, root) {
+    var own = (d.appearsIn || '').trim();
+    if (own) {
+      return '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' +
+        esc(own) + '">' + esc(own) + '</dd>';
+    }
+    var from = Array.isArray(d.appearsInFrom) ? d.appearsInFrom : [];
+    var links = from.map(function (c) {
+      if (!c || !c.name) return '';
+      if (!c.id) return esc(c.name);
+      return '<a class="appears-in-link" href="' + root + 'collection/' +
+        encodeURIComponent(c.id) + '">' + esc(c.name) + '</a>';
+    }).filter(Boolean).join('<span class="tag-sep">, </span>');
+    if (!links) return '';
+    return '<dt>Appears in:</dt><dd class="info-appears-in">' + links + '</dd>';
+  }
+  /* "Anyone can edit this page", and the link to its history. Only an opened
+     page says so, which is how anybody finds out they are welcome to help. The
+     history link shares the row because it answers the same question: who has
+     been here, and what did they do? A page that is not open still has a
+     history, reached from its Edit view and the account page. */
+  var OPEN_EDIT_TEXT = {
+    all: ['open to all', 'anyone with an account can edit this page. '],
+    tags: ['tags open to all', 'anyone with an account can change the tags. '],
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
+    /* Approved editing names accounts rather than opening the page, so this
+       row says that it is shared and stops there. It is not an invitation the
+       way the other three are, and WHO the editors are is the creator's own
+       list — the Worker keeps it out of the public feeds for that reason. */
+    approved: ['shared', 'the creator has named the people who may edit this page. ']
+  };
+  function openEditRow(d, root) {
+    var t = OPEN_EDIT_TEXT[d.publicEdit];
+    if (!t) return '';
+    var slug = encodeURIComponent(d.slug || '');
+    var links = '<a class="hist-page-link" href="' + root + 'history?type=character&amp;slug=' + slug + '">Edit history</a>';
+    if (d.publicEdit === 'suggest') {
+      links = '<a class="hist-page-link" href="' + root + 'edit?c=' + slug + '">Suggest an edit</a> ' + links;
+    }
+    return '<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
+      t[1] + links + '</dd>';
+  }
+
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -55,12 +103,24 @@
     'snakecharmer':'Snake Charmer','villageidiot':'Village Idiot',
     'banxian_festival_of_lanterns':'Ban Xian','pedant_festival_of_lanterns':'Pedant'
   };
+  /* An id with no name behind it: `cadenza_the_academy` used to render as
+     "Cadenza_the_academy" because the fallback only capitalised the first
+     letter. Bulk imports build these as {character}_{collection}, so keep the
+     leading segment and capitalise it. Official ids carry no separator
+     (`plaguedoctor`), so they are unaffected. */
+  function prettifyJinxId(id) {
+    var parts = String(id || '').split(/[_-]+/).filter(Boolean);
+    if (!parts.length) return '';
+    // `mystic_the_academy`, `zuggtmoy_travelbythestarlight` \u2014 the leading
+    // segment is the character, the rest is where it came from.
+    var name = parts[0];
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  }
   function jinxDisplayName(j) {
     if (j.name && j.name.trim()) return j.name.trim();
     var id = j.id || '';
     if (JINX_ID_NAMES[id]) return JINX_ID_NAMES[id];
-    // Fallback: capitalise first letter
-    return id ? id[0].toUpperCase() + id.slice(1) : id;
+    return prettifyJinxId(id) || id;
   }
 
   function slugId(name) {
@@ -79,6 +139,102 @@
     if (!OFFICIAL_ICON_URLS || !id) return '';
     var u = OFFICIAL_ICON_URLS[slugId(id)];
     return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : '';
+  }
+
+  /* Official display names, keyed the same way. Jinx names are typed by hand,
+     so the wiki carries "leviathan", "pithag" and "plaguedoctor" where it
+     means Leviathan, Pit-Hag and Plague Doctor. When the target is an
+     official character, its real name wins over whatever was typed, the same
+     courtesy the icon already gets. Unset, the typed text stands. */
+  var OFFICIAL_NAMES = null;
+  function setOfficialNames(map) { OFFICIAL_NAMES = map || null; }
+  function officialName(id) {
+    if (!OFFICIAL_NAMES || !id) return '';
+    var n = OFFICIAL_NAMES[slugId(id)];
+    return (typeof n === 'string' && n) ? n : '';
+  }
+
+  /* This wiki's own characters, keyed by normJinxId() of slug and of name, so a
+     jinx naming another homebrew page can find it. Same injection pattern as
+     the official icon map: the Worker sets it for SSR, the editors set it from
+     characters.json. Unset, jinx rendering is what it was before: official
+     characters resolve, homebrew ones fall back to plain text. */
+  var WIKI_CHARS = null;
+  function setWikiChars(map) { WIKI_CHARS = map || null; }
+  function wikiChar(key) {
+    if (!WIKI_CHARS || !key) return null;
+    var c = WIKI_CHARS[key];
+    return (c && c.slug) ? c : null;
+  }
+  /* A wiki character's icon. Mirrors artSrc() in render-page.js: `art` is a
+     path under /assets (R2-backed), `image` is an absolute URL from a bulk
+     import, and a page may carry either or both. */
+  function wikiCharIcon(c, root) {
+    if (!c) return '';
+    if (c.art) return root + 'assets/' + c.art;
+    if (typeof c.image === 'string' && c.image) return c.image;
+    if (Array.isArray(c.image) && c.image[0]) return c.image[0];
+    return '';
+  }
+
+  /* ── Where does a jinx entry point? ──────────────────────────────────
+     One answer for every consumer: the /c/ page box, the script and
+     collection jinx lists, and the /jinxes index. Returns
+     {name, href, iconSrc, external, slug, team}.
+
+     Order matters, and official comes before this wiki deliberately: 291 of
+     the 319 jinxes live on the site name an official character, and a
+     homebrew page that happens to share a name (there is more than one
+     "Sculptor") must not steal their link. An entry written by the jinx
+     picker carries an explicit `slug`, which skips the guessing entirely. */
+  // A wiki character's link. `slug` is the identity; `page` is the address
+  // the Worker resolved (c/{set}/{character}). Falling back to the identity
+  // still reaches the page — /c/{identity} 301s to the address — but the
+  // address avoids the extra hop.
+  function charHref(c, root) {
+    var p = (c && c.page) ? String(c.page) : ('c/' + ((c && c.slug) || ''));
+    return (root || '') + p.replace(/^\//, '').replace(/\.html$/, '');
+  }
+
+  function resolveJinxTarget(j, root) {
+    root = root || '';
+    var nm = jinxDisplayName(j);
+    var rawId = j.id || slugId(j.name || '');
+    var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
+
+    // 1. An explicit slug from the picker: unambiguous, no name matching.
+    if (j.slug) {
+      var pick = wikiChar(normJinxId(j.slug));
+      if (pick) {
+        return { name: pick.name || nm, href: charHref(pick, root),
+                 iconSrc: wikiCharIcon(pick, root), external: false,
+                 slug: pick.slug, team: pick.team || '' };
+      }
+    }
+
+    // 2. An official character keeps the official icon and the official wiki,
+    //    and takes its proper name back from roles.json.
+    var offIcon = officialIconUrl(iconId) || officialIconUrl(nm);
+    if (offIcon) {
+      var offNm = officialName(iconId) || officialName(nm) || nm;
+      return { name: offNm, href: jinxURL(offNm), iconSrc: offIcon,
+               external: true, slug: '', team: '' };
+    }
+
+    // 3. One of ours, matched by id or by name.
+    var hit = wikiChar(normJinxId(rawId)) || wikiChar(normJinxId(nm));
+    if (hit) {
+      return { name: hit.name || nm, href: charHref(hit, root),
+               iconSrc: wikiCharIcon(hit, root), external: false,
+               slug: hit.slug, team: hit.team || '' };
+    }
+
+    // 4. Unknown: an official character whose icon map has not loaded, or a
+    //    draft, or a typo. The committed icon copy still resolves most of
+    //    these, and onerror hides it when it does not.
+    return { name: nm, href: jinxURL(nm),
+             iconSrc: iconId ? (root + 'assets/icons/' + iconId + '.png') : '',
+             external: true, slug: '', team: '' };
   }
 
   // Creator-symbol registry ("credit icons"), shared with creators.js. The
@@ -188,6 +344,67 @@
     return JSON.stringify([meta, buildSchema(d)], null, 2);
   }
 
+  /* ── the botchomebrew.wiki credits Fabled ──
+     Every script exported from the Script Builder (script.html) carries one
+     extra Fabled entry: the wiki's pirate skull, crediting the site and the
+     people whose characters are on the script. Deliberately BUILDER-ONLY —
+     a published script's own JSON box (buildPageExport in render-page.js) is
+     the author's script and must stay exactly what they published.
+
+     Two forms, chosen by the reader's "Detailed credits" tick:
+       plain     ... contains characters by: Hystrex, Ma'ayan, Tir.
+       detailed  ... contains characters by: Hystrex (Cheerleader, Nomad);
+                     Ma'ayan (Sculptor).
+     Characters with no creator credited are left out of the list (official
+     roles export as bare ids and never reach here); a script where nobody is
+     credited still gets the Fabled, just without the "by:" half. */
+  var CREDITS_FABLED_ID = 'botchomebrewwiki';
+  var CREDITS_FABLED_NAME = 'botchomebrew.wiki';
+  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull.png';
+  var CREDITS_FABLED_LEAD = 'This script was made on botchomebrew.wiki';
+
+  /* [{ creator, characters[] }] in order of first appearance on the script.
+     A page can credit several people ("Taiyi (太一), Saki") — each of them is
+     credited separately, and a co-written character is listed under each. */
+  function creditsByCreator(chars) {
+    var order = [], byName = {};
+    (chars || []).forEach(function (c) {
+      if (!c || c.official) return;
+      splitCreators(c.creator).forEach(function (name) {
+        var key = name.toLowerCase();
+        if (!byName[key]) { byName[key] = { creator: name, characters: [] }; order.push(byName[key]); }
+        var nm = stripCreatorMark(c.name, name) || c.name || '';
+        if (nm && byName[key].characters.indexOf(nm) === -1) byName[key].characters.push(nm);
+      });
+    });
+    return order;
+  }
+
+  function creditsAbility(chars, detailed) {
+    var groups = creditsByCreator(chars);
+    if (!groups.length) return CREDITS_FABLED_LEAD + '.';
+    var list = detailed
+      ? groups.map(function (g) {
+          return g.creator + (g.characters.length ? ' (' + g.characters.join(', ') + ')' : '');
+        }).join('; ')
+      : groups.map(function (g) { return g.creator; }).join(', ');
+    return CREDITS_FABLED_LEAD + ' and contains characters by: ' + list + '.';
+  }
+
+  /* The official-schema object to append to an exported script.
+     opts: {detailed} — one line per creator with their characters named. */
+  function buildCreditsFabled(chars, opts) {
+    return {
+      id: CREDITS_FABLED_ID,
+      name: CREDITS_FABLED_NAME,
+      team: 'fabled',
+      image: CREDITS_FABLED_IMAGE,
+      ability: creditsAbility(chars, !!(opts && opts.detailed)),
+      firstNight: 0,
+      otherNight: 0
+    };
+  }
+
   /* ── Find jinxes that are active between characters on the same script ──
      Takes an array of character objects; returns [{a, b, text}] where `a`
      carries the jinx and `b` is the matching character also in the list. */
@@ -204,7 +421,10 @@
     var out = [], seen = {};
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
-        var target = byId[normJinxId(j.id || slugId(j.name || ''))];
+        // An entry written by the jinx picker names its target outright; the
+        // older ones have to be matched by id or by name.
+        var target = (j.slug && byId[normJinxId(j.slug)]) ||
+          byId[normJinxId(j.id || slugId(j.name || ''))];
         if (!target || target === c) return;
         var text = j.text || j.reason || '';
         var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
@@ -301,21 +521,21 @@
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
         '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
-    // Tags row. The Starlight star hangs off the end of it behind a hairline
+    // Tags row. The Curata wreath hangs off the end of it behind a hairline
     // rule: it is a mark, not a tag, so it is never a link and never joins the
     // comma-separated list — nobody should be able to click it expecting a
-    // "Starlight" tag page. When a page is Starlight but has no tags (it can
-    // inherit the star from its collection), an em dash holds the tags side so
+    // "Curata" tag page. When a page is Curata but has no tags (it can
+    // inherit the wreath from its collection), an em dash holds the tags side so
     // the hairline still separates two things.
     var tagLinks = (d.tags && d.tags.trim()) ? d.tags.split(',').map(function (t) {
       t = t.trim(); if (!t) return '';
       var display = t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
       return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t=' + encodeURIComponent(display) + '">' + esc(display) + '</a>';
     }).filter(Boolean).join('<span class="tag-sep">, </span>') : '';
-    var star = starlightMark(d);
-    var tagsRow = (tagLinks || star)
+    var mark = curataMark(d);
+    var tagsRow = (tagLinks || mark)
       ? '<dt>Tags:</dt><dd>' + (tagLinks || '<span class="tag-none">&mdash;</span>') +
-        (star ? '<span class="info-star-sep" aria-hidden="true"></span>' + star : '') + '</dd>'
+        (mark ? '<span class="info-mark-sep" aria-hidden="true"></span>' + mark : '') + '</dd>'
       : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +
@@ -326,8 +546,9 @@
               (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
-      (d.appearsIn && d.appearsIn.trim() ? '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' + esc(d.appearsIn.trim()) + '">' + esc(d.appearsIn) + '</dd>' : '') +
+      appearsInRow(d, root) +
       tagsRow +
+      openEditRow(d, root) +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>';
@@ -356,30 +577,36 @@
     // Shared jinx item markup, used by both the sidebar box and the dropdown.
     var jinxItems = jinxes.map(function (j) {
       var al = (j.align === 'evil') ? 'evil' : 'good';
-      var nm = jinxDisplayName(j);
-      var rawId = j.id || slugId(j.name || '');
-      var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
-      // Prefer the official icon (release CDN, via roles.json) for official
-      // characters; fall back to the committed assets/icons copy otherwise.
-      var iconSrc = officialIconUrl(iconId) || officialIconUrl(nm) ||
-        (root + 'assets/icons/' + iconId + '.png');
-      return '<div class="jinx' + (iconId ? '' : ' noicon') + '">' +
-        (iconId ? '<img loading="lazy" decoding="async" class="jico" src="' + iconSrc + '" alt=""' +
+      var t = resolveJinxTarget(j, root);
+      // A mirrored jinx is stored on the OTHER character's page. It reads the
+      // same, but the line underneath says where to go to edit it.
+      var from = (j.mirrored && j.mirroredFrom) ?
+        '<span class="jfrom">declared on <a href="' + esc(charHref(j.mirroredFrom, root)) +
+        '">' + esc(j.mirroredFrom.name) + '</a></span>' : '';
+      return '<div class="jinx' + (t.iconSrc ? '' : ' noicon') + '">' +
+        (t.iconSrc ? '<img loading="lazy" decoding="async" class="jico" src="' + esc(t.iconSrc) + '" alt=""' +
         ' onerror="this.style.display=\'none\';this.closest(\'.jinx\').classList.add(\'noicon\')">'
         : '') +
         '<div class="jbody">' +
-        '<a class="jname ' + al + '" href="' + jinxURL(nm) +
-        '" target="_blank" rel="noopener noreferrer">' + esc(nm) + '</a>' +
-        '<span class="jtext">' + esc(j.text || j.reason || '') + '</span></div></div>';
+        '<a class="jname ' + al + '" href="' + esc(t.href) + '"' +
+        (t.external ? ' target="_blank" rel="noopener noreferrer"' : '') +
+        '>' + esc(t.name) + '</a>' +
+        '<span class="jtext">' + inlineText(j.text || j.reason || '') + '</span>' +
+        from + '</div></div>';
     }).join('');
 
     // Two ways to show jinxes: a floating box in the sidebar (default) or a
     // collapsible dropdown at the foot of the main column. Chosen per-character.
     var jinxMode = (d.jinxDisplay === 'dropdown') ? 'dropdown' : 'sidebar';
+    // Where this character sits in the whole picture. The map is the only
+    // place a reader can see a jinx from both ends at once.
+    var mapLink = jinxes.length && d.slug ?
+      '<a class="jinx-map-link" href="' + root + 'jinxes?c=' + encodeURIComponent(d.slug) +
+      '">See this on the jinx map &rarr;</a>' : '';
     var jinxCard = jinxes.length ?
       '<div class="card" id="sec-jinxes">' +
         '<h2 class="gen-sech" style="text-align:center;margin-bottom:14px"><a class="sec-anchor" href="#sec-jinxes">Jinxes</a></h2>' +
-        jinxItems +
+        jinxItems + mapLink +
       '</div>' : '';
     var jinxDrop = jinxes.length ?
       '<div class="jinx-drop" id="sec-jinxes">' +
@@ -387,7 +614,7 @@
           '<span class="jinx-drop-title">Jinxes</span>' +
           '<span class="jinx-drop-arrow">&#9662;</span>' +
         '</div>' +
-        '<div class="jinx-drop-body" hidden>' + jinxItems + '</div>' +
+        '<div class="jinx-drop-body" hidden>' + jinxItems + mapLink + '</div>' +
       '</div>' : '';
 
     // Custom user-defined sidebar boxes: any number of {title, content}.
@@ -582,15 +809,22 @@
     window.renderJsonBox = renderJsonBox;
     window.buildSchema = buildSchema;
     window.schemaJSON = schemaJSON;
+    window.buildCreditsFabled = buildCreditsFabled;
+    window.creditsByCreator = creditsByCreator;
+    window.CREDITS_FABLED_ID = CREDITS_FABLED_ID;
     window.sanitizeSpecial = sanitizeSpecial;
     window.SPECIAL_TYPES = SPECIAL_TYPES;
     window.SPECIAL_TIMES = SPECIAL_TIMES;
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
     window.findScriptJinxes = findScriptJinxes;
+    window.resolveJinxTarget = resolveJinxTarget;
+    window.normJinxId = normJinxId;
     window.setOfficialIconUrls = setOfficialIconUrls;
+    window.setOfficialNames = setOfficialNames;
+    window.setWikiChars = setWikiChars;
     window.setCreators = setCreators;
-    window.setStarMark = setStarMark;
+    window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
     window.splitCreators = splitCreators;
   }
@@ -599,12 +833,16 @@
       init: init,
       renderCharacter: renderCharacter, renderJsonBox: renderJsonBox,
       buildSchema: buildSchema, schemaJSON: schemaJSON,
+      buildCreditsFabled: buildCreditsFabled, creditsByCreator: creditsByCreator,
+      CREDITS_FABLED_ID: CREDITS_FABLED_ID,
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
-      setOfficialIconUrls: setOfficialIconUrls,
-      setCreators: setCreators, setStarMark: setStarMark,
+      resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
+      setOfficialNames: setOfficialNames,
+      setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
       splitCreators: splitCreators
     };

@@ -58,8 +58,8 @@
     <div class="filter-bar" id="filter-bar" hidden>
       <div class="filter-group"><span class="filter-group-label">Status</span>
         <div class="filter-chips">
-          <button type="button" class="filter-chip" id="fc-starlight"
-            title="Starlight — collections the wiki admins have picked out.">✦ Starlight only</button>
+          <button type="button" class="filter-chip filter-chip-curata" id="fc-curata"
+            title="Curata — collections the wiki admins have picked out.">Curata only</button>
         </div>
       </div>
     </div>
@@ -110,12 +110,12 @@
         (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
         '<div class="collection-footer">' +
           // Same footer shape as the script tiles on /scripts and the tiles on
-          // the homepage: count, then who made it, then the Starlight star
+          // the homepage: count, then who made it, then the Curata wreath
           // behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
             ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.starlight) ? '<span class="coll-star-sep"></span>' +
-              window.classBadgeHTML('starlight') : '') + '</span>' +
+            ((coll && coll.curata) ? '<span class="coll-mark-sep"></span>' +
+              window.classBadgeHTML('curata') : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';
@@ -135,7 +135,7 @@
         return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                 match:c.match||[], tagline:c.tagline||'', description:c.description||'',
                 header:c.header||'', include:c.include||[], exclude:c.exclude||[],
-                author:c.author||'', starlight:!!c.starlight};
+                author:c.author||'', curata:!!c.curata};
       });
 
       var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
@@ -147,36 +147,36 @@
       });
 
       // Collections with at least one member, in display order. Rendering is
-      // split out so the Starlight chip can re-run it without re-fetching.
+      // split out so the Curata chip can re-run it without re-fetching.
       var SHOWN = COLLECTIONS.map(function(coll){
         return { coll: coll, chars: resolve(coll, list) };
       }).filter(function(x){ return x.chars.length; });
 
-      var starlightOnly = false;
+      var curataOnly = false;
       function draw(){
-        var rows = starlightOnly
-          ? SHOWN.filter(function(x){ return x.coll.starlight; })
+        var rows = curataOnly
+          ? SHOWN.filter(function(x){ return x.coll.curata; })
           : SHOWN;
         grid.innerHTML = rows.map(function(x){
           var coll = x.coll;
           return collectionTileHTML(coll.displayName || coll.slug, coll.id || coll.slug,
             x.chars.length, pickIcons(x.chars, 4), coll.header||'', coll.tagline||'', coll);
-        }).join('') || (starlightOnly
-          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Starlight collections yet.</p>'
+        }).join('') || (curataOnly
+          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Curata collections yet.</p>'
           : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
       }
 
       // The chip only appears once something has actually been given the
       // status — an filter that can only ever return nothing is just noise.
-      var nStar = SHOWN.filter(function(x){ return x.coll.starlight; }).length;
-      if (nStar){
+      var nCurata = SHOWN.filter(function(x){ return x.coll.curata; }).length;
+      if (nCurata){
         var bar = document.getElementById('filter-bar');
-        var btn = document.getElementById('fc-starlight');
-        btn.textContent = '\u2726 Starlight only (' + nStar + ')';
+        var btn = document.getElementById('fc-curata');
+        btn.textContent = 'Curata only (' + nCurata + ')';
         bar.hidden = false;
         btn.addEventListener('click', function(){
-          starlightOnly = !starlightOnly;
-          btn.classList.toggle('active', starlightOnly);
+          curataOnly = !curataOnly;
+          btn.classList.toggle('active', curataOnly);
           draw();
         });
       }
