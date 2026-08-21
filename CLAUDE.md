@@ -65,7 +65,9 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page), **wiki pages**
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
-  `POST /api/jinx` to add/edit/remove one), admin tools
+  `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
+  (`GET /api/bloodstar` reads a project on bloodstar.xyz, `POST
+  /api/bloodstar-art` copies one of its images into R2), admin tools
   (dashboard, full activity log, report, revisions/rollback, comment
   moderation, Curata, wiki lock, backup, seed), plus the public page
   history (`/api/page-history`, `/api/page-revision`), owner rollback
@@ -116,6 +118,10 @@ Key dynamic behavior:
 
 ```
 worker/worker.js       The Worker: data endpoints, auth, SSR, uploads, backup cron
+worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
+                       into this wiki's shapes. Worker-only — Workers have no
+                       DOMParser, so the almanac is scanned rather than parsed.
+                       See "Importing from Bloodstar" below.
 wrangler.toml          Worker config: D1/KV/R2 bindings, run_worker_first, cron
 _headers               Cache rules for static assets (order matters; later wins)
 .assetsignore          Files excluded from asset upload — CRITICAL, see Gotchas
@@ -256,6 +262,12 @@ assets/
                        /api/account-lookup; the Worker resolves the list again
                        on save regardless, so the lookup is a courtesy, never
                        the check. See "Approved editing".
+  bloodstar.js         The mapping half of /bloodstar: what each part of a
+                       Bloodstar project becomes here, and the exact objects
+                       that decision posts to /api/character, /api/script,
+                       /api/collection and /api/wiki-page. No DOM, no fetch —
+                       the page owns the form and the progress table, this owns
+                       the rules. Same split as grimforge.js.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -469,8 +481,8 @@ publish-news.html      Admin-only news editor: the same kit as publish-page
                        summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Jinxes, Creator Icons. This
-                       is what the "Tools" nav entry points at.
+                       Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
+                       Creator Icons. This is what the "Tools" nav entry points at.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -519,6 +531,12 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
 mass-upload.html       Bulk import from official-schema JSON
+bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
+                       choose what becomes what, and the whole thing lands: every
+                       character with its art and its almanac entry, the jinxes,
+                       the night order and a script or collection page. The page
+                       is the form and the runner; assets/bloodstar.js is the
+                       mapping and worker/bloodstar.js the reading.
 login.html, account.html, dashboard.html, reset-password.html
                        account.html shows the newest 10 of Your Recent Edits
                        behind a "Show all N edits" toggle; a busy month used
@@ -1077,6 +1095,105 @@ caps and whitelists the fields on save.
   typo, or a bulk import naming a character never brought over) and pairs
   where both characters wrote a rule, since only one wording is ever shown and the
   other is invisible. Dashboard card: "Jinx health".
+
+## Importing from Bloodstar (`/bloodstar`)
+
+Bloodstar (bloodstar.xyz) is where a lot of homebrew is actually written, and a
+published project has **two** files side by side:
+
+```
+.../p/{User}/{Project}/script.json     the official-schema export — mechanics
+.../p/{User}/{Project}/almanac.html    the almanac, as a generated page
+```
+
+`mass-upload.html` has always taken the JSON, which carries the name, team,
+ability, art, reminders and night order. Everything a reader comes to an
+almanac *for* — the flavour, the overview, the examples, the how-to-run, the
+tips — is in the HTML and nowhere else, so importing from the JSON alone threw
+away the half of the work that takes longest to write and landed every page
+**Partial**. This tool reads both.
+
+Three files, one job each:
+
+- **`worker/bloodstar.js`** — the reading. URL normalisation, the almanac
+  scanner, HTML→text, and `buildBundle()` merging the two files into one
+  normalized object. Worker-only (Workers have no DOMParser, and `worker/` is
+  out of the asset upload). The almanac is machine-generated from a fixed
+  template, so it is **scanned, not parsed**: `<li class="page" id="…">` blocks,
+  then `h2` / `p.ability` / `div.flavor` / `div.overview` / `div.example` /
+  `div.how-to-run` / `div.tip` inside each. `divBlock()` counts `<div>`s rather
+  than using a lazy regex, and `<style>`/`<script>` are stripped **before** the
+  structural scan (a project injects its own CSS *inside* the first page's
+  `page-contents`, and a `</div>` in a selector would close a block the scan is
+  counting). The background image is read off that CSS first, since it exists
+  nowhere else.
+- **`assets/bloodstar.js`** — the mapping. What each part becomes, and the
+  exact objects that decision posts. Same split as `grimforge.js`: the rules
+  are worth reading and `node --check`ing without a page of markup around them.
+- **`bloodstar.html`** — the form, the character table and the runner.
+
+### The two Worker routes
+
+- **`GET /api/bloodstar?url=`** fetches both files and returns the bundle.
+  Login required, rate-limited, and **the host is pinned to bloodstar.xyz**:
+  this is the Worker fetching a URL a stranger typed, and the only safe version
+  of that is one that can only ever reach one place. A project with no almanac
+  still imports — the tool says the prose is missing rather than looking like
+  it lost it.
+- **`POST /api/bloodstar-art {key, src}`** copies one image straight from
+  Bloodstar into R2. It exists because the alternative is 40 images down and 40
+  base64 bodies back up through somebody's phone. It shares `/api/upload`'s
+  permission check — **`uploadSlotDenied()`**, extracted for exactly this — so
+  it can reach nothing that route could not, and there is no second copy of
+  those rules to keep in step. Art hosted anywhere else (a project's
+  imgur-hosted background) goes the old way: canvas plus `/api/upload`, which
+  is also the fallback when the server copy fails.
+
+### What becomes what
+
+Every row of this is an option on the page; `defaultOptions()` is only where
+the form starts.
+
+| Bloodstar | this wiki |
+|---|---|
+| `flavor` | the quote under the title, or the flavour line |
+| almanac overview, 1st paragraph | `lede` |
+| almanac overview, the rest | `summaryBullets` |
+| Examples / How to Run / tips | `examples[]` / `howToRun[]` / `tips[]` or the callout |
+| `attribution` | `iconBy` when it credits the art, else a "Credit" box |
+| `image` | `art/{identity}.png` in R2 |
+| synopsis / overview / changelog | the page's Synopsis and Gameplay, and a `/p/` page |
+| the almanac's night order | the page's arranged `nightOrder` |
+
+Character fields are rendered **escaped** by render.js, so they are converted
+to plain text — `*emphasis*` there would print its asterisks. Only the
+changelog page and custom boxes go through `render-wiki.js`, and those get the
+marks. That is what the `mode` argument to `htmlToText()` is for.
+
+### Three things that are load-bearing
+
+- **Official characters are graded, not guessed.** A script carries official
+  characters alongside homebrew ones and Bloodstar exports them as ordinary
+  entries. `'exact'` (the name **and** the ability match the official
+  character) defaults to pointing the roster at `off-{id}` — the wiki does not
+  need its 400th Chambermaid. `'named'` (the name matches, the ability does
+  not) is a *reworked* character wearing a familiar name and defaults to its
+  own page: linking it would put an ability on the script the author never
+  wrote. `'credit'` is the attribution alone, which is usually a rename (this
+  sample's Agent is the Spy) and is homebrew.
+- **Identities are settled before anything is written.** A jinx names the other
+  character's identity, so half a list of identities cannot resolve one. The
+  run resolves the page's slug, copies its logo and background (the slot is
+  free before the page exists), resolves **every** character identity, then
+  writes the character pages, then the script or collection page, then the
+  changelog page — which needs its parent to exist. A jinx whose two ends are
+  both official has no character here to live on and becomes one of the
+  script's own `jinxEdits.add` rules instead.
+- **A script or collection being created never lands on an existing URL, not
+  even one of your own** (the wiki's rule — see "Character identity vs
+  address"), so its `slug-check` asks for a fresh one. Characters are the
+  opposite: landing on your own page is how re-running an import over your own
+  characters works, exactly as `mass-upload.html` does it.
 
 ## Custom wiki pages (`/p/{slug}`)
 

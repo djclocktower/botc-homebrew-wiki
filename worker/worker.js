@@ -97,6 +97,18 @@
  *   POST /api/delete          -> soft-delete a page you own (recoverable)
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
  *
+ *   -- importing a Bloodstar project (/bloodstar) --
+ *   GET  /api/bloodstar       -> read a project on bloodstar.xyz: fetches its
+ *                                script.json AND its almanac.html and returns
+ *                                one normalized bundle (meta, characters with
+ *                                their almanac prose, jinxes, night order,
+ *                                synopsis/overview/changelog). Login required
+ *                                and the host is pinned to bloodstar.xyz.
+ *   POST /api/bloodstar-art   -> copy one image from bloodstar.xyz into an R2
+ *                                slot without it passing through the browser.
+ *                                Same permission check as /api/upload
+ *                                (uploadSlotDenied), same size and type rules.
+ *
  *   -- public pages & discovery --
  *   GET  /api/user            -> creator page data (?u=username or ?a=creator
  *                                name): owned + credited pages, drafts for the
@@ -245,6 +257,12 @@ import SYS from '../assets/system-text.js';
 // publish-script.html so a script page, the builder and the night-order
 // arranger all see the same official characters.
 import OfficialRoles from '../assets/official-roles.js';
+
+// Reading a Bloodstar project (script.json + almanac.html) into this wiki's
+// shapes, for /bloodstar. Worker-only: it has no DOM, because Workers have no
+// DOMParser, and worker/ is excluded from the asset upload so it costs the
+// site nothing. See the header of that file for the almanac's shape.
+import * as Bloodstar from './bloodstar.js';
 // One-time text cleanup for the Odyssey almanacs, driving
 // POST /api/admin/cleanup-odyssey (the "Clean up Odyssey text" dashboard card).
 // Lives in migration/ (in .assetsignore) so it is never served as a static file.
@@ -499,6 +517,98 @@ const WRITE_LIMITS = {
   // workflow, so this has to clear the same bar the character limit does.
   publish:    { bucket: 'wpublish',   limit: 200, window: 3600, msg: 'You have published or deleted a lot of pages in the last hour. Take a short break and try again.' }
 };
+
+/* The permission half of /api/upload, on its own so more than one route can
+   ask it. An image slot is named after the page it belongs to, so who may
+   write to a key is a question about that page — and it has to be answered
+   the same way whichever route the bytes arrived through. /api/bloodstar-art
+   copies art straight from Bloodstar into R2 without it ever passing through
+   the browser, and a second copy of these rules there would be a second copy
+   to keep in step.
+   Returns a Response to refuse with, or null when the upload may go ahead. */
+async function uploadSlotDenied(env, sess, key) {
+  if (sess.isAdmin) return null;
+  /* Set when this upload is aimed at the image slot of a page this
+     session may actually edit — its owner, or an approved editor the
+     owner named. It switches off the catch-all "somebody else's file
+     is already here" check further down, which is about slots with no
+     page behind them: once the page has said yes, whoever uploaded the
+     previous file is not a second opinion. Approved editing needs this
+     or a shared character can never get its icon, which is the one
+     thing that keeps it out of drafts. */
+  let ownedSlot = false;
+  // tokens/ is reserved for admin tooling; news/ for the news editor,
+  // which is admin-only anyway.
+  if (key.startsWith('tokens/') || key.startsWith('news/')) {
+    return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
+  }
+  // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
+  // exists, only its owner may put images in its slot.
+  if (key.startsWith('pages/')) {
+    await ensurePagesTable(env);
+    const base = key.slice(6).replace(/\.[a-z0-9]+$/i, '');
+    // Longest matching slug wins: "my-page-header.png" belongs to the
+    // page "my-page", not to a page that happens to be called "my".
+    const row = await env.DB.prepare(
+      "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
+    ).bind(base, base).first().catch(() => null);
+    if (row && !canEditRow(sess, row)) {
+      return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
+    }
+  }
+  // Character art follows art/{slug}.png — if that character exists,
+  // only its owner may replace the art.
+  if (key.startsWith('art/')) {
+    const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
+    const row = await getEntityRow(env, 'character', slug);
+    if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
+    else if (row && !canEditRow(sess, row)) {
+      // Almost always a name clash on a brand-new character: the art
+      // slot is named after the character's identity, which is derived
+      // from its name, and that one is already someone else's page.
+      // Say so, so the fix (a different name) is obvious.
+      return jsonResponse({ error: 'The art slot for "' + slug + '" already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
+    }
+    if (row && await isProtected(env, 'character', row.slug)) {
+      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+    }
+  }
+  // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
+  // images collections/{id}[-logo|-bg].{ext}. If that page exists,
+  // only its owner may replace its images.
+  if (key.startsWith('scripts/')) {
+    const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+    const row = await getEntityRow(env, 'script', base);
+    if (row && await canEditPage(env, sess, 'script', row)) ownedSlot = true;
+    else if (row && !canEditRow(sess, row)) {
+      return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
+    }
+    if (row && await isProtected(env, 'script', row.slug)) {
+      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+    }
+  }
+  if (key.startsWith('collections/')) {
+    const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
+    const row = await findCollectionRow(env, base);
+    if (row && await canEditPage(env, sess, 'collection', row)) ownedSlot = true;
+    else if (row && !canEditRow(sess, row)) {
+      return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
+    }
+    if (row && await isProtected(env, 'collection', row.slug)) {
+      return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
+    }
+  }
+  // Never allow silently replacing someone else's uploaded file —
+  // unless the page that owns this slot has already said yes above.
+  const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
+  if (existing) {
+    const owner = existing.customMetadata && existing.customMetadata.owner;
+    if (owner !== String(sess.userId)) {
+      return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
+    }
+  }
+  return null;
+}
 
 // Admins are exempt: they run the bulk tools, and locking an admin out mid
 // cleanup is worse than the flood the limit is guarding against.
@@ -4689,7 +4799,7 @@ export default {
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload',
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
         'steven-approved-order', 'rules', 'news', 'jinxes'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
@@ -4846,6 +4956,72 @@ export default {
         hasPassword: !!u.password_hash,
         unreadMessages
       });
+    }
+
+    /* ---- read a Bloodstar project ----
+       ?url= anything that points at a project on bloodstar.xyz: the almanac,
+       the script.json, or the folder. The Worker fetches BOTH published files
+       and hands back one normalized bundle (see worker/bloodstar.js).
+
+       Why the Worker and not the browser: the almanac has to be parsed, and a
+       Worker has no DOMParser, so the parse lives here either way. Having the
+       fetch here too means the tool keeps working if Bloodstar ever stops
+       sending `access-control-allow-origin: *`, and the reader's phone never
+       downloads 180 KB of someone else's HTML to throw most of it away.
+
+       Login required, and the host is pinned to Bloodstar: this is the Worker
+       fetching a URL a stranger typed, and the only safe version of that is
+       one that can only ever reach one place. */
+    if (method === 'GET' && path === '/api/bloodstar') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
+      if (!sess.isAdmin && await rateLimited(env, request, 'bloodstar', 60, 3600, { sess })) {
+        return tooManyResponse('You have read a lot of Bloodstar projects in the last hour. Take a short break and try again.', 3600);
+      }
+      const src = Bloodstar.bloodstarSource(url.searchParams.get('url'));
+      if (src.error) return jsonResponse({ error: src.error }, { status: 400 });
+
+      let scriptJson = null;
+      try {
+        const res = await fetch(src.scriptUrl, { redirect: 'follow' });
+        if (res.status === 404) {
+          return jsonResponse({ error: 'Bloodstar has no script.json for that project. Check the link, and that the project has been published.' }, { status: 404 });
+        }
+        if (!res.ok) {
+          return jsonResponse({ error: 'Bloodstar answered ' + res.status + ' for that project\'s script.json.' }, { status: 502 });
+        }
+        scriptJson = await res.json();
+      } catch {
+        return jsonResponse({ error: 'Could not read that project\'s script.json. Bloodstar may be down, or the link may be wrong.' }, { status: 502 });
+      }
+      if (!Array.isArray(scriptJson)) {
+        return jsonResponse({ error: 'That project\'s script.json is not a script (the file should be a list of characters).' }, { status: 422 });
+      }
+
+      // The almanac is the optional half: a project can publish a script with
+      // no almanac written yet, and that still imports — it just arrives
+      // without the prose, which the tool says out loud rather than looking
+      // like it silently lost it.
+      let almanacHtml = '';
+      try {
+        const res = await fetch(src.almanacUrl, { redirect: 'follow' });
+        if (res.ok) {
+          const text = await res.text();
+          // A generated almanac for a 40-character script is ~180 KB. Anything
+          // past a couple of megabytes is not one, and parsing it would spend
+          // the whole request's CPU on a file we are going to reject anyway.
+          if (text.length <= 4 * 1024 * 1024) almanacHtml = text;
+        }
+      } catch { /* the script alone is still worth importing */ }
+
+      const official = await loadOfficialRoles(env, url.origin);
+      const almanac = almanacHtml ? Bloodstar.parseAlmanac(almanacHtml) : null;
+      const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
+      bundle.hasAlmanac = !!almanacHtml;
+      if (!almanacHtml) {
+        bundle.warnings.unshift('That project has no readable almanac.html, so only what is in script.json could be read — no flavour text, overviews, examples, how-to-run or tips.');
+      }
+      return jsonResponse(bundle);
     }
 
     // ---- is this page's identity still free? (editor helper) ----
@@ -6510,7 +6686,7 @@ export default {
       // Posting a comment counts as a content write: a wiki locked because of
       // vandalism should not leave the comment boxes open. Removing and
       // reporting comments stay available so moderation still works.
-      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/comments', '/api/jinx'].includes(path);
+      const isContentWrite = ['/api/character', '/api/collection', '/api/script', '/api/wiki-page', '/api/publish', '/api/delete', '/api/upload', '/api/bloodstar-art', '/api/comments', '/api/jinx'].includes(path);
 
       // What a SUSPENDED account may still reach. Everything else that writes
       // is closed to them. The old rule only covered the content-write list
@@ -6718,86 +6894,9 @@ export default {
           }, { status: 400 });
         }
 
-        if (!sess.isAdmin) {
-          /* Set when this upload is aimed at the image slot of a page this
-             session may actually edit — its owner, or an approved editor the
-             owner named. It switches off the catch-all "somebody else's file
-             is already here" check further down, which is about slots with no
-             page behind them: once the page has said yes, whoever uploaded the
-             previous file is not a second opinion. Approved editing needs this
-             or a shared character can never get its icon, which is the one
-             thing that keeps it out of drafts. */
-          let ownedSlot = false;
-          // tokens/ is reserved for admin tooling; news/ for the news editor,
-          // which is admin-only anyway.
-          if (key.startsWith('tokens/') || key.startsWith('news/')) {
-            return jsonResponse({ error: 'Not authorized for that upload path.' }, { status: 403 });
-          }
-          // Wiki-page images follow pages/{page-slug}-*.{ext}. If that page
-          // exists, only its owner may put images in its slot.
-          if (key.startsWith('pages/')) {
-            await ensurePagesTable(env);
-            const base = key.slice(6).replace(/\.[a-z0-9]+$/i, '');
-            // Longest matching slug wins: "my-page-header.png" belongs to the
-            // page "my-page", not to a page that happens to be called "my".
-            const row = await env.DB.prepare(
-              "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
-            ).bind(base, base).first().catch(() => null);
-            if (row && !canEditRow(sess, row)) {
-              return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
-            }
-          }
-          // Character art follows art/{slug}.png — if that character exists,
-          // only its owner may replace the art.
-          if (key.startsWith('art/')) {
-            const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
-            const row = await getEntityRow(env, 'character', slug);
-            if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
-            else if (row && !canEditRow(sess, row)) {
-              // Almost always a name clash on a brand-new character: the art
-              // slot is named after the character's identity, which is derived
-              // from its name, and that one is already someone else's page.
-              // Say so, so the fix (a different name) is obvious.
-              return jsonResponse({ error: 'The art slot for "' + slug + '" already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
-            }
-            if (row && await isProtected(env, 'character', row.slug)) {
-              return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-            }
-          }
-          // Script images follow scripts/{slug}[-logo|-bg].{ext}; collection
-          // images collections/{id}[-logo|-bg].{ext}. If that page exists,
-          // only its owner may replace its images.
-          if (key.startsWith('scripts/')) {
-            const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
-            const row = await getEntityRow(env, 'script', base);
-            if (row && await canEditPage(env, sess, 'script', row)) ownedSlot = true;
-            else if (row && !canEditRow(sess, row)) {
-              return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
-            }
-            if (row && await isProtected(env, 'script', row.slug)) {
-              return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-            }
-          }
-          if (key.startsWith('collections/')) {
-            const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
-            const row = await findCollectionRow(env, base);
-            if (row && await canEditPage(env, sess, 'collection', row)) ownedSlot = true;
-            else if (row && !canEditRow(sess, row)) {
-              return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
-            }
-            if (row && await isProtected(env, 'collection', row.slug)) {
-              return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
-            }
-          }
-          // Never allow silently replacing someone else's uploaded file —
-          // unless the page that owns this slot has already said yes above.
-          const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
-          if (existing) {
-            const owner = existing.customMetadata && existing.customMetadata.owner;
-            if (owner !== String(sess.userId)) {
-              return jsonResponse({ error: 'A file already exists at that path and belongs to another account.' }, { status: 403 });
-            }
-          }
+        {
+          const denied = await uploadSlotDenied(env, sess, key);
+          if (denied) return denied;
         }
 
         const ext = key.split('.').pop().toLowerCase();
@@ -6810,6 +6909,75 @@ export default {
         // "who put this image here" or to see a flood while it was happening.
         // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
+        return jsonResponse({ ok: true, path: '/assets/' + key });
+      }
+
+      /* ---- copy one image from Bloodstar straight into R2 ----
+         Body: {key, src}. `src` must be an https URL on bloodstar.xyz; `key`
+         is an ordinary upload slot and goes through uploadSlotDenied(), the
+         same permission check /api/upload uses, so this can reach nothing
+         that route could not.
+
+         It exists because the alternative is the browser doing it: a 40
+         character import is 40 images down and 40 base64 bodies back up, on
+         a phone, and both halves of that are the reader's data. Here the
+         bytes go Bloodstar -> Worker -> R2 and the page sends one short POST
+         per character. The tool falls back to the browser path (canvas plus
+         /api/upload, as mass-upload.html does) for art hosted anywhere else,
+         which is how a project's imgur-hosted background still comes over. */
+      if (path === '/api/bloodstar-art') {
+        {
+          const limited = await writeLimited(env, request, sess, 'upload');
+          if (limited) return limited;
+        }
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        const b = await request.json().catch(() => ({}));
+        let key = String(b.key || '').replace(/^\/+/, '').replace(/^assets\//, '');
+        if (!key || key.includes('..') || !R2_PREFIXES.some(p => key.startsWith(p))) {
+          return jsonResponse({ error: 'Key must be under: ' + R2_PREFIXES.join(', ') }, { status: 400 });
+        }
+        let srcUrl;
+        try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
+        if (!srcUrl || srcUrl.protocol !== 'https:' || !Bloodstar.isBloodstarHost(srcUrl.hostname)) {
+          return jsonResponse({ error: 'That image is not on bloodstar.xyz. Upload it through /api/upload instead.' }, { status: 400 });
+        }
+        {
+          const denied = await uploadSlotDenied(env, sess, key);
+          if (denied) return denied;
+        }
+        let res;
+        try {
+          res = await fetch(srcUrl.toString(), { redirect: 'follow' });
+        } catch {
+          return jsonResponse({ error: 'Could not reach that image on Bloodstar.' }, { status: 502 });
+        }
+        if (!res.ok) {
+          return jsonResponse({ error: 'Bloodstar answered ' + res.status + ' for that image.' }, { status: 502 });
+        }
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        if (!bytes.length) return jsonResponse({ error: 'That image came back empty.' }, { status: 502 });
+        if (bytes.length > 8 * 1024 * 1024) {
+          return jsonResponse({ error: 'That image is too large (8 MB max).' }, { status: 413 });
+        }
+        // Same whitelist /api/upload applies, for the same reason: whatever
+        // type is stored here is the type /assets/ replays, so an unlisted one
+        // is a file served from our own origin under someone else's rules.
+        const declaredType = String(res.headers.get('Content-Type') || '').toLowerCase().split(';')[0].trim();
+        const uploadExt = UPLOAD_CONTENT_TYPES[declaredType];
+        if (!uploadExt) {
+          return jsonResponse({ error: 'That image is not a PNG, JPEG, WebP or GIF.' }, { status: 400 });
+        }
+        const keyExt = key.split('.').pop().toLowerCase();
+        if (!uploadExt.exts.includes(keyExt)) {
+          return jsonResponse({
+            error: `A ${uploadExt.type} image must be saved as .${uploadExt.exts[0]} (got .${keyExt}).`
+          }, { status: 400 });
+        }
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType: uploadExt.type },
+          customMetadata: { owner: String(sess.userId) }
+        });
+        await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB (Bloodstar)');
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
