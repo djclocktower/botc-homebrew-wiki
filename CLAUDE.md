@@ -248,6 +248,14 @@ assets/
                        render-wiki.js; re-exports inlineFormat() because
                        site.js lazy-loads it for links in announcements.
                        In the Worker it gets the engine through init().
+  approved-editors.js  The "who else may edit this page" list, mounted by all
+                       four editors (create/edit/publish-script/-collection) so
+                       the three page types cannot drift. Stores what the Worker
+                       stores: {id, username} per account, the id being the
+                       authority. Confirms a typed handle through
+                       /api/account-lookup; the Worker resolves the list again
+                       on save regardless, so the lookup is a courtesy, never
+                       the check. See "Approved editing".
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -487,6 +495,19 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        real with-spaces length, whatever the box displays. Rule
                        toggles, the draft text and the Count Spaces choice
                        persist in localStorage (botc_grimforge_*).
+                       **Scan a Script or Collection** runs the same rules over
+                       a whole set: pick one, and every ability comes back as a
+                       checkable list (Check all / Clear) with an Apply that
+                       writes the ticked fixes to the character pages, one save
+                       each. Only `fix` findings get a checkbox — warnings are
+                       exactly the calls that should not be made in bulk.
+                       Applying RE-LINTS the stored ability first and matches
+                       findings by `key`, never by the offsets the scan saw, so
+                       a page that moved on since the scan is reported as
+                       already fixed instead of being overwritten. A collection's
+                       roster comes from render-page.js's
+                       resolveCollectionMembers(), not a second copy of the
+                       membership rule.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React

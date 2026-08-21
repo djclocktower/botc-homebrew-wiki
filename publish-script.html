@@ -774,7 +774,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // Reflect the saved status on the buttons + pill (mirrors the character editor)
     function updateButtons(){
       var pub = $('sb-publish'), draft = $('sb-draft'), pill = $('pub-status-pill');
-      pub.textContent   = currentStatus === 'published' ? '★ Save Changes' : '★ Publish to Wiki';
+      // An approved editor saves the page but never publishes it: the Worker
+      // pins the stored status for anyone but the owner. A button reading
+      // "Publish to Wiki" on a shared draft would be a promise the save
+      // does not keep, so it says what pressing it actually does.
+      pub.textContent   = (editRole === 'approved' || currentStatus === 'published')
+        ? '★ Save Changes' : '★ Publish to Wiki';
       draft.textContent = currentStatus === 'draft' ? 'Save Draft'
                         : currentStatus === 'published' ? 'Move to Draft' : 'Save as Draft';
       pill.className = 'pub-status-pill' + (currentStatus ? ' ' + currentStatus : '');
@@ -1030,7 +1035,11 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     /* Owner-only controls, switched off for anyone else. Kept in one place so
        the two ways in (a fresh ?s= load and the badge refresh after a publish)
        cannot disagree. */
+    // What the Worker said this account may do here, so updateButtons() can
+    // label itself honestly however many times it re-runs.
+    var editRole = 'owner';
     function applyEditMode(mode, isOwner){
+      editRole = mode || '';
       if (isOwner && mode === 'owner') return;
       $('sb-delete').style.display = 'none';
       // Hiding the "who can edit" panel outright: the Worker carries the
@@ -1046,6 +1055,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? 'The creator made you an editor of this script. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
           : 'The creator made you an editor of this script. Everything here is yours to change; publishing and deleting stay with them.');
         $('sb-draft').style.display = 'none';
+        updateButtons();   // relabel now that editRole is set
         return;
       }
       if (mode === 'all'){

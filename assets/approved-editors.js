@@ -103,10 +103,14 @@
       name = String(name || '').trim().replace(/^@+/, '');
       if (!name) return;
       if (list.length >= MAX) { say('err', 'That is as many editors as one page can have (' + MAX + ').'); return; }
-      if (list.some(function (e) { return e.username.toLowerCase() === name.toLowerCase(); })) {
-        say('err', '@' + name + ' is already on the list.');
-        return;
-      }
+      // Report the spelling already on the list, not the one just typed:
+      // "@ALICE is already on the list" beside a chip reading @alice reads
+      // like two different people.
+      var dup = null;
+      list.forEach(function (e) {
+        if (!dup && e.username.toLowerCase() === name.toLowerCase()) dup = e.username;
+      });
+      if (dup) { say('err', '@' + dup + ' is already on the list.'); return; }
       say('', 'Looking for @' + name + '…');
       addBtn.disabled = true;
       fetch('/api/account-lookup?u=' + encodeURIComponent(name), { credentials: 'same-origin' })
