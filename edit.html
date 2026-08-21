@@ -888,7 +888,7 @@
         .then(function (d) {
           if (!d || d.error) throw new Error(d && d.error);
           var n = (d.entries || []).length;
-          var link = '<a class="hist-open" href="' + histPageHref() + '">' +
+          var link = '<a class="hist-open-link" href="' + histPageHref() + '">' +
             (n ? 'View history and restore' : 'Open the history page') + '</a>';
           if (!n) {
             box.innerHTML = '<p class="sub" style="margin:0 0 8px">No edits recorded yet. Every save ' +
@@ -909,7 +909,7 @@
         })
         .catch(function () {
           box.innerHTML = '<p class="sub" style="margin:0 0 8px">Could not load the history just now.</p>' +
-            '<a class="hist-open" href="' + histPageHref() + '">Open the history page</a>';
+            '<a class="hist-open-link" href="' + histPageHref() + '">Open the history page</a>';
         });
     }
     function guestNotice(entry) {
