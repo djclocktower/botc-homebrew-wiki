@@ -730,14 +730,16 @@ stored on the page's `data` as `publicEdit`:
 - **`'suggest'`**: anyone with an account may PROPOSE a version for the creator
   to approve. Not write access: every save handler asks `permCanWrite()`, and
   'suggest' is not a writing mode, so it can never be mistaken for an edit.
+- **`'approved'`**: only the accounts the creator NAMED may edit — see below.
 
 `editPermission(env, sess, type, row)` is the single answer to "what may this
-session do to this row": `'owner'`, `'all'`, `'tags'` or `''`. Never open
-whatever the setting says: a **draft**, an **admin-protected** page, and a page
-whose creator never opted in. `canEditRow()` still means ownership, and
-everything belonging to the creator goes through it: renaming, publishing,
-unpublishing, deleting, rolling back, and the setting itself. `/api/publish` and
-`/api/delete` are deliberately left on `canEditRow`.
+session do to this row": `'owner'`, `'approved'`, `'all'`, `'tags'` or `''`.
+Never open whatever the setting says: a **draft** (except approved editing), an
+**admin-protected** page, and a page whose creator never opted in.
+`canEditRow()` still means ownership, and everything belonging to the creator
+goes through it: renaming, publishing, unpublishing, deleting, rolling back, and
+the setting itself. `/api/publish` and `/api/delete` are deliberately left on
+`canEditRow`.
 
 The save handlers enforce the rest:
 
@@ -754,6 +756,60 @@ The save handlers enforce the rest:
   and that stays with the creator.
 - Every public edit notifies the owner (`notifyPageEdit`) through the same `dms`
   row comments use, so it rides the unread count and the mail flag.
+
+### Approved editing (`publicEdit: 'approved'`)
+
+The mode that shares a page with **named accounts** instead of opening it to
+everyone. They edit it as the creator would; the creator keeps the page.
+
+- **The list lives on the page's `data` as `editors`**, one `{id, username}`
+  per account. The **id is the authority** — it is what every permission check
+  reads, it costs no lookup (a session already carries `userId`) and it
+  survives a change of handle. The **username** is only what the owner's editor
+  shows back. `sanitizeEditors()` resolves whatever a client posts (pairs, or
+  the bare names the owner typed) through `selectUserByName()`, so a name
+  nobody answers to can never become a permission; what it could not resolve
+  comes back as `editorsUnknown` and the editor says so rather than dropping it
+  in silence. Capped at `PAGE_EDITORS_MAX` (20). The owner is never on their
+  own list.
+- **`editors` never goes on the wire.** `buildPublicJSON` deletes it: it is the
+  creator's administration, it holds account ids, and nothing public reads it —
+  an editor loads the page through `/api/page` like the owner does. The page's
+  Editing row says *shared* and stops there; who the editors are is not
+  announced.
+- **An approved editor reaches a DRAFT**, which no other mode does. A
+  collaborator is most use before the page goes live, and there is no stranger
+  to hide it from. `canEditPage()` is that gate — ownership **or** an approved
+  editor — and it is what the `/c/`, `/s/` and `/collection/` draft checks and
+  `/api/page` ask. `canEditRow()` is untouched and still means ownership.
+- **They cannot publish it.** Every save handler pins `status` from the stored
+  row for anyone but the owner, so a shared draft stays a draft until its
+  creator publishes it. The editors say so instead of showing a Publish button.
+- **They cannot change who else may edit.** `publicEdit` *and* `editors` are
+  both carried forward from the stored row for a non-owner save, so an editor
+  can neither add a friend nor take the others off.
+- **They can replace the page's art.** `/api/upload` checks the image slot's
+  page with `canEditPage()`, and a slot whose page said yes skips the
+  "somebody else's file is already here" catch-all — otherwise a shared
+  character could never get the icon that is keeping it out of drafts.
+- **They can rename**, unlike an `'all'` guest (whose name field the editor
+  locks). Renaming is an address change and nothing else now, and this is
+  somebody the creator picked by hand.
+- Being added arrives as the notification the site already has: a `dms` row
+  (`notifyEditorsAdded`) that rides the unread count and the mail flag. It
+  scrolls away, so **`GET /api/shared-pages`** is the standing list, shown as
+  *Shared With You* on the account page. Without it there is no way back to a
+  shared draft: by design it is in no feed, no search and no browse page.
+- `assets/approved-editors.js` is the one naming widget, mounted by all four
+  editors (`create.html`, `edit.html`, `publish-script.html`,
+  `publish-collection.html`) so the three page types cannot drift apart. It
+  confirms a handle through `GET /api/account-lookup` as it is typed; the
+  Worker resolves the list again on save regardless — the lookup is a courtesy,
+  never the check.
+
+Wiki pages (`/p/`) are deliberately outside all of this: they are owner-only
+across the board on every route, and giving them `publicEdit` would mean
+teaching `/api/wiki-page` the whole machinery.
 
 **History is public and drafts have none.** `saveRevision()` skips any row whose
 stored status is not `published`: a draft is saved over constantly while it is

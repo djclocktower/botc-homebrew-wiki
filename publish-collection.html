@@ -275,9 +275,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
+        </div>
+        <div class="sb-fld" id="sb-editors-fld" style="display:none">
+          <label>Approved editors</label>
+          <div id="sb-editors-box"></div>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included.</p>
         </div>
         <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
       </div>
@@ -338,6 +344,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/sao.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
   (function () {
     var allChars = [];
@@ -362,10 +369,35 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
 
+    /* The modes the <select> offers. Anything else stored on the row reads as
+       closed, and is never silently re-saved as something it is not. */
+    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
+    /* The named-account list behind "Approved editing". Mounted whatever the
+       mode is, so switching away and back keeps the names; shown only while
+       that mode is chosen. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount($('sb-editors-box'), {})
+      : null;
+    function syncEditorsBox(){
+      $('sb-editors-fld').style.display = $('sb-public-edit').value === 'approved' ? '' : 'none';
+    }
+    $('sb-public-edit').addEventListener('change', syncEditorsBox);
+
     /* Owner-only controls, switched off for anyone else. */
     function applyEditMode(mode, isOwner){
       if (isOwner && mode === 'owner') return;
       $('pc-delete').style.display = 'none';
+      // The whole "who can edit" panel goes: the Worker carries the stored
+      // setting and the stored editor list forward whatever a guest posts, so
+      // leaving them editable would be a promise the save breaks.
+      $('sb-open-sec').style.display = 'none';
+      if (mode === 'approved'){
+        pubStatus('ok', currentStatus === 'draft'
+          ? 'The creator made you an editor of this collection. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
+          : 'The creator made you an editor of this collection. Everything here is yours to change; publishing and deleting stay with them.');
+        $('pc-draft').style.display = 'none';
+        return;
+      }
       if (mode === 'all'){
         // updateButtons() already labels Publish correctly for the stored
         // status; only the draft and delete buttons have to go.
@@ -721,6 +753,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           exclude: exclude.slice(),
           order: order.slice(),
           publicEdit: $('sb-public-edit').value,
+          editors: editorsUI ? editorsUI.get() : [],
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
           status: saveStatus
         };
@@ -819,7 +852,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (c.synopsis || c.gameplay || c.strategyGood || c.strategyEvil) $('sb-sections').open = true;
           if (c.customBoxes && c.customBoxes.length) { boxesUI.load(c.customBoxes); $('sb-boxes-sec').open = true; }
           // Who else may edit this page (enforced by the Worker, not by the form).
-          $('sb-public-edit').value = (c.publicEdit === 'all' || c.publicEdit === 'suggest') ? c.publicEdit : '';
+          $('sb-public-edit').value = PUBLIC_EDIT_MODES[c.publicEdit] ? c.publicEdit : '';
+          if (editorsUI) editorsUI.set(c.editors || []);
+          syncEditorsBox();
           if (c.publicEdit) $('sb-open-sec').open = true;
           loadPages(EDIT_KEY);
           include = (c.include || []).slice();

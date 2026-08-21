@@ -293,6 +293,15 @@
         <div class="empty-note" id="drafts-empty" style="display:none">No drafts. When creating a character you can choose <em>Save as Draft</em> instead of publishing.</div>
       </div>
 
+      <!-- pages other people made you an editor of (approved editing) -->
+      <div class="panel" id="shared-panel" style="display:none">
+        <h3>Shared With You <span class="count-pill" id="n-shared">0</span></h3>
+        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
+          Pages whose creator named you as an editor. You can change them exactly as they would &mdash; publishing, deleting and the editor list stay with them.
+        </p>
+        <table class="row-list" id="shared-table"></table>
+      </div>
+
       <!-- suggested edits waiting on pages you own -->
       <div class="panel" id="sug-panel" style="display:none">
         <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
@@ -702,6 +711,39 @@
         .catch(function () { /* the panel just stays hidden */ });
     }
 
+    /* Pages this account has been made an editor of. Same shape as the
+       suggestions panel above and there for the same reason: its own cheap
+       request, empty for almost everybody, hidden when there is nothing.
+
+       Without it an editor has only the message they were sent, and a shared
+       DRAFT is in no feed, no search and no browse page by design — so this
+       is the only standing way back to one. */
+    function loadShared() {
+      fetch('/api/shared-pages', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          var rows = (res && res.pages) || [];
+          if (!rows.length) return;
+          $('n-shared').textContent = rows.length;
+          $('shared-panel').style.display = '';
+          $('shared-table').innerHTML = rows.map(function (r) {
+            // A character's row carries its identity, not its address; /c/
+            // redirects one to the other, so this link lands either way.
+            var view = r.type === 'character' ? 'c/' + encodeURIComponent(r.slug)
+                     : r.type === 'script'    ? 's/' + encodeURIComponent(r.slug)
+                     : 'collection/' + encodeURIComponent(r.key);
+            var edit = editUrl(r.type, r.type === 'collection' ? r.key : r.slug);
+            return '<tr><td><span class="row-name"><a href="' + view + '">' +
+                esc(r.name || r.slug) + '</a></span>' +
+                (r.status === 'draft' ? ' <span class="row-date">(draft)</span>' : '') + '</td>' +
+              '<td class="row-type">' + esc(r.type) + '</td>' +
+              '<td class="row-date">' + fmtDate(r.updatedAt) + '</td>' +
+              '<td class="row-actions"><a class="mini-btn edit" href="' + edit + '">Edit</a></td></tr>';
+          }).join('');
+        })
+        .catch(function () { /* the panel just stays hidden */ });
+    }
+
     function collapseFeed() {
       var items = Array.prototype.slice.call($('edit-feed').children);
       var btn = $('edits-toggle');
@@ -925,6 +967,7 @@
           renderLists(data);
           loadMyMessages();
           loadSuggestions();
+          loadShared();
         })
         .catch(function(){
           $('gate').style.display = 'block';

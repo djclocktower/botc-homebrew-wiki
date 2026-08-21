@@ -345,10 +345,16 @@
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
+        </div>
+        <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
+          <label>Approved editors</label>
+          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <div id="editors-box"></div>
         </div>
       </fieldset>
 
@@ -386,6 +392,7 @@
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
@@ -596,7 +603,8 @@
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim(),
-        publicEdit: $('publicEdit').value
+        publicEdit: $('publicEdit').value,
+        editors: editorsUI ? editorsUI.get() : []
       };
     }
 
@@ -769,7 +777,7 @@
     }
 
     // What this account may do to this page, as the Worker answered it:
-    // 'owner' | 'all' | 'tags' | 'suggest' | false.
+    // 'owner' | 'approved' | 'all' | 'tags' | 'suggest' | false.
     var EDIT_MODE = 'owner';
 
     /* Sending a suggestion. The art is deliberately not uploaded: it would
@@ -780,6 +788,7 @@
       $('save').disabled = true;
       setStatus('work', 'Sending your suggestion&hellip;');
       delete d.publicEdit;
+      delete d.editors;
       fetch('/api/suggest', {
         method: 'POST', credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
@@ -895,10 +904,46 @@
         'recorded in ' + histLink(entry) + '.');
     }
 
+    /* ── an editor the creator named by hand ──
+       Approved editing, the mode that shares a page with specific accounts
+       rather than with everyone. The form is the owner's form, the name field
+       included: this is somebody the creator picked out, and the Worker lets
+       them rename as the creator would. What it does NOT let them do is
+       publish, unpublish or delete, and it carries the editor list forward
+       whatever gets posted — so the two controls for that go, the same way
+       they do for a guest. A shared DRAFT reaches here too, and saying so
+       matters: it explains why there is no Publish button on a page that
+       plainly is not live yet. */
+    function approvedNotice(entry) {
+      hideOwnerOnly();
+      $('save-publish').style.display = 'none';
+      guestBanner('<strong>' + esc(entry.creator || 'The creator') +
+        ' made you an editor of this page.</strong> Edit it as they would \u2014 everything ' +
+        'on this form is yours to change, and it saves straight to the page. ' +
+        (isDraftPage
+          ? 'It is still a draft, so only they can put it live. '
+          : 'Publishing, deleting and the editor list stay with them. ') +
+        'Your username and every field you change are recorded in ' + histLink(entry) + '.');
+    }
+    // Set from the Worker's answer before the banners are drawn.
+    var isDraftPage = false;
+
     // ── populate form from entry ──
     // The modes the <select> offers. Anything else stored on the page reads
     // as closed, and an unknown mode is never silently re-saved as one.
-    var PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
+    var PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
+
+    /* The named-editor list, mounted once and shown only while "Approved
+       editing" is the chosen mode. It is mounted whatever the mode is, so
+       switching to it and back does not lose the names you just typed. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
+      : null;
+    function syncEditorsBox() {
+      var on = $('publicEdit').value === 'approved';
+      $('editors-fld').style.display = on ? '' : 'none';
+    }
+    $('publicEdit').addEventListener('change', syncEditorsBox);
 
     function populateForm(entry){
       originalEntry = entry;
@@ -935,6 +980,8 @@
       $('setup').checked         = !!entry.setup;
       $('customJson').value      = entry.customJson || '';
       $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
+      if (editorsUI) editorsUI.set(entry.editors || []);
+      syncEditorsBox();
       if (entry.artAlt) {
         var altTh = $('artAltThumb');
         altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
@@ -1117,6 +1164,10 @@
           special: d.special, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
           customJson: d.customJson,
+          // Explicit for the same reason special[] is: Object.assign would
+          // otherwise keep whatever the LOADED row said, so changing "Who can
+          // edit this page" would show in the form and never reach the save.
+          publicEdit: d.publicEdit, editors: d.editors,
           status: saveStatus,
           baseUpdatedAt: loadedUpdatedAt
         });
@@ -1174,6 +1225,13 @@
         // there are no paths to retarget here any more.
         if (originalEntry) originalEntry.name = d.name;
         if (window.showSaveNotice) window.showSaveNotice(saved, originalSlug);
+        // The Worker resolves the editor list again and drops names no account
+        // answers to. Say which, or the owner walks away believing they shared
+        // the page with somebody who never got it.
+        if (editorsUI) {
+          editorsUI.set((saved && saved.editors) || []);
+          editorsUI.reportUnknown(saved && saved.editorsUnknown);
+        }
         var page = (saved && saved.page) || ('c/' + originalSlug);
         var url = SITE_ROOT + page;
         var movedNote = movedFrom
@@ -1265,6 +1323,7 @@
              into fields that would be thrown away. */
           var mode = res.editMode || (res.canEdit ? 'owner' : false);
           EDIT_MODE = mode;
+          isDraftPage = (res.status || 'published') === 'draft';
           if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
             $('save').disabled = true;
@@ -1276,6 +1335,7 @@
           $('builder').style.display = 'grid';
           populateForm(entry);
           if (mode === 'tags') tagsOnlyMode(entry);
+          else if (mode === 'approved') approvedNotice(entry);
           else if (mode === 'all') guestNotice(entry);
           else if (mode === 'suggest') suggestMode(entry);
         })

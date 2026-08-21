@@ -359,10 +359,16 @@
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
+        </div>
+        <div class="fld" id="editors-fld" style="display:none;margin:12px 0 0">
+          <label>Approved editors</label>
+          <p class="sub" style="margin:0 0 8px">The accounts you name here edit this page exactly as you would, drafts included. Publishing, deleting, renaming and this list stay yours, and every change is in the page's history.</p>
+          <div id="editors-box"></div>
         </div>
       </fieldset>
 
@@ -399,6 +405,7 @@
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
     var SITE_ROOT = new URL('.', location.href).href;
     var ART_BASE  = 'https://botchomebrew.wiki/assets/art/';
@@ -640,9 +647,22 @@
         // Who may edit the page once it exists (Advanced Options). Owner-only
         // unless the creator opens it up; the Worker is the enforcer.
         publicEdit: $('publicEdit').value,
+        editors: editorsUI ? editorsUI.get() : [],
         image: importedImage || ''
       };
     }
+
+    /* The named-editor list that goes with "Approved editing". Mounted
+       whatever the mode is, so switching away and back does not throw away
+       names that have just been typed in. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
+      : null;
+    function syncEditorsBox() {
+      $('editors-fld').style.display = $('publicEdit').value === 'approved' ? '' : 'none';
+    }
+    $('publicEdit').addEventListener('change', syncEditorsBox);
+    syncEditorsBox();
 
     function slugify(s) {
       return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -981,6 +1001,10 @@
             setup: d.setup, special: d.special, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
             customJson: d.customJson,
+            // Who may edit the page once it exists, and (for approved editing)
+            // exactly who. Both were gathered and then never posted, so the
+            // controls in Advanced Options could be set and never took effect.
+            publicEdit: d.publicEdit, editors: d.editors,
             status: saveStatus
           };
           if (artAltDataURL) {
@@ -1013,6 +1037,13 @@
           }
           // Partial-page warning / missing-icon explanation.
           if (window.showSaveNotice) window.showSaveNotice(saved, slug);
+          // Names the Worker could not match to an account. Saying so beats
+          // dropping them in silence: the point of the list is knowing who has
+          // it, and a typo would otherwise look like a success.
+          if (editorsUI) {
+            editorsUI.set((saved && saved.editors) || []);
+            editorsUI.reportUnknown(saved && saved.editorsUnknown);
+          }
           $('publish').disabled = false;
           $('save-draft').disabled = false;
         })

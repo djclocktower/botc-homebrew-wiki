@@ -794,7 +794,9 @@
      how anybody finds out they are welcome to help. */
   var OPEN_EDIT_TEXT = {
     all: ['open to all', 'anyone with an account can edit this page. '],
-    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. ']
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
+    // Named accounts, not an open door — see the same table in render.js.
+    approved: ['shared', 'the creator has named the people who may edit this page. ']
   };
   function openEditRows(d, root, type) {
     var t = OPEN_EDIT_TEXT[d.publicEdit];

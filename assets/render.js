@@ -72,7 +72,12 @@
   var OPEN_EDIT_TEXT = {
     all: ['open to all', 'anyone with an account can edit this page. '],
     tags: ['tags open to all', 'anyone with an account can change the tags. '],
-    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. ']
+    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
+    /* Approved editing names accounts rather than opening the page, so this
+       row says that it is shared and stops there. It is not an invitation the
+       way the other three are, and WHO the editors are is the creator's own
+       list — the Worker keeps it out of the public feeds for that reason. */
+    approved: ['shared', 'the creator has named the people who may edit this page. ']
   };
   function openEditRow(d, root) {
     var t = OPEN_EDIT_TEXT[d.publicEdit];

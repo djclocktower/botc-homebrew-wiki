@@ -303,9 +303,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
             <option value="">Only me (and the wiki admins)</option>
+            <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
+        </div>
+        <div class="sb-fld" id="sb-editors-fld" style="display:none">
+          <label>Approved editors</label>
+          <div id="sb-editors-box"></div>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this script exactly as you would, drafts included.</p>
         </div>
         <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
       </div>
@@ -369,6 +375,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/sao.js"></script>
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
+  <script src="assets/approved-editors.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -538,11 +545,30 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       setMeta(m);
     });
     // Who else may edit this page. Stored on the row, enforced by the Worker.
+    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
+    /* The named-account list that goes with "Approved editing". Mounted
+       whatever the mode is, so switching away and back keeps the names; shown
+       only while that mode is chosen. onChange writes straight into the stored
+       meta, so a name added here survives a reload like every other field on
+       this page does. */
+    var editorsUI = window.ApprovedEditors
+      ? window.ApprovedEditors.mount($('sb-editors-box'), {
+          onChange: function (list) {
+            var m = getMeta();
+            if (list.length) m.editors = list; else delete m.editors;
+            setMeta(m);
+          }
+        })
+      : null;
+    function syncEditorsBox(){
+      $('sb-editors-fld').style.display = $('sb-public-edit').value === 'approved' ? '' : 'none';
+    }
     $('sb-public-edit').addEventListener('change', function(){
       var m = getMeta();
       var v = $('sb-public-edit').value;
-      if (v === 'all' || v === 'suggest') m.publicEdit = v; else delete m.publicEdit;
+      if (PUBLIC_EDIT_MODES[v]) m.publicEdit = v; else delete m.publicEdit;
       setMeta(m);
+      syncEditorsBox();
     });
 
     // Drag or ▲▼, in the shared widget the Script Builder uses too, so an
@@ -717,7 +743,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       (m.bootlegger || []).forEach(addBootRow);
       $('sb-almanac').value = m.almanac || '';
       $('sb-hidetitle').checked = !!m.hideTitle;
-      $('sb-public-edit').value = (m.publicEdit === 'all' || m.publicEdit === 'suggest') ? m.publicEdit : '';
+      $('sb-public-edit').value = PUBLIC_EDIT_MODES[m.publicEdit] ? m.publicEdit : '';
+      if (editorsUI) editorsUI.set(m.editors || []);
+      syncEditorsBox();
       if (m.publicEdit) $('sb-open-sec').open = true;
       if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
       if (m.header){
@@ -920,7 +948,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           bootlegger: gatherBoot(),
           almanac: $('sb-almanac').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
-          publicEdit: $('sb-public-edit').value
+          publicEdit: $('sb-public-edit').value,
+          editors: editorsUI ? editorsUI.get() : []
         };
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
@@ -1004,6 +1033,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function applyEditMode(mode, isOwner){
       if (isOwner && mode === 'owner') return;
       $('sb-delete').style.display = 'none';
+      // Hiding the "who can edit" panel outright: the Worker carries the
+      // stored setting AND the stored editor list forward whatever a guest
+      // posts, so leaving them on screen would be a promise the save breaks.
+      $('sb-open-sec').style.display = 'none';
+      if (mode === 'approved'){
+        // An editor the creator named. The text is theirs to change and it
+        // saves straight to the script; what stays with the creator is
+        // publishing, unpublishing and deleting — which is also why a shared
+        // DRAFT has no button to put it live.
+        pubStatus('ok', currentStatus === 'draft'
+          ? 'The creator made you an editor of this script. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
+          : 'The creator made you an editor of this script. Everything here is yours to change; publishing and deleting stay with them.');
+        $('sb-draft').style.display = 'none';
+        return;
+      }
       if (mode === 'all'){
         // updateButtons() already labels Publish correctly for the stored
         // status; only the draft and delete buttons have to go.
@@ -1040,7 +1084,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
             hideTitle: !!entry.hideTitle,
-            publicEdit: (entry.publicEdit === 'all' || entry.publicEdit === 'suggest') ? entry.publicEdit : '',
+            publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
+            editors: entry.editors || [],
             theme: entry.theme || {}
           };
           if (!m.nightOrder) delete m.nightOrder;

@@ -130,6 +130,8 @@
  *   POST /api/suggest         -> propose an edit to a page open to suggestions
  *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
  *   POST /api/suggestion      -> approve / decline / withdraw one
+ *   GET  /api/shared-pages    -> pages this account is an approved editor of
+ *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
@@ -1690,20 +1692,96 @@ function canEditRow(sess, row) {
    On top of that a creator may open a page up, stored on its data as
    `publicEdit`. editPermission() answers what THIS session may do to THIS row:
 
-     'owner'  everything (the owner, or an admin)
-     'all'    the page's content, but none of the owner's own settings
-     'tags'   the tags and nothing else (characters only)
-     ''       nothing
+     'owner'    everything (the owner, or an admin)
+     'approved' the page's content, for an account the owner named by hand
+     'all'      the page's content, but none of the owner's own settings
+     'tags'     the tags and nothing else (characters only)
+     ''         nothing
 
    Never open, whatever the setting says: a draft, an admin-protected page,
-   and a page whose owner never opted in. */
-const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1 };
+   and a page whose owner never opted in. 'approved' is the one exception to
+   the draft half of that — see editPermission below. */
+const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
 function publicEditMode(d) {
   const v = d && d.publicEdit;
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
 }
 function sanitizePublicEdit(v) {
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+}
+
+/* ---- approved editing: the accounts the owner named ----
+   `publicEdit: 'approved'` opens a page to a list rather than to everyone.
+   The list lives on the page's data as `editors`, one `{id, username}` per
+   account:
+
+     - the **id** is the authority. It is what every permission check reads,
+       it costs no lookup (a session already carries `userId`), and it keeps
+       working when somebody changes their handle.
+     - the **username** is only what the owner's editor shows back, so the
+       list reads as names rather than numbers.
+
+   A client may post either form — the pairs it read back, or the bare names
+   the owner typed into the box. Both go through sanitizeEditors(), which
+   resolves every entry against `users` and drops what it cannot find, so a
+   typo can never become a permission. */
+const PAGE_EDITORS_MAX = 20;
+
+function approvedEditors(d) {
+  return (Array.isArray(d && d.editors) ? d.editors : []).filter(e => e && typeof e === 'object');
+}
+function isApprovedEditor(sess, d) {
+  if (!sess || sess.userId == null) return false;
+  return approvedEditors(d).some(e => Number(e.id) === Number(sess.userId));
+}
+
+/* Returns { list, unknown }: the resolved editors, and the names no account
+   answered to. The caller reports `unknown` back to the owner — silently
+   dropping a name would leave them believing they had shared the page. */
+async function sanitizeEditors(env, v, ownerId) {
+  const list = [], unknown = [], seen = new Set();
+  if (!Array.isArray(v)) return { list, unknown };
+  for (const raw of v.slice(0, PAGE_EDITORS_MAX * 2)) {
+    const name = typeof raw === 'string' ? raw
+      : (raw && typeof raw === 'object' ? String(raw.username || '') : '');
+    if (!name.trim()) continue;
+    const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+    if (!u) { if (unknown.length < PAGE_EDITORS_MAX) unknown.push(normUsername(name)); continue; }
+    // The owner is not a guest on their own page, and an account listed twice
+    // (once by name, once by pair) is one editor.
+    if (ownerId != null && Number(u.id) === Number(ownerId)) continue;
+    if (seen.has(Number(u.id))) continue;
+    seen.add(Number(u.id));
+    list.push({ id: Number(u.id), username: String(u.username) });
+    if (list.length >= PAGE_EDITORS_MAX) break;
+  }
+  return { list, unknown };
+}
+
+/* Being named as an editor is news, so it arrives the way every other
+   notification on the wiki does: a `dms` row that rides the unread count on
+   /api/me and the mail flag site.js puts on "My Account". sender_deleted=1
+   keeps it out of the owner's own conversation list — they shared a page,
+   they did not start a conversation. */
+async function notifyEditorsAdded(env, opts) {
+  try {
+    const { fromId, added, name, path, origin } = opts;
+    if (!added || !added.length) return;
+    await ensureDmTables(env);
+    const from = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+      .bind(fromId).first().catch(() => null);
+    const who = from && from.username ? '@' + from.username : 'Someone';
+    for (const e of added) {
+      if (e.id == null || Number(e.id) === Number(fromId)) continue;
+      const text = who + ' added you as an editor of \u201c' + (name || 'a page') + '\u201d.' +
+        ' You can now edit it exactly as they would \u2014 publishing, deleting and the editor' +
+        ' list itself stay with them.' +
+        (path ? '\n\n' + (origin || '') + path : '');
+      await env.DB.prepare(
+        'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+      ).bind(fromId, e.id, text).run();
+    }
+  } catch { /* a notification must never break a save */ }
 }
 
 /* A ceiling the owner's own saves never needed. A page is a few kilobytes of
@@ -1719,19 +1797,45 @@ function publicEditTooBig(o) {
 async function editPermission(env, sess, type, row) {
   if (!sess || !row) return '';
   if (canEditRow(sess, row)) return 'owner';
-  if ((row.status || 'published') !== 'published') return '';
-  const mode = publicEditMode(parseData(row));
+  if ((row.status || 'published') === 'deleted') return '';
+  const d = parseData(row);
+  const mode = publicEditMode(d);
   if (!mode) return '';
+  /* Approved editors are named one account at a time, so they reach a DRAFT
+     too — a collaborator is most use before the page goes live, and there is
+     no stranger here to hide it from. They still cannot publish it: the save
+     handlers carry the stored status forward for everyone but the owner, so
+     what goes live stays the creator's call. */
+  if (mode === 'approved') {
+    if (!isApprovedEditor(sess, d)) return '';
+    if (await isProtected(env, type, row.slug)) return '';
+    return 'approved';
+  }
+  if ((row.status || 'published') !== 'published') return '';
   if (mode === 'tags' && type !== 'character') return '';
   if (await isProtected(env, type, row.slug)) return '';
   return mode;
+}
+
+/* Ownership, or an approved editor the owner named. This is the gate on
+   everything an approved editor has to be able to SEE: a draft page they were
+   invited to work on, and the Edit button that takes them into it. It is
+   deliberately not `canEditRow` — that still means ownership, and still
+   governs publishing, deleting, renaming and the editor list itself. */
+async function canEditPage(env, sess, type, row) {
+  if (canEditRow(sess, row)) return true;
+  if (!sess || !row) return false;
+  const d = parseData(row);
+  if (publicEditMode(d) !== 'approved' || !isApprovedEditor(sess, d)) return false;
+  if ((row.status || 'published') === 'deleted') return false;
+  return !(await isProtected(env, type, row.slug));
 }
 
 /* 'suggest' is not write access: it is permission to PROPOSE a version
    (POST /api/suggest). Every save handler asks this before writing, so a mode
    that is not a writing mode can never be mistaken for one. */
 function permCanWrite(perm) {
-  return perm === 'owner' || perm === 'all' || perm === 'tags';
+  return perm === 'owner' || perm === 'approved' || perm === 'all' || perm === 'tags';
 }
 
 /* Telling a suggester what happened, through the same DM row as every other
@@ -2694,6 +2798,11 @@ async function buildPublicJSON(env, table, opts = {}) {
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
+    // The approved-editor list is the creator's own administration, not page
+    // content, and it stores account ids. Nothing public reads it — the
+    // editors load their page through /api/page — so it never goes on the
+    // wire. `publicEdit` stays: that is what the page's Editing row renders.
+    delete d.editors;
     if (chars && r.slug) {
       d.slug = String(r.slug);
       // The address, derived on every read. The stored `page` is whatever some
@@ -3322,9 +3431,16 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // One session read serves both the draft check and the "may this reader see
   // draft wiki pages / the new-page button" check further down.
   const pageSess = await getSession(env, request);
+  // Ownership. It gates the wiki-page half of this page: listing a parent's
+  // draft pages, and the button that writes a new one, both need the parent's
+  // OWNER (that is what /api/wiki-page enforces), so an approved editor must
+  // not be offered either.
   const mayEditParent = canEditRow(pageSess, row);
+  // Ownership or an approved editor: what this reader may do to the page
+  // itself. That is the draft gate and the Edit button.
+  const mayEditPage = mayEditParent || await canEditPage(env, pageSess, type, row);
   const isDraft = row.status === 'draft';
-  if (isDraft && !mayEditParent) return assetsOrNotFound(env, request); // 404 for everyone else
+  if (isDraft && !mayEditPage) return assetsOrNotFound(env, request); // 404 for everyone else
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   const d = foldLegacyCurata(JSON.parse(row.data));
   if (!d.slug) d.slug = row.slug || slug;
@@ -3371,7 +3487,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // The page's own Edit button, gated: it sits in the page, where a reader
   // would take it as an invitation. (The top-bar pencil shows unconditionally;
   // the API is the enforcer.) SSR responses are no-store, so this is safe.
-  const ownerEditHref = mayEditParent ? editHref : '';
+  const ownerEditHref = mayEditPage ? editHref : '';
 
   const body = isScript
     ? PageRender.renderScriptPage(d, chars, { linkRoot: '../', isDraft, pagesHTML, boxesHTML, newPageHref, editHref: ownerEditHref })
@@ -3942,7 +4058,9 @@ export default {
           // finished page never pays for a session lookup.
           let editable = null;
           const canEdit = async () => {
-            if (editable === null) editable = canEditRow(await getSession(env, request), row);
+            if (editable === null) {
+              editable = await canEditPage(env, await getSession(env, request), 'character', row);
+            }
             return editable;
           };
           if (isDraft && !(await canEdit())) return assetsOrNotFound(env, request); // 404 for everyone else
@@ -5277,13 +5395,18 @@ export default {
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
       const owns = canEditRow(sess, row);
-      // 'owner' | 'all' | 'tags' | '': what this reader may actually change,
-      // which is what the editor needs before it offers them a form.
+      // 'owner' | 'approved' | 'all' | 'tags' | '': what this reader may
+      // actually change, which is what the editor needs before it offers them
+      // a form.
       const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
       const editable = !!mode;
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
-      if (row.status === 'draft' && !owns) return jsonResponse({ error: 'Not found' }, { status: 404 });
+      // A draft is invisible to everyone but the people who may work on it —
+      // its owner, and the editors the owner named by hand.
+      if (row.status === 'draft' && !owns && mode !== 'approved') {
+        return jsonResponse({ error: 'Not found' }, { status: 404 });
+      }
       return jsonResponse({
         slug: row.slug, data: foldLegacyCurata(JSON.parse(row.data)),
         status: row.status || 'published', canEdit: editable,
@@ -5292,6 +5415,77 @@ export default {
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
       });
+    }
+
+    /* ---------- DOES THIS HANDLE EXIST? (the approved-editor picker) -------
+       The owner types a username into the editor list and wants to know THERE
+       whether it landed, rather than after a save. Deliberately thin: it
+       answers with the handle as the site spells it and nothing else, and it
+       needs a session — every account here already has a public /u/ page, so
+       this reveals nothing new, but there is no reason to hand a stranger a
+       name-checking loop.
+
+       The lookup goes through selectUserByName, so `tir-far-thoinn` finds
+       `@tir-far-thóinn` exactly as a link would. */
+    if (method === 'GET' && path === '/api/account-lookup') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const name = (url.searchParams.get('u') || '').trim();
+      if (!name) return jsonResponse({ error: 'Missing username' }, { status: 400 });
+      const u = await selectUserByName(env, 'id, username', name).catch(() => null);
+      if (!u) return jsonResponse({ found: false });
+      return jsonResponse({ found: true, id: Number(u.id), username: String(u.username) });
+    }
+
+    /* ---------- PAGES SHARED WITH THIS ACCOUNT (approved editing) ----------
+       Being named as an editor arrives as a message with a link, but a message
+       scrolls away. This is the standing list, and without it an editor has no
+       way back to a page they were invited to — a shared DRAFT in particular
+       is in no feed, no search and no browse page by design.
+
+       Its own request rather than part of /api/account, for the same reason
+       the suggestions inbox is: it is empty for almost everybody.
+
+       The LIKE is a coarse filter that only has to be cheap and never miss:
+       sanitizePublicEdit + JSON.stringify are the only writers of this field,
+       so the stored form is exactly `"publicEdit":"approved"`. isApprovedEditor
+       below is what actually decides. */
+    if (method === 'GET' && path === '/api/shared-pages') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const tables = [
+        ['character', 'characters', 'name'],
+        ['script', 'scripts', 'name'],
+        ['collection', 'collections', 'display_name']
+      ];
+      const out = [];
+      for (const [type, table, nameCol] of tables) {
+        let rows = [];
+        try {
+          ({ results: rows } = await env.DB.prepare(
+            `SELECT slug, ${nameCol} AS name, owner_id, status, data, updated_at FROM ${table}
+              WHERE status IN ('published','draft') AND data LIKE '%"publicEdit":"approved"%'`
+          ).all());
+        } catch { rows = []; }
+        for (const r of rows || []) {
+          // A page this account already owns belongs in its own drafts and its
+          // own page list, not here. Admins own everything for this purpose,
+          // so their list is empty, which is right: they are not guests.
+          if (canEditRow(sess, r)) continue;
+          if (!isApprovedEditor(sess, parseData(r))) continue;
+          if (!(await canEditPage(env, sess, type, r))) continue;   // protection, mostly
+          const d = parseData(r);
+          out.push({
+            type, slug: r.slug,
+            key: type === 'collection' ? (d.id || r.slug) : r.slug,
+            name: r.name || r.slug,
+            status: r.status || 'published',
+            updatedAt: r.updated_at || null
+          });
+        }
+      }
+      out.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+      return jsonResponse({ pages: out.slice(0, 100) });
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -6517,6 +6711,15 @@ export default {
         }
 
         if (!sess.isAdmin) {
+          /* Set when this upload is aimed at the image slot of a page this
+             session may actually edit — its owner, or an approved editor the
+             owner named. It switches off the catch-all "somebody else's file
+             is already here" check further down, which is about slots with no
+             page behind them: once the page has said yes, whoever uploaded the
+             previous file is not a second opinion. Approved editing needs this
+             or a shared character can never get its icon, which is the one
+             thing that keeps it out of drafts. */
+          let ownedSlot = false;
           // tokens/ is reserved for admin tooling; news/ for the news editor,
           // which is admin-only anyway.
           if (key.startsWith('tokens/') || key.startsWith('news/')) {
@@ -6541,7 +6744,8 @@ export default {
           if (key.startsWith('art/')) {
             const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
             const row = await getEntityRow(env, 'character', slug);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               // Almost always a name clash on a brand-new character: the art
               // slot is named after the character's identity, which is derived
               // from its name, and that one is already someone else's page.
@@ -6558,7 +6762,8 @@ export default {
           if (key.startsWith('scripts/')) {
             const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
             const row = await getEntityRow(env, 'script', base);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'script', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'script', row.slug)) {
@@ -6568,15 +6773,17 @@ export default {
           if (key.startsWith('collections/')) {
             const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
             const row = await findCollectionRow(env, base);
-            if (row && !canEditRow(sess, row)) {
+            if (row && await canEditPage(env, sess, 'collection', row)) ownedSlot = true;
+            else if (row && !canEditRow(sess, row)) {
               return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
             }
             if (row && await isProtected(env, 'collection', row.slug)) {
               return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
             }
           }
-          // Never allow silently replacing someone else's uploaded file.
-          const existing = await env.ART.head(key).catch(() => null);
+          // Never allow silently replacing someone else's uploaded file —
+          // unless the page that owns this slot has already said yes above.
+          const existing = ownedSlot ? null : await env.ART.head(key).catch(() => null);
           if (existing) {
             const owner = existing.customMetadata && existing.customMetadata.owner;
             if (owner !== String(sess.userId)) {
@@ -6998,17 +7205,28 @@ export default {
         }
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        let editorsAdded = [], editorsUnknown = [];
         if (existing && perm !== 'owner') {
-          // Publishing and unpublishing belong to the creator. Public editing
-          // only ever applies to a published page, so this keeps it published.
+          // Publishing and unpublishing belong to the creator. An approved
+          // editor reaches a draft, so this is what keeps a draft a draft
+          // rather than keeping a published page published.
           status = existing.status || 'published';
           // As does who may edit it: a guest cannot open a page further, and
           // cannot close it behind themselves either.
           c.publicEdit = stored.publicEdit;
+          // The approved-editor list travels with it. An editor cannot add a
+          // friend to somebody else's page, and cannot take the others off.
+          c.editors = approvedEditors(stored);
         } else {
           c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(stored).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          c.editors = eds.list;
         }
         if (!c.publicEdit) delete c.publicEdit;
+        if (!c.editors || !c.editors.length) delete c.editors;
         // Curata is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/curata is the only way to set it.
         c.curata = existing ? !!parseData(existing).curata : false;
@@ -7079,6 +7297,12 @@ export default {
             name: c.name, path: '/c/' + address, origin: url.origin
           }));
         }
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: c.name,
+            path: '/c/' + address, origin: url.origin
+          }));
+        }
         if (movedFrom) {
           await logActivity(env, sess, 'rename', 'character', c.slug, c.name + ' (was /c/' + movedFrom + ')');
         }
@@ -7090,6 +7314,10 @@ export default {
           updatedAt: savedRow ? savedRow.updated_at : null,
           classification: Classify.classifyCharacter(c),
           missing: Classify.missingBits(c),
+          editors: c.editors || [],
+          // Names the owner typed that no account answered to. Dropping them
+          // silently would leave them believing they had shared the page.
+          editorsUnknown,
           iconBlocked,
           missingForPublish: needed,
           notice: iconBlocked
@@ -7245,13 +7473,22 @@ export default {
         if (!c.order.length) delete c.order;
         let status = c.status === 'draft' ? 'draft' : 'published';
         delete c.status;
+        const storedColl = existing ? parseData(existing) : null;
+        let editorsAdded = [], editorsUnknown = [];
         if (existing && perm !== 'owner') {
           status = existing.status || 'published';
-          c.publicEdit = parseData(existing).publicEdit;
+          c.publicEdit = storedColl.publicEdit;
+          c.editors = approvedEditors(storedColl);
         } else {
           c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(storedColl).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          c.editors = eds.list;
         }
         if (!c.publicEdit) delete c.publicEdit;
+        if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
@@ -7271,7 +7508,14 @@ export default {
             what: 'edited', name: c.displayName, path: '/collection/' + (c.id || pkSlug), origin: url.origin
           }));
         }
-        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status });
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: c.displayName,
+            path: '/collection/' + (c.id || pkSlug), origin: url.origin
+          }));
+        }
+        return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
+                              editors: c.editors || [], editorsUnknown });
       }
 
       if (path === '/api/script') {
@@ -7329,14 +7573,23 @@ export default {
         if (s.hideTitle) s.hideTitle = true; else delete s.hideTitle;
         let status = s.status === 'draft' ? 'draft' : 'published';
         delete s.status;
+        const storedScript = existing ? parseData(existing) : null;
+        let editorsAdded = [], editorsUnknown = [];
         if (existing && perm !== 'owner') {
           // Publishing, and who may edit, belong to the creator.
           status = existing.status || 'published';
-          s.publicEdit = parseData(existing).publicEdit;
+          s.publicEdit = storedScript.publicEdit;
+          s.editors = approvedEditors(storedScript);
         } else {
           s.publicEdit = sanitizePublicEdit(s.publicEdit);
+          const eds = await sanitizeEditors(env, s.editors, existing ? existing.owner_id : sess.userId);
+          const before = new Set(approvedEditors(storedScript).map(e => Number(e.id)));
+          editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
+          editorsUnknown = eds.unknown;
+          s.editors = eds.list;
         }
         if (!s.publicEdit) delete s.publicEdit;
+        if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.curata = existing ? !!parseData(existing).curata : false;
         if (existing) await saveRevision(env, sess, 'script', existing);
@@ -7353,7 +7606,14 @@ export default {
             what: 'edited', name: s.name || s.slug, path: '/s/' + s.slug, origin: url.origin
           }));
         }
-        return jsonResponse({ ok: true, slug: s.slug, status });
+        if (editorsAdded.length) {
+          ctx.waitUntil(notifyEditorsAdded(env, {
+            fromId: sess.userId, added: editorsAdded, name: s.name || s.slug,
+            path: '/s/' + s.slug, origin: url.origin
+          }));
+        }
+        return jsonResponse({ ok: true, slug: s.slug, status,
+                              editors: s.editors || [], editorsUnknown });
       }
 
       // ---- custom wiki pages (text-first pages under a script/collection) ----

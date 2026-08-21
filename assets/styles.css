@@ -3275,6 +3275,36 @@ html.textedit-on .te-live-hit {
 .guest-bar strong { color: #1b3c58; }
 .guest-bar a { color: #2f6fb8; font-weight: 600; }
 
+/* ─── Approved editors (assets/approved-editors.js) ────────────
+   The named-accounts list in all four editors. One block, because one widget:
+   a character, a script and a collection all mount the same thing. */
+.ae-wrap { display: block; }
+.ae-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.ae-empty { margin: 0; font-size: .85rem; color: #6b5d49; font-style: italic; }
+.ae-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(47,111,184,.09); border: 1px solid rgba(47,111,184,.4);
+  border-radius: 999px; padding: 3px 5px 3px 10px; font-size: .85rem;
+}
+.ae-chip a { color: #2f6fb8; font-weight: 600; text-decoration: none; }
+.ae-chip a:hover { text-decoration: underline; }
+.ae-x {
+  border: none; background: none; cursor: pointer; color: #7a2d2f;
+  font-size: 1.05rem; line-height: 1; padding: 0 4px;
+  /* A phone-sized target: this is the only destructive control in the box. */
+  min-width: 26px; min-height: 26px;
+}
+.ae-x:hover { color: var(--evil); }
+.ae-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ae-input {
+  flex: 1 1 160px; min-width: 0; padding: 7px 10px; font-size: .9rem;
+  border: 1px solid rgba(140,120,90,.6); border-radius: 6px;
+  background: rgba(255,253,245,.85); font-family: inherit;
+}
+.ae-msg { font-size: .84rem; line-height: 1.45; margin-top: 8px; color: #5b4f3d; }
+.ae-msg.ok { color: #1c5429; }
+.ae-msg.err { color: #9a2c2c; }
+
 /* ─── Suggested edits (/suggestions) ───────────────────────────
    The owner's review queue, and a suggester's view of their own. Shares the
    .hist-field before/after blocks with the page history. */
