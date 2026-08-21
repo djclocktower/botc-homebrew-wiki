@@ -49,10 +49,23 @@
     if (target) target.scrollIntoView();
   }
 
-  // Turn the "Appears in" value into a link to its collection page, when one
-  // exists. Resolves the same way the collection pages do (match[] normalized,
-  // then id / slug / displayName) so it works for match variants, and leaves
-  // the text plain when no collection matches (e.g. a bare script name).
+  // Turn the "Appears in" value into a link to the page it names — a
+  // collection or a script. Collections resolve the way the collection pages
+  // themselves do (match[] normalized, then id / slug / displayName), so a
+  // match-term variant still lands; scripts resolve on name or slug.
+  //
+  // Collections are tried first, which is the precedence characterQualifier()
+  // in worker.js already uses when it decides which set a character is filed
+  // under, so a name that is both reaches the same place in both.
+  //
+  // Scripts used to be left out here, and this function is the only thing that
+  // links the row: a character whose "Appears in" named a script — every
+  // character of an imported Bloodstar project, since the project usually
+  // becomes a script — printed a set name as dead text on the page, next to a
+  // Type and a Creator that were both links.
+  //
+  // Still deliberately plain: a value naming two sets ("A, B"). It is matched
+  // whole, so it simply finds nothing, which is what it did before.
   (function linkAppearsIn() {
     var dd = document.querySelector('.info-appears-in');
     if (!dd) return;
@@ -66,21 +79,39 @@
     var key = norm(raw);
     if (!key) return;
     var root = window.LINK_ROOT || '';
-    fetch(root + 'collections.json', { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : []; })
-      .then(function (cols) {
+    function feed(name) {
+      return fetch(root + name, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : []; })
+        .catch(function () { return []; });
+    }
+    // Both feeds at once: scripts.json is already in the browser's cache on
+    // most visits (site.js reads it for the script-count badge), so the second
+    // request usually costs nothing, and asking in series would leave the row
+    // plain for two round trips instead of one.
+    Promise.all([feed('collections.json'), feed('scripts.json')])
+      .then(function (res) {
+        var cols = res[0], scripts = res[1];
         if (!Array.isArray(cols)) cols = (cols && cols.collections) || [];
-        var hit = null;
-        for (var i = 0; i < cols.length; i++) {
+        if (!Array.isArray(scripts)) scripts = (scripts && scripts.scripts) || [];
+        var href = '';
+        for (var i = 0; i < cols.length && !href; i++) {
           var c = cols[i]; if (!c) continue;
           var matches = (c.match || []).map(norm);
           if (matches.indexOf(key) !== -1 || norm(c.id) === key ||
-              norm(c.slug) === key || norm(c.displayName) === key) { hit = c; break; }
+              norm(c.slug) === key || norm(c.displayName) === key) {
+            href = root + 'collection/' + encodeURIComponent(c.id || c.slug || '');
+          }
         }
-        if (!hit) return;
+        for (var j = 0; j < scripts.length && !href; j++) {
+          var sc = scripts[j]; if (!sc || !sc.slug) continue;
+          if (norm(sc.name) === key || norm(sc.slug) === key) {
+            href = root + 's/' + encodeURIComponent(sc.slug);
+          }
+        }
+        if (!href) return;
         var a = document.createElement('a');
         a.className = 'appears-in-link';
-        a.href = root + 'collection/' + encodeURIComponent(hit.id || hit.slug || '');
+        a.href = href;
         a.textContent = raw;
         dd.textContent = '';
         dd.appendChild(a);

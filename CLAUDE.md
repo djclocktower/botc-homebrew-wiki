@@ -675,8 +675,14 @@ happened to equal another collection's name would start swallowing that
 collection's characters. Nothing is stored (the save handler deletes any
 `appearsInFrom` a client sends back), so removing a character from a collection
 takes the line off its page. `render.js`'s `appearsInRow()` prints the typed
-line or the derived links; charpage.js's `linkAppearsIn()` leaves a row that is
-already linked alone.
+line or the derived links; charpage.js's `linkAppearsIn()` turns a TYPED line
+into a link and leaves a row that is already linked alone. It resolves
+collections first (`match[]` normalized, then id / slug / displayName) and then
+**scripts** (name or slug) — the same precedence `characterQualifier()` uses to
+decide which set a character is filed under, so a name that is both lands in
+the same place either way. Scripts were missing from that lookup at first,
+which left every character of an imported Bloodstar project — the project
+usually becomes a script — printing its set name as dead text.
 
 Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
