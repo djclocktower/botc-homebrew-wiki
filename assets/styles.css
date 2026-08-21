@@ -2100,27 +2100,41 @@ body.theme-bg::before {
    <img> would need a fixed fill and would go wrong on every panel that
    changes text colour (theme kits, draft bars, the dark topbar).
 
-   The element is `display: inline` with a left PADDING for its width, not an
-   inline-block with a width. That is load-bearing, and the same reasoning as
-   .coll-mark-sep below: an inline-block is a line break opportunity, so on a
-   narrow collection tile the wreath would wrap onto a line of its own (with
-   the hairline stranded at the end of the line above) and read as a mistake.
-   A non-replaced inline box introduces no break, so the mark always stays
-   with the text it follows.
+   The element is an INLINE-BLOCK with a real width and height. It was once a
+   bare `display: inline` whose width was a left padding, so that it could
+   never be a line break opportunity and would always stay on the line of the
+   text it follows. That is exactly what broke it: an empty inline box gives
+   the line breaker nothing to break at, so that padding is never wrapped — it
+   HANGS off the end of the line. On a character page's Tags row the wreath
+   ended up outside the parchment panel entirely, sitting on the page
+   background. An inline-block is measured and wrapped like any other atomic
+   inline, so it can no longer leave the box it belongs to. What that costs is
+   that the mark CAN now be carried to the next line, which is why it brings
+   its hairline with it (.curata-mark-sep below) instead of leaving it behind.
+
+   The mask is painted by the ::before, not by the element. A mask clips
+   everything the element draws, its own border included, so a wreath masked
+   onto the outer box could not also carry the hairline — and drawing the
+   hairline as a separate element beside it is what allowed the two to be
+   split across a line break in the first place.
 
    The size is a FIXED 15px, not a multiple of the surrounding text. The mark
    hangs off text that is small and of several different sizes (a collection
    tile's footer is 12.8px, a character card's name 16.8px), and an outlined
    wreath needs roughly 15px to keep its leaves apart — scaled to the text it
-   would drop to 11px on a tile and smear into a ring. `font-size` sets the
-   height, because an inline box takes its height from the font's content
-   area, and `padding-left` sets the width; both have to move together. */
+   would drop to 11px on a tile and smear into a ring. `font-size` is kept at
+   that same 15px only so `vertical-align: -.2em` reads against the mark's own
+   size; that is what sits it on the baseline the way the old inline box's
+   descent did (the same idiom as .filter-chip-curata::before below). */
 :root {
   --curata-svg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='8.7 13.8 110.6 110.6'><g fill='none' stroke='black' stroke-width='5' stroke-linejoin='round' stroke-linecap='round'><path d='M64,102A40,40 0 0 1 39.4,30.5M48.2,97.4C44.1,91.3 35.3,95.9 30.7,106C41.5,108.6 50.6,104.5 48.2,97.4ZM30.4,81.4C30.7,74 20.9,72.6 11.2,78C18.4,86.5 28.2,88.5 30.4,81.4ZM25.4,57.9C30,52.1 22.9,45.2 11.9,43.9C12.8,55 19.5,62.3 25.4,57.9ZM38,90.8C44.8,90.2 44.9,81 38.7,72.9C31.9,80.6 31.3,89.7 38,90.8ZM26,70.1C31.9,73.5 37.3,66.1 37.1,55.9C27.1,58.2 21.3,65.2 26,70.1ZM28.6,46.2C31.3,52.5 40,49.7 45.8,41.3C36.4,37.2 27.6,39.5 28.6,46.2ZM37.2,32.3C42.9,37.1 50.1,30.2 51.7,19.2C40.6,19.7 33,26.2 37.2,32.3Z'/><path transform='translate(128 0) scale(-1 1)' d='M64,102A40,40 0 0 1 39.4,30.5M48.2,97.4C44.1,91.3 35.3,95.9 30.7,106C41.5,108.6 50.6,104.5 48.2,97.4ZM30.4,81.4C30.7,74 20.9,72.6 11.2,78C18.4,86.5 28.2,88.5 30.4,81.4ZM25.4,57.9C30,52.1 22.9,45.2 11.9,43.9C12.8,55 19.5,62.3 25.4,57.9ZM38,90.8C44.8,90.2 44.9,81 38.7,72.9C31.9,80.6 31.3,89.7 38,90.8ZM26,70.1C31.9,73.5 37.3,66.1 37.1,55.9C27.1,58.2 21.3,65.2 26,70.1ZM28.6,46.2C31.3,52.5 40,49.7 45.8,41.3C36.4,37.2 27.6,39.5 28.6,46.2ZM37.2,32.3C42.9,37.1 50.1,30.2 51.7,19.2C40.6,19.7 33,26.2 37.2,32.3Z'/><path d='M57,106c-3,6 -8,10 -13,13'/><path d='M71,106c3,6 8,10 13,13'/><circle cx='60.2' cy='105' r='3.4' fill='black' stroke='none'/><circle cx='67.8' cy='105' r='3.4' fill='black' stroke='none'/></g></svg>");
 }
 .curata-mark {
-  display: inline; font-size: 15px; padding-left: 15px; margin-left: 5px;
-  vertical-align: baseline; opacity: .68; cursor: help;
+  display: inline-block; font-size: 15px;
+  margin-left: 5px; vertical-align: -.2em; opacity: .68; cursor: help;
+}
+.curata-mark::before {
+  content: ""; display: block; width: 15px; height: 15px;
   -webkit-mask-image: var(--curata-svg); mask-image: var(--curata-svg);
   -webkit-mask-size: contain; mask-size: contain;
   -webkit-mask-position: center; mask-position: center;
@@ -2130,7 +2144,7 @@ body.theme-bg::before {
    browser with no mask support would show a solid coloured bar instead of a
    wreath; this way it shows nothing, which is merely quiet. */
 @supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
-  .curata-mark { background-color: currentColor; }
+  .curata-mark::before { background-color: currentColor; }
 }
 a:hover > .curata-mark,
 a:hover .curata-mark { opacity: .9; }
@@ -2166,15 +2180,18 @@ a:hover .curata-mark { opacity: .9; }
    and character pages carry it at the end of the Tags row — both behind a
    hairline rule, so it reads as a mark rather than as another item in the
    list next to it (it is not a tag and is not clickable). */
-/* The hairline before a Curata mark. It is drawn as a border on an inline
-   element rather than a 1px inline-block on purpose: an inline-block is a line
-   break opportunity, so on a narrow tile the separator and the mark would wrap
-   onto a line of their own and read as a mistake. A non-replaced inline
-   element introduces no break, so the mark always stays with the text it
-   follows. Renders identically either way. */
-.coll-mark-sep, .info-mark-sep {
-  display: inline; border-left: 1px solid currentColor;
-  opacity: .35; margin: 0 .55em;
+/* The hairline in front of the mark, on the tiles and rows that want one. It
+   is a border on the MARK ITSELF, not a separate span sitting beside it: two
+   elements are two things a line break can fall between, and it does — the
+   hairline stayed at the end of one line while the wreath dropped to the next,
+   which reads as a mistake. A word joiner between them does not reliably stop
+   that (Chrome breaks in front of an atomic inline anyway), and one element
+   cannot be split at all. Its colour is mixed down rather than set with a
+   second `opacity`, which would apply to the wreath as well. */
+.curata-mark-sep {
+  border-left: 1px solid currentColor;
+  border-left-color: color-mix(in srgb, currentColor 50%, transparent);
+  margin-left: .62em; padding-left: .62em;
 }
 /* Placeholder for the tags side of that row when a page is Curata but has
    no tags of its own (it can inherit the wreath from its collection). */
