@@ -37,11 +37,11 @@
     var W = wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
     return (W && W.inlineFormat) ? W.inlineFormat(str, { linkRoot: R() }) : esc(str);
   }
-  function curataMark(d) {
+  function curataMark(d, opts) {
     if (!d || !(d.curata || d.classification === 'curata')) return '';
     var fn = curataMarkFn ||
       (typeof window !== 'undefined' ? window.classBadgeHTML : null);
-    return fn ? fn('curata', { from: d.curataFrom }) : '';
+    return fn ? fn('curata', { from: d.curataFrom, sep: !!(opts && opts.sep) }) : '';
   }
   /* "Appears in": the creator's own free-text line if there is one, else the
      collections that list this character by hand (worked out on read as
@@ -526,16 +526,17 @@
     // comma-separated list — nobody should be able to click it expecting a
     // "Curata" tag page. When a page is Curata but has no tags (it can
     // inherit the wreath from its collection), an em dash holds the tags side so
-    // the hairline still separates two things.
+    // the hairline still separates two things. The rule is drawn ON the mark
+    // (`sep`), so a Tags row that wraps carries the two down together.
     var tagLinks = (d.tags && d.tags.trim()) ? d.tags.split(',').map(function (t) {
       t = t.trim(); if (!t) return '';
       var display = t.toLowerCase().replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
       return '<a class="tag-link" data-tag="' + esc(display) + '" href="' + root + 'tag?t=' + encodeURIComponent(display) + '">' + esc(display) + '</a>';
     }).filter(Boolean).join('<span class="tag-sep">, </span>') : '';
-    var mark = curataMark(d);
+    var mark = curataMark(d, { sep: true });
     var tagsRow = (tagLinks || mark)
       ? '<dt>Tags:</dt><dd>' + (tagLinks || '<span class="tag-none">&mdash;</span>') +
-        (mark ? '<span class="info-mark-sep" aria-hidden="true"></span>' + mark : '') + '</dd>'
+        mark + '</dd>'
       : '';
 
     var info = '<dl class="info"><dt>Type:</dt><dd><a class="type-link" href="' + root + 'team?t=' + esc(team) + '">' + esc(label) + '</a></dd>' +

@@ -251,8 +251,15 @@
      Curata is a bare laurel wreath that inherits the surrounding text colour
      (it is a CSS mask over currentColor — see .curata-mark in styles.css), so
      it reads as part of the title rather than a pill bolted onto it. The span
-     is deliberately empty: the wreath is the element's own background, which
-     is what lets it stay an inline box and never wrap onto a line by itself.
+     is deliberately empty: the wreath is painted by the element itself, so
+     there is no text in it to be read out or copied.
+
+     `opts.sep` asks for the hairline rule that separates the mark from a list
+     it sits at the end of (a collection tile's character count, a character
+     page's Tags row) — it is a modifier on this one element rather than a
+     span of its own, so a line break can never leave the rule on one line and
+     the wreath on the next.
+
      Partial stays a word because "unfinished" is not something a mark can
      say. */
   function classBadgeHTML(cls, opts) {
@@ -260,7 +267,8 @@
       var title = (opts && opts.from)
         ? 'Curata — part of the ' + String(opts.from).replace(/"/g, '&quot;') + ' collection.'
         : DESCRIPTIONS.curata;
-      return '<span class="curata-mark" role="img" title="' +
+      return '<span class="curata-mark' + ((opts && opts.sep) ? ' curata-mark-sep' : '') +
+        '" role="img" title="' +
         title.replace(/"/g, '&quot;') + '" aria-label="Curata"></span>';
     }
     if (cls === 'partial') {
