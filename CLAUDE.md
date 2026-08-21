@@ -174,6 +174,12 @@ assets/
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+                       The chips' CSS (.tag-pick-btn) is in styles.css, not in
+                       the pages: it was hand-copied into create.html and
+                       edit.html, so /bloodstar — the third page to use the
+                       widget — rendered bare browser buttons with no selected
+                       state, and no way to see which tag was about to be
+                       assigned.
   render-page.js       Shared script+collection page renderer (synopsis, gameplay,
                        roster, jinxes, night order, credits, infobox, JSON export,
                        theming). Browser+Worker like render.js; init(Render) injects
@@ -1170,11 +1176,34 @@ the form starts.
 | `image` | `art/{identity}.png` in R2 |
 | synopsis / overview / changelog | the page's Synopsis and Gameplay, and a `/p/` page |
 | the almanac's night order | the page's arranged `nightOrder` |
+| (nothing — Bloodstar has no tags) | assigned by hand, per character, in the tool |
 
 Character fields are rendered **escaped** by render.js, so they are converted
 to plain text — `*emphasis*` there would print its asterisks. Only the
 changelog page and custom boxes go through `render-wiki.js`, and those get the
 marks. That is what the `mode` argument to `htmlToText()` is for.
+
+### Tags are assigned per character, not per project
+
+Bloodstar has no tags and this wiki leans on them: a character with none reads
+as **Partial** and is hidden from the browse pages. The tool first carried one
+tag picker applied to every character in the project, which is not what a tag
+is — "Information" is true of the Ferrotypist and false of the Drunk, and 36
+characters sharing one tag tells a reader nothing.
+
+So tags live on `opts.tagsById` (`{characterId: [tag]}`) and the page has a tag
+assigner: search the cast, tick the characters a tag is true of, give it to all
+of them at once, repeat. `addTags` / `removeTags` / `clearTags` / `tagString`
+in `assets/bloodstar.js` own the shape and each returns a NEW map rather than
+editing the one it was handed. Tagging the whole project is still reachable —
+Select all shown, then assign — but as a deliberate act rather than the default.
+
+**Two independent selections live on that page and must not be confused**: the
+tick in the character table decides whether a character is imported at all, the
+tick in the tag assigner only decides who the next tag lands on. That is why
+the assigner is its own list rather than another column on the table. It offers
+only characters being imported as pages, because a tag on a skipped one, or on
+one pointed at the official character, goes nowhere.
 
 ### Three things that are load-bearing
 

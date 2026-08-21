@@ -96,6 +96,28 @@
   details.bs-adv > summary { cursor:pointer; font-family:'Oswald',sans-serif; font-weight:600;
     font-size:.84rem; letter-spacing:.05em; text-transform:uppercase; color:#5b4632; }
   #tag-picker { display:flex; flex-wrap:wrap; gap:6px; }
+  /* The tag assigner: a searchable list of the characters that will actually
+     get a page, each with its own ticks and its own tags. It scrolls in its own
+     box rather than running the card to 36 rows long — the tag palette below it
+     has to stay reachable without a scroll back up, which is the whole point of
+     assigning to a selection. */
+  .bs-taglist { max-height:320px; overflow-y:auto; border:1px solid #cdbfa0;
+    border-radius:6px; background:#fffdf8; }
+  .bs-tagrow { display:flex; align-items:flex-start; gap:9px; padding:7px 10px;
+    border-bottom:1px solid #eee4cd; cursor:pointer; }
+  .bs-tagrow:last-child { border-bottom:none; }
+  .bs-tagrow.on { background:#eef7ef; }
+  .bs-tagrow input { margin-top:3px; flex:none; width:17px; height:17px; }
+  .bs-tagrow .n { font-weight:600; font-size:.92rem; color:#241a12; }
+  .bs-tagrow .t { font-family:'Oswald',sans-serif; font-size:.72rem; letter-spacing:.04em;
+    text-transform:uppercase; color:#7a6a4e; margin-left:6px; }
+  .bs-tagrow .has { display:block; font-size:.79rem; color:#1c5429; margin-top:2px; }
+  .bs-tagrow .none { display:block; font-size:.79rem; color:#a08b63; margin-top:2px; font-style:italic; }
+  .bs-taglist-empty { padding:14px; text-align:center; color:#a08b63; font-size:.88rem; }
+  .bs-tagsel { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0 0; }
+  .bs-tagsel span { font-size:.85rem; color:#6b5d49; }
+  .bs-tag-cell { font-size:.8rem; color:#1c5429; }
+  .bs-tag-cell.none { color:#a08b63; font-style:italic; }
 </style>
 </head>
 <body>
@@ -197,11 +219,6 @@
         <div class="bs-fld">
           <label for="bs-appears">Appears in <span class="hint">(the set each character says it belongs to)</span></label>
           <input type="text" id="bs-appears">
-        </div>
-        <div class="bs-fld">
-          <label>Tags <span class="hint">— applied to every imported character. Bloodstar has no tags, and a character with none reads as Partial here.</span></label>
-          <div id="tag-picker"></div>
-          <input type="hidden" id="bs-tags">
         </div>
       </div>
 
@@ -335,6 +352,32 @@
       </div>
 
       <div class="bs-card">
+        <h2>Tags</h2>
+        <p class="bs-sub">Bloodstar has no tags and this wiki leans on them — a character
+          with none reads as <strong>Partial</strong> and is hidden from the browse pages until
+          someone adds one. Pick the characters a tag is true of, then give it to all of them
+          at once. <span id="bs-tag-untagged"></span></p>
+
+        <div class="bs-fld" style="margin-bottom:9px">
+          <input type="text" id="bs-tag-search" placeholder="Search characters by name, team or ability&hellip;" autocomplete="off">
+        </div>
+        <div class="bs-taglist" id="bs-taglist"></div>
+        <p class="bs-tagsel">
+          <button type="button" class="btn btn-ghost" id="bs-tag-all">Select all shown</button>
+          <button type="button" class="btn btn-ghost" id="bs-tag-none">Clear selection</button>
+          <span id="bs-tag-count"></span>
+        </p>
+
+        <h3>Give the selected characters&hellip;</h3>
+        <div id="tag-picker"></div>
+        <p class="bs-tagsel" style="margin-top:12px">
+          <button type="button" class="btn btn-blue" id="bs-tag-add">Add to selected</button>
+          <button type="button" class="btn btn-ghost" id="bs-tag-remove">Remove from selected</button>
+          <button type="button" class="btn btn-ghost" id="bs-tag-clear">Clear all tags on selected</button>
+        </p>
+      </div>
+
+      <div class="bs-card">
         <h2>The characters</h2>
         <p class="bs-sub" id="bs-plan-line"></p>
         <p style="margin:0 0 10px">
@@ -343,7 +386,7 @@
         </p>
         <div class="bs-scroll">
           <table class="bs-table">
-            <thead><tr><th class="c"></th><th>Character</th><th>Team</th><th>Becomes</th><th>Art</th><th>Almanac</th><th>Status</th></tr></thead>
+            <thead><tr><th class="c"></th><th>Character</th><th>Team</th><th>Becomes</th><th>Tags</th><th>Art</th><th>Almanac</th><th>Status</th></tr></thead>
             <tbody id="bs-rows"></tbody>
           </table>
         </div>
@@ -385,14 +428,132 @@
       .then(function (j) { me = j && j.user; })
       .catch(function () { /* the read call will say if we are not logged in */ });
 
+    /* ── the tag assigner ──
+       Tags used to be one picker applied to every character in the project,
+       which is not what a tag is: "information" is true of the Ferrotypist and
+       false of the Drunk. So the tags belong to characters, and this is the
+       part that hands them out — search the cast, tick the ones a tag is true
+       of, give it to all of them in one go, and repeat for the next tag.
+
+       Two independent selections live on this page and they must not be
+       confused: the tick in the CHARACTER TABLE decides whether a character is
+       imported at all, and the tick HERE only decides who the next tag lands
+       on. That is why this list is its own control rather than another column
+       on the table. It shows only the characters that will actually get a page,
+       because a tag on one being skipped, or on one pointed at the official
+       character, goes nowhere. */
+    var tagsById = {};      // character id -> [tag]   (the engine owns the shape)
+    var tagPick = {};       // character id -> true    (who the next tag lands on)
+
     if (window.buildTagPicker) window.buildTagPicker($('tag-picker'));
     $('tag-picker').addEventListener('click', function (e) {
       var btn = e.target.closest('.tag-pick-btn');
       if (!btn) return;
       btn.classList.toggle('selected');
-      $('bs-tags').value = Array.prototype.map.call(
+    });
+    function stagedTags() {
+      return Array.prototype.map.call(
         $('tag-picker').querySelectorAll('.tag-pick-btn.selected'),
-        function (b) { return b.getAttribute('data-tag'); }).join(', ');
+        function (b) { return b.getAttribute('data-tag'); });
+    }
+
+    /* The characters this list offers: the ones being imported as pages, minus
+       anything the search box has filtered out. */
+    function taggable() {
+      if (!planned) return [];
+      var q = $('bs-tag-search').value.trim().toLowerCase();
+      return planned.rows.filter(function (r) {
+        if (r.action !== 'create') return false;
+        if (!q) return true;
+        return (r.name + ' ' + r.team + ' ' + (r.entry.ability || '')).toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    function drawTagList() {
+      var rows = taggable();
+      var box = $('bs-taglist');
+      if (!rows.length) {
+        box.innerHTML = '<div class="bs-taglist-empty">' +
+          (planned && planned.creating
+            ? 'No character matches that search.'
+            : 'No characters are being imported as pages, so there is nothing to tag.') +
+          '</div>';
+      } else {
+        box.innerHTML = rows.map(function (r) {
+          var have = BI.tagsFor(tagsById, r.id);
+          return '<label class="bs-tagrow' + (tagPick[r.id] ? ' on' : '') + '">' +
+            '<input type="checkbox" class="bs-tag-pick" data-id="' + esc(r.id) + '"' +
+              (tagPick[r.id] ? ' checked' : '') + '>' +
+            '<span><span class="n">' + esc(r.name) + '</span>' +
+            '<span class="t">' + esc(r.team) + '</span>' +
+            (have.length
+              ? '<span class="has">' + esc(have.join(', ')) + '</span>'
+              : '<span class="none">no tags yet</span>') +
+            '</span></label>';
+        }).join('');
+      }
+      drawTagCount();
+      var left = planned ? BI.untaggedCount(planned, tagsById) : 0;
+      $('bs-tag-untagged').innerHTML = planned && planned.creating
+        ? (left
+            ? '<strong>' + left + ' of ' + planned.creating + '</strong> still have no tag.'
+            : 'Every character being imported has at least one tag.')
+        : '';
+    }
+
+    function pickedIds() {
+      return Object.keys(tagPick).filter(function (id) { return tagPick[id]; });
+    }
+    function applyToPicked(fn) {
+      var ids = pickedIds();
+      if (!ids.length) { alert('Tick the characters first, in the list above.'); return; }
+      fn(ids);
+      drawTagList();
+      refresh();
+    }
+
+    $('bs-taglist').addEventListener('change', function (e) {
+      var cb = e.target.closest('.bs-tag-pick');
+      if (!cb) return;
+      var id = cb.getAttribute('data-id');
+      if (cb.checked) tagPick[id] = true; else delete tagPick[id];
+      // Repaint the row's own state without rebuilding the list, so ticking
+      // several in a row does not scroll back to the top each time.
+      var row = cb.closest('.bs-tagrow');
+      if (row) row.classList.toggle('on', cb.checked);
+      drawTagCount();
+    });
+    /* The count line on its own. Ticking a row calls only this, so a run of
+       ticks does not rebuild the list and scroll it back to the top. It says
+       how many are hidden by the search as well, because a tag lands on every
+       selected character, including the ones scrolled out of sight. */
+    function drawTagCount() {
+      var shown = taggable().filter(function (r) { return tagPick[r.id]; }).length;
+      var total = pickedIds().length;
+      $('bs-tag-count').textContent = shown || total
+        ? shown + ' selected' + (total > shown ? ' here, ' + (total - shown) + ' more hidden by the search' : '')
+        : 'none selected';
+    }
+
+    $('bs-tag-search').addEventListener('input', drawTagList);
+    $('bs-tag-all').addEventListener('click', function () {
+      taggable().forEach(function (r) { tagPick[r.id] = true; });
+      drawTagList();
+    });
+    $('bs-tag-none').addEventListener('click', function () { tagPick = {}; drawTagList(); });
+
+    $('bs-tag-add').addEventListener('click', function () {
+      var tags = stagedTags();
+      if (!tags.length) { alert('Choose a tag below first.'); return; }
+      applyToPicked(function (ids) { tagsById = BI.addTags(tagsById, ids, tags); });
+    });
+    $('bs-tag-remove').addEventListener('click', function () {
+      var tags = stagedTags();
+      if (!tags.length) { alert('Choose the tag to take off, below.'); return; }
+      applyToPicked(function (ids) { tagsById = BI.removeTags(tagsById, ids, tags); });
+    });
+    $('bs-tag-clear').addEventListener('click', function () {
+      applyToPicked(function (ids) { tagsById = BI.clearTags(tagsById, ids); });
     });
 
     /* ── the options, read off the form ── */
@@ -402,7 +563,7 @@
       o.status = $('bs-status-sel').value;
       o.creator = $('bs-creator').value.trim();
       o.appearsIn = $('bs-appears').value.trim();
-      o.tags = $('bs-tags').value.trim();
+      o.tagsById = tagsById;
       o.official = $('bs-official').value;
       o.reworked = $('bs-reworked').value;
       o.flavour = $('bs-flavour').value;
@@ -483,6 +644,9 @@
         (bundle.prose && bundle.prose.changelog) ? '' : 'none';
 
       skipped = {};
+      tagsById = {};
+      tagPick = {};
+      $('bs-tag-search').value = '';
       $('bs-found-card').style.display = '';
       $('bs-options').style.display = '';
       setStatus('ok', 'Read &ldquo;' + esc(m.name || 'that project') + '&rdquo;. Check the options below, then import.');
@@ -521,6 +685,9 @@
       var opts = options();
       planned = BI.plan(bundle, opts);
       $('bs-rows').innerHTML = planned.rows.map(rowHTML).join('');
+      // Who can be tagged follows the options: switching official characters
+      // from "link" to "import" adds eight more characters that now need one.
+      drawTagList();
       var bits = [];
       if (planned.creating) bits.push('<b>' + planned.creating + '</b> new character page' + (planned.creating === 1 ? '' : 's'));
       if (planned.linking) bits.push('<b>' + planned.linking + '</b> pointed at the official character' + (planned.linking === 1 ? '' : 's'));
@@ -539,12 +706,18 @@
       var note = '';
       if (r.official && r.official.match === 'named') note = ' <span class="bs-chip warn">reworked</span>';
       if (r.official && r.official.match === 'credit') note = ' <span class="bs-chip warn">credited to TPI</span>';
+      var tags = BI.tagsFor(tagsById, r.id);
       return '<tr id="bs-row-' + i + '">' +
         '<td class="c"><input type="checkbox" class="bs-inc" data-id="' + esc(r.id) + '"' +
           (skipped[r.id] ? '' : ' checked') + '></td>' +
         '<td><strong>' + esc(r.name) + '</strong></td>' +
         '<td class="bs-team">' + esc(r.team || '—') + '</td>' +
         '<td>' + chip + note + '</td>' +
+        '<td>' + (r.action === 'create'
+          ? (tags.length
+              ? '<span class="bs-tag-cell">' + esc(tags.join(', ')) + '</span>'
+              : '<span class="bs-tag-cell none">none</span>')
+          : '—') + '</td>' +
         '<td>' + (r.hasArt ? 'yes' : '—') + '</td>' +
         '<td>' + (r.hasAlmanac ? 'yes' : '<span class="bs-chip warn">none</span>') + '</td>' +
         '<td class="bs-state bs-state-wait">waiting</td>' +
