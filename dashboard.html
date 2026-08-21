@@ -499,7 +499,7 @@
       <section class="panel" id="rollback-panel">
         <h3>Page history &amp; rollback</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
-          Every time a page is saved, the version it replaced is kept (up to 20 per page). Pick a page to see its history and roll it back to an earlier version. The current version is saved first, so a rollback can itself be undone. The slug is the last part of the page's URL — e.g. <code>fisherman</code> for <code>/c/fisherman</code> — or use the <em>history</em> links in the activity log below.
+          Every time a page is saved, the version it replaced is kept (up to 50 per page). Pick a page to see its history and roll it back to an earlier version. The current version is saved first, so a rollback can itself be undone. The slug is the last part of the page's URL — e.g. <code>fisherman</code> for <code>/c/fisherman</code> — or use the <em>history</em> links in the activity log below.
         </p>
         <div class="act-filters">
           <select id="rb-type">
@@ -768,6 +768,7 @@
               <option value="starlight">curata (old: starlight)</option>
               <option value="unstarlight">uncurata (old: unstarlight)</option>
               <option>protect</option><option>unprotect</option>
+              <option value="tags-open">tag editing opened</option>
               <option>assign-owner</option><option>clean-refs</option>
               <option value="bulk-*">any bulk action</option>
             </optgroup>
@@ -867,6 +868,19 @@
         </div>
         <div id="sto-list"></div>
         <div class="toast" id="sto-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Open tag editing <span class="count-pill" id="tgo-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Lets anyone with an account add <strong>tags</strong> to the untagged characters an account owns. Tags are the one gap a stranger can fill correctly without knowing the character, and <em>tags only</em> is the narrowest sharing there is: the save keeps the stored page and takes only the tags. Skips pages that already have tags, and pages whose owner already chose a sharing mode. Safe to re-run. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="tgo-user" placeholder="username" value="admin">
+          <button type="button" class="small-btn" id="tgo-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="tgo-go" style="display:none">Open tag editing</button>
+        </div>
+        <div id="tgo-list"></div>
+        <div class="toast" id="tgo-toast"></div>
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
@@ -1715,6 +1729,56 @@
         if (!d.ok) { setToast('sto-toast', false, d.error || 'Failed.'); return; }
         setToast('sto-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' given Curata.');
         $('sto-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- open tag editing on one account's untagged characters ---- */
+    $('tgo-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('tgo-list').innerHTML = '<p class="note">Scanning\u2026</p>';
+      postJSON('/api/admin/tags-open-owner', { username: $('tgo-user').value.trim(), dryRun: true })
+        .then(function(res){
+          btn.disabled = false;
+          var d = res.body || {};
+          if (!d.ok) { $('tgo-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('tgo-go').style.display = 'none'; return; }
+          $('tgo-count').textContent = d.count ? d.count + ' to open' : '';
+          if (!d.count) {
+            $('tgo-list').innerHTML = '<p class="note">' + esc(d.username) + ' owns ' + d.owned +
+              ' character' + (d.owned === 1 ? '' : 's') + ', ' + d.untagged + ' of them untagged' +
+              (d.alreadyOpen ? ' \u2014 and every one of those already names a sharing mode' : '') +
+              '. Nothing to open.</p>';
+            $('tgo-go').style.display = 'none';
+            return;
+          }
+          $('tgo-list').innerHTML =
+            '<p class="note"><strong>' + d.count + '</strong> of ' + esc(d.username) + '\u2019s ' +
+            d.untagged + ' untagged character' + (d.untagged === 1 ? '' : 's') +
+            ' would be opened to tag editing.' +
+            (d.alreadyOpen ? ' ' + d.alreadyOpen + ' already name a sharing mode and are left alone.' : '') +
+            ((d.skipped && d.skipped.length)
+              ? ' <strong>' + d.skipped.length + '</strong> row' + (d.skipped.length === 1 ? '' : 's') +
+                ' could not be read and are skipped: ' + esc(d.skipped.slice(0, 20).join(', ')) + '.'
+              : '') +
+            '</p>' +
+            d.pages.map(function(p){
+              return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+                '" target="_blank">' + esc(p.name || p.slug) + '</a></span></div>';
+            }).join('') +
+            (d.count > d.pages.length ? '<p class="note">(showing the first ' + d.pages.length + ')</p>' : '');
+          $('tgo-go').style.display = '';
+        });
+    });
+    $('tgo-go').addEventListener('click', function(){
+      var who = $('tgo-user').value.trim();
+      if (!confirm('Let anyone with an account add tags to every untagged character owned by ' + who + '?\n\nOnly the tags can be changed, and you can shut any page again from its editor.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/tags-open-owner', { username: who, dryRun: false }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('tgo-toast', false, d.error || 'Failed.'); return; }
+        setToast('tgo-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' opened to tag editing.');
+        $('tgo-scan').click();
         loadActivity(true);
       });
     });

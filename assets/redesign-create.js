@@ -79,7 +79,15 @@
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
-      ids: ['tag-picker', 'tags'] }
+      ids: ['tag-picker', 'tags'] },
+    /* Sharing is a section of its own rather than another fieldset swept into
+       Advanced Options. Buried under a summary reading "credits, alt art,
+       jinxes, sidebar boxes, custom JSON", the one control that decides who
+       else may touch the page was effectively unfindable, and the page's own
+       history had nowhere to be linked from at all. `hist-fld` is edit.html
+       only: a page being created has no history yet. */
+    { key: 'sharing',  title: 'Sharing',  sub: 'who else may edit, and every change so far',
+      ids: ['publicEdit', 'hist-fld'] }
   ];
   var ADVANCED_FIELD_IDS = ['pronunciation', 'ipa', 'respelling',
     'translatedBy', 'iconBy', 'artAlt'];
@@ -103,7 +111,7 @@
     return 'head'; // h2, intro sub, import fieldset, anything unrecognised
   }
 
-  var buckets = { head: [], basics: [], 'the-page': [], tags: [],
+  var buckets = { head: [], basics: [], 'the-page': [], tags: [], sharing: [],
                   nightorder: [], advFld: [], advFs: [], actions: [] };
   Array.prototype.slice.call(card.children).forEach(function (node) {
     buckets[bucketOf(node)].push(node);
