@@ -96,6 +96,9 @@
  *   POST /api/publish         -> flip a page between draft and published
  *   POST /api/delete          -> soft-delete a page you own (recoverable)
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
+ *   GET  /api/page-json       -> a script's or collection's export JSON as a
+ *                                real downloadable file (?type=&slug=), which is
+ *                                what the page's Download JSON button links to
  *
  *   -- importing a Bloodstar project (/bloodstar) --
  *   GET  /api/bloodstar       -> read a project on bloodstar.xyz: fetches its
@@ -191,6 +194,13 @@
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
+ *   POST /api/admin/official-cleanup -> find pages that ARE official
+ *                                characters (same name AND ability) and retire
+ *                                them: script rosters are repointed at
+ *                                'off-{id}', collections drop them, and the
+ *                                pages are soft-deleted so they can be
+ *                                restored. {dryRun:true} first. Pages that
+ *                                only share a NAME are reported, never touched.
  *   POST /api/admin/cleanup-odyssey -> ONE-TIME: em dashes + gendered pronouns
  *                                      in the Odyssey almanacs. Remove after use.
  *   POST /api/admin/nest-urls -> give every character a nested /c/{set}/{character}
@@ -3529,6 +3539,67 @@ async function charsBySlug(env, slugs) {
   return out;
 }
 
+/* ---- the export JSON as a real file ----
+   GET /api/page-json?type=script|collection&slug=…
+
+   The Download JSON button on /s/ and /collection/ used to be an <a href="#">
+   that JavaScript turned into a blob: URL after the page loaded. That works
+   until it doesn't: if the script has not run yet, failed, or was blocked by
+   an extension, the bare "#" is what the click gets, and the page silently
+   jumps to the top instead of saving anything — which is exactly what a
+   reader reports as "the download button does nothing", with no error to see
+   and nothing to tell them the file was never attached.
+
+   The server already builds this JSON to render the page, so the button can
+   just be a link to it. No script, no blob, no lifetime to manage: it works
+   with JavaScript off, survives a long-press "save link as", and can be
+   pasted to somebody. Same visibility rules as the page it belongs to — a
+   draft's JSON is for whoever may edit it, and a deleted page has none.
+
+   Content-Disposition is what makes it save rather than display; the filename
+   is the page's own slug, as the blob version named it. */
+async function pageJsonResponse(env, request, url) {
+  const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
+  const slug = String(url.searchParams.get('slug') || '');
+  if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+  const isScript = type === 'script';
+  const table = isScript ? 'scripts' : 'collections';
+  let row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
+    .bind(slug).first().catch(() => null);
+  if (!isScript && !row) row = await findCollectionRow(env, slug);
+  if (!row || !row.data || row.status === 'deleted') {
+    return jsonResponse({ error: 'Not found' }, { status: 404 });
+  }
+  const d = foldLegacyCurata(JSON.parse(row.data));
+  if (!d.slug) d.slug = row.slug || slug;
+  if (row.status === 'draft') {
+    const sess = await getSession(env, request);
+    if (!(canEditRow(sess, row) || await canEditPage(env, sess, type, row))) {
+      return jsonResponse({ error: 'Not found' }, { status: 404 });
+    }
+  }
+  let chars = isScript
+    ? await charsBySlug(env, d.characters || [])
+    : await cachedCardChars(env);
+  if (isScript && ((d.characters || []).some(x => String(x).indexOf('off-') === 0) || d.nightOrder)) {
+    const official = await loadOfficialRoles(env, url.origin);
+    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
+  }
+  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+  const entries = isScript
+    ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
+    : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
+  const text = PageRender.buildPageExport(name, d.author, d.header, entries, isScript ? d : undefined);
+  const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
+  return new Response(text, {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="' + file + '.json"',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
 // ---- shared SSR for /s/{slug} and /collection/{id} pages ----
 async function renderContentPage(env, ctx, request, url, type, slug) {
   const isScript = type === 'script';
@@ -4958,6 +5029,11 @@ export default {
       });
     }
 
+    // The Download JSON button on /s/ and /collection/ points straight here.
+    if (method === 'GET' && path === '/api/page-json') {
+      return pageJsonResponse(env, request, url);
+    }
+
     /* ---- read a Bloodstar project ----
        ?url= anything that points at a project on bloodstar.xyz: the almanac,
        the script.json, or the folder. The Worker fetches BOTH published files
@@ -5260,7 +5336,21 @@ export default {
       auth.searchParams.set('redirect_uri', discordRedirectUri(env));
       auth.searchParams.set('scope', 'identify email');
       auth.searchParams.set('state', state);
-      auth.searchParams.set('prompt', 'none');
+      // No `prompt` parameter. It used to be sent as `prompt=none`, which
+      // Discord documents for exactly one case — "if a user has previously
+      // authorized your application with the requested scopes ... it will skip
+      // the authorization screen and redirect them back" — and says nothing
+      // about any other. Everyone else takes an undefined path: a first-time
+      // user, someone who has revoked access, and above all someone who is not
+      // logged in to Discord IN THAT BROWSER, because "show no UI" and "ask
+      // them to log in" cannot both be obeyed. That last case is why this read
+      // as a browser bug: signed in to Discord in one browser and not the
+      // other, the same account gets a working sign-in in one and a page that
+      // spins forever in the other, with nothing different on our side.
+      //
+      // Leaving it off costs a returning reader one click on Discord's
+      // "Authorize" screen. It buys a flow with no undefined states in it,
+      // which is the better trade for the front door of the site.
       // A cached redirect would replay a state token that KV has already
       // expired or consumed, and the reader would be stuck on "please try
       // again" until they cleared their browser cache.
@@ -7318,6 +7408,25 @@ export default {
         if (!/^[a-z0-9-]{1,80}$/.test(String(c.slug))) {
           return jsonResponse({ error: 'Invalid character URL. Use lower-case letters, numbers and hyphens only.' }, { status: 400 });
         }
+        // No page on this wiki may BE an official character. Enforced here, at
+        // the one door every route goes through — the two editors, the mass
+        // uploader, the Bloodstar importer and the Grimoire Forge draft button
+        // all end up at /api/character — so there is one rule rather than five
+        // that can drift. Admins included: "never" is the point, and an admin
+        // saving one is how two of the three already on the wiki got there.
+        //
+        // A shared NAME is fine and always was (this wiki has a Pope and a
+        // Nightwatchman that are nothing like the official ones); it is the
+        // name AND the ability together that mean the page is a copy.
+        {
+          const graded = OfficialRoles.officialMatch(
+            await loadOfficialRoles(env, url.origin), { name: c.name, ability: c.ability });
+          if (graded && graded.match === 'exact') {
+            return jsonResponse({
+              error: OfficialRoles.officialRefusal(graded.role), official: graded.role.id
+            }, { status: 400 });
+          }
+        }
         // Renaming: the editor sends the page's identity in renameFrom and the
         // slug its new name asks for in `slug`. The IDENTITY does not move —
         // it is what the art in R2, the comments, the view history and every
@@ -9104,6 +9213,143 @@ export default {
         await logActivity(env, sess, 'unpublish', 'character', null,
           hits.length + ' incomplete page(s) moved to draft');
         return jsonResponse({ ok: true, count: hits.length, byReason, pages: hits.map(h => h.slug) });
+      }
+
+      /* ---- official characters that have slipped onto the wiki ----
+         This wiki is for homebrew. A page that IS an official character is a
+         duplicate of one the official wiki already has, hosts art that is not
+         ours, and takes the name from anyone writing a real homebrew character
+         of it. /api/character refuses to make another one; this finds the ones
+         made before that guard existed.
+
+         Two lists, and only one of them is ever acted on:
+           exact  name AND ability are the official character's. These are
+                  repointed and retired.
+           named  the name is shared, the ability is not. Reported only — this
+                  wiki has a Pope and a Nightwatchman that are nothing like the
+                  official ones, and telling a reworked character from a
+                  retyped one is a judgement no comparison should make alone.
+
+         Retiring one is a SOFT delete, the same one /api/delete does, so it
+         sits in the dashboard's deleted list and can be restored. Nothing is
+         purged and no art is removed. Always {dryRun:true} first. */
+      if (path === '/api/admin/official-cleanup') {
+        const b = await request.json().catch(() => ({}));
+        const roster = await loadOfficialRoles(env, url.origin);
+        if (!roster.length) {
+          return jsonResponse({ error: 'The official roster could not be loaded, so nothing was compared.' }, { status: 503 });
+        }
+        const { results } = await env.DB.prepare(
+          "SELECT slug, name, status, owner_id, data FROM characters WHERE status != 'deleted'"
+        ).all();
+        const exact = [], named = [];
+        for (const r of results || []) {
+          const d = parseData(r);
+          const graded = OfficialRoles.officialMatch(roster, { name: r.name, ability: d.ability });
+          if (!graded) continue;
+          const row = {
+            slug: r.slug, name: r.name, status: r.status || 'published',
+            creator: d.creator || '', officialId: graded.role.id,
+            officialSlug: graded.role.slug, usedBy: []
+          };
+          (graded.match === 'exact' ? exact : named).push(row);
+        }
+
+        // Which scripts and collections point at each one, so the report can
+        // say what moves and the run knows what to rewrite. Both tables are
+        // small (tens of rows), so one scan each is cheaper than a query per
+        // hit.
+        const bySlug = new Map(exact.map(h => [h.slug, h]));
+        const scriptRows = bySlug.size
+          ? (await env.DB.prepare("SELECT slug, name, data FROM scripts WHERE status != 'deleted'").all()).results || []
+          : [];
+        const collRows = bySlug.size
+          ? (await env.DB.prepare("SELECT slug, display_name, data FROM collections WHERE status != 'deleted'").all()).results || []
+          : [];
+        const scriptEdits = [], collEdits = [];
+        for (const sc of scriptRows) {
+          const d = parseData(sc);
+          const list = Array.isArray(d.characters) ? d.characters : [];
+          if (!list.some(x => bySlug.has(String(x)))) continue;
+          // The roster keeps the character: the slug is swapped for the
+          // official one ('off-{id}'), which is what every other script on the
+          // wiki already uses, so the page still lists it and the name links
+          // to the official wiki instead of to a page that is about to go.
+          const next = [];
+          for (const x of list) {
+            const hit = bySlug.get(String(x));
+            const val = hit ? hit.officialSlug : String(x);
+            if (!next.includes(val)) next.push(val);
+          }
+          d.characters = next;
+          scriptEdits.push({ slug: sc.slug, name: sc.name, data: d });
+          for (const x of list) { const h = bySlug.get(String(x)); if (h) h.usedBy.push('script:' + sc.slug); }
+        }
+        for (const cl of collRows) {
+          const d = parseData(cl);
+          let touched = false;
+          // A collection holds pages on THIS wiki, and 'off-' resolves to none
+          // of them — so here the character is dropped rather than swapped.
+          for (const field of ['include', 'exclude', 'order']) {
+            if (!Array.isArray(d[field])) continue;
+            const next = d[field].filter(x => !bySlug.has(String(x)));
+            if (next.length !== d[field].length) { d[field] = next; touched = true; }
+          }
+          if (!touched) continue;
+          collEdits.push({ slug: cl.slug, name: cl.display_name, data: d });
+          for (const field of ['include', 'exclude', 'order']) {
+            for (const x of (parseData(cl)[field] || [])) {
+              const h = bySlug.get(String(x));
+              if (h && !h.usedBy.includes('collection:' + cl.slug)) h.usedBy.push('collection:' + cl.slug);
+            }
+          }
+        }
+
+        if (b.dryRun) {
+          return jsonResponse({
+            ok: true, dryRun: true,
+            exact, named,
+            scripts: scriptEdits.map(e => ({ slug: e.slug, name: e.name })),
+            collections: collEdits.map(e => ({ slug: e.slug, name: e.name }))
+          });
+        }
+        if (!exact.length) {
+          return jsonResponse({ ok: true, exact: [], named, scripts: [], collections: [] });
+        }
+        for (const e of scriptEdits) {
+          await env.DB.prepare("UPDATE scripts SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(e.data), e.slug).run();
+        }
+        for (const e of collEdits) {
+          await env.DB.prepare("UPDATE collections SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(e.data), e.slug).run();
+        }
+        // Retire the pages the same way /api/delete does, so they land in the
+        // dashboard's deleted list and can be put back.
+        let byName = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          byName = u ? u.username : null;
+        } catch { /* non-fatal */ }
+        for (const h of exact) {
+          const row = await getEntityRow(env, 'character', h.slug);
+          if (!row) continue;
+          const d = parseData(row);
+          d._deleted = {
+            at: new Date().toISOString(), by: byName, from: row.status || 'published',
+            reason: 'official character (' + h.officialId + ')'
+          };
+          await env.DB.prepare(
+            "UPDATE characters SET status='deleted', data=?, updated_at=datetime('now') WHERE slug=?"
+          ).bind(JSON.stringify(d), row.slug).run();
+        }
+        await logActivity(env, sess, 'delete', 'character', null,
+          exact.length + ' official character page(s) retired');
+        return jsonResponse({
+          ok: true, exact, named,
+          scripts: scriptEdits.map(e => ({ slug: e.slug, name: e.name })),
+          collections: collEdits.map(e => ({ slug: e.slug, name: e.name }))
+        });
       }
 
       // ---- admin: one-time Odyssey text cleanup ----

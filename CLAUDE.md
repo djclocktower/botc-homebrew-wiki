@@ -174,6 +174,12 @@ assets/
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+                       The chips' CSS (.tag-pick-btn) is in styles.css, not in
+                       the pages: it was hand-copied into create.html and
+                       edit.html, so /bloodstar — the third page to use the
+                       widget — rendered bare browser buttons with no selected
+                       state, and no way to see which tag was about to be
+                       assigned.
   render-page.js       Shared script+collection page renderer (synopsis, gameplay,
                        roster, jinxes, night order, credits, infobox, JSON export,
                        theming). Browser+Worker like render.js; init(Render) injects
@@ -328,6 +334,10 @@ assets/
                        token-placement marker with nothing to place in a list)
                        out of the official night reminders. Browser + Worker;
                        the two JSON files are handed in, never fetched here.
+                       Also owns officialMatch() — the ONE answer to "is this
+                       character an official one", asked by /api/character's
+                       guard, the Bloodstar importer and the admin sweep. See
+                       "No official characters" below.
   special-editor.js    The `special[]` repeater on create.html + edit.html — the
                        official schema's per-character behaviour flags ("cannot
                        go in the bag", "show the Storyteller the grimoire"), of
@@ -675,8 +685,14 @@ happened to equal another collection's name would start swallowing that
 collection's characters. Nothing is stored (the save handler deletes any
 `appearsInFrom` a client sends back), so removing a character from a collection
 takes the line off its page. `render.js`'s `appearsInRow()` prints the typed
-line or the derived links; charpage.js's `linkAppearsIn()` leaves a row that is
-already linked alone.
+line or the derived links; charpage.js's `linkAppearsIn()` turns a TYPED line
+into a link and leaves a row that is already linked alone. It resolves
+collections first (`match[]` normalized, then id / slug / displayName) and then
+**scripts** (name or slug) — the same precedence `characterQualifier()` uses to
+decide which set a character is filed under, so a name that is both lands in
+the same place either way. Scripts were missing from that lookup at first,
+which left every character of an imported Bloodstar project — the project
+usually becomes a script — printing its set name as dead text.
 
 Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
@@ -1096,6 +1112,49 @@ caps and whitelists the fields on save.
   where both characters wrote a rule, since only one wording is ever shown and the
   other is invisible. Dashboard card: "Jinx health".
 
+## No official characters
+
+The wiki is for homebrew. A page that **is** an official character duplicates
+one the official wiki already has, hosts art that is not ours, and takes the
+name from anyone writing a real homebrew character of it. So nothing here may
+be one, and that is enforced rather than asked politely.
+
+**`OfficialRoles.officialMatch(roster, {name, ability})`** in
+`assets/official-roles.js` is the single answer, and it grades rather than
+guessing:
+
+- **`exact`** — the name **and** the ability are the official character's. This
+  IS that character. Refused everywhere, retired retroactively.
+- **`named`** — the name matches, the ability does not. Ordinary homebrew: this
+  wiki has a Pope and a Nightwatchman that are nothing like the official ones.
+  **Never refused on this basis**, only ever reported for a person to look at.
+
+Abilities are compared through `abilityKey()`, which turns **`&` into `and`**
+before dropping punctuation. Without that the official Dreamer imports as
+homebrew, because `1 good & 1 evil` and `1 good and 1 evil` fold to different
+strings — which is exactly how it got onto the wiki. Numbers are left alone:
+"choose 2 players" and "choose 3 players" are different rules.
+
+Three places ask:
+
+- **`POST /api/character`** refuses an exact match, for everyone including
+  admins — "never" is the point, and an admin saving one is how two of the
+  three already on the wiki got there. It is the one door every route goes
+  through (both editors, `mass-upload.html`, `/bloodstar`, Grimoire Forge's
+  "+ Add to Drafts"), so there is one rule rather than five that can drift.
+- **`/bloodstar`** has no option for it: an exact match is always pointed at
+  `off-{id}` and never becomes a page. A script keeps the character either
+  way — `charHref()` in render-page.js sends an official roster entry to the
+  official wiki, `offsite()` opens it in a new tab and `offMark()` adds the ↗.
+- **`POST /api/admin/official-cleanup`** ({dryRun:true} first; dashboard card
+  "Official characters on the wiki") retires the ones made before the guard.
+  Script rosters are **repointed** at `off-{id}`, so the script still lists the
+  character and the name links out; collections **drop** it, because a
+  collection resolves against pages on this wiki and `off-` matches none of
+  them. The page itself is **soft-deleted** the same way `/api/delete` does it,
+  so it lands in the dashboard's deleted list and can be restored. Nothing is
+  purged and no art is removed.
+
 ## Importing from Bloodstar (`/bloodstar`)
 
 Bloodstar (bloodstar.xyz) is where a lot of homebrew is actually written, and a
@@ -1164,22 +1223,45 @@ the form starts.
 | `image` | `art/{identity}.png` in R2 |
 | synopsis / overview / changelog | the page's Synopsis and Gameplay, and a `/p/` page |
 | the almanac's night order | the page's arranged `nightOrder` |
+| (nothing — Bloodstar has no tags) | assigned by hand, per character, in the tool |
 
 Character fields are rendered **escaped** by render.js, so they are converted
 to plain text — `*emphasis*` there would print its asterisks. Only the
 changelog page and custom boxes go through `render-wiki.js`, and those get the
 marks. That is what the `mode` argument to `htmlToText()` is for.
 
+### Tags are assigned per character, not per project
+
+Bloodstar has no tags and this wiki leans on them: a character with none reads
+as **Partial** and is hidden from the browse pages. The tool first carried one
+tag picker applied to every character in the project, which is not what a tag
+is — "Information" is true of the Ferrotypist and false of the Drunk, and 36
+characters sharing one tag tells a reader nothing.
+
+So tags live on `opts.tagsById` (`{characterId: [tag]}`) and the page has a tag
+assigner: search the cast, tick the characters a tag is true of, give it to all
+of them at once, repeat. `addTags` / `removeTags` / `clearTags` / `tagString`
+in `assets/bloodstar.js` own the shape and each returns a NEW map rather than
+editing the one it was handed. Tagging the whole project is still reachable —
+Select all shown, then assign — but as a deliberate act rather than the default.
+
+**Two independent selections live on that page and must not be confused**: the
+tick in the character table decides whether a character is imported at all, the
+tick in the tag assigner only decides who the next tag lands on. That is why
+the assigner is its own list rather than another column on the table. It offers
+only characters being imported as pages, because a tag on a skipped one, or on
+one pointed at the official character, goes nowhere.
+
 ### Three things that are load-bearing
 
 - **Official characters are graded, not guessed.** A script carries official
   characters alongside homebrew ones and Bloodstar exports them as ordinary
-  entries. `'exact'` (the name **and** the ability match the official
-  character) defaults to pointing the roster at `off-{id}` — the wiki does not
-  need its 400th Chambermaid. `'named'` (the name matches, the ability does
-  not) is a *reworked* character wearing a familiar name and defaults to its
-  own page: linking it would put an ability on the script the author never
-  wrote. `'credit'` is the attribution alone, which is usually a rename (this
+  entries. `'exact'` (the name **and** the ability match) always points the
+  roster at `off-{id}` and never makes a page — see "No official characters"
+  above; there is no option for it. `'named'` (the name matches, the ability
+  does not) is a character wearing a familiar name and defaults to its own
+  page: linking it would put an ability on the script the author never wrote.
+  `'credit'` is the attribution alone, which is usually a rename (this
   sample's Agent is the Spy) and is homebrew.
 - **Identities are settled before anything is written.** A jinx names the other
   character's identity, so half a list of identities cannot resolve one. The
@@ -1559,6 +1641,25 @@ this is how admin-written pages stop being hidden for want of a tag.
   into steven-approved-order.html. More-specific prefixes ("Each night*") must
   come before less-specific ("Each night") in the array — do not reorder.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Every string a user typed needs a wrap rule.** A bare URL is one
+  unbreakable token, and the default `overflow-wrap: normal` will not break it
+  — so it runs past its panel, past the viewport, and widens the whole
+  DOCUMENT. That last part is why it never looks like a wrapping bug: the
+  phone zooms out to fit, the top bar shrinks to a third of the screen, and
+  the fixed page background stops covering what you can see. Two blocks near
+  the end of styles.css hold every selector that needs it (one for names, one
+  for prose); a new field that prints author text goes in one of them. Use
+  `anywhere`, not `break-word` — several are flex/grid items and only
+  `anywhere` shrinks their min-content width so the container stops being
+  stretched.
+- **A script or collection tile's banner is `header || logo`, then the
+  fallback.** That order matches what the `/s/` and `/collection/` pages
+  themselves fall back through, and it is hand-copied into **five** places:
+  `scripts.html`, `index.html` (twice — scripts strip and collections grid),
+  `all-collections.html` and `profile.html` (twice). Change one, change all
+  five. The tiles used to read `header` only, so every page with a logo and no
+  header — which is every Bloodstar import — drew the text banner on its card
+  while its own page showed the logo.
 
 ## Caching
 
@@ -1617,6 +1718,17 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+   **Never send `prompt=none` to Discord's authorize endpoint.** Discord
+   documents it for one case only — a reader who has already authorized the
+   app, who is sent straight back — and defines nothing else. A first-time
+   reader, one who revoked access, and above all one who is *not logged in to
+   Discord in that browser* all take an undefined path, because "show no UI"
+   and "ask them to log in" cannot both be honoured; the sign-in page can sit
+   spinning instead of erroring. It reads as a browser bug and is not one: the
+   same person signed in to Discord in Chrome and not in Firefox gets a working
+   sign-in in one and a hang in the other, with nothing different on our side.
+   Omitting it costs a returning reader one click on Discord's Authorize
+   screen, which is the right trade for the front door.
    **The Discord sign-in health check is `GET /api/admin/discord-check`** (a
    card on the dashboard's Health tab): it asks Discord whether the client
    id/secret pair is still good and prints the exact callback URL that has to

@@ -90,8 +90,15 @@
         function cardHTML(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
-          var headerHTML = sc.header
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header) + '" alt="' + esc(sc.name) + '"></div>'
+          // Header image first, then the logo, then the name as a drawn
+          // banner. The /s/ page has always fallen back header -> logo -> title;
+          // the tiles only looked at the header, so a script with a logo and no
+          // header (every Bloodstar import, for one) showed a text banner here
+          // while its own page showed the logo. The 21:9 box is object-fit:
+          // contain, so a square logo letterboxes rather than being cropped.
+          var banner = sc.header || sc.logo;
+          var headerHTML = banner
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +

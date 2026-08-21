@@ -912,6 +912,16 @@
         <div class="toast" id="noicon-toast"></div>
       </section>
       <section class="panel">
+        <h3>Official characters on the wiki <span class="count-pill" id="offc-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          This wiki is for homebrew, and a page that <em>is</em> an official character duplicates one the official wiki already has, hosts art that is not ours, and takes the name from anyone writing a real homebrew character of it. The editors now refuse to make another; this finds the ones made before that. <strong>Scan first.</strong> Retiring one keeps it on every script that uses it &mdash; the roster is repointed at the official character, so the name still shows and links to the official wiki &mdash; and the page itself is <strong>soft-deleted</strong>, so it sits in Deleted pages below and can be restored. Nothing is purged and no art is removed. Characters that only <em>share</em> a name are listed separately and never touched.
+        </p>
+        <button type="button" class="small-btn" id="offc-scan">Scan</button>
+        <button type="button" class="small-btn alt" id="offc-fix" style="display:none">Retire them</button>
+        <div id="offc-list"></div>
+        <div class="toast" id="offc-toast"></div>
+      </section>
+      <section class="panel">
         <h3>Clean up Odyssey text <span class="count-pill" id="odyc-count"></span></h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           One-time tidy of the 119 Odyssey almanacs: removes the translation's em dashes (commas instead) and rewrites he/him/his and she/her to they/them/their. Character abilities are never touched, and the flavour quotes keep their wording apart from the dashes. Every page it edits is saved to revisions first. Check first, then run.
@@ -1932,6 +1942,75 @@
         setToast('noicon-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' moved to drafts.');
         $('noicon-scan').click();
         loadActivity(true);
+      });
+    });
+
+    /* ---- official character pages that slipped in ---- */
+    function offcDraw(d) {
+      var exact = d.exact || [], named = d.named || [];
+      $('offc-count').textContent = exact.length ? exact.length + ' to retire' : '';
+      var html = '';
+      if (!exact.length) {
+        html += '<p class="note">No page on the wiki is an official character. Nothing to retire.</p>';
+      } else {
+        html += '<p class="note"><strong>' + exact.length + '</strong> page' + (exact.length === 1 ? ' is' : 's are') +
+          ' an official character (same name, same ability).' +
+          ((d.scripts || []).length ? ' ' + d.scripts.length + ' script' + (d.scripts.length === 1 ? '' : 's') + ' would be repointed at the official character.' : '') +
+          ((d.collections || []).length ? ' ' + d.collections.length + ' collection' + (d.collections.length === 1 ? '' : 's') + ' would drop it from its roster.' : '') +
+          '</p>';
+        html += exact.map(function (p) {
+          return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+            '" target="_blank">' + esc(p.name || p.slug) + '</a>' +
+            (p.creator ? ' <span class="dim">by ' + esc(p.creator) + '</span>' : '') +
+            (p.status && p.status !== 'published' ? ' <span class="dim">(' + esc(p.status) + ')</span>' : '') +
+            '</span><span class="dim">' +
+            (p.usedBy && p.usedBy.length ? esc(p.usedBy.join(', ')) : 'on no script') +
+            '</span></div>';
+        }).join('');
+      }
+      if (named.length) {
+        html += '<p class="note" style="margin-top:12px"><strong>' + named.length + '</strong> page' +
+          (named.length === 1 ? '' : 's') + ' share' + (named.length === 1 ? 's' : '') +
+          ' an official name but not the ability. These are left alone — look only if you want to.</p>' +
+          named.map(function (p) {
+            return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+              '" target="_blank">' + esc(p.name || p.slug) + '</a>' +
+              (p.creator ? ' <span class="dim">by ' + esc(p.creator) + '</span>' : '') +
+              '</span><span class="dim">official: ' + esc(p.officialId) + '</span></div>';
+          }).join('');
+      }
+      $('offc-list').innerHTML = html;
+      $('offc-fix').style.display = exact.length ? '' : 'none';
+    }
+    $('offc-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('offc-list').innerHTML = '<p class="note">Scanning…</p>';
+      postJSON('/api/admin/official-cleanup', { dryRun: true }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('offc-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; return; }
+        offcDraw(d);
+      }).catch(function(){
+        btn.disabled = false;
+        $('offc-list').innerHTML = '<p class="note">Scan failed.</p>';
+      });
+    });
+    $('offc-fix').addEventListener('click', function(){
+      var n = ($('offc-count').textContent || '').replace(/\D+/g, '') || 'these';
+      if (!confirm('Retire ' + n + ' official character page' + (n === '1' ? '' : 's') + '?\n\n' +
+        'Scripts keep the character: their rosters are repointed at the official one, so the name still shows and links to the official wiki. Collections drop it, because a collection can only hold pages from this wiki.\n\n' +
+        'The pages are soft-deleted — they appear under Deleted pages and can be restored. Nothing is purged and no art is removed.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/official-cleanup', {}).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('offc-toast', false, d.error || 'Failed.'); return; }
+        setToast('offc-toast', true, (d.exact || []).length + ' page(s) retired.');
+        $('offc-scan').click();
+        loadActivity(true);
+      }).catch(function(){
+        btn.disabled = false;
+        setToast('offc-toast', false, 'Failed.');
       });
     });
 

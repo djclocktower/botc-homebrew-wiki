@@ -68,8 +68,21 @@
       status: 'draft',            // draft | published
       creator: '',
       appearsIn: '',
-      tags: '',
-      official: 'link',           // link | import | skip
+      // Tags are per character, keyed by the Bloodstar id: {id: ['information']}.
+      // They were once one box applied to every character in the project, which
+      // is not what a tag is — "information" is true of the Ferrotypist and
+      // false of the Drunk, and a set of 36 characters sharing one tag tells a
+      // reader nothing. Tagging everything at once is still reachable, but as a
+      // deliberate act (select all, then assign) rather than the default.
+      tagsById: {},
+      // There is deliberately no option for an EXACT official match. This wiki
+      // is for homebrew: an official character has a page on the official wiki
+      // already, its art is not ours to host, and a copy here fragments search
+      // and takes the name from whoever writes a real homebrew character of
+      // it. So it is never made into a page — the roster points at off-{id}
+      // and the script page links the name straight to the official wiki.
+      // What IS an option is the name-only match: a character wearing a
+      // familiar name with a different ability is ordinary homebrew.
       reworked: 'import',         // import | link | skip
       art: true,
       logo: true,
@@ -94,6 +107,73 @@
     };
   }
 
+  /* ── tags, per character ──
+     Held as {characterId: [tag]} so a tag can be given to a handful of
+     characters at once and taken off again without a second pass over the
+     list. Everything here returns a NEW map rather than editing the one it was
+     given: the page re-renders from whatever it is handed, and an in-place
+     edit would make an undo impossible to add later. */
+  function tagsFor(map, id) {
+    var list = map && map[id];
+    return Array.isArray(list) ? list.slice() : [];
+  }
+
+  /* What /api/character actually stores: one comma-separated string. */
+  function tagString(map, id) {
+    return tagsFor(map, id).join(', ');
+  }
+
+  function cleanTags(tags) {
+    return (tags || []).map(function (t) { return String(t || '').trim(); })
+      .filter(Boolean);
+  }
+
+  function addTags(map, ids, tags) {
+    var out = {}, want = cleanTags(tags);
+    Object.keys(map || {}).forEach(function (k) { out[k] = tagsFor(map, k); });
+    if (!want.length) return out;
+    (ids || []).forEach(function (id) {
+      var have = out[id] || [];
+      want.forEach(function (t) {
+        // Case-insensitively, because the picker and a hand-typed tag can
+        // disagree on capitals and the wiki treats them as one tag.
+        var seen = have.some(function (x) { return x.toLowerCase() === t.toLowerCase(); });
+        if (!seen) have.push(t);
+      });
+      out[id] = have;
+    });
+    return out;
+  }
+
+  function removeTags(map, ids, tags) {
+    var out = {}, drop = cleanTags(tags).map(function (t) { return t.toLowerCase(); });
+    Object.keys(map || {}).forEach(function (k) { out[k] = tagsFor(map, k); });
+    (ids || []).forEach(function (id) {
+      out[id] = (out[id] || []).filter(function (t) {
+        return drop.indexOf(t.toLowerCase()) === -1;
+      });
+      if (!out[id].length) delete out[id];
+    });
+    return out;
+  }
+
+  function clearTags(map, ids) {
+    var out = {};
+    Object.keys(map || {}).forEach(function (k) { out[k] = tagsFor(map, k); });
+    (ids || []).forEach(function (id) { delete out[id]; });
+    return out;
+  }
+
+  /* How many of the characters being imported still have no tag. A character
+     with none reads as Partial on this wiki, and an import is the one moment
+     somebody has the whole cast in front of them, so it is worth saying out
+     loud rather than leaving to be discovered page by page. */
+  function untaggedCount(planned, map) {
+    return (planned.rows || []).filter(function (r) {
+      return r.action === 'create' && !tagsFor(map, r.id).length;
+    }).length;
+  }
+
   /* ── who becomes what ──
      Three answers per character, and the tool never guesses silently:
        'create'  a wiki page of its own
@@ -109,9 +189,11 @@
     if (entry.bare) return 'link';
     var match = entry.official && entry.official.match;
     if (!match) return 'create';
-    var choice = match === 'exact' ? opts.official : opts.reworked;
-    if (choice === 'link' && entry.official.slug) return 'link';
-    if (choice === 'skip') return 'skip';
+    // An exact match IS the official character. Not a choice: it never becomes
+    // a page here, whoever is importing and whatever they would prefer.
+    if (match === 'exact') return entry.official.slug ? 'link' : 'skip';
+    if (opts.reworked === 'link' && entry.official.slug) return 'link';
+    if (opts.reworked === 'skip') return 'skip';
     return 'create';
   }
 
@@ -183,7 +265,7 @@
       ability: entry.ability || '',
       creator: opts.creator || '',
       appearsIn: opts.appearsIn || '',
-      tags: opts.tags || '',
+      tags: tagString(opts.tagsById, entry.id),
       lede: lede,
       summaryBullets: bullets,
       howToRun: howExtra.concat(opts.howToRun ? clean(entry.howToRun) : []),
@@ -429,6 +511,12 @@
     defaultOptions: defaultOptions,
     decide: decide,
     plan: plan,
+    tagsFor: tagsFor,
+    tagString: tagString,
+    addTags: addTags,
+    removeTags: removeTags,
+    clearTags: clearTags,
+    untaggedCount: untaggedCount,
     characterPayload: characterPayload,
     rosterSlug: rosterSlug,
     roster: roster,
