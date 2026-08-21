@@ -96,6 +96,9 @@
  *   POST /api/publish         -> flip a page between draft and published
  *   POST /api/delete          -> soft-delete a page you own (recoverable)
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
+ *   GET  /api/page-json       -> a script's or collection's export JSON as a
+ *                                real downloadable file (?type=&slug=), which is
+ *                                what the page's Download JSON button links to
  *
  *   -- importing a Bloodstar project (/bloodstar) --
  *   GET  /api/bloodstar       -> read a project on bloodstar.xyz: fetches its
@@ -3536,6 +3539,67 @@ async function charsBySlug(env, slugs) {
   return out;
 }
 
+/* ---- the export JSON as a real file ----
+   GET /api/page-json?type=script|collection&slug=…
+
+   The Download JSON button on /s/ and /collection/ used to be an <a href="#">
+   that JavaScript turned into a blob: URL after the page loaded. That works
+   until it doesn't: if the script has not run yet, failed, or was blocked by
+   an extension, the bare "#" is what the click gets, and the page silently
+   jumps to the top instead of saving anything — which is exactly what a
+   reader reports as "the download button does nothing", with no error to see
+   and nothing to tell them the file was never attached.
+
+   The server already builds this JSON to render the page, so the button can
+   just be a link to it. No script, no blob, no lifetime to manage: it works
+   with JavaScript off, survives a long-press "save link as", and can be
+   pasted to somebody. Same visibility rules as the page it belongs to — a
+   draft's JSON is for whoever may edit it, and a deleted page has none.
+
+   Content-Disposition is what makes it save rather than display; the filename
+   is the page's own slug, as the blob version named it. */
+async function pageJsonResponse(env, request, url) {
+  const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
+  const slug = String(url.searchParams.get('slug') || '');
+  if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
+  const isScript = type === 'script';
+  const table = isScript ? 'scripts' : 'collections';
+  let row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
+    .bind(slug).first().catch(() => null);
+  if (!isScript && !row) row = await findCollectionRow(env, slug);
+  if (!row || !row.data || row.status === 'deleted') {
+    return jsonResponse({ error: 'Not found' }, { status: 404 });
+  }
+  const d = foldLegacyCurata(JSON.parse(row.data));
+  if (!d.slug) d.slug = row.slug || slug;
+  if (row.status === 'draft') {
+    const sess = await getSession(env, request);
+    if (!(canEditRow(sess, row) || await canEditPage(env, sess, type, row))) {
+      return jsonResponse({ error: 'Not found' }, { status: 404 });
+    }
+  }
+  let chars = isScript
+    ? await charsBySlug(env, d.characters || [])
+    : await cachedCardChars(env);
+  if (isScript && ((d.characters || []).some(x => String(x).indexOf('off-') === 0) || d.nightOrder)) {
+    const official = await loadOfficialRoles(env, url.origin);
+    chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
+  }
+  const name = (isScript ? d.name : (d.displayName || d.slug)) || 'Untitled';
+  const entries = isScript
+    ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
+    : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
+  const text = PageRender.buildPageExport(name, d.author, d.header, entries, isScript ? d : undefined);
+  const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
+  return new Response(text, {
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': 'attachment; filename="' + file + '.json"',
+      'Cache-Control': 'no-store'
+    }
+  });
+}
+
 // ---- shared SSR for /s/{slug} and /collection/{id} pages ----
 async function renderContentPage(env, ctx, request, url, type, slug) {
   const isScript = type === 'script';
@@ -4963,6 +5027,11 @@ export default {
         hasPassword: !!u.password_hash,
         unreadMessages
       });
+    }
+
+    // The Download JSON button on /s/ and /collection/ points straight here.
+    if (method === 'GET' && path === '/api/page-json') {
+      return pageJsonResponse(env, request, url);
     }
 
     /* ---- read a Bloodstar project ----

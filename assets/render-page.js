@@ -598,8 +598,12 @@
       '</div>' +
       '<pre class="json-body"' + (collapsed ? ' hidden' : '') + '><code>' + esc(jsonText) + '</code></pre>' +
       '</div>' + (actions || []).map(function (a) {
+        // `download` marks the one action that saves a file rather than
+        // navigating. The href is a real URL, so a browser without the
+        // attribute still gets the file — it just opens it instead.
         return '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px"' +
-          (a.id ? ' id="' + a.id + '"' : '') + ' href="' + esc(a.href) + '">' + a.label + '</a>';
+          (a.id ? ' id="' + a.id + '"' : '') + (a.download ? ' download' : '') +
+          ' href="' + esc(a.href) + '">' + a.label + '</a>';
       }).join('');
   }
 
@@ -935,7 +939,13 @@
 
     var share = b64url(JSON.stringify({ n: sc.name || '', a: sc.author || '', c: (sc.characters || []) }));
     var actions = [
-      { id: 'json-download', href: '#', label: '⬇ Download JSON' },
+      // A real link to the file, not an href="#" that script has to fill in
+      // later: the server builds this JSON to render the page anyway, so the
+      // button can just point at it. Works with no JavaScript, survives
+      // "save link as", and cannot fail silently. See pageJsonResponse().
+      { id: 'json-download', download: true,
+        href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
+        label: '⬇ Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
@@ -964,7 +974,9 @@
     (allChars || []).forEach(function (c, i) { orderMap[c.slug] = i; });
     // Browse/filter now lives on this page, so that action is gone.
     var actions = [
-      { id: 'json-download', href: '#', label: '⬇ Download JSON' },
+      { id: 'json-download', download: true,
+        href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
+        label: '⬇ Download JSON' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({
