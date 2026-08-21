@@ -3113,8 +3113,12 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const root = '../'.repeat(Math.max(1, depth));
   const imgRaw = Array.isArray(d.image) ? d.image[0] : d.image;
   const img = imgRaw || (origin + '/assets/' + (d.art || ''));
-  // bulk-imported characters may only have a remote image URL, no local art
-  const artSrc = d.art ? '../assets/' + d.art : (imgRaw || '');
+  // bulk-imported characters may only have a remote image URL, no local art.
+  // The art path is relative like everything else in the page, so it has to use
+  // the SAME computed root: a hardcoded '../' pointed a nested address at
+  // /c/{set}/assets/art/... and every icon on the wiki broke the moment the
+  // backfill nested the URLs.
+  const artSrc = d.art ? root + 'assets/' + d.art : (imgRaw || '');
   // Stamped here too (not just in characters.json) so the Curata mark in
   // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
