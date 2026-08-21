@@ -5267,7 +5267,21 @@ export default {
       auth.searchParams.set('redirect_uri', discordRedirectUri(env));
       auth.searchParams.set('scope', 'identify email');
       auth.searchParams.set('state', state);
-      auth.searchParams.set('prompt', 'none');
+      // No `prompt` parameter. It used to be sent as `prompt=none`, which
+      // Discord documents for exactly one case — "if a user has previously
+      // authorized your application with the requested scopes ... it will skip
+      // the authorization screen and redirect them back" — and says nothing
+      // about any other. Everyone else takes an undefined path: a first-time
+      // user, someone who has revoked access, and above all someone who is not
+      // logged in to Discord IN THAT BROWSER, because "show no UI" and "ask
+      // them to log in" cannot both be obeyed. That last case is why this read
+      // as a browser bug: signed in to Discord in one browser and not the
+      // other, the same account gets a working sign-in in one and a page that
+      // spins forever in the other, with nothing different on our side.
+      //
+      // Leaving it off costs a returning reader one click on Discord's
+      // "Authorize" screen. It buys a flow with no undefined states in it,
+      // which is the better trade for the front door of the site.
       // A cached redirect would replay a state token that KV has already
       // expired or consumed, and the reader would be stuck on "please try
       // again" until they cleared their browser cache.

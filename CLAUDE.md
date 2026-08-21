@@ -1718,6 +1718,17 @@ this is how admin-written pages stop being hidden for want of a tag.
    deploys delete dashboard vars of type "Text" (that once silently broke
    Discord login). `keep_vars = true` would also fix it but Workers Builds
    rejects that key (build fails in 0s) — don't add it to wrangler.toml.
+   **Never send `prompt=none` to Discord's authorize endpoint.** Discord
+   documents it for one case only — a reader who has already authorized the
+   app, who is sent straight back — and defines nothing else. A first-time
+   reader, one who revoked access, and above all one who is *not logged in to
+   Discord in that browser* all take an undefined path, because "show no UI"
+   and "ask them to log in" cannot both be honoured; the sign-in page can sit
+   spinning instead of erroring. It reads as a browser bug and is not one: the
+   same person signed in to Discord in Chrome and not in Firefox gets a working
+   sign-in in one and a hang in the other, with nothing different on our side.
+   Omitting it costs a returning reader one click on Discord's Authorize
+   screen, which is the right trade for the front door.
    **The Discord sign-in health check is `GET /api/admin/discord-check`** (a
    card on the dashboard's Health tab): it asks Discord whether the client
    id/secret pair is still good and prints the exact callback URL that has to
