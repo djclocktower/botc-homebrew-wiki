@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bloodstar Import — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Paste a Bloodstar almanac link and bring the whole project onto the wiki: every character, its art, its almanac text, the jinxes, the night order and the script or collection page.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Bloodstar Import">
+<meta property="og:description" content="Bring a whole Bloodstar project onto the wiki in one go — art, almanacs, jinxes and all.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* ─── Bloodstar Import ─────────────────────────────────────────────
+   Page-local only. Shared colours come from styles.css. The form is a
+   stack of cards on purpose: the owner reviews this on a phone, and a
+   two-column options grid there is a pinch-zoom exercise. */
+  .bs-wrap { position:relative; z-index:5; max-width:940px; margin:0 auto;
+    padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 80px; box-sizing:border-box; }
+  .bs-card { background:#f7f6f2; border:1px solid var(--card-edge); border-radius:10px;
+    padding:18px 20px; box-shadow:0 10px 26px rgba(40,12,30,.35); color:#241a12;
+    max-width:100%; box-sizing:border-box; margin-bottom:16px; }
+  .bs-card h2 { font-family:'Dumbledor2',serif; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
+  .bs-card h3 { font-family:'Oswald',sans-serif; font-size:.86rem; letter-spacing:.05em;
+    text-transform:uppercase; color:#5b4632; margin:18px 0 8px; }
+  .bs-card h3:first-of-type { margin-top:6px; }
+  .bs-sub { font-size:.86rem; color:#6b5d49; margin:0 0 14px; line-height:1.45; }
+  .bs-fld { margin-bottom:13px; }
+  .bs-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.8rem;
+    letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:5px; }
+  .bs-fld .hint { font-weight:400; text-transform:none; letter-spacing:0; color:#726348; font-size:.78rem; }
+  .bs-fld input[type=text], .bs-fld input[type=url], .bs-fld select, .bs-fld textarea {
+    width:100%; max-width:100%; box-sizing:border-box;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif; font-size:.95rem; color:#241a12;
+    background:#fffdf8; border:1px solid #cdbfa0; border-radius:6px; padding:9px 11px; }
+  .bs-row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:720px){ .bs-row2 { grid-template-columns:1fr; } }
+  .bs-check { display:flex; align-items:flex-start; gap:9px; margin:7px 0; font-size:.92rem; line-height:1.35; }
+  .bs-check input { margin-top:3px; flex:none; width:17px; height:17px; }
+  .bs-check .hint { display:block; color:#726348; font-size:.79rem; }
+  .btn { font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.04em; cursor:pointer;
+    border:none; border-radius:7px; padding:9px 16px; font-size:.9rem; }
+  .btn-blue { background:#2f6fb8; color:#fff; }
+  .btn-blue:hover { filter:brightness(1.08); }
+  .btn-ghost { background:#e8e0cc; color:#5b4632; border:1px solid #cdbfa0; }
+  .btn-go { background:linear-gradient(180deg,#2f7d3e,#1c5429); color:#eafaee; font-size:1rem; padding:12px 22px; }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  #bs-status { margin-top:12px; padding:10px 13px; border-radius:8px; font-size:.9rem; display:none; line-height:1.45; }
+  #bs-status.ok  { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
+  #bs-status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
+  #bs-status.work{ display:block; background:#e9eefb; color:#234f74; border:1px solid #aac0e6; }
+  #bs-status a { color:inherit; font-weight:700; }
+  .bs-warn { background:#fbf1d8; border:1px solid #d9c68b; border-radius:8px; padding:10px 13px;
+    font-size:.86rem; color:#6b5223; margin-top:12px; }
+  .bs-warn ul { margin:6px 0 0; padding-left:20px; }
+  /* the found-project header */
+  .bs-found { display:flex; gap:16px; align-items:flex-start; }
+  .bs-found img { width:78px; height:78px; object-fit:contain; flex:none;
+    background:rgba(0,0,0,.05); border-radius:8px; }
+  .bs-found .n { font-family:'Dumbledor2',serif; color:var(--maroon); font-size:1.35rem; line-height:1.1; }
+  .bs-found .a { font-size:.9rem; color:#6b5d49; margin-top:3px; }
+  .bs-counts { margin-top:8px; font-size:.86rem; color:#5b4632; }
+  .bs-counts b { color:#241a12; }
+  /* destination picker */
+  .bs-dest { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  @media (max-width:720px){ .bs-dest { grid-template-columns:1fr; } }
+  .bs-dest label { display:block; border:1px solid #cdbfa0; border-radius:9px; padding:11px 13px;
+    background:#fffdf8; cursor:pointer; }
+  .bs-dest label.on { border-color:#2f7d3e; background:#eef7ef; box-shadow:0 0 0 1px #2f7d3e inset; }
+  .bs-dest input { margin-right:7px; }
+  .bs-dest .t { font-family:'Oswald',sans-serif; font-weight:600; font-size:.92rem; color:#241a12; }
+  .bs-dest .d { display:block; font-size:.78rem; color:#726348; margin-top:4px; line-height:1.35; }
+  /* the character table */
+  .bs-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  .bs-table th { font-family:'Oswald',sans-serif; font-size:.74rem; letter-spacing:.05em;
+    text-transform:uppercase; color:#5b4632; text-align:left; padding:6px 7px;
+    border-bottom:2px solid #cdbfa0; }
+  .bs-table td { padding:6px 7px; border-bottom:1px solid #e4d9bf; vertical-align:top; }
+  .bs-table td.c { text-align:center; width:30px; }
+  .bs-team { font-family:'Oswald',sans-serif; font-size:.76rem; text-transform:capitalize; color:#5b4632; }
+  .bs-chip { display:inline-block; font-family:'Oswald',sans-serif; font-size:.7rem; letter-spacing:.04em;
+    text-transform:uppercase; padding:2px 7px; border-radius:20px; white-space:nowrap; }
+  .bs-chip.create { background:#dff0e2; color:#1c5429; }
+  .bs-chip.link   { background:#e9eefb; color:#234f74; }
+  .bs-chip.skip   { background:#eee7d7; color:#7a6a4e; }
+  .bs-chip.warn   { background:#fbf1d8; color:#6b5223; }
+  .bs-state-wait { color:#726348; }
+  .bs-state-work { color:#234f74; font-weight:700; }
+  .bs-state-ok   { color:#1c5429; font-weight:700; }
+  .bs-state-err  { color:#9A0D12; font-weight:700; }
+  .bs-scroll { overflow-x:auto; }
+  details.bs-adv { border-top:1px solid #e4d9bf; margin-top:14px; padding-top:10px; }
+  details.bs-adv > summary { cursor:pointer; font-family:'Oswald',sans-serif; font-weight:600;
+    font-size:.84rem; letter-spacing:.05em; text-transform:uppercase; color:#5b4632; }
+  #tag-picker { display:flex; flex-wrap:wrap; gap:6px; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="bs-wrap">
+
+    <!-- ── 1. the link ── -->
+    <div class="bs-card">
+      <h2>Import from Bloodstar</h2>
+      <p class="bs-sub">Paste a link to a Bloodstar project and the whole thing comes across:
+        every character with its art, its flavour text, its overview, its examples, its how-to-run
+        and its tips, plus the jinxes, the night order, and the synopsis and changelog as a script
+        or collection page here. Both of the project's published files are read — the
+        <code>script.json</code> for the mechanics and the <code>almanac.html</code> for everything
+        a reader actually comes to an almanac for.</p>
+      <div class="bs-fld">
+        <label for="bs-url">Bloodstar link
+          <span class="hint">— the almanac, the script.json or the project folder, any of them</span></label>
+        <input type="url" id="bs-url" placeholder="https://www.bloodstar.xyz/p/Author/ProjectName/almanac.html" autocomplete="off">
+      </div>
+      <button type="button" class="btn btn-blue" id="bs-read">Read project</button>
+      <div id="bs-status"></div>
+    </div>
+
+    <!-- ── 2. what was found + the options ── -->
+    <div id="bs-found-card" class="bs-card" style="display:none">
+      <div class="bs-found">
+        <img id="bs-logo" src="" alt="" style="display:none">
+        <div>
+          <div class="n" id="bs-name"></div>
+          <div class="a" id="bs-author"></div>
+          <div class="bs-counts" id="bs-counts"></div>
+        </div>
+      </div>
+      <div id="bs-warnings"></div>
+    </div>
+
+    <div id="bs-options" style="display:none">
+
+      <div class="bs-card">
+        <h2>Where it goes</h2>
+        <div class="bs-dest" id="bs-dest">
+          <label data-for="script"><input type="radio" name="bs-dest" value="script" checked><span class="t">A script page</span>
+            <span class="d">A <code>/s/</code> page with the roster, the night order, the jinxes and the synopsis. What a Bloodstar project usually is.</span></label>
+          <label data-for="collection"><input type="radio" name="bs-dest" value="collection"><span class="t">A collection page</span>
+            <span class="d">A <code>/collection/</code> page holding the characters as a set. Right when the project is a character pack rather than one script.</span></label>
+          <label data-for="characters"><input type="radio" name="bs-dest" value="characters"><span class="t">Characters only</span>
+            <span class="d">Make the character pages and nothing else. No script or collection page, no night order, no synopsis.</span></label>
+        </div>
+
+        <h3>The pages themselves</h3>
+        <div class="bs-row2">
+          <div class="bs-fld">
+            <label for="bs-status-sel">Publish state</label>
+            <select id="bs-status-sel">
+              <option value="draft">Save everything as drafts (recommended)</option>
+              <option value="published">Publish immediately</option>
+            </select>
+            <span class="hint">Drafts are yours alone until you publish them, which is worth having for an import this size.</span>
+          </div>
+          <div class="bs-fld">
+            <label for="bs-creator">Creator <span class="hint">(on every page)</span></label>
+            <input type="text" id="bs-creator">
+          </div>
+        </div>
+        <div class="bs-fld">
+          <label for="bs-appears">Appears in <span class="hint">(the set each character says it belongs to)</span></label>
+          <input type="text" id="bs-appears">
+        </div>
+        <div class="bs-fld">
+          <label>Tags <span class="hint">— applied to every imported character. Bloodstar has no tags, and a character with none reads as Partial here.</span></label>
+          <div id="tag-picker"></div>
+          <input type="hidden" id="bs-tags">
+        </div>
+      </div>
+
+      <div class="bs-card">
+        <h2>Official characters</h2>
+        <p class="bs-sub">Scripts carry official characters alongside homebrew ones, and Bloodstar
+          exports them as ordinary entries. The wiki already knows the official roster, so those do
+          not need pages of their own.</p>
+        <div class="bs-fld">
+          <label for="bs-official">Characters that ARE the official one <span class="hint">(same name, same ability)</span></label>
+          <select id="bs-official">
+            <option value="link">Point the roster at the official character (recommended)</option>
+            <option value="import">Make a wiki page for it anyway</option>
+            <option value="skip">Leave it out</option>
+          </select>
+        </div>
+        <div class="bs-fld">
+          <label for="bs-reworked">Characters with an official NAME but a changed ability</label>
+          <select id="bs-reworked">
+            <option value="import">Make a wiki page for it (recommended)</option>
+            <option value="link">Point the roster at the official character</option>
+            <option value="skip">Leave it out</option>
+          </select>
+          <span class="hint">A reworked character is a different character wearing a familiar name — pointing at the official one would put an ability on the script that the author did not write.</span>
+        </div>
+      </div>
+
+      <div class="bs-card">
+        <h2>What the almanac becomes</h2>
+        <p class="bs-sub">Every line of this is what a character page here ends up saying. The
+          defaults line each Bloodstar section up with the wiki section that does the same job.</p>
+        <div class="bs-row2">
+          <div class="bs-fld">
+            <label for="bs-flavour">Flavour text</label>
+            <select id="bs-flavour">
+              <option value="quote">The quote under the title</option>
+              <option value="lede">The flavour line above the summary</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="bs-fld">
+            <label for="bs-overview">The Overview section</label>
+            <select id="bs-overview">
+              <option value="lede-bullets">First paragraph as the flavour line, the rest as the summary</option>
+              <option value="bullets">All of it as the summary</option>
+              <option value="howto">All of it as How to Run</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+        </div>
+        <div class="bs-fld">
+          <label for="bs-tips">Storyteller tips</label>
+          <select id="bs-tips">
+            <option value="tips">Tips &amp; Tricks</option>
+            <option value="callout">The callout box under How to Run</option>
+            <option value="skip">Leave them out</option>
+          </select>
+        </div>
+        <label class="bs-check"><input type="checkbox" id="bs-examples" checked><span>Examples<span class="hint">Bloodstar's Examples section becomes the page's Examples.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-howtorun" checked><span>How to Run<span class="hint">The storyteller instructions, as they are written.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-credit" checked><span>Credit lines<span class="hint">Bloodstar's attribution field. An art credit fills in "Icon by"; anything else becomes a Credit box on the page. It is somebody's name, and it is the one thing an import cannot put back.</span></span></label>
+      </div>
+
+      <div class="bs-card">
+        <h2>Art</h2>
+        <label class="bs-check"><input type="checkbox" id="bs-art" checked><span>Copy the character icons<span class="hint">Each icon is copied into this wiki's own storage, so the pages do not depend on Bloodstar staying up. Without this the pages point at Bloodstar's copy.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-logo-opt" checked><span>The project logo<span class="hint">Becomes the script or collection page's logo.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-bg" checked><span>The almanac's background image<span class="hint">If the project set one in its own styling, it becomes the page background here.</span></span></label>
+      </div>
+
+      <div class="bs-card" id="bs-pagecard">
+        <h2>The project's own pages</h2>
+        <p class="bs-sub">The synopsis, the overview and the changelog are pages in the Bloodstar
+          almanac. Here they belong on the script or collection page.</p>
+        <div class="bs-row2">
+          <div class="bs-fld">
+            <label for="bs-synopsis">Synopsis</label>
+            <select id="bs-synopsis">
+              <option value="synopsis">The Synopsis section</option>
+              <option value="description">The short description under the title</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+          <div class="bs-fld">
+            <label for="bs-poverview">Overview</label>
+            <select id="bs-poverview">
+              <option value="gameplay">The Gameplay section</option>
+              <option value="synopsis">The Synopsis section</option>
+              <option value="description">The short description under the title</option>
+              <option value="skip">Leave it out</option>
+            </select>
+          </div>
+        </div>
+        <div class="bs-fld">
+          <label for="bs-changelog">Changelog</label>
+          <select id="bs-changelog">
+            <option value="wikipage">Its own wiki page under this script or collection</option>
+            <option value="box">A Changelog box on the page</option>
+            <option value="skip">Leave it out</option>
+          </select>
+          <span class="hint">A changelog is long and text-first, which is what wiki pages are for. It is linked from the script page's Pages section.</span>
+        </div>
+        <h3>Everything else</h3>
+        <div class="bs-fld">
+          <label for="bs-jinxes">Jinxes</label>
+          <select id="bs-jinxes">
+            <option value="characters">Write each one onto its characters</option>
+            <option value="script">Keep them on this script only</option>
+            <option value="skip">Leave them out</option>
+          </select>
+          <span class="hint">A jinx on a character travels with it to every script that holds both ends. A jinx between two official characters can only ever be a script rule, and is stored that way whatever this says.</span>
+        </div>
+        <label class="bs-check"><input type="checkbox" id="bs-nightorder" checked><span>The almanac's night order<span class="hint">Bloodstar prints the two night lists in the order the author arranged them. Without this the page falls back to each character's own wake number.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-mechanics" checked><span>Reminder tokens, setup flags and night positions<span class="hint">Everything the official app needs to actually run the script.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-nightreminders" checked><span>Night reminder text<span class="hint">What the Storyteller reads at each wake. Notes an author left to themselves — a bare link, a "this is not the script" notice — are dropped either way.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-bootlegger" checked><span>House rules (bootlegger)<span class="hint">Shown on the script page as House Rules and carried into its export.</span></span></label>
+        <label class="bs-check"><input type="checkbox" id="bs-almanaclink" checked><span>Link back to the Bloodstar almanac<span class="hint">Kept on the script so the official app can still open the original.</span></span></label>
+
+        <details class="bs-adv">
+          <summary>Who can edit these pages afterwards</summary>
+          <div class="bs-fld" style="margin-top:10px">
+            <select id="bs-publicedit">
+              <option value="">Only me (and admins)</option>
+              <option value="suggest">Anyone can suggest an edit</option>
+              <option value="tags">Anyone can change the tags</option>
+              <option value="all">Anyone with an account can edit</option>
+            </select>
+            <span class="hint">Applied to every page this import makes. You can change it per page afterwards.</span>
+          </div>
+        </details>
+      </div>
+
+      <div class="bs-card">
+        <h2>The characters</h2>
+        <p class="bs-sub" id="bs-plan-line"></p>
+        <p style="margin:0 0 10px">
+          <button type="button" class="btn btn-ghost" id="bs-all">Tick all</button>
+          <button type="button" class="btn btn-ghost" id="bs-none">Untick all</button>
+        </p>
+        <div class="bs-scroll">
+          <table class="bs-table">
+            <thead><tr><th class="c"></th><th>Character</th><th>Team</th><th>Becomes</th><th>Art</th><th>Almanac</th><th>Status</th></tr></thead>
+            <tbody id="bs-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bs-card">
+        <button type="button" class="btn btn-go" id="bs-go">Import this project</button>
+        <div id="bs-run"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/tags.js"></script>
+  <script src="assets/bloodstar.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var BI = window.BloodstarImport;
+    var $ = function (id) { return document.getElementById(id); };
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function setStatus(cls, html) { var b = $('bs-status'); b.className = cls; b.innerHTML = html; }
+
+    var bundle = null;      // what /api/bloodstar handed back
+    var planned = null;     // BI.plan() of it, recomputed whenever an option changes
+    var me = null;
+    var halted = null;      // the rate-limit error that stopped a run
+    var usedThisRun = {};   // identities this run has already claimed
+    // Redrawing the table replaces every row, which would wipe the progress a
+    // run is writing into it — and would leave the run holding row objects
+    // that are no longer in the list it is walking.
+    var running = false;
+
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { me = j && j.user; })
+      .catch(function () { /* the read call will say if we are not logged in */ });
+
+    if (window.buildTagPicker) window.buildTagPicker($('tag-picker'));
+    $('tag-picker').addEventListener('click', function (e) {
+      var btn = e.target.closest('.tag-pick-btn');
+      if (!btn) return;
+      btn.classList.toggle('selected');
+      $('bs-tags').value = Array.prototype.map.call(
+        $('tag-picker').querySelectorAll('.tag-pick-btn.selected'),
+        function (b) { return b.getAttribute('data-tag'); }).join(', ');
+    });
+
+    /* ── the options, read off the form ── */
+    function options() {
+      var o = BI.defaultOptions();
+      o.destination = (document.querySelector('input[name=bs-dest]:checked') || {}).value || 'script';
+      o.status = $('bs-status-sel').value;
+      o.creator = $('bs-creator').value.trim();
+      o.appearsIn = $('bs-appears').value.trim();
+      o.tags = $('bs-tags').value.trim();
+      o.official = $('bs-official').value;
+      o.reworked = $('bs-reworked').value;
+      o.flavour = $('bs-flavour').value;
+      o.overview = $('bs-overview').value;
+      o.tips = $('bs-tips').value;
+      o.examples = $('bs-examples').checked;
+      o.howToRun = $('bs-howtorun').checked;
+      o.credit = $('bs-credit').checked;
+      o.art = $('bs-art').checked;
+      o.logo = $('bs-logo-opt').checked;
+      o.background = $('bs-bg').checked;
+      o.synopsis = $('bs-synopsis').value;
+      o.projectOverview = $('bs-poverview').value;
+      o.changelog = $('bs-changelog').value;
+      o.jinxes = $('bs-jinxes').value;
+      o.nightOrder = $('bs-nightorder').checked;
+      o.mechanics = $('bs-mechanics').checked;
+      o.nightReminders = $('bs-nightreminders').checked;
+      o.bootlegger = $('bs-bootlegger').checked;
+      o.almanacLink = $('bs-almanaclink').checked;
+      o.publicEdit = $('bs-publicedit').value;
+      o.skip = skipped;
+      return o;
+    }
+    var skipped = {};   // character id -> true, from the ticks in the table
+
+    /* ── reading the project ── */
+    $('bs-read').addEventListener('click', function () {
+      var link = $('bs-url').value.trim();
+      if (!link) { setStatus('err', 'Paste a Bloodstar link first.'); return; }
+      $('bs-read').disabled = true;
+      setStatus('work', 'Reading the project&hellip; a big almanac takes a moment.');
+      fetch('/api/bloodstar?url=' + encodeURIComponent(link), { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          $('bs-read').disabled = false;
+          if (!res.ok || !res.j || res.j.error) {
+            setStatus('err', esc((res.j && res.j.error) || 'Could not read that project.'));
+            return;
+          }
+          bundle = res.j;
+          showFound();
+        })
+        .catch(function (e) {
+          $('bs-read').disabled = false;
+          setStatus('err', 'Could not read that project: ' + esc(e.message));
+        });
+    });
+    $('bs-url').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); $('bs-read').click(); }
+    });
+
+    function showFound() {
+      var m = bundle.meta || {};
+      $('bs-name').textContent = m.name || 'Untitled project';
+      $('bs-author').textContent = m.author ? 'by ' + m.author : '';
+      if (m.logo) { $('bs-logo').src = m.logo; $('bs-logo').style.display = ''; }
+      else { $('bs-logo').style.display = 'none'; }
+
+      var withAlmanac = bundle.characters.filter(function (c) { return c.hasAlmanac; }).length;
+      $('bs-counts').innerHTML =
+        '<b>' + bundle.characters.length + '</b> characters &middot; ' +
+        '<b>' + withAlmanac + '</b> with almanac text &middot; ' +
+        '<b>' + bundle.jinxes.length + '</b> jinx' + (bundle.jinxes.length === 1 ? '' : 'es') +
+        (bundle.background ? ' &middot; a background image' : '');
+
+      $('bs-warnings').innerHTML = (bundle.warnings && bundle.warnings.length)
+        ? '<div class="bs-warn"><strong>Worth knowing:</strong><ul>' +
+          bundle.warnings.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul></div>'
+        : '';
+
+      // Sensible starting values taken from the project itself.
+      if (!$('bs-creator').value) $('bs-creator').value = m.author || (me && (me.displayName || me.username)) || '';
+      if (!$('bs-appears').value) $('bs-appears').value = m.name || '';
+      $('bs-bg').closest('.bs-check').style.display = bundle.background ? '' : 'none';
+      $('bs-logo-opt').closest('.bs-check').style.display = m.logo ? '' : 'none';
+      $('bs-changelog').closest('.bs-fld').style.display =
+        (bundle.prose && bundle.prose.changelog) ? '' : 'none';
+
+      skipped = {};
+      $('bs-found-card').style.display = '';
+      $('bs-options').style.display = '';
+      setStatus('ok', 'Read &ldquo;' + esc(m.name || 'that project') + '&rdquo;. Check the options below, then import.');
+      refresh();
+      $('bs-found-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /* ── the plan, redrawn whenever anything changes ── */
+    $('bs-options').addEventListener('change', function (e) {
+      if (e.target.name === 'bs-dest') syncDest();
+      if (e.target.classList.contains('bs-inc')) {
+        var id = e.target.getAttribute('data-id');
+        if (e.target.checked) delete skipped[id]; else skipped[id] = true;
+      }
+      refresh();
+    });
+    function syncDest() {
+      var v = (document.querySelector('input[name=bs-dest]:checked') || {}).value;
+      Array.prototype.forEach.call($('bs-dest').querySelectorAll('label'), function (l) {
+        l.classList.toggle('on', l.getAttribute('data-for') === v);
+      });
+      // Nothing in this card has anywhere to go without a script or collection
+      // page to put it on.
+      $('bs-pagecard').style.display = v === 'characters' ? 'none' : '';
+    }
+    syncDest();
+
+    $('bs-all').addEventListener('click', function () { skipped = {}; refresh(); });
+    $('bs-none').addEventListener('click', function () {
+      bundle.characters.forEach(function (c) { skipped[c.id] = true; });
+      refresh();
+    });
+
+    function refresh() {
+      if (!bundle || running) return;
+      var opts = options();
+      planned = BI.plan(bundle, opts);
+      $('bs-rows').innerHTML = planned.rows.map(rowHTML).join('');
+      var bits = [];
+      if (planned.creating) bits.push('<b>' + planned.creating + '</b> new character page' + (planned.creating === 1 ? '' : 's'));
+      if (planned.linking) bits.push('<b>' + planned.linking + '</b> pointed at the official character' + (planned.linking === 1 ? '' : 's'));
+      if (planned.skipping) bits.push('<b>' + planned.skipping + '</b> left out');
+      if (opts.destination === 'script') bits.push('one script page');
+      if (opts.destination === 'collection') bits.push('one collection page');
+      $('bs-plan-line').innerHTML = bits.length ? bits.join(', ') + '.' : 'Nothing to import.';
+    }
+
+    function rowHTML(r, i) {
+      var chip = r.action === 'create'
+        ? '<span class="bs-chip create">new page</span>'
+        : r.action === 'link'
+          ? '<span class="bs-chip link">official</span>'
+          : '<span class="bs-chip skip">left out</span>';
+      var note = '';
+      if (r.official && r.official.match === 'named') note = ' <span class="bs-chip warn">reworked</span>';
+      if (r.official && r.official.match === 'credit') note = ' <span class="bs-chip warn">credited to TPI</span>';
+      return '<tr id="bs-row-' + i + '">' +
+        '<td class="c"><input type="checkbox" class="bs-inc" data-id="' + esc(r.id) + '"' +
+          (skipped[r.id] ? '' : ' checked') + '></td>' +
+        '<td><strong>' + esc(r.name) + '</strong></td>' +
+        '<td class="bs-team">' + esc(r.team || '—') + '</td>' +
+        '<td>' + chip + note + '</td>' +
+        '<td>' + (r.hasArt ? 'yes' : '—') + '</td>' +
+        '<td>' + (r.hasAlmanac ? 'yes' : '<span class="bs-chip warn">none</span>') + '</td>' +
+        '<td class="bs-state bs-state-wait">waiting</td>' +
+        '</tr>';
+    }
+
+    function rowState(i, cls, html) {
+      var row = $('bs-row-' + i); if (!row) return;
+      var td = row.querySelector('.bs-state');
+      td.className = 'bs-state bs-state-' + cls;
+      td.innerHTML = html;
+    }
+    function rowDone(i) {
+      var row = $('bs-row-' + i);
+      return !!(row && row.querySelector('.bs-state.bs-state-ok'));
+    }
+
+    /* ── talking to the wiki ── */
+    function limitError(res, j) {
+      var e = new Error((j && j.error) || 'Hourly limit reached.');
+      e.rateLimited = true;
+      e.retryAfter = Number(res.headers.get('Retry-After')) || 3600;
+      return e;
+    }
+    function post(path, body) {
+      return fetch(path, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin', body: JSON.stringify(body)
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.status === 429) throw limitError(r, j);
+          if (r.status === 401) throw new Error('You are not logged in any more. Log in and press Import again.');
+          if (!r.ok || (j && j.error)) throw new Error((j && j.error) || 'failed');
+          return j;
+        });
+      });
+    }
+
+    /* An icon on Bloodstar is copied server-side: the bytes go straight from
+       Bloodstar into this wiki's storage and the browser only sends the two
+       URLs. Art hosted anywhere else (a project's imgur background, say) has
+       to come through the page, which is what the canvas path is for — and
+       that path is also the fallback if the server copy fails for a reason
+       that is not the hourly limit. */
+    function copyArt(key, src) {
+      if (/^https:\/\/(www\.)?bloodstar\.xyz\//i.test(src)) {
+        return post('/api/bloodstar-art', { key: key, src: src })
+          .catch(function (err) {
+            if (err && err.rateLimited) throw err;
+            return canvasUpload(key, src);
+          });
+      }
+      return canvasUpload(key, src);
+    }
+    function canvasUpload(key, src) {
+      return loadImage(src).then(function (dataUrl) {
+        return post('/api/upload', { key: key, data: dataUrl });
+      });
+    }
+    function loadImage(src) {
+      return new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function () {
+          var max = 900, w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w >= h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          var cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          try { resolve(cv.toDataURL('image/png')); }
+          catch (e) { reject(new Error('that image cannot be read from another site')); }
+        };
+        img.onerror = function () { reject(new Error('image failed to load')); };
+        img.src = src;
+      });
+    }
+
+    /* A page's identity comes from its name and so does its art slot, so the
+       identity has to be settled before a single byte moves. Same call the
+       character editor and the mass uploader make, and the same bookkeeping
+       for two characters in one file sharing a name. */
+    function resolveSlug(type, name, appearsIn, fresh) {
+      var base = BI.slugify(name);
+      var q = '/api/slug-check?type=' + encodeURIComponent(type) +
+              '&name=' + encodeURIComponent(name) +
+              '&appearsIn=' + encodeURIComponent(appearsIn || '');
+      return fetch(q, { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .catch(function () { return null; })
+        .then(function (j) {
+          var pick;
+          if (!j || j.error || !j.taken) pick = base;
+          // `mine` means saving there updates a page of yours rather than
+          // colliding with it, which is what re-running an import over your own
+          // characters wants. A script or collection being CREATED never lands
+          // on an existing URL, not even one of your own — the wiki's rule, and
+          // the reason is that a second script with the same name is a second
+          // script, never a silent overwrite of the first.
+          else if (j.mine && !fresh && !usedThisRun[base]) pick = base;
+          else pick = j.suggestion || base;
+          if (usedThisRun[pick]) {
+            for (var n = 2; n < 80; n++) {
+              if (!usedThisRun[pick + '-' + n]) { pick = pick + '-' + n; break; }
+            }
+          }
+          usedThisRun[pick] = 1;
+          return pick;
+        });
+    }
+
+    function runSay(cls, html) {
+      $('bs-run').innerHTML = '<div id="bs-runbox" class="' + cls + '"></div>';
+      var box = $('bs-runbox');
+      box.style.cssText = 'margin-top:12px;padding:10px 13px;border-radius:8px;font-size:.9rem;line-height:1.45;' +
+        (cls === 'err' ? 'background:#f6dede;color:#9A0D12;border:1px solid #d99;'
+         : cls === 'ok' ? 'background:#dff0e2;color:#1c5429;border:1px solid #9bcfa9;'
+         : 'background:#e9eefb;color:#234f74;border:1px solid #aac0e6;');
+      box.innerHTML = html;
+    }
+    function waitPhrase(sec) {
+      var mins = Math.max(1, Math.round((sec || 3600) / 60));
+      return mins >= 55 ? 'in about an hour' : 'in about ' + mins + ' minutes';
+    }
+
+    /* ── the run ──
+       Order matters and is not negotiable:
+         1. settle the script/collection identity, because its art slot is
+            named after it and the characters' "appears in" reads better with it
+         2. copy its logo and background — the slot is free before the page
+            exists, and the page can then be saved already pointing at them
+         3. settle every character identity, all of them, before any page is
+            written: a jinx names the OTHER character's identity, and half a
+            list of identities cannot resolve a jinx
+         4. write the character pages
+         5. write the script or collection page, which needs the roster
+         6. write the changelog page, which needs its parent to exist
+    */
+    $('bs-go').addEventListener('click', function () {
+      if (!bundle || !planned) return;
+      var opts = options();
+      if (!planned.creating && opts.destination === 'characters') {
+        runSay('err', 'Nothing is ticked to import.');
+        return;
+      }
+      $('bs-go').disabled = true; $('bs-read').disabled = true;
+      running = true;
+      halted = null;
+      usedThisRun = {};
+      var slugById = {};
+      var made = [], failed = 0;
+      var pageSlug = '', extras = {};
+
+      runSay('work', 'Working&hellip; leave this page open.');
+
+      var creating = planned.rows.filter(function (r) { return r.action === 'create'; });
+
+      settlePageSlug()
+        .then(copyPageArt)
+        .then(settleCharacterSlugs)
+        .then(writeCharacters)
+        .then(writePage)
+        .then(writeChangelog)
+        .then(finish)
+        .catch(function (err) {
+          running = false;
+          $('bs-go').disabled = false; $('bs-read').disabled = false;
+          if (err && err.rateLimited) { halted = err; finish(); return; }
+          runSay('err', esc((err && err.message) || 'Something went wrong.'));
+        });
+
+      function settlePageSlug() {
+        if (opts.destination === 'characters') return Promise.resolve();
+        var type = opts.destination;
+        return resolveSlug(type, bundle.meta.name || 'imported-script', '', true)
+          .then(function (s) { pageSlug = s; });
+      }
+
+      function copyPageArt() {
+        if (opts.destination === 'characters' || !pageSlug) return Promise.resolve();
+        var folder = opts.destination === 'collection' ? 'collections/' : 'scripts/';
+        var jobs = Promise.resolve();
+        if (opts.logo && bundle.meta.logo) {
+          jobs = jobs.then(function () {
+            runSay('work', 'Copying the project logo&hellip;');
+            return copyArt(folder + pageSlug + '-logo.png', bundle.meta.logo)
+              .then(function () { extras.logo = folder + pageSlug + '-logo.png'; })
+              .catch(function (e) { if (e && e.rateLimited) throw e; });
+          });
+        }
+        if (opts.background && bundle.background) {
+          jobs = jobs.then(function () {
+            runSay('work', 'Copying the background image&hellip;');
+            return copyArt(folder + pageSlug + '-bg.png', bundle.background)
+              .then(function () { extras.background = folder + pageSlug + '-bg.png'; })
+              .catch(function (e) { if (e && e.rateLimited) throw e; });
+          });
+        }
+        return jobs;
+      }
+
+      function settleCharacterSlugs() {
+        var i = 0;
+        return (function next() {
+          if (i >= creating.length) return Promise.resolve();
+          var r = creating[i];
+          var at = planned.rows.indexOf(r);
+          rowState(at, 'work', 'checking URL&hellip;');
+          return resolveSlug('character', r.name, opts.appearsIn).then(function (slug) {
+            slugById[r.id] = slug;
+            rowState(at, 'wait', 'ready');
+            i++;
+            return next();
+          });
+        })();
+      }
+
+      function writeCharacters() {
+        var jinxPlan = BI.resolveJinxes(bundle, planned, slugById, opts);
+        extras.jinxEdits = jinxPlan.scriptAdds.length ? { add: jinxPlan.scriptAdds } : null;
+        extras.jinxDropped = jinxPlan.dropped;
+        var i = 0;
+        return (function next() {
+          if (i >= creating.length || halted) return Promise.resolve();
+          var r = creating[i], at = planned.rows.indexOf(r), slug = slugById[r.id];
+          if (rowDone(at)) { made.push(slug); i++; return next(); }
+          runSay('work', 'Making character pages&hellip; ' + (i + 1) + ' of ' + creating.length + '.');
+          var artJob = Promise.resolve('');
+          if (opts.art && r.entry.image) {
+            rowState(at, 'work', 'copying art&hellip;');
+            artJob = copyArt(BI.artKey(slug), r.entry.image)
+              .then(function () { return BI.artKey(slug); })
+              .catch(function (err) {
+                if (err && err.rateLimited) throw err;
+                return '';   // the page keeps the Bloodstar URL and still shows art
+              });
+          }
+          return artJob.then(function (artPath) {
+            rowState(at, 'work', 'saving&hellip;');
+            var payload = BI.characterPayload(r.entry, opts, slug, artPath, jinxPlan.byOwner[slug] || []);
+            return post('/api/character', payload).then(function (j) {
+              var page = (j && j.page) || ('c/' + slug);
+              made.push(slug);
+              rowState(at, 'ok', '&#10003; <a href="/' + esc(page.replace(/^\//, '')) + '" target="_blank">view</a>' +
+                (opts.art && r.entry.image && !artPath ? ' <span class="bs-chip warn">art left on Bloodstar</span>' : ''));
+            });
+          }).then(function () { i++; return next(); })
+            .catch(function (err) {
+              if (err && err.rateLimited) { halted = err; rowState(at, 'err', '&#10007; stopped — hourly limit'); return; }
+              failed++;
+              rowState(at, 'err', '&#10007; ' + esc(err.message));
+              i++; return next();
+            });
+        })();
+      }
+
+      function writePage() {
+        if (halted || opts.destination === 'characters' || !pageSlug) return Promise.resolve(null);
+        runSay('work', 'Making the ' + opts.destination + ' page&hellip;');
+        var rosterSlugs = BI.roster(planned, slugById, opts);
+        var extra = {
+          logo: extras.logo || '',
+          background: extras.background || '',
+          nightOrder: opts.nightOrder ? BI.nightOrder(bundle, planned, slugById) : null,
+          jinxEdits: extras.jinxEdits
+        };
+        var payload = BI.pagePayload(bundle, opts, pageSlug, rosterSlugs, extra);
+        return post(opts.destination === 'collection' ? '/api/collection' : '/api/script', payload)
+          .then(function (j) {
+            // The Worker has the last word on where the page landed — a
+            // collection's key is its kebab id, which it derives itself. The
+            // changelog page and the finish link both point at whatever it says.
+            if (j && j.slug) pageSlug = j.slug;
+            if (j && j.id) pageSlug = j.id;
+            return j;
+          });
+      }
+
+      function writeChangelog() {
+        if (halted || opts.destination === 'characters' || !pageSlug) return Promise.resolve();
+        var payload = BI.changelogPayload(bundle, opts, opts.destination, pageSlug);
+        if (!payload) return Promise.resolve();
+        runSay('work', 'Making the changelog page&hellip;');
+        // A wiki page is a nicety, not the import: a failure here must not
+        // throw away forty character pages that already landed.
+        return post('/api/wiki-page', payload)
+          .then(function (j) { extras.changelogSlug = j && j.slug; })
+          .catch(function (e) { if (e && e.rateLimited) throw e; extras.changelogError = e.message; });
+      }
+
+      function finish() {
+        running = false;
+        $('bs-go').disabled = false; $('bs-read').disabled = false;
+        if (halted) {
+          runSay('err', esc(halted.message) +
+            '<br>Stopped after <b>' + made.length + '</b> of ' + creating.length +
+            ' character pages. Leave this page open, come back ' + waitPhrase(halted.retryAfter) +
+            ' and press Import again — the pages already made are skipped and the rest carry on.');
+          return;
+        }
+        var href = opts.destination === 'collection' ? '/collection/' + pageSlug
+                 : opts.destination === 'script' ? '/s/' + pageSlug : '';
+        var msg = '&#10003; Imported <b>' + made.length + '</b> character page' + (made.length === 1 ? '' : 's');
+        if (href) msg += ' and the <a href="' + esc(href) + '" target="_blank">' + esc(opts.destination) + ' page</a>';
+        msg += '.';
+        if (extras.changelogSlug) msg += ' The changelog is at <a href="/p/' + esc(extras.changelogSlug) + '" target="_blank">/p/' + esc(extras.changelogSlug) + '</a>.';
+        if (extras.changelogError) msg += '<br>The changelog page could not be made: ' + esc(extras.changelogError);
+        if (extras.jinxDropped && extras.jinxDropped.length) {
+          msg += '<br>' + extras.jinxDropped.length + ' jinx' + (extras.jinxDropped.length === 1 ? '' : 'es') +
+            ' could not be placed (neither character came across): ' + esc(extras.jinxDropped.join(', ')) + '.';
+        }
+        if (failed) msg += '<br><b>' + failed + '</b> character page' + (failed === 1 ? '' : 's') + ' failed — see the table above.';
+        if (opts.status === 'draft') msg += '<br>Everything is a draft. Find it under <a href="/drafts">Your Drafts</a> when you are ready to publish.';
+        runSay(failed ? 'err' : 'ok', msg);
+      }
+    });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
