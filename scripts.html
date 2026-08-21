@@ -105,8 +105,7 @@
             '<div class="collection-footer">' +
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
                 (sc.author ? ' · ' + esc(sc.author) : '') +
-                (sc.curata ? '<span class="coll-mark-sep"></span>' +
-                  window.classBadgeHTML('curata') : '') + '</span>' +
+                (sc.curata ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }

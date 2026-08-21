@@ -114,8 +114,7 @@
           // behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
             ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.curata) ? '<span class="coll-mark-sep"></span>' +
-              window.classBadgeHTML('curata') : '') + '</span>' +
+            ((coll && coll.curata) ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';

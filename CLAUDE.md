@@ -1309,19 +1309,37 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   painted as a CSS **mask over `currentColor`**, not as an `<img>`: an image
   would need a fixed fill and would go wrong on every surface that changes
   text colour (theme kits, draft bars, the dark topbar). The span it lives in
-  is empty — the wreath *is* the element's background.
-  Three details there are load-bearing. The element is `display: inline` with a
-  left **padding** for its width, never an inline-block with a width: an
-  inline-block is a line break opportunity, so on a narrow collection tile the
-  wreath wraps onto a line of its own and leaves the hairline stranded at the
-  end of the line above (this was measured, not guessed — it is the same
-  reasoning as `.coll-mark-sep` below). Its size is a **fixed 15px**, not a
+  is empty — the wreath *is* the element's background, painted by its
+  `::before`.
+  Three details there are load-bearing. The element is an **inline-block**,
+  and the mask is on the `::before` rather than on the element. It was once a
+  bare `display: inline` whose width was a left **padding**, so that it could
+  never be a line break opportunity and would always stay on the line of the
+  text it follows — and that is exactly what broke it. An empty inline box
+  gives the line breaker nothing to break at, so its padding is never wrapped:
+  it **hangs off the end of the line**. On a phone, a `/c/` page's Tags row put
+  the wreath outside the parchment panel, on the page background; a collection
+  tile's footer ran it into the "Browse →" link; a character card's name
+  pushed it up to 20px past the card's edge. An inline-block is measured and
+  wrapped like any other atomic inline, so it can no longer leave the box it
+  belongs to. What that costs is that the mark can now be carried to the next
+  line — so the hairline that precedes it is drawn as a **border on the mark
+  itself** (`.curata-mark-sep`, asked for with `classBadgeHTML('curata',
+  {sep:true})`) and travels with it. It used to be a `.coll-mark-sep` /
+  `.info-mark-sep` span of its own, and two elements are two things a line
+  break can fall between: the rule stayed on one line while the wreath dropped
+  to the next. A word joiner between them does *not* reliably prevent that
+  (Chrome breaks in front of an atomic inline anyway); one element cannot be
+  split at all. The mask has to move to the `::before` for this, because a mask
+  clips everything its element draws, border included.
+  Its size is a **fixed 15px**, not a
   multiple of the surrounding text: the wreath is *outlined*, and its leaves
   need about that much room before the strokes between them fall below a pixel
   and smear the whole thing into a ring — scaled to the text it would land at
-  11px on a collection tile. `font-size` sets the height (an inline box takes
-  its height from the font's content area) and `padding-left` the width, so the
-  two always move together. The one cost is that a 15px mark on 12.8px tile
+  11px on a collection tile. `font-size` is kept at that same 15px only so
+  `vertical-align: -.2em` reads against the mark's own size, which is what sits
+  it on the baseline where the old inline box's descent did. The one cost is
+  that a 15px mark on 12.8px tile
   text raises that line box by ~3px; every tile in a grid row grows with it, so
   they stay aligned. And the wreath's SVG is inlined as a
   `data:` URI in styles.css, so it carries no `"`, `#` or `%`; the shape is
@@ -1331,10 +1349,10 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   tight around the artwork *including stroke*: the mark is drawn with
   `mask-size: contain`, so slack in the viewBox shows up as the wreath
   rendering smaller than the 15px it was asked for.
-  On collection tiles the mark sits after the character count behind a
-  hairline `.coll-mark-sep`.
+  On collection tiles the mark sits after the character count behind its
+  hairline (`{sep:true}`).
   On a `/c/` page it sits at the end of the **Tags** row behind the same
-  hairline (`.info-mark-sep`) — it is a mark, never a link, so it can't be
+  hairline — it is a mark, never a link, so it can't be
   mistaken for a clickable tag; a Curata page with no tags of its own
   shows an em dash (`.tag-none`) on the tags side. There is **no Status row
   in the character info box** any more: Curata is that wreath, and Partial

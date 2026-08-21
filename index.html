@@ -309,8 +309,7 @@
           // it, then the Curata wreath behind a hairline.
           '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
             ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.curata) ? '<span class="coll-mark-sep"></span>' +
-              window.classBadgeHTML('curata') : '') + '</span>' +
+            ((coll && coll.curata) ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
           '<span class="collection-arrow">Browse →</span>' +
         '</div>' +
       '</a>';
@@ -512,8 +511,7 @@
               // who made it, then the Curata wreath behind a hairline.
               '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
                 (sc.author ? ' · ' + esc(sc.author) : '') +
-                (sc.curata ? '<span class="coll-mark-sep"></span>' +
-                  window.classBadgeHTML('curata') : '') + '</span>' +
+                (sc.curata ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
               '<span class="collection-arrow">View →</span>' +
             '</div></a>';
         }).join('');
