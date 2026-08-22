@@ -792,28 +792,12 @@
       esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
   }
 
-  /* A Status-box row for a script or collection its creator opened up, with
-     the link to its edit log. Characters say the same in their own info box
-     (openEditRow in render.js). Only an opened page says anything, which is
-     how anybody finds out they are welcome to help. */
-  var OPEN_EDIT_TEXT = {
-    all: ['open to all', 'anyone with an account can edit this page. '],
-    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
-    // Named accounts, not an open door — see the same table in render.js.
-    approved: ['shared', 'the creator has named the people who may edit this page. ']
-  };
-  function openEditRows(d, root, type) {
-    var t = OPEN_EDIT_TEXT[d.publicEdit];
-    if (!t) return [];
-    var key = type === 'script' ? (d.slug || '') : (d.id || d.slug || '');
-    var q = 'type=' + esc(type) + '&amp;slug=' + encodeURIComponent(key);
-    var links = '<a class="hist-page-link" href="' + esc(root) + 'history?' + q + '">Edit history</a>';
-    if (d.publicEdit === 'suggest') {
-      links = '<a class="hist-page-link" href="' + esc(root) + 'suggestions?' + q + '">Suggestions</a> ' + links;
-    }
-    return ['<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
-      t[1] + links + '</dd>'];
-  }
+  /* The "who may edit this page" line used to sit here too, as a Status-box
+     row (openEditRows). It now belongs to the page's EDITING page, where the
+     people it concerns already are — publish-script.html and
+     publish-collection.html draw it with Render.editStatusHTML(), the same
+     call the character editor makes, so the three page types cannot word it
+     differently. Nothing about a page's sharing is announced to readers. */
 
   /* ── shared page body ── */
   function renderPageBody(cfg) {
@@ -958,7 +942,7 @@
       jsonLabel: 'Script JSON', editHref: opts.editHref, nightOrder: sc.nightOrder,
       jinxEdits: sc.jinxEdits, bootlegger: sc.bootlegger,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: curataRow(sc).concat(openEditRows(sc, root, 'script'))
+      extraInfoRows: curataRow(sc)
     });
   }
 
@@ -987,7 +971,7 @@
       entries: members, orderMap: orderMap, jsonText: jsonText, actions: actions,
       jsonLabel: 'Collection JSON', editHref: opts.editHref,
       pagesHTML: opts.pagesHTML, boxesHTML: opts.boxesHTML, newPageHref: opts.newPageHref,
-      extraInfoRows: curataRow(coll).concat(openEditRows(coll, root, 'collection'))
+      extraInfoRows: curataRow(coll)
     });
   }
 

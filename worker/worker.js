@@ -2925,7 +2925,10 @@ async function buildPublicJSON(env, table, opts = {}) {
     // The approved-editor list is the creator's own administration, not page
     // content, and it stores account ids. Nothing public reads it — the
     // editors load their page through /api/page — so it never goes on the
-    // wire. `publicEdit` stays: that is what the page's Editing row renders.
+    // wire. `publicEdit` stays: it is one word and it gives nothing away.
+    // Nothing renders it any more — a page's edit status moved out of the
+    // reader's info box and onto its editing page — but the feed is a public
+    // API, so dropping a field from it is a separate decision.
     delete d.editors;
     if (chars && r.slug) {
       d.slug = String(r.slug);

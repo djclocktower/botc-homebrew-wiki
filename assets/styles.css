@@ -3317,13 +3317,33 @@ html.textedit-on .te-live-hit {
 .hist-err { color: #9a2c2c; font-size: .86rem; margin: 4px 0 0; }
 .hist-empty { color: #6b5d49; font-size: .9rem; margin: 14px 0 0; }
 
-/* "Anyone can edit this": the marker on a page that has been opened up, and
-   the history link beside it. */
-.open-edit-row .oe-chip {
+/* The page's edit status, at the top of its EDITING page (Render.editStatusHTML).
+   It used to be an "Editing:" row in the reader's info box on /c/, /s/ and
+   /collection/ — the wrong audience, so the whole thing moved to the four
+   editors. Sits above the form, so it is a bar rather than a table row, and
+   it reads green when the page has been opened up and quiet brown when it has
+   not: "yours alone" is the resting state, not an alert. */
+.edit-status-bar {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;
+  background: rgba(42,110,42,.07); border: 1px solid rgba(42,110,42,.32);
+  border-radius: 8px; padding: 10px 13px; margin: 0 0 16px;
+  font-size: .88rem; line-height: 1.5; color: #2c4a2c;
+}
+.edit-status-bar.is-closed {
+  background: rgba(122,93,63,.07); border-color: var(--rule); color: #5f5240;
+}
+.edit-status-bar .es-label {
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  text-transform: uppercase; opacity: .75;
+}
+.edit-status-bar .oe-chip {
   font-family: 'Oswald', sans-serif; font-size: .7rem; font-weight: 600;
   letter-spacing: .05em; text-transform: uppercase;
   color: #1c5429; background: rgba(42,110,42,.1);
   border: 1px solid rgba(42,110,42,.35); border-radius: 3px; padding: 1px 6px;
+}
+.edit-status-bar.is-closed .oe-chip {
+  color: #6b5d49; background: rgba(122,93,63,.08); border-color: rgba(122,93,63,.35);
 }
 .hist-page-link {
   font-family: 'Oswald', sans-serif; font-size: .74rem; letter-spacing: .04em;

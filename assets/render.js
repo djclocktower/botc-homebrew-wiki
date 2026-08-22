@@ -64,31 +64,45 @@
     if (!links) return '';
     return '<dt>Appears in:</dt><dd class="info-appears-in">' + links + '</dd>';
   }
-  /* "Anyone can edit this page", and the link to its history. Only an opened
-     page says so, which is how anybody finds out they are welcome to help. The
-     history link shares the row because it answers the same question: who has
-     been here, and what did they do? A page that is not open still has a
-     history, reached from its Edit view and the account page. */
-  var OPEN_EDIT_TEXT = {
-    all: ['open to all', 'anyone with an account can edit this page. '],
-    tags: ['tags open to all', 'anyone with an account can change the tags. '],
-    suggest: ['suggestions welcome', 'anyone with an account can propose an edit for the creator to approve. '],
-    /* Approved editing names accounts rather than opening the page, so this
-       row says that it is shared and stops there. It is not an invitation the
-       way the other three are, and WHO the editors are is the creator's own
-       list — the Worker keeps it out of the public feeds for that reason. */
-    approved: ['shared', 'the creator has named the people who may edit this page. ']
+  /* ── the page's edit status ──
+     Who may edit this page, said at the top of its EDITING page and nowhere
+     else. It used to be a row in the reader's info box, which is the wrong
+     audience twice over: a reader is not deciding anything, and the person who
+     IS — the owner opening the page up, the guest wondering whether they are
+     welcome — is already looking at the editor when the question comes up.
+     One table, used by the three editors of an existing page (edit.html,
+     publish-script.html, publish-collection.html) through editStatusHTML(),
+     so a character, a script and a collection cannot word it differently.
+     create.html is not one of them: a page being made is nobody else's yet.
+     The wording addresses the OWNER, who is the only one shown this bar — a
+     guest editing an opened page gets the editor's own banner instead.
+     '' is a page nobody has opened, which the owner still wants to see stated:
+     the bar is the page's status, not only a notice when it is unusual. */
+  var EDIT_STATUS = {
+    '':        ['yours alone', 'only you and the wiki admins can edit this page.'],
+    all:       ['open to all', 'anyone with an account can edit this page.'],
+    tags:      ['tags open to all', 'anyone with an account can change the tags.'],
+    suggest:   ['suggestions welcome', 'anyone with an account can propose an edit for you to approve.'],
+    /* Approved editing names accounts rather than opening the page. It is not
+       an invitation the way the other three are, and WHO the editors are is
+       the creator's own list — the Worker keeps it out of the public feeds for
+       that reason, so nothing but the owner's own form ever names them. */
+    approved:  ['shared', 'only the accounts you have named can edit this page.']
   };
-  function openEditRow(d, root) {
-    var t = OPEN_EDIT_TEXT[d.publicEdit];
-    if (!t) return '';
-    var slug = encodeURIComponent(d.slug || '');
-    var links = '<a class="hist-page-link" href="' + root + 'history?type=character&amp;slug=' + slug + '">Edit history</a>';
-    if (d.publicEdit === 'suggest') {
-      links = '<a class="hist-page-link" href="' + root + 'edit?c=' + slug + '">Suggest an edit</a> ' + links;
-    }
-    return '<dt>Editing:</dt><dd class="open-edit-row"><span class="oe-chip">' + t[0] + '</span> ' +
-      t[1] + links + '</dd>';
+  /* mode: the stored `publicEdit` ('' for a closed page).
+     opts.links: [{href, label}] appended after the sentence — the history
+     page, a suggestions queue, whatever the editor has to offer. */
+  function editStatusHTML(mode, opts) {
+    opts = opts || {};
+    var key = Object.prototype.hasOwnProperty.call(EDIT_STATUS, mode) ? mode : '';
+    var t = EDIT_STATUS[key];
+    var links = (opts.links || []).filter(Boolean).map(function (l) {
+      return '<a class="hist-page-link" href="' + esc(l.href) + '">' + esc(l.label) + '</a>';
+    }).join(' ');
+    return '<p class="edit-status-bar' + (key ? '' : ' is-closed') + '">' +
+      '<span class="es-label">Who can edit:</span> ' +
+      '<span class="oe-chip">' + esc(t[0]) + '</span> ' +
+      esc(t[1]) + (links ? ' ' + links : '') + '</p>';
   }
 
   function jinxURL(name) {
@@ -549,7 +563,6 @@
           '</dd>' : '') +
       appearsInRow(d, root) +
       tagsRow +
-      openEditRow(d, root) +
       (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
       (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>';
@@ -828,6 +841,7 @@
     window.setCurataMark = setCurataMark;
     window.creatorSymbol = creatorSymbol;
     window.splitCreators = splitCreators;
+    window.editStatusHTML = editStatusHTML;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -845,7 +859,8 @@
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
-      splitCreators: splitCreators
+      splitCreators: splitCreators,
+      editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS
     };
   }
 })();
