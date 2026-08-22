@@ -1584,6 +1584,12 @@ async function ensureProfileColumn(env) {
 
 const PROFILE_LINK_KEYS = ['website', 'discord', 'bluesky', 'other'];
 const PROFILE_URL_RE = /^https?:\/\/[^\s<>"']{3,300}$/i;
+// How many of their own pages somebody may pin to the top of their creator
+// page. The strip is a grid that wraps, so the number is a matter of how much
+// of the page it is fair to spend before the characters start — not a layout
+// constraint. Raised from 3; account.html disables the remaining checkboxes at
+// the same number, so keep the two in step.
+const PROFILE_PINS_MAX = 10;
 // Validate what a user typed into their profile settings. Links are http(s)
 // only (Discord is a handle, not a URL); pinned pages are checked against what
 // the account actually owns by the caller, not here.
@@ -1602,13 +1608,13 @@ function sanitizeProfileExtra(input) {
     if (PROFILE_URL_RE.test(v)) out.links[k] = v;
   }
   const pinned = Array.isArray(input && input.pinned) ? input.pinned : [];
-  for (const p of pinned.slice(0, 12)) {
+  for (const p of pinned.slice(0, PROFILE_PINS_MAX * 4)) {
     const type = String((p && p.type) || '');
     const slug = String((p && p.slug) || '').slice(0, 80);
     if (!CONTENT[type] || !slug) continue;
     if (out.pinned.some(x => x.type === type && x.slug === slug)) continue;
     out.pinned.push({ type, slug });
-    if (out.pinned.length >= 3) break;   // three is the whole point of pinning
+    if (out.pinned.length >= PROFILE_PINS_MAX) break;
   }
   return out;
 }

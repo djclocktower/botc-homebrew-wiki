@@ -371,7 +371,7 @@
               <input id="s-link-discord" maxlength="40" placeholder="yourname (shown as text, not a link)">
             </div>
             <div class="set-field">
-              <label>Pinned pages <span class="pin-hint">up to 3, shown at the top of your creator page</span></label>
+              <label>Pinned pages <span class="pin-hint">up to 10, shown at the top of your creator page</span></label>
               <div id="s-pins" class="pin-picker"><p class="pin-empty">Publish a page and you can pin it here.</p></div>
             </div>
             <button class="btn" id="save-profile">Save Profile</button>
@@ -611,9 +611,13 @@
         '<td class="row-actions">' + actions + '</td></tr>';
     }
 
-    /* Pinned pages: up to three of your own published pages, shown at the top
-       of your creator page. Only published pages can be pinned — the server
-       re-checks that on save, and drops a pin if the page later goes draft. */
+    /* Pinned pages: your own published pages, shown at the top of your creator
+       page. Only published pages can be pinned — the server re-checks that on
+       save, and drops a pin if the page later goes draft. PIN_MAX must match
+       PROFILE_PINS_MAX in worker.js, which is the real limit: this only decides
+       when the remaining boxes go grey, so that hitting the cap is something
+       you see rather than something the save tells you afterwards. */
+    var PIN_MAX = 10;
     var PINNED = [];
     function pinKey(p) { return p.type + ':' + p.slug; }
     function renderPinPicker(pages) {
@@ -631,11 +635,11 @@
           (on[k] ? ' checked' : '') + '> <span>' + esc(x.r.name || x.r.slug) +
           ' <span class="pin-type">' + esc(x.type) + '</span></span></label>';
       }).join('');
-      // Three is the cap; disable the rest rather than failing on save.
+      // At the cap, disable the rest rather than failing on save.
       function sync() {
         var boxes = [].slice.call(box.querySelectorAll('input'));
         var n = boxes.filter(function (b) { return b.checked; }).length;
-        boxes.forEach(function (b) { b.disabled = !b.checked && n >= 3; });
+        boxes.forEach(function (b) { b.disabled = !b.checked && n >= PIN_MAX; });
       }
       box.addEventListener('change', sync);
       sync();

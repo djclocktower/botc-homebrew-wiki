@@ -1063,8 +1063,9 @@ A creator page then shows the union of *pages the account owns* and *pages
 credited to any name it has claimed*, so a page counts either way round.
 Nothing is written to the pages, so it all stays correct as pages change hands.
 
-Extra profile fields (links + up to 3 pinned pages) live in one lazily-ALTERed
-`users.profile_json` column — same hybrid-JSON reasoning as the content tables.
+Extra profile fields (links + pinned pages, up to `PROFILE_PINS_MAX` = 10)
+live in one lazily-ALTERed `users.profile_json` column — same hybrid-JSON
+reasoning as the content tables.
 `sanitizeProfileExtra()` caps and validates them (http(s) links only, Discord is
 a handle not a URL); pins are re-checked against what the account actually owns
 on save **and** on read, so a pin that goes draft quietly drops out.
