@@ -137,10 +137,16 @@ assets/
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
                        no DOM at top level. Takes the wiki text engine through
-                       init(WikiRender) for the two formatted character fields,
-                       `pronunciation` (the quiet line under the flavour quote)
-                       and jinx rule text; without it both still render, escaped
-                       and unformatted.
+                       init(WikiRender) for the character fields that carry
+                       formatting: `pronunciation` (the quiet line under the
+                       flavour quote), jinx rule text, and the info box's two
+                       credit rows `translatedBy` / `iconBy` — what people write
+                       in those is a person and where to find them, so a typed
+                       [Name](url) has to become a link instead of printing its
+                       own brackets. Everything else on a character page is
+                       deliberately escaped (see the Bloodstar section). Without
+                       the engine they all still render, escaped and
+                       unformatted, never raw.
                        Also owns buildCreditsFabled() — the botchomebrew.wiki
                        credits Fabled the Script Builder appends to its exports
                        (see script.html below).

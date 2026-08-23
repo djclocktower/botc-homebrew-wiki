@@ -737,6 +737,12 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .author-link:hover,
 .appears-in-link:hover { text-decoration: underline; }
+/* "Translated by" and "Icon by" take wiki formatting (inlineText in render.js),
+   because what goes in them is a person and where to find them — so the link
+   is whatever the writer typed, not one of this card's own classes. Match the
+   rows above it: every other link in the info box reads the same. */
+.info-credit a { color: var(--good-name); text-decoration: none; }
+.info-credit a:hover { text-decoration: underline; }
 
 /* Creator's credit symbol next to their name in a character's info box.
    The glyph itself lives in the shared registry (assets/creators.js). */

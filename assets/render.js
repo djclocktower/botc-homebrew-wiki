@@ -563,8 +563,15 @@
           '</dd>' : '') +
       appearsInRow(d, root) +
       tagsRow +
-      (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd>' + esc(d.translatedBy.trim()) + '</dd>' : '') +
-      (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd>' + esc(d.iconBy.trim()) + '</dd>' : '') +
+      /* The two credit rows take formatting — in practice a link, because
+         what people write in them is somebody's name and where to find them.
+         Escaped, a typed [DarkArtist](https://…/u/darkartist) printed its own
+         brackets and parentheses in the middle of the info box. inlineText()
+         is the wiki engine (render-wiki.js), which escapes first and
+         whitelists the href, so nothing typed here can become raw HTML; with
+         the engine absent it falls back to the plain escaped text. */
+      (d.translatedBy && d.translatedBy.trim() ? '<dt>Translated by:</dt><dd class="info-credit">' + inlineText(d.translatedBy.trim()) + '</dd>' : '') +
+      (d.iconBy && d.iconBy.trim() ? '<dt>Icon by:</dt><dd class="info-credit">' + inlineText(d.iconBy.trim()) + '</dd>' : '') +
       '</dl>';
 
     // Copy-link button lives in the top-right corner *inside* the info card so
