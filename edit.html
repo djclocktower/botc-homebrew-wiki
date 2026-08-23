@@ -237,11 +237,11 @@
       </div>
       <div class="fld">
         <label for="translatedBy">Translated by <span class="hint">(optional)</span></label>
-        <input type="text" id="translatedBy">
+        <input type="text" id="translatedBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld">
         <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
-        <input type="text" id="iconBy">
+        <input type="text" id="iconBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
       <div class="fld">
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
@@ -906,6 +906,53 @@
             '<a class="hist-open-link" href="' + histPageHref() + '">Open the history page</a>';
         });
     }
+    /* ── the page's edit status, at the top of its editing page ──
+       Who may edit this page, said where the person who decides it is
+       standing. It used to be an "Editing:" row in the reader's info box on
+       the character page, which announced it to the one audience that cannot
+       act on it — and said nothing at all to the owner, whose own setting it
+       is. A guest sees the same answer from their side in the banner above;
+       this is the owner's copy.
+
+       It is drawn from the SELECT rather than from the loaded value, and
+       re-drawn when that changes, so the bar and the control can never
+       disagree: it says what the next save will store. */
+    function editStatusBar() {
+      var bar = document.getElementById('edit-status');
+      if (!bar) {
+        var card = document.querySelector('.formcard');
+        if (!card) return null;
+        bar = document.createElement('div');
+        bar.id = 'edit-status';
+        card.insertBefore(bar, card.firstChild);
+      }
+      return bar;
+    }
+    function renderEditStatus() {
+      if (EDIT_MODE !== 'owner' || !window.editStatusHTML) return;
+      var bar = editStatusBar();
+      if (!bar) return;
+      var sel = $('publicEdit');
+      var mode = sel ? sel.value : '';
+      var links = [];
+      if (mode === 'suggest') {
+        links.push({ href: 'suggestions?type=character&slug=' + encodeURIComponent(originalSlug),
+                     label: 'Suggestions' });
+      }
+      // A draft genuinely has no history (saveRevision() skips unpublished
+      // rows), so it gets no link to one — see showOwnerHistory().
+      if (!isDraftPage) links.push({ href: histPageHref(), label: 'Edit history' });
+      links.push({ href: '#publicEdit', label: 'Change this' });
+      bar.innerHTML = window.editStatusHTML(mode, { links: links });
+      var change = bar.querySelector('a[href="#publicEdit"]');
+      if (change) change.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!sel) return;
+        sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        sel.focus({ preventScroll: true });
+      });
+    }
+
     function guestNotice(entry) {
       // The name is the URL, and renaming a page moves it, so that stays with
       // whoever made it. Locking the field is kinder than letting somebody
@@ -998,6 +1045,7 @@
       $('editors-fld').style.display = on ? '' : 'none';
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
+    $('publicEdit').addEventListener('change', renderEditStatus);
 
     function populateForm(entry){
       originalEntry = entry;
@@ -1270,7 +1318,11 @@
         // The Worker forces a draft when the page has no icon, so take the
         // status it actually stored rather than the one we requested.
         currentStatus = (saved && saved.status) || saveStatus;
+        // Publishing a draft gives the page a history, and the status bar's
+        // links follow from that — so re-draw it on the stored answer.
+        isDraftPage = currentStatus === 'draft';
         updatePublishButton();
+        renderEditStatus();
         // The page may have just moved: carry on editing the new URL, and
         // leave the address bar on it so a refresh finds the right page.
         var movedFrom = (saved && saved.movedFrom) || null;
@@ -1394,7 +1446,7 @@
           else if (mode === 'suggest') suggestMode(entry);
           // The owner (and an admin, who reaches this page the same way) is the
           // only one who can roll a version back, so the panel is theirs.
-          else if (mode === 'owner') showOwnerHistory();
+          else if (mode === 'owner') { renderEditStatus(); showOwnerHistory(); }
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';

@@ -137,10 +137,16 @@ assets/
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
                        no DOM at top level. Takes the wiki text engine through
-                       init(WikiRender) for the two formatted character fields,
-                       `pronunciation` (the quiet line under the flavour quote)
-                       and jinx rule text; without it both still render, escaped
-                       and unformatted.
+                       init(WikiRender) for the character fields that carry
+                       formatting: `pronunciation` (the quiet line under the
+                       flavour quote), jinx rule text, and the info box's two
+                       credit rows `translatedBy` / `iconBy` — what people write
+                       in those is a person and where to find them, so a typed
+                       [Name](url) has to become a link instead of printing its
+                       own brackets. Everything else on a character page is
+                       deliberately escaped (see the Bloodstar section). Without
+                       the engine they all still render, escaped and
+                       unformatted, never raw.
                        Also owns buildCreditsFabled() — the botchomebrew.wiki
                        credits Fabled the Script Builder appends to its exports
                        (see script.html below).
@@ -917,12 +923,32 @@ read-only in suggest mode and say so. A script or collection set to 'suggest'
 therefore advertises a queue nobody can add to; either wire the send path into
 those two editors or take 'suggest' out of their dropdowns.
 
+### Where the edit status is shown
+
+**A page's edit status lives on its EDITING page, not on the page itself.** It
+used to be an "Editing:" row in the reader's info box on `/c/`, `/s/` and
+`/collection/` (`openEditRow()` / `openEditRows()`, both now gone), which told
+the one audience that cannot act on it and never told the owner, whose setting
+it is. `Render.editStatusHTML(mode, {links})` is the single source of the
+wording, used by `edit.html`, `publish-script.html` and `publish-collection.html`
+to draw a bar at the top of the form (`.edit-status-bar`). Three rules:
+
+- **It is the owner's bar.** A guest editing an opened page already gets the
+  editor's own banner (`guestBanner()` / `applyEditMode()`), which says the same
+  thing from their side, so the wording in `EDIT_STATUS` addresses the owner.
+- **It is drawn from the `<select>`, not from what loaded**, and re-drawn on
+  change — so the bar and the control can never disagree. It says what the next
+  save will store.
+- **A page that does not exist yet has no bar**: `create.html` never mounts one,
+  and the two publish editors wait for an edit slug.
+
+Nothing on a reader-facing page announces who may edit it any more. The way in
+is the pencil in the top bar, which is unconditional.
+
 `history.html` (`/history?type=&slug=`) is the reader-facing page: the current
 version, every edit under it, "What changed" per entry, and "Put this version
-back" for the owner. Linked from the page itself (only an opened page
-advertises itself, via `openEditRow()` in render.js and `openEditRows()` in
-render-page.js), from the account page's row actions, from the guest banner
-in the editor, and — for the person who can actually act on it — from the
+back" for the owner. Linked from the edit status bar above, from the account
+page's row actions, from the guest banner in the editor, and — for the person who can actually act on it — from the
 **Sharing** section of `edit.html`, which fills a panel from `/api/page-history`
 so it says how many edits there are and who made the last one instead of being
 a link into the unknown. A draft says why it has none rather than showing an
@@ -1043,8 +1069,9 @@ A creator page then shows the union of *pages the account owns* and *pages
 credited to any name it has claimed*, so a page counts either way round.
 Nothing is written to the pages, so it all stays correct as pages change hands.
 
-Extra profile fields (links + up to 3 pinned pages) live in one lazily-ALTERed
-`users.profile_json` column — same hybrid-JSON reasoning as the content tables.
+Extra profile fields (links + pinned pages, up to `PROFILE_PINS_MAX` = 10)
+live in one lazily-ALTERed `users.profile_json` column — same hybrid-JSON
+reasoning as the content tables.
 `sanitizeProfileExtra()` caps and validates them (http(s) links only, Discord is
 a handle not a URL); pins are re-checked against what the account actually owns
 on save **and** on read, so a pin that goes draft quietly drops out.

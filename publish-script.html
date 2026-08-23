@@ -569,6 +569,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (PUBLIC_EDIT_MODES[v]) m.publicEdit = v; else delete m.publicEdit;
       setMeta(m);
       syncEditorsBox();
+      renderEditStatus();
     });
 
     // Drag or ▲▼, in the shared widget the Script Builder uses too, so an
@@ -975,6 +976,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         m.logo = removeLogo ? '' : (existingLogo || m.logo);
         m.editSlug = slug; setMeta(m);
         removeHeader = removeLogo = removeBg = false;   // removals are now persisted
+        renderEditStatus();   // the page exists now, so it has a status to state
         var url = SITE_ROOT + 's/' + encodeURIComponent(slug);
         // The name was already spoken for, so this page took the next free
         // address. Say so: silently landing somewhere else would read as the
@@ -1032,6 +1034,59 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
     });
 
+    /* ── the page's edit status, at the top of its editing page ──
+       Who may edit this script, said where its owner is standing. It used to
+       be an "Editing:" row in the Status box on the published page, which
+       announced the setting to readers, who cannot act on it, and never to the
+       owner, whose setting it is. A guest is told the same thing from their
+       side by applyEditMode() below; this is the owner's copy.
+
+       Drawn from the SELECT rather than from what loaded, and re-drawn when
+       that changes, so the bar and the control cannot disagree: it says what
+       the next save will store. */
+    function editStatusHost(){
+      var host = document.getElementById('edit-status');
+      if (!host){
+        var main = document.querySelector('.pub-main');
+        if (!main) return null;
+        var hero = main.querySelector('.home-hero');
+        host = document.createElement('div');
+        host.id = 'edit-status';
+        main.insertBefore(host, hero ? hero.nextSibling : main.firstChild);
+      }
+      return host;
+    }
+    function renderEditStatus(){
+      var host = document.getElementById('edit-status');
+      // Nothing to say on a script that has never been saved: it is yours
+      // because it does not exist yet.
+      if (editRole !== 'owner' || !EDIT_SLUG || !window.editStatusHTML){
+        if (host) host.innerHTML = '';
+        return;
+      }
+      host = editStatusHost();
+      if (!host) return;
+      var mode = $('sb-public-edit').value;
+      var q = 'type=script&slug=' + encodeURIComponent(EDIT_SLUG);
+      var links = [];
+      if (mode === 'suggest') links.push({ href: 'suggestions?' + q, label: 'Suggestions' });
+      // A draft keeps no history — saveRevision() does not snapshot one.
+      if (currentStatus !== 'draft') links.push({ href: 'history?' + q, label: 'Edit history' });
+      links.push({ href: '#sb-public-edit', label: 'Change this' });
+      host.innerHTML = window.editStatusHTML(mode, { links: links });
+      var change = host.querySelector('a[href="#sb-public-edit"]');
+      if (change) change.addEventListener('click', function(e){
+        e.preventDefault();
+        var sec = $('sb-open-sec');
+        if (sec) sec.open = true;          // the control lives in a <details>
+        var sel = $('sb-public-edit');
+        if (sel){
+          sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          sel.focus({ preventScroll: true });
+        }
+      });
+    }
+
     /* Owner-only controls, switched off for anyone else. Kept in one place so
        the two ways in (a fresh ?s= load and the badge refresh after a publish)
        cannot disagree. */
@@ -1040,6 +1095,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var editRole = 'owner';
     function applyEditMode(mode, isOwner){
       editRole = mode || '';
+      renderEditStatus();
       if (isOwner && mode === 'owner') return;
       $('sb-delete').style.display = 'none';
       // Hiding the "who can edit" panel outright: the Worker carries the

@@ -381,7 +381,60 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function syncEditorsBox(){
       $('sb-editors-fld').style.display = $('sb-public-edit').value === 'approved' ? '' : 'none';
     }
-    $('sb-public-edit').addEventListener('change', syncEditorsBox);
+    $('sb-public-edit').addEventListener('change', function(){
+      syncEditorsBox();
+      renderEditStatus();
+    });
+
+    /* ── the page's edit status, at the top of its editing page ──
+       Who may edit this collection, said where its owner is standing. It used
+       to be an "Editing:" row in the Status box on the published page, which
+       told readers — who cannot act on it — and never the owner, whose setting
+       it is. A guest is told the same thing from their side by applyEditMode()
+       below; this is the owner's copy. Drawn from the SELECT and re-drawn when
+       it changes, so the bar says what the next save will store. */
+    function editStatusHost(){
+      var host = document.getElementById('edit-status');
+      if (!host){
+        var main = document.querySelector('.pub-main');
+        if (!main) return null;
+        var hero = main.querySelector('.home-hero');
+        host = document.createElement('div');
+        host.id = 'edit-status';
+        main.insertBefore(host, hero ? hero.nextSibling : main.firstChild);
+      }
+      return host;
+    }
+    function renderEditStatus(){
+      var host = document.getElementById('edit-status');
+      // A collection that has never been saved has nothing to say: it is yours
+      // because it does not exist yet.
+      if (editRole !== 'owner' || !EDIT_KEY || !window.editStatusHTML){
+        if (host) host.innerHTML = '';
+        return;
+      }
+      host = editStatusHost();
+      if (!host) return;
+      var mode = $('sb-public-edit').value;
+      var q = 'type=collection&slug=' + encodeURIComponent(EDIT_KEY);
+      var links = [];
+      if (mode === 'suggest') links.push({ href: 'suggestions?' + q, label: 'Suggestions' });
+      // A draft keeps no history — saveRevision() does not snapshot one.
+      if (currentStatus !== 'draft') links.push({ href: 'history?' + q, label: 'Edit history' });
+      links.push({ href: '#sb-public-edit', label: 'Change this' });
+      host.innerHTML = window.editStatusHTML(mode, { links: links });
+      var change = host.querySelector('a[href="#sb-public-edit"]');
+      if (change) change.addEventListener('click', function(e){
+        e.preventDefault();
+        var sec = $('sb-open-sec');
+        if (sec) sec.open = true;          // the control lives in a <details>
+        var sel = $('sb-public-edit');
+        if (sel){
+          sel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          sel.focus({ preventScroll: true });
+        }
+      });
+    }
 
     /* Owner-only controls, switched off for anyone else. */
     // What the Worker said this account may do here, so updateButtons() can
@@ -389,6 +442,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     var editRole = 'owner';
     function applyEditMode(mode, isOwner){
       editRole = mode || '';
+      renderEditStatus();
       if (isOwner && mode === 'owner') return;
       $('pc-delete').style.display = 'none';
       // The whole "who can edit" panel goes: the Worker carries the stored
@@ -781,6 +835,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         EDIT_PK = (res && res.slug) || EDIT_PK || id;
         $('pub-page-title').textContent = 'Edit Collection';
         updateUrlPreview(); updateButtons(); loadPages(id);
+        renderEditStatus();   // the page exists now, so it has a status to state
         var pageUrl = SITE_ROOT + 'collection/' + encodeURIComponent(id);
         // The name was already spoken for, so this page took the next free
         // address. Say so: silently landing somewhere else would read as the
