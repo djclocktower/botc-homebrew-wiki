@@ -53,6 +53,13 @@
     'grenze':    'Grenze Gotisch'
   };
 
+  /* How far the top graphic may be scaled, as a percentage of the wiki's own
+     size for it. The floor is "still recognisably a logo" and the ceiling is
+     "still inside the page" — above 250 the header would push everything else
+     below the fold on a phone. */
+  var LOGO_SIZE_MIN = 25;
+  var LOGO_SIZE_MAX = 250;
+
   function sanitizeTheme(theme, allowedBgBase) {
     if (!theme || typeof theme !== 'object') return null;
     var out = {};
@@ -70,6 +77,21 @@
     if (typeof theme.background === 'string' && allowedBgBase) {
       var m = theme.background.match(/^([a-z0-9/-]+)-bg\.(png|jpe?g|webp)$/i);
       if (m && m[1] === allowedBgBase) out.background = theme.background;
+    }
+    /* The top graphic (header banner, or the logo when there is no banner).
+       `logoSize` is a PERCENTAGE of the size the wiki would have drawn it at,
+       so 100 is "leave it alone" and is never stored — a logo the author
+       never touched keeps following whatever the stylesheet says. It becomes
+       a multiplier on the existing max-width/max-height rules rather than a
+       width of its own, so a small image is still never blown up past its own
+       pixels and the mobile cap still applies.
+       `logoPanel` puts a parchment card behind it: a logo drawn for a light
+       background disappears against the wiki's purple, and the alternative
+       was asking every author to re-export their art. */
+    var n = Math.round(Number(theme.logoSize));
+    if (isFinite(n) && n >= LOGO_SIZE_MIN && n <= LOGO_SIZE_MAX && n !== 100) out.logoSize = n;
+    if (theme.logoPanel === true || theme.logoPanel === 'on' || theme.logoPanel === 1) {
+      out.logoPanel = true;
     }
     return Object.keys(out).length ? out : null;
   }
@@ -90,6 +112,14 @@
       cls.push('theme-bg');
       style.push('--pg-bg:url("' + (linkRoot || '') + 'assets/' + theme.background + '")');
     }
+    /* Both of these are carried by the class list on <body> and read by
+       styles.css, so the page markup itself is untouched: the same rules
+       cover the script header, the collection header and the bare logo. */
+    if (theme.logoSize) {
+      cls.push('theme-logo-size');
+      style.push('--pg-logo-scale:' + (theme.logoSize / 100));
+    }
+    if (theme.logoPanel) cls.push('theme-logo-panel');
     return { cls: cls.join(' '), style: style.join(';') };
   }
 
@@ -989,6 +1019,8 @@
     sortCollectionMembers: sortCollectionMembers,
     sanitizeTheme: sanitizeTheme,
     themeAttrs: themeAttrs,
+    LOGO_SIZE_MIN: LOGO_SIZE_MIN,
+    LOGO_SIZE_MAX: LOGO_SIZE_MAX,
     buildPageExport: buildPageExport,
     FONT_PRESETS: FONT_PRESETS,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL

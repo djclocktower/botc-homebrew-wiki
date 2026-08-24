@@ -163,8 +163,20 @@
     return false;
   }
 
+  /* Curata is the admins' mark, and `curataOptOut` on the page's own data is
+     the creator declining it. It takes the wreath off whether the mark was
+     granted to the page directly or lent to it by a Curata collection: the
+     page belongs to whoever made it, and the mark says the wiki is showing it
+     off, which is not something to be done to somebody over their objection.
+
+     Read HERE rather than at each call site, so the feeds, the browse
+     filters, Featured, /random, the SSR pages and the weighting all agree
+     without every one of them having to remember the second field. What it
+     costs is that an unfinished page which was only out of Partial BECAUSE of
+     the mark falls back into Partial — true, and what the editor warns about
+     before the box is ticked. */
   function isCurata(d) {
-    return !!(d && d.curata);
+    return !!(d && d.curata && !d.curataOptOut);
   }
 
   /* Incomplete = some part of a finished almanac entry is still missing.

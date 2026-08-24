@@ -421,8 +421,8 @@ assets/
   fonts/, pyodide/, tokens/     Fonts (Dumbledor2, Trade Gothic, OptimusPrinceps,
                        LHF Unlovable); Token Tool engine (Pyodide) + assets
 index.html             Homepage (collections grid, scripts, browse cards, sidebar).
-                       Featured Character rotates **Curata pages only**,
-                       seeded by the day number so it is stable for 24 h.
+                       Featured Character rotates by CREATOR, daily and with no
+                       Curata requirement — see "Featured Character" below.
                        Browse cards include Grimoire Forge and Icon Forge; the old Creator Icons
                        pill wall was removed (it lives on /creators, linked from
                        the "By Creator" card and /tools).
@@ -709,11 +709,27 @@ Every
 Both also take `customBoxes[]` — the same `{title, content}` widget as the
 character pages, rendered through render-wiki.js so a box can hold a list, a
 link or a `[[Character Name]]`. Every one of these is length-capped and
-theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is `{font, accent, panel, text,
-link, background}` — colors must be `#rrggbb`, font a `FONT_PRESETS` key,
+theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is
+`{font, accent, panel, text, link, background, logoSize, logoPanel}` — colors
+must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
-on `<body>` (never raw CSS). Seeded collections have `owner_id NULL` — admins
+on `<body>` (never raw CSS).
+The last two are the **top graphic** — the header banner, or the logo when
+there is no banner. `logoSize` is a percentage of the size the wiki would have
+drawn it at (`LOGO_SIZE_MIN`..`LOGO_SIZE_MAX`, 25–250); 100 is never stored, so
+a page nobody touched keeps following the stylesheet instead of freezing
+today's default into the row. It becomes `--pg-logo-scale` on a
+`.theme-logo-size` body and **multiplies** the existing max-width/max-height
+caps rather than replacing them — the percentage half of `min()` has to scale
+with the pixel half or a shrunk logo would still fill 70% of a phone screen.
+`logoPanel` adds `.theme-logo-panel`, a parchment card for a logo drawn on a
+light background that vanishes against the wiki's purple; it is painted on the
+**image**, not on its wrapper, because the wrapper is a full-width centring
+block and would draw a band across the page. Both are one pair of rules in
+styles.css covering script header, collection header and bare logo alike, so no
+page markup changed. The controls are `#th-logosize` / `#th-logopanel`, wired
+by the shared `assets/theme-editor.js`. Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
 
 ## Night order (script pages)
@@ -866,6 +882,27 @@ everyone. They edit it as the creator would; the creator keeps the page.
   scrolls away, so **`GET /api/shared-pages`** is the standing list, shown as
   *Shared With You* on the account page. Without it there is no way back to a
   shared draft: by design it is in no feed, no search and no browse page.
+- **Naming an editor on a script or a collection carries down to the character
+  pages on it** (`waterfallParent()` / `waterfallEditor()` in worker.js). The
+  roster IS the work: an editor who can fix the script's synopsis but not a
+  typo in any of its characters has been given the smaller half. It grants
+  exactly `'approved'`, so everything above still holds — drafts yes,
+  publishing no, the editor list no.
+  **It reaches only characters owned by the SAME account as the parent page.**
+  A collection can list anybody's characters, so without that rule naming an
+  editor on one would hand them edit rights over strangers' pages, which is
+  not the owner's to give. An unowned page (half the wiki) is reached by
+  nothing.
+  `sharedParentPages()` is the lookup: the few script/collection rows that name
+  any editor at all, memoised per isolate against `contentVersion()` exactly
+  like `curataCollections()`, so the check costs one cached query rather than a
+  scan per page view. Membership goes through `resolveCollectionMembers()` with
+  the single character as the whole corpus — one membership rule, not a second
+  copy of it. The characters are deliberately **not** listed in *Shared With
+  You* (a 200-character roster would bury the pages actually shared); the
+  parent's row says "and its characters" and is the way to them. `/api/page`
+  returns `editVia` naming the parent, so edit.html's banner can say where the
+  permission came from instead of claiming somebody named you on this page.
 - `assets/approved-editors.js` is the one naming widget, mounted by all four
   editors (`create.html`, `edit.html`, `publish-script.html`,
   `publish-collection.html`) so the three page types cannot drift apart. It
@@ -1157,6 +1194,15 @@ reasoning as the content tables.
 `sanitizeProfileExtra()` caps and validates them (http(s) links only, Discord is
 a handle not a URL); pins are re-checked against what the account actually owns
 on save **and** on read, so a pin that goes draft quietly drops out.
+
+A pin is `{type, slug}` and **any of the three content types** can be pinned —
+characters, scripts and collections — but not a custom wiki page: pinning is
+verified against `CONTENT`, so account.html leaves wiki pages out of the picker
+rather than accepting a tick the save then drops. **The array's ORDER is the
+setting**: the strip on the creator page is drawn in it, `sanitizeProfileExtra`
+and the save's ownership re-check both keep it, and account.html arranges it
+with ▲▼ above the tick list. Ticking a page appends it, so a new pin lands at
+the end instead of jumping the queue.
 
 A credit can name several people ("Taiyi (太一), Saki") and each of them gets
 their own creator page, so every match is done one comma-separated segment at a
@@ -1602,6 +1648,37 @@ uploaded — except for the one opt-in save described below.
   a change shows on a normal refresh.
 
 
+## Featured Character (the homepage slot)
+
+A **creator** is drawn first, then one of that creator's characters
+(`featuredPick()` in index.html). Drawing a character straight out of the hat
+gave the slot to whoever had written the most pages, so the same handful of
+prolific creators held it most weeks; every creator now has the same chance of
+the day however many characters they have made. **Curata is not a condition**
+any more — it stays a 5× thumb on the scale for which of that creator's
+characters is drawn (`weightedPick`), never a gate on being drawn at all.
+Partial pages are still out (`eligible()`), as is a page with no art or nothing
+to read, and an uncredited page — the rotation is a turn for each creator, and
+a page with no creator is nobody's turn. A credit naming several people gives
+each of them a turn, and the page they share can come up under either name.
+
+Three rules shape the implementation, and the third is the one that is easy to
+break: the same creator never gets the slot **two days running**; everyone sees
+the same character for the same 24 hours; and **nothing is stored**. There is no
+server call in that slot and localStorage is per browser, so "who had it
+yesterday" cannot be remembered — it has to be recomputed, identically, by
+every reader.
+
+So the order is a per-block **permutation** rather than a fresh draw. Block `b`
+is the creator list shuffled with `b` as the seed; day `d` takes position
+`d % N` of block `floor(d / N)`. Inside a block every creator appears exactly
+once, so a repeat is impossible; the only place two neighbouring days can land
+on one name is the seam between blocks, and that single case is fixed by
+swapping the incoming block's first two names. Both blocks are computable from
+the day number alone, which is what keeps it memoryless. Do not "simplify" it
+into re-drawing and comparing against yesterday's pick — yesterday's pick is
+exactly what the page cannot know.
+
 ## Page classification (Partial / Standard / Curata)
 
 `assets/classify.js` is the **single source of truth**, shared by the browser
@@ -1636,9 +1713,10 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   anything.
 - **Standard** — the default. No badge, nothing to earn.
 - **Curata** — admin-only, on characters, collections **and** scripts.
-  Weighted `CURATA_WEIGHT` (5×) in Featured, `/random` and the homepage
-  strips, and filterable on its own (a "Curata only" chip on All
-  Characters, All Collections and Scripts).
+  Weighted `CURATA_WEIGHT` (5×) in `/random`, the homepage strips and the
+  choice of WHICH of a creator's characters is Featured, and filterable on
+  its own (a "Curata only" chip on All Characters, All Collections and
+  Scripts). It is no longer a condition of being Featured at all.
   A Curata **collection lends the status to every character in it**
   (`applyCollectionCurata()` in worker.js, applied on read in
   `buildPublicJSON` and on the SSR `/c/` page). Inherited status is never
@@ -1708,7 +1786,28 @@ and the Worker (which stamps `classification` + `curata` onto every row in
 Only `curata` is stored (a boolean in the page's `data` JSON, writable
 **only** through `POST /api/admin/curata` or the bulk action — every save
 handler overwrites whatever the client sent with the stored value). Partial vs
-Standard is derived on every read, so nothing ever needs migrating. If you add
+Standard is derived on every read, so nothing ever needs migrating.
+
+**The creator can decline it: `curataOptOut`** on a character's own `data`.
+Granting the mark is the admins' call and declining it is the creator's — the
+wreath says the wiki is showing this page off, which is not something to do to
+somebody over their objection. Three rules:
+
+- **`Classify.isCurata()` is where it is read** (`d.curata && !d.curataOptOut`),
+  so the feeds, the browse filters, Featured, `/random`, the weighting and the
+  SSR pages all agree without each remembering the second field.
+  `applyCollectionCurata()` skips an opted-out character as well, or the
+  opt-out would only work on pages no collection happened to cover.
+- **It is the OWNER's field**, so `/api/character` treats it exactly as it
+  treats `curata`: set from the form only for `perm === 'owner'`, carried
+  forward from the stored row for a public, approved or suggested edit.
+- The grant is still stored, so an admin's decision is not lost — and
+  `/api/admin/curata` and the dashboard's page list both report the opt-out,
+  or an admin who granted the mark and saw nothing change would just re-grant
+  it. The control is `#curataOptOut` in **edit.html only**, drawn only for a
+  page that actually has the mark, and `/api/page` returns `curataFrom` so it
+  can say which collection lent it. It warns first when taking the mark off
+  would drop an unfinished page back into Partial. If you add
 a new almanac prose field to `render.js`, add it to `ALMANAC_LIST_FIELDS` /
 `ALMANAC_TEXT_FIELDS` in `classify.js` too, or pages using it stay Partial.
 
@@ -1793,7 +1892,10 @@ this is how admin-written pages stop being hidden for want of a tag.
   `all-collections.html` and `profile.html` (twice). Change one, change all
   five. The tiles used to read `header` only, so every page with a logo and no
   header — which is every Bloodstar import — drew the text banner on its card
-  while its own page showed the logo.
+  while its own page showed the logo. **The feed has to send `logo` for any of
+  that to work**: profile.html read `sc.header || sc.logo` correctly for a year
+  while `/api/user`'s card builder never put `logo` on the wire, so the second
+  half could never fire. Pin cards on the creator page fall back the same way.
 
 ## Caching
 

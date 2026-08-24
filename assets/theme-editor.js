@@ -1,6 +1,7 @@
 /* Shared theme form controls for publish-script.html / publish-collection.html.
    Expects the page to contain: #th-font (select), #th-accent/#th-panel/#th-text/
-   #th-link (color inputs) with matching #th-*-state labels and .th-clear buttons.
+   #th-link (color inputs) with matching #th-*-state labels and .th-clear buttons,
+   plus #th-logosize (range) with #th-logosize-state and #th-logopanel (checkbox).
    Values are validated again by sanitizeTheme on save (client + server). */
 (function () {
   var KEYS = ['accent', 'panel', 'text', 'link'];
@@ -33,14 +34,50 @@
         var st = $('th-' + k + '-state'); if (st) st.textContent = input.value;
       });
     });
+    /* The top graphic's size, as a percentage of the size the wiki would have
+       drawn it at. 100 is the default and is never stored, so dragging the
+       slider back to the middle takes the page off the setting entirely
+       rather than freezing today's default into it. */
+    var size = $('th-logosize');
+    if (size) {
+      var min = (window.PageRender && window.PageRender.LOGO_SIZE_MIN) || 25;
+      var max = (window.PageRender && window.PageRender.LOGO_SIZE_MAX) || 250;
+      size.min = min; size.max = max; size.step = 5;
+      size.addEventListener('input', function () {
+        var t = opts.get() || {};
+        var n = Math.round(Number(size.value));
+        if (!isFinite(n) || n === 100) delete t.logoSize; else t.logoSize = n;
+        opts.set(t);
+        showSize(n);
+      });
+    }
+    var panel = $('th-logopanel');
+    if (panel) {
+      panel.addEventListener('change', function () {
+        var t = opts.get() || {};
+        if (panel.checked) t.logoPanel = true; else delete t.logoPanel;
+        opts.set(t);
+      });
+    }
+
     Array.prototype.forEach.call(document.querySelectorAll('.th-clear'), function (btn) {
       btn.addEventListener('click', function () {
         var k = btn.getAttribute('data-k');
         var t = opts.get() || {};
         delete t[k]; opts.set(t);
+        if (k === 'logoSize') {
+          var sz = $('th-logosize'); if (sz) sz.value = 100;
+          showSize(100);
+          return;
+        }
         var st = $('th-' + k + '-state'); if (st) st.textContent = 'not set';
       });
     });
+  }
+
+  function showSize(n) {
+    var st = $('th-logosize-state');
+    if (st) st.textContent = (n === 100 ? 'default size' : n + '%');
   }
 
   // Reflect a loaded theme in the controls. Returns true if anything is set
@@ -56,7 +93,14 @@
       if (theme[k]) { if (input) input.value = theme[k]; if (st) st.textContent = theme[k]; }
       else if (st) { st.textContent = 'not set'; }
     });
-    return !!(theme.font || theme.accent || theme.panel || theme.text || theme.link || theme.background);
+    var size = $('th-logosize');
+    var n = Number(theme.logoSize) || 100;
+    if (size) size.value = n;
+    showSize(n);
+    var panel = $('th-logopanel');
+    if (panel) panel.checked = !!theme.logoPanel;
+    return !!(theme.font || theme.accent || theme.panel || theme.text || theme.link ||
+      theme.background || theme.logoSize || theme.logoPanel);
   }
 
   window.ThemeEditor = { wire: wire, prime: prime };

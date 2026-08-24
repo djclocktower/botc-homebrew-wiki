@@ -1915,6 +1915,96 @@ async function notifyEditorsAdded(env, opts) {
   } catch { /* a notification must never break a save */ }
 }
 
+/* ---- approved editing, waterfalled from a script or a collection ----
+   Sharing a script or a collection with somebody is almost never a request to
+   share only that one page: the roster IS the work, and an editor who can fix
+   the script's synopsis but not a typo in any of its characters has been given
+   the smaller half. So being an approved editor of a script or a collection
+   carries down to the character pages it lists.
+
+   With one boundary, and it is the important part: it reaches only characters
+   owned by the SAME account as the parent page. A collection can list anybody's
+   characters — that is what makes collections useful — so without this rule,
+   naming an editor on a collection would hand them edit rights over other
+   people's pages, which is not the owner's to give. Their own characters in
+   their own collection is exactly what they meant to share.
+
+   The scan is the whole point of the cache: it asks for the few script and
+   collection rows that name any editor at all (almost always none), keyed on
+   the content version so a change to a roster or an editor list invalidates
+   it, exactly like curataCollections above. */
+let _sharedParentCache = null;
+async function sharedParentPages(env) {
+  const version = await contentVersion(env);
+  if (_sharedParentCache && _sharedParentCache.version === version) return _sharedParentCache.rows;
+  const rows = [];
+  try {
+    for (const type of ['collection', 'script']) {
+      const { results } = await env.DB.prepare(
+        `SELECT slug, owner_id, data FROM ${CONTENT[type].table}
+         WHERE status IS NOT 'deleted' AND owner_id IS NOT NULL AND data LIKE ?`
+      ).bind('%"editors"%').all();
+      for (const r of results || []) {
+        const d = parseData(r);
+        // The list only means anything in the mode that reads it.
+        if (publicEditMode(d) !== 'approved') continue;
+        const editors = approvedEditors(d)
+          .map(e => Number(e.id)).filter(n => Number.isFinite(n));
+        if (!editors.length) continue;
+        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), editors, data: d });
+      }
+    }
+  } catch {
+    // Never cache a failed read: the next request should try again rather
+    // than treat "the query broke" as "nothing is shared" for a whole
+    // content version.
+    return [];
+  }
+  _sharedParentCache = { version, rows };
+  return rows;
+}
+
+/* Does this script/collection list this character? A script says so outright;
+   a collection is resolved by the one membership rule (match[]/include[]/
+   exclude[]) rather than a second copy of it — passing the single character in
+   as the whole corpus asks "is this one a member" with the same code the page
+   itself renders through. */
+function parentListsCharacter(parent, charRow, charData) {
+  if (parent.type === 'script') {
+    return (parent.data.characters || []).some(x => String(x) === charRow.slug);
+  }
+  const probe = { slug: charRow.slug, appearsIn: charData.appearsIn || '' };
+  return PageRender.resolveCollectionMembers(parent.data, [probe]).length > 0;
+}
+
+/* The script or collection that shares this character with this session, or
+   null. Returning the parent rather than a boolean is what lets the editor say
+   WHERE the permission came from — "you were made an editor of this page" is
+   a confusing thing to read on a page nobody named you on. */
+async function waterfallParent(env, sess, charRow) {
+  if (!sess || sess.userId == null || !charRow) return null;
+  // An unowned page (most of the bulk-imported wiki) belongs to no creator, so
+  // there is nobody whose sharing could reach it.
+  if (charRow.owner_id == null) return null;
+  if ((charRow.status || 'published') === 'deleted') return null;
+  const parents = await sharedParentPages(env);
+  if (!parents.length) return null;
+  const d = parseData(charRow);
+  for (const p of parents) {
+    if (p.ownerId !== Number(charRow.owner_id)) continue;
+    if (!p.editors.includes(Number(sess.userId))) continue;
+    if (!parentListsCharacter(p, charRow, d)) continue;
+    // An admin-protected page is nobody's to share, the same as everywhere.
+    if (await isProtected(env, 'character', charRow.slug)) return null;
+    return p;
+  }
+  return null;
+}
+
+async function waterfallEditor(env, sess, charRow) {
+  return !!(await waterfallParent(env, sess, charRow));
+}
+
 /* A ceiling the owner's own saves never needed. A page is a few kilobytes of
    text, so nothing legitimate comes near this; it stops somebody parking a
    megabyte in a row they do not own. */
@@ -1931,17 +2021,22 @@ async function editPermission(env, sess, type, row) {
   if ((row.status || 'published') === 'deleted') return '';
   const d = parseData(row);
   const mode = publicEditMode(d);
-  if (!mode) return '';
   /* Approved editors are named one account at a time, so they reach a DRAFT
      too — a collaborator is most use before the page goes live, and there is
      no stranger here to hide it from. They still cannot publish it: the save
      handlers carry the stored status forward for everyone but the owner, so
      what goes live stays the creator's call. */
-  if (mode === 'approved') {
-    if (!isApprovedEditor(sess, d)) return '';
+  if (mode === 'approved' && isApprovedEditor(sess, d)) {
     if (await isProtected(env, type, row.slug)) return '';
     return 'approved';
   }
+  /* Named on the script or collection this character is part of, rather than
+     on the character itself. Same permission, for the same reason: it is the
+     page's owner who named them. Checked here so it applies to a page that
+     opted into nothing of its own — which is most of them. */
+  if (type === 'character' && await waterfallEditor(env, sess, row)) return 'approved';
+  if (!mode) return '';
+  if (mode === 'approved') return '';    // named editing, and this is not one of the names
   if ((row.status || 'published') !== 'published') return '';
   if (mode === 'tags' && type !== 'character') return '';
   if (await isProtected(env, type, row.slug)) return '';
@@ -1957,9 +2052,15 @@ async function canEditPage(env, sess, type, row) {
   if (canEditRow(sess, row)) return true;
   if (!sess || !row) return false;
   const d = parseData(row);
-  if (publicEditMode(d) !== 'approved' || !isApprovedEditor(sess, d)) return false;
-  if ((row.status || 'published') === 'deleted') return false;
-  return !(await isProtected(env, type, row.slug));
+  if (publicEditMode(d) === 'approved' && isApprovedEditor(sess, d)) {
+    if ((row.status || 'published') === 'deleted') return false;
+    return !(await isProtected(env, type, row.slug));
+  }
+  // ...or named on the script/collection this character belongs to. Being here
+  // is what lets a shared roster's character pages be SEEN as drafts and take
+  // an art upload, not just be saved.
+  if (type === 'character') return waterfallEditor(env, sess, row);
+  return false;
 }
 
 /* 'suggest' is not write access: it is permission to PROPOSE a version
@@ -2629,6 +2730,10 @@ async function applyCollectionCurata(env, chars) {
     const name = coll.displayName || coll.id || coll.slug || 'a collection';
     for (const c of PageRender.resolveCollectionMembers(coll, chars)) {
       if (c.curata) continue;              // its own flag wins
+      // ...and the creator's refusal wins over both. A character whose owner
+      // opted out is not lent the mark by the collection either, or the
+      // opt-out would only work on pages no collection happened to cover.
+      if (c.curataOptOut) continue;
       c.curata = true;
       c.curataFrom = name;
       c.classification = 'curata';
@@ -2949,7 +3054,10 @@ async function buildPublicJSON(env, table, opts = {}) {
     // Partial/Standard/Curata is derived here rather than stored, so a
     // page re-classifies itself the moment its owner adds a tag or a line of
     // almanac text. `curata` is the only stored half (admin-set).
-    if (d.curata) d.curata = true; else delete d.curata;
+    // Classify.isCurata is the one answer, so a page whose creator opted out
+    // (curataOptOut) leaves the feed with no mark at all rather than with a
+    // flag every reader would have to re-check.
+    if (Classify.isCurata(d)) d.curata = true; else delete d.curata;
     // NOTE: classify BEFORE trimming. Classify.classifyPage reads exactly the
     // prose fields the card feed drops (summaryBullets, howToRun, examples,
     // tips ...), so trimming first would flag every finished page as Partial.
@@ -4298,6 +4406,10 @@ export default {
           // address, which is what the canonical link and the OG tags use.
           d.slug = String(row.slug);
           d.page = 'c/' + found.canonical;
+          // The creator's opt-out, applied before anything can lend the mark
+          // back: Classify.isCurata is the one answer, and the row's own flag
+          // is dropped here so the rest of the page renders as unmarked.
+          if (!Classify.isCurata(d)) delete d.curata;
           // Same Curata inheritance the JSON feeds get, so the star on the
           // page agrees with the star in the grid it was clicked from.
           if (!d.curata) await applyCollectionCurata(env, [d]);
@@ -4586,6 +4698,12 @@ export default {
           o.author = d.author || '';
           o.tagline = d.tagline || '';
           o.header = d.header || '';
+          // A tile's banner is header || logo, then the text fallback. The
+          // logo was never sent, so profile.html's `sc.header || sc.logo`
+          // could only ever see the first half and every page with a logo and
+          // no header — which is every Bloodstar import — drew the text
+          // banner on its card while its own page showed the logo.
+          o.logo = d.logo || '';
           o.characters = Array.isArray(d.characters) ? d.characters.length : 0;
         } else {
           // Collection URLs use the kebab id, never the PK slug — legacy rows
@@ -4598,6 +4716,7 @@ export default {
           o.tagline = d.tagline || '';
           o.description = d.description || '';
           o.header = d.header || '';
+          o.logo = d.logo || '';        // header || logo, as above
         }
         if (d.curata) o.curata = true;
         const cls = Classify.classifyPage(d, type);
@@ -5708,8 +5827,39 @@ export default {
       if (row.status === 'draft' && !owns && mode !== 'approved') {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
+      const pageData = foldLegacyCurata(JSON.parse(row.data));
+      /* Curata is admin-only to GRANT and the creator's to decline, so the
+         editor has to be told which of the two it is looking at before it
+         offers the opt-out — and a character usually has the mark because a
+         collection lent it, not because anyone starred the page. `curataFrom`
+         is the collection's name, worked out the same way the /c/ page works
+         it out, so the control can say where the mark came from.
+         The probe carries the opt-out itself so that ticking the box and
+         re-opening the editor still reports where the mark WOULD come from —
+         otherwise the control would vanish the moment it was used. */
+      let curataFrom = null;
+      if (type === 'character' && !pageData.curata) {
+        const probe = { slug: row.slug, appearsIn: pageData.appearsIn || '' };
+        await applyCollectionCurata(env, [probe]).catch(() => null);
+        if (probe.curata) curataFrom = probe.curataFrom || '';
+      }
+      /* Approved editing that came from the script or collection this
+         character is on, rather than from the character itself. The editor
+         needs it to word its banner — see waterfallParent. */
+      let editVia = null;
+      if (mode === 'approved' && type === 'character' && !isApprovedEditor(sess, parseData(row))) {
+        const par = await waterfallParent(env, sess, row).catch(() => null);
+        if (par) {
+          editVia = {
+            type: par.type,
+            key: par.type === 'collection' ? (par.data.id || par.slug) : par.slug,
+            name: (par.type === 'script' ? par.data.name : par.data.displayName) || par.slug
+          };
+        }
+      }
       return jsonResponse({
-        slug: row.slug, data: foldLegacyCurata(JSON.parse(row.data)),
+        slug: row.slug, data: pageData,
+        curataFrom, editVia,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -5781,7 +5931,13 @@ export default {
             key: type === 'collection' ? (d.id || r.slug) : r.slug,
             name: r.name || r.slug,
             status: r.status || 'published',
-            updatedAt: r.updated_at || null
+            updatedAt: r.updated_at || null,
+            /* Editing a script or a collection carries down to the owner's own
+               characters on it (waterfallEditor). The characters themselves
+               are not listed here — a roster of 200 would bury the four pages
+               actually shared with this account — so the row says so instead,
+               and the parent page is the way to them. */
+            sharesRoster: type !== 'character'
           });
         }
       }
@@ -6661,7 +6817,11 @@ export default {
         return {
           slug: r.slug, name: r.name, status: r.status,
           updated_at: r.updated_at, owner: r.owner,
-          curata: !!d.curata,
+          curata: Classify.isCurata(d),
+          // Granted by an admin but declined by the page's creator. The raw
+          // flag is still stored (an admin's record of the decision), so the
+          // dashboard can say which of the two it is looking at.
+          curataOptOut: !!(d.curata && d.curataOptOut),
           classification: Classify.classifyPage(d, type),
           // "hasIcon: true" for a page that does not need one, so the
           // no-icon filter only ever surfaces pages with a real gap.
@@ -7144,6 +7304,9 @@ export default {
         data.slug = row.slug;
         data.publicEdit = storedNow.publicEdit;
         data.curata = !!storedNow.curata;
+        // Declining Curata is the owner's, so it is re-pinned exactly as the
+        // grant is — a suggestion can neither add it nor take it off.
+        if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
         delete data.status;
         delete data.renameFrom;
         delete data.appearsInFrom;
@@ -7238,6 +7401,7 @@ export default {
         d.slug = row.slug;
         d.publicEdit = now.publicEdit;
         d.curata = !!now.curata;
+        if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
         delete d._deleted;
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
@@ -7547,6 +7711,17 @@ export default {
         // Curata is admin-only: never trust the client, always carry the
         // stored value forward. /api/admin/curata is the only way to set it.
         c.curata = existing ? !!parseData(existing).curata : false;
+        /* Declining it, though, belongs to the page's creator: the mark says
+           the wiki is showing this page off, and that is theirs to refuse.
+           It is the owner's call and no guest's, so a public or approved
+           edit carries the stored answer forward exactly as `curata` is. */
+        if (perm === 'owner') {
+          if (c.curataOptOut) c.curataOptOut = true; else delete c.curataOptOut;
+        } else if (stored && stored.curataOptOut) {
+          c.curataOptOut = true;
+        } else {
+          delete c.curataOptOut;
+        }
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
         // "Appears in" derived from collection membership is worked out on
@@ -8731,13 +8906,18 @@ export default {
         if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
         const on = !!b.curata;
         const d = parseData(row);
-        if (!!d.curata === on) return jsonResponse({ ok: true, slug: row.slug, curata: on });
+        /* The creator may have declined the mark on their own page. The grant
+           is still recorded — it is the admins' decision and taking it away
+           silently would lose it — but the answer says so, or an admin sees a
+           successful grant and a page with no wreath and re-grants it. */
+        const optOut = !!d.curataOptOut;
+        if (!!d.curata === on) return jsonResponse({ ok: true, slug: row.slug, curata: on, optOut });
         d.curata = on;
         if (!on) delete d.curata;
         await env.DB.prepare(`UPDATE ${t.table} SET data=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(JSON.stringify(d), row.slug).run();
         await logActivity(env, sess, on ? 'curata' : 'uncurata', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, curata: on });
+        return jsonResponse({ ok: true, slug: row.slug, curata: on, optOut });
       }
 
       // ---- admin: gather one creator's characters into a collection ----
