@@ -7,7 +7,15 @@
 
    The two editors do not agree on element ids (sb-* vs pc-*), so the image
    previews this file has to keep in step are found by ATTRIBUTE instead:
-   put data-th-preview="header" or data-th-preview="logo" on the <img>. */
+   put data-th-preview="header" or data-th-preview="logo" on the <img>, and
+   data-th-row="header|logo" on the size row that belongs beside it.
+
+   Each size slider lives NEXT TO ITS OWN IMAGE, not in a list of theme
+   controls: the first version put both sliders in the collapsed Page
+   Appearance panel, a long way below the Header graphic upload, and the
+   answer to "where do I change the header size" was "somewhere you were not
+   looking". Only the parchment-box tick is still in that panel, because it is
+   the one setting that applies to whichever image is on top. */
 (function () {
   var KEYS = ['accent', 'panel', 'text', 'link'];
   /* The two sizers, and the theme key + state label each one drives. Kept as a
@@ -90,6 +98,7 @@
         var st = $('th-' + k + '-state'); if (st) st.textContent = 'not set';
       });
     });
+    watchPreviews();
   }
 
   function sizerFor(key) {
@@ -100,6 +109,31 @@
   function showSize(sz, n) {
     var st = $(sz.id + '-state');
     if (st) st.textContent = (n === 100 ? 'default size' : n + '%');
+  }
+
+  /* A size slider with no image to size is a control for nothing, so each row
+     follows its own preview: shown while the preview is shown, hidden while it
+     is not. The previews are shown and hidden by each editor's own upload and
+     remove handlers, which this file does not own — hence an observer rather
+     than a call the two editors would each have to remember to make. */
+  function syncSizerRows() {
+    SIZERS.forEach(function (sz) {
+      var row = document.querySelector('[data-th-row="' + sz.preview + '"]');
+      if (!row) return;
+      var img = document.querySelector('[data-th-preview="' + sz.preview + '"]');
+      var shown = !!(img && img.style.display && img.style.display !== 'none');
+      row.style.display = shown ? '' : 'none';
+    });
+  }
+
+  function watchPreviews() {
+    if (typeof MutationObserver !== 'function') { syncSizerRows(); return; }
+    var obs = new MutationObserver(syncSizerRows);
+    SIZERS.forEach(function (sz) {
+      var img = document.querySelector('[data-th-preview="' + sz.preview + '"]');
+      if (img) obs.observe(img, { attributes: true, attributeFilter: ['style'] });
+    });
+    syncSizerRows();
   }
 
   /* Make the editor's own image previews show what was just chosen. The
@@ -144,9 +178,11 @@
     var panel = $('th-logopanel');
     if (panel) panel.checked = !!theme.logoPanel;
     paintPreviews(theme);
+    syncSizerRows();
     return !!(theme.font || theme.accent || theme.panel || theme.text || theme.link ||
       theme.background || theme.logoSize || theme.headerSize || theme.logoPanel);
   }
 
-  window.ThemeEditor = { wire: wire, prime: prime, paintPreviews: paintPreviews };
+  window.ThemeEditor = { wire: wire, prime: prime, paintPreviews: paintPreviews,
+                         syncSizerRows: syncSizerRows };
 })();
