@@ -168,8 +168,8 @@
         a reader actually comes to an almanac for.</p>
       <div class="bs-fld">
         <label for="bs-url">Bloodstar link
-          <span class="hint">— the almanac, the script.json or the project folder, any of them</span></label>
-        <input type="url" id="bs-url" placeholder="https://www.bloodstar.xyz/p/Author/ProjectName/almanac.html" autocomplete="off">
+          <span class="hint">— the almanac, the script.json or the project folder, any of them, from either bloodstar.clocktica.com or the old bloodstar.xyz</span></label>
+        <input type="url" id="bs-url" placeholder="https://bloodstar.clocktica.com/p/Author/ProjectName/almanac.html" autocomplete="off">
       </div>
       <button type="button" class="btn btn-blue" id="bs-read">Read project</button>
       <div id="bs-status"></div>
@@ -754,13 +754,35 @@
        URLs. Art hosted anywhere else (a project's imgur background, say) has
        to come through the page, which is what the canvas path is for — and
        that path is also the fallback if the server copy fails for a reason
-       that is not the hourly limit. */
+       that is not the hourly limit.
+
+       Which URLs are Bloodstar's is asked of the PROJECT, not of a host list
+       copied down here: an image sitting on the same site the pasted link
+       came from is one the server can fetch. Bloodstar is two hosts now
+       (the reworked bloodstar.clocktica.com and the original bloodstar.xyz)
+       and a hardcoded host here is a third place to have to remember. The
+       Worker checks its own whitelist regardless — this only decides which
+       of the two paths to try first, so a wrong guess costs a fallback and
+       never an upload. */
+    function bloodstarUrl(src) {
+      var base = bundle && bundle.source && bundle.source.base;
+      if (!base || !src) return '';
+      try {
+        var u = new URL(src, base);
+        // 'www.' is ignored on both sides: a project's own export writes
+        // whichever spelling of its host it was written under, and that is
+        // not always the one the person pasted. The Worker takes both.
+        var bare = function (h) { return h.replace(/^www\./i, '').toLowerCase(); };
+        return (u.protocol === 'https:' && bare(u.host) === bare(new URL(base).host)) ? u.href : '';
+      } catch (e) { return ''; }
+    }
     function copyArt(key, src) {
-      if (/^https:\/\/(www\.)?bloodstar\.xyz\//i.test(src)) {
-        return post('/api/bloodstar-art', { key: key, src: src })
+      var onBloodstar = bloodstarUrl(src);
+      if (onBloodstar) {
+        return post('/api/bloodstar-art', { key: key, src: onBloodstar })
           .catch(function (err) {
             if (err && err.rateLimited) throw err;
-            return canvasUpload(key, src);
+            return canvasUpload(key, onBloodstar);
           });
       }
       return canvasUpload(key, src);

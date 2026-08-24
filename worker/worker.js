@@ -101,13 +101,14 @@
  *                                what the page's Download JSON button links to
  *
  *   -- importing a Bloodstar project (/bloodstar) --
- *   GET  /api/bloodstar       -> read a project on bloodstar.xyz: fetches its
+ *   GET  /api/bloodstar       -> read a project on Bloodstar: fetches its
  *                                script.json AND its almanac.html and returns
  *                                one normalized bundle (meta, characters with
  *                                their almanac prose, jinxes, night order,
  *                                synopsis/overview/changelog). Login required
- *                                and the host is pinned to bloodstar.xyz.
- *   POST /api/bloodstar-art   -> copy one image from bloodstar.xyz into an R2
+ *                                and the host is pinned to Bloodstar's own
+ *                                hosts (bloodstar.clocktica.com, bloodstar.xyz).
+ *   POST /api/bloodstar-art   -> copy one image from Bloodstar into an R2
  *                                slot without it passing through the browser.
  *                                Same permission check as /api/upload
  *                                (uploadSlotDenied), same size and type rules.
@@ -5044,9 +5045,10 @@ export default {
     }
 
     /* ---- read a Bloodstar project ----
-       ?url= anything that points at a project on bloodstar.xyz: the almanac,
-       the script.json, or the folder. The Worker fetches BOTH published files
-       and hands back one normalized bundle (see worker/bloodstar.js).
+       ?url= anything that points at a project on Bloodstar, on either of its
+       hosts (BLOODSTAR_HOST_CANON in worker/bloodstar.js): the almanac, the
+       script.json, or the folder. The Worker fetches BOTH published files and
+       hands back one normalized bundle (see worker/bloodstar.js).
 
        Why the Worker and not the browser: the almanac has to be parsed, and a
        Worker has no DOMParser, so the parse lives here either way. Having the
@@ -5056,7 +5058,7 @@ export default {
 
        Login required, and the host is pinned to Bloodstar: this is the Worker
        fetching a URL a stranger typed, and the only safe version of that is
-       one that can only ever reach one place. */
+       one that can only ever reach Bloodstar. */
     if (method === 'GET' && path === '/api/bloodstar') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in. Create an account or log in first.' }, { status: 401 });
@@ -5100,7 +5102,7 @@ export default {
       } catch { /* the script alone is still worth importing */ }
 
       const official = await loadOfficialRoles(env, url.origin);
-      const almanac = almanacHtml ? Bloodstar.parseAlmanac(almanacHtml) : null;
+      const almanac = almanacHtml ? Bloodstar.parseAlmanac(almanacHtml, src.base) : null;
       const bundle = Bloodstar.buildBundle(scriptJson, almanac, src, official);
       bundle.hasAlmanac = !!almanacHtml;
       if (!almanacHtml) {
@@ -7012,7 +7014,7 @@ export default {
       }
 
       /* ---- copy one image from Bloodstar straight into R2 ----
-         Body: {key, src}. `src` must be an https URL on bloodstar.xyz; `key`
+         Body: {key, src}. `src` must be an https URL on a Bloodstar host; `key`
          is an ordinary upload slot and goes through uploadSlotDenied(), the
          same permission check /api/upload uses, so this can reach nothing
          that route could not.
@@ -7038,8 +7040,13 @@ export default {
         let srcUrl;
         try { srcUrl = new URL(String(b.src || '')); } catch { srcUrl = null; }
         if (!srcUrl || srcUrl.protocol !== 'https:' || !Bloodstar.isBloodstarHost(srcUrl.hostname)) {
-          return jsonResponse({ error: 'That image is not on bloodstar.xyz. Upload it through /api/upload instead.' }, { status: 400 });
+          return jsonResponse({ error: 'That image is not on Bloodstar. Upload it through /api/upload instead.' }, { status: 400 });
         }
+        // Both spellings of each Bloodstar host are accepted and only one of
+        // them answers (see BLOODSTAR_HOST_CANON), so the image is asked for
+        // at the one that does — an old project's export writes whichever
+        // spelling it was written under.
+        srcUrl.hostname = Bloodstar.bloodstarHost(srcUrl.hostname);
         {
           const denied = await uploadSlotDenied(env, sess, key);
           if (denied) return denied;
