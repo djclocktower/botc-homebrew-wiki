@@ -1,7 +1,7 @@
 /* bloodstar.js — reading a Bloodstar project into this wiki's shapes.
  *
- * Bloodstar (bloodstar.xyz) is where a lot of homebrew is actually written,
- * and a finished project publishes two files side by side:
+ * Bloodstar is where a lot of homebrew is actually written, and a finished
+ * project publishes two files side by side:
  *
  *   .../p/{User}/{Project}/script.json    the official-schema script export
  *   .../p/{User}/{Project}/almanac.html   the almanac, as a generated page
@@ -49,13 +49,38 @@
 /* Bloodstar is the only host this module will read from. It is also the only
    host worker.js will copy art from, and that is on purpose: the URL comes
    from whoever is using the tool, and an unrestricted server-side fetch is a
-   way to make the Worker knock on doors it was never meant to reach. */
+   way to make the Worker knock on doors it was never meant to reach.
+
+   It is two hosts because Bloodstar itself is two: the reworked tool is
+   published at bloodstar.clocktica.com and the original is still up at
+   bloodstar.xyz, with years of projects on it that people are still linking
+   to. Nothing else about a project differs — same /p/{User}/{Project}/
+   layout, same script.json, same generated almanac — so the host is the
+   whole of the difference, and both are read. */
 import OfficialRoles from '../assets/official-roles.js';
 
-export const BLOODSTAR_HOSTS = ['bloodstar.xyz', 'www.bloodstar.xyz'];
+/* An accepted host -> the spelling of it that actually answers. Both are
+   taken because people paste both, and NEITHER site answers on both: only
+   www.bloodstar.xyz has an address on the old side and only the bare
+   bloodstar.clocktica.com on the new one. A link is moved onto the spelling
+   that serves before anything is fetched, or half the links pasted here come
+   back as "Bloodstar may be down" when Bloodstar is perfectly well. */
+const BLOODSTAR_HOST_CANON = {
+  'bloodstar.clocktica.com': 'bloodstar.clocktica.com',
+  'www.bloodstar.clocktica.com': 'bloodstar.clocktica.com',
+  'bloodstar.xyz': 'www.bloodstar.xyz',
+  'www.bloodstar.xyz': 'www.bloodstar.xyz'
+};
+
+export const BLOODSTAR_HOSTS = Object.keys(BLOODSTAR_HOST_CANON);
 
 export function isBloodstarHost(host) {
-  return BLOODSTAR_HOSTS.includes(String(host || '').toLowerCase());
+  return !!BLOODSTAR_HOST_CANON[String(host || '').toLowerCase()];
+}
+
+/* The host to actually ask, or '' for anywhere that is not Bloodstar. */
+export function bloodstarHost(host) {
+  return BLOODSTAR_HOST_CANON[String(host || '').toLowerCase()] || '';
 }
 
 /* Whatever the person pasted -> the two URLs we actually need.
@@ -68,13 +93,14 @@ export function bloodstarSource(input) {
   if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw.replace(/^\/+/, '');
   let u;
   try { u = new URL(raw); } catch { return { error: 'That does not look like a link.' }; }
-  if (!isBloodstarHost(u.hostname)) {
-    return { error: 'That is not a bloodstar.xyz link. This tool reads Bloodstar projects only.' };
+  const host = bloodstarHost(u.hostname);
+  if (!host) {
+    return { error: 'That is not a Bloodstar link. This tool reads projects on bloodstar.clocktica.com and bloodstar.xyz only.' };
   }
   // /p/{user}/{project}/[file]
   const parts = u.pathname.split('/').filter(Boolean);
   if (parts[0] !== 'p' || parts.length < 3) {
-    return { error: 'That link is missing the project. It should look like https://www.bloodstar.xyz/p/Author/ProjectName/almanac.html' };
+    return { error: 'That link is missing the project. It should look like https://bloodstar.clocktica.com/p/Author/ProjectName/almanac.html' };
   }
   // The segments come out of URL parsing already percent-encoded, so they are
   // used as they are — encoding them again turned a project called "Some
@@ -83,7 +109,7 @@ export function bloodstarSource(input) {
   if ([user, project].some(seg => seg === '.' || seg === '..' || seg.includes('%2f') || seg.includes('%2F'))) {
     return { error: 'That link has something odd in the project path.' };
   }
-  const base = 'https://' + u.hostname + '/p/' + user + '/' + project + '/';
+  const base = 'https://' + host + '/p/' + user + '/' + project + '/';
   return {
     base, user, project,
     scriptUrl: base + 'script.json',
@@ -260,18 +286,34 @@ function almanacPages(html) {
 
 const META_PAGE_IDS = new Set(['synopsis', 'overview', 'changelog', 'nightorder']);
 
+/* An address written in the almanac -> one the importer can actually fetch.
+   The generated page links its own images root-relative
+   ('/p/User/Project/witch.png'), which is a path and not a place: the tool
+   copies art BY URL, and a path with no host in front of it copies nothing —
+   on the wiki's side it would name the wiki's own missing file. So everything
+   read out of the HTML is resolved against the project's own URL first.
+   Anything that is not http(s) after that is dropped rather than carried:
+   these strings end up in an <img src> on somebody's character page. */
+function absoluteUrl(src, base) {
+  const raw = decodeEntities(String(src || '')).trim();
+  if (!raw) return '';
+  let u;
+  try { u = base ? new URL(raw, base) : new URL(raw); } catch { return ''; }
+  return (u.protocol === 'https:' || u.protocol === 'http:') ? u.toString() : '';
+}
+
 /* The project's own <style>, if it injected one: the background image is the
    only thing worth keeping, and it is offered as the page background rather
    than applied to anything automatically. */
-function backgroundFromStyle(html) {
+function backgroundFromStyle(html, base) {
   const styles = String(html || '').match(/<style\b[^>]*>[\s\S]*?<\/style>/gi) || [];
   for (const block of styles) {
     const body = /body\s*\{([\s\S]*?)\}/i.exec(block);
     const scope = body ? body[1] : block;
     const url = /background(?:-image)?\s*:[^;{}]*url\(\s*['"]?([^'")]+)['"]?\s*\)/i.exec(scope);
     if (url) {
-      const src = decodeEntities(url[1]).trim();
-      if (/^https?:\/\//i.test(src)) return src;
+      const src = absoluteUrl(url[1], base);
+      if (src) return src;
     }
   }
   return '';
@@ -279,7 +321,7 @@ function backgroundFromStyle(html) {
 
 /* One almanac page -> what it says. `id` decides how it is read: the four meta
    ids are prose pages, and everything else is a character or a jinx. */
-function readAlmanacPage(page) {
+function readAlmanacPage(page, base) {
   const html = page.html;
   const contents = divBlock(html, 'page-contents') || html;
   const teamClass = (/<div\b[^>]*\bclass\s*=\s*["']([^"']*\bpage-contents\b[^"']*)["']/i.exec(html) || [])[1] || '';
@@ -296,7 +338,7 @@ function readAlmanacPage(page) {
     team,
     name: htmlToText(firstTag(contents, 'h2'), 'plain'),
     ability: htmlToText(firstTag(contents, 'p', 'ability'), 'plain'),
-    image: decodeEntities(img),
+    image: absoluteUrl(img, base),
     flavour,
     overview: htmlToLines(divBlock(contents, 'overview'), 'plain'),
     overviewWiki: htmlToProse(divBlock(contents, 'overview'), 'wiki'),
@@ -326,8 +368,10 @@ function readNightOrder(html) {
   return { first: col('firstNightColumn'), other: col('otherNightColumn') };
 }
 
-/* almanac.html -> everything it holds, keyed by page id. */
-export function parseAlmanac(html) {
+/* almanac.html -> everything it holds, keyed by page id. `base` is the
+   project's own folder URL (bloodstarSource().base), used to resolve the
+   addresses the page writes relative to itself. */
+export function parseAlmanac(html, base) {
   const source = String(html || '');
   // The background is read from the project's own <style> before anything is
   // stripped, because that block is the only place it exists. Everything after
@@ -335,7 +379,7 @@ export function parseAlmanac(html) {
   // project can inject CSS into the first page, that CSS sits INSIDE the
   // page's own <div class="page-contents">, and a stray '</div>' in a
   // selector or a content: string would close a block the scan is counting.
-  const background = backgroundFromStyle(source);
+  const background = backgroundFromStyle(source, base);
   const viewport = stripInert(source.slice(Math.max(0, source.indexOf('almanac-viewport'))));
   const out = {
     background: background,
@@ -359,7 +403,7 @@ export function parseAlmanac(html) {
       };
       continue;
     }
-    const entry = readAlmanacPage(page);
+    const entry = readAlmanacPage(page, base);
     if (!entry.name) continue;
     out.entries[page.id] = entry;
     if (!/^(townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric|jinxes)$/i.test(entry.team)) {

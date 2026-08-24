@@ -66,7 +66,7 @@ Key dynamic behavior:
   (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
-  (`GET /api/bloodstar` reads a project on bloodstar.xyz, `POST
+  (`GET /api/bloodstar` reads a project on Bloodstar, `POST
   /api/bloodstar-art` copies one of its images into R2), admin tools
   (dashboard, full activity log, report, revisions/rollback, comment
   moderation, Curata, wiki lock, backup, seed), plus the public page
@@ -1184,13 +1184,29 @@ Three places ask:
 
 ## Importing from Bloodstar (`/bloodstar`)
 
-Bloodstar (bloodstar.xyz) is where a lot of homebrew is actually written, and a
-published project has **two** files side by side:
+Bloodstar is where a lot of homebrew is actually written, and a published
+project has **two** files side by side:
 
 ```
 .../p/{User}/{Project}/script.json     the official-schema export — mechanics
 .../p/{User}/{Project}/almanac.html    the almanac, as a generated page
 ```
+
+**Bloodstar is two hosts and both are read.** The reworked tool publishes at
+**bloodstar.clocktica.com** and the original is still up at **bloodstar.xyz**,
+with years of projects on it people are still linking to. Nothing else about a
+project differs — same `/p/{User}/{Project}/` layout, same `script.json`, same
+generated almanac — so the host is the whole of the difference.
+`BLOODSTAR_HOST_CANON` in `worker/bloodstar.js` is the list, and it is a map
+rather than an array because both spellings of each host are accepted while
+neither site answers on both: only `www.bloodstar.xyz` has an address on the
+old side and only the bare `bloodstar.clocktica.com` on the new one. A pasted
+link is moved onto the spelling that serves (`bloodstarHost()`) before
+anything is fetched, and `/api/bloodstar-art` does the same to an image URL —
+an old project's export writes whichever spelling it was written under. Adding
+a third host is one row of that map: `bloodstar.html` asks whether an image
+sits on the same host as the project it came from rather than keeping a list
+of its own.
 
 `mass-upload.html` has always taken the JSON, which carries the name, team,
 ability, art, reminders and night order. Everything a reader comes to an
@@ -1221,11 +1237,11 @@ Three files, one job each:
 ### The two Worker routes
 
 - **`GET /api/bloodstar?url=`** fetches both files and returns the bundle.
-  Login required, rate-limited, and **the host is pinned to bloodstar.xyz**:
-  this is the Worker fetching a URL a stranger typed, and the only safe version
-  of that is one that can only ever reach one place. A project with no almanac
-  still imports — the tool says the prose is missing rather than looking like
-  it lost it.
+  Login required, rate-limited, and **the host is pinned to Bloodstar's own
+  hosts**: this is the Worker fetching a URL a stranger typed, and the only
+  safe version of that is one that can only ever reach one place. A project
+  with no almanac still imports — the tool says the prose is missing rather
+  than looking like it lost it.
 - **`POST /api/bloodstar-art {key, src}`** copies one image straight from
   Bloodstar into R2. It exists because the alternative is 40 images down and 40
   base64 bodies back up through somebody's phone. It shares `/api/upload`'s
@@ -1298,6 +1314,14 @@ one pointed at the official character, goes nowhere.
   changelog page — which needs its parent to exist. A jinx whose two ends are
   both official has no character here to live on and becomes one of the
   script's own `jinxEdits.add` rules instead.
+- **Every address read out of the almanac is made absolute before it leaves
+  the parser** (`absoluteUrl()`, with the project's own folder URL as the
+  base). The generated page links its images root-relative
+  (`/p/User/Project/witch.png`), which is a path and not a place: the importer
+  copies art *by URL*, and a path with no host in front of it names a file on
+  this wiki that does not exist. Anything that is not http(s) after resolving
+  is dropped rather than carried, because these strings end up in an `<img
+  src>` on somebody's character page.
 - **A script or collection being created never lands on an existing URL, not
   even one of your own** (the wiki's rule — see "Character identity vs
   address"), so its `slug-check` asks for a fresh one. Characters are the
