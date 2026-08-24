@@ -197,7 +197,12 @@ assets/
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
-                       Partial, Curata only, creator, sort). Sort offers Page
+                       Partial, Curata only, creator, sort). apply() runs on
+                       every keystroke, so it walks a cached card list, only
+                       writes a style that actually changed, and re-sorts
+                       ONLY when the sort itself changed — re-appending 1,900
+                       rows per letter was most of the cost of typing in the
+                       Script Builder's panel. Sort offers Page
                        order / A–Z / Z–A / Recently added / Steven Approved
                        Order; SAO needs sao.js loaded first or the option is not
                        built, and it reads the ability off the card rather than
@@ -234,6 +239,12 @@ assets/
                        every insert and walks the wrong character to the
                        bottom. On a phone the drag starts from the grip so the
                        list can still be scrolled with a finger.
+  script-builder.js    The Script Builder's whole behaviour (script.html is
+                       the markup). Selection, the roster, the saved-script
+                       library, export/import/share/print, the details form
+                       and the panel's width all live here. Its header
+                       explains the performance rules it is built around —
+                       read them before adding anything to a click path.
   classify.js          Partial / Standard / Curata rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Curata weighting used by
@@ -432,41 +443,11 @@ creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
                        from /api/creators. authors.html is a redirect stub to it.
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
-script.html            Script Builder — roster only (localStorage botc_script;
-                       randomize/SAO sort/export/copy/share/import/clear). Naming
-                       + publishing live on publish-script.html; links there.
-                       The Add sidebar holds the official roster as well as the
-                       homebrew one, told apart by a Source chip pair;
-                       Randomize stays homebrew-only on purpose (180 official
-                       characters would swamp the pool). Export goes through
-                       PageRender.buildPageExport, the same call the published
-                       page's JSON box makes, so the two cannot drift.
-                       The Add sidebar carries the shared filter box (team/tag
-                       chips, creator, sort) over the name search, so it is
-                       built ONCE and filtered in place, so adding a character
-                       only repaints the ticks, because re-rendering the list
-                       would throw away whatever the reader filtered to. A
-                       Night Order panel sits under the roster, the same
-                       widget publish-script.html uses.
-                       Jinx and Night Order panels sit under the roster
-                       (shared widgets; see "Jinxes" and "Night order").
-                       Every export/copy from HERE gets one extra entry, and
-                       nowhere else does: the **botchomebrew.wiki credits
-                       Fabled** (the site's pirate skull, id
-                       `botchomebrewwiki`), whose ability reads "This script was
-                       made on botchomebrew.wiki and contains characters by: …".
-                       The "Detailed credits" tick (localStorage
-                       botc_script_credits_detail) swaps the plain name list for
-                       one naming each creator's characters; the page shows the
-                       exact line above the publish CTA. buildCreditsFabled() in
-                       render.js builds the object and buildPageExport takes it
-                       as `opts.credits`, which ONLY this page passes — a
-                       published /s/ or /collection/ JSON box is the author's own
-                       script and must never carry the wiki's signature. The
-                       builder's Import, mass-upload.html and the Token Tool all
-                       skip the id, so a round-trip neither reports it missing,
-                       nor turns it into a character page, nor prints a token
-                       for it.
+script.html            Script Builder — the markup only; all of its behaviour
+                       is assets/script-builder.js. A fixed-height app shell
+                       (.sbx-* in styles.css): the document does not scroll,
+                       the character panel and the main column do. See "The
+                       Script Builder" below.
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -743,6 +724,66 @@ for. The two editors do not agree on element ids (`sb-*` vs `pc-*`), so the
 previews are found by **`data-th-preview="header|logo"`** rather than a list of
 ids the widget would have to keep in step. Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+
+## The Script Builder (`/script`)
+
+`script.html` is markup; `assets/script-builder.js` is the whole of it. Read
+that file's header before touching a click path — the rules there are the
+reason adding a character costs well under a millisecond instead of the two
+to three seconds it used to.
+
+Four things shape it:
+
+- **The document does not scroll.** The shell (`.sbx-*` in styles.css) is a
+  flex column on `<body>` with `overflow: hidden`; the character panel and the
+  main column scroll independently. Height comes from the flex column, not
+  `calc(100vh - 56px)`, so it follows the top bar's real height. This is what
+  removed the band of empty page under the character list, and it is why the
+  night arranger's own `max-height` is unset inside a tab (`.sbx-pane
+  .no-list`) — one scrollbar per pane, never one inside another. The filter
+  box scrolls with the list for the same reason.
+- **A click touches one row.** Every sidebar row is kept in `rowBySlug` when
+  the list is built, so nothing queries the DOM to repaint a tick. The roster
+  is small and is rebuilt whole. The night arranger and the jinx editor are
+  mounted lazily and only re-rendered for a tab that is on screen; off screen
+  they are marked dirty. The jinx count, the credits line and the library save
+  all happen in one debounced pass 200 ms after the clicking stops. Anything
+  new that a click has to do belongs in that pass unless it must be immediate.
+- **The name and the author are on the page.** They were not, and
+  `botc_script_meta` is shared with publish-script.html — so a script edited
+  from its published page left its name, its author and its `editSlug` behind,
+  and the next script built here exported under the previous one's name. The
+  bar now shows both, and a meta still carrying `editSlug` says which page it
+  will publish over and offers to detach.
+- **Up to 15 scripts, in `botc_script_library`.** Each entry is
+  `{id, chars, meta}`; the open one is pointed at by `meta.libId` and is
+  written back as it changes, so switching scripts loses nothing. Nothing
+  outside this page reads that key — `botc_script` and `botc_script_meta` are
+  still the one current script, exactly as publish-script.html and the
+  "+ Add to Script" button on a `/c/` page expect. An import or a shared link
+  saves what was open first and then clears `libId`, so replacing a script
+  never overwrites its saved copy.
+
+Everything else is the same machinery the rest of the wiki uses: the shared
+filter box over the panel, `NightOrderEditor` and `JinxEditor` in tabs,
+`PageRender.buildPageExport` for the JSON, and `buildCreditsFabled()` for the
+one entry only this page appends — see "The credits Fabled" below.
+
+### The credits Fabled
+
+Every export and copy from the BUILDER carries one extra entry, and nowhere
+else does: the **botchomebrew.wiki credits Fabled** (the site's pirate skull,
+id `botchomebrewwiki`), whose ability reads "This script was made on
+botchomebrew.wiki and contains characters by: …". The "Name each creator's
+characters" tick (localStorage `botc_script_credits_detail`) swaps the plain
+name list for one naming each creator's characters, and the exact line is
+shown under a disclosure in Details & Export. `buildCreditsFabled()` in
+render.js builds the object and `buildPageExport` takes it as `opts.credits`,
+which ONLY this page passes — a published `/s/` or `/collection/` JSON box is
+the author's own script and must never carry the wiki's signature. The
+builder's Import, mass-upload.html and the Token Tool all skip the id, so a
+round-trip neither reports it missing, nor turns it into a character page, nor
+prints a token for it.
 
 ## Night order (script pages)
 
