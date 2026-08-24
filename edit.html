@@ -10,6 +10,10 @@
 <link rel="stylesheet" href="assets/header-redesign.css">
 <link rel="stylesheet" href="assets/redesign-create.css">
 <style>
+  /* The creator's Curata opt-out. Only drawn for a page that actually has the
+     mark, so it is a rare row rather than a permanent one. */
+  .curata-check { display:flex; align-items:center; gap:8px; font-size:.92rem; cursor:pointer; }
+  .curata-check input { width:auto; flex:none; }
   .builder{position:relative;z-index:5;max-width:1320px;margin:0 auto;
     padding:clamp(14px,3vw,30px) clamp(12px,3vw,34px) 70px;
     display:grid;grid-template-columns:minmax(0,460px) minmax(0,1fr);gap:26px;align-items:start;
@@ -348,6 +352,12 @@
         <button type="button" class="btn btn-ghost btn-sm" id="addbox">+ Add box</button>
       </fieldset>
 
+      <div class="fld" id="curata-fld" style="display:none">
+        <label>Curata</label>
+        <p class="sub" id="curata-note" style="margin:0 0 8px"></p>
+        <label class="curata-check"><input type="checkbox" id="curataOptOut"> Don’t show the Curata mark on this page</label>
+      </div>
+
       <fieldset>
         <legend>Who can edit this page</legend>
         <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
@@ -640,6 +650,7 @@
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
+        curataOptOut: $('curataOptOut').checked,
         editors: editorsUI ? editorsUI.get() : []
       };
     }
@@ -1010,6 +1021,10 @@
       var sel = $('publicEdit');
       var fs = sel && sel.closest('fieldset');
       if (fs) fs.style.display = 'none';
+      // Declining Curata is the creator's call, and the Worker carries the
+      // stored answer forward whatever a guest posts.
+      var cur = $('curata-fld');
+      if (cur) cur.style.display = 'none';
     }
     /* Tags only. The save is filtered server-side whatever gets posted, so the
        point of hiding the rest is honesty: a form you can type into but whose
@@ -1052,9 +1067,26 @@
        they do for a guest. A shared DRAFT reaches here too, and saying so
        matters: it explains why there is no Publish button on a page that
        plainly is not live yet. */
-    function approvedNotice(entry) {
+    function approvedNotice(entry, via) {
       hideOwnerOnly();
       $('save-publish').style.display = 'none';
+      /* The permission can arrive two ways: named on this character, or named
+         on the script or collection it belongs to, which carries down to its
+         owner's characters on it. Saying which one it was matters — otherwise
+         somebody who was added to one collection reads "you were made an
+         editor of this page" on a character page nobody mentioned to them. */
+      if (via && via.name) {
+        var href = (via.type === 'collection' ? 'collection/' : 's/') + encodeURIComponent(via.key || '');
+        guestBanner('<strong>' + esc(entry.creator || 'The creator') +
+          ' made you an editor of <a href="' + esc(href) + '">' + esc(via.name) + '</a>,</strong> ' +
+          'which covers their characters on it \u2014 this is one of them. Edit it as they ' +
+          'would; everything on this form is yours to change and it saves straight to the page. ' +
+          (isDraftPage
+            ? 'It is still a draft, so only they can put it live. '
+            : 'Publishing, deleting and the editor list stay with them. ') +
+          'Your username and every field you change are recorded in ' + histLink(entry) + '.');
+        return;
+      }
       guestBanner('<strong>' + esc(entry.creator || 'The creator') +
         ' made you an editor of this page.</strong> Edit it as they would \u2014 everything ' +
         'on this form is yours to change, and it saves straight to the page. ' +
@@ -1080,6 +1112,38 @@
     function syncEditorsBox() {
       var on = $('publicEdit').value === 'approved';
       $('editors-fld').style.display = on ? '' : 'none';
+    }
+
+    /* ── Curata, from the creator's side ──
+       Granting it is the admins' call; declining it is the creator's. The
+       control is only drawn for a page that HAS the mark, and only for the
+       owner — offering "turn off the wreath" on a page with no wreath would
+       be a setting for nothing, and a guest editor cannot save it anyway.
+
+       Where the mark came from matters to the wording: most of it is lent by
+       a Curata collection rather than granted page by page, so a creator
+       looking for the star on their own page would find nothing to explain
+       it. `curataFrom` is the collection's name, straight from /api/page. */
+    function syncCurataBox(entry, curataFrom, isOwner) {
+      var fld = $('curata-fld');
+      var has = !!entry.curata || curataFrom !== null;
+      if (!fld || !isOwner || !has) { if (fld) fld.style.display = 'none'; return; }
+      fld.style.display = '';
+      var where = entry.curata
+        ? 'The wiki\u2019s admins picked this page out as Curata.'
+        : ('This page is Curata because it is in ' +
+           (curataFrom ? '\u201c' + esc(curataFrom) + '\u201d' : 'a Curata collection') + '.');
+      // The honest cost, said before the box is ticked rather than found
+      // afterwards: the mark also lifts an unfinished page out of Partial.
+      var cost = window.Classify && window.Classify.isIncomplete(entry)
+        ? ' This page is still missing ' +
+          window.Classify.listPhrase(window.Classify.missingBits(entry)) +
+          ', so without the mark it will read as Partial and stay off the browse pages until that is filled in.'
+        : '';
+      $('curata-note').innerHTML = where +
+        ' It shows a laurel wreath on the page and comes up more often on the homepage. ' +
+        'Tick the box to keep it off this page \u2014 the collection and the admins\u2019 ' +
+        'decision are unaffected, only this page.' + cost;
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
@@ -1119,6 +1183,7 @@
       $('setup').checked         = !!entry.setup;
       $('customJson').value      = entry.customJson || '';
       $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
+      $('curataOptOut').checked  = !!entry.curataOptOut;
       if (editorsUI) editorsUI.set(entry.editors || []);
       syncEditorsBox();
       if (entry.artAlt) {
@@ -1307,6 +1372,9 @@
           // otherwise keep whatever the LOADED row said, so changing "Who can
           // edit this page" would show in the form and never reach the save.
           publicEdit: d.publicEdit, editors: d.editors,
+          // Explicit for the same reason publicEdit is: unticking the box has
+          // to reach the save, and Object.assign would keep the loaded value.
+          curataOptOut: d.curataOptOut,
           status: saveStatus,
           baseUpdatedAt: loadedUpdatedAt
         });
@@ -1477,8 +1545,10 @@
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
           populateForm(entry);
+          syncCurataBox(entry, res.curataFrom === undefined ? null : res.curataFrom,
+                        mode === 'owner');
           if (mode === 'tags') tagsOnlyMode(entry);
-          else if (mode === 'approved') approvedNotice(entry);
+          else if (mode === 'approved') approvedNotice(entry, res.editVia);
           else if (mode === 'all') guestNotice(entry);
           else if (mode === 'suggest') suggestMode(entry);
           // The owner (and an admin, who reaches this page the same way) is the

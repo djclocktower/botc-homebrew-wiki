@@ -1620,7 +1620,8 @@
       postJSON('/api/admin/curata', { type: $('curata-type').value, slug: slug, curata: on })
         .then(function(res){
           if (res.body && res.body.ok) {
-            setToast('curata-toast', true, (on ? 'Curata given to ' : 'Curata removed from ') + res.body.slug + '.');
+            setToast('curata-toast', true, (on ? 'Curata given to ' : 'Curata removed from ') + res.body.slug + '.' +
+              (on && res.body.optOut ? ' Its creator has opted out, so the mark will not show on the page.' : ''));
             $('curata-slug').value = '';
             loadActivity(true);
           } else setToast('curata-toast', false, (res.body && res.body.error) || 'Failed.');
@@ -2097,6 +2098,10 @@
             // Flag anything an admin would want to spot at a glance.
             var notes = [];
             if (pg.curata) notes.push('Curata');
+            // Granted, then declined by the page's creator — which is theirs
+            // to do. Said out loud so an admin who just gave the mark and saw
+            // nothing change knows why, rather than re-granting it.
+            else if (pg.curataOptOut) notes.push('Curata (creator opted out)');
             if (pg.classification === 'partial') notes.push('Partial');
             if (pg.hasIcon === false) notes.push('NO ICON');
             return '<label class="adm-row" style="cursor:pointer">' +

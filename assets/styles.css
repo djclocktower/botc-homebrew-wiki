@@ -1921,6 +1921,42 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 }
 .sv-logo-wrap { text-align: center; margin: 8px 0 0; }
 .sv-logo { max-height: 120px; max-width: min(70%, 360px); filter: drop-shadow(0 4px 12px rgba(0,0,0,.45)); }
+
+/* ── The top graphic: size, and an optional parchment card behind it ──
+   Set per page in the theme kit (theme.logoSize / theme.logoPanel) and
+   applied by themeAttrs() as classes on <body>, so no page markup changes and
+   one pair of rules covers the script header, the collection header and the
+   bare logo alike.
+
+   The scale MULTIPLIES the caps above rather than replacing them: the
+   percentage half of `min()` has to be scaled with the pixel half or a
+   shrunk logo would still fill 70% of a phone screen, and a large one would
+   still be pinned to 360px.
+
+   The card is drawn on the image itself, not on its wrapper — a wrapper is a
+   full-width centring block, so a parchment background on it would be a band
+   across the page instead of a box around the art. */
+.theme-logo-size .sv-logo {
+  max-height: calc(120px * var(--pg-logo-scale, 1));
+  max-width: min(calc(70% * var(--pg-logo-scale, 1)), calc(360px * var(--pg-logo-scale, 1)));
+}
+.theme-logo-size .script-header-img { max-height: calc(260px * var(--pg-logo-scale, 1)); }
+.theme-logo-size .coll-header-img {
+  max-height: calc(clamp(220px, 40vw, 460px) * var(--pg-logo-scale, 1));
+}
+.theme-logo-panel .sv-logo,
+.theme-logo-panel .script-header-img,
+.theme-logo-panel .coll-header-img {
+  box-sizing: border-box;
+  background: var(--pg-panel, var(--parch));
+  border: 2px solid var(--parch-frame);
+  border-radius: 10px;
+  padding: clamp(8px, 2vw, 18px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+  /* The drop-shadow above traces the artwork's own edges, which reads as a
+     smudge once there is a card under it. The card carries the shadow now. */
+  filter: none;
+}
 .sv-tagline {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.15rem;
   color: rgba(236,225,200,.85); text-align: center; max-width: 760px; margin: 0 auto 6px;

@@ -301,11 +301,17 @@
         name = hit.name;
       } else if (p.type === 'script') {
         href = '/s/' + encodeURIComponent(hit.slug);
-        thumb = hit.header ? '/assets/' + hit.header : '/assets/favicon.png';
+        // header || logo, then the fallback — the same order the /s/ and
+        // /collection/ pages themselves fall back through. Reading `header`
+        // alone put the skull on every page with a logo and no header, which
+        // is every Bloodstar import.
+        thumb = hit.header ? '/assets/' + hit.header
+              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
         name = hit.name;
       } else {
         href = '/collection/' + encodeURIComponent(hit.id || hit.slug);
-        thumb = hit.header ? '/assets/' + hit.header : '/assets/favicon.png';
+        thumb = hit.header ? '/assets/' + hit.header
+              : hit.logo   ? '/assets/' + hit.logo : '/assets/favicon.png';
         name = hit.displayName || hit.slug;
       }
       return '<a class="pin-card" href="' + esc(href) + '">' +

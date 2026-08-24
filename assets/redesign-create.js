@@ -79,8 +79,11 @@
     { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
+    /* `curata-fld` is edit.html only, and only drawn for a page that has the
+       Curata mark. It sits with the tags because that is where the wreath is
+       drawn on the page itself — the end of the /c/ page's Tags row. */
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
-      ids: ['tag-picker', 'tags'] },
+      ids: ['tag-picker', 'tags', 'curata-fld'] },
     /* Sharing is a section of its own rather than another fieldset swept into
        Advanced Options. Buried under a summary reading "credits, alt art,
        jinxes, sidebar boxes, custom JSON", the one control that decides who

@@ -173,6 +173,21 @@
   .pin-opt input:disabled + span { opacity: .45; }
   .pin-type { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; opacity: .55; }
   .pin-empty { margin: 0; font-size: .88rem; opacity: .7; }
+  /* The arranged list: what the creator page actually shows, top to bottom. */
+  .pin-order { list-style: none; margin: 0 0 10px; padding: 0; }
+  .pin-order li {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+    margin-bottom: 6px; font-size: .9rem;
+  }
+  .pin-order .pin-num { font-family: 'Oswald', sans-serif; font-size: .75rem; opacity: .55; min-width: 15px; }
+  .pin-order .pin-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .pin-order button {
+    background: none; border: 1px solid #cdbfa0; border-radius: 4px; color: #6b5d49;
+    font-size: .8rem; line-height: 1; padding: 4px 7px; cursor: pointer;
+  }
+  .pin-order button[disabled] { opacity: .35; cursor: default; }
+  .pin-order .pin-drop { color: #8a2d2d; }
   .set-field input:focus, .set-field textarea:focus, .set-field select:focus { outline: 2px solid #b98; border-color: #b98; }
   .msg-item { padding: 9px 2px; border-top: 1px solid rgba(0,0,0,.08); font-size: .88rem; }
   .msg-item:first-child { border-top: none; }
@@ -371,7 +386,8 @@
               <input id="s-link-discord" maxlength="40" placeholder="yourname (shown as text, not a link)">
             </div>
             <div class="set-field">
-              <label>Pinned pages <span class="pin-hint">up to 10, shown at the top of your creator page</span></label>
+              <label>Pinned pages <span class="pin-hint">up to 10, shown at the top of your creator page, in the order below</span></label>
+              <ol id="s-pin-order" class="pin-order"></ol>
               <div id="s-pins" class="pin-picker"><p class="pin-empty">Publish a page and you can pin it here.</p></div>
             </div>
             <button class="btn" id="save-profile">Save Profile</button>
@@ -618,40 +634,106 @@
        when the remaining boxes go grey, so that hitting the cap is something
        you see rather than something the save tells you afterwards. */
     var PIN_MAX = 10;
+    /* PINNED is the state, and its ORDER is the setting: the creator page
+       draws the strip in exactly this order, and the Worker stores the array
+       as it is posted. The checkbox list below decides membership only —
+       ticking a page appends it, so a new pin lands at the end rather than
+       jumping the queue — and the arranged list above is where it is moved. */
     var PINNED = [];
+    var PIN_PAGES = [];
     function pinKey(p) { return p.type + ':' + p.slug; }
+    function pinLabel(k) {
+      for (var i = 0; i < PIN_PAGES.length; i++) {
+        var x = PIN_PAGES[i];
+        if (x.type + ':' + x.r.slug === k) {
+          return esc(x.r.name || x.r.slug) + ' <span class="pin-type">' + esc(x.type) + '</span>';
+        }
+      }
+      // A pin whose page has since gone draft or been deleted: the Worker
+      // drops it on the next save, and it is not pretended to be here.
+      return esc(k.split(':').slice(1).join(':')) + ' <span class="pin-type">unavailable</span>';
+    }
+    function renderPinOrder() {
+      var list = $('s-pin-order');
+      if (!list) return;
+      if (!PINNED.length) { list.innerHTML = ''; return; }
+      list.innerHTML = PINNED.map(function (p, i) {
+        var k = pinKey(p);
+        return '<li data-k="' + esc(k) + '">' +
+          '<span class="pin-num">' + (i + 1) + '</span>' +
+          '<span class="pin-label">' + pinLabel(k) + '</span>' +
+          '<button type="button" data-move="up" aria-label="Move up"' +
+            (i === 0 ? ' disabled' : '') + '>&#9650;</button>' +
+          '<button type="button" data-move="down" aria-label="Move down"' +
+            (i === PINNED.length - 1 ? ' disabled' : '') + '>&#9660;</button>' +
+          '<button type="button" class="pin-drop" data-move="off" aria-label="Unpin">&#10005;</button>' +
+          '</li>';
+      }).join('');
+    }
+    (function wirePinOrder() {
+      var list = $('s-pin-order');
+      if (!list) return;
+      list.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('button[data-move]') : null;
+        if (!btn) return;
+        var li = btn.closest('li');
+        var k = li && li.getAttribute('data-k');
+        var i = -1;
+        PINNED.forEach(function (p, n) { if (pinKey(p) === k) i = n; });
+        if (i < 0) return;
+        var dir = btn.getAttribute('data-move');
+        if (dir === 'off') PINNED.splice(i, 1);
+        else {
+          var j = dir === 'up' ? i - 1 : i + 1;
+          if (j < 0 || j >= PINNED.length) return;
+          var t = PINNED[i]; PINNED[i] = PINNED[j]; PINNED[j] = t;
+        }
+        renderPinOrder();
+        syncPinChecks();
+      });
+    })();
+    function syncPinChecks() {
+      var box = $('s-pins');
+      if (!box) return;
+      var on = {};
+      PINNED.forEach(function (p) { on[pinKey(p)] = 1; });
+      // At the cap, disable the rest rather than failing on save.
+      [].slice.call(box.querySelectorAll('input')).forEach(function (b) {
+        b.checked = !!on[b.value];
+        b.disabled = !b.checked && PINNED.length >= PIN_MAX;
+      });
+    }
     function renderPinPicker(pages) {
       var box = $('s-pins');
       if (!box) return;
+      PIN_PAGES = pages;
       if (!pages.length) {
         box.innerHTML = '<p class="pin-empty">Publish a page and you can pin it here.</p>';
+        renderPinOrder();
         return;
       }
-      var on = {};
-      PINNED.forEach(function (p) { on[pinKey(p)] = 1; });
       box.innerHTML = pages.map(function (x) {
         var k = x.type + ':' + x.r.slug;
-        return '<label class="pin-opt"><input type="checkbox" value="' + esc(k) + '"' +
-          (on[k] ? ' checked' : '') + '> <span>' + esc(x.r.name || x.r.slug) +
+        return '<label class="pin-opt"><input type="checkbox" value="' + esc(k) + '"> ' +
+          '<span>' + esc(x.r.name || x.r.slug) +
           ' <span class="pin-type">' + esc(x.type) + '</span></span></label>';
       }).join('');
-      // At the cap, disable the rest rather than failing on save.
-      function sync() {
-        var boxes = [].slice.call(box.querySelectorAll('input'));
-        var n = boxes.filter(function (b) { return b.checked; }).length;
-        boxes.forEach(function (b) { b.disabled = !b.checked && n >= PIN_MAX; });
-      }
-      box.addEventListener('change', sync);
-      sync();
-    }
-    function pinnedFromPicker() {
-      var box = $('s-pins');
-      if (!box) return [];
-      return [].slice.call(box.querySelectorAll('input:checked')).map(function (b) {
-        var bits = String(b.value).split(':');
-        return { type: bits[0], slug: bits.slice(1).join(':') };
+      box.addEventListener('change', function (e) {
+        var input = e.target;
+        if (!input || input.type !== 'checkbox') return;
+        var bits = String(input.value).split(':');
+        var pin = { type: bits[0], slug: bits.slice(1).join(':') };
+        var i = -1;
+        PINNED.forEach(function (p, n) { if (pinKey(p) === input.value) i = n; });
+        if (input.checked && i < 0) PINNED.push(pin);
+        else if (!input.checked && i >= 0) PINNED.splice(i, 1);
+        renderPinOrder();
+        syncPinChecks();
       });
+      renderPinOrder();
+      syncPinChecks();
     }
+    function pinnedFromPicker() { return PINNED.slice(); }
 
     function renderLists(data) {
       var all = [];
@@ -668,7 +750,11 @@
       $('pages-table').innerHTML  = pages.map(function(x){ return rowHtml(x.type, x.r, false); }).join('');
       $('drafts-empty').style.display = drafts.length ? 'none' : 'block';
       $('pages-empty').style.display  = pages.length ? 'none' : 'block';
-      renderPinPicker(pages);
+      /* Characters, scripts and collections can all be pinned. Custom wiki
+         pages cannot: pinning is verified server-side against the three
+         content tables, so a ticked wiki page was accepted by the form and
+         then dropped by the save. Not offering it is the honest version. */
+      renderPinPicker(pages.filter(function (x) { return x.type !== 'wikipage'; }));
 
       var edits = data.recentEdits || [];
       $('n-edits').textContent = edits.length;
@@ -739,7 +825,11 @@
             var edit = editUrl(r.type, r.type === 'collection' ? r.key : r.slug);
             return '<tr><td><span class="row-name"><a href="' + view + '">' +
                 esc(r.name || r.slug) + '</a></span>' +
-                (r.status === 'draft' ? ' <span class="row-date">(draft)</span>' : '') + '</td>' +
+                (r.status === 'draft' ? ' <span class="row-date">(draft)</span>' : '') +
+                // Sharing a script or a collection shares its owner's own
+                // characters on it too. Said here because the characters are
+                // not listed separately — the page above is the way to them.
+                (r.sharesRoster ? ' <span class="row-date">· and its characters</span>' : '') + '</td>' +
               '<td class="row-type">' + esc(r.type) + '</td>' +
               '<td class="row-date">' + fmtDate(r.updatedAt) + '</td>' +
               '<td class="row-actions"><a class="mini-btn edit" href="' + edit + '">Edit</a></td></tr>';

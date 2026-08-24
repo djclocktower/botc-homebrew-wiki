@@ -219,6 +219,7 @@
        LANDING PAGE DATA — collections, browse counts, recent, featured
        ──────────────────────────────────────────────────────── -->
   <script src="assets/render-page.js"></script>
+  <script src="assets/creators.js"></script>
   <script src="assets/classify.js"></script>
   <!-- render-news.js formats through render-wiki.js — load the engine first. -->
   <script src="assets/render-wiki.js"></script>
@@ -327,6 +328,97 @@
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
+    }
+
+    /* ── Featured: a creator first, then one of their characters ──
+       Featured used to draw a character straight out of the hat, weighted, and
+       only from the Curata pages. Both halves of that are gone.
+
+       Drawing by CREATOR is the point: picking a character at random gives the
+       slot to whoever wrote the most pages, so the same handful of prolific
+       creators held it most weeks. Every creator now has the same chance of
+       the day, however many characters they have made, and Curata is no longer
+       a condition — it stays a thumb on the scale for WHICH of that creator's
+       characters is drawn (weightedPick), never a gate on being drawn at all.
+
+       Two rules the rotation has to keep, and one thing it must not need:
+
+       - the same creator never gets the slot two days running;
+       - everybody sees the same character for the same 24 hours;
+       - and it stores nothing. There is no server call here and localStorage
+         is per browser, so "who had it yesterday" cannot be remembered — it
+         has to be recomputed, identically, by every reader.
+
+       So the order is a per-block PERMUTATION rather than a fresh draw: block
+       `b` is the creator list shuffled with `b` as the seed, and day `d` takes
+       position `d % N` of block `floor(d / N)`. Inside a block every creator
+       appears exactly once, so no repeat is possible; the only place two
+       neighbouring days can land on one name is the seam between blocks, and
+       that one case is fixed by swapping the incoming block's first two names.
+       Both blocks are computable from the day number alone, which is what
+       keeps the whole thing memoryless. */
+    function featuredRng(seed){
+      var s = (seed >>> 0) || 1;
+      return function(){
+        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+    }
+    function featuredShuffle(arr, rand){
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--){
+        var j = Math.floor(rand() * (i + 1));
+        var t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    }
+    function featuredHash(str){
+      var h = 2166136261;
+      for (var i = 0; i < str.length; i++){
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+    function featuredPick(list, day){
+      // Partial pages stay off the front page (eligible), and a featured card
+      // is a picture and a paragraph — a page with neither has nothing to show
+      // here. An uncredited page is skipped too: this rotation is a turn for
+      // each creator, and a page with no creator is nobody's turn.
+      var pool = window.eligible(list).filter(function(c){
+        return c.name && c.art && (c.lede || c.quote || c.ability) &&
+               window.splitCreators(c.creator).length;
+      });
+      if (!pool.length) return null;
+      // A credit can name several people ("Taiyi, Saki") and each of them is
+      // their own creator page, so each of them gets their own turn — and the
+      // page they share can be drawn under either name. Keyed case-folded so
+      // one creator with two spellings is one creator; the display name is
+      // whichever spelling was seen first.
+      var byKey = {}, keys = [];
+      pool.forEach(function(c){
+        window.splitCreators(c.creator).forEach(function(nm){
+          var k = nm.toLowerCase();
+          if (!byKey[k]) { byKey[k] = []; keys.push(k); }
+          byKey[k].push(c);
+        });
+      });
+      keys.sort();   // the shuffle is the randomness; the input has to be stable
+      var n = keys.length;
+      function blockOrder(b){
+        return featuredShuffle(keys, featuredRng(Math.imul(b + 1, 2654435761)));
+      }
+      var block = Math.floor(day / n), pos = day % n;
+      var today = blockOrder(block);
+      // The seam: yesterday was the last name of the previous block.
+      if (pos === 0 && n > 1){
+        var prev = blockOrder(block - 1)[n - 1];
+        if (today[0] === prev){ var t = today[0]; today[0] = today[1]; today[1] = t; }
+      }
+      var key = today[pos];
+      // Which of that creator's characters — Curata pages still surface more
+      // often here, which is all the weighting was ever meant to do.
+      return window.weightedPick(byKey[key], featuredRng(Math.imul(day, 40503) ^ featuredHash(key)));
     }
 
     function featuredCardHTML(c){
@@ -457,18 +549,7 @@
         document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
 
         // ── Featured (rotates daily) ──────────────────────────
-        // Curata only: Featured is the wiki's shop window, so it shows
-        // pages the admins have actually picked out rather than whatever the
-        // weighting happened to land on. Still needs art and something to
-        // read. The RNG is seeded from the day number so the pick is stable
-        // for everyone for 24 hours instead of changing on every refresh.
-        var featureable = list.filter(function(c){
-          return c.curata && c.art && (c.lede || c.ability) && c.name;
-        });
-        var picked = window.weightedPick(featureable, (function(){
-          var s = (Math.floor(Date.now() / 86400000) * 2654435761) % 4294967296;
-          return function(){ s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
-        })());
+        var picked = featuredPick(list, Math.floor(Date.now() / 86400000));
         if (picked){
           document.getElementById('featured-wrap').innerHTML = featuredCardHTML(picked);
         } else {
