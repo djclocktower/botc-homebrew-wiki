@@ -25,11 +25,27 @@
      [label](https://…)            link (href whitelisted, see safeHref; a
                                    bare 'example.com' becomes https, and
                                    '/c/imp' stays inside the wiki)
-     [[Character Name]]            links to that character's page if the wiki
-                                   has one, otherwise renders as a reminder
-                                   token pill — the same [[TOKEN]] convention
-                                   used on character pages.
+     [[Character Name]]            one of the game's OWN characters links to
+                                   the official wiki; otherwise this wiki's
+                                   page for it; otherwise a reminder token
+                                   pill — the [[TOKEN]] convention character
+                                   pages already used.
      [[Character Name|as written]] same, with your own label.
+     {{blue|Undertaker}}           the name in the good team's blue
+     {{red|Imp}}                   the name in the evil team's red
+                                   ({{good|…}} and {{evil|…}} are the same two)
+
+   The marks combine, and the colour mark is applied last precisely so that
+   they can: {{red|[[Imp]]}} is a red link to the Imp, {{blue|[a rule](url)}}
+   is a blue one to anywhere. A link inside a colour takes the colour (see
+   `.wiki-red a` in styles.css) rather than the link colour.
+
+   opts.marks === 'links' asks for a deliberately small part of that set —
+   links, [[character links]] and the colour marks, and nothing a writer
+   could type by accident. It is what a CHARACTER page's prose is rendered
+   with (see assets/render.js): the official "Each night*" convention puts a
+   lone asterisk through a great deal of that text, and two of them on one
+   line would otherwise italicise everything in between.
 
    Browser + Worker, like render.js and render-page.js: no DOM access at
    module top level. The Worker imports it for SSR; the editors load it in the
@@ -43,6 +59,41 @@
   var charLinks = {};
   function setCharLinks(map) { charLinks = map || {}; }
   function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+  /* The official roster, keyed the same way, so [[Imp]] goes to the official
+     wiki rather than to a homebrew page that happens to share the name.
+
+     Official deliberately beats this wiki, which is the same order and the
+     same reasoning as resolveJinxTarget() in render.js (see gotcha 8 in
+     CLAUDE.md): there is more than one homebrew "Sculptor", and a writer who
+     types a familiar name almost always means the character the whole game
+     knows. A page here whose name matches an official one is by definition
+     NOT that character — an exact match is refused on save and retired
+     retroactively — so linking it as though it were would be wrong twice.
+     Somebody who does mean a particular homebrew page can always name it
+     outright with [label](/c/slug).
+
+     Fed by Render.setOfficialNames() in the browser and by the Worker's
+     officialNameMap() for SSR — one map, whichever way round. Unset, nothing
+     resolves as official and [[Name]] behaves as it did. */
+  var officialNames = {};
+  function setOfficialNames(map) {
+    officialNames = {};
+    if (!map) return;
+    for (var k in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+      var n = map[k];
+      if (typeof n !== 'string' || !n) continue;
+      // Both the key (an id like `plaguedoctor`) and the display name, so a
+      // writer reaches it typing either.
+      officialNames[normName(k)] = n;
+      officialNames[normName(n)] = n;
+    }
+  }
+  function officialWikiHref(name) {
+    return 'https://wiki.bloodontheclocktower.com/' +
+      String(name).trim().replace(/\s+/g, '_');
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -108,30 +159,50 @@
     return '';
   }
 
+  /* ── the colour marks ──
+     {{blue|Undertaker}} / {{red|Imp}}, and the same two under the names the
+     game gives them ({{good|…}} / {{evil|…}}). Writers colour the character
+     names inside an example the way the official almanac does, and the
+     alternative — asking them for a <span> — is the one thing this engine
+     exists to make impossible.
+
+     The body may not contain a brace, so the mark cannot swallow the rest of
+     a paragraph when somebody forgets to close it. It is applied AFTER the
+     link marks, so a coloured link and a linked colour both work. */
+  var COLOR_CLASS = {
+    red: 'wiki-red', evil: 'wiki-red', blue: 'wiki-blue', good: 'wiki-blue'
+  };
+  var COLOR_RE = /\{\{(red|blue|good|evil)\|([^{}\n]{1,300})\}\}/gi;
+
   /* ── inline marks ──────────────────────────────────────────────
      Order matters: code spans are pulled out first so their contents are
      never re-formatted, then links (whose labels are plain text), then the
-     symmetrical marks. */
+     colour marks, then the symmetrical marks.
+
+     opts.marks === 'links' stops after the colour marks — see the header. */
   function inlineFormat(text, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
+    var linksOnly = opts.marks === 'links';
     var out = esc(text);
 
     // `code` — stashed behind a placeholder so **bold** inside it stays literal
     var codes = [];
-    out = out.replace(/`([^`\n]{1,300})`/g, function (m, code) {
-      codes.push('<code class="wiki-code">' + code + '</code>');
-      return CODE_MARK + (codes.length - 1) + '\u0000';
-    });
-
-    // ![caption](src) inline — only reached when an image is not on its own
-    // line; block images are handled in renderBody.
-    out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
-      function (m, alt, src) {
-        var url = safeImg(src.replace(/&amp;/g, '&'), root);
-        if (!url) return alt;
-        return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+    if (!linksOnly) {
+      out = out.replace(/`([^`\n]{1,300})`/g, function (m, code) {
+        codes.push('<code class="wiki-code">' + code + '</code>');
+        return CODE_MARK + (codes.length - 1) + '\u0000';
       });
+
+      // ![caption](src) inline — only reached when an image is not on its own
+      // line; block images are handled in renderBody.
+      out = out.replace(/!\[([^\]\n]{0,160})\]\(([^)\s|]{1,400})(\|(?:left|right|wide))?\)/g,
+        function (m, alt, src) {
+          var url = safeImg(src.replace(/&amp;/g, '&'), root);
+          if (!url) return alt;
+          return '<img class="wiki-inline-img" src="' + esc(url) + '" alt="' + alt + '" loading="lazy" decoding="async">';
+        });
+    }
 
     // [label](href)
     out = out.replace(/\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, function (m, label, href) {
@@ -144,20 +215,58 @@
         '>' + label + '</a>';
     });
 
-    // [[Character Name]] / [[Character Name|label]] — a link when the wiki has
-    // that character, otherwise the reminder-token pill used across the site.
+    // [[Character Name]] / [[Character Name|label]] — the official wiki if it
+    // is one of the game's own characters (see setOfficialNames above), then
+    // this wiki's page if it has one, and otherwise the reminder-token pill
+    // that [[TOKEN]] has always rendered as.
     out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
-      var slug = charLinks[normName(target)];
+      var key = normName(target);
       var shown = (label != null && label !== '') ? label : target;
+      var official = officialNames[key];
+      if (official) {
+        return '<a class="wiki-charlink wiki-charlink-off" href="' +
+          esc(officialWikiHref(official)) + '" target="_blank" rel="noopener noreferrer">' +
+          shown + '</a>';
+      }
+      var slug = charLinks[key];
       if (!slug) return '<span class="tok">' + shown + '</span>';
       return '<a class="wiki-charlink" href="' + esc(root + 'c/' + slug) + '">' + shown + '</a>';
     });
+
+    // {{red|Imp}} / {{blue|Undertaker}}
+    out = out.replace(COLOR_RE, function (m, kind, body) {
+      return '<span class="' + COLOR_CLASS[kind.toLowerCase()] + '">' + body + '</span>';
+    });
+
+    // Nothing below this line is offered in links mode: every one of these
+    // marks can be typed by accident in ordinary character prose.
+    if (linksOnly) return out;
 
     out = out.replace(/~~([^~\n]{1,200})~~/g, '<s>$1</s>');
     out = out.replace(/\*\*([^*\n]{1,300})\*\*/g, '<strong>$1</strong>');
     out = out.replace(/(^|[^*])\*([^*\n]{1,300})\*(?!\*)/g, '$1<em>$2</em>');
 
     return out.replace(/\u0000c(\d+)\u0000/g, function (m, i) { return codes[+i]; });
+  }
+
+  /* ── the marks, taken back out ──
+     For the places a writer's text has to leave the wiki as plain prose: the
+     official-schema JSON a character page exports (the app renders no
+     markup), and the meta description a search engine or Discord shows. The
+     label survives, the syntax does not.
+
+     Single *asterisks* are deliberately left alone — this is character text,
+     where a lone one is the official "Each night*" convention rather than a
+     mark, and links mode never rendered it as one either. */
+  function plainText(text) {
+    return String(text == null ? '' : text)
+      .replace(COLOR_RE, '$2')
+      .replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g,
+        function (m, target, label) { return (label != null && label !== '') ? label : target; })
+      .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, '$1')
+      .replace(/\*\*([^*\n]{1,300})\*\*/g, '$1')
+      .replace(/~~([^~\n]{1,200})~~/g, '$1')
+      .replace(/`([^`\n]{1,300})`/g, '$1');
   }
 
   /* ── table of contents ── */
@@ -489,9 +598,10 @@
   }
 
   var API = {
-    setCharLinks: setCharLinks,
+    setCharLinks: setCharLinks, setOfficialNames: setOfficialNames,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
-    inlineFormat: inlineFormat, renderBody: renderBody, tocHTML: tocHTML,
+    inlineFormat: inlineFormat, plainText: plainText,
+    renderBody: renderBody, tocHTML: tocHTML,
     autoSummary: autoSummary, formatDate: formatDate,
     renderBoxes: renderBoxes, renderInfobox: renderInfobox,
     renderWikiPage: renderWikiPage, renderPageLinks: renderPageLinks,

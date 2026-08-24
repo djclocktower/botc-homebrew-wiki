@@ -70,7 +70,8 @@
 
   /* ============================================================
      3. Re-order the flat field run into titled sections:
-        Basics → The Page → Tags → Night Order → Advanced → actions
+        Basics → The Page → Special properties → Tags → Sharing
+        → Night Order → Advanced → actions
      ============================================================ */
   var GROUP_DEFS = [
     { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
@@ -92,6 +93,14 @@
   var ADVANCED_FIELD_IDS = ['pronunciation', 'ipa', 'respelling',
     'translatedBy', 'iconBy', 'artAlt'];
   var NIGHTORDER_ID = 'edition'; // first id inside the Night Order fieldset
+  /* Special properties is a section in its own right, above Tags and above
+     Night Order. It was swept into Advanced Options with the jinxes and the
+     custom JSON simply because it is a <fieldset>, and that is the wrong
+     place for it: what it holds ("cannot go in the bag", "show the
+     Storyteller the grimoire") is part of how the character WORKS, so it
+     belongs beside the mechanics rather than under a summary that never
+     mentions it. First id inside that fieldset. */
+  var SPECIAL_ID = 'specials';
   // create.html and edit.html between them: publish / draft / save / delete.
   var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'delete-char', 'status'];
 
@@ -103,6 +112,7 @@
       for (var g = 0; g < GROUP_DEFS.length; g++)
         if (GROUP_DEFS[g].ids.indexOf(id) !== -1) return GROUP_DEFS[g].key;
       if (ADVANCED_FIELD_IDS.indexOf(id) !== -1) return 'advFld';
+      if (id === SPECIAL_ID) return 'special';
       if (id === NIGHTORDER_ID) return 'nightorder';
       if (ACTION_IDS.indexOf(id) !== -1) return 'actions';
     }
@@ -111,8 +121,8 @@
     return 'head'; // h2, intro sub, import fieldset, anything unrecognised
   }
 
-  var buckets = { head: [], basics: [], 'the-page': [], tags: [], sharing: [],
-                  nightorder: [], advFld: [], advFs: [], actions: [] };
+  var buckets = { head: [], basics: [], 'the-page': [], special: [], tags: [],
+                  sharing: [], nightorder: [], advFld: [], advFs: [], actions: [] };
   Array.prototype.slice.call(card.children).forEach(function (node) {
     buckets[bucketOf(node)].push(node);
   });
@@ -120,7 +130,18 @@
   // rebuild the card in the new order (appendChild moves, never clones)
   buckets.head.forEach(function (n) { card.appendChild(n); });
 
+  /* Special properties goes in ahead of the Tags section — and, if there is
+     no Tags section on this page, still ahead of Night Order, which is the
+     other half of what it was asked to sit above. */
+  var specialPlaced = false;
+  function placeSpecial() {
+    if (specialPlaced) return;
+    specialPlaced = true;
+    buckets.special.forEach(function (n) { card.appendChild(n); });
+  }
+
   GROUP_DEFS.forEach(function (g) {
+    if (g.key === 'tags') placeSpecial();
     if (!buckets[g.key].length) return;
     var wrap = document.createElement('section');
     wrap.className = 'rsec';
@@ -133,6 +154,7 @@
     buckets[g.key].forEach(function (n) { wrap.appendChild(n); });
   });
 
+  placeSpecial();
   buckets.nightorder.forEach(function (n) { card.appendChild(n); });
 
   /* ============================================================

@@ -204,6 +204,21 @@
       </div>
       <div class="fld">
         <label for="examples">Examples <span class="hint">(one per line)</span></label>
+        <!-- Formatting help sits beside the Examples box because that is where
+             people reach for it first — an example names three or four
+             characters and wants them coloured the way the official almanac
+             colours them. The marks are not examples-only, though, which is
+             what the last line says: every text box on this page takes them. -->
+        <div class="fmt-help">
+          <div class="fmt-help-h">Formatting</div>
+          <ul class="fmt-help-list">
+            <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
+            <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
+            <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
+            <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp</li>
+          </ul>
+        </div>
         <textarea id="examples"></textarea>
       </div>
       <div class="fld">
@@ -281,6 +296,13 @@
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
       </div>
 
+      <fieldset>
+        <legend>Special properties</legend>
+        <p class="sub" style="margin:0 0 10px">The behaviour flags the official script tools read — whether the character can be drawn from the bag, what the app shows the Storyteller, and so on. Most characters need none. The Drunk and the Phantom, for instance, both carry <code>ability / bag-disabled</code>. Imported characters keep whatever they arrived with.</p>
+        <div id="specials"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addspecial">+ Add special property</button>
+      </fieldset>
+
       <!-- night order & tokens for JSON -->
       <fieldset>
         <legend>Night Order &amp; Tokens</legend>
@@ -318,13 +340,6 @@
           <input type="checkbox" id="setup">
           <label for="setup" style="margin:0">Affects setup (e.g. [+1 Outsider])</label>
         </div>
-      </fieldset>
-
-      <fieldset>
-        <legend>Special properties</legend>
-        <p class="sub" style="margin:0 0 10px">The behaviour flags the official script tools read — whether the character can be drawn from the bag, what the app shows the Storyteller, and so on. Most characters need none. The Drunk and the Phantom, for instance, both carry <code>ability / bag-disabled</code>. Imported characters keep whatever they arrived with.</p>
-        <div id="specials"></div>
-        <button type="button" class="btn btn-ghost btn-sm" id="addspecial">+ Add special property</button>
       </fieldset>
 
       <fieldset>
@@ -438,6 +453,28 @@
           });
         });
         window.setWikiChars(w);
+        // [[Character Name]] in the almanac text becomes a real link on the
+        // published page, so the preview needs the same name -> address map
+        // the Worker builds from D1. It rides this fetch rather than making
+        // one of its own. render-wiki builds `c/{value}`, so the value is the
+        // character's ADDRESS with its own c/ prefix taken off, not its
+        // identity.
+        if (window.WikiRender) {
+          var links = {};
+          var normLink = function (x) {
+            return String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+          };
+          (list || []).forEach(function (c) {
+            if (!c || !c.slug) return;
+            var addr = c.page
+              ? String(c.page).replace(/^\//, '').replace(/^c\//, '').replace(/\.html$/, '')
+              : c.slug;
+            [normLink(c.slug), normLink(c.name)].forEach(function (k) {
+              if (k && !links[k]) links[k] = addr;
+            });
+          });
+          window.WikiRender.setCharLinks(links);
+        }
         // Who already declares a jinx with the character being edited. A jinx
         // is stored on one side only, so without this you can write a second,
         // conflicting rule for a pair and never know: the other page's text
