@@ -25,14 +25,20 @@
      [label](https://…)            link (href whitelisted, see safeHref; a
                                    bare 'example.com' becomes https, and
                                    '/c/imp' stays inside the wiki)
-     [[Character Name]]            links to that character's page if the wiki
-                                   has one, otherwise renders as a reminder
-                                   token pill — the same [[TOKEN]] convention
-                                   used on character pages.
+     [[Character Name]]            one of the game's OWN characters links to
+                                   the official wiki; otherwise this wiki's
+                                   page for it; otherwise a reminder token
+                                   pill — the [[TOKEN]] convention character
+                                   pages already used.
      [[Character Name|as written]] same, with your own label.
      {{blue|Undertaker}}           the name in the good team's blue
      {{red|Imp}}                   the name in the evil team's red
                                    ({{good|…}} and {{evil|…}} are the same two)
+
+   The marks combine, and the colour mark is applied last precisely so that
+   they can: {{red|[[Imp]]}} is a red link to the Imp, {{blue|[a rule](url)}}
+   is a blue one to anywhere. A link inside a colour takes the colour (see
+   `.wiki-red a` in styles.css) rather than the link colour.
 
    opts.marks === 'links' asks for a deliberately small part of that set —
    links, [[character links]] and the colour marks, and nothing a writer
@@ -53,6 +59,41 @@
   var charLinks = {};
   function setCharLinks(map) { charLinks = map || {}; }
   function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+  /* The official roster, keyed the same way, so [[Imp]] goes to the official
+     wiki rather than to a homebrew page that happens to share the name.
+
+     Official deliberately beats this wiki, which is the same order and the
+     same reasoning as resolveJinxTarget() in render.js (see gotcha 8 in
+     CLAUDE.md): there is more than one homebrew "Sculptor", and a writer who
+     types a familiar name almost always means the character the whole game
+     knows. A page here whose name matches an official one is by definition
+     NOT that character — an exact match is refused on save and retired
+     retroactively — so linking it as though it were would be wrong twice.
+     Somebody who does mean a particular homebrew page can always name it
+     outright with [label](/c/slug).
+
+     Fed by Render.setOfficialNames() in the browser and by the Worker's
+     officialNameMap() for SSR — one map, whichever way round. Unset, nothing
+     resolves as official and [[Name]] behaves as it did. */
+  var officialNames = {};
+  function setOfficialNames(map) {
+    officialNames = {};
+    if (!map) return;
+    for (var k in map) {
+      if (!Object.prototype.hasOwnProperty.call(map, k)) continue;
+      var n = map[k];
+      if (typeof n !== 'string' || !n) continue;
+      // Both the key (an id like `plaguedoctor`) and the display name, so a
+      // writer reaches it typing either.
+      officialNames[normName(k)] = n;
+      officialNames[normName(n)] = n;
+    }
+  }
+  function officialWikiHref(name) {
+    return 'https://wiki.bloodontheclocktower.com/' +
+      String(name).trim().replace(/\s+/g, '_');
+  }
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -174,11 +215,20 @@
         '>' + label + '</a>';
     });
 
-    // [[Character Name]] / [[Character Name|label]] — a link when the wiki has
-    // that character, otherwise the reminder-token pill used across the site.
+    // [[Character Name]] / [[Character Name|label]] — the official wiki if it
+    // is one of the game's own characters (see setOfficialNames above), then
+    // this wiki's page if it has one, and otherwise the reminder-token pill
+    // that [[TOKEN]] has always rendered as.
     out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
-      var slug = charLinks[normName(target)];
+      var key = normName(target);
       var shown = (label != null && label !== '') ? label : target;
+      var official = officialNames[key];
+      if (official) {
+        return '<a class="wiki-charlink wiki-charlink-off" href="' +
+          esc(officialWikiHref(official)) + '" target="_blank" rel="noopener noreferrer">' +
+          shown + '</a>';
+      }
+      var slug = charLinks[key];
       if (!slug) return '<span class="tok">' + shown + '</span>';
       return '<a class="wiki-charlink" href="' + esc(root + 'c/' + slug) + '">' + shown + '</a>';
     });
@@ -548,7 +598,7 @@
   }
 
   var API = {
-    setCharLinks: setCharLinks,
+    setCharLinks: setCharLinks, setOfficialNames: setOfficialNames,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
     inlineFormat: inlineFormat, plainText: plainText,
     renderBody: renderBody, tocHTML: tocHTML,

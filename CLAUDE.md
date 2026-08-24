@@ -248,8 +248,9 @@ assets/
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
                        images, ::: callouts, [toc], **bold**, *italic*, `code`,
-                       ~~strike~~, [label](url), [[Character Name]],
-                       {{red|Imp}} / {{blue|Undertaker}}) plus the
+                       ~~strike~~, [label](url), [[Character Name]] — which
+                       resolves official-first, see "Formatting on a character
+                       page" — {{red|Imp}} / {{blue|Undertaker}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
                        paths — nothing a writer types can become raw HTML.
@@ -969,13 +970,32 @@ Every prose field on a `/c/` page goes through the wiki's text engine, in a
 through `inlineLinks()` in render.js. Three marks and no others:
 
 - `[label](url)` — a link, href-whitelisted by `safeHref()` like everywhere else.
-- `[[Character Name]]` — that character's page if this wiki has one, otherwise
-  the reminder-token pill these fields have always rendered `[[TOKEN]]` as. So
-  the mark is a superset of the old `tok()`, not a replacement for it.
+- `[[Character Name]]` — **the official wiki** if it is one of the game's own
+  characters, then this wiki's page for it, then the reminder-token pill these
+  fields have always rendered `[[TOKEN]]` as. So the mark is a superset of the
+  old `tok()`, not a replacement for it.
+
+  Official beating this wiki is the same order and the same reasoning as
+  `resolveJinxTarget()` (gotcha 8): there is more than one homebrew
+  "Sculptor", and a page here whose name matches an official one is by
+  definition *not* that character — an exact match is refused on save. A
+  writer who does mean a particular homebrew page names it outright with
+  `[label](/c/slug)`. `WikiRender.setOfficialNames()` is the registry;
+  `Render.setOfficialNames()` **forwards into it**, so the `/c/` route and both
+  character editors feed both engines with the call they already made, and
+  `setWikiTextRegistries()` in worker.js sets the pair together for `/s/`,
+  `/collection/`, `/news/` and `/p/`. Setting char links without the roster
+  would quietly send `[[Imp]]` to a homebrew Imp.
 - `{{red|Imp}}` / `{{blue|Undertaker}}` (and `{{evil|…}}` / `{{good|…}}`, the
   same two under the game's names) — the character name coloured the way the
   official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
   `.wiki-blue` in styles.css.
+
+**The marks combine**, which is why the colour mark is applied *last*:
+`{{red|[[Imp]]}}` is a red link to the Imp, `{{blue|[a rule](url)}}` a blue one
+to anywhere. `.wiki-red a, .wiki-blue a { color: inherit }` is what makes that
+hold — without it every link rule on the site repaints the anchor in link blue
+and the mark looks broken.
 
 **What is deliberately NOT in that set is `*italic*`**, and it is the reason
 the mode exists at all. The official "Each night\*" convention puts a lone
@@ -987,35 +1007,33 @@ the short lines somebody writes *about* a character — `pronunciation`, a jinx
 rule, the info box's `translatedBy` / `iconBy` — which go through
 `inlineText()` as before.
 
-The fields in links mode: `ability`, `lede`, `summaryBullets`, `howToRun`,
-`callout`, `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and
-the custom sidebar boxes. `appearsIn` is not one of them — it is a set name
-that has to match a collection, and charpage.js links it already.
+The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
+`examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
+sidebar boxes.
 
-**A mark never leaves the page.** Three places take the text back out to plain
-prose with `WikiRender.plainText()`, and every one of them is somewhere that
-renders no markup at all:
+**`ability` is deliberately NOT one of them** and stays escaped. It is not
+writing *about* the character, it is the character's rule: it goes verbatim
+into the official-schema JSON the app and every script tool read, it is
+printed on physical tokens, Grimforge lints it, and eight card surfaces show
+it flat. A mark typed there would render on the character's own page and
+nowhere else, which is worse than not offering it at all. `appearsIn` is out
+too — it is a set name that has to match a collection, and charpage.js links
+it already.
 
-- `buildSchema()` in render.js — the official-schema JSON box (`ability`,
-  `flavor`, jinx `reason`). The app and every script tool read that file.
-- The card feed (`characters.json?fields=card`) and `charsBySlug()` in
-  worker.js — the `ability` on every card grid, the search dropdown, the
-  Script Builder's roster rows, the Token Tool, and a script or collection
-  page's roster. Stripped in those two functions rather than in the eight
-  renderers downstream, three of which are hand-copied into pages that load
-  no text engine. The **full** feed keeps the source text, and so does
-  `/api/page`, which is what the editors load — so nothing an author typed is
-  ever lost.
-- The `<meta name="description">` on the `/c/` page.
+**A mark never leaves the page.** Keeping `ability` out of links mode is most
+of what makes that true — nothing that leaves a character page in bulk carries
+marks, so no card renderer, no feed and no export needs to know about them.
+Two fields that DO take marks still leave, and both go through
+`WikiRender.plainText()`:
 
-So a mark in `ability` shows on the character's own page and nowhere else.
-That is the intended trade: the ability line is mechanical text that eight
-other surfaces print flat, and it would be worse for it to print `{{red|Imp}}`
-at a reader than for the colour to stop at the page boundary.
+- `buildSchema()` in render.js — `flavor` (the quote) and a jinx's `reason`,
+  for the official-schema JSON box. The app renders no markup.
+- The `<meta name="description">` on the `/c/` page, which falls back to the
+  `lede`.
 
 Both editors carry a `.fmt-help` callout beside the Examples box naming the
-four marks (create.html and edit.html are the same form — change one, change
-both), and they feed `WikiRender.setCharLinks()` off the `characters.json`
+marks (create.html and edit.html are the same form — change one, change both),
+and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
 

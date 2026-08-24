@@ -2962,21 +2962,7 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cls !== 'standard') d.classification = cls;
     else if (cardOnly) d.classification = 'standard';
     else delete d.classification;
-    if (cardOnly) {
-      for (const k of CARD_DROP_FIELDS) delete d[k];
-      // The card feed is "what a thumbnail needs", and every one of its
-      // consumers prints the ability as plain text: the browse and tag and
-      // team card grids, the search dropdown, the roster rows in the Script
-      // Builder, the Token Tool (which prints it on a physical token). A
-      // character's ability takes the wiki's link and colour marks now — see
-      // inlineLinks() in assets/render.js — and none of those surfaces can
-      // render one, so they would print `{{red|Imp}}` at the reader instead.
-      // Taken out HERE rather than in eight card renderers, three of which
-      // are hand-copied into pages that load no text engine at all. The full
-      // feed keeps the source text; so does the /c/ page, which renders from
-      // D1, and so does the editor, which loads through /api/page.
-      if (chars && d.ability) d.ability = WikiRender.plainText(d.ability);
-    }
+    if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     return d;
   });
   // Characters pick up Curata from any Curata collection they belong to,
@@ -3250,9 +3236,10 @@ async function serveProfileShell(env, request, url) {
 
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
-  // The prose fields take the wiki's link and colour marks now, and a search
-  // result or a Discord unfurl has nowhere to render one — so the description
-  // is the same sentence with the syntax taken back out.
+  // The lede takes the wiki's link and colour marks now, and a search result
+  // or a Discord unfurl has nowhere to render one — so the description is the
+  // same sentence with the syntax taken back out. (The ability is escaped on
+  // the page and carries no marks, so this costs it nothing.)
   const desc = WikiRender.plainText((d.ability || d.lede || '').trim());
   // d.page is the address the /c/ route resolved; d.slug is the identity and
   // is only the address for a row the backfill has not reached.
@@ -3347,6 +3334,18 @@ async function officialNameMap(env, origin) {
   }
   _officialNameMapCache = m;
   return m;
+}
+
+// The two registries [[Character Name]] resolves through, set together
+// because the ORDER between them is the rule: an official character beats a
+// homebrew page of the same name (see setOfficialNames in render-wiki.js).
+// Setting the char links without the roster would quietly send [[Imp]] to
+// whichever homebrew Imp this wiki happens to hold, so they go in one call.
+// The /c/ route is the exception and does not need it: Render.setOfficialNames
+// forwards into the engine, and that route already calls it for the jinx box.
+async function setWikiTextRegistries(env, origin, links) {
+  WikiRender.setCharLinks(links);
+  WikiRender.setOfficialNames(await officialNameMap(env, origin).catch(() => ({})));
 }
 
 // Jinxes between two OFFICIAL characters (assets/official-jinxes.json). An
@@ -3553,13 +3552,6 @@ async function charsBySlug(env, slugs) {
           if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
-          // These rows are a script page's roster: one line per character,
-          // printed as plain text and exported as official-schema JSON.
-          // Same reasoning as the card feed above, and the same treatment —
-          // a collection page's roster comes through cachedCardChars(), which
-          // is the card feed, so without this the two page types would
-          // disagree about the same character's ability.
-          if (d.ability) d.ability = WikiRender.plainText(d.ability);
           out.push(d);
         } catch { /* skip an unparseable row rather than 500 the page */ }
       }
@@ -3697,7 +3689,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // EVERY character's name, not just the ones on this page, so it cannot come
   // from `chars` on a script page — but it only needs name+slug, so it is its
   // own cheap cached query rather than a reason to load the whole corpus.
-  WikiRender.setCharLinks(await cachedCharLinkMap(env));
+  await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env));
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -4032,7 +4024,7 @@ export default {
         ? (/^https?:\/\//i.test(a.image) ? a.image : url.origin + '/assets/' + a.image)
         : url.origin + '/assets/logo_skull.png';
       // [[Character Name]] in an article links to that character's page.
-      WikiRender.setCharLinks(await loadCharLinks(env));
+      await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
       const newsTheme = PageRender.sanitizeTheme(a.theme, 'news/' + a.slug);
       const newsThemeAttrs = PageRender.themeAttrs(newsTheme, '../');
       const html = pageShell({
@@ -4158,7 +4150,7 @@ export default {
         const sess = await getSession(env, request);
         if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
       }
-      WikiRender.setCharLinks(await loadCharLinks(env));
+      await setWikiTextRegistries(env, url.origin, await loadCharLinks(env));
       const page = {
         ...d, slug: row.slug, title: row.title,
         author: row.author || d.author || null,

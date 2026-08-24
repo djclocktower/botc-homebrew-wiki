@@ -189,6 +189,11 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    doing the job the mark exists for. */
 .wiki-red { color: var(--evil); font-weight: 700; }
 .wiki-blue { color: var(--good); font-weight: 700; }
+/* The marks combine — {{red|[[Imp]]}} is a red link — and the colour is the
+   half that was asked for, so it wins over every link colour on the site.
+   Without this the anchor rules below (and .wiki-body a, and .info-credit a)
+   would repaint a coloured link in link blue and the mark would look broken. */
+.wiki-red a, .wiki-blue a { color: inherit; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
    underlined, sitting on parchment. Section headings carry their own
@@ -2885,7 +2890,6 @@ a:hover .curata-mark { opacity: .9; }
   font-size: .95em; background: rgba(91,31,33,.08); padding: 1px 5px;
   border-radius: 3px; overflow-wrap: anywhere;
 }
-.fmt-help-foot { margin: 8px 0 0; font-size: .78rem; opacity: .8; }
 
 /* ─── Long names must wrap, not widen the page ──────────────────
    Names on this wiki are user-supplied and some are one long unbroken word

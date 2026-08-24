@@ -194,7 +194,17 @@
      official character, its real name wins over whatever was typed, the same
      courtesy the icon already gets. Unset, the typed text stands. */
   var OFFICIAL_NAMES = null;
-  function setOfficialNames(map) { OFFICIAL_NAMES = map || null; }
+  /* Forwarded into the text engine as well, so [[Imp]] in any prose this page
+     renders resolves to the official wiki. One call feeds both: every caller
+     that already had a roster to hand (the Worker's /c/ route, and both
+     character editors) is covered without a second line, and the two can
+     never end up disagreeing about who is official. A page that loaded no
+     text engine just skips it. */
+  function setOfficialNames(map) {
+    OFFICIAL_NAMES = map || null;
+    var W = engine();
+    if (W && W.setOfficialNames) W.setOfficialNames(map);
+  }
   function officialName(id) {
     if (!OFFICIAL_NAMES || !id) return '';
     var n = OFFICIAL_NAMES[slugId(id)];
@@ -354,16 +364,18 @@
   }
 
   /* ── Build official-schema JSON object from character data ── */
-  /* The official schema is read by the app and by every script tool, none of
-     which render markup — so the three prose fields that leave here have
-     their marks taken back out. A page nobody has typed a mark into is
+  /* The official schema is read by the app and by every script tool, neither
+     of which renders markup — so the two fields that leave here and DO take
+     the wiki's marks (the flavour quote, and a jinx's rule text) have them
+     taken back out. `ability` is escaped on the page as well, so it goes out
+     exactly as it was typed. A page nobody has typed a mark into is
      byte-for-byte what it always was. */
   function buildSchema(d) {
     var o = {
       id: d.jsonId || slugId(d.name),
       name: d.name || '',
       team: d.team || 'townsfolk',
-      ability: plainText(d.ability || '')
+      ability: d.ability || ''
     };
     // image as array (required by official script tool); alternate art
     // (e.g. an evil version) rides along as the second entry
@@ -546,7 +558,13 @@
 
     var summaryCol =
       '<div class="gen-sech-wrap" id="sec-summary"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-summary">Summary</a></h2></div>' +
-      (d.ability ? '<p class="ability">' + inlineLinks(d.ability) + '</p>' : '') +
+      /* The ability is the one prose field left deliberately escaped. It is
+         not writing ABOUT the character, it is the character's rule: it is
+         exported verbatim into official-schema JSON that the app and every
+         script tool read, printed on physical tokens, linted by Grimforge and
+         shown flat on eight card surfaces. A mark typed here would render on
+         this page and nowhere else, which is worse than not offering it. */
+      (d.ability ? '<p class="ability">' + esc(d.ability) + '</p>' : '') +
       (d.lede ? '<p class="lede">' + inlineLinks(d.lede) + '</p>' : '') +
       (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + inlineLinks(b) + '</li>'; }).join('') + '</ul>' : '');
 
