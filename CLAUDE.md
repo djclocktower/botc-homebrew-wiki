@@ -993,9 +993,12 @@ through `inlineLinks()` in render.js. Three marks and no others:
 
 **The marks combine**, which is why the colour mark is applied *last*:
 `{{red|[[Imp]]}}` is a red link to the Imp, `{{blue|[a rule](url)}}` a blue one
-to anywhere. `.wiki-red a, .wiki-blue a { color: inherit }` is what makes that
-hold — without it every link rule on the site repaints the anchor in link blue
-and the mark looks broken.
+to anywhere. `.wiki-red a, .wiki-blue a { color: inherit !important }` is what
+makes that hold, and the `!important` is load-bearing: at `(0,1,1)` that
+selector loses outright to `.char-parchment .ex a` at `(0,2,1)` twenty lines
+below it, so a red link in an example rendered plain link-blue and the mark
+looked broken. Out-specifying each link rule in turn only works until the next
+one is written; the declaration means "this text is this colour, full stop".
 
 **What is deliberately NOT in that set is `*italic*`**, and it is the reason
 the mode exists at all. The official "Each night\*" convention puts a lone

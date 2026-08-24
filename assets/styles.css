@@ -190,10 +190,20 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .wiki-red { color: var(--evil); font-weight: 700; }
 .wiki-blue { color: var(--good); font-weight: 700; }
 /* The marks combine — {{red|[[Imp]]}} is a red link — and the colour is the
-   half that was asked for, so it wins over every link colour on the site.
-   Without this the anchor rules below (and .wiki-body a, and .info-credit a)
-   would repaint a coloured link in link blue and the mark would look broken. */
-.wiki-red a, .wiki-blue a { color: inherit; }
+   half that was asked for, so it has to win over every link colour on the
+   site: the prose rules just below, .wiki-body a, .custom-box-body a,
+   .info-credit a, and whatever gets added next.
+
+   `!important` rather than a specificity war, and this is the case it is for.
+   `.wiki-red a` is (0,1,1); `.char-parchment .ex a` two rules down is (0,2,1)
+   and beat it outright, so {{red|[[Imp]]}} in an example rendered as an
+   ordinary blue link — the mark looked simply broken. Out-specifying every
+   link rule one at a time only works until somebody writes another one, and
+   this declaration means "this text is this colour, full stop", which is
+   exactly what important is for. Hover inherits it too, deliberately: the
+   underline is the feedback, and .char-parchment .ex a:hover would otherwise
+   flip a BLUE mark to red under the pointer. */
+.wiki-red a, .wiki-blue a { color: inherit !important; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
    underlined, sitting on parchment. Section headings carry their own
