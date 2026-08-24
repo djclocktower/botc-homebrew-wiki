@@ -1,10 +1,22 @@
 /* Shared theme form controls for publish-script.html / publish-collection.html.
    Expects the page to contain: #th-font (select), #th-accent/#th-panel/#th-text/
    #th-link (color inputs) with matching #th-*-state labels and .th-clear buttons,
-   plus #th-logosize (range) with #th-logosize-state and #th-logopanel (checkbox).
-   Values are validated again by sanitizeTheme on save (client + server). */
+   plus the two top-graphic sizers #th-headersize / #th-logosize (range inputs,
+   with #th-*-state labels) and #th-logopanel (checkbox).
+   Values are validated again by sanitizeTheme on save (client + server).
+
+   The two editors do not agree on element ids (sb-* vs pc-*), so the image
+   previews this file has to keep in step are found by ATTRIBUTE instead:
+   put data-th-preview="header" or data-th-preview="logo" on the <img>. */
 (function () {
   var KEYS = ['accent', 'panel', 'text', 'link'];
+  /* The two sizers, and the theme key + state label each one drives. Kept as a
+     table so adding a third image is a row here plus a row of markup, not
+     another copy of the same four handlers. */
+  var SIZERS = [
+    { id: 'th-headersize', key: 'headerSize', preview: 'header' },
+    { id: 'th-logosize',   key: 'logoSize',   preview: 'logo' }
+  ];
   function $(id) { return document.getElementById(id); }
 
   // opts.get() -> current theme object (may be null); opts.set(theme) persists it
@@ -38,25 +50,28 @@
        drawn it at. 100 is the default and is never stored, so dragging the
        slider back to the middle takes the page off the setting entirely
        rather than freezing today's default into it. */
-    var size = $('th-logosize');
-    if (size) {
-      var min = (window.PageRender && window.PageRender.LOGO_SIZE_MIN) || 25;
-      var max = (window.PageRender && window.PageRender.LOGO_SIZE_MAX) || 250;
-      size.min = min; size.max = max; size.step = 5;
-      size.addEventListener('input', function () {
+    var min = (window.PageRender && window.PageRender.LOGO_SIZE_MIN) || 25;
+    var max = (window.PageRender && window.PageRender.LOGO_SIZE_MAX) || 250;
+    SIZERS.forEach(function (sz) {
+      var input = $(sz.id);
+      if (!input) return;
+      input.min = min; input.max = max; input.step = 5;
+      input.addEventListener('input', function () {
         var t = opts.get() || {};
-        var n = Math.round(Number(size.value));
-        if (!isFinite(n) || n === 100) delete t.logoSize; else t.logoSize = n;
+        var n = Math.round(Number(input.value));
+        if (!isFinite(n) || n === 100) delete t[sz.key]; else t[sz.key] = n;
         opts.set(t);
-        showSize(n);
+        showSize(sz, n);
+        paintPreviews(t);
       });
-    }
+    });
     var panel = $('th-logopanel');
     if (panel) {
       panel.addEventListener('change', function () {
         var t = opts.get() || {};
         if (panel.checked) t.logoPanel = true; else delete t.logoPanel;
         opts.set(t);
+        paintPreviews(t);
       });
     }
 
@@ -65,9 +80,11 @@
         var k = btn.getAttribute('data-k');
         var t = opts.get() || {};
         delete t[k]; opts.set(t);
-        if (k === 'logoSize') {
-          var sz = $('th-logosize'); if (sz) sz.value = 100;
-          showSize(100);
+        var sz = sizerFor(k);
+        if (sz) {
+          var input = $(sz.id); if (input) input.value = 100;
+          showSize(sz, 100);
+          paintPreviews(t);
           return;
         }
         var st = $('th-' + k + '-state'); if (st) st.textContent = 'not set';
@@ -75,9 +92,34 @@
     });
   }
 
-  function showSize(n) {
-    var st = $('th-logosize-state');
+  function sizerFor(key) {
+    for (var i = 0; i < SIZERS.length; i++) if (SIZERS[i].key === key) return SIZERS[i];
+    return null;
+  }
+
+  function showSize(sz, n) {
+    var st = $(sz.id + '-state');
     if (st) st.textContent = (n === 100 ? 'default size' : n + '%');
+  }
+
+  /* Make the editor's own image previews show what was just chosen. The
+     percentage means nothing typed as a number — the whole question is whether
+     the banner now looks right — so the preview scales with the same
+     multiplier the page will use, and takes the parchment card when the card
+     is switched on. The previews sit on the page's purple, which is the
+     background the card exists to solve for. */
+  function paintPreviews(theme) {
+    theme = theme || {};
+    SIZERS.forEach(function (sz) {
+      var n = Number(theme[sz.key]) || 100;
+      Array.prototype.forEach.call(
+        document.querySelectorAll('[data-th-preview="' + sz.preview + '"]'),
+        function (img) {
+          img.style.setProperty('--th-prev-scale', n / 100);
+          img.classList.toggle('th-prev-panel', !!theme.logoPanel);
+        }
+      );
+    });
   }
 
   // Reflect a loaded theme in the controls. Returns true if anything is set
@@ -93,15 +135,18 @@
       if (theme[k]) { if (input) input.value = theme[k]; if (st) st.textContent = theme[k]; }
       else if (st) { st.textContent = 'not set'; }
     });
-    var size = $('th-logosize');
-    var n = Number(theme.logoSize) || 100;
-    if (size) size.value = n;
-    showSize(n);
+    SIZERS.forEach(function (sz) {
+      var input = $(sz.id);
+      var n = Number(theme[sz.key]) || 100;
+      if (input) input.value = n;
+      showSize(sz, n);
+    });
     var panel = $('th-logopanel');
     if (panel) panel.checked = !!theme.logoPanel;
+    paintPreviews(theme);
     return !!(theme.font || theme.accent || theme.panel || theme.text || theme.link ||
-      theme.background || theme.logoSize || theme.logoPanel);
+      theme.background || theme.logoSize || theme.headerSize || theme.logoPanel);
   }
 
-  window.ThemeEditor = { wire: wire, prime: prime };
+  window.ThemeEditor = { wire: wire, prime: prime, paintPreviews: paintPreviews };
 })();

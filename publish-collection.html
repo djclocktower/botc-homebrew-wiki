@@ -60,6 +60,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 .th-row label { flex:1; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin:0; }
 .th-row input[type=color] { width:44px; height:28px; padding:0 2px; border:1px solid #cdbfa0; background:#fffdf8; cursor:pointer; }
 .th-row input[type=range] { flex:none; width:130px; }
+/* The two image previews follow the size sliders and the parchment-box tick,
+   so the percentage is something you can see rather than a number to guess at.
+   They sit on the page's purple — the background the box exists to solve for. */
+.sb-header-prev[data-th-preview] {
+  background:#1a0820; padding:6px;
+  max-height:calc(140px * var(--th-prev-scale, 1));
+}
+.sb-header-prev.th-prev-panel { background:#f0e8d5; border-radius:8px; padding:10px; }
 .th-check { display:flex; align-items:center; gap:8px; margin-top:10px; font-size:.9rem; text-transform:none; letter-spacing:0; }
 .th-check input { width:auto; }
 .th-clear { font-size:.75rem; font-family:'Oswald',sans-serif; background:none; border:1px solid #cdbfa0; color:#6b5d49; padding:2px 8px; cursor:pointer; }
@@ -190,7 +198,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-fld">
         <label for="pc-header">Header graphic <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional PNG, wide banner works best)</span></label>
         <input type="file" id="pc-header" accept="image/*">
-        <img id="pc-header-prev" class="sb-header-prev" alt="header preview">
+        <img id="pc-header-prev" class="sb-header-prev" data-th-preview="header" alt="header preview">
         <div id="pc-header-note" class="sub" style="margin-top:6px"></div>
         <button type="button" class="th-clear" id="pc-header-remove" style="display:none;margin-top:6px">Remove header</button>
       </div>
@@ -300,7 +308,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           <div class="sb-fld">
             <label for="pc-logo">Logo / icon <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(square-ish works best)</span></label>
             <input type="file" id="pc-logo" accept="image/*">
-            <img id="pc-logo-prev" class="sb-header-prev" alt="logo preview">
+            <img id="pc-logo-prev" class="sb-header-prev" data-th-preview="logo" alt="logo preview">
             <div id="pc-logo-note" class="sub" style="margin-top:6px"></div>
             <button type="button" class="th-clear" id="pc-logo-remove" style="display:none;margin-top:6px">Remove logo</button>
           </div>
@@ -326,13 +334,19 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <div class="sb-fld">
           <label>Top image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(the header if you set one, otherwise the logo)</span></label>
           <div class="th-row">
-            <label for="th-logosize">Size</label>
+            <label for="th-headersize">Header size</label>
+            <span class="th-state" id="th-headersize-state">default size</span>
+            <input type="range" id="th-headersize" min="25" max="250" step="5" value="100">
+            <button type="button" class="th-clear" data-k="headerSize">reset</button>
+          </div>
+          <div class="th-row">
+            <label for="th-logosize">Logo size</label>
             <span class="th-state" id="th-logosize-state">default size</span>
             <input type="range" id="th-logosize" min="25" max="250" step="5" value="100">
             <button type="button" class="th-clear" data-k="logoSize">reset</button>
           </div>
           <label class="th-check"><input type="checkbox" id="th-logopanel"> Parchment box behind it</label>
-          <p class="sub" style="margin:6px 0 0">Useful when the image was drawn for a light background and gets lost against the wiki's purple.</p>
+          <p class="sub" style="margin:6px 0 0">Useful when the image was drawn for a light background and gets lost against the wiki's purple. The header and logo previews follow both settings, so you can see the result before publishing.</p>
         </div>
       </div>
     </details>

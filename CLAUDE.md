@@ -715,21 +715,33 @@ must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
 on `<body>` (never raw CSS).
-The last two are the **top graphic** — the header banner, or the logo when
-there is no banner. `logoSize` is a percentage of the size the wiki would have
-drawn it at (`LOGO_SIZE_MIN`..`LOGO_SIZE_MAX`, 25–250); 100 is never stored, so
-a page nobody touched keeps following the stylesheet instead of freezing
-today's default into the row. It becomes `--pg-logo-scale` on a
-`.theme-logo-size` body and **multiplies** the existing max-width/max-height
-caps rather than replacing them — the percentage half of `min()` has to scale
-with the pixel half or a shrunk logo would still fill 70% of a phone screen.
-`logoPanel` adds `.theme-logo-panel`, a parchment card for a logo drawn on a
+The last three are the **top graphic** — the header banner, or the logo when
+there is no banner. `headerSize` and `logoSize` are **two settings because
+they are two images**: a page with a banner still has a logo, which the
+information box goes on showing, so one number could not say "this banner is
+too tall" and "this logo is too small" at once. Each is a percentage of the
+size the wiki would have drawn that image at (`LOGO_SIZE_MIN`..`LOGO_SIZE_MAX`,
+25–250); 100 is never stored, so a page nobody touched keeps following the
+stylesheet instead of freezing today's default into the row. They become
+`--pg-header-scale` / `--pg-logo-scale` on a `.theme-header-size` /
+`.theme-logo-size` body and **multiply** the existing max-width/max-height caps
+rather than replacing them — the percentage half of `min()` has to scale with
+the pixel half or a shrunk logo would still fill 70% of a phone screen.
+`logoPanel` adds `.theme-logo-panel`, a parchment card for art drawn on a
 light background that vanishes against the wiki's purple; it is painted on the
 **image**, not on its wrapper, because the wrapper is a full-width centring
-block and would draw a band across the page. Both are one pair of rules in
+block and would draw a band across the page. All of it is one set of rules in
 styles.css covering script header, collection header and bare logo alike, so no
-page markup changed. The controls are `#th-logosize` / `#th-logopanel`, wired
-by the shared `assets/theme-editor.js`. Seeded collections have `owner_id NULL` — admins
+page markup changed. The controls are `#th-headersize` / `#th-logosize` /
+`#th-logopanel`, wired by the shared `assets/theme-editor.js` — whose `SIZERS`
+table is where a third sizeable image would be added.
+**The editors' own image previews follow all three** (`paintPreviews()`): a
+percentage means nothing as a number, so the preview scales by the same
+multiplier the page will use, takes the parchment card when it is ticked, and
+sits on the page's purple, which is the background the card exists to solve
+for. The two editors do not agree on element ids (`sb-*` vs `pc-*`), so the
+previews are found by **`data-th-preview="header|logo"`** rather than a list of
+ids the widget would have to keep in step. Seeded collections have `owner_id NULL` — admins
 assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
 
 ## Night order (script pages)
