@@ -2962,7 +2962,21 @@ async function buildPublicJSON(env, table, opts = {}) {
     if (cls !== 'standard') d.classification = cls;
     else if (cardOnly) d.classification = 'standard';
     else delete d.classification;
-    if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
+    if (cardOnly) {
+      for (const k of CARD_DROP_FIELDS) delete d[k];
+      // The card feed is "what a thumbnail needs", and every one of its
+      // consumers prints the ability as plain text: the browse and tag and
+      // team card grids, the search dropdown, the roster rows in the Script
+      // Builder, the Token Tool (which prints it on a physical token). A
+      // character's ability takes the wiki's link and colour marks now — see
+      // inlineLinks() in assets/render.js — and none of those surfaces can
+      // render one, so they would print `{{red|Imp}}` at the reader instead.
+      // Taken out HERE rather than in eight card renderers, three of which
+      // are hand-copied into pages that load no text engine at all. The full
+      // feed keeps the source text; so does the /c/ page, which renders from
+      // D1, and so does the editor, which loads through /api/page.
+      if (chars && d.ability) d.ability = WikiRender.plainText(d.ability);
+    }
     return d;
   });
   // Characters pick up Curata from any Curata collection they belong to,
@@ -3236,7 +3250,10 @@ async function serveProfileShell(env, request, url) {
 
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
-  const desc = (d.ability || d.lede || '').trim();
+  // The prose fields take the wiki's link and colour marks now, and a search
+  // result or a Discord unfurl has nowhere to render one — so the description
+  // is the same sentence with the syntax taken back out.
+  const desc = WikiRender.plainText((d.ability || d.lede || '').trim());
   // d.page is the address the /c/ route resolved; d.slug is the identity and
   // is only the address for a row the backfill has not reached.
   const pageUrl = origin + '/' + String(d.page || ('c/' + d.slug)).replace(/^\//, '');
@@ -3536,6 +3553,13 @@ async function charsBySlug(env, slugs) {
           if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
+          // These rows are a script page's roster: one line per character,
+          // printed as plain text and exported as official-schema JSON.
+          // Same reasoning as the card feed above, and the same treatment —
+          // a collection page's roster comes through cachedCardChars(), which
+          // is the card feed, so without this the two page types would
+          // disagree about the same character's ability.
+          if (d.ability) d.ability = WikiRender.plainText(d.ability);
           out.push(d);
         } catch { /* skip an unparseable row rather than 500 the page */ }
       }

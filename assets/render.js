@@ -26,16 +26,49 @@
   var curataMarkFn = null;
   function setCurataMark(fn) { curataMarkFn = fn; }
 
-  /* The wiki markup engine (assets/render-wiki.js), used for the one field
-     that takes formatting: the pronunciation line. The Worker hands it over
+  /* The wiki markup engine (assets/render-wiki.js). The Worker hands it over
      with init(); in the browser it is picked up off the global if the page
      loaded it. Resolved per call, so load order does not matter. Without it
-     the text still renders — escaped and unformatted, never raw. */
+     the text still renders — escaped and unformatted, never raw.
+
+     Two doors into it, because a character page has two kinds of text:
+
+     inlineText()  the whole inline mark set, for the short credit-ish lines
+                   somebody writes ABOUT the character rather than as part of
+                   it: the pronunciation line, a jinx rule, and the info
+                   box's `translatedBy` / `iconBy` rows.
+
+     inlineLinks() the small set — links, [[Character Name]] and the colour
+                   marks {{red|…}} / {{blue|…}} — for the almanac prose
+                   itself: the ability, the lede, the summary, How to Run,
+                   the examples, the tips and the sidebar boxes. A writer who
+                   types a link there gets a link; what they do NOT get is
+                   *italics*, because the official "Each night*" convention
+                   puts a lone asterisk through half the text on this wiki
+                   and two of them in one paragraph would italicise
+                   everything in between. Without the engine it falls back to
+                   tok(), which is what these fields rendered with before. */
   var wiki = null;
   function init(w) { wiki = w || null; }
+  function engine() {
+    return wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
+  }
   function inlineText(str) {
-    var W = wiki || (typeof window !== 'undefined' ? window.WikiRender : null);
+    var W = engine();
     return (W && W.inlineFormat) ? W.inlineFormat(str, { linkRoot: R() }) : esc(str);
+  }
+  function inlineLinks(str) {
+    var W = engine();
+    return (W && W.inlineFormat)
+      ? W.inlineFormat(str, { linkRoot: R(), marks: 'links' })
+      : tok(str);
+  }
+  /* The marks taken back out, for the two places this text leaves the page as
+     plain prose: the official-schema JSON box (the app renders no markup) and
+     the meta description the Worker puts in the page head. */
+  function plainText(str) {
+    var W = engine();
+    return (W && W.plainText) ? W.plainText(str) : String(str == null ? '' : str);
   }
   function curataMark(d, opts) {
     if (!d || !(d.curata || d.classification === 'curata')) return '';
@@ -321,12 +354,16 @@
   }
 
   /* ── Build official-schema JSON object from character data ── */
+  /* The official schema is read by the app and by every script tool, none of
+     which render markup — so the three prose fields that leave here have
+     their marks taken back out. A page nobody has typed a mark into is
+     byte-for-byte what it always was. */
   function buildSchema(d) {
     var o = {
       id: d.jsonId || slugId(d.name),
       name: d.name || '',
       team: d.team || 'townsfolk',
-      ability: d.ability || ''
+      ability: plainText(d.ability || '')
     };
     // image as array (required by official script tool); alternate art
     // (e.g. an evil version) rides along as the second entry
@@ -335,7 +372,7 @@
     if (imgs.length) o.image = imgs;
     if (d.edition) o.edition = d.edition;
     var fl = d.flavor || d.quote;
-    if (fl) o.flavor = String(fl).replace(/^["']|["']$/g, '');
+    if (fl) o.flavor = plainText(String(fl).replace(/^["']|["']$/g, ''));
     o.firstNight = Number(d.firstNight) || 0;
     if (d.firstNightReminder) o.firstNightReminder = d.firstNightReminder;
     o.otherNight = Number(d.otherNight) || 0;
@@ -345,7 +382,7 @@
     if (d.setup) o.setup = true;
     if (d.jinxes && d.jinxes.length) {
       var jx = d.jinxes.map(function (j) {
-        return { id: j.id || slugId(j.name), reason: j.text || j.reason || '' };
+        return { id: j.id || slugId(j.name), reason: plainText(j.text || j.reason || '') };
       }).filter(function (j) { return j.id; });
       if (jx.length) o.jinxes = jx;
     }
@@ -509,31 +546,31 @@
 
     var summaryCol =
       '<div class="gen-sech-wrap" id="sec-summary"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-summary">Summary</a></h2></div>' +
-      (d.ability ? '<p class="ability">' + esc(d.ability) + '</p>' : '') +
-      (d.lede ? '<p class="lede">' + esc(d.lede) + '</p>' : '') +
-      (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') + '</ul>' : '');
+      (d.ability ? '<p class="ability">' + inlineLinks(d.ability) + '</p>' : '') +
+      (d.lede ? '<p class="lede">' + inlineLinks(d.lede) + '</p>' : '') +
+      (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + inlineLinks(b) + '</li>'; }).join('') + '</ul>' : '');
 
-    var howColBody = paras.map(function (p) { return '<p>' + tok(p) + '</p>'; }).join('') +
-      (d.callout && d.callout.trim() ? '<div class="callout">' + tok(d.callout) + '</div>' : '');
+    var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
+      (d.callout && d.callout.trim() ? '<div class="callout">' + inlineLinks(d.callout) + '</div>' : '');
     var howCol = howColBody ?
       '<div class="gen-sech-wrap" id="sec-howtorun"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-howtorun">How to Run</a></h2></div>' + howColBody : '';
 
     var examplesBlock = examples.length ?
       ('<div class="examples"><div class="gen-sech-wrap" id="sec-examples"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-examples">Examples</a></h2></div>' +
-        examples.map(function (e) { return '<div class="ex">' + esc(e) + '</div>'; }).join('') +
+        examples.map(function (e) { return '<div class="ex">' + inlineLinks(e) + '</div>'; }).join('') +
         '</div>') : '';
 
     var tipsBlock = tips.length ?
       ('<div class="tips"><div class="gen-sech-wrap" id="sec-tips"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-tips">Tips &amp; Tricks</a></h2></div>' +
-        '<ul>' + tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
+        '<ul>' + tips.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     var charName = esc(d.name || 'Character');
     var bluffingBlock = bluffing.length ?
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Bluffing as the ' + charName + '</h2></div>' +
-        '<ul>' + bluffing.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
+        '<ul>' + bluffing.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
     var fightingBlock = fighting.length ?
       ('<div class="tips"><div class="gen-sech-wrap"><h2 class="gen-sech">Fighting the ' + charName + '</h2></div>' +
-        '<ul>' + fighting.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul></div>') : '';
+        '<ul>' + fighting.map(function (t) { return '<li>' + inlineLinks(t) + '</li>'; }).join('') + '</ul></div>') : '';
 
     // Tags row. The Curata wreath hangs off the end of it behind a hairline
     // rule: it is a mark, not a tag, so it is never a link and never joins the
@@ -591,7 +628,7 @@
     var infoCard = '<div class="card char-infocard">' +
       '<div class="card-actions">' + copyBtn + '</div>' +
       emblem +
-      (quoteClean.trim() ? '<p class="quote">"' + esc(quoteClean) + '"</p>' : '') +
+      (quoteClean.trim() ? '<p class="quote">"' + inlineLinks(quoteClean) + '"</p>' : '') +
       pronounceBlock(d) +
       '<h2 class="info-h">Information</h2>' + info + '</div>';
 
@@ -645,7 +682,7 @@
       if (!title && !content.trim()) return '';
       var body = content.split(/\n{2,}/).map(function (p) {
         p = p.replace(/\s+$/, '');
-        return p.trim() ? '<p>' + tok(p).replace(/\n/g, '<br>') + '</p>' : '';
+        return p.trim() ? '<p>' + inlineLinks(p).replace(/\n/g, '<br>') + '</p>' : '';
       }).join('');
       return '<div class="card custom-box">' +
         (title ? '<h2 class="info-h custom-box-h">' + esc(title) + '</h2>' : '') +

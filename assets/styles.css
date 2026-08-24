@@ -174,6 +174,32 @@ ul { list-style: none; margin: .2em 0 0; padding: 0; }
 li { position: relative; padding-left: 1.1em; margin: 0 0 .85em; }
 li::before { content: "•"; position: absolute; left: 0; color: var(--evil); font-weight: 700; }
 .tok { font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .02em; color: var(--maroon); background: rgba(91,31,33,.10); padding: 0 .3em; border-radius: 0; }
+
+/* ── the inline marks a character page's prose carries ──
+   Almanac text (the ability, the lede, the summary, How to Run, the
+   examples, the tips, the sidebar boxes) is rendered through the wiki's text
+   engine in its links-only mode — see inlineLinks() in assets/render.js.
+   Two things come out of it that need painting here.
+
+   {{red|Imp}} / {{blue|Undertaker}} colour a character's name inside a
+   sentence the way the official almanac does. The colours are the game's own
+   --evil and --good, so the two marks can never drift away from the team
+   colours the rest of the site uses. Bold is part of the mark rather than a
+   second one to type: a name that does not stand out of the paragraph is not
+   doing the job the mark exists for. */
+.wiki-red { color: var(--evil); font-weight: 700; }
+.wiki-blue { color: var(--good); font-weight: 700; }
+/* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
+   rule, so without this an example's link is browser-default blue and
+   underlined, sitting on parchment. Section headings carry their own
+   .sec-anchor and are deliberately not in this list. */
+.char-parchment p a, .char-parchment li a, .char-parchment .ex a,
+.char-parchment .callout a, .char-infocard .quote a, .custom-box-body a {
+  color: var(--good-name); text-decoration: underline; text-underline-offset: 2px;
+}
+.char-parchment p a:hover, .char-parchment li a:hover, .char-parchment .ex a:hover,
+.char-parchment .callout a:hover, .char-infocard .quote a:hover,
+.custom-box-body a:hover { color: var(--evil); }
 .examples { margin-top: 18px; }
 .ex { position: relative; text-align: center; margin: 0 auto 16px; max-width: 760px; background: var(--ex-bg); border: 2px solid var(--ex-frame); border-radius: 0; padding: 20px 54px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.5), inset 0 0 0 4px var(--ex-frame), inset 0 0 0 6px rgba(255,255,255,.2); }
 .ex:last-child { margin-bottom: 4px; }
@@ -2831,6 +2857,35 @@ a:hover .curata-mark { opacity: .9; }
 }
 .tag-pick-btn:hover { background: #ece3d2; border-color: #b09070; }
 .tag-pick-btn.selected { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+
+/* ─── The formatting callout in the two character editors ────────
+   create.html and edit.html are the same form, so this is written once here
+   rather than into each page's own <style> — the same reasoning as the tag
+   chips above. It sits beside the Examples box; the marks it lists are the
+   links-only subset of the wiki's text engine that every almanac field on a
+   character page is rendered with (inlineLinks() in assets/render.js). */
+.fmt-help {
+  border: 1px solid #cdbfa0; border-left: 4px solid var(--maroon);
+  border-radius: 5px; background: #fffdf8;
+  padding: 10px 12px; margin: 0 0 8px; font-size: .82rem; color: #5b4632;
+}
+.fmt-help-h {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
+  margin-bottom: 6px;
+}
+.fmt-help-list { margin: 0; padding: 0; list-style: none; }
+.fmt-help-list li { margin: 0 0 5px; padding-left: 0; line-height: 1.45; }
+/* The site's global li::before draws a bullet in --evil; these rows already
+   start with the mark itself, which is the thing to read first. */
+.fmt-help-list li::before { content: none; }
+.fmt-help-list li:last-child { margin-bottom: 0; }
+.fmt-help code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .95em; background: rgba(91,31,33,.08); padding: 1px 5px;
+  border-radius: 3px; overflow-wrap: anywhere;
+}
+.fmt-help-foot { margin: 8px 0 0; font-size: .78rem; opacity: .8; }
 
 /* ─── Long names must wrap, not widen the page ──────────────────
    Names on this wiki are user-supplied and some are one long unbroken word

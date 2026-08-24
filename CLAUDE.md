@@ -137,16 +137,15 @@ assets/
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
                        no DOM at top level. Takes the wiki text engine through
-                       init(WikiRender) for the character fields that carry
-                       formatting: `pronunciation` (the quiet line under the
-                       flavour quote), jinx rule text, and the info box's two
-                       credit rows `translatedBy` / `iconBy` — what people write
-                       in those is a person and where to find them, so a typed
-                       [Name](url) has to become a link instead of printing its
-                       own brackets. Everything else on a character page is
-                       deliberately escaped (see the Bloodstar section). Without
-                       the engine they all still render, escaped and
-                       unformatted, never raw.
+                       init(WikiRender), and has TWO doors into it — see
+                       "Formatting on a character page" below. inlineText() is
+                       the whole inline mark set, for `pronunciation`, jinx
+                       rule text and the info box's `translatedBy` / `iconBy`.
+                       inlineLinks() is the links-only subset, for the almanac
+                       prose itself. plainText() takes the marks back out for
+                       the official-schema JSON. Without the engine every one
+                       of them still renders, escaped and unformatted (the
+                       prose falls back to tok()), never raw.
                        Also owns buildCreditsFabled() — the botchomebrew.wiki
                        credits Fabled the Script Builder appends to its exports
                        (see script.html below).
@@ -249,10 +248,15 @@ assets/
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
                        images, ::: callouts, [toc], **bold**, *italic*, `code`,
-                       ~~strike~~, [label](url), [[Character Name]]) plus the
+                       ~~strike~~, [label](url), [[Character Name]],
+                       {{red|Imp}} / {{blue|Undertaker}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
                        paths — nothing a writer types can become raw HTML.
+                       inlineFormat(text, {marks:'links'}) is the restricted
+                       subset character pages use — see "Formatting on a
+                       character page"; plainText() is the same marks taken
+                       back out, for text that has to leave as plain prose.
                        safeHref() takes http(s), mailto, site-relative AND a
                        bare domain ('example.com' -> https), because writers
                        type those constantly and used to get a link to a wiki
@@ -958,6 +962,63 @@ to be swept into Advanced Options with the jinxes and the custom JSON, where
 the one setting deciding who else may touch a page sat under a summary that
 never mentioned it.
 
+## Formatting on a character page
+
+Every prose field on a `/c/` page goes through the wiki's text engine, in a
+**restricted mode** — `WikiRender.inlineFormat(text, {marks: 'links'})`, reached
+through `inlineLinks()` in render.js. Three marks and no others:
+
+- `[label](url)` — a link, href-whitelisted by `safeHref()` like everywhere else.
+- `[[Character Name]]` — that character's page if this wiki has one, otherwise
+  the reminder-token pill these fields have always rendered `[[TOKEN]]` as. So
+  the mark is a superset of the old `tok()`, not a replacement for it.
+- `{{red|Imp}}` / `{{blue|Undertaker}}` (and `{{evil|…}}` / `{{good|…}}`, the
+  same two under the game's names) — the character name coloured the way the
+  official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
+  `.wiki-blue` in styles.css.
+
+**What is deliberately NOT in that set is `*italic*`**, and it is the reason
+the mode exists at all. The official "Each night\*" convention puts a lone
+asterisk through a very large share of the text on this wiki, and two of them
+in one paragraph would italicise everything in between — silently, on pages
+nobody edited. `**bold**`, `` `code` `` and `~~strike~~` are left out with it
+for one rule rather than a list of exceptions. The full set still applies to
+the short lines somebody writes *about* a character — `pronunciation`, a jinx
+rule, the info box's `translatedBy` / `iconBy` — which go through
+`inlineText()` as before.
+
+The fields in links mode: `ability`, `lede`, `summaryBullets`, `howToRun`,
+`callout`, `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and
+the custom sidebar boxes. `appearsIn` is not one of them — it is a set name
+that has to match a collection, and charpage.js links it already.
+
+**A mark never leaves the page.** Three places take the text back out to plain
+prose with `WikiRender.plainText()`, and every one of them is somewhere that
+renders no markup at all:
+
+- `buildSchema()` in render.js — the official-schema JSON box (`ability`,
+  `flavor`, jinx `reason`). The app and every script tool read that file.
+- The card feed (`characters.json?fields=card`) and `charsBySlug()` in
+  worker.js — the `ability` on every card grid, the search dropdown, the
+  Script Builder's roster rows, the Token Tool, and a script or collection
+  page's roster. Stripped in those two functions rather than in the eight
+  renderers downstream, three of which are hand-copied into pages that load
+  no text engine. The **full** feed keeps the source text, and so does
+  `/api/page`, which is what the editors load — so nothing an author typed is
+  ever lost.
+- The `<meta name="description">` on the `/c/` page.
+
+So a mark in `ability` shows on the character's own page and nowhere else.
+That is the intended trade: the ability line is mechanical text that eight
+other surfaces print flat, and it would be worse for it to print `{{red|Imp}}`
+at a reader than for the colour to stop at the page boundary.
+
+Both editors carry a `.fmt-help` callout beside the Examples box naming the
+four marks (create.html and edit.html are the same form — change one, change
+both), and they feed `WikiRender.setCharLinks()` off the `characters.json`
+fetch they already make, so `[[Name]]` links in the live preview exactly as it
+will on the published page.
+
 ## Character identity vs address (`/c/{set}/{character}`)
 
 A character has **two** strings and they do different jobs:
@@ -1268,10 +1329,11 @@ the form starts.
 | the almanac's night order | the page's arranged `nightOrder` |
 | (nothing — Bloodstar has no tags) | assigned by hand, per character, in the tool |
 
-Character fields are rendered **escaped** by render.js, so they are converted
-to plain text — `*emphasis*` there would print its asterisks. Only the
-changelog page and custom boxes go through `render-wiki.js`, and those get the
-marks. That is what the `mode` argument to `htmlToText()` is for.
+Character fields take only the links-only subset (see "Formatting on a
+character page"), so an almanac's `*emphasis*` is converted to plain text —
+typed here it would print its asterisks. Only the changelog page goes through
+the full `render-wiki.js` mark set. That is what the `mode` argument to
+`htmlToText()` is for.
 
 ### Tags are assigned per character, not per project
 
