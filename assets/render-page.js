@@ -78,18 +78,28 @@
       var m = theme.background.match(/^([a-z0-9/-]+)-bg\.(png|jpe?g|webp)$/i);
       if (m && m[1] === allowedBgBase) out.background = theme.background;
     }
-    /* The top graphic (header banner, or the logo when there is no banner).
-       `logoSize` is a PERCENTAGE of the size the wiki would have drawn it at,
-       so 100 is "leave it alone" and is never stored — a logo the author
-       never touched keeps following whatever the stylesheet says. It becomes
-       a multiplier on the existing max-width/max-height rules rather than a
-       width of its own, so a small image is still never blown up past its own
-       pixels and the mobile cap still applies.
-       `logoPanel` puts a parchment card behind it: a logo drawn for a light
-       background disappears against the wiki's purple, and the alternative
-       was asking every author to re-export their art. */
-    var n = Math.round(Number(theme.logoSize));
-    if (isFinite(n) && n >= LOGO_SIZE_MIN && n <= LOGO_SIZE_MAX && n !== 100) out.logoSize = n;
+    /* The top graphic's size. TWO settings, because they are two images: a
+       page with a header banner still has a logo, which the header hides at
+       the top of the page but the information box goes on showing — so one
+       number could not say "this banner is too tall" and "this logo is too
+       small" at the same time. `headerSize` sizes the banner, `logoSize` the
+       logo; whichever of the two the page is actually showing at the top is
+       the one the reader sees change.
+
+       Both are a PERCENTAGE of the size the wiki would have drawn the image
+       at, so 100 is "leave it alone" and is never stored — an image the
+       author never touched keeps following whatever the stylesheet says. It
+       becomes a multiplier on the existing max-width/max-height rules rather
+       than a width of its own, so a small image is still never blown up past
+       its own pixels and the mobile cap still applies.
+
+       `logoPanel` puts a parchment card behind whichever one is on top: art
+       drawn for a light background disappears against the wiki's purple, and
+       the alternative was asking every author to re-export it. */
+    ['logoSize', 'headerSize'].forEach(function (k) {
+      var n = Math.round(Number(theme[k]));
+      if (isFinite(n) && n >= LOGO_SIZE_MIN && n <= LOGO_SIZE_MAX && n !== 100) out[k] = n;
+    });
     if (theme.logoPanel === true || theme.logoPanel === 'on' || theme.logoPanel === 1) {
       out.logoPanel = true;
     }
@@ -118,6 +128,10 @@
     if (theme.logoSize) {
       cls.push('theme-logo-size');
       style.push('--pg-logo-scale:' + (theme.logoSize / 100));
+    }
+    if (theme.headerSize) {
+      cls.push('theme-header-size');
+      style.push('--pg-header-scale:' + (theme.headerSize / 100));
     }
     if (theme.logoPanel) cls.push('theme-logo-panel');
     return { cls: cls.join(' '), style: style.join(';') };

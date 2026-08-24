@@ -1923,10 +1923,14 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
 .sv-logo { max-height: 120px; max-width: min(70%, 360px); filter: drop-shadow(0 4px 12px rgba(0,0,0,.45)); }
 
 /* ── The top graphic: size, and an optional parchment card behind it ──
-   Set per page in the theme kit (theme.logoSize / theme.logoPanel) and
-   applied by themeAttrs() as classes on <body>, so no page markup changes and
-   one pair of rules covers the script header, the collection header and the
-   bare logo alike.
+   Set per page in the theme kit (theme.headerSize / theme.logoSize /
+   theme.logoPanel) and applied by themeAttrs() as classes on <body>, so no
+   page markup changes and one set of rules covers the script header, the
+   collection header and the bare logo alike.
+
+   The header and the logo are sized separately because they are two images:
+   a page with a banner still HAS a logo, which the information box goes on
+   showing, so one number could not answer for both.
 
    The scale MULTIPLIES the caps above rather than replacing them: the
    percentage half of `min()` has to be scaled with the pixel half or a
@@ -1940,9 +1944,9 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   max-height: calc(120px * var(--pg-logo-scale, 1));
   max-width: min(calc(70% * var(--pg-logo-scale, 1)), calc(360px * var(--pg-logo-scale, 1)));
 }
-.theme-logo-size .script-header-img { max-height: calc(260px * var(--pg-logo-scale, 1)); }
-.theme-logo-size .coll-header-img {
-  max-height: calc(clamp(220px, 40vw, 460px) * var(--pg-logo-scale, 1));
+.theme-header-size .script-header-img { max-height: calc(260px * var(--pg-header-scale, 1)); }
+.theme-header-size .coll-header-img {
+  max-height: calc(clamp(220px, 40vw, 460px) * var(--pg-header-scale, 1));
 }
 .theme-logo-panel .sv-logo,
 .theme-logo-panel .script-header-img,
