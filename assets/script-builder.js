@@ -1223,8 +1223,6 @@
       var shareRaw = params.get('share');
       if (shareRaw) applyShare(shareRaw);
 
-      buildAddList();
-      mountAddFilters();
       rosterCache = null;
       paintCounts();
       paintRoster();
@@ -1235,6 +1233,17 @@
       nightDirty = jinxDirty = true;
       ensurePane();
       settle();
+      /* The panel is ~1,800 rows and takes a beat to build, so it is left
+         until after the browser has painted: what the reader came back for
+         is their script, and it is on screen before the list starts. rAF
+         then setTimeout, because an rAF callback alone still runs before
+         that paint. */
+      requestAnimationFrame(function () {
+        setTimeout(function () {
+          buildAddList();
+          mountAddFilters();
+        }, 0);
+      });
     }).catch(function () {
       $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>';
     });
