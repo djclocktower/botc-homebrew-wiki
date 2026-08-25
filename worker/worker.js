@@ -3559,6 +3559,16 @@ function buildJinxIndex(chars) {
       if (k && !byKey[k]) byKey[k] = row;
     }
   }
+  // The set-qualified keys (`changeling_the_bootleggers_anthology`) go in a
+  // second pass, and only where nothing has claimed them: they are what tells
+  // two homebrew characters of the same name apart, but an identity or a name
+  // is still the stronger claim. See Render.jinxQualKeys for why they exist.
+  for (const c of chars || []) {
+    if (!c || !c.slug || !bySlugRow[c.slug]) continue;
+    for (const k of Render.jinxQualKeys(c)) {
+      if (k && !byKey[k]) byKey[k] = bySlugRow[c.slug];
+    }
+  }
 
   const edges = [];
   const bySlug = {};                // slug -> edges where it is the TARGET

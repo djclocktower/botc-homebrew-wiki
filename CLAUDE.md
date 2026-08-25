@@ -1019,10 +1019,22 @@ Every prose field on a `/c/` page goes through the wiki's text engine, in a
 through `inlineLinks()` in render.js. Three marks and no others:
 
 - `[label](url)` — a link, href-whitelisted by `safeHref()` like everywhere else.
-- `[[Character Name]]` — **the official wiki** if it is one of the game's own
-  characters, then this wiki's page for it, then the reminder-token pill these
-  fields have always rendered `[[TOKEN]]` as. So the mark is a superset of the
-  old `tok()`, not a replacement for it.
+- `[[Character Name]]` — **one of this character's own reminder tokens** if the
+  name is on its `reminders` / `remindersGlobal` list, then **the official
+  wiki** if it is one of the game's own characters, then this wiki's page for
+  it, then the reminder-token pill these fields have always rendered
+  `[[TOKEN]]` as. So the mark is a superset of the old `tok()`, not a
+  replacement for it.
+
+  **The reminder-token step is why "Place the `[[Drunk]]` reminder token on
+  them" is a token and not a link.** Official-first is right for a name a
+  writer typed loose, and wrong the moment the character itself carries a
+  token of that name — a Drunk token is not the Drunk. Nothing else moves:
+  only a name this character has a token for wins, and only on its own page.
+  `WikiRender.setReminderTokens()` is the registry, set and **cleared** by
+  `renderCharacter()` in the same frame `curRoot` uses, so a token on one page
+  can never leak into the next render in a reused isolate. A writer who does
+  mean the character says so with `[Drunk](https://wiki.bloodontheclocktower.com/Drunk)`.
 
   Official beating this wiki is the same order and the same reasoning as
   `resolveJinxTarget()` (gotcha 8): there is more than one homebrew
@@ -1952,6 +1964,21 @@ this is how admin-written pages stop being hidden for want of a tag.
    deliberately beats this wiki: 291 of the ~320 jinxes on the site name an
    official character, and a homebrew page sharing a name (there is more than
    one "Sculptor") must not steal their link. Don't rename icon files.
+   **This wiki's own characters are keyed by set as well as by name**
+   (`Render.jinxQualKeys()`, registered in a second pass by `buildJinxIndex()`
+   in worker.js, by `findScriptJinxes()` and by both character editors). A
+   bulk import writes its targets as `{name}_{set}` —
+   `changeling_the_bootleggers_anthology`, `cadenza_the_academy` — and that
+   qualifier is the only thing telling two homebrew characters of the same
+   name apart: this wiki has a Changeling in The Potato Patch and another in
+   The Bootlegger's Anthology, so matching the bare name pointed the Huli
+   Jing's jinx at a stranger's page and art. The keys are `name + set` for
+   every set a page is filed under (its address's set segment, its
+   `appearsIn`, any collection claiming it) plus a `jsonId` that says more
+   than its name and identity already do. They are strictly EXTRA keys,
+   registered only where nothing already claims them, so a bare name resolves
+   exactly as it did — two pages of the same name in the SAME set still fall
+   to first-registered, which is all there is left to tell them apart by.
 9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
    the static `news.html` and must stay that way, or the Worker swallows it.
 10. Announcements, news bodies, wiki pages and custom boxes all go through

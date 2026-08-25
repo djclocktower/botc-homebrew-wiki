@@ -491,11 +491,74 @@
     return String(id || '').replace(/_festival_of_lanterns$/, '')
       .toLowerCase().replace(/[^a-z0-9]/g, '');
   }
+
+  /* The SET-QUALIFIED keys a character also answers to, on top of its
+     identity and its name.
+
+     A bulk import writes its jinx targets as `{name}_{set}` —
+     `changeling_the_bootleggers_anthology`, `cadenza_the_academy`,
+     `mystic_the_academy` — and that qualifier is the only thing telling two
+     homebrew characters of the same name apart. This wiki has a Changeling in
+     The Potato Patch and another in The Bootlegger's Anthology; matching the
+     bare name landed whichever was registered first, so the Huli Jing's jinx
+     with its OWN set's Changeling pointed at a stranger's page, art and all.
+
+     So a character registers `name + set` for every set it is filed under —
+     the set segment of its address (`c/{set}/{character}`), the `appearsIn`
+     it was given, and any collection that claims it (`appearsInFrom`) — plus
+     the `jsonId` an import stamped on it. All of them fold through
+     normJinxId(), so punctuation and apostrophes in a set name do not have to
+     match ("The Bootlegger's Anthology" and `the-bootleggers-anthology` are
+     one key).
+
+     These are strictly EXTRA keys: the bare name still resolves as it did,
+     which is what every jinx typed by hand relies on. */
+  function jinxQualKeys(c) {
+    if (!c) return [];
+    var out = [], seen = {};
+    function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
+
+    var nm = normJinxId(c.name);
+    // `changeling_the_potato_patch_part_2` and friends: the id an import gave
+    // the page, which is what its own project's jinxes name it by. Only when
+    // it says more than the name and the identity already do — a bulk import
+    // that stamped a bare `corsair` adds nothing here, and a bare id is
+    // exactly the kind that belongs to an official character.
+    var jid = normJinxId(c.jsonId);
+    if (jid && jid !== nm && jid !== normJinxId(c.slug)) push(jid);
+
+    if (!nm) return out;
+    var sets = [];
+    // The address is `c/{set}/{character}`; a flat one has no set to read.
+    var seg = String(c.page || '').replace(/^\//, '').split('/');
+    if (seg.length >= 3 && seg[0] === 'c') sets.push(seg[1]);
+    var ap = c.appearsIn;
+    if (Array.isArray(ap)) sets = sets.concat(ap);
+    else if (ap) sets.push(ap);
+    if (Array.isArray(c.appearsInFrom)) {
+      c.appearsInFrom.forEach(function (a) {
+        if (!a) return;
+        if (a.name) sets.push(a.name);
+        if (a.id) sets.push(a.id);
+      });
+    }
+    sets.forEach(function (sname) {
+      var k = normJinxId(sname);
+      if (k) push(nm + k);
+    });
+    return out;
+  }
   function findScriptJinxes(chars) {
     var byId = {};
     chars.forEach(function (c) {
       [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
         .forEach(function (id) { if (id) byId[id] = c; });
+    });
+    // Set-qualified keys second, and only where nothing claims them, so a
+    // `{name}_{set}` jinx id finds the character from THAT set (see
+    // jinxQualKeys) without ever displacing a plain name or identity.
+    chars.forEach(function (c) {
+      jinxQualKeys(c).forEach(function (id) { if (!byId[id]) byId[id] = c; });
     });
     var out = [], seen = {};
     chars.forEach(function (c) {
@@ -566,8 +629,28 @@
     // Worker this argument is the only place the prefix exists.
     var prevRoot = curRoot;
     curRoot = root;
+    setReminderTokens(d);
     try { return characterBody(d, artSrc, root); }
-    finally { curRoot = prevRoot; }
+    finally { curRoot = prevRoot; setReminderTokens(null); }
+  }
+
+  /* This character's own reminder tokens, handed to the text engine for the
+     duration of the render. "Place the [[Drunk]] reminder token on them" was
+     rendering a link to the official Drunk, because [[Name]] resolves an
+     official character before anything else and Drunk is one — while the
+     writer plainly meant the token, which this character's own `reminders`
+     list names. So a name the character carries a token for wins, and only on
+     that character's page. Cleared after the render, so the next page starts
+     from nothing. */
+  function setReminderTokens(d) {
+    var W = engine();
+    if (!W || !W.setReminderTokens) return;
+    if (!d) return W.setReminderTokens(null);
+    var list = [].concat(
+      Array.isArray(d.reminders) ? d.reminders : [],
+      Array.isArray(d.remindersGlobal) ? d.remindersGlobal : []
+    );
+    W.setReminderTokens(list);
   }
 
   function characterBody(d, artSrc, root) {
@@ -921,6 +1004,7 @@
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
     window.normJinxId = normJinxId;
+    window.jinxQualKeys = jinxQualKeys;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setOfficialNames = setOfficialNames;
     window.setWikiChars = setWikiChars;
@@ -942,6 +1026,7 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      jinxQualKeys: jinxQualKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,

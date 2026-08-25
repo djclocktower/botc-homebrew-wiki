@@ -206,6 +206,7 @@
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; so a token that shares a name with a character still comes out as a token</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
             <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp</li>
           </ul>
@@ -448,13 +449,20 @@
     var INBOUND = null;
     fetch(SITE_ROOT + 'characters.json?fields=card').then(function(r){ return r.json(); })
       .then(function(list){
-        var w = {};
+        var w = {}, rows = [];
         (list || []).forEach(function(c){
           if (!c || !c.slug) return;
-          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
+          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team, page: c.page };
+          rows.push({ c: c, row: row });
           [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function(k){
             if (k && !w[k]) w[k] = row;
           });
+        });
+        // Set-qualified keys second, and only where nothing claims them, so an
+        // imported `{name}_{set}` jinx id finds the character from THAT set.
+        // Same two passes the Worker's jinx index makes (buildJinxIndex).
+        rows.forEach(function(r){
+          window.jinxQualKeys(r.c).forEach(function(k){ if (!w[k]) w[k] = r.row; });
         });
         window.setWikiChars(w);
         // [[Character Name]] in the almanac text becomes a real link on the
