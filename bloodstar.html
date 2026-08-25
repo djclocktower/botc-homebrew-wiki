@@ -734,30 +734,26 @@
       var bits = [];
       if (risky.length) {
         bits.push('<li><b>' + risky.length + '</b> jinx' + (risky.length === 1 ? '' : 'es') +
-          ' name' + (risky.length === 1 ? 's' : '') +
-          ' a character you are leaving out, so ' + (risky.length === 1 ? 'it' : 'they') +
-          ' can only be stored by name: ' +
+          ' name' + (risky.length === 1 ? 's' : '') + ' a character you left out, so ' +
+          (risky.length === 1 ? 'it is' : 'they are') + ' stored by name only: ' +
           risky.slice(0, 8).map(function (r) {
-            var note = '';
             // byName holds every page of a name, which is the whole point of
             // asking: one page and the name is as good as an identity.
             var same = wikiIndex && window.normJinxId
               ? (wikiIndex.byName[window.normJinxId(r.other)] || []) : [];
-            if (same.length > 1) {
-              note = ' <b>(' + same.length + ' pages here are called that: ' +
-                same.map(function (o) { return esc(inSet(o)); }).join(', ') + ')</b>';
-            } else if (wikiIndex && !same.length) {
-              note = ' (no page here by that name yet)';
-            }
+            var note = same.length > 1 ? ' <b>(' + same.length + ' pages share that name)</b>'
+              : (wikiIndex && !same.length ? ' (no page here by that name)' : '');
             return esc(r.owner) + ' + ' + esc(r.other) + note;
           }).join('; ') +
           (risky.length > 8 ? '; and ' + (risky.length - 8) + ' more' : '') +
-          '. Tick that character back in and the jinx points at its page instead.</li>');
+          (risky.length === 1
+            ? '. Tick that character back in to point at its page.'
+            : '. Tick those characters back in to point at their pages.') + '</li>');
       }
       if (plan.dropped.length) {
         bits.push('<li><b>' + plan.dropped.length + '</b> jinx' +
           (plan.dropped.length === 1 ? '' : 'es') +
-          ' cannot be placed at all (neither character comes across): ' +
+          ' cannot be stored at all, neither character comes across: ' +
           esc(plan.dropped.slice(0, 8).join(', ')) +
           (plan.dropped.length > 8 ? ', and ' + (plan.dropped.length - 8) + ' more' : '') + '.</li>');
       }

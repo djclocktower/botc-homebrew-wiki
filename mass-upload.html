@@ -290,26 +290,22 @@
       if (!list.length) { el.innerHTML = ''; return; }
       var appears = $('appears').value.trim();
       el.innerHTML = '<div class="mu-warn"><strong>' + list.length + ' jinx' +
-        (list.length === 1 ? '' : 'es') + ' name' + (list.length === 1 ? 's' : '') +
-        ' a character more than one page here shares a name with.</strong> ' +
-        'The wiki will have to guess, and it guesses by set:' +
+        (list.length === 1 ? '' : 'es') + ' may land on the wrong page.</strong>' +
         '<ul>' + list.slice(0, 12).map(function(w){
-          return '<li><b>' + esc(w.from) + '</b> is jinxed with <b>' + esc(w.target) +
-            '</b> &mdash; ' + w.others.length + ' pages have that name (' +
-            w.others.map(function(o){ return esc(whereFrom(o)); }).join(', ') +
-            '). It will use the one ' + esc(whereFrom(w.picked)) + '.</li>';
+          return '<li><b>' + esc(w.from) + '</b> + <b>' + esc(w.target) + '</b>: ' +
+            w.others.length + ' pages have that name. Will use the one in <b>' +
+            esc(whereFrom(w.picked)) + '</b>.</li>';
         }).join('') +
-        (list.length > 12 ? '<li>&hellip;and ' + (list.length - 12) + ' more.</li>' : '') +
+        (list.length > 12 ? '<li>and ' + (list.length - 12) + ' more.</li>' : '') +
         '</ul>' +
         '<p class="mu-fix">' + (appears
-          ? 'Filling in <b>Appears in</b> is what settles these, and it is set to &ldquo;' +
-            esc(appears) + '&rdquo; &mdash; so a jinx between two characters in this file is fine. ' +
-            'The ones above name a character that is not in it.'
-          : '<b>Appears in is empty.</b> Fill it in with the script or collection these ' +
-            'characters belong to and most of these settle themselves &mdash; the wiki matches a ' +
-            'jinx inside the same set before it matches any name.') +
-        ' Either way you can put any of them right afterwards from the character\u2019s editor, ' +
-        'where the jinx box names the exact page.</p></div>';
+          ? (list.length === 1 ? 'This names a character' : 'These name a character') +
+            ' outside &ldquo;' + esc(appears) + '&rdquo;. Fix ' +
+            (list.length === 1 ? 'it' : 'any of them') +
+            ' afterwards in the character&rsquo;s editor.'
+          : '<b>Appears in</b> is empty. Filling it in settles any jinx between two ' +
+            'characters in this file.') +
+        '</p></div>';
     }
 
     function buildRow(c, i){
