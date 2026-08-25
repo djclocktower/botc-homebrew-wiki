@@ -210,6 +210,13 @@
       var url = safeHref(href.replace(/&amp;/g, '&'));
       if (!url) return label;
       var external = /^https?:\/\//i.test(url);
+      // A site-relative link somebody typed without a leading slash ('c/slug',
+      // 'scripts') means a place on the wiki, not a place under whatever
+      // directory this page happens to sit in — so it takes the same root
+      // prefix every other link here does. Without it a typed link worked on a
+      // top-level page and pointed into nowhere from /c/{set}/{character},
+      // /s/, /p/ and /news/.
+      if (!external && !/^[#/]/.test(url) && !/^mailto:/i.test(url)) url = root + url;
       return '<a href="' + esc(url) + '"' +
         (external ? ' target="_blank" rel="noopener noreferrer"' : '') +
         '>' + label + '</a>';

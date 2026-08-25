@@ -17,7 +17,23 @@
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
-  function R() { return (typeof window !== 'undefined' && window.LINK_ROOT) || ''; }
+  /* How far up the site root is from the page being rendered — '' at the top,
+     '../' one level down, '../../' for a nested character address. Every link
+     this file builds is relative, so an inline [[Character Name]] needs the
+     same prefix the rest of the page uses.
+
+     In the browser that is window.LINK_ROOT, but the Worker has no window:
+     server-side the prefix arrives as renderCharacter's third argument, and
+     without carrying it here every [[Name]] on a /c/ page rendered as a bare
+     `c/{address}` — which the browser then resolved against the page's own
+     directory, so a link from /c/set/archivist to the Penitent came out as
+     /c/set/c/set/penitent. Set for the duration of one render and restored
+     after, so nothing leaks between pages in a reused isolate. */
+  var curRoot = null;
+  function R() {
+    if (curRoot != null) return curRoot;
+    return (typeof window !== 'undefined' && window.LINK_ROOT) || '';
+  }
   /* Curata mark markup, from classify.js — injected by the Worker
      (setCurataMark) or read off the global in the browser, so render.js never
      has to import classify.js itself. Partial is deliberately NOT shown on
@@ -546,6 +562,15 @@
   function renderCharacter(d, artSrc, linkRoot) {
     var root = (linkRoot != null) ? linkRoot
       : ((typeof window !== 'undefined' && window.LINK_ROOT) || '');
+    // The inline text helpers build links too (see R() above), and in the
+    // Worker this argument is the only place the prefix exists.
+    var prevRoot = curRoot;
+    curRoot = root;
+    try { return characterBody(d, artSrc, root); }
+    finally { curRoot = prevRoot; }
+  }
+
+  function characterBody(d, artSrc, root) {
     var team = d.team || 'townsfolk';
     var label = TEAM_LABEL[team] || team;
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
