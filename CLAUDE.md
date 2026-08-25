@@ -295,6 +295,38 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
+  char-snapshot.js     The "Snapshot" button on both character editors: the
+                       whole almanac entry drawn onto a CANVAS as one poster —
+                       title, the parchment panel (Summary / How to Run / the
+                       callout / Examples / Tips / Bluffing / Fighting), then
+                       the sidebar (art, information box, a QR square, the
+                       jinxes and every custom sidebar box). Shown as an <img>
+                       so it can be right-clicked or long-pressed and copied,
+                       with a Download PNG button naming it
+                       {Charactername}_Almanac.png.
+                       Three things about it are load-bearing. The marks go
+                       through render-wiki.js — the same inlineFormat() call
+                       the page makes, in the same links-only mode — and the
+                       HTML it returns is walked into styled runs, so there is
+                       no second mark parser to drift and *asterisks* stay
+                       safe. A picture on another host is fetched with
+                       crossOrigin and DROPPED when that fails, because one
+                       unreadable image taints the canvas and the whole poster
+                       stops being exportable (official jinx icons therefore
+                       prefer the committed assets/icons/ copy over the CDN's).
+                       And the poster is not the page: the jinx dropdown mode,
+                       the JSON box and the Curata wreath are interface, so a
+                       still image gets the jinx card, the QR and the almanac.
+                       Layout is in units of a 1360-wide poster, scaled once at
+                       the end to fit MAX_PIXELS (a phone's canvas is capped).
+                       Browser only (canvas + DOM); styles are .snap-* in
+                       styles.css.
+  qr.js                A QR code as a grid of true/false, for that square.
+                       Byte mode, error correction M, versions 1-10 — no
+                       bundler and no CDN here, so the encoder is the whole
+                       dependency. Browser + node;
+                       `node migration/qr-selftest.js` decodes its output back
+                       out (see "Verifying changes").
   art-normalize.js     The "Resize icon" button: trims the transparent margin
                        to find the figure and scales it to 70% of the 591×591
                        frame. artTrimBox() (the trim on its own) is exported
@@ -431,7 +463,10 @@ team/tag/tags.html     Browse pages
 creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
                        from /api/creators. authors.html is a redirect stub to it.
-create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
+create.html, edit.html Character editor (POSTs to /api/character; R2 uploads).
+                       Both carry a Snapshot button in the sticky action bar
+                       (char-snapshot.js) — the two are the same form, so a
+                       change to one is a change to both.
 script.html            Script Builder — roster only (localStorage botc_script;
                        randomize/SAO sort/export/copy/share/import/clear). Naming
                        + publishing live on publish-script.html; links there.
@@ -1925,6 +1960,11 @@ this is how admin-written pages stop being hidden for want of a tag.
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
 - D1 is SQLite, so local `sqlite3` is an accurate way to sanity-check SQL.
+- `node migration/qr-selftest.js` checks `assets/qr.js` end to end: it
+  decodes the encoder's own output with a decoder written from the standard
+  (format bits, mask, zig-zag, Reed-Solomon syndromes), so a bad table or a
+  misplaced module fails loudly. Run it after touching that file — there is
+  no scanner in the sandbox to notice otherwise.
 
 ## Gotchas (hard-won — do not repeat)
 

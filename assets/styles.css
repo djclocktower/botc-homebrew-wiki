@@ -3238,6 +3238,71 @@ html.textedit-on .te-live-hit {
   .aa-btn { flex: 1; text-align: center; }
 }
 
+/* ─── Almanac snapshot (assets/char-snapshot.js) ────────────────
+   The preview that opens behind "Snapshot" on the two character editors.
+   The poster itself is drawn on a canvas and shown here as an <img>, because
+   an image is the thing a browser lets you right-click and copy and a phone
+   lets you long-press — a canvas offers neither reliably. The stage scrolls
+   rather than shrinking the picture to nothing: on a phone, fit-to-width and
+   a scroll is how you actually read it. */
+.snap-backdrop {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(20,12,10,.78);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 16px; overflow-y: auto;
+}
+.snap-panel {
+  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  padding: 14px 16px 16px; width: min(860px, 100%);
+  margin: auto;
+}
+.snap-head { display: flex; align-items: center; gap: 10px; }
+.snap-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-size: 1.4rem; margin: 0; flex: 1; letter-spacing: .04em;
+}
+.snap-x {
+  background: transparent; border: none; cursor: pointer; font-size: 1.1rem;
+  color: var(--maroon); padding: 4px 8px; line-height: 1;
+}
+.snap-hint { font-size: .82rem; color: var(--ink); opacity: .8; margin: 4px 0 10px; }
+.snap-hint.snap-error { color: var(--evil); opacity: 1; font-weight: 600; }
+.snap-stage {
+  background: #1d0a1a; border: 1px solid var(--parch-frame);
+  max-height: 62vh; overflow: auto; -webkit-overflow-scrolling: touch;
+  /* align-items must not be the default `stretch`: a flex row stretches the
+     picture to the stage's height and the poster comes out squashed. */
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 120px;
+}
+/* Two views, swapped by tapping the picture: the whole poster at a glance,
+   or fit-to-width so the text can actually be read on a phone. */
+.snap-img { display: block; max-width: 100%; width: auto; max-height: 58vh; height: auto; cursor: zoom-in; }
+.snap-img.snap-full { width: 100%; max-height: none; cursor: zoom-out; }
+.snap-actions {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-top: 12px; border-top: 1px solid rgba(0,0,0,.12); padding-top: 12px;
+}
+.snap-btn {
+  font-family: 'Oswald', sans-serif; font-weight: 600; letter-spacing: .04em;
+  font-size: .9rem; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+  border: 1px solid rgba(122,45,47,.45); background: rgba(255,253,248,.6);
+  color: var(--maroon); text-decoration: none; display: inline-block;
+}
+.snap-btn:hover { background: rgba(255,253,248,.95); }
+.snap-btn:disabled { opacity: .5; cursor: not-allowed; }
+.snap-dl { background: var(--maroon); color: #f4ead2; border-color: #4a1719; margin-right: auto; }
+.snap-dl:hover { background: #6d2628; color: #f4ead2; }
+@media (max-width: 560px) {
+  .snap-panel { padding: 12px 12px 14px; }
+  /* The picture, not the stage: shrinking the stage alone leaves the fitted
+     poster taller than the box it sits in and clips its foot. */
+  .snap-img { max-height: 48vh; }
+  .snap-actions .snap-btn { flex: 1; text-align: center; }
+}
+
 /* ─── Night order arranger (assets/night-order-editor.js) ──────
    Two lists, drag or ▲▼ to move a character. Shared by the Script Builder
    and the publish page, so it lives here rather than in either page. */
