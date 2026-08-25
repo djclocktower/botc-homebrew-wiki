@@ -3577,9 +3577,20 @@ function buildJinxIndex(chars) {
     if (!c || !c.slug || !Array.isArray(c.jinxes)) continue;
     for (const j of c.jinxes) {
       if (!j || !(j.name || j.id || j.slug)) continue;
-      const key = Render.normJinxId(j.slug || '') && byKey[Render.normJinxId(j.slug)]
-        ? Render.normJinxId(j.slug)
-        : Render.normJinxId(j.id || Render.slugId(j.name || ''));
+      // The keys this entry names its target by, most specific first: the id
+      // as written, then the name qualified by a set THIS character is filed
+      // under, then the bare name (Render.jinxLookupKeys). An explicit slug
+      // from the picker skips all of it.
+      const picked = Render.normJinxId(j.slug || '');
+      let key = picked && byKey[picked] ? picked : '';
+      if (!key) {
+        for (const k of Render.jinxLookupKeys(j, c)) {
+          if (byKey[k]) { key = k; break; }
+        }
+      }
+      // Nothing on the wiki answers to it (an official character, a draft, a
+      // typo): the edge still records what it was pointing at.
+      if (!key) key = Render.normJinxId(j.id || Render.slugId(j.name || ''));
       const target = byKey[key];
       // A page jinxed with itself is a data slip, not a relationship.
       if (target && target.slug === c.slug) continue;

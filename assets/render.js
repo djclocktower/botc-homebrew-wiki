@@ -30,6 +30,10 @@
      /c/set/c/set/penitent. Set for the duration of one render and restored
      after, so nothing leaks between pages in a reused isolate. */
   var curRoot = null;
+  /* The character whose page is being rendered, for the one job that needs to
+     know: telling two homebrew pages of the same name apart in a jinx (see
+     jinxLookupKeys). Set and restored by renderCharacter with curRoot. */
+  var curHost = null;
   function R() {
     if (curRoot != null) return curRoot;
     return (typeof window !== 'undefined' && window.LINK_ROOT) || '';
@@ -269,8 +273,13 @@
     return (root || '') + p.replace(/^\//, '').replace(/\.html$/, '');
   }
 
-  function resolveJinxTarget(j, root) {
+  function resolveJinxTarget(j, root, host) {
     root = root || '';
+    // The page this jinx is being rendered for. Passed in by a caller that
+    // has it; on a /c/ page it is the character being rendered, which
+    // renderCharacter() sets for the duration of the render so the jinx box
+    // needs no argument. Only ever used to break a name tie (jinxLookupKeys).
+    if (host === undefined) host = curHost;
     var nm = jinxDisplayName(j);
     var rawId = j.id || slugId(j.name || '');
     var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
@@ -294,8 +303,10 @@
                external: true, slug: '', team: '' };
     }
 
-    // 3. One of ours, matched by id or by name.
-    var hit = wikiChar(normJinxId(rawId)) || wikiChar(normJinxId(nm));
+    // 3. One of ours: the id as written, then the name qualified by the host
+    //    page's own sets, then the bare name (see jinxLookupKeys).
+    var hit = null, keys = jinxLookupKeys(j, host);
+    for (var ki = 0; ki < keys.length && !hit; ki++) hit = wikiChar(keys[ki]);
     if (hit) {
       return { name: hit.name || nm, href: charHref(hit, root),
                iconSrc: wikiCharIcon(hit, root), external: false,
@@ -528,6 +539,17 @@
     if (jid && jid !== nm && jid !== normJinxId(c.slug)) push(jid);
 
     if (!nm) return out;
+    charSetKeys(c).forEach(function (k) { push(nm + k); });
+    return out;
+  }
+
+  /* Every set a character is filed under, normalized: the set segment of its
+     address (`c/{set}/{character}`), the `appearsIn` it was given, and any
+     collection claiming it (`appearsInFrom`). Punctuation and apostrophes
+     fold away, so "The Bootlegger's Anthology" and `the-bootleggers-anthology`
+     are one key. */
+  function charSetKeys(c) {
+    if (!c) return [];
     var sets = [];
     // The address is `c/{set}/{character}`; a flat one has no set to read.
     var seg = String(c.page || '').replace(/^\//, '').split('/');
@@ -542,10 +564,43 @@
         if (a.id) sets.push(a.id);
       });
     }
+    var out = [], seen = {};
     sets.forEach(function (sname) {
       var k = normJinxId(sname);
-      if (k) push(nm + k);
+      if (k && !seen[k]) { seen[k] = 1; out.push(k); }
     });
+    return out;
+  }
+
+  /* The keys a jinx entry names its target by, MOST SPECIFIC FIRST, to be
+     tried against a map of this wiki's characters (WIKI_CHARS, the Worker's
+     jinx index, a script's own roster — they are all keyed the same way).
+
+       1. the id as written, which for an import carries the set
+          (`changeling_the_bootleggers_anthology`)
+       2. the name qualified by each set the HOST page — the character whose
+          jinx this is — is filed under
+       3. the bare name
+
+     Step 2 is what settles the rest of the name clashes. An import's
+     qualifier is the project's own name and does not always survive as the
+     set name here (`mycologist_hblreleased` for a page filed under Homebrews
+     by Luis), and plenty of older rows carry nothing but a name. A jinx names
+     a character on the same script or in the same collection far more often
+     than not, so the host's own sets are the best guess there is — and it is
+     only ever a tie-break: a name only one page on the wiki answers to
+     resolves at step 3 exactly as it always did. */
+  function jinxLookupKeys(j, host) {
+    if (!j) return [];
+    var out = [], seen = {};
+    function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
+    var nm = jinxDisplayName(j);
+    push(normJinxId(j.id || slugId(nm)));
+    var nameKey = normJinxId(nm);
+    if (nameKey) {
+      charSetKeys(host).forEach(function (k) { push(nameKey + k); });
+      push(nameKey);
+    }
     return out;
   }
   function findScriptJinxes(chars) {
@@ -565,8 +620,11 @@
       (c.jinxes || []).forEach(function (j) {
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
-        var target = (j.slug && byId[normJinxId(j.slug)]) ||
-          byId[normJinxId(j.id || slugId(j.name || ''))];
+        var target = j.slug && byId[normJinxId(j.slug)];
+        if (!target) {
+          var ks = jinxLookupKeys(j, c);
+          for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
+        }
         if (!target || target === c) return;
         var text = j.text || j.reason || '';
         var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
@@ -627,11 +685,15 @@
       : ((typeof window !== 'undefined' && window.LINK_ROOT) || '');
     // The inline text helpers build links too (see R() above), and in the
     // Worker this argument is the only place the prefix exists.
-    var prevRoot = curRoot;
+    var prevRoot = curRoot, prevHost = curHost;
     curRoot = root;
+    // The page being rendered, so its jinx box can break a name tie in favour
+    // of its own script or collection (see jinxLookupKeys). Scoped and
+    // restored exactly like curRoot, so nothing leaks between renders.
+    curHost = d || null;
     setReminderTokens(d);
     try { return characterBody(d, artSrc, root); }
-    finally { curRoot = prevRoot; setReminderTokens(null); }
+    finally { curRoot = prevRoot; curHost = prevHost; setReminderTokens(null); }
   }
 
   /* This character's own reminder tokens, handed to the text engine for the
@@ -1005,6 +1067,7 @@
     window.resolveJinxTarget = resolveJinxTarget;
     window.normJinxId = normJinxId;
     window.jinxQualKeys = jinxQualKeys;
+    window.jinxLookupKeys = jinxLookupKeys;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setOfficialNames = setOfficialNames;
     window.setWikiChars = setWikiChars;
@@ -1026,7 +1089,8 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
-      jinxQualKeys: jinxQualKeys,
+      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
+      charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,

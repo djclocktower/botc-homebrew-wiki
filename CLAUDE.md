@@ -1964,21 +1964,40 @@ this is how admin-written pages stop being hidden for want of a tag.
    deliberately beats this wiki: 291 of the ~320 jinxes on the site name an
    official character, and a homebrew page sharing a name (there is more than
    one "Sculptor") must not steal their link. Don't rename icon files.
-   **This wiki's own characters are keyed by set as well as by name**
-   (`Render.jinxQualKeys()`, registered in a second pass by `buildJinxIndex()`
-   in worker.js, by `findScriptJinxes()` and by both character editors). A
-   bulk import writes its targets as `{name}_{set}` —
-   `changeling_the_bootleggers_anthology`, `cadenza_the_academy` — and that
-   qualifier is the only thing telling two homebrew characters of the same
-   name apart: this wiki has a Changeling in The Potato Patch and another in
-   The Bootlegger's Anthology, so matching the bare name pointed the Huli
-   Jing's jinx at a stranger's page and art. The keys are `name + set` for
-   every set a page is filed under (its address's set segment, its
-   `appearsIn`, any collection claiming it) plus a `jsonId` that says more
-   than its name and identity already do. They are strictly EXTRA keys,
-   registered only where nothing already claims them, so a bare name resolves
-   exactly as it did — two pages of the same name in the SAME set still fall
-   to first-registered, which is all there is left to tell them apart by.
+   **Name clashes are settled by the SET.** 166 names on this wiki belong to
+   more than one page — there are four Wardens and two Changelings — and
+   matching a jinx on the bare name landed whichever page was registered
+   first, so the Huli Jing's jinx with its own set's Changeling pointed at The
+   Potato Patch's, art and all. Two pieces:
+
+   - **`Render.jinxQualKeys()`** gives every character `name + set` keys on
+     top of its identity and its name — one for each set it is filed under
+     (its address's set segment, its `appearsIn`, any collection claiming it)
+     — plus a `jsonId` that says more than its name and identity already do
+     (`Sister_Circus_Music` for the page now called Worker). Registered in a
+     **second pass**, only where nothing already claims the key, by
+     `buildJinxIndex()` in worker.js, by `findScriptJinxes()` and by both
+     character editors.
+   - **`Render.jinxLookupKeys(j, host)`** is the order every consumer asks in:
+     the id as written (an import's `changeling_the_bootleggers_anthology`),
+     then the name qualified by each set the HOST page — the character whose
+     jinx it is — is filed under, then the bare name. The host step is what
+     catches the rest: an import's qualifier is the project's own name and
+     does not always survive as the set name here
+     (`mycologist_hblreleased` on a page filed under Homebrews by Luis), and
+     plenty of rows carry nothing but a name. `renderCharacter()` sets the
+     host for the length of a render (`curHost`, scoped like `curRoot`), so
+     the `/c/` jinx box needs no argument.
+
+   It is only ever a tie-break: a name one page answers to resolves exactly as
+   it always did, and an explicit `slug` from the picker skips all of it. Two
+   pages of the same name in the SAME set still fall to first-registered,
+   which is all there is left to tell them apart by. On the live corpus this
+   moves 7 of 680 rendered jinxes, every one of them onto the host's own set,
+   and takes the jinx index from 32 resolved edges to 73 — those 41 are jinxes
+   that named a wiki character by a qualified id, which used to resolve to
+   nothing and so were missing from mirroring and from the `/jinxes` map
+   entirely.
 9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
    the static `news.html` and must stay that way, or the Worker swallows it.
 10. Announcements, news bodies, wiki pages and custom boxes all go through
