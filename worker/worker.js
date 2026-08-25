@@ -3542,33 +3542,20 @@ function mergeMirroredJinxes(d, slug, jx) {
 // Pure, so it can be reasoned about (and tested) without a database.
 // `chars` -> { chars: {key: row}, bySlug: {slug: [edge]}, edges: [edge] }.
 function buildJinxIndex(chars) {
-  const byKey = {};                 // normJinxId(slug|name) -> compact row
+  // Keyed by identity, by name and by set (Render.jinxCharIndex owns that
+  // order — the set-qualified keys are what tells two homebrew characters of
+  // the same name apart, and they claim only what is still free). The compact
+  // row is all a jinx list needs; carrying the whole character would put the
+  // entire corpus in the cache entry.
   const bySlugRow = {};
-  for (const c of chars || []) {
-    if (!c || !c.slug) continue;
-    const row = {
-      slug: c.slug, name: c.name || c.slug, team: c.team || '',
-      art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
-      creator: c.creator || '',
-      // The address. `slug` stays the identity, which is what edges and
-      // the mirroring are keyed on; this is only ever used to build a link.
-      page: typeof c.page === 'string' ? c.page : ''
-    };
-    bySlugRow[c.slug] = row;
-    for (const k of [Render.normJinxId(c.slug), Render.normJinxId(c.name)]) {
-      if (k && !byKey[k]) byKey[k] = row;
-    }
-  }
-  // The set-qualified keys (`changeling_the_bootleggers_anthology`) go in a
-  // second pass, and only where nothing has claimed them: they are what tells
-  // two homebrew characters of the same name apart, but an identity or a name
-  // is still the stronger claim. See Render.jinxQualKeys for why they exist.
-  for (const c of chars || []) {
-    if (!c || !c.slug || !bySlugRow[c.slug]) continue;
-    for (const k of Render.jinxQualKeys(c)) {
-      if (k && !byKey[k]) byKey[k] = bySlugRow[c.slug];
-    }
-  }
+  const { byKey } = Render.jinxCharIndex(chars, c => (bySlugRow[c.slug] = {
+    slug: c.slug, name: c.name || c.slug, team: c.team || '',
+    art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
+    creator: c.creator || '',
+    // The address. `slug` stays the identity, which is what edges and
+    // the mirroring are keyed on; this is only ever used to build a link.
+    page: typeof c.page === 'string' ? c.page : ''
+  }));
 
   const edges = [];
   const bySlug = {};                // slug -> edges where it is the TARGET

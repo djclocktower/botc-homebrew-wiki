@@ -374,6 +374,7 @@
       <div class="bs-card">
         <h2>The characters</h2>
         <p class="bs-sub" id="bs-plan-line"></p>
+        <div id="bs-jinx-warn"></div>
         <p style="margin:0 0 10px">
           <button type="button" class="btn btn-ghost" id="bs-all">Tick all</button>
           <button type="button" class="btn btn-ghost" id="bs-none">Untick all</button>
@@ -394,6 +395,9 @@
   </div>
 
   <script src="assets/tags.js"></script>
+  <!-- render.js owns how a jinx target resolves (jinxCharIndex /
+       jinxTargetCheck), which is what the jinx warning below asks. -->
+  <script src="assets/render.js"></script>
   <script src="assets/bloodstar.js"></script>
   <script>
   (function () {
@@ -636,6 +640,7 @@
       $('bs-changelog').closest('.bs-fld').style.display =
         (bundle.prose && bundle.prose.changelog) ? '' : 'none';
 
+      loadWikiIndex();
       skipped = {};
       tagsById = {};
       tagPick = {};
@@ -688,6 +693,76 @@
       if (opts.destination === 'script') bits.push('one script page');
       if (opts.destination === 'collection') bits.push('one collection page');
       $('bs-plan-line').innerHTML = bits.length ? bits.join(', ') + '.' : 'Nothing to import.';
+      drawJinxWarning(opts);
+    }
+
+    /* ── what will happen to the jinxes ──
+       A jinx is written onto one of its two characters, and names the other.
+       When that other end is a page this run makes, it is named by its
+       identity and there is nothing to go wrong. When it is official, the
+       official character wins wherever the page is drawn. What is left is a
+       jinx with a character the person chose to leave out: it can only be
+       stored by NAME, and a name is not unique here — four pages are called
+       Warden. So the run says which ones before it writes anything, while
+       ticking that character back in is still one click. */
+    var wikiIndex = null;
+    function loadWikiIndex() {
+      if (wikiIndex || !window.jinxCharIndex) return;
+      fetch('characters.json?fields=card').then(function (r) { return r.json(); })
+        .then(function (list) {
+          wikiIndex = window.jinxCharIndex(list || [], function (c) {
+            return { slug: c.slug, name: c.name, appearsIn: c.appearsIn || '',
+                     page: c.page || '' };
+          });
+          refresh();
+        }).catch(function () {});
+    }
+    function inSet(row) {
+      if (!row) return '';
+      return row.appearsIn ? String(row.appearsIn)
+        : (row.page ? String(row.page).split('/')[1] : 'no set');
+    }
+    function drawJinxWarning(opts) {
+      var el = $('bs-jinx-warn');
+      if (!el) return;
+      el.innerHTML = '';
+      if (!bundle || opts.jinxes === 'skip') return;
+      var plan = BI.resolveJinxes(bundle, planned, BI.previewSlugs(planned), opts);
+      var risky = plan.nameOnly || [];
+      if (!risky.length && !plan.dropped.length) return;
+
+      var bits = [];
+      if (risky.length) {
+        bits.push('<li><b>' + risky.length + '</b> jinx' + (risky.length === 1 ? '' : 'es') +
+          ' name' + (risky.length === 1 ? 's' : '') +
+          ' a character you are leaving out, so ' + (risky.length === 1 ? 'it' : 'they') +
+          ' can only be stored by name: ' +
+          risky.slice(0, 8).map(function (r) {
+            var note = '';
+            // byName holds every page of a name, which is the whole point of
+            // asking: one page and the name is as good as an identity.
+            var same = wikiIndex && window.normJinxId
+              ? (wikiIndex.byName[window.normJinxId(r.other)] || []) : [];
+            if (same.length > 1) {
+              note = ' <b>(' + same.length + ' pages here are called that: ' +
+                same.map(function (o) { return esc(inSet(o)); }).join(', ') + ')</b>';
+            } else if (wikiIndex && !same.length) {
+              note = ' (no page here by that name yet)';
+            }
+            return esc(r.owner) + ' + ' + esc(r.other) + note;
+          }).join('; ') +
+          (risky.length > 8 ? '; and ' + (risky.length - 8) + ' more' : '') +
+          '. Tick that character back in and the jinx points at its page instead.</li>');
+      }
+      if (plan.dropped.length) {
+        bits.push('<li><b>' + plan.dropped.length + '</b> jinx' +
+          (plan.dropped.length === 1 ? '' : 'es') +
+          ' cannot be placed at all (neither character comes across): ' +
+          esc(plan.dropped.slice(0, 8).join(', ')) +
+          (plan.dropped.length > 8 ? ', and ' + (plan.dropped.length - 8) + ' more' : '') + '.</li>');
+      }
+      el.innerHTML = '<div class="bs-warn"><strong>The jinxes:</strong><ul>' +
+        bits.join('') + '</ul></div>';
     }
 
     function rowHTML(r, i) {

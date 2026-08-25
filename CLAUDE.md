@@ -551,13 +551,23 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
-mass-upload.html       Bulk import from official-schema JSON
+mass-upload.html       Bulk import from official-schema JSON. Warns before it
+                       writes when a jinx in the file names a character more
+                       than one page here shares a name with, says which page
+                       it will land on and who else it could have been, and
+                       follows the "Appears in" box as it is typed — filling
+                       that in is what settles most of them (see "Warning
+                       about a jinx before it is written" below).
 bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
                        choose what becomes what, and the whole thing lands: every
                        character with its art and its almanac entry, the jinxes,
                        the night order and a script or collection page. The page
                        is the form and the runner; assets/bloodstar.js is the
-                       mapping and worker/bloodstar.js the reading.
+                       mapping and worker/bloodstar.js the reading. Its jinx
+                       warning redraws with the plan: a jinx whose other end you
+                       are LEAVING OUT can only be stored by name (the same
+                       section below), and one whose ends both stay out cannot
+                       be stored at all.
 login.html, account.html, dashboard.html, reset-password.html
                        account.html shows the newest 10 of Your Recent Edits
                        behind a "Show all N edits" toggle; a busy month used
@@ -1286,6 +1296,32 @@ caps and whitelists the fields on save.
   base game's own rules would drown what this wiki made. Served in
   `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
   move the layout.
+### Warning about a jinx before it is written
+
+The set rule (gotcha 8) settles a name clash whenever there is anything to
+settle it with. An import is the one moment somebody can fix the cases where
+there is not, so both importers say so before they write:
+
+- **`Render.jinxCharIndex(chars, row)`** is the one keyed index — identities
+  and names, then the set-qualified keys, each claiming only what is free. It
+  replaced three hand-rolled copies (the Worker's jinx index and both character
+  editors) and keeps `byName`, EVERY page of a given name, which is what turns
+  "resolve this" into "is this ambiguous".
+- **`Render.jinxTargetCheck(j, host, index)`** answers with its working:
+  `picked`, `candidates`, and `guessed` — true only when the pick came down to
+  the bare name while more than one page answers to it. An explicit slug, an
+  official character (official wins wherever the page is drawn, so both
+  importers load `roles.json` for this) and a set that settled it are all
+  `guessed: false`. **Silence is the normal answer** — a re-import of The
+  Bootlegger's Anthology reports 3 of its 114 jinxes with "Appears in" empty
+  and none at all with it filled in. A warning that fires on every import is
+  one nobody reads.
+- **`BI.resolveJinxes()` records its own risks** as `nameOnly[]` rather than
+  the page working them out again, and `BI.previewSlugs(planned)` lets
+  /bloodstar ask what the run WOULD do before a single identity has been
+  resolved. The warning therefore comes off the code that does the writing and
+  cannot drift from it.
+
 - **`GET /api/admin/jinx-health`** counts jinxes that point at nothing (a
   typo, or a bulk import naming a character never brought over) and pairs
   where both characters wrote a rule, since only one wording is ever shown and the

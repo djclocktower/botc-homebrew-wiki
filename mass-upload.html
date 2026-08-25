@@ -33,6 +33,11 @@
   .btn-blue:hover { filter:brightness(1.08); }
   .btn-pub { background:linear-gradient(180deg,#2f7d3e,#1c5429); color:#eafaee; font-size:1rem; padding:12px 22px; }
   .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .mu-warn { background:#fbf1d8; border:1px solid #d9c68b; border-radius:8px; padding:10px 13px;
+    font-size:.88rem; color:#5b4632; margin-top:14px; }
+  .mu-warn ul { margin:6px 0 0; padding-left:20px; }
+  .mu-warn li { margin:3px 0; }
+  .mu-warn .mu-fix { margin:8px 0 0; }
   #status { margin-top:10px; padding:10px 13px; border-radius:8px; font-size:.9rem; display:none; }
   #status.ok  { display:block; background:#dff0e2; color:#1c5429; border:1px solid #9bcfa9; }
   #status.err { display:block; background:#f6dede; color:#9A0D12; border:1px solid #d99; }
@@ -113,6 +118,7 @@
             <option value="draft">Save all as drafts (only you can see them)</option>
           </select>
         </div>
+        <div id="mu-jinx-warn"></div>
         <table class="mu-table" id="mu-table">
           <thead><tr><th>Character</th><th>Team</th><th>Page</th><th>Art</th><th>Status</th></tr></thead>
           <tbody id="mu-rows"></tbody>
@@ -185,9 +191,27 @@
       }
     }).catch(function(){});
 
-    // existing slugs, to flag overwrites in the preview
+    // The official roster. A jinx with an official character is settled
+    // whatever this wiki holds (official wins), so the check below cannot tell
+    // a real name clash from a Heretic without it.
+    fetch('assets/roles.json').then(function(r){ return r.json(); }).then(function(roles){
+      var names = {};
+      (roles || []).forEach(function(r){
+        if (!r || !r.name) return;
+        names[window.slugId(r.id)] = r.name;
+        names[window.slugId(r.name)] = r.name;
+      });
+      window.setOfficialNames(names);
+      drawJinxWarnings();
+    }).catch(function(){});
+
+    // existing slugs, to flag overwrites in the preview — and the rows
+    // themselves, which the jinx check below needs (see drawJinxWarnings).
+    var wikiChars = [];
     fetch('characters.json?fields=card').then(function(r){ return r.json(); }).then(function(list){
-      list.forEach(function(c){ if (c.slug) existingSlugs[c.slug] = 1; });
+      wikiChars = list || [];
+      wikiChars.forEach(function(c){ if (c.slug) existingSlugs[c.slug] = 1; });
+      drawJinxWarnings();
     }).catch(function(){});
 
     // ── parse ──
@@ -213,6 +237,79 @@
         chars.push(item);
       });
       return { chars: chars, skipped: skipped };
+    }
+
+    /* ── the jinx check ──
+       A jinx in an official-schema JSON names its target by id or by name and
+       nothing else, and 166 names on this wiki belong to more than one page —
+       there are four Wardens and two Changelings. The wiki settles that by the
+       SET a page is filed under (Render.jinxLookupKeys), which is exactly what
+       the "Appears in" box above is about to fill in, so this can say before
+       anything is written which jinxes are still a coin toss.
+
+       Silence is the normal answer. A jinx naming an official character, or a
+       name only one page here answers to, is not mentioned — a warning that
+       fires on every import is one nobody reads. */
+    function jinxWarnings(){
+      if (!parsed.length || !window.jinxCharIndex) return [];
+      var appears = $('appears').value.trim();
+      // The batch counts as part of the wiki: a jinx between two characters in
+      // this file resolves to the page about to be made, not to a stranger of
+      // the same name — as long as they share a set. The wiki's own rows go in
+      // first, because that is the order the feed will hand them back in.
+      var corpus = wikiChars.concat(parsed.map(function(c){
+        return { slug: 'batch:' + slugify(c.name), name: c.name, appearsIn: appears, batch: true };
+      }));
+      var index = window.jinxCharIndex(corpus, function(c){
+        return { slug: c.slug, name: c.name, appearsIn: c.appearsIn || '',
+                 page: c.page || '', batch: !!c.batch };
+      });
+      var out = [];
+      parsed.forEach(function(c){
+        var host = { name: c.name, appearsIn: appears };
+        (Array.isArray(c.jinxes) ? c.jinxes : []).forEach(function(j){
+          if (!j) return;
+          var r = window.jinxTargetCheck(j, host, index);
+          if (!r.guessed) return;
+          out.push({ from: c.name, target: r.name, picked: r.picked, others: r.candidates });
+        });
+      });
+      return out;
+    }
+
+    function whereFrom(row){
+      if (!row) return '';
+      if (row.batch) return 'in this file';
+      return row.appearsIn ? String(row.appearsIn) : (row.page ? String(row.page).split('/')[1] : 'no set');
+    }
+
+    function drawJinxWarnings(){
+      var el = $('mu-jinx-warn');
+      if (!el) return;
+      var list = jinxWarnings();
+      if (!list.length) { el.innerHTML = ''; return; }
+      var appears = $('appears').value.trim();
+      el.innerHTML = '<div class="mu-warn"><strong>' + list.length + ' jinx' +
+        (list.length === 1 ? '' : 'es') + ' name' + (list.length === 1 ? 's' : '') +
+        ' a character more than one page here shares a name with.</strong> ' +
+        'The wiki will have to guess, and it guesses by set:' +
+        '<ul>' + list.slice(0, 12).map(function(w){
+          return '<li><b>' + esc(w.from) + '</b> is jinxed with <b>' + esc(w.target) +
+            '</b> &mdash; ' + w.others.length + ' pages have that name (' +
+            w.others.map(function(o){ return esc(whereFrom(o)); }).join(', ') +
+            '). It will use the one ' + esc(whereFrom(w.picked)) + '.</li>';
+        }).join('') +
+        (list.length > 12 ? '<li>&hellip;and ' + (list.length - 12) + ' more.</li>' : '') +
+        '</ul>' +
+        '<p class="mu-fix">' + (appears
+          ? 'Filling in <b>Appears in</b> is what settles these, and it is set to &ldquo;' +
+            esc(appears) + '&rdquo; &mdash; so a jinx between two characters in this file is fine. ' +
+            'The ones above name a character that is not in it.'
+          : '<b>Appears in is empty.</b> Fill it in with the script or collection these ' +
+            'characters belong to and most of these settle themselves &mdash; the wiki matches a ' +
+            'jinx inside the same set before it matches any name.') +
+        ' Either way you can put any of them right afterwards from the character\u2019s editor, ' +
+        'where the jinx box names the exact page.</p></div>';
     }
 
     function buildRow(c, i){
@@ -254,7 +351,12 @@
       var msg = 'Found ' + parsed.length + ' character' + (parsed.length===1?'':'s') + (meta && meta.name ? ' in “' + esc(meta.name) + '”' : '') + '.';
       if (res.skipped.length) msg += ' Skipped ' + res.skipped.length + ' entr' + (res.skipped.length===1?'y':'ies') + ' without full data (official ids or missing name/ability).';
       setStatus('ok', msg);
+      drawJinxWarnings();
     });
+
+    // "Appears in" is what settles an ambiguous jinx, so the warning follows
+    // the box as it is typed rather than reporting what was true on parse.
+    $('appears').addEventListener('input', drawJinxWarnings);
 
     // ── art helpers ──
     function loadImageToCanvas(src){

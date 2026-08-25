@@ -339,9 +339,17 @@
      rules instead — which is the wiki's way of saying "this rule holds on
      this script" without editing anyone's character.
 
-     Returns {byOwner: {slug: [jinx]}, scriptAdds: [], dropped: []}. */
+     `nameOnly` is the list this tool warns about before it runs: a jinx whose
+     other end is neither a page this import makes nor an official character —
+     the person left it out — has nothing to name it by but its name, and a
+     name is not unique on this wiki (there are four Wardens). It is still
+     written: a jinx that resolves to the wrong page can be corrected, and one
+     that was never stored cannot.
+
+     Returns {byOwner: {slug: [jinx]}, scriptAdds: [], dropped: [],
+     nameOnly: [{owner, other}]}. */
   function resolveJinxes(bundle, planned, slugById, opts) {
-    var out = { byOwner: {}, scriptAdds: [], dropped: [] };
+    var out = { byOwner: {}, scriptAdds: [], dropped: [], nameOnly: [] };
     if (opts.jinxes === 'skip') return out;
 
     // name -> what that name became in this run
@@ -372,6 +380,7 @@
         var jinx = { name: otherName, align: '', text: j.text };
         if (other.action === 'create' && other.slug) jinx.slug = other.slug;
         else if (other.officialId) jinx.id = other.officialId;
+        else out.nameOnly.push({ owner: aPage ? j.a : j.b, other: otherName });
         (out.byOwner[ownerSlug] = out.byOwner[ownerSlug] || []).push(jinx);
         return;
       }
@@ -389,6 +398,19 @@
       }
     });
     return out;
+  }
+
+  /* What resolveJinxes() would do, before the run has asked the Worker for a
+     single slug. The real identities are not known until then and none of the
+     risks depend on them, so a placeholder per created page is enough — this
+     way the warning comes off the same code that will do the writing, rather
+     than a second copy of the rule that can drift from it. */
+  function previewSlugs(planned) {
+    var m = {};
+    (planned.rows || []).forEach(function (r) {
+      if (r.action === 'create') m[r.id] = 'pending-' + r.id;
+    });
+    return m;
   }
 
   /* ── the arranged night order ──
@@ -520,7 +542,7 @@
     characterPayload: characterPayload,
     rosterSlug: rosterSlug,
     roster: roster,
-    resolveJinxes: resolveJinxes,
+    resolveJinxes: resolveJinxes, previewSlugs: previewSlugs,
     nightOrder: nightOrder,
     pagePayload: pagePayload,
     changelogPayload: changelogPayload,
