@@ -659,9 +659,26 @@
       if (nb) nb.innerHTML = html;
     }
 
+    // An image field is either a path inside assets/ or a whole URL somebody
+    // pasted — 45 published characters host their icon on another site and
+    // have no `art` at all. Prefixing 'assets/' onto one of those (or onto
+    // the `undefined` of a character with no `art`) is what put the site's
+    // own favicon in the search results where the character's icon belongs.
+    function assetSrc(v) {
+      return /^(?:https?:)?\/\//i.test(v) ? v : (ROOT + 'assets/' + v);
+    }
+    // The same order as artSrc() in render-page.js, which is what every card
+    // on the wiki draws through: `art` first, then `image` (a string or the
+    // first of a list), then the favicon.
+    function charThumb(c) {
+      if (c.art) return assetSrc(c.art);
+      if (typeof c.image === 'string' && c.image) return assetSrc(c.image);
+      if (Array.isArray(c.image) && c.image[0]) return assetSrc(c.image[0]);
+      return ROOT + 'assets/favicon.png';
+    }
     function pageThumb(p) {
       var img = p.logo || p.header;
-      return img ? (ROOT + 'assets/' + img) : (ROOT + 'assets/favicon.png');
+      return img ? assetSrc(img) : (ROOT + 'assets/favicon.png');
     }
     function resultsHTML(results) {
       return results.map(function (r) {
@@ -689,7 +706,7 @@
         var fieldTag = r.field !== 'name'
           ? '<span class="search-match">matched ' + esc(r.field) + '</span>' : '';
         return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
-          '<img class="search-result-thumb" src="' + esc(ROOT + 'assets/' + c.art) + '" alt="" ' +
+          '<img class="search-result-thumb" src="' + esc(charThumb(c)) + '" alt="" ' +
           'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
           '<div class="search-result-info">' +
           '<span class="search-result-name">' + esc(c.name) + fieldTag + '</span>' +
