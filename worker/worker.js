@@ -152,6 +152,7 @@
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
  *   GET  /api/admin/users     -> user list (?q= search) for the users panel
+ *   GET  /api/admin/user-names -> every handle, for the dashboard type-ahead
  *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link for a user
  *   GET  /api/admin/messages  -> contact-form inbox (?status=open|all)
  *   POST /api/admin/message   -> reply to / resolve / reopen / delete an inbox
@@ -2003,6 +2004,88 @@ async function waterfallParent(env, sess, charRow) {
 
 async function waterfallEditor(env, sess, charRow) {
   return !!(await waterfallParent(env, sess, charRow));
+}
+
+/* ---- assigning a script or collection carries its characters with it ----
+
+   Handing somebody a set and not its pages hands them the half that is not
+   the work: the roster IS the work, and the wiki was seeded with whole
+   collections whose characters all came across unowned. The dashboard's way
+   of doing this was to filter the page list to "this collection, owner none"
+   and bulk-assign, which is two tools and a step everybody forgets.
+
+   It only ever claims characters that belong to NOBODY. A collection can list
+   anybody's characters (`include[]` takes any slug on the wiki), so a rule
+   that reassigned every member would let one admin action move a stranger's
+   pages to another account — which is not an ownership question, it is taking
+   somebody's work away. Pages already owned are counted and reported instead,
+   and moving those on purpose is still one filter and a bulk action away.
+
+   Clearing an owner never cascades either: it would orphan every character of
+   the set, and the reason to clear one is almost always that the parent was
+   assigned wrongly. */
+const OWNER_WATERFALL_MAX = 1000;
+
+/* The characters a script or collection holds. A script says so outright (an
+   `off-` slug is an official character and has no page here); a collection is
+   resolved by the one membership rule rather than a second copy of it. */
+async function rosterCharacterSlugs(env, type, row, cache) {
+  if (type === 'script') {
+    const d = parseData(row);
+    return (Array.isArray(d.characters) ? d.characters : [])
+      .map(x => String(x || '')).filter(x => x && !x.startsWith('off-'));
+  }
+  if (type === 'collection') {
+    // Membership is matched, not stored, so it needs every character — but
+    // only two columns, and only once per request: a bulk assignment over
+    // fifty collections would otherwise read the table fifty times.
+    if (!cache || !cache.chars) {
+      const { results } = await env.DB.prepare(
+        "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+      ).all().catch(() => ({ results: [] }));
+      if (!cache) return PageRender.resolveCollectionMembers(parseData(row), results || [])
+        .map(c => c.slug).filter(Boolean);
+      cache.chars = results || [];
+    }
+    return PageRender.resolveCollectionMembers(parseData(row), cache.chars)
+      .map(c => c.slug).filter(Boolean);
+  }
+  return [];
+}
+
+/* Returns {claimed, held}: how many characters this assignment picked up, and
+   how many were left alone because somebody already owns them. */
+async function waterfallOwner(env, sess, type, row, ownerId, cache) {
+  const out = { claimed: 0, held: 0 };
+  if (ownerId == null) return out;
+  if (type !== 'script' && type !== 'collection') return out;
+  const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
+  if (!slugs.length) return out;
+  for (let i = 0; i < slugs.length; i += 100) {
+    const chunk = slugs.slice(i, i + 100);
+    const q = chunk.map(() => '?').join(',');
+    try {
+      // Counted BEFORE the update, or the ones just claimed would count as
+      // somebody else's.
+      const held = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM characters
+         WHERE slug IN (${q}) AND status IS NOT 'deleted'
+           AND owner_id IS NOT NULL AND owner_id != ?`
+      ).bind(...chunk, ownerId).first();
+      out.held += (held && held.n) || 0;
+      const res = await env.DB.prepare(
+        `UPDATE characters SET owner_id=?, updated_at=datetime('now')
+         WHERE slug IN (${q}) AND status IS NOT 'deleted' AND owner_id IS NULL`
+      ).bind(ownerId, ...chunk).run();
+      out.claimed += (res && res.meta && res.meta.changes) || 0;
+    } catch { /* one bad chunk must not lose the assignment itself */ }
+  }
+  if (out.claimed) {
+    await logActivity(env, sess, 'assign-owner', 'character', null,
+      out.claimed + ' character page' + (out.claimed === 1 ? '' : 's') +
+      ' with ' + type + ' ' + row.slug);
+  }
+  return out;
 }
 
 /* A ceiling the owner's own saves never needed. A page is a few kilobytes of
@@ -6407,6 +6490,21 @@ export default {
       return jsonResponse({ users: results || [], me: sess.userId });
     }
 
+    // ---- every handle, for the dashboard's type-ahead ----
+    // /api/admin/users cannot serve this: it counts each account's pages with
+    // three subqueries per row and stops at the 200 newest, so the accounts an
+    // admin most often reaches for — the ones that have been here longest —
+    // are exactly the ones missing from it. This is the two columns a
+    // suggestion list shows and nothing else.
+    if (method === 'GET' && path === '/api/admin/user-names') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      const { results } = await env.DB.prepare(
+        'SELECT username, display_name FROM users ORDER BY username LIMIT 3000'
+      ).all().catch(() => ({ results: [] }));
+      return jsonResponse({ users: results || [] });
+    }
+
     // ---------- ADMIN: CONTACT-FORM INBOX ----------
     if (method === 'GET' && path === '/api/admin/messages') {
       const sess = await adminSession(env, request);
@@ -8423,7 +8521,13 @@ export default {
         await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(ownerId, row.slug).run();
         await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
+        // A script or collection carries its characters with it, unless
+        // somebody already owns them (see waterfallOwner).
+        const spread = await waterfallOwner(env, sess, type, row, ownerId);
+        return jsonResponse({
+          ok: true, slug: row.slug, owner: uname || null,
+          characters: spread.claimed, charactersHeld: spread.held
+        });
       }
 
       // ---- admin: wiki lock ----
@@ -9832,7 +9936,10 @@ export default {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           adminName = u ? u.username : null;
         } catch { /* non-fatal */ }
-        let done = 0;
+        let done = 0, claimed = 0, held = 0;
+        // One read of the character table for the whole batch (see
+        // rosterCharacterSlugs), however many collections it assigns.
+        const rosterCache = {};
         const failed = [];
         for (const slug of slugs) {
           try {
@@ -9859,6 +9966,11 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
+              if (action === 'assign-owner') {
+                const spread = await waterfallOwner(env, sess, type, row, ownerId, rosterCache);
+                claimed += spread.claimed;
+                held += spread.held;
+              }
             } else if (action === 'curata' || action === 'uncurata') {
               const on = action === 'curata';
               const d = parseData(row);
@@ -9889,7 +10001,7 @@ export default {
           } catch { failed.push(slug); }
         }
         await logActivity(env, sess, 'bulk-' + action, type, null, done + ' page' + (done === 1 ? '' : 's'));
-        return jsonResponse({ ok: true, done, failed });
+        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held });
       }
 
       return jsonResponse({ error: 'Unknown endpoint' }, { status: 404 });

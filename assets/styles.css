@@ -3111,6 +3111,15 @@ html.textedit-on .te-live-hit {
   background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
   box-shadow: 0 10px 22px rgba(40,12,30,.28);
 }
+/* The drop-down skin is shared with assets/suggest.js (the dashboard's
+   type-ahead), which is the same control worn differently: same rows, same
+   keyboard, but its list hangs off <body> at a fixed position so that mounting
+   it on a field cannot move the row the field sits in. */
+.sg-drop {
+  position: fixed; z-index: 60; overflow-y: auto;
+  background: #fffdf8; border: 1px solid #cdbfa0; border-radius: 6px;
+  box-shadow: 0 10px 22px rgba(40,12,30,.28);
+}
 .jx-group {
   padding: 6px 10px 4px;
   font-family: 'Trade Gothic', sans-serif; text-transform: uppercase;
@@ -3118,25 +3127,25 @@ html.textedit-on .te-live-hit {
   background: #f7f0e0; border-bottom: 1px solid #e8dfc8;
   position: sticky; top: 0;
 }
-.jx-opt {
+.jx-opt, .sg-opt {
   display: flex; align-items: center; gap: 9px;
   width: 100%; text-align: left; cursor: pointer;
   background: none; border: 0; border-bottom: 1px solid #f0e8d5;
   padding: 6px 10px;
 }
-.jx-opt:last-child { border-bottom: none; }
-.jx-opt:hover, .jx-opt.on { background: #efe7d3; }
+.jx-opt:last-child, .sg-opt:last-child { border-bottom: none; }
+.jx-opt:hover, .jx-opt.on, .sg-opt:hover, .sg-opt.on { background: #efe7d3; }
 .jx-opt-ico { width: 30px; height: 30px; object-fit: contain; flex: none; }
-.jx-opt-body { min-width: 0; display: flex; flex-direction: column; }
-.jx-opt-name {
+.jx-opt-body, .sg-opt-body { min-width: 0; display: flex; flex-direction: column; }
+.jx-opt-name, .sg-opt-name {
   font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .84rem; color: #5b4632;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.jx-opt-meta {
+.jx-opt-meta, .sg-opt-meta {
   font-size: .73rem; color: #726348;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.jx-empty {
+.jx-empty, .sg-empty {
   margin: 0; padding: 10px; font-size: .84rem; font-style: italic; color: #726348;
 }
 

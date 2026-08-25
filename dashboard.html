@@ -2135,6 +2135,7 @@
         btn.disabled = false;
         if (res.body && res.body.ok) {
           setToast('bulk-toast', true, 'Done: ' + res.body.done + ' page' + (res.body.done === 1 ? '' : 's') +
+            ownerSpread(res.body) +
             (res.body.failed && res.body.failed.length ? ' — failed: ' + res.body.failed.join(', ') : '') + '.');
           $('bulk-load').click();
           loadActivity(true);
@@ -2627,6 +2628,18 @@
         });
     }
 
+    /* Assigning a script or collection also hands over the character pages on
+       it that nobody owns (waterfallOwner in the Worker). Say so: the count is
+       the only way to see it happened, and "held" is the pages it deliberately
+       left with the accounts that own them. */
+    function ownerSpread(res){
+      if (!res) return '';
+      var bits = [];
+      if (res.characters) bits.push('+' + res.characters + ' character page' + (res.characters === 1 ? '' : 's'));
+      if (res.charactersHeld) bits.push(res.charactersHeld + ' left with their owners');
+      return bits.length ? ' (' + bits.join(', ') + ')' : '';
+    }
+
     function renderUnowned(rows){
       $('unowned-count').textContent = rows.length || '';
       var box = $('unowned-list');
@@ -2643,6 +2656,13 @@
           '<span class="uo-status" style="font-size:.82rem;min-width:60px"></span>' +
           '</div>';
       }).join('');
+      // These rows are made after wireSuggest() has run, so they are mounted
+      // here. mountSuggest is idempotent, so a redraw costs nothing.
+      if (window.mountSuggest && window.__suggestUsers) {
+        Array.prototype.forEach.call(box.querySelectorAll('.uo-user'), function(el){
+          window.mountSuggest(el, { source: window.__suggestUsers });
+        });
+      }
     }
     document.addEventListener('click', function(e){
       var btn = e.target.closest && e.target.closest('.uo-assign');
@@ -2657,7 +2677,7 @@
       }).then(function(r){ return r.json(); }).then(function(res){
         btn.disabled = false;
         if (res && res.ok){
-          status.textContent = uname ? '✓ ' + uname : '✓ cleared';
+          status.textContent = uname ? '✓ ' + uname + ownerSpread(res) : '✓ cleared';
           status.style.color = '#1c5429';
           if (uname){ setTimeout(function(){ row.style.opacity = '.5'; }, 300); }
         } else {
@@ -2834,6 +2854,142 @@
       else { el.textContent = ''; el.hidden = true; }
     }
 
+    /* ── type-ahead on every field that wants a name the site already knows ──
+       A dashboard field asks for a slug, a username, a creator or a tag, and
+       none of those is something anybody recalls exactly. Every one of them is
+       now a suggestion list (assets/suggest.js) filtered by whatever is typed,
+       matching the NAME as well as the value, so "potato" finds
+       `the-potato-patch` and fills the slug in. Typing something the list does
+       not hold still stands: a page made a minute ago is not in the feed yet.
+
+       Each source is fetched once, on the first keystroke in a field that
+       needs it, and shared from then on. A tab nobody opens costs nothing. */
+    function wireSuggest(){
+      if (!window.mountSuggest) return;
+      var cache = {};
+      function once(key, fn){
+        if (!cache[key]) cache[key] = Promise.resolve().then(fn).catch(function(){ return []; });
+        return cache[key];
+      }
+      // Drafts included: moderation is mostly about pages that are not live.
+      function raw(type){
+        return once('raw:' + type, function(){
+          return getJSON(type === 'collection' ? 'collections.json?drafts=1'
+                       : type === 'script' ? 'scripts.json?drafts=1'
+                       : 'characters.json?fields=card&drafts=1')
+            .then(function(list){ return list || []; });
+        });
+      }
+      function feed(type){
+        return once('feed:' + type, function(){
+          return raw(type).then(function(list){
+            return list.map(function(r){
+              // A collection is addressed by its kebab id, never by its PK
+              // slug, which on the older rows is a display string.
+              var value = type === 'collection' ? (r.id || r.slug) : r.slug;
+              var name = r.name || r.displayName || value;
+              var meta = type === 'character'
+                ? [r.creator, r.appearsIn].filter(Boolean).join(' \u00b7 ')
+                : (r.author || '');
+              return { value: value, label: name, meta: meta };
+            }).filter(function(x){ return x.value; });
+          });
+        });
+      }
+      // The same rows keyed by name, for the two fields that filter on a name
+      // rather than address a page.
+      function byName(type){
+        return once('name:' + type, function(){
+          return feed(type).then(function(items){
+            return items.map(function(x){ return { value: x.label, label: x.label, meta: x.meta }; });
+          });
+        });
+      }
+      function users(){
+        return once('users', function(){
+          return getJSON('/api/admin/user-names').then(function(d){
+            return ((d && d.users) || []).map(function(u){
+              return { value: u.username, label: u.username,
+                       meta: u.display_name && u.display_name !== u.username ? u.display_name : '' };
+            });
+          });
+        });
+      }
+      function creators(){
+        return once('creators', function(){
+          return getJSON('/api/creators').then(function(d){
+            return ((d && d.creators) || []).map(function(c){
+              return { value: c.name, label: c.name,
+                       meta: c.total ? c.total + ' page' + (c.total === 1 ? '' : 's') : '' };
+            });
+          });
+        });
+      }
+      // Every "Appears in" anybody has typed, which is what the concepts sweep
+      // matches on. Off the character feed already loaded, not a second fetch.
+      function appearsIn(){
+        return once('appears', function(){
+          return raw('character').then(function(list){
+            var seen = {}, out = [];
+            list.forEach(function(c){
+              var v = (c && c.appearsIn ? String(c.appearsIn) : '').trim();
+              if (!v || seen[v.toLowerCase()]) return;
+              seen[v.toLowerCase()] = 1;
+              out.push({ value: v, label: v });
+            });
+            return out.sort(function(a, b){ return a.value.localeCompare(b.value); });
+          });
+        });
+      }
+      function tags(){
+        return (window.KNOWN_TAGS || []).map(function(t){
+          return { value: t, label: t, meta: (window.describeTag ? window.describeTag(t) : '') || '' };
+        });
+      }
+
+      function mount(id, source, empty){
+        var el = $(id);
+        if (el) window.mountSuggest(el, { source: source, empty: empty });
+      }
+      // A slug box takes its list from the type <select> beside it, read at
+      // the moment the list opens, so switching the type switches the list
+      // with no wiring between the two.
+      function pageOf(selId){ return function(){ return feed($(selId).value); }; }
+
+      mount('rb-slug', pageOf('rb-type'), 'No page by that name.');
+      mount('prot-slug', pageOf('prot-type'), 'No page by that name.');
+      mount('curata-slug', pageOf('curata-type'), 'No page by that name.');
+      mount('bk-slug', pageOf('bk-type'), 'No page by that name.');
+      mount('bulk-q', function(){ return byName($('bulk-type').value); });
+      mount('bulk-collection', function(){ return feed('collection'); }, 'No collection by that name.');
+      mount('bulk-owner', function(){
+        return users().then(function(list){
+          // "none" is a real answer to this box: the unowned pages.
+          return [{ value: 'none', label: 'none', meta: 'pages with no owner' }].concat(list);
+        });
+      });
+      // The bulk argument box is a username or a tag depending on the action.
+      mount('bulk-arg', function(){
+        var a = $('bulk-action').value;
+        if (a === 'add-tag' || a === 'remove-tag') return tags();
+        if (a === 'assign-owner') return users();
+        return [];
+      });
+      mount('u-q', users);
+      mount('act-user', users);
+      mount('sto-user', users);
+      mount('tgo-user', users);
+      mount('cc-creator', creators, 'Nobody credited by that name.');
+      mount('cc-coll', function(){ return byName('collection'); });
+      mount('c2p-from', appearsIn);
+      mount('c2p-parent', function(){ return feed('collection'); }, 'No collection by that name.');
+
+      // The unowned list is drawn after this runs and redrawn on every load,
+      // so its rows are mounted where they are made (renderUnowned) through
+      // this handle rather than here.
+      window.__suggestUsers = users;
+    }
+
     // Auth check, then load.
     wireLockButton();
     fetch('/api/me', { credentials: 'same-origin' })
@@ -2847,12 +3003,16 @@
           $('dash').style.display = 'block';
           wireTabs();
           wireNewUsers();
+          wireSuggest();
           showTab((location.hash || '').replace(/^#/, '') || 'triage');
           refreshBadges();
         } else showGate();
       })
       .catch(function(){ showGate(); });
   </script>
+  <!-- The type-ahead on every field below, and the tag list it offers. -->
+  <script src="assets/tags.js"></script>
+  <script src="assets/suggest.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

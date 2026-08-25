@@ -152,6 +152,18 @@ assets/
   official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
                        base-game layer on /jinxes. Generated, partial, with a
                        `source` field inside; same treatment as night-order.json.
+  suggest.js           mountSuggest(input, {source}): type-ahead on a plain text
+                       field. The admin dashboard mounts it on EVERY box that
+                       wants a slug, a username, a creator or a tag, so
+                       moderation stops being a matter of typing a slug from
+                       memory. Deliberately not a <datalist>: these fields post
+                       a slug while the thing a person recalls is the name, and
+                       the filter here reads both. Nothing is forced — text
+                       that matches nothing stands, because the page may be a
+                       minute old. Shares its drop-down skin with jinx-picker
+                       (.sg-*/.jx-* in styles.css); its list hangs off <body>
+                       at a fixed position so mounting it cannot move the flex
+                       row the field sits in.
   jinx-picker.js       The "Jinxed character" search box: one combobox over the
                        official roster AND this wiki's, mounted on a field with
                        mountJinxPicker(). Records WHICH character was picked
@@ -569,6 +581,14 @@ bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project li
                        section below), and one whose ends both stay out cannot
                        be stored at all.
 login.html, account.html, dashboard.html, reset-password.html
+                       Every text box on the dashboard is a type-ahead
+                       (assets/suggest.js): page slugs follow the type dropdown
+                       beside them, usernames come from
+                       GET /api/admin/user-names (the users panel's own feed
+                       counts each account's pages and stops at the 200
+                       newest, so it cannot serve this), creators from
+                       /api/creators, tags from tags.js. Each source is fetched
+                       once, on the first keystroke in a field that needs it.
                        account.html shows the newest 10 of Your Recent Edits
                        behind a "Show all N edits" toggle; a busy month used
                        to put fifty lines between the top of the page and the
@@ -752,7 +772,9 @@ sits on the page's purple, which is the background the card exists to solve
 for. The two editors do not agree on element ids (`sb-*` vs `pc-*`), so the
 previews are found by **`data-th-preview="header|logo"`** rather than a list of
 ids the widget would have to keep in step. Seeded collections have `owner_id NULL` — admins
-assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit,
+and **that assignment carries the set's characters with it** (see "Assigning an
+owner" below).
 
 ## Night order (script pages)
 
@@ -1904,10 +1926,39 @@ character. It skips a page that already has tags and a page whose owner
 already chose a sharing mode — it must never quietly NARROW an open page to
 tags-only — and it is re-runnable and undoable one page at a time from the
 editor. Dashboard card: "Open tag editing". `GET /api/admin/pages` also takes
-`?collection={id}`, resolved through `resolveCollectionMembers()` — combined
-with `?owner=none` and the `assign-owner` bulk action, that is how a whole
-collection's unowned pages get handed to an account. Curata lifts a page out of Partial, so
+`?collection={id}`, resolved through `resolveCollectionMembers()`; with
+`?owner=none` and the `assign-owner` bulk action that is how a whole
+collection's pages were handed to an account before the assignment did it by
+itself, and it is still the way to move pages somebody already owns (see
+"Assigning an owner"). Curata lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
+
+## Assigning an owner (and what comes with it)
+
+`POST /api/admin/assign-owner` and the dashboard's `assign-owner` bulk action
+both go through **`waterfallOwner()`** in worker.js: assigning a **script or a
+collection** also hands over the character pages on it. Handing somebody a set
+and not its pages hands them the half that is not the work, and the wiki was
+seeded with whole collections whose characters all arrived unowned.
+
+- **It only ever claims characters that belong to NOBODY.** A collection can
+  list anybody's characters (`include[]` takes any slug on the wiki), so a rule
+  that reassigned every member would let one admin action move a stranger's
+  pages to another account. Pages that already have an owner are counted and
+  reported (`charactersHeld`) instead, and moving those on purpose is still one
+  filter and a bulk action away.
+- **Clearing an owner never cascades**: it would orphan every character of the
+  set, and the reason to clear one is almost always that the parent was
+  assigned wrongly.
+- The roster comes from `rosterCharacterSlugs()`: a script says outright which
+  characters it holds (an `off-` slug is an official character and has no page
+  here), a collection goes through `resolveCollectionMembers()` rather than a
+  second copy of the membership rule. Deleted pages are skipped, drafts are
+  not — a draft still belongs to the set. Capped at `OWNER_WATERFALL_MAX`
+  (1000) and re-runnable, since it only ever looks for unowned pages.
+- Both responses carry `characters` and `charactersHeld`, and the dashboard
+  prints them ("+112 character pages, 3 left with their owners"). The count is
+  the only way to see it happened.
 
 ## Frontend conventions
 
