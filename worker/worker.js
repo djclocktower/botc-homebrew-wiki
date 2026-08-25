@@ -2014,12 +2014,20 @@ async function waterfallEditor(env, sess, charRow) {
    of doing this was to filter the page list to "this collection, owner none"
    and bulk-assign, which is two tools and a step everybody forgets.
 
-   It only ever claims characters that belong to NOBODY. A collection can list
+   It claims two kinds of page and no others: one that belongs to NOBODY, and
+   one owned by an ADMIN account. The second is what makes this useful rather
+   than theoretical — most of this wiki arrived by bulk import and the import
+   account owns it, so "unowned only" moved nothing at all on the sets people
+   actually want to hand over (the 50 Festival of Lanterns characters were all
+   owned by `admin`). An admin's ownership of a character is almost always
+   that artifact, and an admin can take it back with the same click.
+
+   A page owned by an ordinary member is never touched. A collection can list
    anybody's characters (`include[]` takes any slug on the wiki), so a rule
    that reassigned every member would let one admin action move a stranger's
    pages to another account — which is not an ownership question, it is taking
-   somebody's work away. Pages already owned are counted and reported instead,
-   and moving those on purpose is still one filter and a bulk action away.
+   somebody's work away. Those are counted and reported instead (`held`), and
+   moving them on purpose is still one filter and a bulk action away.
 
    Clearing an owner never cascades either: it would orphan every character of
    the set, and the reason to clear one is almost always that the parent was
@@ -2053,30 +2061,55 @@ async function rosterCharacterSlugs(env, type, row, cache) {
   return [];
 }
 
+/* The admin accounts. Shares the per-request cache the roster scan uses, so a
+   bulk assignment asks once. An empty list is the safe answer on failure: the
+   claim then only takes unowned pages. */
+async function adminUserIds(env, cache) {
+  if (cache && cache.admins) return cache.admins;
+  let ids = [];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id FROM users WHERE COALESCE(is_admin,0)=1'
+    ).all();
+    ids = (results || []).map(r => Number(r.id)).filter(Number.isFinite);
+  } catch { ids = []; }
+  if (cache) cache.admins = ids;
+  return ids;
+}
+
 /* Returns {claimed, held}: how many characters this assignment picked up, and
-   how many were left alone because somebody already owns them. */
+   how many were left with the members who own them. */
 async function waterfallOwner(env, sess, type, row, ownerId, cache) {
   const out = { claimed: 0, held: 0 };
   if (ownerId == null) return out;
   if (type !== 'script' && type !== 'collection') return out;
   const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
   if (!slugs.length) return out;
+  // The admin accounts, whose ownership of a character page is the bulk
+  // import's leftovers. Read once (there are a handful), and if the read fails
+  // the claim falls back to unowned-only — the safe half of the rule.
+  const admins = await adminUserIds(env, cache);
+  const adminQ = admins.length ? admins.map(() => '?').join(',') : '';
   for (let i = 0; i < slugs.length; i += 100) {
     const chunk = slugs.slice(i, i + 100);
     const q = chunk.map(() => '?').join(',');
     try {
       // Counted BEFORE the update, or the ones just claimed would count as
-      // somebody else's.
+      // somebody else's. "Held" is a page belonging to a member: an admin's is
+      // about to be claimed, so it is not left behind and must not be reported
+      // as though it were.
       const held = await env.DB.prepare(
         `SELECT COUNT(*) AS n FROM characters
          WHERE slug IN (${q}) AND status IS NOT 'deleted'
-           AND owner_id IS NOT NULL AND owner_id != ?`
-      ).bind(...chunk, ownerId).first();
+           AND owner_id IS NOT NULL AND owner_id != ?` +
+        (adminQ ? ` AND owner_id NOT IN (${adminQ})` : '')
+      ).bind(...chunk, ownerId, ...admins).first();
       out.held += (held && held.n) || 0;
       const res = await env.DB.prepare(
         `UPDATE characters SET owner_id=?, updated_at=datetime('now')
-         WHERE slug IN (${q}) AND status IS NOT 'deleted' AND owner_id IS NULL`
-      ).bind(ownerId, ...chunk).run();
+         WHERE slug IN (${q}) AND status IS NOT 'deleted'
+           AND (owner_id IS NULL` + (adminQ ? ` OR owner_id IN (${adminQ})` : '') + `)`
+      ).bind(ownerId, ...chunk, ...admins).run();
       out.claimed += (res && res.meta && res.meta.changes) || 0;
     } catch { /* one bad chunk must not lose the assignment itself */ }
   }

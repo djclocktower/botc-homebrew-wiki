@@ -1941,12 +1941,21 @@ collection** also hands over the character pages on it. Handing somebody a set
 and not its pages hands them the half that is not the work, and the wiki was
 seeded with whole collections whose characters all arrived unowned.
 
-- **It only ever claims characters that belong to NOBODY.** A collection can
+- **It claims the unowned pages and the ADMIN-owned ones, and nothing else.**
+  The second half is what makes it useful rather than theoretical: most of this
+  wiki arrived by bulk import and the import account owns it, so an
+  unowned-only rule moved nothing at all on the sets people actually hand over
+  — the 50 Festival of Lanterns characters were every one of them owned by
+  `admin`. An admin's ownership of a character is almost always that artifact,
+  and an admin can take it back with the same click. `adminUserIds()` is the
+  lookup, shared with the roster scan's per-request cache; if it fails the
+  claim falls back to unowned-only, which is the safe half.
+- **A page owned by an ordinary member is never touched.** A collection can
   list anybody's characters (`include[]` takes any slug on the wiki), so a rule
   that reassigned every member would let one admin action move a stranger's
-  pages to another account. Pages that already have an owner are counted and
-  reported (`charactersHeld`) instead, and moving those on purpose is still one
-  filter and a bulk action away.
+  pages to another account. Those are counted and reported
+  (`charactersHeld`) instead, and moving them on purpose is still one filter
+  and a bulk action away.
 - **Clearing an owner never cascades**: it would orphan every character of the
   set, and the reason to clear one is almost always that the parent was
   assigned wrongly.
