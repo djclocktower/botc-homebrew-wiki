@@ -117,8 +117,9 @@
      belongs beside the mechanics rather than under a summary that never
      mentions it. First id inside that fieldset. */
   var SPECIAL_ID = 'specials';
-  // create.html and edit.html between them: publish / draft / save / delete.
-  var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'delete-char', 'status'];
+  // create.html and edit.html between them: publish / draft / save /
+  // snapshot / delete.
+  var ACTION_IDS = ['publish', 'save-draft', 'save', 'save-publish', 'snapshot', 'delete-char', 'status'];
 
   function bucketOf(node) {
     var cand = [node.id, node.querySelector ? (node.querySelector('[id]') || {}).id : null];
