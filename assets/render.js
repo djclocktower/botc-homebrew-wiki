@@ -30,6 +30,10 @@
      /c/set/c/set/penitent. Set for the duration of one render and restored
      after, so nothing leaks between pages in a reused isolate. */
   var curRoot = null;
+  /* The character whose page is being rendered, for the one job that needs to
+     know: telling two homebrew pages of the same name apart in a jinx (see
+     jinxLookupKeys). Set and restored by renderCharacter with curRoot. */
+  var curHost = null;
   function R() {
     if (curRoot != null) return curRoot;
     return (typeof window !== 'undefined' && window.LINK_ROOT) || '';
@@ -269,8 +273,13 @@
     return (root || '') + p.replace(/^\//, '').replace(/\.html$/, '');
   }
 
-  function resolveJinxTarget(j, root) {
+  function resolveJinxTarget(j, root, host) {
     root = root || '';
+    // The page this jinx is being rendered for. Passed in by a caller that
+    // has it; on a /c/ page it is the character being rendered, which
+    // renderCharacter() sets for the duration of the render so the jinx box
+    // needs no argument. Only ever used to break a name tie (jinxLookupKeys).
+    if (host === undefined) host = curHost;
     var nm = jinxDisplayName(j);
     var rawId = j.id || slugId(j.name || '');
     var iconId = rawId.replace(/_festival_of_lanterns$/, '').replace(/-/g, '');
@@ -294,8 +303,10 @@
                external: true, slug: '', team: '' };
     }
 
-    // 3. One of ours, matched by id or by name.
-    var hit = wikiChar(normJinxId(rawId)) || wikiChar(normJinxId(nm));
+    // 3. One of ours: the id as written, then the name qualified by the host
+    //    page's own sets, then the bare name (see jinxLookupKeys).
+    var hit = null, keys = jinxLookupKeys(j, host);
+    for (var ki = 0; ki < keys.length && !hit; ki++) hit = wikiChar(keys[ki]);
     if (hit) {
       return { name: hit.name || nm, href: charHref(hit, root),
                iconSrc: wikiCharIcon(hit, root), external: false,
@@ -491,19 +502,199 @@
     return String(id || '').replace(/_festival_of_lanterns$/, '')
       .toLowerCase().replace(/[^a-z0-9]/g, '');
   }
+
+  /* The SET-QUALIFIED keys a character also answers to, on top of its
+     identity and its name.
+
+     A bulk import writes its jinx targets as `{name}_{set}` —
+     `changeling_the_bootleggers_anthology`, `cadenza_the_academy`,
+     `mystic_the_academy` — and that qualifier is the only thing telling two
+     homebrew characters of the same name apart. This wiki has a Changeling in
+     The Potato Patch and another in The Bootlegger's Anthology; matching the
+     bare name landed whichever was registered first, so the Huli Jing's jinx
+     with its OWN set's Changeling pointed at a stranger's page, art and all.
+
+     So a character registers `name + set` for every set it is filed under —
+     the set segment of its address (`c/{set}/{character}`), the `appearsIn`
+     it was given, and any collection that claims it (`appearsInFrom`) — plus
+     the `jsonId` an import stamped on it. All of them fold through
+     normJinxId(), so punctuation and apostrophes in a set name do not have to
+     match ("The Bootlegger's Anthology" and `the-bootleggers-anthology` are
+     one key).
+
+     These are strictly EXTRA keys: the bare name still resolves as it did,
+     which is what every jinx typed by hand relies on. */
+  function jinxQualKeys(c) {
+    if (!c) return [];
+    var out = [], seen = {};
+    function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
+
+    var nm = normJinxId(c.name);
+    // `changeling_the_potato_patch_part_2` and friends: the id an import gave
+    // the page, which is what its own project's jinxes name it by. Only when
+    // it says more than the name and the identity already do — a bulk import
+    // that stamped a bare `corsair` adds nothing here, and a bare id is
+    // exactly the kind that belongs to an official character.
+    var jid = normJinxId(c.jsonId);
+    if (jid && jid !== nm && jid !== normJinxId(c.slug)) push(jid);
+
+    if (!nm) return out;
+    charSetKeys(c).forEach(function (k) { push(nm + k); });
+    return out;
+  }
+
+  /* Every set a character is filed under, normalized: the set segment of its
+     address (`c/{set}/{character}`), the `appearsIn` it was given, and any
+     collection claiming it (`appearsInFrom`). Punctuation and apostrophes
+     fold away, so "The Bootlegger's Anthology" and `the-bootleggers-anthology`
+     are one key. */
+  function charSetKeys(c) {
+    if (!c) return [];
+    var sets = [];
+    // The address is `c/{set}/{character}`; a flat one has no set to read.
+    var seg = String(c.page || '').replace(/^\//, '').split('/');
+    if (seg.length >= 3 && seg[0] === 'c') sets.push(seg[1]);
+    var ap = c.appearsIn;
+    if (Array.isArray(ap)) sets = sets.concat(ap);
+    else if (ap) sets.push(ap);
+    if (Array.isArray(c.appearsInFrom)) {
+      c.appearsInFrom.forEach(function (a) {
+        if (!a) return;
+        if (a.name) sets.push(a.name);
+        if (a.id) sets.push(a.id);
+      });
+    }
+    var out = [], seen = {};
+    sets.forEach(function (sname) {
+      var k = normJinxId(sname);
+      if (k && !seen[k]) { seen[k] = 1; out.push(k); }
+    });
+    return out;
+  }
+
+  /* The keys a jinx entry names its target by, MOST SPECIFIC FIRST, to be
+     tried against a map of this wiki's characters (WIKI_CHARS, the Worker's
+     jinx index, a script's own roster — they are all keyed the same way).
+
+       1. the id as written, which for an import carries the set
+          (`changeling_the_bootleggers_anthology`)
+       2. the name qualified by each set the HOST page — the character whose
+          jinx this is — is filed under
+       3. the bare name
+
+     Step 2 is what settles the rest of the name clashes. An import's
+     qualifier is the project's own name and does not always survive as the
+     set name here (`mycologist_hblreleased` for a page filed under Homebrews
+     by Luis), and plenty of older rows carry nothing but a name. A jinx names
+     a character on the same script or in the same collection far more often
+     than not, so the host's own sets are the best guess there is — and it is
+     only ever a tie-break: a name only one page on the wiki answers to
+     resolves at step 3 exactly as it always did. */
+  function jinxLookupKeys(j, host) {
+    if (!j) return [];
+    var out = [], seen = {};
+    function push(k) { if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
+    var nm = jinxDisplayName(j);
+    var nameKey = normJinxId(nm);
+    // The id goes first only when it says MORE than the name does. A bare
+    // `warden` is the name written twice, and putting it first would answer
+    // the question before the host's own set was ever asked — which is the
+    // whole tie-break, and exactly the case with four Wardens to choose from.
+    var idKey = normJinxId(j.id || slugId(nm));
+    if (idKey !== nameKey) push(idKey);
+    if (nameKey) {
+      charSetKeys(host).forEach(function (k) { push(nameKey + k); });
+      push(nameKey);
+    } else {
+      push(idKey);
+    }
+    return out;
+  }
+  /* This wiki's characters, keyed the way every jinx lookup expects them:
+     identities and names first, then the set-qualified keys, each claimed only
+     if it is still free. That two-pass order is the rule (see jinxQualKeys),
+     and it lived in three hand-rolled copies — the Worker's jinx index, and
+     both character editors — before this. `row(c)` lets a caller store
+     something smaller than the character it was handed; it is called once per
+     character. `byName` keeps EVERY page of a given name, which is what tells
+     a tool that a name is ambiguous rather than just resolving it. */
+  function jinxCharIndex(chars, row) {
+    var byKey = {}, byName = {}, items = [];
+    (chars || []).forEach(function (c) {
+      if (!c || !c.slug) return;
+      var v = row ? row(c) : c;
+      if (!v) return;
+      items.push({ c: c, v: v });
+      var nk = normJinxId(c.name);
+      [normJinxId(c.slug), nk].forEach(function (k) { if (k && !byKey[k]) byKey[k] = v; });
+      if (nk) (byName[nk] = byName[nk] || []).push(v);
+    });
+    items.forEach(function (it) {
+      jinxQualKeys(it.c).forEach(function (k) { if (!byKey[k]) byKey[k] = it.v; });
+    });
+    return { byKey: byKey, byName: byName };
+  }
+
+  /* Where a jinx entry will land — for the tools that WRITE one rather than
+     draw it, which is both importers. Drawing a jinx can afford to just pick
+     the best candidate; an import is the moment somebody can still fix it, and
+     a jinx stored by a name three pages share is a coin toss nobody is told
+     about. So this answers with its working:
+
+       picked      the page it will resolve to, or null for none here
+       candidates  EVERY page of that name, so a caller can say who else it
+                   could have been
+       guessed     true when the pick was made on the bare name while more
+                   than one page answers to it — i.e. it came down to
+                   whichever was registered first
+
+     `guessed` is deliberately false when the id or the host's own set settled
+     it (see jinxLookupKeys): those are evidence, not a coin toss. */
+  function jinxTargetCheck(j, host, index) {
+    var out = { name: '', picked: null, candidates: [], guessed: false, official: false };
+    if (!j || !index) return out;
+    out.name = jinxDisplayName(j);
+    // The picker writes the target outright; there is nothing to guess.
+    if (j.slug) { out.picked = index.byKey[normJinxId(j.slug)] || null; return out; }
+    // An official character beats every page here (resolveJinxTarget step 2),
+    // so a jinx with one is settled however many pages share the name. This
+    // needs setOfficialNames() to have been called — without it every jinx
+    // with an official character looks homebrew, which is a warning on almost
+    // every import.
+    out.official = !!(officialName(j.id || '') || officialName(out.name));
+    if (out.official) return out;
+    var keys = jinxLookupKeys(j, host), hit = '';
+    for (var i = 0; i < keys.length && !out.picked; i++) {
+      if (index.byKey[keys[i]]) { out.picked = index.byKey[keys[i]]; hit = keys[i]; }
+    }
+    var nameKey = normJinxId(out.name);
+    out.candidates = (nameKey && index.byName[nameKey]) || [];
+    out.guessed = out.candidates.length > 1 && hit === nameKey;
+    return out;
+  }
+
   function findScriptJinxes(chars) {
     var byId = {};
     chars.forEach(function (c) {
       [slugId(c.name), normJinxId(c.jsonId), (c.slug || '').replace(/-/g, '')]
         .forEach(function (id) { if (id) byId[id] = c; });
     });
+    // Set-qualified keys second, and only where nothing claims them, so a
+    // `{name}_{set}` jinx id finds the character from THAT set (see
+    // jinxQualKeys) without ever displacing a plain name or identity.
+    chars.forEach(function (c) {
+      jinxQualKeys(c).forEach(function (id) { if (!byId[id]) byId[id] = c; });
+    });
     var out = [], seen = {};
     chars.forEach(function (c) {
       (c.jinxes || []).forEach(function (j) {
         // An entry written by the jinx picker names its target outright; the
         // older ones have to be matched by id or by name.
-        var target = (j.slug && byId[normJinxId(j.slug)]) ||
-          byId[normJinxId(j.id || slugId(j.name || ''))];
+        var target = j.slug && byId[normJinxId(j.slug)];
+        if (!target) {
+          var ks = jinxLookupKeys(j, c);
+          for (var ki = 0; ki < ks.length && !target; ki++) target = byId[ks[ki]];
+        }
         if (!target || target === c) return;
         var text = j.text || j.reason || '';
         var key = [c.slug || c.name, target.slug || target.name].sort().join('|') + '|' + text;
@@ -564,10 +755,34 @@
       : ((typeof window !== 'undefined' && window.LINK_ROOT) || '');
     // The inline text helpers build links too (see R() above), and in the
     // Worker this argument is the only place the prefix exists.
-    var prevRoot = curRoot;
+    var prevRoot = curRoot, prevHost = curHost;
     curRoot = root;
+    // The page being rendered, so its jinx box can break a name tie in favour
+    // of its own script or collection (see jinxLookupKeys). Scoped and
+    // restored exactly like curRoot, so nothing leaks between renders.
+    curHost = d || null;
+    setReminderTokens(d);
     try { return characterBody(d, artSrc, root); }
-    finally { curRoot = prevRoot; }
+    finally { curRoot = prevRoot; curHost = prevHost; setReminderTokens(null); }
+  }
+
+  /* This character's own reminder tokens, handed to the text engine for the
+     duration of the render. "Place the [[Drunk]] reminder token on them" was
+     rendering a link to the official Drunk, because [[Name]] resolves an
+     official character before anything else and Drunk is one — while the
+     writer plainly meant the token, which this character's own `reminders`
+     list names. So a name the character carries a token for wins, and only on
+     that character's page. Cleared after the render, so the next page starts
+     from nothing. */
+  function setReminderTokens(d) {
+    var W = engine();
+    if (!W || !W.setReminderTokens) return;
+    if (!d) return W.setReminderTokens(null);
+    var list = [].concat(
+      Array.isArray(d.reminders) ? d.reminders : [],
+      Array.isArray(d.remindersGlobal) ? d.remindersGlobal : []
+    );
+    W.setReminderTokens(list);
   }
 
   function characterBody(d, artSrc, root) {
@@ -921,6 +1136,10 @@
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
     window.normJinxId = normJinxId;
+    window.jinxQualKeys = jinxQualKeys;
+    window.jinxLookupKeys = jinxLookupKeys;
+    window.jinxCharIndex = jinxCharIndex;
+    window.jinxTargetCheck = jinxTargetCheck;
     window.setOfficialIconUrls = setOfficialIconUrls;
     window.setOfficialNames = setOfficialNames;
     window.setWikiChars = setWikiChars;
@@ -942,6 +1161,9 @@
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
+      jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,
+      jinxCharIndex: jinxCharIndex, jinxTargetCheck: jinxTargetCheck,
+      charSetKeys: charSetKeys,
       setOfficialIconUrls: setOfficialIconUrls, setWikiChars: setWikiChars,
       setOfficialNames: setOfficialNames,
       setCreators: setCreators, setCurataMark: setCurataMark,

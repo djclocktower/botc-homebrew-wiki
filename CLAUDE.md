@@ -152,6 +152,18 @@ assets/
   official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
                        base-game layer on /jinxes. Generated, partial, with a
                        `source` field inside; same treatment as night-order.json.
+  suggest.js           mountSuggest(input, {source}): type-ahead on a plain text
+                       field. The admin dashboard mounts it on EVERY box that
+                       wants a slug, a username, a creator or a tag, so
+                       moderation stops being a matter of typing a slug from
+                       memory. Deliberately not a <datalist>: these fields post
+                       a slug while the thing a person recalls is the name, and
+                       the filter here reads both. Nothing is forced — text
+                       that matches nothing stands, because the page may be a
+                       minute old. Shares its drop-down skin with jinx-picker
+                       (.sg-*/.jx-* in styles.css); its list hangs off <body>
+                       at a fixed position so mounting it cannot move the flex
+                       row the field sits in.
   jinx-picker.js       The "Jinxed character" search box: one combobox over the
                        official roster AND this wiki's, mounted on a field with
                        mountJinxPicker(). Records WHICH character was picked
@@ -551,14 +563,32 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
                        token-worker.js, assets/tokens/manifest.json versioning)
-mass-upload.html       Bulk import from official-schema JSON
+mass-upload.html       Bulk import from official-schema JSON. Warns before it
+                       writes when a jinx in the file names a character more
+                       than one page here shares a name with, says which page
+                       it will land on and who else it could have been, and
+                       follows the "Appears in" box as it is typed — filling
+                       that in is what settles most of them (see "Warning
+                       about a jinx before it is written" below).
 bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
                        choose what becomes what, and the whole thing lands: every
                        character with its art and its almanac entry, the jinxes,
                        the night order and a script or collection page. The page
                        is the form and the runner; assets/bloodstar.js is the
-                       mapping and worker/bloodstar.js the reading.
+                       mapping and worker/bloodstar.js the reading. Its jinx
+                       warning redraws with the plan: a jinx whose other end you
+                       are LEAVING OUT can only be stored by name (the same
+                       section below), and one whose ends both stay out cannot
+                       be stored at all.
 login.html, account.html, dashboard.html, reset-password.html
+                       Every text box on the dashboard is a type-ahead
+                       (assets/suggest.js): page slugs follow the type dropdown
+                       beside them, usernames come from
+                       GET /api/admin/user-names (the users panel's own feed
+                       counts each account's pages and stops at the 200
+                       newest, so it cannot serve this), creators from
+                       /api/creators, tags from tags.js. Each source is fetched
+                       once, on the first keystroke in a field that needs it.
                        account.html shows the newest 10 of Your Recent Edits
                        behind a "Show all N edits" toggle; a busy month used
                        to put fifty lines between the top of the page and the
@@ -742,7 +772,9 @@ sits on the page's purple, which is the background the card exists to solve
 for. The two editors do not agree on element ids (`sb-*` vs `pc-*`), so the
 previews are found by **`data-th-preview="header|logo"`** rather than a list of
 ids the widget would have to keep in step. Seeded collections have `owner_id NULL` — admins
-assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit.
+assign an owner via the dashboard (`/api/admin/assign-owner`) so a user can edit,
+and **that assignment carries the set's characters with it** (see "Assigning an
+owner" below).
 
 ## Night order (script pages)
 
@@ -1019,10 +1051,22 @@ Every prose field on a `/c/` page goes through the wiki's text engine, in a
 through `inlineLinks()` in render.js. Three marks and no others:
 
 - `[label](url)` — a link, href-whitelisted by `safeHref()` like everywhere else.
-- `[[Character Name]]` — **the official wiki** if it is one of the game's own
-  characters, then this wiki's page for it, then the reminder-token pill these
-  fields have always rendered `[[TOKEN]]` as. So the mark is a superset of the
-  old `tok()`, not a replacement for it.
+- `[[Character Name]]` — **one of this character's own reminder tokens** if the
+  name is on its `reminders` / `remindersGlobal` list, then **the official
+  wiki** if it is one of the game's own characters, then this wiki's page for
+  it, then the reminder-token pill these fields have always rendered
+  `[[TOKEN]]` as. So the mark is a superset of the old `tok()`, not a
+  replacement for it.
+
+  **The reminder-token step is why "Place the `[[Drunk]]` reminder token on
+  them" is a token and not a link.** Official-first is right for a name a
+  writer typed loose, and wrong the moment the character itself carries a
+  token of that name — a Drunk token is not the Drunk. Nothing else moves:
+  only a name this character has a token for wins, and only on its own page.
+  `WikiRender.setReminderTokens()` is the registry, set and **cleared** by
+  `renderCharacter()` in the same frame `curRoot` uses, so a token on one page
+  can never leak into the next render in a reused isolate. A writer who does
+  mean the character says so with `[Drunk](https://wiki.bloodontheclocktower.com/Drunk)`.
 
   Official beating this wiki is the same order and the same reasoning as
   `resolveJinxTarget()` (gotcha 8): there is more than one homebrew
@@ -1274,6 +1318,32 @@ caps and whitelists the fields on save.
   base game's own rules would drown what this wiki made. Served in
   `/api/jinxes` as `baseEdges`, drawn hidden so switching them on does not
   move the layout.
+### Warning about a jinx before it is written
+
+The set rule (gotcha 8) settles a name clash whenever there is anything to
+settle it with. An import is the one moment somebody can fix the cases where
+there is not, so both importers say so before they write:
+
+- **`Render.jinxCharIndex(chars, row)`** is the one keyed index — identities
+  and names, then the set-qualified keys, each claiming only what is free. It
+  replaced three hand-rolled copies (the Worker's jinx index and both character
+  editors) and keeps `byName`, EVERY page of a given name, which is what turns
+  "resolve this" into "is this ambiguous".
+- **`Render.jinxTargetCheck(j, host, index)`** answers with its working:
+  `picked`, `candidates`, and `guessed` — true only when the pick came down to
+  the bare name while more than one page answers to it. An explicit slug, an
+  official character (official wins wherever the page is drawn, so both
+  importers load `roles.json` for this) and a set that settled it are all
+  `guessed: false`. **Silence is the normal answer** — a re-import of The
+  Bootlegger's Anthology reports 3 of its 114 jinxes with "Appears in" empty
+  and none at all with it filled in. A warning that fires on every import is
+  one nobody reads.
+- **`BI.resolveJinxes()` records its own risks** as `nameOnly[]` rather than
+  the page working them out again, and `BI.previewSlugs(planned)` lets
+  /bloodstar ask what the run WOULD do before a single identity has been
+  resolved. The warning therefore comes off the code that does the writing and
+  cannot drift from it.
+
 - **`GET /api/admin/jinx-health`** counts jinxes that point at nothing (a
   typo, or a bulk import naming a character never brought over) and pairs
   where both characters wrote a rule, since only one wording is ever shown and the
@@ -1856,10 +1926,48 @@ character. It skips a page that already has tags and a page whose owner
 already chose a sharing mode — it must never quietly NARROW an open page to
 tags-only — and it is re-runnable and undoable one page at a time from the
 editor. Dashboard card: "Open tag editing". `GET /api/admin/pages` also takes
-`?collection={id}`, resolved through `resolveCollectionMembers()` — combined
-with `?owner=none` and the `assign-owner` bulk action, that is how a whole
-collection's unowned pages get handed to an account. Curata lifts a page out of Partial, so
+`?collection={id}`, resolved through `resolveCollectionMembers()`; with
+`?owner=none` and the `assign-owner` bulk action that is how a whole
+collection's pages were handed to an account before the assignment did it by
+itself, and it is still the way to move pages somebody already owns (see
+"Assigning an owner"). Curata lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
+
+## Assigning an owner (and what comes with it)
+
+`POST /api/admin/assign-owner` and the dashboard's `assign-owner` bulk action
+both go through **`waterfallOwner()`** in worker.js: assigning a **script or a
+collection** also hands over the character pages on it. Handing somebody a set
+and not its pages hands them the half that is not the work, and the wiki was
+seeded with whole collections whose characters all arrived unowned.
+
+- **It claims the unowned pages and the ADMIN-owned ones, and nothing else.**
+  The second half is what makes it useful rather than theoretical: most of this
+  wiki arrived by bulk import and the import account owns it, so an
+  unowned-only rule moved nothing at all on the sets people actually hand over
+  — the 50 Festival of Lanterns characters were every one of them owned by
+  `admin`. An admin's ownership of a character is almost always that artifact,
+  and an admin can take it back with the same click. `adminUserIds()` is the
+  lookup, shared with the roster scan's per-request cache; if it fails the
+  claim falls back to unowned-only, which is the safe half.
+- **A page owned by an ordinary member is never touched.** A collection can
+  list anybody's characters (`include[]` takes any slug on the wiki), so a rule
+  that reassigned every member would let one admin action move a stranger's
+  pages to another account. Those are counted and reported
+  (`charactersHeld`) instead, and moving them on purpose is still one filter
+  and a bulk action away.
+- **Clearing an owner never cascades**: it would orphan every character of the
+  set, and the reason to clear one is almost always that the parent was
+  assigned wrongly.
+- The roster comes from `rosterCharacterSlugs()`: a script says outright which
+  characters it holds (an `off-` slug is an official character and has no page
+  here), a collection goes through `resolveCollectionMembers()` rather than a
+  second copy of the membership rule. Deleted pages are skipped, drafts are
+  not — a draft still belongs to the set. Capped at `OWNER_WATERFALL_MAX`
+  (1000) and re-runnable, since it only ever looks for unowned pages.
+- Both responses carry `characters` and `charactersHeld`, and the dashboard
+  prints them ("+112 character pages, 3 left with their owners"). The count is
+  the only way to see it happened.
 
 ## Frontend conventions
 
@@ -1952,6 +2060,40 @@ this is how admin-written pages stop being hidden for want of a tag.
    deliberately beats this wiki: 291 of the ~320 jinxes on the site name an
    official character, and a homebrew page sharing a name (there is more than
    one "Sculptor") must not steal their link. Don't rename icon files.
+   **Name clashes are settled by the SET.** 166 names on this wiki belong to
+   more than one page — there are four Wardens and two Changelings — and
+   matching a jinx on the bare name landed whichever page was registered
+   first, so the Huli Jing's jinx with its own set's Changeling pointed at The
+   Potato Patch's, art and all. Two pieces:
+
+   - **`Render.jinxQualKeys()`** gives every character `name + set` keys on
+     top of its identity and its name — one for each set it is filed under
+     (its address's set segment, its `appearsIn`, any collection claiming it)
+     — plus a `jsonId` that says more than its name and identity already do
+     (`Sister_Circus_Music` for the page now called Worker). Registered in a
+     **second pass**, only where nothing already claims the key, by
+     `buildJinxIndex()` in worker.js, by `findScriptJinxes()` and by both
+     character editors.
+   - **`Render.jinxLookupKeys(j, host)`** is the order every consumer asks in:
+     the id as written (an import's `changeling_the_bootleggers_anthology`),
+     then the name qualified by each set the HOST page — the character whose
+     jinx it is — is filed under, then the bare name. The host step is what
+     catches the rest: an import's qualifier is the project's own name and
+     does not always survive as the set name here
+     (`mycologist_hblreleased` on a page filed under Homebrews by Luis), and
+     plenty of rows carry nothing but a name. `renderCharacter()` sets the
+     host for the length of a render (`curHost`, scoped like `curRoot`), so
+     the `/c/` jinx box needs no argument.
+
+   It is only ever a tie-break: a name one page answers to resolves exactly as
+   it always did, and an explicit `slug` from the picker skips all of it. Two
+   pages of the same name in the SAME set still fall to first-registered,
+   which is all there is left to tell them apart by. On the live corpus this
+   moves 7 of 680 rendered jinxes, every one of them onto the host's own set,
+   and takes the jinx index from 32 resolved edges to 73 — those 41 are jinxes
+   that named a wiki character by a qualified id, which used to resolve to
+   nothing and so were missing from mirroring and from the `/jinxes` map
+   entirely.
 9. `run_worker_first` now includes `/news/*` but **not** `/news` — the index is
    the static `news.html` and must stay that way, or the Worker swallows it.
 10. Announcements, news bodies, wiki pages and custom boxes all go through

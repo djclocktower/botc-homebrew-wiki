@@ -60,6 +60,31 @@
   function setCharLinks(map) { charLinks = map || {}; }
   function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 
+  /* The reminder tokens of the character whose page is being rendered, so
+     [[Drunk]] in its How to Run is the DRUNK TOKEN it plainly means and not a
+     link to the official Drunk. This is the one thing that can outrank a
+     character link, and only because the character itself says so: the names
+     come from its own `reminders` / `remindersGlobal` lists, which is exactly
+     where a storyteller reads them off. Nothing else is affected — a name the
+     character does not carry a token for still resolves as a link.
+
+     Set for the duration of one character render by render.js and cleared
+     after, the same frame `curRoot` uses, so a token on one page can never
+     leak into the next render in a reused isolate. */
+  var reminderTokens = null;
+  function setReminderTokens(list) {
+    reminderTokens = null;
+    if (!list || !list.length) return;
+    reminderTokens = {};
+    for (var i = 0; i < list.length; i++) {
+      var k = normName(list[i]);
+      if (k) reminderTokens[k] = 1;
+    }
+  }
+  function isReminderToken(key) {
+    return !!(reminderTokens && key && reminderTokens[key]);
+  }
+
   /* The official roster, keyed the same way, so [[Imp]] goes to the official
      wiki rather than to a homebrew page that happens to share the name.
 
@@ -222,13 +247,15 @@
         '>' + label + '</a>';
     });
 
-    // [[Character Name]] / [[Character Name|label]] — the official wiki if it
-    // is one of the game's own characters (see setOfficialNames above), then
-    // this wiki's page if it has one, and otherwise the reminder-token pill
-    // that [[TOKEN]] has always rendered as.
+    // [[Character Name]] / [[Character Name|label]] — one of THIS character's
+    // own reminder tokens first (see setReminderTokens above), then the
+    // official wiki if it is one of the game's own characters (see
+    // setOfficialNames), then this wiki's page if it has one, and otherwise
+    // the reminder-token pill that [[TOKEN]] has always rendered as.
     out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
       var key = normName(target);
       var shown = (label != null && label !== '') ? label : target;
+      if (isReminderToken(key)) return '<span class="tok">' + shown + '</span>';
       var official = officialNames[key];
       if (official) {
         return '<a class="wiki-charlink wiki-charlink-off" href="' +
@@ -606,6 +633,7 @@
 
   var API = {
     setCharLinks: setCharLinks, setOfficialNames: setOfficialNames,
+    setReminderTokens: setReminderTokens,
     esc: esc, kebab: kebab, safeHref: safeHref, safeImg: safeImg,
     inlineFormat: inlineFormat, plainText: plainText,
     renderBody: renderBody, tocHTML: tocHTML,

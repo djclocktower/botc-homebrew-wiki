@@ -152,6 +152,7 @@
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
  *   POST /api/admin/purge     -> admin: permanently delete a soft-deleted page
  *   GET  /api/admin/users     -> user list (?q= search) for the users panel
+ *   GET  /api/admin/user-names -> every handle, for the dashboard type-ahead
  *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link for a user
  *   GET  /api/admin/messages  -> contact-form inbox (?status=open|all)
  *   POST /api/admin/message   -> reply to / resolve / reopen / delete an inbox
@@ -2005,6 +2006,121 @@ async function waterfallEditor(env, sess, charRow) {
   return !!(await waterfallParent(env, sess, charRow));
 }
 
+/* ---- assigning a script or collection carries its characters with it ----
+
+   Handing somebody a set and not its pages hands them the half that is not
+   the work: the roster IS the work, and the wiki was seeded with whole
+   collections whose characters all came across unowned. The dashboard's way
+   of doing this was to filter the page list to "this collection, owner none"
+   and bulk-assign, which is two tools and a step everybody forgets.
+
+   It claims two kinds of page and no others: one that belongs to NOBODY, and
+   one owned by an ADMIN account. The second is what makes this useful rather
+   than theoretical — most of this wiki arrived by bulk import and the import
+   account owns it, so "unowned only" moved nothing at all on the sets people
+   actually want to hand over (the 50 Festival of Lanterns characters were all
+   owned by `admin`). An admin's ownership of a character is almost always
+   that artifact, and an admin can take it back with the same click.
+
+   A page owned by an ordinary member is never touched. A collection can list
+   anybody's characters (`include[]` takes any slug on the wiki), so a rule
+   that reassigned every member would let one admin action move a stranger's
+   pages to another account — which is not an ownership question, it is taking
+   somebody's work away. Those are counted and reported instead (`held`), and
+   moving them on purpose is still one filter and a bulk action away.
+
+   Clearing an owner never cascades either: it would orphan every character of
+   the set, and the reason to clear one is almost always that the parent was
+   assigned wrongly. */
+const OWNER_WATERFALL_MAX = 1000;
+
+/* The characters a script or collection holds. A script says so outright (an
+   `off-` slug is an official character and has no page here); a collection is
+   resolved by the one membership rule rather than a second copy of it. */
+async function rosterCharacterSlugs(env, type, row, cache) {
+  if (type === 'script') {
+    const d = parseData(row);
+    return (Array.isArray(d.characters) ? d.characters : [])
+      .map(x => String(x || '')).filter(x => x && !x.startsWith('off-'));
+  }
+  if (type === 'collection') {
+    // Membership is matched, not stored, so it needs every character — but
+    // only two columns, and only once per request: a bulk assignment over
+    // fifty collections would otherwise read the table fifty times.
+    if (!cache || !cache.chars) {
+      const { results } = await env.DB.prepare(
+        "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+      ).all().catch(() => ({ results: [] }));
+      if (!cache) return PageRender.resolveCollectionMembers(parseData(row), results || [])
+        .map(c => c.slug).filter(Boolean);
+      cache.chars = results || [];
+    }
+    return PageRender.resolveCollectionMembers(parseData(row), cache.chars)
+      .map(c => c.slug).filter(Boolean);
+  }
+  return [];
+}
+
+/* The admin accounts. Shares the per-request cache the roster scan uses, so a
+   bulk assignment asks once. An empty list is the safe answer on failure: the
+   claim then only takes unowned pages. */
+async function adminUserIds(env, cache) {
+  if (cache && cache.admins) return cache.admins;
+  let ids = [];
+  try {
+    const { results } = await env.DB.prepare(
+      'SELECT id FROM users WHERE COALESCE(is_admin,0)=1'
+    ).all();
+    ids = (results || []).map(r => Number(r.id)).filter(Number.isFinite);
+  } catch { ids = []; }
+  if (cache) cache.admins = ids;
+  return ids;
+}
+
+/* Returns {claimed, held}: how many characters this assignment picked up, and
+   how many were left with the members who own them. */
+async function waterfallOwner(env, sess, type, row, ownerId, cache) {
+  const out = { claimed: 0, held: 0 };
+  if (ownerId == null) return out;
+  if (type !== 'script' && type !== 'collection') return out;
+  const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
+  if (!slugs.length) return out;
+  // The admin accounts, whose ownership of a character page is the bulk
+  // import's leftovers. Read once (there are a handful), and if the read fails
+  // the claim falls back to unowned-only — the safe half of the rule.
+  const admins = await adminUserIds(env, cache);
+  const adminQ = admins.length ? admins.map(() => '?').join(',') : '';
+  for (let i = 0; i < slugs.length; i += 100) {
+    const chunk = slugs.slice(i, i + 100);
+    const q = chunk.map(() => '?').join(',');
+    try {
+      // Counted BEFORE the update, or the ones just claimed would count as
+      // somebody else's. "Held" is a page belonging to a member: an admin's is
+      // about to be claimed, so it is not left behind and must not be reported
+      // as though it were.
+      const held = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM characters
+         WHERE slug IN (${q}) AND status IS NOT 'deleted'
+           AND owner_id IS NOT NULL AND owner_id != ?` +
+        (adminQ ? ` AND owner_id NOT IN (${adminQ})` : '')
+      ).bind(...chunk, ownerId, ...admins).first();
+      out.held += (held && held.n) || 0;
+      const res = await env.DB.prepare(
+        `UPDATE characters SET owner_id=?, updated_at=datetime('now')
+         WHERE slug IN (${q}) AND status IS NOT 'deleted'
+           AND (owner_id IS NULL` + (adminQ ? ` OR owner_id IN (${adminQ})` : '') + `)`
+      ).bind(ownerId, ...chunk, ...admins).run();
+      out.claimed += (res && res.meta && res.meta.changes) || 0;
+    } catch { /* one bad chunk must not lose the assignment itself */ }
+  }
+  if (out.claimed) {
+    await logActivity(env, sess, 'assign-owner', 'character', null,
+      out.claimed + ' character page' + (out.claimed === 1 ? '' : 's') +
+      ' with ' + type + ' ' + row.slug);
+  }
+  return out;
+}
+
 /* A ceiling the owner's own saves never needed. A page is a few kilobytes of
    text, so nothing legitimate comes near this; it stops somebody parking a
    megabyte in a row they do not own. */
@@ -3542,23 +3658,20 @@ function mergeMirroredJinxes(d, slug, jx) {
 // Pure, so it can be reasoned about (and tested) without a database.
 // `chars` -> { chars: {key: row}, bySlug: {slug: [edge]}, edges: [edge] }.
 function buildJinxIndex(chars) {
-  const byKey = {};                 // normJinxId(slug|name) -> compact row
+  // Keyed by identity, by name and by set (Render.jinxCharIndex owns that
+  // order — the set-qualified keys are what tells two homebrew characters of
+  // the same name apart, and they claim only what is still free). The compact
+  // row is all a jinx list needs; carrying the whole character would put the
+  // entire corpus in the cache entry.
   const bySlugRow = {};
-  for (const c of chars || []) {
-    if (!c || !c.slug) continue;
-    const row = {
-      slug: c.slug, name: c.name || c.slug, team: c.team || '',
-      art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
-      creator: c.creator || '',
-      // The address. `slug` stays the identity, which is what edges and
-      // the mirroring are keyed on; this is only ever used to build a link.
-      page: typeof c.page === 'string' ? c.page : ''
-    };
-    bySlugRow[c.slug] = row;
-    for (const k of [Render.normJinxId(c.slug), Render.normJinxId(c.name)]) {
-      if (k && !byKey[k]) byKey[k] = row;
-    }
-  }
+  const { byKey } = Render.jinxCharIndex(chars, c => (bySlugRow[c.slug] = {
+    slug: c.slug, name: c.name || c.slug, team: c.team || '',
+    art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
+    creator: c.creator || '',
+    // The address. `slug` stays the identity, which is what edges and
+    // the mirroring are keyed on; this is only ever used to build a link.
+    page: typeof c.page === 'string' ? c.page : ''
+  }));
 
   const edges = [];
   const bySlug = {};                // slug -> edges where it is the TARGET
@@ -3567,9 +3680,20 @@ function buildJinxIndex(chars) {
     if (!c || !c.slug || !Array.isArray(c.jinxes)) continue;
     for (const j of c.jinxes) {
       if (!j || !(j.name || j.id || j.slug)) continue;
-      const key = Render.normJinxId(j.slug || '') && byKey[Render.normJinxId(j.slug)]
-        ? Render.normJinxId(j.slug)
-        : Render.normJinxId(j.id || Render.slugId(j.name || ''));
+      // The keys this entry names its target by, most specific first: the id
+      // as written, then the name qualified by a set THIS character is filed
+      // under, then the bare name (Render.jinxLookupKeys). An explicit slug
+      // from the picker skips all of it.
+      const picked = Render.normJinxId(j.slug || '');
+      let key = picked && byKey[picked] ? picked : '';
+      if (!key) {
+        for (const k of Render.jinxLookupKeys(j, c)) {
+          if (byKey[k]) { key = k; break; }
+        }
+      }
+      // Nothing on the wiki answers to it (an official character, a draft, a
+      // typo): the edge still records what it was pointing at.
+      if (!key) key = Render.normJinxId(j.id || Render.slugId(j.name || ''));
       const target = byKey[key];
       // A page jinxed with itself is a data slip, not a relationship.
       if (target && target.slug === c.slug) continue;
@@ -6399,6 +6523,21 @@ export default {
       return jsonResponse({ users: results || [], me: sess.userId });
     }
 
+    // ---- every handle, for the dashboard's type-ahead ----
+    // /api/admin/users cannot serve this: it counts each account's pages with
+    // three subqueries per row and stops at the 200 newest, so the accounts an
+    // admin most often reaches for — the ones that have been here longest —
+    // are exactly the ones missing from it. This is the two columns a
+    // suggestion list shows and nothing else.
+    if (method === 'GET' && path === '/api/admin/user-names') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      const { results } = await env.DB.prepare(
+        'SELECT username, display_name FROM users ORDER BY username LIMIT 3000'
+      ).all().catch(() => ({ results: [] }));
+      return jsonResponse({ users: results || [] });
+    }
+
     // ---------- ADMIN: CONTACT-FORM INBOX ----------
     if (method === 'GET' && path === '/api/admin/messages') {
       const sess = await adminSession(env, request);
@@ -8415,7 +8554,13 @@ export default {
         await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
           .bind(ownerId, row.slug).run();
         await logActivity(env, sess, 'assign-owner', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, owner: uname || null });
+        // A script or collection carries its characters with it, unless
+        // somebody already owns them (see waterfallOwner).
+        const spread = await waterfallOwner(env, sess, type, row, ownerId);
+        return jsonResponse({
+          ok: true, slug: row.slug, owner: uname || null,
+          characters: spread.claimed, charactersHeld: spread.held
+        });
       }
 
       // ---- admin: wiki lock ----
@@ -9824,7 +9969,10 @@ export default {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           adminName = u ? u.username : null;
         } catch { /* non-fatal */ }
-        let done = 0;
+        let done = 0, claimed = 0, held = 0;
+        // One read of the character table for the whole batch (see
+        // rosterCharacterSlugs), however many collections it assigns.
+        const rosterCache = {};
         const failed = [];
         for (const slug of slugs) {
           try {
@@ -9851,6 +9999,11 @@ export default {
             } else if (action === 'assign-owner' || action === 'clear-owner') {
               await env.DB.prepare(`UPDATE ${t.table} SET owner_id=?, updated_at=datetime('now') WHERE slug=?`)
                 .bind(action === 'assign-owner' ? ownerId : null, row.slug).run();
+              if (action === 'assign-owner') {
+                const spread = await waterfallOwner(env, sess, type, row, ownerId, rosterCache);
+                claimed += spread.claimed;
+                held += spread.held;
+              }
             } else if (action === 'curata' || action === 'uncurata') {
               const on = action === 'curata';
               const d = parseData(row);
@@ -9881,7 +10034,7 @@ export default {
           } catch { failed.push(slug); }
         }
         await logActivity(env, sess, 'bulk-' + action, type, null, done + ' page' + (done === 1 ? '' : 's'));
-        return jsonResponse({ ok: true, done, failed });
+        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held });
       }
 
       return jsonResponse({ error: 'Unknown endpoint' }, { status: 404 });

@@ -215,6 +215,7 @@
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
             <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
             <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp</li>
           </ul>
@@ -444,15 +445,13 @@
     // its art and links to /c/ instead of falling back to plain text.
     fetch(SITE_ROOT + 'characters.json?fields=card').then(function (r) { return r.json(); })
       .then(function (list) {
-        var w = {};
-        (list || []).forEach(function (c) {
-          if (!c || !c.slug) return;
-          var row = { slug: c.slug, name: c.name, art: c.art, image: c.image, team: c.team };
-          [window.normJinxId(c.slug), window.normJinxId(c.name)].forEach(function (k) {
-            if (k && !w[k]) w[k] = row;
-          });
-        });
-        window.setWikiChars(w);
+        // One keying rule for every jinx lookup, shared with the Worker's own
+        // index: identities and names first, then the set-qualified keys
+        // (window.jinxCharIndex owns the order).
+        window.setWikiChars(window.jinxCharIndex(list, function (c) {
+          return { slug: c.slug, name: c.name, art: c.art, image: c.image,
+                   team: c.team, page: c.page };
+        }).byKey);
         // [[Character Name]] in the almanac text becomes a real link on the
         // published page, so the preview needs the same name -> address map
         // the Worker builds from D1. It rides this fetch rather than making
