@@ -148,7 +148,20 @@ assets/
                        prose falls back to tok()), never raw.
                        Also owns buildCreditsFabled() — the botchomebrew.wiki
                        credits Fabled the Script Builder appends to its exports
-                       (see script.html below).
+                       (see script.html below) — and artVersions(), the single
+                       answer to "what icons does this character have" (see
+                       "A character's three icons" below).
+  art-labels.js        Names the three art slots for the team being written:
+                       a traveller's are its unaligned, good and evil tokens,
+                       and slot three is drawn for a traveller alone. Mounted
+                       by create.html AND edit.html so the two cannot drift,
+                       and NOT part of redesign-create.js, whose contract is
+                       layout — a field labelled wrongly is worse than a field
+                       laid out plainly. Exports window.refreshArtLabels(),
+                       which edit.html's populateForm has to call: it sets
+                       #team by assigning .value, which fires no event, so a
+                       listener alone leaves an existing traveller's slots
+                       reading "Alternate art".
   official-jinxes.json Jinxes between two OFFICIAL characters, for the opt-in
                        base-game layer on /jinxes. Generated, partial, with a
                        `source` field inside; same treatment as night-order.json.
@@ -328,7 +341,7 @@ assets/
   redesign-create.css/.js  The shared layout of the two character editors
                        (create.html + edit.html). The JS groups the flat field
                        run into Basics / The Page / Tags sections, folds credits,
-                       alt art, jinxes, sidebar boxes and custom JSON into an
+                       jinxes, sidebar boxes and custom JSON into an
                        "Advanced Options" panel, and puts the save buttons in a
                        sticky bar; the CSS is scoped to html.create-redesign,
                        which the JS adds only after it has actually restructured
@@ -1083,6 +1096,19 @@ through `inlineLinks()` in render.js. Three marks and no others:
   same two under the game's names) — the character name coloured the way the
   official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
   `.wiki-blue` in styles.css.
+- `{{drop|T}}` — the almanac drop cap: one big initial to open a paragraph.
+  **Typed, never automatic** — which paragraphs get one is a writing decision,
+  and a rule that capitalised every lede on the wiki would be a redesign of
+  600 pages nobody asked for. The body is **one character**, and that is
+  load-bearing: the colour pass consumes its own braces, so a permissive body
+  running after it would wrap a whole phrase — rendered HTML included — inside
+  the drop cap. `.dropcap` in styles.css **floats only inside a `<p>`**; in an
+  `<li>` a float taller than its line box escapes into the *next* bullet, and
+  `.ex` / `.callout` / `.quote` are centred italic, so those all get a large
+  inline capital instead. `DROP_RE` is applied **before** `COLOR_RE` in both
+  `inlineFormat()` and `plainText()`, which is what makes `{{red|{{drop|T}}}}`
+  a red initial; the other nesting can never work, since neither body admits a
+  brace.
 
 **The marks combine**, which is why the colour mark is applied *last*:
 `{{red|[[Imp]]}}` is a red link to the Imp, `{{blue|[a rule](url)}}` a blue one
@@ -1126,12 +1152,94 @@ Two fields that DO take marks still leave, and both go through
   for the official-schema JSON box. The app renders no markup.
 - The `<meta name="description">` on the `/c/` page, which falls back to the
   `lede`.
+- The **Featured Character** card on `index.html`, which `esc()`s the `lede`
+  into a strip of markup with no engine behind it. It had no `plainText()`
+  call for a year and printed `{{red|Imp}}`'s braces on the homepage — the one
+  place the invariant was quietly false. `index.html` already loads
+  `render-wiki.js` (for announcements), so the fix was the call, not the
+  script tag. **Any new surface that prints `lede`, `quote` or another
+  marked field without the engine needs the same call.**
 
 Both editors carry a `.fmt-help` callout beside the Examples box naming the
 marks (create.html and edit.html are the same form — change one, change both),
 and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
+
+## A character's three icons (and traveller good/evil art)
+
+The official script schema (`ThePandemoniumInstitute/botc-release`) gives
+`image` **one to three entries**, and what each position means depends on the
+team:
+
+```
+non-traveller   [regular, flipped]
+traveller       [unaligned, good, evil]
+```
+
+So the wiki's art slots **are** those positions:
+
+| slot | fields | index | non-traveller | traveller |
+|---|---|---|---|---|
+| 1 | `art` / `image` | 0 | regular | **unaligned** |
+| 2 | `artAlt` / `imageAlt` | 1 | flipped | **good** |
+| 3 | `artAlt2` / `imageAlt2` | 2 | — | **evil** |
+
+Each slot has a relative path (an R2/repo file under `/assets/`) **and** an
+absolute URL, and either can be the only one present: bulk imports write
+absolute URLs for art hosted elsewhere, and older rows carry the whole thing
+as an `image` array with no `art*` fields at all. R2 keys are
+`art/{identity}.png`, `art/{identity}-alt.png`, `art/{identity}-alt2.png`.
+Nothing migrated — `artAlt` has always meant "the second entry".
+
+**`Render.artVersions(d, root)` is the single answer** to "what icons does
+this character have", asked by the `/c/` emblem, by `buildSchema()` and by the
+Token Tool. They each resolved it their own way before and disagreed in both
+directions: a row with `artAlt` and no `imageAlt` swapped on the page but
+exported one icon, and a row carrying `image:[a,b]` with no `art*` fields
+exported both while the page showed no second version at all.
+
+Things worth knowing before touching any of it:
+
+- **A traveller carrying evil art but no good art repeats its unaligned icon
+  into the good slot** — `[unaligned, unaligned, evil]`. The app reads
+  position one as GOOD, so `[unaligned, evil]` would render the evil token as
+  the good one and leave it with no evil token. That repeat is deliberate and
+  is the one export path that must **not** be de-duplicated.
+- **Slot three is drawn for travellers only** (`assets/art-labels.js`), since
+  nobody else has a third entry — but it is *hidden*, never cleared. Retyping
+  a character off Traveller must not silently drop art somebody uploaded.
+- **`uploadSlotDenied()` strips a trailing `-alt` / `-alt2`** when the key
+  matched no row, so the alternates inherit the character's own permission
+  check. Without it those slots had no row behind them and only the R2
+  "somebody else's file" catch-all guarding them, so an approved editor — or
+  an owner assigned through the dashboard, whose R2 objects still carry the
+  importing admin as `owner` — could replace a character's main art and got a
+  403 on its alternates. A single hardcoded suffix, **never** the
+  longest-prefix match `pages/` uses: character art is uploaded *before* the
+  row exists, so a prefix rule would refuse every new character whose name
+  merely starts with an existing one's.
+- **A rename moves whatever the row actually names**, not just the two keys
+  the editors write (`v.startsWith('art/' + from + '-')`). `retargetArtPaths`
+  rewrites `art/{from}` before any `-` or `.`, so a legacy row pointing at
+  `art/vampire-good.png` used to come out of a rename pointing at a file that
+  had never moved.
+- **`artAlt`/`imageAlt`/`artAlt2`/`imageAlt2` stay in the card feed.** The
+  Token Tool reads `characters.json?fields=card` and prints one token per
+  version. `CARD_DROP_FIELDS` used to carry a misspelled `'altArt'` matching
+  no field in the repo, which was the only reason they survived at all.
+- **The Token Tool prints one token per version**, defaulting to good + evil
+  for a traveller that has both and to the primary alone for everyone else.
+  Chips on each set row change it, stored tri-state in `adjState.per[slug].vers`
+  so "switched off" stays distinguishable from "never touched". It needs no
+  Python change: `token-worker.js` writes each art item to `art/{slug}.png` in
+  the Pyodide FS keyed by the item's own `slug`, so a version is just a second
+  entry under `{slug}-alt`. Only the lead payload carries `_rem`, or a
+  traveller prints two of every reminder. Alternate URLs are resolved
+  **strictly and never guessed** — a legacy alt lives at
+  `art/vampire-good.png`, and a wrong path fails *silently* (the worker
+  swallows the fetch error and the Python skips any payload whose file is
+  missing).
 
 ## Character identity vs address (`/c/{set}/{character}`)
 

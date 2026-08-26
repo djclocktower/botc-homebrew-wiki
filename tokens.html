@@ -219,6 +219,18 @@
 }
 .tt-edit-btn:hover { background: rgba(91,31,33,.08); }
 .tt-edited-dot { color: var(--maroon); font-size: .55rem; vertical-align: middle; }
+/* Which of a character's icons to print. A traveller has a good token and an
+   evil one and gets both by default; the chips are how you print just one. */
+.tt-vers { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.tt-ver {
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--card-edge); background: transparent;
+  color: var(--ink); opacity: .6;
+}
+.tt-ver:hover { opacity: .9; }
+.tt-ver.is-on { background: var(--maroon); border-color: var(--maroon); color: #f6efe2; opacity: 1; }
 
 .tt-adj-head {
   display: flex; align-items: center; justify-content: space-between;

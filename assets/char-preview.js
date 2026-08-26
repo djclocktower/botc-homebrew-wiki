@@ -35,6 +35,22 @@
         'if(j){var jb=j.closest(".jinx-drop");var jo=jb.classList.toggle("open");jb.querySelector(".jinx-drop-body").hidden=!jo;}' +
         'var c=e.target.closest&&e.target.closest(".json-copy");' +
         'if(c){var cb=c.closest(".json-box");navigator.clipboard&&navigator.clipboard.writeText(cb.querySelector("code").textContent);}' +
+        /* The icon's other versions — a traveller's good and evil tokens.
+           render.js binds this on the real page's document, which is not
+           this frame's, so without a copy here an author uploading evil art
+           could not see it in the preview at all. Hand-duplicated inside a
+           string, so it has to be changed in both places. */
+        'var vb=e.target.closest&&e.target.closest(".emblem-ver");' +
+        'var em=vb?null:(e.target.closest&&e.target.closest(".emblem.has-alt"));' +
+        'if(em){var g=em.parentNode.querySelector(".emblem-versions");' +
+          'if(g){var bs=g.querySelectorAll(".emblem-ver"),at=0;' +
+          'for(var i=0;i<bs.length;i++)if(bs[i].classList.contains("is-on"))at=i;' +
+          'vb=bs[(at+1)%bs.length];}}' +
+        'if(vb){var gg=vb.parentNode,im=gg.parentNode.querySelector(".emblem");' +
+          'if(im)im.setAttribute("src",vb.getAttribute("data-src")||im.getAttribute("src"));' +
+          'var all=gg.querySelectorAll(".emblem-ver");' +
+          'for(var k=0;k<all.length;k++){var on=all[k]===vb;' +
+          'all[k].classList.toggle("is-on",on);all[k].setAttribute("aria-pressed",on?"true":"false");}}' +
       '});' +
       'window.__cpFit=function(){var e=document.querySelector(".gen-title");if(!e)return;' +
         'e.style.whiteSpace="nowrap";var vw=window.innerWidth||800,m=vw<=420?66:vw<=640?78:144;' +

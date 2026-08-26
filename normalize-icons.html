@@ -155,10 +155,10 @@
       chars.forEach(function(c){
         if (!c || typeof c !== 'object') return;
         var name = c.name || c.slug || 'character';
-        [['art', c.art], ['artAlt', c.artAlt]].forEach(function(pair){
+        [['art', c.art], ['artAlt', c.artAlt], ['artAlt2', c.artAlt2]].forEach(function(pair){
           var field = pair[0], val = pair[1];
           if (!val) return;
-          var label = name + (field === 'artAlt' ? ' (alt art)' : '');
+          var label = name + (field === 'artAlt' ? ' (alt art)' : field === 'artAlt2' ? ' (evil art)' : '');
           if (String(val).indexOf('art/') !== 0) {
             jobs.push({ name: label, skip: 'legacy path "' + val + '" — re-save this character in the editor to standardize it' });
           } else {

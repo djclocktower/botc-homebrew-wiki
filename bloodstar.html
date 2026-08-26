@@ -1043,9 +1043,24 @@
                 return '';   // the page keeps the Bloodstar URL and still shows art
               });
           }
-          return artJob.then(function (artPath) {
+          /* The second icon, copied into its own slot. A character with two
+             is usually a traveller, whose good and evil tokens are both the
+             work — importing one of them is importing half the character. */
+          var artAltJob = Promise.resolve('');
+          if (opts.art && r.entry.imageAlt) {
+            artAltJob = artJob.then(function () {
+              return copyArt(BI.artAltKey(slug), r.entry.imageAlt)
+                .then(function () { return BI.artAltKey(slug); })
+                .catch(function (err) {
+                  if (err && err.rateLimited) throw err;
+                  return '';   // falls back to the Bloodstar URL, as the first does
+                });
+            });
+          }
+          return Promise.all([artJob, artAltJob]).then(function (paths) {
+            var artPath = paths[0], artAltPath = paths[1];
             rowState(at, 'work', 'saving&hellip;');
-            var payload = BI.characterPayload(r.entry, opts, slug, artPath, jinxPlan.byOwner[slug] || []);
+            var payload = BI.characterPayload(r.entry, opts, slug, artPath, jinxPlan.byOwner[slug] || [], artAltPath);
             return post('/api/character', payload).then(function (j) {
               var page = (j && j.page) || ('c/' + slug);
               made.push(slug);

@@ -122,6 +122,88 @@
   function artAbs(c) { return ROOT + artRel(c); }
   function thumbSrc(c) { return c.ext ? (c.image || 'assets/favicon.png') : artRel(c); }
 
+  /* ---- a character's icons, and which of them get printed ----
+     The official schema gives `image` up to three entries, and a traveller's
+     are its unaligned, good and evil tokens (see assets/render.js
+     artVersions). A traveller therefore needs TWO tokens printed, which is
+     what this is for: one payload per version, so the sheet comes out with a
+     good Bureaucrat and an evil one.
+
+     The alternate URLs are resolved strictly and never guessed. artRel above
+     falls back to 'art/{slug}.png' because that IS the wiki's convention for
+     a primary icon; there is no such convention for the others (a legacy row
+     keeps its alt at 'art/vampire-good.png'), and a guessed path fails
+     SILENTLY — the worker swallows a failed fetch and the Python skips any
+     payload whose file is missing, so the reader would get one token and no
+     message. No URL, no version. */
+  var VERSION_DEFS = [
+    { key: 'main', rel: 'art',     abs: 'image',     suffix: '' },
+    { key: 'alt',  rel: 'artAlt',  abs: 'imageAlt',  suffix: '-alt' },
+    { key: 'alt2', rel: 'artAlt2', abs: 'imageAlt2', suffix: '-alt2' }
+  ];
+  var VERSION_LABELS_TRAVELLER = ['Unaligned', 'Good', 'Evil'];
+  var VERSION_LABELS_OTHER = ['Main', 'Alternate', 'Alternate 2'];
+  function isTravellerTeam(t) { return /^travell?er$/i.test(String(t == null ? '' : t)); }
+
+  function charVersions(c) {
+    if (!c) return [];
+    var arr = Array.isArray(c.image) ? c.image : [];
+    var labels = isTravellerTeam(c.team) ? VERSION_LABELS_TRAVELLER : VERSION_LABELS_OTHER;
+    var out = [];
+    for (var i = 0; i < VERSION_DEFS.length; i++) {
+      var d = VERSION_DEFS[i], url = '';
+      if (typeof c[d.rel] === 'string' && c[d.rel]) url = ROOT + 'assets/' + c[d.rel];
+      else if (typeof c[d.abs] === 'string' && c[d.abs]) url = c[d.abs];
+      else if (typeof arr[i] === 'string' && arr[i]) url = arr[i];
+      else if (i === 0) url = c.ext ? (c.image || '') : artAbs(c);
+      if (!url) continue;
+      // The name this version's art is written under in the worker's virtual
+      // FS. Distinct per version, and never a slug the set or charBySlug
+      // knows about — those are the reader's characters, these are files.
+      out.push({ key: d.key, label: labels[i], url: url, fsSlug: c.slug + d.suffix });
+    }
+    return out;
+  }
+
+  /* Whether a version is printed. Tri-state on purpose: `null` means the
+     reader has not said, so the default below decides, and turning one off
+     stays distinguishable from never having touched it. Same shape as
+     remCount above. */
+  function versionOn(sl, key, def) {
+    var p = adjState.per[sl];
+    var v = p && p.vers ? p.vers[key] : null;
+    return v == null ? !!def : !!v;
+  }
+  /* A traveller carrying both alignments defaults to printing those two and
+     not the unaligned icon: good and evil are the tokens that go on the
+     table. Everyone else defaults to their one primary icon, because an
+     "alternate" on a Townsfolk is a flipped-alignment variant nobody asked
+     to print a second copy of. */
+  function defaultVersionOn(c, key) {
+    var keys = {};
+    charVersions(c).forEach(function (v) { keys[v.key] = true; });
+    if (isTravellerTeam(c.team) && keys.alt && keys.alt2) return key !== 'main';
+    return key === 'main';
+  }
+  function printVersions(sl) {
+    var c = charBySlug[sl];
+    if (!c) return [];
+    return charVersions(c).filter(function (v) {
+      return versionOn(sl, v.key, defaultVersionOn(c, v.key));
+    });
+  }
+  // The version a single-token preview shows, and the one that carries the
+  // reminder tokens when several are printed.
+  function leadVersion(sl) {
+    return printVersions(sl)[0] || charVersions(charBySlug[sl])[0] || null;
+  }
+  function setVersionOn(sl, key, on) {
+    var p = perOf(sl);
+    if (!p.vers) p.vers = {};
+    p.vers[key] = !!on;
+    saveAdj();
+  }
+
   /* ---- external (imported-JSON) characters ---- */
   var EXT_KEY = 'botc_token_ext_v1';
   var extArtStatus = {};   // slug -> 'ok' | 'failed'
@@ -291,6 +373,21 @@
       '<span class="tt-step-val">' + val + '</span>' +
       '<button type="button" class="tt-step-up" aria-label="More">+</button></span>';
   }
+  /* Which of a character's icons to print. Only drawn for a character that
+     HAS more than one — for a traveller that is its good and evil tokens,
+     and both are ticked by default because both go on the table. */
+  function versionChipsHTML(c) {
+    var vs = charVersions(c);
+    if (vs.length < 2) return '';
+    return '<span class="tt-vers" role="group" aria-label="Which icons to print">' +
+      vs.map(function (v) {
+        var on = versionOn(c.slug, v.key, defaultVersionOn(c, v.key));
+        return '<button type="button" class="tt-ver' + (on ? ' is-on' : '') +
+          '" data-slug="' + esc(c.slug) + '" data-ver="' + esc(v.key) + '"' +
+          ' aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(v.label) + '</button>';
+      }).join('') + '</span>';
+  }
+
   function renderSet() {
     var box = $('tt-set');
     $('tt-count').textContent = setSlugs.length + ' character' + (setSlugs.length === 1 ? '' : 's');
@@ -309,7 +406,8 @@
         html += '<div class="sb-script-item">' +
           '<img class="sb-script-thumb" src="' + esc(thumbSrc(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
           '<div class="sb-script-info"><span class="sb-script-name">' + esc(c.name) + (edited ? ' <span class="tt-edited-dot" title="Has custom adjustments">&#9679;</span>' : '') + '</span>' +
-          '<span class="sb-script-ability">' + esc(c.ability || '') + '</span></div>' +
+          '<span class="sb-script-ability">' + esc(c.ability || '') + '</span>' +
+          versionChipsHTML(c) + '</div>' +
           stepperHTML('tt-step-char', c.slug, charCount(c.slug)) +
           '<button type="button" class="tt-edit-btn" data-slug="' + esc(c.slug) + '" aria-label="Edit token">&#9998;</button>' +
           '<button type="button" class="sb-script-remove" data-slug="' + esc(c.slug) + '" aria-label="Remove">✕</button>' +
@@ -326,6 +424,15 @@
       if (rm) { removeSlug(rm.dataset.slug); return; }
       var ed = e.target.closest('.tt-edit-btn');
       if (ed) { openEditor(ed.dataset.slug); return; }
+      var vr = e.target.closest('.tt-ver');
+      if (vr) {
+        var von = !vr.classList.contains('is-on');
+        setVersionOn(vr.dataset.slug, vr.dataset.ver, von);
+        vr.classList.toggle('is-on', von);
+        vr.setAttribute('aria-pressed', von ? 'true' : 'false');
+        schedulePreview();
+        return;
+      }
       var up = e.target.closest('.tt-step-up'), dn = e.target.closest('.tt-step-dn');
       if (up || dn) {
         var step = e.target.closest('.tt-step'); var sl = step.dataset.slug;
@@ -893,8 +1000,13 @@
         unknown.push(item.id || item.name || '?'); return;
       }
       if (!item.name) { unknown.push(item.id || '?'); return; }
-      var img = item.image;
-      if (Array.isArray(img)) img = img[0];
+      /* `image` is the official schema's 1-3 icons — for a traveller its
+         unaligned, good and evil tokens. Taking image[0] and dropping the
+         rest is how an imported traveller lost the two versions that are
+         the point of it being a traveller. */
+      var imgs = Array.isArray(item.image) ? item.image : [item.image];
+      var img = imgs[0];
+      function remoteImg(u) { return (typeof u === 'string' && /^https?:\/\//.test(u)) ? u : null; }
       var base = 'ext-' + (norm(item.id || item.name) || 'char'), slug = base, n = 2;
       while (charBySlug[slug] && !charBySlug[slug].ext) { slug = base + '-' + (n++); }
       ext.push({
@@ -904,7 +1016,9 @@
         firstNight: Number(item.firstNight) || 0, otherNight: Number(item.otherNight) || 0,
         reminders: Array.isArray(item.reminders) ? item.reminders : [],
         remindersGlobal: Array.isArray(item.remindersGlobal) ? item.remindersGlobal : [],
-        image: (typeof img === 'string' && /^https?:\/\//.test(img)) ? img : null
+        image: remoteImg(img),
+        imageAlt: remoteImg(imgs[1]),
+        imageAlt2: remoteImg(imgs[2])
       });
     });
     // Official roles resolve through the same external pipeline (art fetched by
@@ -918,16 +1032,36 @@
       extArtStatus[c.slug] = 'failed';
       return callWorker('artBytes', { slug: c.slug, b64: TRANSPARENT_PNG });
     });
-    var fetchJob = withUrl.length
-      ? callWorker('fetchArt', { list: withUrl.map(function (c) { return { slug: c.slug, url: c.image }; }) })
+    /* Every version, under the FS name charVersions() will ask for. The
+       alternates are deliberately NOT tracked in extArtStatus: that drives
+       the "art couldn't be fetched, upload it by hand" list, which is about
+       a character having no icon at all. A traveller whose evil art failed
+       still has an icon, and offering a second upload box per version would
+       make that list unreadable — the version simply prints its primary. */
+    var extraJobs = [];
+    extList.forEach(function (c) {
+      charVersions(c).forEach(function (v) {
+        if (v.key === 'main' || !v.url) return;
+        extraJobs.push({ slug: v.fsSlug, url: v.url });
+      });
+    });
+    var fetchJob = (withUrl.length || extraJobs.length)
+      ? callWorker('fetchArt', { list: withUrl.map(function (c) { return { slug: c.slug, url: c.image }; }).concat(extraJobs) })
       : Promise.resolve({ ok: [], failed: [] });
     return Promise.all([fetchJob, Promise.all(placeholderJobs)]).then(function (r) {
       var res = r[0];
-      (res.ok || []).forEach(function (sl) { extArtStatus[sl] = 'ok'; });
-      var failJobs = (res.failed || []).map(function (sl) {
-        extArtStatus[sl] = 'failed';
-        return callWorker('artBytes', { slug: sl, b64: TRANSPARENT_PNG });
-      });
+      /* Only a real character slug is tracked and given a blank placeholder.
+         A failed ALTERNATE is a different thing: writing a transparent PNG
+         for it would print a blank second token, where leaving the file
+         absent makes the Python skip that payload and the character comes
+         out with the icons that did arrive. charBySlug is the test — an
+         alternate's FS name is never a character. */
+      (res.ok || []).forEach(function (sl) { if (charBySlug[sl]) extArtStatus[sl] = 'ok'; });
+      var failJobs = (res.failed || []).filter(function (sl) { return charBySlug[sl]; })
+        .map(function (sl) {
+          extArtStatus[sl] = 'failed';
+          return callWorker('artBytes', { slug: sl, b64: TRANSPARENT_PNG });
+        });
       return Promise.all(failJobs);
     }).then(renderArtWarnings);
   }
@@ -1038,23 +1172,54 @@
       .replace(/[\p{Sm}\p{So}\p{Sk}\uFE00-\uFE0F]/gu, '')
       .replace(/\s+/g, ' ').trim();
   }
-  function payloadFor(sl) {
+  /* One printed token. `ver` says which icon (null = the character's first),
+     and `o` how many copies and whether this payload carries the reminders. */
+  function payloadFor(sl, ver, o) {
     var c = charBySlug[sl];
+    o = o || {};
+    var v = ver || leadVersion(sl);
     return {
       name: stripCreditMarks(c.name), ability: c.ability, team: c.team,
       firstNight: c.firstNight, otherNight: c.otherNight, setup: c.setup,
       reminders: c.reminders || [], remindersGlobal: c.remindersGlobal || [],
-      _art: 'art/' + sl + '.png',
+      _art: 'art/' + ((v && v.fsSlug) || sl) + '.png',
+      /* The alternates inherit the primary's framing. Evil art is often
+         drawn to a different crop and would want its own icon_scale/dx/dy,
+         but the per-token editor is reached through charBySlug and a version
+         is not a character in there — so that is a switch for the editor to
+         grow later, not a reason to leave these unadjusted. */
       _adj: mergedAdj(sl),
-      _count: charCount(sl),
-      _rem: remEntries(c).map(function (r) { return { text: r.text, count: remCount(sl, r.text, r.def) }; })
+      _count: o.count == null ? charCount(sl) : o.count,
+      // Reminders belong to the character, not to one of its icons: only the
+      // lead payload carries them or a traveller would print two of each.
+      _rem: (o.rems === false) ? []
+        : remEntries(c).map(function (r) { return { text: r.text, count: remCount(sl, r.text, r.def) }; })
     };
   }
+  /* Every token this character contributes — one per version being printed.
+     A version switched off still leaves its payload in place with zero
+     copies when it is the lead, so switching everything off loses the
+     character token without also losing its reminder tokens. */
+  function payloadsFor(sl) {
+    var c = charBySlug[sl];
+    if (!c) return [];
+    var all = charVersions(c);
+    if (all.length < 2) return [payloadFor(sl)];
+    var on = printVersions(sl);
+    var out = [payloadFor(sl, on[0] || all[0], { count: on.length ? charCount(sl) : 0 })];
+    for (var i = 1; i < on.length; i++) out.push(payloadFor(sl, on[i], { rems: false }));
+    return out;
+  }
   function artList(slugs) {
-    return slugs.map(function (sl) {
-      var c = charBySlug[sl]; if (!c || c.ext) return null;   // ext art lives in the worker FS already
-      return { slug: sl, url: artAbs(c) };
-    }).filter(Boolean);
+    var out = [];
+    slugs.forEach(function (sl) {
+      var c = charBySlug[sl];
+      if (!c || c.ext) return;   // ext art lives in the worker FS already
+      var vs = printVersions(sl);
+      if (!vs.length) vs = charVersions(c).slice(0, 1);
+      vs.forEach(function (v) { out.push({ slug: v.fsSlug, url: v.url }); });
+    });
+    return out;
   }
 
   /* ---- preview (debounced, rendered in the worker) ---- */
@@ -1089,7 +1254,9 @@
       var btn = this; btn.disabled = true;
       $('output').innerHTML = ''; $('thumbs').innerHTML = ''; clearMsg();
       showGenLoad();
-      callWorker('render', { payloads: slugs.map(payloadFor), opts: opts, art: artList(slugs) })
+      var payloads = [];
+      slugs.forEach(function (sl) { payloads = payloads.concat(payloadsFor(sl)); });
+      callWorker('render', { payloads: payloads, opts: opts, art: artList(slugs) })
         .then(function (res) {
           hideGenLoad(); showOutput(res);
           showMsg('ok', 'Done — ' + res.counts.char + ' character + ' + res.counts.rem + ' reminder tokens.');

@@ -203,6 +203,42 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    exactly what important is for. Hover inherits it too, deliberately: the
    underline is the feedback, and .char-parchment .ex a:hover would otherwise
    flip a BLUE mark to red under the pointer. */
+/* ── {{drop|T}} — the almanac drop cap ──
+   A large initial opening a paragraph, the way the official almanac does it.
+   Dumbledor2 because that is already the wiki's display face (every section
+   heading is set in it), so the initial reads as part of the page rather
+   than as a font somebody imported for one letter.
+
+   It only FLOATS inside a <p>. Everywhere else it is a large inline capital,
+   and each exception is a real break rather than a matter of taste:
+     · an <li> is a block box but not a formatting context, so a float taller
+       than its line box escapes the bullet and shifts the text of the NEXT
+       one — summaryBullets, tips, bluffing and fighting are all lists;
+     · .ex, .callout and .quote are centred italic, where a left-floated
+       initial simply looks broken.
+   `display: flow-root` on the paragraph is what stops a short one letting
+   its initial bleed into the paragraph below. */
+.dropcap {
+  float: left;
+  font-family: 'Dumbledor2', 'EB Garamond', serif;
+  font-size: 3.1em;
+  line-height: .78;
+  margin: .04em .09em -.04em 0;
+  color: var(--maroon);
+}
+.char-parchment p:has(> .dropcap:first-child),
+.wiki-body p:has(> .dropcap:first-child),
+.news-body p:has(> .dropcap:first-child),
+.custom-box-body p:has(> .dropcap:first-child) { display: flow-root; }
+li .dropcap, .ex .dropcap, .callout .dropcap, .quote .dropcap,
+h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
+  float: none; margin: 0; line-height: inherit;
+  font-size: 1.5em; vertical-align: baseline;
+}
+/* A coloured initial: {{red|{{drop|T}}}}. The colour mark wraps the drop cap,
+   and .wiki-red/.wiki-blue set `color` on the span, which the initial
+   inherits — nothing more is needed, but it must not be undone here. */
+
 .wiki-red a, .wiki-blue a { color: inherit !important; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
@@ -1903,8 +1939,28 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
   pointer-events: none;
 }
 
-/* ── Alternate character art: click the emblem to swap ── */
+/* ── A character's other icons ──
+   A traveller has a good token and an evil token, so the versions are named
+   under the picture rather than hidden behind a click nobody would guess at.
+   The emblem stays clickable — that is the gesture the page has always had —
+   and the buttons say which version is showing. */
 .emblem.has-alt { cursor: pointer; }
+.emblem-versions {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin: -2px 0 12px;
+}
+.emblem-ver {
+  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  font-size: .78rem; letter-spacing: .04em; text-transform: uppercase;
+  padding: 4px 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--parch-frame); background: transparent;
+  color: var(--ink); opacity: .72; transition: opacity .12s, background .12s;
+}
+.emblem-ver:hover { opacity: 1; }
+.emblem-ver.is-on {
+  background: var(--maroon); border-color: var(--maroon);
+  color: var(--parch); opacity: 1;
+}
 
 /* ── Collection JSON box on collection pages ── */
 .collection-json { width: 100%; max-width: 760px; margin: 4px auto 0; text-align: left; }

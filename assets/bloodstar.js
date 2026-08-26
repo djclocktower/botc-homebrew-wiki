@@ -224,8 +224,10 @@
   /* ── one character ──
      `slug` is the identity the Worker's /api/slug-check handed back, and
      `artPath` is where its icon actually landed (empty when it stayed on
-     Bloodstar or there was none). */
-  function characterPayload(entry, opts, slug, artPath, jinxes) {
+     Bloodstar or there was none). `artAltPath` is the same for the second
+     icon: a Bloodstar project exports `image` as an array for a character
+     with more than one, and the second entry is a traveller's good token. */
+  function characterPayload(entry, opts, slug, artPath, jinxes, artAltPath) {
     var overview = clean(entry.overview);
     var lede = '';
     var bullets = [];
@@ -306,6 +308,16 @@
       // an icon and reads as finished. It is a link to somebody else's server,
       // which is why copying is the default and this is the fallback.
       payload.image = entry.image;
+    }
+    /* The second icon, the same way. The reader has always parsed it
+       (worker/bloodstar.js pickImage(row.image, 1)) and this mapper used to
+       drop it on the floor, so every Bloodstar traveller arrived here with
+       one of its two tokens. */
+    if (artAltPath) {
+      payload.artAlt = artAltPath;
+      payload.imageAlt = 'https://botchomebrew.wiki/assets/' + artAltPath;
+    } else if (entry.imageAlt) {
+      payload.imageAlt = entry.imageAlt;
     }
     return payload;
   }
@@ -525,6 +537,7 @@
   /* Where a character's icon should land in R2. The identity names the slot,
      which is why the slug has to be settled before any art moves. */
   function artKey(slug) { return 'art/' + slug + '.png'; }
+  function artAltKey(slug) { return 'art/' + slug + '-alt.png'; }
 
   var api = {
     TEAMS: TEAMS,
@@ -546,7 +559,7 @@
     nightOrder: nightOrder,
     pagePayload: pagePayload,
     changelogPayload: changelogPayload,
-    artKey: artKey
+    artKey: artKey, artAltKey: artAltKey
   };
   if (typeof window !== 'undefined') { window.BloodstarImport = api; }
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; }

@@ -54,6 +54,11 @@
     { label: 'Image', title: 'Image (add |left, |right or |wide to place it)', template: '![caption](pages/my-image.png|right)', select: [2, 9] },
     { label: 'Table', title: 'Table', block: '| Column | Column |\n| --- | --- |\n| value | value |' },
     { label: 'Note', title: 'Callout box (note / tip / warning / example / lore)', block: '::: note Title\nText inside the box.\n:::' },
+    /* The drop cap takes the FIRST LETTER of the paragraph, so it wraps the
+       selection the way bold does — select the T, press the button. The
+       character editors have no toolbar (they never load this file), so
+       there it is documented in the .fmt-help callout instead. */
+    { label: 'Drop cap', title: 'Big almanac initial \u2014 select the first letter of a paragraph', wrap: ['{{drop|', '}}'] },
     { label: 'Rule', title: 'Horizontal rule', block: '---' },
     { label: 'Contents', title: 'Put the contents box here', block: '[toc]' }
   ];

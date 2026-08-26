@@ -424,7 +424,15 @@
     function featuredCardHTML(c){
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
-      var lede = c.lede || c.quote || '';
+      /* The lede takes the wiki's inline marks ({{red|Imp}}, [[Snake Charmer]],
+         {{drop|T}}) and this card is not the page — it esc()s straight into a
+         strip of markup with no text engine behind it, so a mark typed on a
+         character page printed its braces here. plainText() takes the marks
+         back out and leaves the words, the same call buildSchema() and the
+         meta description already make. */
+      var ledeRaw = c.lede || c.quote || '';
+      var lede = (window.WikiRender && window.WikiRender.plainText)
+        ? window.WikiRender.plainText(ledeRaw) : ledeRaw;
       var ability = c.ability || '';
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
