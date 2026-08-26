@@ -985,9 +985,16 @@
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
     /* The icon, and the other versions of it. A traveller has a good and an
-       evil token, so the swap is no longer a mystery click on the picture:
-       the versions are named underneath it. Clicking the emblem still walks
-       through them, because that is what the page has always done. */
+       evil token, so the picture is no longer a mystery click: a faint row of
+       pips underneath says how many there are and which one is showing.
+       Clicking the emblem walks through them, because that is what the page
+       has always done, and a pip jumps straight to one.
+
+       The version NAMES are deliberately not printed. This is a reading page
+       and the pips sit right above the flavour quote, where three labelled
+       buttons read as app chrome; the name rides on each pip's title and
+       accessible name instead, and the icon itself is the real answer to
+       "which one is this". */
     var artVers = artVersions(d, root);
     // The caller resolved slot one itself (the Worker builds it from the row
     // and its own address depth), so let it win where it has an answer.
@@ -1002,9 +1009,13 @@
       if (multi) {
         emblem += '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
           artVers.map(function (v, i) {
+            // Empty on purpose — the pip is drawn by CSS. The label is the
+            // button's accessible name, so a screen reader and a hover both
+            // still get "Evil".
             return '<button type="button" class="emblem-ver' + (i === 0 ? ' is-on' : '') +
-              '" data-src="' + esc(v.src) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">' +
-              esc(v.label) + '</button>';
+              '" data-src="' + esc(v.src) + '" title="' + esc(v.label) +
+              '" aria-label="' + esc(v.label) +
+              '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"></button>';
           }).join('') + '</div>';
       }
     }
@@ -1185,10 +1196,10 @@
         return;
       }
       /* The icon's other versions — a traveller's good and evil tokens.
-         The named buttons pick one; the emblem itself still walks through
-         them in order, which is the gesture the page has always had. Both
-         go through emblemShow so the picture and the buttons cannot end up
-         disagreeing about which version is on screen. */
+         A pip jumps straight to one; the emblem itself walks through them in
+         order, which is the gesture the page has always had. Both go through
+         emblemShow so the picture and the pips cannot end up disagreeing
+         about which version is on screen. */
       var vb = e.target.closest && e.target.closest('.emblem-ver');
       if (vb) { emblemShow(vb.parentNode, vb); return; }
       var em = e.target.closest && e.target.closest('.emblem.has-alt');

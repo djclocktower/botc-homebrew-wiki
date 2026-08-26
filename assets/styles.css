@@ -1940,26 +1940,41 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 
 /* ── A character's other icons ──
-   A traveller has a good token and an evil token, so the versions are named
-   under the picture rather than hidden behind a click nobody would guess at.
-   The emblem stays clickable — that is the gesture the page has always had —
-   and the buttons say which version is showing. */
+   A traveller has a good token and an evil token, so the page has to say
+   there is more than one picture here rather than hide it behind a click
+   nobody would guess at. The emblem stays clickable — that is the gesture
+   the page has always had — and the pips below mark how many versions there
+   are and which one is on screen. */
 .emblem.has-alt { cursor: pointer; }
+/* Carousel pips, not labelled buttons. These sit on a parchment almanac card
+   directly above the flavour quote, where a row of filled pills read as app
+   chrome bolted onto the page. The version NAMES live in each pip's
+   aria-label and title rather than on the page: a reader who wants to know
+   which is the evil token taps and sees it, and the icon is the answer.
+
+   Faint on purpose. The group carries the opacity rather than each pip, so
+   the ring and the filled dot fade together and the active one never
+   brightens out of the set; hover and keyboard focus lift the whole row. */
 .emblem-versions {
-  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
-  margin: -2px 0 12px;
+  display: flex; justify-content: center; gap: 0;
+  margin: -4px 0 10px;
+  opacity: .42; transition: opacity .14s;
 }
+.emblem-versions:hover, .emblem-versions:focus-within { opacity: .8; }
+/* The button is a finger-sized target; the DOT is its ::before, so the mark
+   can be 6px without the thing you have to hit being 6px too. */
 .emblem-ver {
-  font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
-  font-size: .78rem; letter-spacing: .04em; text-transform: uppercase;
-  padding: 4px 11px; border-radius: 999px; cursor: pointer;
-  border: 1px solid var(--parch-frame); background: transparent;
-  color: var(--ink); opacity: .72; transition: opacity .12s, background .12s;
+  width: 19px; height: 19px; padding: 0; border: 0; background: none;
+  cursor: pointer; display: grid; place-items: center;
 }
-.emblem-ver:hover { opacity: 1; }
-.emblem-ver.is-on {
-  background: var(--maroon); border-color: var(--maroon);
-  color: var(--parch); opacity: 1;
+.emblem-ver::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  border: 1px solid var(--parch-frame); background: transparent;
+}
+.emblem-ver.is-on::before { background: var(--maroon); border-color: var(--maroon); }
+.emblem-ver:focus-visible { outline: 2px solid var(--good-name); outline-offset: -2px; border-radius: 50%; }
+@media (prefers-reduced-motion: reduce) {
+  .emblem-versions { transition: none; }
 }
 
 /* ── Collection JSON box on collection pages ── */

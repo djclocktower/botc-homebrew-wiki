@@ -1209,6 +1209,20 @@ Things worth knowing before touching any of it:
 - **Slot three is drawn for travellers only** (`assets/art-labels.js`), since
   nobody else has a third entry — but it is *hidden*, never cleared. Retyping
   a character off Traveller must not silently drop art somebody uploaded.
+- **The reader's switcher is a row of faint pips**, not labelled buttons
+  (`.emblem-versions` / `.emblem-ver` in styles.css). The `/c/` info card is a
+  reading surface and the switcher sits directly above the flavour quote,
+  where filled pills read as app chrome bolted onto an almanac page. The
+  version **names are deliberately not printed**: each pip carries its label
+  as `title` + `aria-label`, and the icon itself is the real answer to which
+  one is showing. Three details are load-bearing — the **group** carries the
+  opacity, not each pip, so the ring and the filled dot fade as a set and the
+  active one never brightens out of it; the pip's visible dot is its
+  `::before`, so a 6px mark can sit inside a 19px touch target; and the
+  buttons are **empty elements**, so nothing here needs escaping but the
+  attributes. Clicking the emblem still walks through the versions and a pip
+  jumps straight to one, both through `emblemShow()` so the picture and the
+  pips cannot disagree.
 - **`uploadSlotDenied()` strips a trailing `-alt` / `-alt2`** when the key
   matched no row, so the alternates inherit the character's own permission
   check. Without it those slots had no row behind them and only the R2
