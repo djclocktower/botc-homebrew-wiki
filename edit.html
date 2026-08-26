@@ -208,7 +208,8 @@
             <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
             <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp</li>
+            <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that way round only, since neither mark can hold a brace</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -263,7 +264,7 @@
         <label for="iconBy">Icon by <span class="hint">(optional)</span></label>
         <input type="text" id="iconBy" placeholder="A name, or [Their Name](https://…) to link it">
       </div>
-      <div class="fld">
+      <div class="fld" data-art-slot="main">
         <label for="art">Character art <span class="hint">(leave blank to keep existing)</span></label>
         <input type="file" id="art" accept="image/*">
         <img id="artthumb" class="artthumb" alt="current art">
@@ -277,8 +278,8 @@
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
       </div>
-      <div class="fld">
-        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; e.g. an evil version; added to the JSON)</span></label>
+      <div class="fld" data-art-slot="alt">
+        <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
         <input type="file" id="artAlt" accept="image/*">
         <img id="artAltThumb" class="artthumb" alt="alternate art">
         <div id="artAltStdWrap" style="display:none;margin-top:6px">
@@ -286,6 +287,16 @@
           <button type="button" class="btn btn-sm" id="artAltAdjust">&#9998; Adjust by hand</button>
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAltClear" style="display:none;margin-top:6px">&#10005; Remove alternate art</button>
+      </div>
+      <div class="fld" data-art-slot="alt2">
+        <label for="artAlt2">Evil art</label>
+        <input type="file" id="artAlt2" accept="image/*">
+        <img id="artAlt2Thumb" class="artthumb" alt="evil art">
+        <div id="artAlt2StdWrap" style="display:none;margin-top:6px">
+          <button type="button" class="btn btn-sm" id="artAlt2Std">&#9635; Resize icon</button>
+          <button type="button" class="btn btn-sm" id="artAlt2Adjust">&#9998; Adjust by hand</button>
+        </div>
+        <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
       </div>
 
       <fieldset>
@@ -418,6 +429,9 @@
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <!-- Names the three art slots for the team being written: a traveller's
+       are its unaligned, good and evil tokens. -->
+  <script src="assets/art-labels.js"></script>
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
@@ -545,6 +559,9 @@
     var artAltOriginal = null;
     var artAltDataURL = null;   // newly uploaded alternate art (data URL)
     var artAltRemoved = false;  // user removed the existing alternate art
+    var artAlt2Original = null;
+    var artAlt2DataURL = null;  // newly uploaded evil art (data URL)
+    var artAlt2Removed = false; // user removed the existing evil art
 
     // ── jinx rows ──
     function addJinx(name, align, text, slug, id){
@@ -665,6 +682,8 @@
       var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       else if (!artAltRemoved && originalEntry && originalEntry.artAlt) d.artAlt = originalEntry.artAlt;
+      if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
+      else if (!artAlt2Removed && originalEntry && originalEntry.artAlt2) d.artAlt2 = originalEntry.artAlt2;
       preview.paint(window.renderCharacter(d, src));
     }
 
@@ -731,26 +750,55 @@
       reader.readAsDataURL(file);
     });
 
-    $('artAlt').addEventListener('change', function(e){
-      var file = e.target.files[0]; if(!file) return;
-      var reader = new FileReader();
-      reader.onload = function(ev){
-        artAltOriginal = ev.target.result;
-        loadImageToCanvas(ev.target.result, false).then(function(url){
-          artAltDataURL = url; artAltRemoved = false;
-          var th=$('artAltThumb'); th.src=url; th.style.display='block';
-          $('artAltStdWrap').style.display=''; $('artAltClear').style.display='';
-          update();
-        });
-      };
-      reader.readAsDataURL(file);
-    });
-    $('artAltClear').addEventListener('click', function(){
-      artAltDataURL = null; artAltOriginal = null; artAltRemoved = true; $('artAlt').value='';
-      $('artAltThumb').style.display='none';
-      $('artAltStdWrap').style.display='none';
-      $('artAltClear').style.display='none';
-      update();
+    /* The two extra icons — a traveller's good and evil tokens. Identical
+       but for which variable they land in, so they are wired once rather
+       than hand-copied a third time. ALT_SLOTS is also what the standardize
+       and adjust buttons below are hung off, and what populateForm walks to
+       show the art a character already has. */
+    var ALT_SLOTS = [
+      { id: 'artAlt',  field: 'artAlt',  title: 'Adjust the alternate icon',
+        get: function(){ return artAltDataURL; },
+        set: function(v){ artAltDataURL = v; artAltRemoved = false; },
+        orig: function(){ return artAltOriginal; },
+        setOrig: function(v){ artAltOriginal = v; },
+        remove: function(){ artAltDataURL = null; artAltOriginal = null; artAltRemoved = true; } },
+      { id: 'artAlt2', field: 'artAlt2', title: 'Adjust the evil icon',
+        get: function(){ return artAlt2DataURL; },
+        set: function(v){ artAlt2DataURL = v; artAlt2Removed = false; },
+        orig: function(){ return artAlt2Original; },
+        setOrig: function(v){ artAlt2Original = v; },
+        remove: function(){ artAlt2DataURL = null; artAlt2Original = null; artAlt2Removed = true; } }
+    ];
+    ALT_SLOTS.forEach(function (slot) {
+      var id = slot.id;
+      $(id).addEventListener('change', function(e){
+        var file = e.target.files[0]; if(!file) return;
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          slot.setOrig(ev.target.result);
+          loadImageToCanvas(ev.target.result, false).then(function(url){
+            slot.set(url);
+            var th=$(id+'Thumb'); th.src=url; th.style.display='block';
+            $(id+'StdWrap').style.display=''; $(id+'Clear').style.display='';
+            update();
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+      $(id+'Clear').addEventListener('click', function(){
+        slot.remove(); $(id).value='';
+        $(id+'Thumb').style.display='none';
+        $(id+'StdWrap').style.display='none';
+        $(id+'Clear').style.display='none';
+        update();
+      });
+      $(id+'Std').addEventListener('click', function(){
+        standardizeArt(id+'Thumb', id+'Std', slot.set);
+      });
+      $(id+'Adjust').addEventListener('click', function(){
+        adjustArt(function(){ return slot.orig() || $(id+'Thumb').src; }, id+'Thumb', id+'Adjust',
+          slot.title, slot.set);
+      });
     });
 
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
@@ -771,9 +819,6 @@
     }
     $('artStd').addEventListener('click', function(){
       standardizeArt('artthumb', 'artStd', function(out){ artDataURL = out; artChanged = true; });
-    });
-    $('artAltStd').addEventListener('click', function(){
-      standardizeArt('artAltThumb', 'artAltStd', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
     // ── the same frame, placed by hand (assets/art-adjust.js) ──────
@@ -799,10 +844,6 @@
     $('artAdjust').addEventListener('click', function(){
       adjustArt(function(){ return artOriginal || $('artthumb').src; }, 'artthumb', 'artAdjust',
         'Adjust the icon', function(out){ artDataURL = out; artChanged = true; });
-    });
-    $('artAltAdjust').addEventListener('click', function(){
-      adjustArt(function(){ return artAltOriginal || $('artAltThumb').src; }, 'artAltThumb', 'artAltAdjust',
-        'Adjust the alternate icon', function(out){ artAltDataURL = out; artAltRemoved = false; });
     });
 
     function normalizeJinx(j){
@@ -863,7 +904,7 @@
       // The art inputs would upload into the page's own R2 slot, which is
       // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
-      ['art', 'artAlt'].forEach(function (id) {
+      ['art', 'artAlt', 'artAlt2'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
@@ -1185,13 +1226,20 @@
       $('curataOptOut').checked  = !!entry.curataOptOut;
       if (editorsUI) editorsUI.set(entry.editors || []);
       syncEditorsBox();
-      if (entry.artAlt) {
-        var altTh = $('artAltThumb');
-        altTh.src = SITE_ROOT + 'assets/' + entry.artAlt;
-        altTh.style.display = 'block';
-        $('artAltStdWrap').style.display = '';
-        $('artAltClear').style.display = '';
-      }
+      ALT_SLOTS.forEach(function (slot) {
+        if (!entry[slot.field]) return;
+        var th = $(slot.id + 'Thumb');
+        th.src = SITE_ROOT + 'assets/' + entry[slot.field];
+        th.style.display = 'block';
+        $(slot.id + 'StdWrap').style.display = '';
+        $(slot.id + 'Clear').style.display = '';
+      });
+      /* The art slots are named for the team, and a traveller's third slot is
+         only drawn for a traveller — but the team was set above by assigning
+         to .value, which fires nothing. Without this call the labels on an
+         EXISTING traveller stayed generic until somebody happened to poke the
+         dropdown, which is the one case they matter most in. */
+      if (window.refreshArtLabels) window.refreshArtLabels();
       $('slug-display').textContent = originalSlug;
       // expand textareas to fit loaded content
       document.querySelectorAll('textarea').forEach(function(ta) { ta.style.overflowY='hidden'; autoExpand(ta); });
@@ -1343,6 +1391,12 @@
             return apiUpload('art/'+slug+'-alt.png', artAltDataURL);
           });
         }
+        if(artAlt2DataURL){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading evil art');
+            return apiUpload('art/'+slug+'-alt2.png', artAlt2DataURL);
+          });
+        }
         return p;
       }
 
@@ -1385,6 +1439,13 @@
         } else if(artAltRemoved){
           delete entry.artAlt;
           delete entry.imageAlt;
+        }
+        if(artAlt2DataURL){
+          entry.artAlt2   = 'art/'+slug+'-alt2.png';
+          entry.imageAlt2 = ART_BASE+slug+'-alt2.png';
+        } else if(artAlt2Removed){
+          delete entry.artAlt2;
+          delete entry.imageAlt2;
         }
         if(artChanged){
           entry.art   = 'art/'+slug+'.png';

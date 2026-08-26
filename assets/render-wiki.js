@@ -199,6 +199,25 @@
   };
   var COLOR_RE = /\{\{(red|blue|good|evil)\|([^{}\n]{1,300})\}\}/gi;
 
+  /* ── {{drop|T}} — the almanac drop cap ──
+     A large decorative initial to open a paragraph, the way the official
+     almanac does. Typed rather than automatic: which paragraphs deserve one
+     is a writing decision, and a rule that capitalised the first letter of
+     every lede on the wiki would be a redesign of 600 pages nobody asked for.
+
+     The body is ONE character, and that is load-bearing rather than fussy.
+     The colour pass below CONSUMES its own braces, so by the time a later
+     pass ran, `{{drop|A {{red|red}} phrase}}` would have become brace-free
+     and a permissive body would wrap the whole thing — rendered HTML and all
+     — inside the drop cap. One character cannot do that. It also happens to
+     be exactly what a drop cap is.
+
+     Applied BEFORE the colour marks, which is the order that lets the two
+     combine: {{red|{{drop|T}}}} is a red initial. The other nesting can
+     never work, since neither mark's body admits a brace — say so in the
+     help text rather than leaving people to find out. */
+  var DROP_RE = /\{\{drop\|([^{}\n<>])\}\}/gi;
+
   /* ── inline marks ──────────────────────────────────────────────
      Order matters: code spans are pulled out first so their contents are
      never re-formatted, then links (whose labels are plain text), then the
@@ -267,6 +286,9 @@
       return '<a class="wiki-charlink" href="' + esc(root + 'c/' + slug) + '">' + shown + '</a>';
     });
 
+    // {{drop|T}} — before the colour marks, so {{red|{{drop|T}}}} works.
+    out = out.replace(DROP_RE, '<span class="dropcap">$1</span>');
+
     // {{red|Imp}} / {{blue|Undertaker}}
     out = out.replace(COLOR_RE, function (m, kind, body) {
       return '<span class="' + COLOR_CLASS[kind.toLowerCase()] + '">' + body + '</span>';
@@ -294,6 +316,10 @@
      mark, and links mode never rendered it as one either. */
   function plainText(text) {
     return String(text == null ? '' : text)
+      // Drop first, then colour — the same order inlineFormat uses, so a
+      // nested {{red|{{drop|T}}}} comes back as the bare letter rather than
+      // leaving a stray {{red|…}} behind.
+      .replace(DROP_RE, '$1')
       .replace(COLOR_RE, '$2')
       .replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g,
         function (m, target, label) { return (label != null && label !== '') ? label : target; })

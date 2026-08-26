@@ -568,18 +568,38 @@ async function uploadSlotDenied(env, sess, key) {
       return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
     }
   }
-  // Character art follows art/{slug}.png — if that character exists,
-  // only its owner may replace the art.
+  // Character art follows art/{slug}.png, with the second and third icons
+  // (a traveller's good and evil tokens) at art/{slug}-alt.png and
+  // art/{slug}-alt2.png. If that character exists, only its owner may
+  // replace the art.
   if (key.startsWith('art/')) {
-    const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
-    const row = await getEntityRow(env, 'character', slug);
+    const named = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
+    let slug = named;
+    let row = await getEntityRow(env, 'character', slug);
+    /* An -alt key names no row of its own, so the whole branch below used
+       to be skipped for it: no ownership, no protection check, and only the
+       "somebody else's file is here" catch-all left guarding it. That is
+       why an approved editor — or an owner assigned through the dashboard,
+       whose R2 objects still carry the importing admin's `owner` — could
+       replace a character's main art and got a 403 on its alternates.
+       Fall back to the base identity, but ONLY when the key named no row:
+       a character genuinely called "Foo Alt" has the identity `foo-alt`
+       and matches on the first lookup, so it keeps its own permissions.
+       A single hardcoded suffix, never the longest-prefix match `pages/`
+       uses — character art is uploaded BEFORE the row exists, so a prefix
+       rule would refuse every new character whose name merely starts with
+       an existing one's ("Scarlet Woman" blocked by "Scarlet"). */
+    if (!row && /-alt2?$/.test(named)) {
+      slug = named.replace(/-alt2?$/, '');
+      row = await getEntityRow(env, 'character', slug);
+    }
     if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
     else if (row && !canEditRow(sess, row)) {
       // Almost always a name clash on a brand-new character: the art
       // slot is named after the character's identity, which is derived
       // from its name, and that one is already someone else's page.
       // Say so, so the fix (a different name) is obvious.
-      return jsonResponse({ error: 'The art slot for "' + slug + '" already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
+      return jsonResponse({ error: 'The art slot for "' + slug + '"' + (slug === named ? '' : ' (its alternate art)') + ' already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
     }
     if (row && await isProtected(env, 'character', row.slug)) {
       return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -946,7 +966,8 @@ const FIELD_LABELS = {
   summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
   tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
   callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
-  artAlt: 'alternate art', jinxes: 'jinxes', reminders: 'reminders',
+  artAlt: 'alternate art', imageAlt2: 'evil art', artAlt2: 'evil art',
+  jinxes: 'jinxes', reminders: 'reminders',
   remindersGlobal: 'global reminders', firstNight: 'first-night order',
   otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
   otherNightReminder: 'other-nights reminder', setup: 'setup flag',
@@ -2373,11 +2394,12 @@ async function moveR2Object(env, fromKey, toKey) {
 }
 
 // Rewrite art paths that carry the old slug: 'art/old.png',
-// 'art/old-alt.png' and the absolute image URLs built from them. Anchored on
-// the character's own slug so 'art/oldest.png' is never touched.
+// 'art/old-alt.png', 'art/old-alt2.png' and the absolute image URLs built
+// from them. Anchored on the character's own slug so 'art/oldest.png' is
+// never touched.
 function retargetArtPaths(obj, from, to) {
   const re = new RegExp('art/' + from + '(?=[-.])', 'g');
-  for (const k of ['art', 'image', 'artAlt', 'imageAlt']) {
+  for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2']) {
     if (typeof obj[k] === 'string') obj[k] = obj[k].replace(re, 'art/' + to);
   }
 }
@@ -2711,11 +2733,18 @@ async function renameCharacter(env, from, to) {
   if (entry) {
     // The editors always write .png, but an imported page may carry another
     // extension, so try what the row actually points at as well.
-    const keys = new Set(['art/' + from + '.png', 'art/' + from + '-alt.png']);
-    for (const k of ['art', 'artAlt']) {
+    const keys = new Set(['art/' + from + '.png',
+      'art/' + from + '-alt.png', 'art/' + from + '-alt2.png']);
+    /* Any suffixed art file, not just the two the editors write.
+       retargetArtPaths below rewrites 'art/{from}' before ANY '-' or '.',
+       so a stored path this loop failed to move was rewritten to a file
+       that had not moved: a legacy row pointing at 'art/vampire-good.png'
+       came out of a rename pointing at 'art/{new}-good.png', which does
+       not exist. Move whatever the row actually names. */
+    for (const k of ['art', 'artAlt', 'artAlt2']) {
       const v = typeof entry[k] === 'string'
         ? entry[k].replace(/^\/+/, '').replace(/^assets\//, '') : '';
-      if (v.startsWith('art/' + from + '.') || v.startsWith('art/' + from + '-alt.')) keys.add(v);
+      if (v.startsWith('art/' + from + '.') || v.startsWith('art/' + from + '-')) keys.add(v);
     }
     for (const key of keys) {
       if (await moveR2Object(env, key, key.replace('art/' + from, 'art/' + to))) artMoved = true;
@@ -3112,9 +3141,18 @@ async function bumpContentVersion(env) {
 // Removing them too would get the feed to 21% / 68 KB; that needs those three
 // pages to lazily fetch ?fields=full when the reader actually opens the JSON
 // box, which is the follow-up to this change.
+//
+// Also NOT dropped, and easy to mistake for card noise: artAlt/imageAlt and
+// artAlt2/imageAlt2, a character's second and third icons (a traveller's good
+// and evil tokens). assets/token-tool.js reads THIS feed and prints one token
+// per version, and the card renderers fall back through them, so dropping them
+// would silently print a traveller's evil token as its good one. The list used
+// to carry a misspelled 'altArt', which matched no field anywhere in the repo
+// and so was the only reason these survived at all — the real names are here
+// on purpose now.
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
-  'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'altArt', 'custom'
+  'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom'
 ]);
 
 // ---- build the three JSON files from D1 (published pages only) ----

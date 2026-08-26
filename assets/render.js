@@ -17,6 +17,92 @@
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
+
+  /* ── a character's icons ────────────────────────────────────────────
+     The official script schema (ThePandemoniumInstitute/botc-release) gives
+     `image` one to three entries and says what each position means:
+
+       non-traveller   [regular, flipped]
+       traveller       [unaligned, good, evil]
+
+     so the wiki's three art slots ARE those positions. Slot one is the icon
+     every surface already draws; slots two and three are a traveller's good
+     and evil tokens, and the third is offered in the editors for travellers
+     alone because nobody else has a third entry to fill.
+
+       slot 1   art     / image      index 0
+       slot 2   artAlt  / imageAlt   index 1
+       slot 3   artAlt2 / imageAlt2  index 2
+
+     Each slot has a relative path (an R2/repo file under /assets/) and an
+     absolute URL, and either one can be the only one present: bulk imports
+     write absolute URLs for art hosted elsewhere, and older rows carry the
+     whole thing as an `image` array with no art* fields at all.
+
+     artVersions() is the single answer to "what icons does this character
+     have", asked by the emblem on the /c/ page, by buildSchema() and by the
+     Token Tool. They used to each resolve it their own way, and disagreed in
+     both directions: a row with artAlt and no imageAlt swapped on the page
+     but exported one icon, and a row carrying image:[a,b] and no art* fields
+     exported both while the page showed no second version at all. */
+  var ART_ABS = 'https://botchomebrew.wiki/assets/';
+  var ART_SLOTS = [
+    { key: 'main', rel: 'art',     abs: 'image' },
+    { key: 'alt',  rel: 'artAlt',  abs: 'imageAlt' },
+    { key: 'alt2', rel: 'artAlt2', abs: 'imageAlt2' }
+  ];
+  var ART_LABELS_TRAVELLER = ['Unaligned', 'Good', 'Evil'];
+  var ART_LABELS_OTHER = ['Main', 'Alternate', 'Alternate 2'];
+  /* Both spellings. /api/character validates no team, the importers normalise
+     'traveler' but nothing else does, and two other files already defend
+     against it (jinx-graph.js, dashboard.html). */
+  function isTraveller(team) { return /^travell?er$/i.test(String(team == null ? '' : team)); }
+
+  function artVersions(d, root) {
+    d = d || {};
+    var arr = Array.isArray(d.image) ? d.image : [];
+    var labels = isTraveller(d.team) ? ART_LABELS_TRAVELLER : ART_LABELS_OTHER;
+    var prefix = (root == null ? R() : root);
+    var out = [];
+    for (var i = 0; i < ART_SLOTS.length; i++) {
+      var slot = ART_SLOTS[i];
+      var rel = typeof d[slot.rel] === 'string' ? d[slot.rel] : '';
+      var abs = typeof d[slot.abs] === 'string' ? d[slot.abs] : '';
+      // `image` is a plain string on slot one and the official array beyond it.
+      if (!abs && typeof arr[i] === 'string') abs = arr[i];
+      if (!rel && !abs) continue;
+      out.push({
+        key: slot.key,
+        label: labels[i],
+        rel: rel,
+        // what an <img> on the page loads: the relative file where there is
+        // one, so a page renders against its own root and R2 serves it.
+        src: rel ? (prefix + 'assets/' + rel) : abs,
+        // what leaves the wiki — the JSON the official app reads, and the
+        // Token Tool fetching art across origins. Always absolute.
+        url: abs || (rel ? ART_ABS + rel : '')
+      });
+    }
+    return out;
+  }
+  /* Show one version of the icon. Browser only — the group lives beside the
+     <img> inside .char-infocard, so the emblem is found from the group. */
+  function emblemShow(group, btn) {
+    if (!group || !btn) return;
+    var img = group.parentNode && group.parentNode.querySelector('.emblem');
+    if (img) img.setAttribute('src', btn.getAttribute('data-src') || img.getAttribute('src'));
+    var btns = group.querySelectorAll('.emblem-ver');
+    for (var i = 0; i < btns.length; i++) {
+      var on = btns[i] === btn;
+      btns[i].classList.toggle('is-on', on);
+      btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+  function artVersion(d, key) {
+    var v = artVersions(d, '');
+    for (var i = 0; i < v.length; i++) if (v[i].key === key) return v[i];
+    return null;
+  }
   /* How far up the site root is from the page being rendered — '' at the top,
      '../' one level down, '../../' for a nested character address. Every link
      this file builds is relative, so an inline [[Character Name]] needs the
@@ -404,10 +490,34 @@
       team: d.team || 'townsfolk',
       ability: d.ability || ''
     };
-    // image as array (required by official script tool); alternate art
-    // (e.g. an evil version) rides along as the second entry
-    var imgs = d.image ? (Array.isArray(d.image) ? d.image.slice() : [d.image]) : [];
-    if (d.imageAlt && imgs.indexOf(d.imageAlt) === -1) imgs.push(d.imageAlt);
+    /* image as an array (required by the official script tool), in the
+       positions the schema defines — see artVersions above. For a traveller
+       that is [unaligned, good, evil]; for everyone else [regular, flipped].
+
+       The one rearrangement: a traveller carrying evil art but no good art
+       would otherwise export [unaligned, evil], and the app reads position
+       one as GOOD — so its evil token would render as its good one and it
+       would have no evil token at all. Repeat the unaligned icon into the
+       good slot instead, which is what every official traveller does anyway
+       (all 18 ship a single _g image used for every state). That repeat is
+       deliberate, so this is the one path that must not be de-duplicated. */
+    var vers = artVersions(d, '');
+    var byKey = {};
+    for (var vi = 0; vi < vers.length; vi++) byKey[vers[vi].key] = vers[vi];
+    var seq, repeated = false;
+    if (isTraveller(d.team) && byKey.alt2 && !byKey.alt) {
+      seq = [byKey.main, byKey.main, byKey.alt2];
+      repeated = true;
+    } else {
+      seq = [byKey.main, byKey.alt, byKey.alt2];
+    }
+    var imgs = [];
+    for (var si = 0; si < seq.length; si++) {
+      var u = seq[si] && seq[si].url;
+      if (!u) continue;
+      if (!repeated && imgs.indexOf(u) !== -1) continue;
+      imgs.push(u);
+    }
     if (imgs.length) o.image = imgs;
     if (d.edition) o.edition = d.edition;
     var fl = d.flavor || d.quote;
@@ -874,14 +984,29 @@
     var copyBtn = '<button type="button" class="copy-link-btn" title="Copy link to this character" aria-label="Copy link"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link</button>';
 
     var quoteClean = (d.quote || d.flavor || '').replace(/^["']|["']$/g, '');
-    // Alternate art (e.g. an evil version): click the emblem to swap.
-    var altSrc = d.artAlt ? (root + 'assets/' + d.artAlt) : (d.imageAlt || '');
+    /* The icon, and the other versions of it. A traveller has a good and an
+       evil token, so the swap is no longer a mystery click on the picture:
+       the versions are named underneath it. Clicking the emblem still walks
+       through them, because that is what the page has always done. */
+    var artVers = artVersions(d, root);
+    // The caller resolved slot one itself (the Worker builds it from the row
+    // and its own address depth), so let it win where it has an answer.
+    if (artVers.length && artSrc) artVers[0].src = artSrc;
+    else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
     var emblem = '';
-    if (artSrc) {
-      emblem = altSrc
-        ? '<img class="emblem has-alt" src="' + esc(artSrc) + '" data-main="' + esc(artSrc) +
-          '" data-alt="' + esc(altSrc) + '" alt="' + esc(d.name) + '" title="Click to see the alternate art">'
-        : '<img class="emblem" src="' + esc(artSrc) + '" alt="' + esc(d.name) + '">';
+    if (artVers.length) {
+      var multi = artVers.length > 1;
+      emblem = '<img class="emblem' + (multi ? ' has-alt' : '') + '" src="' + esc(artVers[0].src) +
+        '" alt="' + esc(d.name) + '"' +
+        (multi ? ' title="Click to see the other versions of this icon"' : '') + '>';
+      if (multi) {
+        emblem += '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
+          artVers.map(function (v, i) {
+            return '<button type="button" class="emblem-ver' + (i === 0 ? ' is-on' : '') +
+              '" data-src="' + esc(v.src) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">' +
+              esc(v.label) + '</button>';
+          }).join('') + '</div>';
+      }
     }
     var infoCard = '<div class="card char-infocard">' +
       '<div class="card-actions">' + copyBtn + '</div>' +
@@ -1059,11 +1184,22 @@
         }
         return;
       }
-      // Alternate-art emblem: click to swap between the two versions
+      /* The icon's other versions — a traveller's good and evil tokens.
+         The named buttons pick one; the emblem itself still walks through
+         them in order, which is the gesture the page has always had. Both
+         go through emblemShow so the picture and the buttons cannot end up
+         disagreeing about which version is on screen. */
+      var vb = e.target.closest && e.target.closest('.emblem-ver');
+      if (vb) { emblemShow(vb.parentNode, vb); return; }
       var em = e.target.closest && e.target.closest('.emblem.has-alt');
       if (em) {
-        var showingAlt = em.getAttribute('src') === em.getAttribute('data-alt');
-        em.setAttribute('src', showingAlt ? em.getAttribute('data-main') : em.getAttribute('data-alt'));
+        var bars = em.parentNode && em.parentNode.querySelector('.emblem-versions');
+        if (bars) {
+          var btns = bars.querySelectorAll('.emblem-ver');
+          var at = 0;
+          for (var bi = 0; bi < btns.length; bi++) if (btns[bi].classList.contains('is-on')) at = bi;
+          emblemShow(bars, btns[(at + 1) % btns.length]);
+        }
         return;
       }
       var tg = e.target.closest && e.target.closest('.json-bar-toggle');
@@ -1133,6 +1269,10 @@
     window.SPECIAL_TIMES = SPECIAL_TIMES;
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
+    window.artVersions = artVersions;
+    window.artVersion = artVersion;
+    window.isTraveller = isTraveller;
+    window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;
     window.resolveJinxTarget = resolveJinxTarget;
     window.normJinxId = normJinxId;
@@ -1159,6 +1299,8 @@
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
+      artVersions: artVersions, artVersion: artVersion,
+      isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,
       jinxQualKeys: jinxQualKeys, jinxLookupKeys: jinxLookupKeys,

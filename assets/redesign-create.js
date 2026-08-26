@@ -74,8 +74,13 @@
         → Night Order → Advanced → actions
      ============================================================ */
   var GROUP_DEFS = [
+    /* The art slots belong here, not in Advanced Options. A character's
+       second and third icons are the traveller's good and evil tokens, and
+       they were folded away behind a summary that never auto-opened for them
+       either — `openAdvancedIfFilled` skips file inputs, so a character that
+       already HAD alt art still showed a shut panel. */
     { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
-      ids: ['name', 'team', 'ability', 'quote', 'art'] },
+      ids: ['name', 'team', 'ability', 'quote', 'art', 'artAlt', 'artAlt2'] },
     { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
@@ -85,8 +90,8 @@
     { key: 'tags',     title: 'Tags',     sub: 'how readers find it',
       ids: ['tag-picker', 'tags', 'curata-fld'] },
     /* Sharing is a section of its own rather than another fieldset swept into
-       Advanced Options. Buried under a summary reading "credits, alt art,
-       jinxes, sidebar boxes, custom JSON", the one control that decides who
+       Advanced Options. Buried under a summary reading "credits, jinxes,
+       sidebar boxes, custom JSON", the one control that decides who
        else may touch the page was effectively unfindable, and the page's own
        history had nowhere to be linked from at all. `hist-fld` is edit.html
        only: a page being created has no history yet. */
@@ -94,7 +99,7 @@
       ids: ['publicEdit', 'hist-fld'] }
   ];
   var ADVANCED_FIELD_IDS = ['pronunciation', 'ipa', 'respelling',
-    'translatedBy', 'iconBy', 'artAlt'];
+    'translatedBy', 'iconBy'];
   var NIGHTORDER_ID = 'edition'; // first id inside the Night Order fieldset
   /* Special properties is a section in its own right, above Tags and above
      Night Order. It was swept into Advanced Options with the jinxes and the
@@ -171,7 +176,7 @@
     det.className = 'advanced';
     det.innerHTML =
       '<summary><span class="rsec-title">Advanced Options</span>' +
-      '<span class="adv-sub">credits, alt art, jinxes, sidebar boxes, custom JSON</span>' +
+      '<span class="adv-sub">credits, jinxes, sidebar boxes, custom JSON</span>' +
       '<span class="adv-caret"></span></summary>';
     card.appendChild(det);
     buckets.advFld.forEach(function (n) { det.appendChild(n); });
