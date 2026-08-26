@@ -307,6 +307,22 @@
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
       </div>
+      <!-- The printable token — the Token Tool's finished token, saved to
+           art/{identity}-token.png. The tick puts it in the page's icon
+           gallery. The Token Tool's own editor can only save onto a page
+           that exists, so here the slot takes an upload and the fine-tuning
+           door appears on the edit page after the first save. -->
+      <div class="fld" data-art-slot="token">
+        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
+          <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
+          <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
+        </div>
+        <input type="file" id="tokenFile" accept="image/*">
+        <img id="tokenThumb" class="artthumb" alt="printable token preview">
+        <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none;margin-top:6px">&#10005; Remove token image</button>
+        <div class="sub" style="margin-top:6px">Upload a finished token image here &mdash; or save the character first, and the edit page's &ldquo;Edit in the Token Tool&rdquo; button renders one you can fine-tune and save onto this page.</div>
+      </div>
 
       <fieldset>
         <legend>Special properties</legend>
@@ -547,6 +563,7 @@
     var artDataURL   = null;
     var artAltDataURL = null;
     var artAlt2DataURL = null;
+    var tokenDataURL = null;   // uploaded printable token (data URL)
     var importedImage = null;
     // The file exactly as it was picked, before the 600px working copy. The
     // adjuster starts from this so zooming in stays sharp, and so a second
@@ -725,6 +742,8 @@
       var d = gather();
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
+      d.tokenArt = $('tokenArt').checked;
+      if (tokenDataURL) d.tokenImage = tokenDataURL;
       preview.paint(window.renderCharacter(d, artDataURL || importedImage || ''));
     }
     var deb;
@@ -838,6 +857,36 @@
           slot.set, id + 'Thumb', id + 'Adjust', slot.title);
       });
     });
+
+    // ── the printable token slot ───────────────────────────────────
+    // A finished token, not an icon: no Resize / Adjust (those fit art into
+    // the 591 frame, which would wreck a full-bleed round token), and a
+    // larger working copy than the icons' 600px — the Token Tool renders its
+    // tokens at about 1000px.
+    $('tokenFile').addEventListener('change', function (e) {
+      var file = e.target.files[0]; if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          var max = 1400, w = img.width, h = img.height;
+          if (w > max || h > max) { if (w >= h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+          var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          tokenDataURL = cv.toDataURL('image/png');
+          var th = $('tokenThumb'); th.src = tokenDataURL; th.style.display = 'block';
+          $('tokenClear').style.display = ''; update();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    $('tokenClear').addEventListener('click', function () {
+      tokenDataURL = null; $('tokenFile').value = '';
+      $('tokenThumb').style.display = 'none';
+      $('tokenClear').style.display = 'none'; update();
+    });
+    $('tokenArt').addEventListener('change', update);
 
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
     function standardizeInto(getUrl, setUrl, thumbId, btnId) {
@@ -1051,6 +1100,11 @@
           setStatus('work', verb + '&hellip; uploading evil art');
           return apiUpload('art/' + slug + '-alt2.png', artAlt2DataURL);
         })
+        .then(function () {
+          if (!tokenDataURL) return;
+          setStatus('work', verb + '&hellip; uploading token image');
+          return apiUpload('art/' + slug + '-token.png', tokenDataURL);
+        })
         // Step 2: write character to the database (D1) via the Worker
         .then(function () {
           setStatus('work', verb + '&hellip; saving to database');
@@ -1081,6 +1135,11 @@
           if (artAlt2DataURL) {
             entry.artAlt2   = 'art/' + slug + '-alt2.png';
             entry.imageAlt2 = ART_BASE + slug + '-alt2.png';
+          }
+          if ($('tokenArt').checked) entry.tokenArt = true;
+          if (tokenDataURL) {
+            entry.token      = 'art/' + slug + '-token.png';
+            entry.tokenImage = ART_BASE + slug + '-token.png';
           }
           return fetch('/api/character', {
             method: 'POST',

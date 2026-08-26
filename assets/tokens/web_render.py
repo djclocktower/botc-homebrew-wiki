@@ -122,6 +122,19 @@ def render_character_token(entry, art_path, char_margin=1.05, adj=None):
                                   round(gen.DCY * (char_margin - 1))))
     return big
 
+def _premade_token(path, char_margin=1.05):
+    """A finished token image (the wiki's saved art/{slug}-token.png), used in
+    place of a generated character token. Normalized to the same canvas
+    geometry render_character_token would have produced at this margin — the
+    disk-to-width ratio of a saved token is constant, so scaling the image to
+    the frame width times the margin puts its disk exactly where pack_sheets
+    and the gizmo geometry expect one."""
+    img = Image.open(path).convert('RGBA')
+    W = deco.BARE.size[0]
+    tw = max(1, round(W * char_margin))
+    s = tw / float(img.width)
+    return img.resize((tw, max(1, round(img.height * s))), Image.LANCZOS)
+
 def render_reminder_token(art_path, text, rem_margin=1.10, adj=None):
     a = _adj(adj)
     base = reminder.BLANK
@@ -275,14 +288,27 @@ def _build(characters, o):
         if not (isinstance(e, dict) and e.get('name') and e.get('ability')):
             continue
         art = e.get('_art')
-        if not art or not os.path.exists(art):
+        art_ok = bool(art) and os.path.exists(art)
+        # A saved token (the wiki's art/{slug}-token.png, fine-tuned by the
+        # character's creator) replaces the GENERATED character token. The
+        # reminders still render from the icon, so the icon requirement only
+        # relaxes for the character token itself; a premade whose fetch
+        # failed simply is not on disk and the generated pipeline runs.
+        pm = e.get('_premade')
+        pm_ok = bool(pm) and os.path.exists(pm)
+        if not art_ok and not pm_ok:
             continue
         a = e.get('_adj') or {}
         _c = e.get('_count', 1)
         cnt = max(0, min(50, int(1 if _c is None else _c)))
         if cnt > 0:
-            img = render_character_token(e, art, cm, a)
+            if pm_ok:
+                img = _premade_token(pm, cm)
+            else:
+                img = render_character_token(e, art, cm, a)
             chars.extend([img] * cnt)
+        if not art_ok:
+            continue
         rem_list = e.get('_rem')
         if rem_list is None:                      # legacy payload: derive from reminder arrays
             seq = list(e.get('reminders', []) or [])
@@ -346,12 +372,22 @@ def geometry():
 def web_preview(entry_json, opts_json):
     e = json.loads(entry_json); o = json.loads(opts_json)
     art = e.get('_art')
-    if not art or not os.path.exists(art):
-        return json.dumps({'error': 'art-missing'})
+    art_ok = bool(art) and os.path.exists(art)
+    # Same rule as _build: a saved token stands in for the generated one.
+    # ignore_premade is the per-token editor's door — it edits the GENERATED
+    # token, so previewing the premade there would make every slider a no-op.
+    pm = None if o.get('ignore_premade') else e.get('_premade')
+    pm_ok = bool(pm) and os.path.exists(pm)
     a = e.get('_adj') or {}
     if o.get('kind') == 'reminder' and e.get('_remText'):
+        if not art_ok:
+            return json.dumps({'error': 'art-missing'})
         img = render_reminder_token(art, e['_remText'], float(o.get('rem_margin', 1.10)), a)
+    elif pm_ok:
+        img = _premade_token(pm, float(o.get('char_margin', 1.05)))
     else:
+        if not art_ok:
+            return json.dumps({'error': 'art-missing'})
         img = render_character_token(e, art, float(o.get('char_margin', 1.05)), a)
     sc = float(o.get('preview_scale', 0.42))
     img = img.resize((max(1, round(img.width*sc)), max(1, round(img.height*sc))), Image.LANCZOS)

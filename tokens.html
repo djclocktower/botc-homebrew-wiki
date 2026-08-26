@@ -512,6 +512,17 @@
       <div id="tte-adj-panel"></div>
       <h3 class="tt-adj-sect">Reminder Copies</h3>
       <div id="tte-rems"></div>
+      <!-- Save the finished token onto the character's wiki page (owners and
+           approved editors only — the Worker enforces it). Hidden for
+           imported characters, which have no page to save to. -->
+      <div id="tte-save" style="display:none">
+        <h3 class="tt-adj-sect">Save to the Character Page</h3>
+        <p class="tt-assets-hint" id="tte-save-msg"></p>
+        <div class="tt-row" style="justify-content:flex-start;gap:14px">
+          <button type="button" class="tt-btn-sm" id="tte-save-go">Save to page</button>
+          <label class="tt-check"><input type="checkbox" id="tte-save-show" checked> Show it in the page&rsquo;s icon gallery</label>
+        </div>
+      </div>
       <div class="tt-adj-actions"><button type="button" class="tt-btn-sm" id="tte-reset">Reset This Token</button></div>
     </div>
   </div>

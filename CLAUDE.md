@@ -1255,6 +1255,46 @@ Things worth knowing before touching any of it:
   swallows the fetch error and the Python skips any payload whose file is
   missing).
 
+## The printable token (`tokenArt` / `token`)
+
+A character can carry the Token Tool's **finished token** as page content, on
+two fields in its `data`: `token` (+ `tokenImage` absolute), the saved image at
+**`art/{identity}-token.png`** in R2, and `tokenArt`, the owner's tick that
+puts it in the `/c/` gallery. They are two fields on purpose — the saved token
+is worth having (the Token Tool prints it) whether or not the page shows it.
+
+- **`artVersions()` grows a fourth version** (`key: 'token'`, label
+  "Printable token") only when `tokenArt` is set AND an image exists, so the
+  emblem pips pick it up with no new UI code and 1,600 untouched pages change
+  nothing. `buildSchema()` indexes versions by `main`/`alt`/`alt2` and never
+  exports it — the official schema's `image` positions mean alignment, and a
+  token is not an icon.
+- **The editors have a "Printable token" slot** (create.html + edit.html, same
+  form): the tick, a thumb, a direct upload (deliberately no Resize/Adjust —
+  those fit art into the 591 frame, which would wreck a full-bleed round
+  token) and, on edit.html only, an "Edit in the Token Tool" button opening
+  `/tokens?edit={identity}` — create has no identity yet. `tokenArt` is
+  explicit in edit's save (Object.assign would keep the loaded value forever);
+  `-token` is in `uploadSlotDenied()`'s suffix strip so the slot inherits the
+  character's own permission check, and in `retargetArtPaths()` so an admin
+  re-key moves it.
+- **The Token Tool prints a saved token instead of generating one.**
+  `premadeUrl()` in token-tool.js reads `token` off the card feed (it is NOT
+  in `CARD_DROP_FIELDS`); the lead payload carries `_premade` and
+  `web_render.py` uses that file when it exists — missing from the worker FS
+  it silently falls back to generating, so a failed fetch costs nothing. Only
+  the LEAD payload: a traveller's extra good/evil versions are exactly the
+  tokens the one saved image is not. The per-token editor renders live
+  (`ignore_premade`) or every slider would be a no-op.
+- **`?edit={identity}` + "Save to page"**: the editor modal's save renders the
+  tuned token at full size (`preview_scale: 1`), uploads it to the `-token`
+  slot and re-saves the row iconforge-style (full data from `/api/page`,
+  `status` pinned so saving a token never publishes a draft). Its "show in the
+  gallery" tick sets `tokenArt` only when ticked — unticked leaves the stored
+  answer alone. Touching `web_render.py` means bumping
+  `assets/tokens/manifest.json`'s `v`, or the cached toolkit keeps running the
+  old code.
+
 ## Character identity vs address (`/c/{set}/{character}`)
 
 A character has **two** strings and they do different jobs:

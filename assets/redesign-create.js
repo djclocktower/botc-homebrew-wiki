@@ -80,7 +80,10 @@
        either — `openAdvancedIfFilled` skips file inputs, so a character that
        already HAD alt art still showed a shut panel. */
     { key: 'basics',   title: 'Basics',   sub: 'name, team, ability, quote and art',
-      ids: ['name', 'team', 'ability', 'quote', 'art', 'artAlt', 'artAlt2'] },
+      /* tokenArt is the first id inside the Printable token slot, which sits
+         with the art it belongs to — folded into Advanced Options it would
+         repeat the alternate-art mistake this comment block describes. */
+      ids: ['name', 'team', 'ability', 'quote', 'art', 'artAlt', 'artAlt2', 'tokenArt'] },
     { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
             'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
