@@ -121,6 +121,15 @@
   function artRel(c) { return 'assets/' + (c.art || ('art/' + c.slug + '.png')); }
   function artAbs(c) { return ROOT + artRel(c); }
   function thumbSrc(c) { return c.ext ? (c.image || 'assets/favicon.png') : artRel(c); }
+  /* The character's SAVED token — art/{identity}-token.png, written by this
+     page's "Save to page" (or uploaded in the character editors). When one
+     exists the sheets and the main preview print IT instead of generating a
+     token, because its creator fine-tuned it by hand; the per-token editor
+     keeps rendering live (ignore_premade) or every slider would be a no-op.
+     Wiki characters only — an imported one has no page to have saved from. */
+  function premadeUrl(c) {
+    return (c && !c.ext && typeof c.token === 'string' && c.token) ? ROOT + 'assets/' + c.token : null;
+  }
 
   /* ---- a character's icons, and which of them get printed ----
      The official schema gives `image` up to three entries, and a traveller's
@@ -305,8 +314,17 @@
       var valid = incoming.filter(function (sl) { return charBySlug[sl]; });
       if (hasScript || hasColl) setSlugs = [];
       valid.forEach(function (sl) { if (setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
+      // ?edit={identity}: the character editors' "Edit in the Token Tool"
+      // door. ADDS to the set (never replaces — the reader may be mid-sheet)
+      // and opens the per-token editor once everything is wired.
+      var ed = q.get('edit');
+      if (ed && charBySlug[ed]) {
+        if (setSlugs.indexOf(ed) < 0) setSlugs.push(ed);
+        pendingEdit = ed;
+      }
     });
   }
+  var pendingEdit = null;
 
   /* ---- LEFT SIDEBAR: all characters, grouped by team (Script Builder style) ---- */
   function renderSidebar(filter) {
@@ -578,12 +596,86 @@
         if (setSlugs[0] === sl) schedulePreview();
       });
     renderEditorRems(sl);
+    renderEditorSave(sl);
     $('tt-editor').classList.add('open');
     document.body.style.overflow = 'hidden';
     $('tte-preview').innerHTML = '<span class="ph">Rendering…</span>';
     if (editorGizmo) editorGizmo.setAsset(null);
     refreshEditorTf();
     scheduleEditorPreview();
+  }
+  /* "Save to page": the finished token, written onto the character's own wiki
+     page — art/{identity}-token.png in R2 plus `token` on the row — so the
+     page can show it and every future Token Tool run prints IT instead of
+     generating one. Wiki characters only: an imported character has no page.
+     The Worker is the enforcer on both calls (uploadSlotDenied / canEditRow);
+     this only decides what to ask for. */
+  function renderEditorSave(sl) {
+    var box = $('tte-save'); if (!box) return;
+    var c = charBySlug[sl];
+    if (!c || c.ext) { box.style.display = 'none'; return; }
+    box.style.display = '';
+    $('tte-save-msg').textContent = c.token
+      ? 'This character already has a saved token — the sheets print it. Saving replaces it.'
+      : 'Saves this token onto the character’s wiki page. From then on the Token Tool prints it instead of generating one.';
+    $('tte-save-go').disabled = false;
+    $('tte-save-go').textContent = 'Save to page';
+  }
+  function saveEditorToken() {
+    var sl = editorSlug; if (!sl) return;
+    var c = charBySlug[sl]; if (!c || c.ext || !pyReady) return;
+    var btn = $('tte-save-go'), msg = $('tte-save-msg');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    msg.textContent = 'Rendering the token at full size…';
+    var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
+    o.preview_scale = 1; o.ignore_premade = true;
+    var pngB64 = null, key = 'art/' + sl + '-token.png';
+    callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
+      .then(function (res) {
+        if (res.error) throw new Error('This character has no art to render a token from.');
+        pngB64 = res.png;
+        msg.textContent = 'Uploading…';
+        return fetch(ROOT + 'api/page?type=character&slug=' + encodeURIComponent(sl), { credentials: 'same-origin' })
+          .then(function (r) { return r.json(); });
+      })
+      .then(function (page) {
+        if (!page || page.error) throw new Error((page && page.error) || 'Could not load that character. Are you logged in?');
+        if (!page.canEdit) throw new Error('That character belongs to another account.');
+        return fetch(ROOT + 'api/upload', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+          body: JSON.stringify({ key: key, data: 'data:image/png;base64,' + pngB64 })
+        }).then(function (r) { return r.json(); }).then(function (up) {
+          if (!up || up.error) throw new Error((up && up.error) || 'The upload failed.');
+          // Point the row at the slot just written. Everything else on the
+          // page goes back unchanged, its published/draft status included —
+          // saving a token must never publish a draft.
+          var entry = Object.assign({}, page.data, {
+            slug: page.slug,
+            token: key,
+            tokenImage: 'https://botchomebrew.wiki/assets/' + key,
+            status: page.status
+          });
+          if ($('tte-save-show').checked) entry.tokenArt = true;
+          return fetch(ROOT + 'api/character', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+            body: JSON.stringify(entry)
+          }).then(function (r) { return r.json(); });
+        });
+      })
+      .then(function (saved) {
+        if (!saved || saved.error) throw new Error((saved && saved.error) || 'The character could not be saved.');
+        charBySlug[sl].token = key;
+        // The saved bytes go straight into the worker FS, so this session's
+        // previews and sheets print the new token without refetching it.
+        callWorker('artBytes', { slug: sl + '-premade', b64: pngB64 }).catch(function () {});
+        btn.disabled = false; btn.textContent = 'Save to page';
+        msg.textContent = '✓ Saved. The character’s page now carries this token, and the sheets will print it.';
+        schedulePreview();
+      })
+      .catch(function (e) {
+        btn.disabled = false; btn.textContent = 'Save to page';
+        msg.textContent = '✗ ' + (e && e.message ? e.message : 'Save failed.');
+      });
   }
   function closeEditor() {
     if (editorGizmo) editorGizmo.setAsset(null);
@@ -640,6 +732,7 @@
       renderEditorRems(editorSlug);
       scheduleEditorPreview(); if (editorGizmo) editorGizmo.sync();
     };
+    $('tte-save-go').onclick = saveEditorToken;
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && editorSlug) closeEditor(); });
   }
 
@@ -652,6 +745,9 @@
     var sl = editorSlug, mySeq = ++edPrevSeq;
     var o = {}; Object.keys(opts).forEach(function (k) { o[k] = opts[k]; });
     o.preview_scale = 0.34;
+    // The editor edits the GENERATED token; previewing a saved one here
+    // would make every slider a no-op.
+    o.ignore_premade = true;
     return callWorker('preview', { payload: payloadFor(sl), opts: o, art: artList([sl]) })
       .then(function (res) {
         if (mySeq !== edPrevSeq || editorSlug !== sl) return;
@@ -1178,7 +1274,13 @@
     var c = charBySlug[sl];
     o = o || {};
     var v = ver || leadVersion(sl);
+    /* The saved token replaces the LEAD token only (the payload carrying the
+       reminders): it is one finished image, and a traveller's extra good/evil
+       versions are exactly the tokens it is not. Missing from the worker FS
+       (fetch failed) the Python quietly falls back to generating. */
+    var pm = (o.rems === false) ? null : premadeUrl(c);
     return {
+      _premade: pm ? ('art/' + sl + '-premade.png') : undefined,
       name: stripCreditMarks(c.name), ability: c.ability, team: c.team,
       firstNight: c.firstNight, otherNight: c.otherNight, setup: c.setup,
       reminders: c.reminders || [], remindersGlobal: c.remindersGlobal || [],
@@ -1218,6 +1320,8 @@
       var vs = printVersions(sl);
       if (!vs.length) vs = charVersions(c).slice(0, 1);
       vs.forEach(function (v) { out.push({ slug: v.fsSlug, url: v.url }); });
+      var pm = premadeUrl(c);
+      if (pm) out.push({ slug: sl + '-premade', url: pm });
     });
     return out;
   }
@@ -1292,6 +1396,7 @@
     saveSet(); renderAll(); wireSidebar(); wireSet(); wireOptions(); wireGenerate();
     wireGlobalAdj(); wireEditor(); wireAssets(); wireImport(); wireTransform();
     refreshGenerate(); schedulePreview();
+    if (pendingEdit) openEditor(pendingEdit);
     var extInSet = setSlugs.map(function (sl) { return charBySlug[sl]; }).filter(function (c) { return c && c.ext; });
     if (extInSet.length) fetchExtArt(extInSet).then(function () { schedulePreview(); });
   }).catch(function (err) {

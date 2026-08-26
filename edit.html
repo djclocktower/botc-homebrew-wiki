@@ -298,6 +298,26 @@
         </div>
         <button type="button" class="btn btn-del btn-sm" id="artAlt2Clear" style="display:none;margin-top:6px">&#10005; Remove evil art</button>
       </div>
+      <!-- The printable token — the Token Tool's finished token for this
+           character, saved to art/{identity}-token.png. The tick puts it in
+           the page's icon gallery (a fourth pip); the Token Tool's editor is
+           where it is made and fine-tuned, and the file input replaces the
+           image directly like any other art slot. -->
+      <div class="fld" data-art-slot="token">
+        <label>Printable token <span class="hint">(optional &mdash; the Token Tool's finished token for this character)</span></label>
+        <div style="display:flex;align-items:center;gap:8px;margin:2px 0 8px">
+          <input type="checkbox" id="tokenArt" style="width:17px;height:17px;margin:0">
+          <label for="tokenArt" style="margin:0">Show the token in this page's icon gallery</label>
+        </div>
+        <img id="tokenThumb" class="artthumb" alt="printable token">
+        <div class="sub" id="tokenHint" style="margin-top:6px"></div>
+        <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm" id="tokenEdit">&#9998; Edit in the Token Tool &#8599;</button>
+          <button type="button" class="btn btn-del btn-sm" id="tokenClear" style="display:none">&#10005; Remove token image</button>
+        </div>
+        <label for="tokenFile" class="sub" style="display:block;margin-top:8px">Or upload a finished token image to replace it:</label>
+        <input type="file" id="tokenFile" accept="image/*">
+      </div>
 
       <fieldset>
         <legend>Special properties</legend>
@@ -562,6 +582,8 @@
     var artAlt2Original = null;
     var artAlt2DataURL = null;  // newly uploaded evil art (data URL)
     var artAlt2Removed = false; // user removed the existing evil art
+    var tokenDataURL   = null;  // newly uploaded printable token (data URL)
+    var tokenRemoved   = false; // user removed the existing token image
 
     // ── jinx rows ──
     function addJinx(name, align, text, slug, id){
@@ -684,6 +706,11 @@
       else if (!artAltRemoved && originalEntry && originalEntry.artAlt) d.artAlt = originalEntry.artAlt;
       if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
       else if (!artAlt2Removed && originalEntry && originalEntry.artAlt2) d.artAlt2 = originalEntry.artAlt2;
+      // The printable-token pip previews exactly as it will publish: a fresh
+      // upload rides as a data URL, a saved one as its stored path.
+      d.tokenArt = $('tokenArt').checked;
+      if (tokenDataURL) d.tokenImage = tokenDataURL;
+      else if (!tokenRemoved && originalEntry && originalEntry.token) d.token = originalEntry.token;
       preview.paint(window.renderCharacter(d, src));
     }
 
@@ -801,6 +828,57 @@
       });
     });
 
+    // ── the printable token slot ──────────────────────────────────
+    // A finished token, not an icon: no Resize / Adjust (those fit art into
+    // the 591 frame, which would wreck a full-bleed round token), and a
+    // larger working copy than the icons' 600px, because the Token Tool
+    // renders its tokens at about 1000px.
+    function readTokenImage(src){
+      return new Promise(function(resolve, reject){
+        var img = new Image();
+        img.onload = function(){
+          var max=1400, w=img.width, h=img.height;
+          if(w>max||h>max){ if(w>=h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+          var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+          cv.getContext('2d').drawImage(img,0,0,w,h);
+          try{ resolve(cv.toDataURL('image/png')); }catch(e){ reject(e); }
+        };
+        img.onerror = function(){ reject(new Error('load failed')); };
+        img.src = src;
+      });
+    }
+    function syncTokenHint(){
+      var hint = $('tokenHint');
+      if (tokenDataURL) hint.textContent = 'New token image ready — it uploads when you save.';
+      else if (!tokenRemoved && originalEntry && originalEntry.token) hint.textContent = 'Saved token: ' + originalEntry.token;
+      else hint.textContent = 'No token saved yet — “Edit in the Token Tool” renders one from this page’s art and lets you fine-tune it before saving it here.';
+    }
+    $('tokenFile').addEventListener('change', function(e){
+      var file = e.target.files[0]; if(!file) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        readTokenImage(ev.target.result).then(function(url){
+          tokenDataURL = url; tokenRemoved = false;
+          var th=$('tokenThumb'); th.src=url; th.style.display='block';
+          $('tokenClear').style.display='';
+          syncTokenHint(); update();
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+    $('tokenClear').addEventListener('click', function(){
+      tokenDataURL = null; tokenRemoved = true; $('tokenFile').value='';
+      $('tokenThumb').style.display='none';
+      $('tokenClear').style.display='none';
+      syncTokenHint(); update();
+    });
+    $('tokenArt').addEventListener('change', update);
+    // The Token Tool's per-token editor, opened straight on this character —
+    // its "Save to page" writes the finished token back onto this page.
+    $('tokenEdit').addEventListener('click', function(){
+      window.open('tokens?edit=' + encodeURIComponent(originalSlug), '_blank', 'noopener');
+    });
+
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
     // Reads from the thumbnail's current src, so it works for freshly uploaded
     // art AND art already on the character (loaded same-origin on edit).
@@ -874,6 +952,14 @@
       var note = ($('suggest-note') && $('suggest-note').value.trim()) || '';
       $('save').disabled = true;
       setStatus('work', 'Sending your suggestion&hellip;');
+      // The form's fields over the page as loaded — the same shape writeRow
+      // gives a save. A suggestion stores the WHOLE page and approving it
+      // applies that object verbatim, so anything the form does not carry
+      // (the art paths, a saved printable token) has to ride along from the
+      // loaded row or approval would silently strip it.
+      d = Object.assign({}, originalEntry || {}, d);
+      // The gallery tick is a checkbox gather() does not carry.
+      if ($('tokenArt').checked) d.tokenArt = true; else delete d.tokenArt;
       delete d.publicEdit;
       delete d.editors;
       fetch('/api/suggest', {
@@ -904,7 +990,7 @@
       // The art inputs would upload into the page's own R2 slot, which is
       // exactly what an unapproved suggestion must not touch, so they are
       // closed rather than left there to be filled in and ignored.
-      ['art', 'artAlt', 'artAlt2'].forEach(function (id) {
+      ['art', 'artAlt', 'artAlt2', 'tokenFile'].forEach(function (id) {
         var el = $(id);
         if (!el) return;
         el.disabled = true;
@@ -1234,6 +1320,14 @@
         $(slot.id + 'StdWrap').style.display = '';
         $(slot.id + 'Clear').style.display = '';
       });
+      $('tokenArt').checked = !!entry.tokenArt;
+      if (entry.token) {
+        var tokTh = $('tokenThumb');
+        tokTh.src = SITE_ROOT + 'assets/' + entry.token;
+        tokTh.style.display = 'block';
+        $('tokenClear').style.display = '';
+      }
+      syncTokenHint();
       /* The art slots are named for the team, and a traveller's third slot is
          only drawn for a traveller — but the team was set above by assigning
          to .value, which fires nothing. Without this call the labels on an
@@ -1397,6 +1491,12 @@
             return apiUpload('art/'+slug+'-alt2.png', artAlt2DataURL);
           });
         }
+        if(tokenDataURL){
+          p = p.then(function(){
+            setStatus('work','Saving&hellip; uploading token image');
+            return apiUpload('art/'+slug+'-token.png', tokenDataURL);
+          });
+        }
         return p;
       }
 
@@ -1450,6 +1550,17 @@
         if(artChanged){
           entry.art   = 'art/'+slug+'.png';
           entry.image = ART_BASE+slug+'.png';
+        }
+        // Explicit for the same reason curataOptOut is: unticking the gallery
+        // box has to reach the save, and Object.assign would keep the loaded
+        // value forever.
+        if($('tokenArt').checked) entry.tokenArt = true; else delete entry.tokenArt;
+        if(tokenDataURL){
+          entry.token      = 'art/'+slug+'-token.png';
+          entry.tokenImage = ART_BASE+slug+'-token.png';
+        } else if(tokenRemoved){
+          delete entry.token;
+          delete entry.tokenImage;
         }
         // Write to D1 via the Worker (instant; requires login + ownership)
         return fetch('/api/character', {

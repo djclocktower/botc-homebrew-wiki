@@ -83,6 +83,27 @@
         url: abs || (rel ? ART_ABS + rel : '')
       });
     }
+    /* The printable token — the Token Tool's finished token, saved to
+       art/{identity}-token.png by the tool's "Save to page" (or uploaded in
+       the editors' Printable token slot). An OPT-IN fourth version: only a
+       page whose owner ticked `tokenArt` AND that actually has a saved image
+       grows the pip, so nothing changes on the 1,600 pages that never asked.
+       buildSchema() indexes versions by key (main/alt/alt2) and so never
+       exports it — the official schema's `image` positions mean alignment,
+       and a token is not an icon. */
+    if (d.tokenArt) {
+      var trel = typeof d.token === 'string' ? d.token : '';
+      var tabs = typeof d.tokenImage === 'string' ? d.tokenImage : '';
+      if (trel || tabs) {
+        out.push({
+          key: 'token',
+          label: 'Printable token',
+          rel: trel,
+          src: trel ? (prefix + 'assets/' + trel) : tabs,
+          url: tabs || (trel ? ART_ABS + trel : '')
+        });
+      }
+    }
     return out;
   }
   /* Show one version of the icon. Browser only — the group lives beside the

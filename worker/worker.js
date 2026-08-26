@@ -570,7 +570,8 @@ async function uploadSlotDenied(env, sess, key) {
   }
   // Character art follows art/{slug}.png, with the second and third icons
   // (a traveller's good and evil tokens) at art/{slug}-alt.png and
-  // art/{slug}-alt2.png. If that character exists, only its owner may
+  // art/{slug}-alt2.png, and the saved printable token at
+  // art/{slug}-token.png. If that character exists, only its owner may
   // replace the art.
   if (key.startsWith('art/')) {
     const named = key.slice(4).replace(/\.[a-z0-9]+$/i, '');
@@ -585,12 +586,15 @@ async function uploadSlotDenied(env, sess, key) {
        Fall back to the base identity, but ONLY when the key named no row:
        a character genuinely called "Foo Alt" has the identity `foo-alt`
        and matches on the first lookup, so it keeps its own permissions.
-       A single hardcoded suffix, never the longest-prefix match `pages/`
-       uses — character art is uploaded BEFORE the row exists, so a prefix
-       rule would refuse every new character whose name merely starts with
-       an existing one's ("Scarlet Woman" blocked by "Scarlet"). */
-    if (!row && /-alt2?$/.test(named)) {
-      slug = named.replace(/-alt2?$/, '');
+       A single hardcoded suffix list, never the longest-prefix match
+       `pages/` uses — character art is uploaded BEFORE the row exists, so a
+       prefix rule would refuse every new character whose name merely starts
+       with an existing one's ("Scarlet Woman" blocked by "Scarlet").
+       -token is the saved printable token (the Token Tool's "Save to page"
+       and the editors' Printable token slot) and inherits the character's
+       own permission check exactly as the alternates do. */
+    if (!row && /-(alt2?|token)$/.test(named)) {
+      slug = named.replace(/-(alt2?|token)$/, '');
       row = await getEntityRow(env, 'character', slug);
     }
     if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
@@ -599,7 +603,7 @@ async function uploadSlotDenied(env, sess, key) {
       // slot is named after the character's identity, which is derived
       // from its name, and that one is already someone else's page.
       // Say so, so the fix (a different name) is obvious.
-      return jsonResponse({ error: 'The art slot for "' + slug + '"' + (slug === named ? '' : ' (its alternate art)') + ' already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
+      return jsonResponse({ error: 'The art slot for "' + slug + '"' + (slug === named ? '' : ' (its extra art)') + ' already belongs to a character on another account. Give your character a different name and save again.' }, { status: 403 });
     }
     if (row && await isProtected(env, 'character', row.slug)) {
       return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -2399,7 +2403,7 @@ async function moveR2Object(env, fromKey, toKey) {
 // never touched.
 function retargetArtPaths(obj, from, to) {
   const re = new RegExp('art/' + from + '(?=[-.])', 'g');
-  for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2']) {
+  for (const k of ['art', 'image', 'artAlt', 'imageAlt', 'artAlt2', 'imageAlt2', 'token']) {
     if (typeof obj[k] === 'string') obj[k] = obj[k].replace(re, 'art/' + to);
   }
 }
