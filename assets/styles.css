@@ -1952,15 +1952,17 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    aria-label and title rather than on the page: a reader who wants to know
    which is the evil token taps and sees it, and the icon is the answer.
 
-   Faint on purpose. The group carries the opacity rather than each pip, so
-   the ring and the filled dot fade together and the active one never
-   brightens out of the set; hover and keyboard focus lift the whole row. */
+   Held back rather than hidden — they have to be findable on a phone in
+   daylight, which is the whole reason this is a percentage and not a colour.
+   The group carries the opacity rather than each pip, so the ring and the
+   filled dot fade together and the active one never brightens out of the
+   set; hover and keyboard focus lift the whole row to full. */
 .emblem-versions {
   display: flex; justify-content: center; gap: 0;
   margin: -4px 0 10px;
-  opacity: .42; transition: opacity .14s;
+  opacity: .75; transition: opacity .14s;
 }
-.emblem-versions:hover, .emblem-versions:focus-within { opacity: .8; }
+.emblem-versions:hover, .emblem-versions:focus-within { opacity: 1; }
 /* The button is a finger-sized target; the DOT is its ::before, so the mark
    can be 6px without the thing you have to hit being 6px too. */
 .emblem-ver {
