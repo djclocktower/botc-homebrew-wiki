@@ -134,10 +134,15 @@
       var COLLECTIONS = collData.map(function(c){
         // Whatever the tiles draw has to be copied across here: this is a
         // rebuilt object, not the row from collections.json, so a field that
-        // is missing from this list is simply absent later on.
+        // is missing from this list is simply absent later on. `logo` was the
+        // one that went missing: the tile falls back header -> logo -> the
+        // icon scatter, and with the logo dropped here the second step could
+        // never fire, so a collection with a logo and no header (Oblivion
+        // Theatre, The Bootlegger's Anthology) drew four member icons on its
+        // card while its own page showed the logo.
         return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                 match:c.match||[], tagline:c.tagline||'', description:c.description||'',
-                header:c.header||'', include:c.include||[], exclude:c.exclude||[],
+                header:c.header||'', logo:c.logo||'', include:c.include||[], exclude:c.exclude||[],
                 author:c.author||'', curata:!!c.curata};
       });
 
