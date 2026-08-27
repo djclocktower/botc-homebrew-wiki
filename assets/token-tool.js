@@ -310,17 +310,44 @@
         if (coll) allChars.forEach(function (c) { if (charInCollection(c, coll, list)) incoming.push(c.slug); });
       }));
     }
+    // ?edit={identity}: the character editors' "Edit in the Token Tool" door.
+    // The card feed holds PUBLISHED characters only, and the page most likely
+    // to arrive through this door is a draft fresh out of create.html — so a
+    // slug the feed does not carry is asked for directly. /api/page answers
+    // for the page's owner, its approved editors and admins (and for anyone
+    // once it is published), and resolves an address or an old slug to the
+    // identity, which is what the art slots and the save are keyed on.
+    var ed = q.get('edit');
+    if (ed && !charBySlug[ed]) {
+      jobs.push(fetch('api/page?type=character&slug=' + encodeURIComponent(ed), { credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (p) {
+          if (!p || p.error || !p.data || !p.slug) return;
+          var d = p.data;
+          charBySlug[p.slug] = {
+            slug: p.slug, name: d.name || p.slug, team: d.team || 'townsfolk',
+            ability: d.ability || '',
+            art: d.art, image: d.image, artAlt: d.artAlt, imageAlt: d.imageAlt,
+            artAlt2: d.artAlt2, imageAlt2: d.imageAlt2, token: d.token,
+            setup: !!d.setup,
+            firstNight: Number(d.firstNight) || 0, otherNight: Number(d.otherNight) || 0,
+            reminders: Array.isArray(d.reminders) ? d.reminders : [],
+            remindersGlobal: Array.isArray(d.remindersGlobal) ? d.remindersGlobal : []
+          };
+          ed = p.slug;
+        }).catch(function () {}));
+    }
     return Promise.all(jobs).then(function () {
       var valid = incoming.filter(function (sl) { return charBySlug[sl]; });
       if (hasScript || hasColl) setSlugs = [];
       valid.forEach(function (sl) { if (setSlugs.indexOf(sl) < 0) setSlugs.push(sl); });
-      // ?edit={identity}: the character editors' "Edit in the Token Tool"
-      // door. ADDS to the set (never replaces — the reader may be mid-sheet)
-      // and opens the per-token editor once everything is wired.
-      var ed = q.get('edit');
+      // ADDS to the set (never replaces — the reader may be mid-sheet) and
+      // opens the per-token editor once everything is wired.
       if (ed && charBySlug[ed]) {
         if (setSlugs.indexOf(ed) < 0) setSlugs.push(ed);
         pendingEdit = ed;
+      } else if (ed) {
+        showMsg('err', 'Could not open that character for token editing. A draft is only visible to its owner &mdash; make sure you are logged in on the account that made it.');
       }
     });
   }
