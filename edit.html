@@ -445,6 +445,7 @@
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
   <script src="assets/art-adjust.js"></script>
+  <script src="assets/token-auto.js"></script>
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
@@ -712,6 +713,9 @@
       if (tokenDataURL) d.tokenImage = tokenDataURL;
       else if (!tokenRemoved && originalEntry && originalEntry.token) d.token = originalEntry.token;
       preview.paint(window.renderCharacter(d, src));
+      // The default token follows the form: redrawn (debounced and keyed in
+      // token-auto.js) whenever something printed on it changed.
+      if (tokenAuto) tokenAuto.poke();
     }
 
     var deb;
@@ -851,7 +855,7 @@
       var hint = $('tokenHint');
       if (tokenDataURL) hint.textContent = 'New token image ready — it uploads when you save.';
       else if (!tokenRemoved && originalEntry && originalEntry.token) hint.textContent = 'Saved token: ' + originalEntry.token;
-      else hint.textContent = 'No token saved yet — “Edit in the Token Tool” renders one from this page’s art and lets you fine-tune it before saving it here.';
+      else hint.textContent = 'No token yet — tick the box above and a default one is drawn from this page automatically. Fine-tune it in the Token Tool, or upload a finished image below.';
     }
     $('tokenFile').addEventListener('change', function(e){
       var file = e.target.files[0]; if(!file) return;
@@ -859,6 +863,7 @@
       reader.onload = function(ev){
         readTokenImage(ev.target.result).then(function(url){
           tokenDataURL = url; tokenRemoved = false;
+          if (tokenAuto) tokenAuto.manual();   // their file; stop redrawing over it
           var th=$('tokenThumb'); th.src=url; th.style.display='block';
           $('tokenClear').style.display='';
           syncTokenHint(); update();
@@ -868,6 +873,7 @@
     });
     $('tokenClear').addEventListener('click', function(){
       tokenDataURL = null; tokenRemoved = true; $('tokenFile').value='';
+      if (tokenAuto) tokenAuto.manual();       // with the tick on, a fresh default is drawn
       $('tokenThumb').style.display='none';
       $('tokenClear').style.display='none';
       syncTokenHint(); update();
@@ -878,6 +884,32 @@
     $('tokenEdit').addEventListener('click', function(){
       window.open('tokens?edit=' + encodeURIComponent(originalSlug), '_blank', 'noopener');
     });
+    // Ticking the box draws a token with the complete default settings by
+    // itself — nobody should have to visit the Token Tool just to have one.
+    // The rendered image lands in tokenDataURL exactly as an upload would,
+    // so the thumb, the live preview and the save need nothing new.
+    var tokenAuto = window.TokenAuto && window.TokenAuto.mount ? window.TokenAuto.mount({
+      gather: function(){
+        var d = gather();
+        return { name: d.name, ability: d.ability, team: d.team, setup: d.setup,
+                 firstNight: d.firstNight, otherNight: d.otherNight,
+                 reminders: d.reminders, remindersGlobal: d.remindersGlobal };
+      },
+      allowed: function(){ return EDIT_MODE === 'owner' || EDIT_MODE === 'approved'; },
+      art: function(){
+        return artDataURL || (originalEntry && originalEntry.art ? SITE_ROOT + 'assets/' + originalEntry.art : null);
+      },
+      hasToken: function(){
+        return !!tokenDataURL || (!tokenRemoved && !!(originalEntry && originalEntry.token));
+      },
+      apply: function(url){
+        tokenDataURL = url; tokenRemoved = false;
+        var th = $('tokenThumb'); th.src = url; th.style.display = 'block';
+        $('tokenClear').style.display = '';
+        update();
+      },
+      hint: function(t){ $('tokenHint').textContent = t; }
+    }) : null;
 
     // ── opt-in: standardize icon to the 591x591 frame ──────────────
     // Reads from the thumbnail's current src, so it works for freshly uploaded

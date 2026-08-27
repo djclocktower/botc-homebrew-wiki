@@ -1278,6 +1278,19 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   `-token` is in `uploadSlotDenied()`'s suffix strip so the slot inherits the
   character's own permission check, and in `retargetArtPaths()` so an admin
   re-key moves it.
+- **Ticking the box draws a default token by itself** — nobody has to visit
+  the Token Tool just to have one; the Tool is the opt-in for fine-tuning.
+  `assets/token-auto.js` owns it: a lazy second copy of the same engine
+  (token-worker.js — nothing loads until the first render, because the
+  engine is ~15 MB on first use), and the `mount()` logic both editors
+  share. The rendered image lands in the page's `tokenDataURL` exactly as an
+  upload would, so the thumb, the live preview and the save need nothing
+  new. It is redrawn (debounced, and keyed on what the token actually
+  prints) as the form changes — but only while the current token is one it
+  drew itself: a saved token and a hand-uploaded file are never redrawn
+  over, which is what `manual()` marks. edit.html passes `allowed()` so a
+  public-edit guest, who cannot upload into the slot, gets a message instead
+  of a token that would fail their save.
 - **The Token Tool prints a saved token instead of generating one.**
   `premadeUrl()` in token-tool.js reads `token` off the card feed (it is NOT
   in `CARD_DROP_FIELDS`); the lead payload carries `_premade` and
@@ -1291,7 +1304,11 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   slot and re-saves the row iconforge-style (full data from `/api/page`,
   `status` pinned so saving a token never publishes a draft). Its "show in the
   gallery" tick sets `tokenArt` only when ticked — unticked leaves the stored
-  answer alone. Touching `web_render.py` means bumping
+  answer alone. **`?edit=` resolves through `/api/page`, not only the card
+  feed**: the feed is published-only, and the page most likely to arrive
+  through this door is a draft fresh out of create.html — matching it against
+  the feed alone made the door silently do nothing for exactly the people it
+  was built for. Touching `web_render.py` means bumping
   `assets/tokens/manifest.json`'s `v`, or the cached toolkit keeps running the
   old code.
 
