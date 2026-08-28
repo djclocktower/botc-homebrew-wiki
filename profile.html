@@ -243,9 +243,13 @@
       var href = '/s/' + encodeURIComponent(sc.slug);
       // Header image, then the logo, then the name drawn as a banner —
       // the same order the /s/ page itself falls back through.
+      // --nch (letter count, spaces collapsed) drives the banner text's
+      // font-size in styles.css, so a long name shrinks to fit the 21:9
+      // box instead of being clipped. Same trick as the /c/ page title.
+      var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
       var headerHTML = sc.header || sc.logo
         ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
-        : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
+        : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
         '<h3 class="collection-name">' + esc(sc.name) + curataMark(sc) + draftMark(sc) + '</h3>' +
@@ -494,9 +498,8 @@
 
       if (data.characters.length) {
         // Same card markup as a collection page, so card-filters.js can drive
-        // it and Partial pages stay hidden until a reader asks for them.
-        // /api/user returns newest-first, so index doubles as the "recently
-        // added" ordering the sort menu needs.
+        // it. /api/user returns newest-first, so index doubles as the
+        // "recently added" ordering the sort menu needs.
         html += section('Characters',
           '<p class="coll-chars-count cr-chars-count" id="cr-chars-count"></p>' +
           PR.filterBoxHTML('cr') +
@@ -543,16 +546,16 @@
       }
       panel.innerHTML = html;
 
-      // Mount whenever there are characters at all, not past some threshold:
-      // the filter is also what hides Partial pages, and a reader needs the
-      // chip to bring them back however short the list is.
+      // Mount whenever there are characters at all, not past some threshold,
+      // so the chips and sort work however short the list is.
       var mounted = window.mountCardFilters && window.mountCardFilters({
         grid: 'cr-grid', bar: 'cr-filter-bar',
         toggle: 'cr-filter-toggle', count: 'cr-chars-count',
-        // A creator page is a browse listing, so Partial pages are hidden here
-        // until the reader asks for them — as on All Characters and the tag,
-        // team and homepage listings.
-        partialChip: true, curataChip: true
+        // Unlike the browse listings, a creator page shows Partial pages by
+        // default: this is one person's body of work, and hiding half of it
+        // read as the wiki losing their characters. The chip starts active
+        // so a reader can still filter them out.
+        partialChip: true, partialOn: true, curataChip: true
       });
       if (!mounted) {
         var f = document.getElementById('cr-filters');

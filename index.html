@@ -600,9 +600,13 @@
           var href = 's/' + encodeURIComponent(sc.slug);
           // Header image, then the logo, then the name drawn as a banner —
           // the same order the /s/ page itself falls back through.
+          // --nch (letter count, spaces collapsed) drives the banner text's
+          // font-size in styles.css, so a long name shrinks to fit the 21:9
+          // box instead of being clipped. Same trick as the /c/ page title.
+          var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
           var headerHTML = sc.header || sc.logo
             ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
-            : '<div class="script-card-header script-card-header-empty"><span>' + esc(sc.name) + '</span></div>';
+            : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +
             '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +

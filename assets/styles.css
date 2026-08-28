@@ -1808,6 +1808,10 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   width: 100%; aspect-ratio: 21 / 9; margin-bottom: 12px;
   background: rgba(91,31,33,.04); border: 1px solid rgba(183,156,111,.35);
   display: flex; align-items: center; justify-content: center; overflow: hidden;
+  /* A size container, so the text-banner fallback below can size its name in
+     cqi. Safe on the image case too: the box's size comes from width +
+     aspect-ratio, never from its contents. */
+  container-type: inline-size;
 }
 .script-card-header img { width: 100%; height: 100%; object-fit: contain; }
 /* The stand-in banner a script tile draws when its creator gave it no header
@@ -1815,15 +1819,23 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    the plain wiki face — the tile's own name below it, and every tile that has
    a real logo, stay in Dumbledor. */
 .script-card-header-empty span {
-  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon); font-size: 2.4rem;
+  font-family: 'LHFUnlovable', 'Dumbledor2', serif; color: var(--maroon);
+  /* The name has to FIT the 21:9 box, whatever its length — "Smile Babe,
+     You're on Camera!" needed three lines at a fixed 2.4rem and was clipped
+     top and bottom (don't reach for -webkit-line-clamp: it does nothing
+     here — the span is a flex item, so its display is blockified and the
+     clamp never applies). So the size follows the character count instead,
+     the same --nch trick the /c/ title uses: every page that draws this tile
+     sets --nch (spaces collapsed, min 4) on the span, and the font shrinks
+     as 1/--nch. The constant is tuned so anything up to ~17 characters keeps
+     today's 2.4rem and the longest real titles land around two smaller
+     lines. The fixed font-size stays first as the fallback for browsers
+     without container queries — without one, cqi invalidates the whole
+     clamp() declaration and 2.4rem stands, which is the old behavior. */
+  font-size: 2.4rem;
+  font-size: clamp(1rem, calc(250cqi / var(--nch, 8)), 2.4rem);
+  line-height: 1.08;
   text-align: center; padding: 12px;
-  /* Tiles are ~275-325px wide at every breakpoint, so a name wraps to two
-     lines here at most — the longest logo-less script on the wiki is 15
-     characters and clears the 21:9 box comfortably. A name long enough to
-     need a third line would be clipped by the box: don't reach for
-     -webkit-line-clamp to catch that, it does nothing here (the span is a
-     flex item, so its display is blockified and the clamp never applies).
-     The full name is spelled out in the tile's heading directly below. */
   overflow-wrap: anywhere;
 }
 .script-tile-desc {

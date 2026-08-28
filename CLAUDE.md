@@ -2022,8 +2022,11 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   Partial banner and "needs ___" in the editor. `missingForPublish()` /
   `missingBits()` return the failing labels, `listPhrase()` joins them.
 - **Partial** — characters only: anything short of `STANDARD_REQUIREMENTS`.
-  Hidden from All Characters, the tag/team/creator pages, Featured and the
-  homepage unless the *reader* ticks the "Show Partial" chip. Filling the gap
+  Hidden from All Characters, the tag/team pages, Featured and the homepage
+  unless the *reader* ticks the "Show Partial" chip. The creator pages
+  (`/u/`, `/author?a=`) are the exception: one person's body of work shows
+  whole, so profile.html passes `partialOn` and the chip starts ticked —
+  there it filters Partial *out* on request instead. Filling the gap
   upgrades it instantly — nothing is stored.
   `hasMechanics()` no longer gates Partial (night order alone is not a
   finished almanac entry) but is still exported and still used to describe a

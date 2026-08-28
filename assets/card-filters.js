@@ -95,7 +95,8 @@
     // Partial pages are hidden until asked for on the browse pages, because
     // an unfinished page is not worth a reader's time. The Script Builder
     // passes partialOn: hiding a character there would stop somebody putting
-    // it on their script, which is a different thing entirely.
+    // it on their script, which is a different thing entirely. The creator
+    // page passes it too — see the Status-chips comment below.
     var PARTIAL_ON = !!opts.partialOn;
     // Optional extra chip group over data-source, for a list that mixes two
     // kinds of thing. The Script Builder's sidebar holds homebrew characters
@@ -156,9 +157,12 @@
     }
     // Status chips are opt-in, and only appear when there is something for them
     // to do. Off by default because turning the Partial chip on also *hides*
-    // Partial cards until it is ticked — right for a creator page (which the
-    // wiki hides Partial from) and wrong for a collection page (which lists
-    // whatever its author put in it). See "Page classification" in CLAUDE.md.
+    // Partial cards until it is ticked — right for the browse listings and
+    // wrong for a collection page (which lists whatever its author put in it).
+    // A page that wants Partial cards visible from the start passes partialOn
+    // as well, which starts the chip ticked: the creator page does, because a
+    // person's own body of work going half-hidden read as the wiki losing
+    // their characters. See "Page classification" in CLAUDE.md.
     var wantPartial = !!opts.partialChip && nPartial > 0;
     var wantCurata = !!opts.curataChip && nCurata > 0;
     if (wantPartial || wantCurata) {
