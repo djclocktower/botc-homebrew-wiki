@@ -317,6 +317,23 @@
         <table class="row-list" id="shared-table"></table>
       </div>
 
+      <!-- every character this account may edit: its own, and the ones other
+           creators opened to it (named on the page, or on a script/collection
+           carrying it) -->
+      <div class="panel" id="editable-panel" style="display:none">
+        <h3>Characters You Can Edit <span class="count-pill" id="n-editable">0</span></h3>
+        <p class="acct-body" style="font-size:.85rem;opacity:.75;margin:0 0 10px">
+          Every character page you can edit &mdash; your own, and the ones other creators shared with you.
+          <a href="editable" style="color:var(--maroon);font-weight:700">See them as cards &rarr;</a>
+        </p>
+        <p style="margin:0 0 10px">
+          <button type="button" class="filter-chip" id="editable-others">Only pages shared with you</button>
+        </p>
+        <table class="row-list" id="editable-table"></table>
+        <div class="empty-note" id="editable-empty" style="display:none">Nothing shared with you yet.</div>
+        <button type="button" class="feed-toggle" id="editable-toggle" aria-expanded="false" style="display:none"></button>
+      </div>
+
       <!-- suggested edits waiting on pages you own -->
       <div class="panel" id="sug-panel" style="display:none">
         <h3>Suggested Edits <span class="count-pill" id="n-sug">0</span></h3>
@@ -838,6 +855,74 @@
         .catch(function () { /* the panel just stays hidden */ });
     }
 
+    /* Every character this account may edit, owned or not — the waterfall
+       included, which "Shared With You" above deliberately summarises as
+       "and its characters" rather than listing. Here they ARE the list, with
+       a chip to cut it down to just the pages other people opened to you.
+       Long lists collapse the same way Recent Edits does. */
+    var EDITABLE_ROWS = [];
+    var EDITABLE_SHOWN = 12;
+    var editableState = { othersOnly: false, open: false };
+    function viaLabel(r) {
+      if (r.owned) return 'yours';
+      if (r.via && r.via.kind === 'roster') {
+        return 'via ' + esc(r.via.type) + ' ' + esc(r.via.name || r.via.key || '');
+      }
+      return 'shared with you';
+    }
+    function renderEditable() {
+      var rows = editableState.othersOnly
+        ? EDITABLE_ROWS.filter(function (r) { return !r.owned; })
+        : EDITABLE_ROWS;
+      $('editable-empty').style.display = rows.length ? 'none' : 'block';
+      var shown = editableState.open ? rows : rows.slice(0, EDITABLE_SHOWN);
+      $('editable-table').innerHTML = shown.map(function (r) {
+        return '<tr><td><span class="row-name"><a href="' + viewUrl('character', r.slug) + '">' +
+            esc(r.name || r.slug) + '</a></span>' +
+            (r.team ? ' <span class="row-type">· ' + esc(r.team) + '</span>' : '') +
+            (r.status === 'draft' ? ' <span class="row-date">(draft)</span>' : '') + '</td>' +
+          '<td class="row-type">' + viaLabel(r) + '</td>' +
+          '<td class="row-date">' + fmtDate(r.updatedAt) + '</td>' +
+          '<td class="row-actions"><a class="mini-btn edit" href="' + editUrl('character', r.slug) + '">Edit</a></td></tr>';
+      }).join('');
+      var btn = $('editable-toggle');
+      if (rows.length > EDITABLE_SHOWN) {
+        btn.style.display = 'inline-block';
+        btn.textContent = editableState.open ? 'Show fewer' : 'Show all ' + rows.length;
+        btn.setAttribute('aria-expanded', editableState.open ? 'true' : 'false');
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+    function loadEditable() {
+      fetch('/api/editable-characters', { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) {
+          var rows = (res && res.characters) || [];
+          if (!rows.length) return;
+          // The shared ones first — they are the news; your own follow, both
+          // newest-edited first.
+          rows.sort(function (a, b) {
+            if (!!a.owned !== !!b.owned) return a.owned ? 1 : -1;
+            return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+          });
+          EDITABLE_ROWS = rows;
+          $('n-editable').textContent = rows.length;
+          $('editable-panel').style.display = '';
+          renderEditable();
+        })
+        .catch(function () { /* the panel just stays hidden */ });
+    }
+    $('editable-others').addEventListener('click', function () {
+      editableState.othersOnly = !editableState.othersOnly;
+      this.classList.toggle('active', editableState.othersOnly);
+      renderEditable();
+    });
+    $('editable-toggle').addEventListener('click', function () {
+      editableState.open = !editableState.open;
+      renderEditable();
+    });
+
     function collapseFeed() {
       var items = Array.prototype.slice.call($('edit-feed').children);
       var btn = $('edits-toggle');
@@ -1062,6 +1147,7 @@
           loadMyMessages();
           loadSuggestions();
           loadShared();
+          loadEditable();
         })
         .catch(function(){
           $('gate').style.display = 'block';

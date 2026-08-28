@@ -628,6 +628,16 @@ drafts.html            /drafts — your own unpublished pages as cards (the same
                        have no card art so they get a plain tile. Linked from
                        the Your Drafts panel on the account page, which keeps
                        its own table — the two are deliberately both there.
+editable.html          /editable — every character you can EDIT as cards, owned
+                       or not: drafts.html's shape over /api/editable-characters
+                       (see "Approved editing"). Each card is stamped
+                       data-source mine|shared, so the shared filter box grows
+                       a Source chip pair — that is the "only the pages other
+                       people opened to me" filter. partialOn is passed on
+                       purpose: hiding a Partial page from the person meant to
+                       finish it would be backwards. Linked from the account
+                       page's Characters You Can Edit panel, which keeps its
+                       own table — same pairing as drafts.
 404.html               The custom Not Found page. Nothing links to it: the
                        Worker serves it AT the address that failed (no
                        redirect) with a 404 status, via assetsOrNotFound(),
@@ -963,6 +973,29 @@ everyone. They edit it as the creator would; the creator keeps the page.
   parent's row says "and its characters" and is the way to them. `/api/page`
   returns `editVia` naming the parent, so edit.html's banner can say where the
   permission came from instead of claiming somebody named you on this page.
+- **`GET /api/editable-characters` is the full character-level answer**: every
+  character the session may edit — its own, the ones it was named on, and the
+  shared rosters — each row saying why (`owned`, `via {kind:'named'}`, or
+  `via {kind:'roster', type, key, name}`). Deliberately characters only
+  (shared scripts/collections stay in `/api/shared-pages`) and deliberately
+  NOT including 'all'/'tags' pages — "every page somebody left open" is not a
+  list about this account. It feeds three surfaces: the **Characters You Can
+  Edit** panel on account.html (a table with an "only pages shared with you"
+  chip and a Show-all collapse), the **/editable** cards page it links to,
+  and the /jinxes add-form's character dropdown.
+- **They can write jinxes.** `POST /api/jinx` asks `editPermission()` rather
+  than ownership: 'owner', 'approved' (named on the character or waterfalled
+  from a shared script/collection) or 'all' may add/edit/remove a jinx stored
+  on that character — a jinx is page content the full editor save already
+  writes, so this closes no new door. 'tags' and 'suggest' still cannot. A
+  non-owner jinx write notifies the owner through the same `dms` row as every
+  other public edit.
+- **They can add and remove roster characters.** The save handlers never
+  pinned `characters[]` / `match[]`/`include[]`/`exclude[]` for a non-owner,
+  so publish-collection.html's membership manager already worked for an
+  approved editor; publish-script.html now carries a per-row ✕ (works on the
+  "Not in the wiki" rows too — the only way to drop a dead slug) beside the
+  ▲▼, with the Script Builder still the place characters are added.
 - `assets/approved-editors.js` is the one naming widget, mounted by all four
   editors (`create.html`, `edit.html`, `publish-script.html`,
   `publish-collection.html`) so the three page types cannot drift apart. It
@@ -1511,10 +1544,14 @@ caps and whitelists the fields on save.
   carrying `contentVersion()`. `logActivity()` bumps that on every content
   write, so it self-invalidates. No table, no migration, no rebuild tooling.
   `buildJinxIndex()` is pure and can be tested without a database.
-- **`POST /api/jinx`** adds, edits or removes one jinx. You need to own (or
-  admin) **one** of the two characters; it is stored on the side you own and
-  the other page gets it by mirroring. The other side must exist: an official
-  id is checked against roles.json, a wiki slug against the table.
+- **`POST /api/jinx`** adds, edits or removes one jinx. You need to be able to
+  **edit** one of the two characters — `editPermission()` 'owner', 'approved'
+  (which includes being named on a script/collection carrying it) or 'all';
+  it is stored on the side you can edit and the other page gets it by
+  mirroring. The other side must exist: an official id is checked against
+  roles.json, a wiki slug against the table. The /jinxes form's dropdown comes
+  from `/api/editable-characters`, so it offers exactly what the Worker will
+  accept.
 - **Jinx rule text goes through `render-wiki.js`** like every other
   writer-supplied string, so `**bold**` and `[[Character Name]]` work in it.
   The `/c/` route therefore has to call `WikiRender.setCharLinks()`.
