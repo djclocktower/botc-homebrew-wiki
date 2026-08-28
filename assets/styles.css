@@ -594,6 +594,67 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .jinx.noicon { grid-template-columns: 1fr; }
 
+/* ── Related pages: the ribbon cards in the almanac ────────────────────────
+   Rendered by relatedHTML() in render.js, after the Summary bullets. The
+   coloured edge is the card's whole classification — team colour for a
+   character (half blue / half red for a traveller), gold Fabled, green
+   Loric, beige for a page on this wiki, white for an external link — so no
+   label text is needed. The stripe is a ::before inset inside the border
+   rather than the border itself, because a border cannot carry the
+   traveller's two-colour gradient. */
+.related { margin-top: 18px; }
+.rel-list { display: flex; flex-direction: column; gap: 9px; }
+.rel-card {
+  position: relative;
+  display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: start;
+  background: rgba(255, 252, 244, .55);
+  border: 1px solid var(--card-edge);
+  padding: 9px 12px 9px 17px;
+}
+.rel-card.noicon { grid-template-columns: 1fr; }
+.rel-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px;
+  background: #8a6f4d;
+}
+.rel-good::before      { background: var(--good); }
+.rel-evil::before      { background: var(--evil); }
+.rel-traveller::before { background: linear-gradient(to bottom, var(--good) 50%, var(--evil) 50%); }
+.rel-fabled::before    { background: #b8952a; }
+.rel-loric::before     { background: #3a7a4a; }
+.rel-page::before      { background: #cdb488; }
+/* White on a cream card needs its own edge to read as a stripe at all. */
+.rel-ext::before       { background: #fff; border-right: 1px solid var(--card-edge); }
+.rel-ico { width: 44px; height: 44px; object-fit: contain; }
+.rel-bd { min-width: 0; }
+.rel-name {
+  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: 1.02rem; line-height: 1.15; margin-bottom: 2px;
+  color: var(--maroon); text-decoration: none;
+}
+.rel-name:hover { text-decoration: underline; }
+.rel-good .rel-name { color: var(--good-name); }
+.rel-evil .rel-name { color: var(--evil); }
+.rel-ext-mark { opacity: .55; font-size: .85em; }
+.rel-note {
+  display: block; font-family: 'EB Garamond', serif; font-style: italic;
+  font-size: 1rem; line-height: 1.28; color: var(--ink);
+}
+/* The optional preview image on a custom link (the "embed"). */
+.rel-thumb {
+  display: block; width: 100%; max-height: 130px; object-fit: cover;
+  margin-top: 7px; border: 1px solid var(--card-edge);
+}
+/* The Related-pages repeater in the two character editors
+   (assets/related-editor.js — shared, so the styling is too). */
+.rel-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px; margin-bottom: 12px; align-items: start;
+}
+.rel-row .rl-targets { display: block; min-width: 0; }
+.rel-row .rl-targets input { width: 100%; }
+.rel-row .rl-name, .rel-row .rl-image, .rel-row .rl-note { grid-column: 1 / -1; }
+.rel-row .rl-note { min-height: 42px; }
+
 /* homepage create button */
 .create-btn {
   display: inline-block; margin-top: 20px;
@@ -3064,7 +3125,8 @@ a:hover .curata-mark { opacity: .9; }
    this: /c/imbecile, whose tips carry a 124-character Reddit link, rendered
    903px wide in a 390px viewport. */
 .char-parchment p, .char-parchment li,
-.char-parchment .ex, .char-parchment .callout {
+.char-parchment .ex, .char-parchment .callout,
+.rel-name, .rel-note {
   overflow-wrap: anywhere; word-break: break-word;
 }
 

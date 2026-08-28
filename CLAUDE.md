@@ -1528,6 +1528,43 @@ there is not, so both importers say so before they write:
   where both characters wrote a rule, since only one wording is ever shown and the
   other is invisible. Dashboard card: "Jinx health".
 
+## Related pages on a character (`data.related`)
+
+The ribbon cards a `/c/` page shows after its Summary bullets and before How
+to Run (on a phone that is literally the order; on desktop they close the
+summary column). Owner-picked links to the pages a character is about — a
+character its ability names, the wiki page for a condition it inflicts, a
+script, a collection, or any web link. **The box only exists when entries
+do**: adding the first entry is how the feature is enabled, so it can never
+render empty.
+
+- One entry is `{type: char|official|page|script|collection|url, slug|id|url,
+  name, note, team, image}`, capped and whitelisted by `sanitizeRelated()`
+  in worker.js (`RELATED_MAX` 12). The coloured edge is the whole
+  classification: team colour for a character (blue good, red evil,
+  half-and-half traveller, gold Fabled, green Loric), beige for a page on
+  this wiki, white for an external link. `relatedHTML()` +
+  `resolveRelatedTarget()` in render.js draw it; `.rel-*` in styles.css.
+- A `char` entry resolves through the same registries as the jinx box
+  (`setWikiChars`), so icon, address and team stay live; the stored `team`
+  is only the fallback. An `official` entry's team IS the stored one — the
+  official registries carry no team and that roster never changes; the jinx
+  picker records it (`dataset.team`) at pick time.
+- **Relations are one-way and never mirrored.** Nothing shows on a page its
+  owner did not put there. The other side is told instead: `/api/page`
+  returns `relatedBy` (published pages whose related list names this
+  character) for a reader who can edit, and edit.html offers a one-click
+  "Add it here". No index, no cache — a `LIKE '%"related"%'` narrows the
+  scan to the few rows that carry a list at all.
+- `assets/related-editor.js` is the one repeater, mounted by create.html and
+  edit.html (same form — change one, change both); `related-fld` is filed
+  under the Page section in redesign-create.js, NOT Advanced Options. The
+  `image` embed (custom links only) is https-only, enforced server-side and
+  again at render.
+- `related` is in `CARD_DROP_FIELDS`, so the Token Tool and the card grids
+  never carry it, and notes take `inlineText()` marks like jinx rules —
+  nothing in it leaves the page.
+
 ## No official characters
 
 The wiki is for homebrew. A page that **is** an official character duplicates

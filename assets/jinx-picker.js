@@ -182,6 +182,10 @@
       field.value = c.name;
       if (c.official) { field.dataset.id = c.id || ''; delete field.dataset.slug; }
       else { field.dataset.slug = c.slug; delete field.dataset.id; }
+      // The team travels with the pick: the Related editor stores it as the
+      // ribbon colour's fallback (and an official character's only source —
+      // the render-side registries carry no team). Jinx rows ignore it.
+      if (c.team) field.dataset.team = c.team; else delete field.dataset.team;
       close();
       field.dispatchEvent(new Event('input', { bubbles: true }));
       field.dispatchEvent(new Event('change', { bubbles: true }));
@@ -194,6 +198,7 @@
       if (field.getAttribute('data-jxsetting') !== '1') {
         delete field.dataset.slug;
         delete field.dataset.id;
+        delete field.dataset.team;
       }
       open();
     });
@@ -214,12 +219,13 @@
 
   /* Fill a field from stored data without the input handler wiping the
      target it came with. */
-  function setJinxField(field, value, slug, id) {
+  function setJinxField(field, value, slug, id, team) {
     if (!field) return;
     field.setAttribute('data-jxsetting', '1');
     field.value = value || '';
     if (slug) field.dataset.slug = slug; else delete field.dataset.slug;
     if (id) field.dataset.id = id; else delete field.dataset.id;
+    if (team) field.dataset.team = team; else delete field.dataset.team;
     field.removeAttribute('data-jxsetting');
   }
 

@@ -976,6 +976,7 @@ const FIELD_LABELS = {
   otherNight: 'other-nights order', firstNightReminder: 'first-night reminder',
   otherNightReminder: 'other-nights reminder', setup: 'setup flag',
   special: 'special properties', customBoxes: 'side boxes', customJson: 'custom JSON',
+  related: 'related pages',
   appearsIn: 'appears in', pronunciation: 'pronunciation', ipa: 'IPA',
   respelling: 'respelling', translatedBy: 'translator', iconBy: 'icon credit',
   edition: 'edition', publicEdit: 'who may edit',
@@ -1467,6 +1468,59 @@ function sanitizeJinxes(jinxes) {
     if (/^[a-z0-9_-]{1,80}$/.test(id)) o.id = id;
     return o;
   }).filter(j => j.name || j.slug || j.id);
+}
+
+// The Related ribbons on a character page (`data.related` — rendered by
+// relatedHTML() in render.js, after the Summary bullets). Owner-picked links
+// to the pages this character is about: another character here, an official
+// one, a wiki page, a script, a collection, or a custom URL. The type decides
+// which keys survive, so a client cannot smuggle fields through. `team` is
+// kept for the two character types only — it is the ribbon colour's fallback
+// (and, for an official character, its only source: the official registries
+// carry no team, and that roster never changes). The embed image is a custom
+// link's optional preview and https-only.
+const RELATED_MAX = 12;
+const RELATED_TYPES = new Set(['char', 'official', 'page', 'script', 'collection', 'url']);
+const RELATED_TEAMS = new Set(['townsfolk', 'outsider', 'minion', 'demon',
+  'traveller', 'traveler', 'fabled', 'loric']);
+function sanitizeRelated(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, RELATED_MAX).map(r => {
+    if (!r || typeof r !== 'object' || !RELATED_TYPES.has(r.type)) return null;
+    const o = {
+      type: r.type,
+      name: String(r.name || '').slice(0, 120).trim(),
+      note: String(r.note || '').slice(0, 500).trim()
+    };
+    if (!o.note) delete o.note;
+    if (!o.name) delete o.name;
+    if (o.type === 'url') {
+      const u = String(r.url || '').trim();
+      if (!/^https?:\/\/\S{1,300}$/i.test(u)) return null;
+      o.url = u;
+      const img = String(r.image || '').trim();
+      if (/^https:\/\/\S{1,300}$/i.test(img)) o.image = img;
+      return o;
+    }
+    if (o.type === 'official') {
+      const id = String(r.id || '');
+      if (!/^[a-z0-9_-]{1,80}$/.test(id)) return null;
+      o.id = id;
+      if (RELATED_TEAMS.has(r.team)) o.team = r.team;
+      return o;
+    }
+    const slug = String(r.slug || '');
+    if (!/^[a-z0-9-]{1,80}$/.test(slug)) return null;
+    o.slug = slug;
+    if (o.type === 'char') {
+      if (RELATED_TEAMS.has(r.team)) o.team = r.team;
+      return o;
+    }
+    // A wiki page, script or collection has no registry behind it on the
+    // reader's page: the stored name IS the link text, so an entry without
+    // one would render nothing.
+    return o.name ? o : null;
+  }).filter(Boolean);
 }
 
 // The fact box on a wiki page / news article: a title, an image and rows.
@@ -3156,7 +3210,8 @@ async function bumpContentVersion(env) {
 // on purpose now.
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
-  'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom'
+  'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
+  'related'
 ]);
 
 // ---- build the three JSON files from D1 (published pages only) ----
@@ -6023,9 +6078,34 @@ export default {
           };
         }
       }
+      /* Who points here: the pages naming this character in their own
+         Related list. Relations are one-way by design — nothing shows on a
+         page its owner did not put there — so this is the editor's courtesy
+         flag ("the Gardener lists this page as related"), from which the
+         owner can add the link back with one click. Computed only for a
+         reader who can actually edit the page. The LIKE narrows the scan to
+         the few rows that carry a related list at all. */
+      let relatedBy = null;
+      if (type === 'character' && editable) {
+        try {
+          const rs = await env.DB.prepare(
+            "SELECT slug, name, data FROM characters WHERE status = 'published' AND slug != ?1 AND data LIKE '%\"related\"%' LIMIT 400"
+          ).bind(row.slug).all();
+          const hits = [];
+          for (const r of (rs.results || [])) {
+            try {
+              const rel = JSON.parse(r.data).related;
+              if (Array.isArray(rel) && rel.some(e => e && e.type === 'char' && e.slug === row.slug)) {
+                hits.push({ slug: r.slug, name: r.name });
+              }
+            } catch { /* one bad blob must not hide the rest */ }
+          }
+          if (hits.length) relatedBy = hits.slice(0, 20);
+        } catch { /* the editor renders fine without the flag */ }
+      }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia,
+        curataFrom, editVia, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -7905,6 +7985,8 @@ export default {
         }
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
+        c.related = sanitizeRelated(c.related);
+        if (!c.related.length) delete c.related;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.

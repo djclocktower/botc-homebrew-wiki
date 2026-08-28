@@ -428,6 +428,91 @@
              external: true, slug: '', team: '' };
   }
 
+  /* ── Related pages (the ribbon cards in the almanac) ─────────────────
+     `data.related` is the owner's hand-picked list of pages this character
+     is about: another character its ability names, the wiki page for a
+     condition it inflicts, the Bloodstar original. One entry is
+     {type, slug|id|url, name, note, team, image} — see sanitizeRelated()
+     in worker.js for the caps. The block renders after the Summary bullets
+     and before How to Run, and only when entries exist: an owner enables
+     the feature by adding the first entry, so it can never appear empty.
+
+     The ribbon on each card says what kind of thing it links to without a
+     word of label text: team colour for a character (blue good, red evil,
+     half-and-half traveller, gold Fabled, green Loric), beige for a page on
+     this wiki (wiki page, script, collection), white for an external link.
+     A character entry resolves through the same registries as the jinx box,
+     so its icon, address and team stay live; the stored name and team are
+     only the fallback for a target the registry cannot see (a draft, or a
+     registry that never loaded). An official character's team IS stored,
+     because the official roster registries carry no team and the roster
+     never changes. */
+  var REL_RIBBONS = { townsfolk: 'good', outsider: 'good', minion: 'evil',
+                      demon: 'evil', traveller: 'traveller', traveler: 'traveller',
+                      fabled: 'fabled', loric: 'loric' };
+  function resolveRelatedTarget(r, root) {
+    root = root || '';
+    var nm = String(r.name || '').trim();
+    var type = String(r.type || '');
+    if (type === 'char') {
+      var hit = wikiChar(normJinxId(r.slug || ''));
+      if (hit) {
+        return { name: hit.name || nm, href: charHref(hit, root),
+                 iconSrc: wikiCharIcon(hit, root), external: false,
+                 ribbon: REL_RIBBONS[hit.team] || 'page' };
+      }
+      // A draft, or a registry that never loaded: the identity still
+      // reaches the page (/c/{identity} 301s to the address).
+      return { name: nm || r.slug, href: root + 'c/' + (r.slug || ''),
+               iconSrc: '', external: false,
+               ribbon: REL_RIBBONS[r.team] || 'page' };
+    }
+    if (type === 'official') {
+      var key = r.id || nm;
+      var offNm = officialName(slugId(key)) || nm || String(r.id || '');
+      return { name: offNm, href: jinxURL(offNm),
+               iconSrc: officialIconUrl(slugId(key)), external: true,
+               ribbon: REL_RIBBONS[r.team] || 'page' };
+    }
+    if (type === 'page')       return { name: nm, href: root + 'p/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
+    if (type === 'script')     return { name: nm, href: root + 's/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
+    if (type === 'collection') return { name: nm, href: root + 'collection/' + (r.slug || ''), iconSrc: '', external: false, ribbon: 'page' };
+    if (type === 'url' && /^https?:\/\//i.test(String(r.url || ''))) {
+      return { name: nm || r.url, href: String(r.url), iconSrc: '', external: true, ribbon: 'ext' };
+    }
+    return null;
+  }
+
+  function relatedHTML(d, root) {
+    var items = Array.isArray(d.related) ? d.related : [];
+    var cards = items.map(function (r) {
+      if (!r) return '';
+      var t = resolveRelatedTarget(r, root);
+      if (!t || !t.name) return '';
+      var icon = t.iconSrc ?
+        '<img loading="lazy" decoding="async" class="rel-ico" src="' + esc(t.iconSrc) + '" alt=""' +
+        ' onerror="this.style.display=\'none\';this.closest(\'.rel-card\').classList.add(\'noicon\')">' : '';
+      // The embed: an optional preview image on a custom link, https-only
+      // (enforced again by sanitizeRelated — this test is the render-side
+      // seatbelt for rows written before the field existed).
+      var thumb = (r.type === 'url' && /^https:\/\//i.test(String(r.image || ''))) ?
+        '<img loading="lazy" decoding="async" class="rel-thumb" src="' + esc(r.image) + '" alt=""' +
+        ' onerror="this.style.display=\'none\'">' : '';
+      var noteTxt = String(r.note || '').trim();
+      return '<div class="rel-card rel-' + t.ribbon + (icon ? '' : ' noicon') + '">' + icon +
+        '<div class="rel-bd">' +
+        '<a class="rel-name" href="' + esc(t.href) + '"' +
+        (t.external ? ' target="_blank" rel="noopener noreferrer"' : '') +
+        '>' + esc(t.name) + (t.external ? ' <span class="rel-ext-mark">↗</span>' : '') + '</a>' +
+        (noteTxt ? '<span class="rel-note">' + inlineText(noteTxt) + '</span>' : '') +
+        thumb + '</div></div>';
+    }).join('');
+    if (!cards) return '';
+    return '<div class="related" id="sec-related">' +
+      '<div class="gen-sech-wrap"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-related">Related</a></h2></div>' +
+      '<div class="rel-list">' + cards + '</div></div>';
+  }
+
   // Creator-symbol registry ("credit icons"), shared with creators.js. The
   // Worker injects it for SSR (setCreators); in the browser we fall back to
   // the global that assets/creators.js publishes. Either way, a character page
@@ -937,7 +1022,11 @@
          this page and nowhere else, which is worse than not offering it. */
       (d.ability ? '<p class="ability">' + esc(d.ability) + '</p>' : '') +
       (d.lede ? '<p class="lede">' + inlineLinks(d.lede) + '</p>' : '') +
-      (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + inlineLinks(b) + '</li>'; }).join('') + '</ul>' : '');
+      (bullets.length ? '<ul>' + bullets.map(function (b) { return '<li>' + inlineLinks(b) + '</li>'; }).join('') + '</ul>' : '') +
+      // The Related ribbons close the summary column: after the bullets,
+      // before How to Run — which is exactly that order on a phone, where
+      // the two columns stack.
+      relatedHTML(d, root);
 
     var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
       (d.callout && d.callout.trim() ? '<div class="callout">' + inlineLinks(d.callout) + '</div>' : '');
