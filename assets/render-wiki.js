@@ -29,23 +29,43 @@
                                    the official wiki; otherwise this wiki's
                                    page for it; otherwise a reminder token
                                    pill — the [[TOKEN]] convention character
-                                   pages already used.
+                                   pages already used. An ALL-CAPS name
+                                   ([[UNDEAD]]) is ALWAYS the pill, never a
+                                   link: that is how the official almanacs
+                                   write reminder text, and a wiki page that
+                                   happens to share the name must not steal
+                                   it. Type [[Undead]] to mean the character.
      [[Character Name|as written]] same, with your own label.
      {{blue|Undertaker}}           the name in the good team's blue
      {{red|Imp}}                   the name in the evil team's red
                                    ({{good|…}} and {{evil|…}} are the same two)
+     {{townsfolk|…}} {{outsider|…}} {{minion|…}} {{demon|…}}
+     {{traveller|…}} {{fabled|…}} {{loric|…}}
+                                   the name in that team's own colour — one
+                                   mark per team. Traveller is the half-blue,
+                                   half-red split the Related ribbon uses
+                                   ({{traveler|…}} is accepted too).
+     {{i|text}}                    italics. A brace mark rather than
+                                   *asterisks* because character prose is
+                                   full of the official "Each night*"
+                                   convention — see the links-mode note.
 
-   The marks combine, and the colour mark is applied last precisely so that
+   The marks combine, and the colour mark is applied late precisely so that
    they can: {{red|[[Imp]]}} is a red link to the Imp, {{blue|[a rule](url)}}
    is a blue one to anywhere. A link inside a colour takes the colour (see
-   `.wiki-red a` in styles.css) rather than the link colour.
+   `.wiki-red a` in styles.css) rather than the link colour. {{i|…}} runs on
+   both sides of the colour pass, so {{i|{{red|Imp}}}} and {{red|{{i|Imp}}}}
+   are both a red italic name.
 
    opts.marks === 'links' asks for a deliberately small part of that set —
-   links, [[character links]] and the colour marks, and nothing a writer
-   could type by accident. It is what a CHARACTER page's prose is rendered
-   with (see assets/render.js): the official "Each night*" convention puts a
-   lone asterisk through a great deal of that text, and two of them on one
-   line would otherwise italicise everything in between.
+   links, [[character links]], the colour marks, {{i|…}} and **bold**, and
+   nothing a writer could type by accident. It is what a CHARACTER page's
+   prose is rendered with (see assets/render.js): the official "Each night*"
+   convention puts a lone asterisk through a great deal of that text, and
+   two of them on one line would otherwise italicise everything in between.
+   **bold** is safe there — it takes a DOUBLED pair, which "Each night*"
+   text cannot produce — and italics are offered as {{i|…}} instead of
+   *asterisks* for the same reason.
 
    Browser + Worker, like render.js and render-page.js: no DOM access at
    module top level. The Worker imports it for SSR; the editors load it in the
@@ -193,11 +213,33 @@
 
      The body may not contain a brace, so the mark cannot swallow the rest of
      a paragraph when somebody forgets to close it. It is applied AFTER the
-     link marks, so a coloured link and a linked colour both work. */
+     link marks, so a coloured link and a linked colour both work.
+
+     Every team has its own mark on top of the original red/blue pair —
+     townsfolk and demon are those same two colours under the team's name,
+     and traveller is the half-blue, half-red split the Related ribbon uses
+     (a gradient clipped to the glyphs; see .wiki-traveller in styles.css).
+     Both spellings of traveller are taken, because both are typed. */
   var COLOR_CLASS = {
-    red: 'wiki-red', evil: 'wiki-red', blue: 'wiki-blue', good: 'wiki-blue'
+    red: 'wiki-red', evil: 'wiki-red', blue: 'wiki-blue', good: 'wiki-blue',
+    townsfolk: 'wiki-townsfolk', outsider: 'wiki-outsider',
+    minion: 'wiki-minion', demon: 'wiki-demon',
+    traveller: 'wiki-traveller', traveler: 'wiki-traveller',
+    fabled: 'wiki-fabled', loric: 'wiki-loric'
   };
-  var COLOR_RE = /\{\{(red|blue|good|evil)\|([^{}\n]{1,300})\}\}/gi;
+  var COLOR_RE = /\{\{(red|blue|good|evil|townsfolk|outsider|minion|demon|traveller|traveler|fabled|loric)\|([^{}\n]{1,300})\}\}/gi;
+
+  /* ── {{i|text}} — italics ──
+     A brace mark rather than *asterisks*, because links mode exists exactly
+     to keep the "Each night*" convention's lone asterisks from becoming
+     marks. Applied on BOTH sides of the colour pass — before it, so
+     {{red|{{i|Imp}}}} leaves a brace-free body for the colour to take, and
+     after it, so {{i|{{red|Imp}}}} finds the colour's braces consumed —
+     which is what makes both nestings work while the body itself still
+     admits no brace (same unclosed-mark reasoning as the colour body). The
+     cap is roomier than the colour mark's because the body may hold rendered
+     markup by the second pass. */
+  var EM_RE = /\{\{i\|([^{}\n]{1,600})\}\}/gi;
 
   /* ── {{drop|T}} — the almanac drop cap ──
      A large decorative initial to open a paragraph, the way the official
@@ -274,7 +316,15 @@
     out = out.replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g, function (m, target, label) {
       var key = normName(target);
       var shown = (label != null && label !== '') ? label : target;
-      if (isReminderToken(key)) return '<span class="tok">' + shown + '</span>';
+      // An ALL-CAPS target is a reminder token wherever it appears — that is
+      // how the official almanacs write reminder text, and the per-character
+      // registry below can only vouch for the page being rendered, so
+      // [[UNDEAD]] on any other page used to fall through and link to
+      // whatever homebrew character answered to "undead". At least one A-Z
+      // and no a-z, so caseless scripts (a wholly Han or kana name) keep
+      // linking as before. [[Undead]] still means the character.
+      var allCaps = /[A-Z]/.test(target) && !/[a-z]/.test(target);
+      if (isReminderToken(key) || allCaps) return '<span class="tok">' + shown + '</span>';
       var official = officialNames[key];
       if (official) {
         return '<a class="wiki-charlink wiki-charlink-off" href="' +
@@ -289,17 +339,29 @@
     // {{drop|T}} — before the colour marks, so {{red|{{drop|T}}}} works.
     out = out.replace(DROP_RE, '<span class="dropcap">$1</span>');
 
-    // {{red|Imp}} / {{blue|Undertaker}}
+    // {{i|text}}, first pass — so {{red|{{i|Imp}}}} hands the colour a
+    // brace-free body.
+    out = out.replace(EM_RE, '<em>$1</em>');
+
+    // {{red|Imp}} / {{blue|Undertaker}} / the per-team marks
     out = out.replace(COLOR_RE, function (m, kind, body) {
       return '<span class="' + COLOR_CLASS[kind.toLowerCase()] + '">' + body + '</span>';
     });
+
+    // {{i|text}}, second pass — so {{i|{{red|Imp}}}} works too (the colour
+    // mark has consumed its braces by now).
+    out = out.replace(EM_RE, '<em>$1</em>');
+
+    // **bold** is in links mode too: it takes a DOUBLED pair, which the
+    // "Each night*" convention's lone asterisks can never form, so unlike
+    // *italic* it cannot fire on prose nobody marked up.
+    out = out.replace(/\*\*([^*\n]{1,300})\*\*/g, '<strong>$1</strong>');
 
     // Nothing below this line is offered in links mode: every one of these
     // marks can be typed by accident in ordinary character prose.
     if (linksOnly) return out;
 
     out = out.replace(/~~([^~\n]{1,200})~~/g, '<s>$1</s>');
-    out = out.replace(/\*\*([^*\n]{1,300})\*\*/g, '<strong>$1</strong>');
     out = out.replace(/(^|[^*])\*([^*\n]{1,300})\*(?!\*)/g, '$1<em>$2</em>');
 
     return out.replace(/\u0000c(\d+)\u0000/g, function (m, i) { return codes[+i]; });
@@ -320,7 +382,11 @@
       // nested {{red|{{drop|T}}}} comes back as the bare letter rather than
       // leaving a stray {{red|…}} behind.
       .replace(DROP_RE, '$1')
+      // Both sides of the colour strip, the same order inlineFormat applies
+      // them in, so either nesting of {{i|…}} and a colour unwraps fully.
+      .replace(EM_RE, '$1')
       .replace(COLOR_RE, '$2')
+      .replace(EM_RE, '$1')
       .replace(/\[\[([^\]|\n]{1,80})(?:\|([^\]\n]{1,80}))?\]\]/g,
         function (m, target, label) { return (label != null && label !== '') ? label : target; })
       .replace(/!?\[([^\]\n]{1,160})\]\(([^)\s]{1,500})\)/g, '$1')

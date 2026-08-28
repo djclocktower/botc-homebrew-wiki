@@ -165,16 +165,20 @@
                    it: the pronunciation line, a jinx rule, and the info
                    box's `translatedBy` / `iconBy` rows.
 
-     inlineLinks() the small set — links, [[Character Name]] and the colour
-                   marks {{red|…}} / {{blue|…}} — for the almanac prose
-                   itself: the ability, the lede, the summary, How to Run,
-                   the examples, the tips and the sidebar boxes. A writer who
-                   types a link there gets a link; what they do NOT get is
-                   *italics*, because the official "Each night*" convention
-                   puts a lone asterisk through half the text on this wiki
-                   and two of them in one paragraph would italicise
-                   everything in between. Without the engine it falls back to
-                   tok(), which is what these fields rendered with before. */
+     inlineLinks() the small set — links, [[Character Name]], the colour
+                   marks ({{red|…}} / {{blue|…}} and the per-team family,
+                   {{townsfolk|…}} through {{loric|…}}), {{i|…}} italics and
+                   **bold** — for the almanac prose itself: the lede, the
+                   summary, How to Run, the examples, the tips and the
+                   sidebar boxes (the ability takes nothing at all). A writer
+                   who types a link there gets a link; what they do NOT get
+                   is *asterisk italics*, because the official "Each night*"
+                   convention puts a lone asterisk through half the text on
+                   this wiki and two of them in one paragraph would italicise
+                   everything in between — italics are typed {{i|…}} instead,
+                   and **bold** is safe because it takes a doubled pair.
+                   Without the engine it falls back to tok(), which is what
+                   these fields rendered with before. */
   var wiki = null;
   function init(w) { wiki = w || null; }
   function engine() {

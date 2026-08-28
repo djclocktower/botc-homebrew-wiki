@@ -272,10 +272,13 @@ assets/
                        advances once the section has been on screen).
   render-wiki.js       THE TEXT ENGINE — single source of truth for the wiki
                        markup subset (headings, lists, tables, quotes, rules,
-                       images, ::: callouts, [toc], **bold**, *italic*, `code`,
+                       images, ::: callouts, [toc], **bold**, *italic*,
+                       {{i|italic}}, `code`,
                        ~~strike~~, [label](url), [[Character Name]] — which
-                       resolves official-first, see "Formatting on a character
-                       page" — {{red|Imp}} / {{blue|Undertaker}}) plus the
+                       resolves official-first, all-caps as a token pill, see
+                       "Formatting on a character page" — {{red|Imp}} /
+                       {{blue|Undertaker}} and the per-team colour marks
+                       {{townsfolk|…}}…{{loric|…}}) plus the
                        /p/ page layout, the contents box, custom boxes and the
                        fact box. Escapes first, whitelists hrefs and image
                        paths — nothing a writer types can become raw HTML.
@@ -1061,15 +1064,21 @@ never mentioned it.
 
 Every prose field on a `/c/` page goes through the wiki's text engine, in a
 **restricted mode** — `WikiRender.inlineFormat(text, {marks: 'links'})`, reached
-through `inlineLinks()` in render.js. Three marks and no others:
+through `inlineLinks()` in render.js. A small set and no others:
 
 - `[label](url)` — a link, href-whitelisted by `safeHref()` like everywhere else.
-- `[[Character Name]]` — **one of this character's own reminder tokens** if the
+- `[[Character Name]]` — **a reminder-token pill if the name is typed in ALL
+  CAPS** (at least one `A-Z`, no `a-z` — that is how the official almanacs
+  write reminder text, and it holds on every page type, jinx text included),
+  then **one of this character's own reminder tokens** if the
   name is on its `reminders` / `remindersGlobal` list, then **the official
   wiki** if it is one of the game's own characters, then this wiki's page for
   it, then the reminder-token pill these fields have always rendered
   `[[TOKEN]]` as. So the mark is a superset of the old `tok()`, not a
-  replacement for it.
+  replacement for it. The all-caps step exists because the per-character
+  registry can only vouch for the page being rendered, so `[[UNDEAD]]` on any
+  *other* page used to link to whatever homebrew character answered to
+  "undead". `[[Undead]]` still means the character.
 
   **The reminder-token step is why "Place the `[[Drunk]]` reminder token on
   them" is a token and not a link.** Official-first is right for a name a
@@ -1095,7 +1104,23 @@ through `inlineLinks()` in render.js. Three marks and no others:
 - `{{red|Imp}}` / `{{blue|Undertaker}}` (and `{{evil|…}}` / `{{good|…}}`, the
   same two under the game's names) — the character name coloured the way the
   official almanac colours it, in `--evil` / `--good`, bold. `.wiki-red` /
-  `.wiki-blue` in styles.css.
+  `.wiki-blue` in styles.css. On top of the pair, **one mark per team**:
+  `{{townsfolk|…}}` `{{outsider|…}}` `{{minion|…}}` `{{demon|…}}`
+  `{{traveller|…}}` (both spellings) `{{fabled|…}}` `{{loric|…}}` →
+  `.wiki-{team}` classes. Townsfolk and demon reuse `--good`/`--evil`;
+  outsider/minion/fabled/loric have their own `:root` vars, darker than the
+  Related-ribbon fills because these paint bold text on parchment.
+  `.wiki-traveller` is the team's half-blue/half-red split as a gradient
+  clipped to the glyphs (`background-clip: text`, solid-blue fallback for
+  browsers without it). All of them live in one `COLOR_RE`/`COLOR_CLASS` pair
+  in render-wiki.js, so `plainText()` strips a new colour for free.
+- `**bold**` and `{{i|italic}}`. Bold is the one symmetrical mark links mode
+  admits, because it takes a **doubled** pair, which the "Each night\*"
+  convention's lone asterisks can never form. Italics are the brace mark
+  `{{i|…}}` (`EM_RE`), applied on **both sides** of the colour pass — before
+  it, `{{red|{{i|Imp}}}}` hands the colour a brace-free body; after it,
+  `{{i|{{red|Imp}}}}` finds the colour's braces consumed — so both nestings
+  are a red italic name.
 - `{{drop|T}}` — the almanac drop cap: one big initial to open a paragraph.
   **Typed, never automatic** — which paragraphs get one is a writing decision,
   and a rule that capitalised every lede on the wiki would be a redesign of
@@ -1112,22 +1137,24 @@ through `inlineLinks()` in render.js. Three marks and no others:
 
 **The marks combine**, which is why the colour mark is applied *last*:
 `{{red|[[Imp]]}}` is a red link to the Imp, `{{blue|[a rule](url)}}` a blue one
-to anywhere. `.wiki-red a, .wiki-blue a { color: inherit !important }` is what
+to anywhere. `.wiki-red a, .wiki-blue a { color: inherit !important }` (and
+every `.wiki-{team}` class in the same list) is what
 makes that hold, and the `!important` is load-bearing: at `(0,1,1)` that
 selector loses outright to `.char-parchment .ex a` at `(0,2,1)` twenty lines
 below it, so a red link in an example rendered plain link-blue and the mark
 looked broken. Out-specifying each link rule in turn only works until the next
 one is written; the declaration means "this text is this colour, full stop".
 
-**What is deliberately NOT in that set is `*italic*`**, and it is the reason
-the mode exists at all. The official "Each night\*" convention puts a lone
-asterisk through a very large share of the text on this wiki, and two of them
-in one paragraph would italicise everything in between — silently, on pages
-nobody edited. `**bold**`, `` `code` `` and `~~strike~~` are left out with it
-for one rule rather than a list of exceptions. The full set still applies to
-the short lines somebody writes *about* a character — `pronunciation`, a jinx
-rule, the info box's `translatedBy` / `iconBy` — which go through
-`inlineText()` as before.
+**What is deliberately NOT in that set is `*italic*` by asterisk**, and it is
+the reason the mode exists at all. The official "Each night\*" convention puts
+a lone asterisk through a very large share of the text on this wiki, and two
+of them in one paragraph would italicise everything in between — silently, on
+pages nobody edited. That is why italics are offered as `{{i|…}}` instead, and
+why `` `code` `` and `~~strike~~` stay out (accident-typable). `**bold**` is
+in, as above, because a doubled pair cannot happen by accident there. The full
+set still applies to the short lines somebody writes *about* a character —
+`pronunciation`, a jinx rule, the info box's `translatedBy` / `iconBy` — which
+go through `inlineText()` as before.
 
 The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom

@@ -203,13 +203,16 @@
         <div class="fmt-help">
           <div class="fmt-help-h">Formatting</div>
           <ul class="fmt-help-list">
+            <li><code>**bold**</code> prints <strong>bold</strong>, and <code>{{i|text}}</code> prints <em>italics</em> &mdash; braces rather than <code>*asterisks*</code>, because abilities put a lone <code>*</code> through half the wiki (&ldquo;Each night*&rdquo;)</li>
             <li><code>{{blue|Undertaker}}</code> prints the name in <span class="wiki-blue">good blue</span></li>
             <li><code>{{red|Imp}}</code> prints it in <span class="wiki-red">evil red</span></li>
+            <li>Every team has its own mark: <code>{{townsfolk|&hellip;}}</code> <span class="wiki-townsfolk">blue</span>, <code>{{outsider|&hellip;}}</code> <span class="wiki-outsider">teal</span>, <code>{{minion|&hellip;}}</code> <span class="wiki-minion">rust</span>, <code>{{demon|&hellip;}}</code> <span class="wiki-demon">red</span>, <code>{{traveller|&hellip;}}</code> <span class="wiki-traveller">half and half</span>, <code>{{fabled|&hellip;}}</code> <span class="wiki-fabled">gold</span>, <code>{{loric|&hellip;}}</code> <span class="wiki-loric">green</span></li>
             <li><code>[[Snake Charmer]]</code> links to that character &mdash; to the official wiki if it is one of the game&rsquo;s own, to their page here if it is one of ours, and otherwise it prints a <span class="tok">reminder token</span></li>
-            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens</li>
+            <li><code>[[Drunk]]</code> prints a <span class="tok">reminder token</span> instead, whenever the name is one of this character&rsquo;s own reminder tokens &mdash; and a name in ALL CAPS (<code>[[UNDEAD]]</code>) is always a <span class="tok">token</span>, never a link, wherever it appears</li>
             <li><code>[the rules](https://example.com)</code> links anywhere you like</li>
             <li><code>{{drop|T}}</code> at the start of a paragraph makes a big almanac drop cap out of that one letter</li>
-            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that way round only, since neither mark can hold a brace</li>
+            <li>They combine: <code>{{red|[[Imp]]}}</code> is a red link to the Imp, <code>{{i|{{red|Imp}}}}</code> a red italic name (either way round), and <code>{{red|{{drop|T}}}}</code> a red drop cap &mdash; that one that way round only</li>
+            <li>The Ability box takes none of these &mdash; it is the character&rsquo;s rule, printed verbatim on tokens, exports and cards</li>
           </ul>
         </div>
         <textarea id="examples"></textarea>
@@ -548,11 +551,27 @@
     }
     function checkJinxConflicts() {
       if (!INBOUND) return;
+      // Every key the character being edited answers to.
       var meKeys = {};
       var nameEl = document.getElementById('name');
       [nameEl ? nameEl.value : '', originalSlug].forEach(function(v){
         var k = window.normJinxId(window.slugId(v) || v);
         if (k) meKeys[k] = 1;
+      });
+      // Jinxes OTHER characters declare with this one. INBOUND is keyed by
+      // each jinx's TARGET, so "who points at me" is the union of my own
+      // keys' lists \u2014 and my own rows point away from me, so they are keyed
+      // by their targets and can never land in it. The check used to be
+      // asked the other way round (INBOUND[row's target], filtered to
+      // sources matching ME), which is a description of my own saved row,
+      // so every loaded jinx warned about itself. The slug guard covers the
+      // one row that could still self-match: a jinx declared with yourself.
+      var atMe = [];
+      Object.keys(meKeys).forEach(function(k){
+        (INBOUND[k] || []).forEach(function(src){
+          if (src.slug && src.slug === originalSlug) return;
+          atMe.push(src);
+        });
       });
       document.querySelectorAll('.jinx-row').forEach(function(row){
         var f = row.querySelector('.jx-name');
@@ -560,8 +579,11 @@
         var key = (f.dataset.slug && window.normJinxId(f.dataset.slug)) ||
           window.normJinxId(f.dataset.id || window.slugId(f.value || ''));
         var hit = null;
-        (INBOUND[key] || []).forEach(function(src){
-          if (meKeys[window.normJinxId(src.slug)] || meKeys[window.normJinxId(src.name)]) hit = src;
+        if (key) atMe.forEach(function(src){
+          // Is the character this row names the one already declaring it?
+          if (window.normJinxId(src.slug) === key ||
+              window.normJinxId(src.name) === key ||
+              window.normJinxId(window.slugId(src.name || '')) === key) hit = src;
         });
         if (!hit) { if (warn) warn.remove(); return; }
         if (!warn) {
@@ -570,11 +592,16 @@
           row.appendChild(warn);
         }
         warn.innerHTML = '\u26a0 <b>' + jxEsc(hit.name) + '</b> already writes this jinx: \u201c' +
-          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 the page shows their wording, not yours. ' +
+          jxEsc(String(hit.text).slice(0, 140)) + '\u201d \u2014 their page keeps their wording, so the two can disagree. ' +
           '<a href="c/' + jxEsc(hit.slug) + '" target="_blank" rel="noopener">Open it</a>';
       });
     }
     window.checkJinxConflicts = checkJinxConflicts;
+    // meKeys reads the name box, so a rename has to re-ask or it goes stale.
+    (function(){
+      var n = document.getElementById('name');
+      if (n) n.addEventListener('input', function(){ checkJinxConflicts(); });
+    })();
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;

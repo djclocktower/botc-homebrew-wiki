@@ -46,6 +46,12 @@
   --ex-bg:#ded3cd; --ex-frame:#bcae93;
   --maroon:#5B1F21; --ink:#000;
   --good:#2C7BD0; --good-name:#2f6fb8; --evil:#9A0D12;
+  /* The other teams' text colours, for the {{outsider|…}} family of marks.
+     Townsfolk and demon reuse --good and --evil; traveller is a gradient of
+     the same two (see .wiki-traveller), so only these four are new. Darker
+     than the Related-ribbon fills on purpose: these paint bold TEXT on
+     parchment, and the ribbon's gold (#b8952a) sits at ~2.6:1 there. */
+  --outsider:#1a6a80; --minion:#b5441a; --fabled:#8f6d1a; --loric:#2f6b3f;
   --rule:#b79c6f;
 }
 
@@ -189,6 +195,29 @@ li::before { content: "•"; position: absolute; left: 0; color: var(--evil); fo
    doing the job the mark exists for. */
 .wiki-red { color: var(--evil); font-weight: 700; }
 .wiki-blue { color: var(--good); font-weight: 700; }
+/* One mark per team on top of the original pair. Townsfolk and demon ARE
+   red and blue under the team's name; the rest take the vars above. */
+.wiki-townsfolk { color: var(--good); font-weight: 700; }
+.wiki-outsider { color: var(--outsider); font-weight: 700; }
+.wiki-minion { color: var(--minion); font-weight: 700; }
+.wiki-demon { color: var(--evil); font-weight: 700; }
+.wiki-fabled { color: var(--fabled); font-weight: 700; }
+.wiki-loric { color: var(--loric); font-weight: 700; }
+/* {{traveller|…}} — half good-blue, half evil-red, the same top/bottom split
+   the Related ribbon draws for the team, as a gradient clipped to the glyphs.
+   The solid colour first is the fallback for a browser without text clipping:
+   readable blue rather than invisible text. Links inside inherit the
+   transparent colour and show the parent's clipped gradient, which is why
+   .wiki-traveller belongs in the inherit list below like the others. */
+.wiki-traveller { color: var(--good); font-weight: 700; }
+@supports (-webkit-background-clip: text) or (background-clip: text) {
+  .wiki-traveller {
+    background: linear-gradient(to bottom, var(--good) 50%, var(--evil) 50%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
 /* The marks combine — {{red|[[Imp]]}} is a red link — and the colour is the
    half that was asked for, so it has to win over every link colour on the
    site: the prose rules just below, .wiki-body a, .custom-box-body a,
@@ -239,7 +268,9 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    and .wiki-red/.wiki-blue set `color` on the span, which the initial
    inherits — nothing more is needed, but it must not be undone here. */
 
-.wiki-red a, .wiki-blue a { color: inherit !important; }
+.wiki-red a, .wiki-blue a, .wiki-townsfolk a, .wiki-outsider a,
+.wiki-minion a, .wiki-demon a, .wiki-traveller a, .wiki-fabled a,
+.wiki-loric a { color: inherit !important; }
 /* And a typed [label](url) or [[Character Name]]. There is no site-wide <a>
    rule, so without this an example's link is browser-default blue and
    underlined, sitting on parchment. Section headings carry their own
