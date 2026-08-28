@@ -383,6 +383,13 @@
         <button type="button" class="btn btn-ghost btn-sm" id="addjinx">+ Add jinx</button>
       </fieldset>
 
+      <fieldset id="related-fld">
+        <legend>Related Pages</legend>
+        <p class="sub" style="margin:0 0 10px">The pages this character is about: a character its ability names, the wiki page for a condition it uses, a script, a collection, or any web link. They appear on the page after the Summary, each with a coloured edge saying what it links to. Leave this empty and the page shows no Related section.</p>
+        <div id="relatedrows"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addrelated">+ Add related page</button>
+      </fieldset>
+
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
         <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
@@ -443,6 +450,7 @@
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script src="assets/related-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -646,6 +654,11 @@
     // per-character behaviour flags. Shared with edit.html.
     var specialUI = window.SpecialEditor.mount($('specials'), $('addspecial'), { onChange: update });
 
+    // Related pages (assets/related-editor.js): the ribbon cards after the
+    // Summary. Shared with edit.html.
+    var relatedUI = window.RelatedEditor ?
+      window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
+
     function gatherBoxes() {
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function (r) {
@@ -707,6 +720,7 @@
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value,
         customBoxes: gatherBoxes(),
+        related: relatedUI ? relatedUI.gather() : [],
         customJson: $('customJson').value.trim(),
         // Who may edit the page once it exists (Advanced Options). Owner-only
         // unless the creator opens it up; the Worker is the enforcer.
@@ -1148,6 +1162,7 @@
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
             setup: d.setup, special: d.special, jinxes: d.jinxes,
             jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
+            related: d.related,
             customJson: d.customJson,
             // Who may edit the page once it exists, and (for approved editing)
             // exactly who. Both were gathered and then never posted, so the

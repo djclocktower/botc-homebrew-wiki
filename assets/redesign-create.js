@@ -84,9 +84,14 @@
          with the art it belongs to — folded into Advanced Options it would
          repeat the alternate-art mistake this comment block describes. */
       ids: ['name', 'team', 'ability', 'quote', 'art', 'artAlt', 'artAlt2', 'tokenArt'] },
+    /* `related-fld` is a <fieldset>, which would otherwise be swept into
+       Advanced Options with the jinxes — the wrong place for the control
+       that decides what the page's Related section shows. It is page
+       content, so it files under Page. */
     { key: 'the-page', title: 'Page',     sub: 'what readers see on the wiki page',
       ids: ['lede', 'bullets', 'howto', 'callout', 'examples', 'tips',
-            'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears'] },
+            'bluffing-fld', 'bluffing', 'fighting-fld', 'fighting', 'appears',
+            'related-fld'] },
     /* `curata-fld` is edit.html only, and only drawn for a page that has the
        Curata mark. It sits with the tags because that is where the wreath is
        drawn on the page itself — the end of the /c/ page's Tags row. */

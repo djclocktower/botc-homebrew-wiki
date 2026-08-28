@@ -377,6 +377,14 @@
         <button type="button" class="btn btn-ghost btn-sm" id="addjinx">+ Add jinx</button>
       </fieldset>
 
+      <fieldset id="related-fld">
+        <legend>Related Pages</legend>
+        <p class="sub" style="margin:0 0 10px">The pages this character is about: a character its ability names, the wiki page for a condition it uses, a script, a collection, or any web link. They appear on the page after the Summary, each with a coloured edge saying what it links to. Leave this empty and the page shows no Related section.</p>
+        <div id="relatedBy" style="display:none"></div>
+        <div id="relatedrows"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="addrelated">+ Add related page</button>
+      </fieldset>
+
       <fieldset>
         <legend>Custom Sidebar Boxes</legend>
         <p class="sub" style="margin:0 0 10px">Add your own titled boxes to the character's sidebar. Blank a line for a paragraph break, wrap tokens like [[POISONED]].</p>
@@ -449,6 +457,7 @@
   <script src="assets/classify.js"></script>
   <script src="assets/editor-notices.js"></script>
   <script src="assets/jinx-picker.js"></script>
+  <script src="assets/related-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
   <!-- Names the three art slots for the team being written: a traveller's
        are its unaligned, good and evil tokens. -->
@@ -638,6 +647,11 @@
     // per-character behaviour flags. Shared with create.html.
     var specialUI = window.SpecialEditor.mount($('specials'), $('addspecial'), { onChange: update });
 
+    // Related pages (assets/related-editor.js): the ribbon cards after the
+    // Summary. Shared with create.html.
+    var relatedUI = window.RelatedEditor ?
+      window.RelatedEditor.mount($('relatedrows'), $('addrelated'), { onChange: update }) : null;
+
     function gatherBoxes(){
       var boxes = [];
       document.querySelectorAll('.box-row').forEach(function(r){
@@ -687,6 +701,7 @@
         special: specialUI ? specialUI.gather() : [],
         jinxes: jinxes,
         jinxDisplay: $('jinxDisplay').value, customBoxes: gatherBoxes(),
+        related: relatedUI ? relatedUI.gather() : [],
         customJson: $('customJson').value.trim(),
         publicEdit: $('publicEdit').value,
         curataOptOut: $('curataOptOut').checked,
@@ -1306,6 +1321,41 @@
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
 
+    /* Relations are one-way — nothing shows on this page because somebody
+       else linked it — but the owner deserves to know, so /api/page names
+       the published pages whose own Related list points here, and one click
+       adds the link back. Pages already linked from this one are not
+       offered. Call after populateForm, so the "already linked" check reads
+       the loaded rows. */
+    function showRelatedBy(list){
+      var box = $('relatedBy');
+      if (!box || !Array.isArray(list) || !list.length) return;
+      var have = {};
+      (relatedUI ? relatedUI.gather() : []).forEach(function(e){ if (e.slug) have[e.slug] = 1; });
+      var todo = list.filter(function(p){ return p && p.slug && !have[p.slug]; });
+      if (!todo.length) return;
+      box.style.display = '';
+      todo.forEach(function(p){
+        var line = document.createElement('p');
+        line.className = 'sub';
+        line.style.margin = '0 0 8px';
+        var a = document.createElement('a');
+        a.href = 'c/' + p.slug; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = p.name || p.slug;
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.className = 'btn btn-ghost btn-sm';
+        btn.textContent = '+ Add it here';
+        btn.addEventListener('click', function(){
+          if (relatedUI) relatedUI.addEntry({ type: 'char', slug: p.slug, name: p.name || p.slug });
+          line.remove();
+        });
+        line.appendChild(a);
+        line.appendChild(document.createTextNode(' lists this page as related. '));
+        line.appendChild(btn);
+        box.appendChild(line);
+      });
+    }
+
     function populateForm(entry){
       originalEntry = entry;
       $('name').value            = entry.name || '';
@@ -1378,6 +1428,8 @@
 
       document.querySelectorAll('.box-row').forEach(function(r){ r.remove(); });
       (entry.customBoxes || []).forEach(function(b){ addBox((b&&b.title)||'', (b&&b.content)||''); });
+
+      if (relatedUI) relatedUI.set(entry.related || []);
 
       if (specialUI) specialUI.set(window.sanitizeSpecial ? window.sanitizeSpecial(entry.special) : []);
 
@@ -1552,6 +1604,9 @@
           // Object.assign would otherwise keep the old special[] forever.
           special: d.special, jinxes: d.jinxes,
           jinxDisplay: d.jinxDisplay, customBoxes: d.customBoxes,
+          // Explicit like special[]: clearing every Related row has to reach
+          // the save, and Object.assign would keep the loaded list forever.
+          related: d.related,
           customJson: d.customJson,
           // Explicit for the same reason special[] is: Object.assign would
           // otherwise keep whatever the LOADED row said, so changing "Who can
@@ -1748,6 +1803,7 @@
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
           populateForm(entry);
+          showRelatedBy(res.relatedBy);
           syncCurataBox(entry, res.curataFrom === undefined ? null : res.curataFrom,
                         mode === 'owner');
           if (mode === 'tags') tagsOnlyMode(entry);
