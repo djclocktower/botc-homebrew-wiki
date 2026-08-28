@@ -120,8 +120,9 @@
  *   GET  /api/creators        -> every creator with counts + linked account
  *   GET  /api/jinxes          -> every jinx on the wiki as nodes + edges, for
  *                                the /jinxes index and its relationship graph
- *   POST /api/jinx            -> add/edit/remove one jinx; you need to own
- *                                (or admin) just one of the two characters
+ *   POST /api/jinx            -> add/edit/remove one jinx; you need to be able
+ *                                to edit (own, approved, or open-to-all) just
+ *                                one of the two characters
  *   GET  /api/admin/jinx-health -> admin: jinxes pointing at nothing, and
  *                                pairs where both sides wrote a rule
  *   GET  /u/{username}        -> creator page (serves profile.html)
@@ -147,6 +148,9 @@
  *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
  *   POST /api/suggestion      -> approve / decline / withdraw one
  *   GET  /api/shared-pages    -> pages this account is an approved editor of
+ *   GET  /api/editable-characters -> every character this account may edit:
+ *                                its own, the ones shared with it by name, and
+ *                                the rosters of shared scripts/collections
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -6191,6 +6195,125 @@ export default {
       return jsonResponse({ pages: out.slice(0, 100) });
     }
 
+    /* ---------- EVERY CHARACTER THIS ACCOUNT MAY EDIT ----------------------
+       The account page's "Characters You Can Edit" section, the /editable
+       cards page, and the /jinxes add-form all want the same answer: not just
+       the pages this account OWNS (/api/account already says that) but the
+       ones other people opened to it — a character whose creator named this
+       account an editor, and the roster of a shared script or collection
+       (waterfallEditor, and by the same rule: only characters owned by the
+       parent's own account, see waterfallParent).
+
+       Three lists, deduped in that order, each row saying WHY it is here:
+       `owned: true`, or `via: {kind:'named'}`, or `via: {kind:'roster', type,
+       key, name}` naming the parent page the permission came from.
+
+       Deliberately characters only. Shared scripts and collections are
+       already listed by /api/shared-pages; 'all'/'tags' pages are not listed
+       anywhere because "every page on the wiki somebody left open" is not a
+       list about this account. */
+    if (method === 'GET' && path === '/api/editable-characters') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const out = [];
+      const seen = new Set();
+      const push = (r, owned, via) => {
+        if (!r || seen.has(r.slug)) return;
+        seen.add(r.slug);
+        out.push({
+          slug: r.slug, name: r.name || r.slug, team: r.team || '',
+          status: r.status || 'published', updatedAt: r.updated_at || null,
+          owned, via
+        });
+      };
+
+      // 1. The account's own pages. For an admin this is their own rows, not
+      //    the whole wiki — canEditRow says an admin may edit everything, but
+      //    "everything" is not a useful list of THEIR characters.
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT slug, name, team, status, updated_at FROM characters
+            WHERE owner_id = ? AND status IN ('published','draft')
+            ORDER BY updated_at DESC LIMIT 1000`
+        ).bind(sess.userId).all();
+        for (const r of results || []) push(r, true, null);
+      } catch { /* the shared lists below still answer */ }
+
+      // Admin page locks, read once rather than once per candidate row.
+      let lockedChars = new Set();
+      try {
+        const { results } = await env.DB.prepare(
+          "SELECT key FROM settings WHERE key LIKE 'protected:character:%'"
+        ).all();
+        lockedChars = new Set((results || []).map(r => String(r.key).slice('protected:character:'.length)));
+      } catch { lockedChars = new Set(); }
+
+      // 2. Characters whose creator named this account an editor. Same coarse
+      //    LIKE + real check as /api/shared-pages.
+      try {
+        const { results } = await env.DB.prepare(
+          `SELECT slug, name, team, owner_id, status, data, updated_at FROM characters
+            WHERE status IN ('published','draft') AND data LIKE '%"publicEdit":"approved"%'`
+        ).all();
+        for (const r of results || []) {
+          if (seen.has(r.slug) || canEditRow(sess, r)) continue;
+          if (!isApprovedEditor(sess, parseData(r))) continue;
+          if (lockedChars.has(r.slug)) continue;
+          push(r, false, { kind: 'named' });
+        }
+      } catch { /* skip the list rather than fail the request */ }
+
+      // 3. The rosters of shared scripts and collections, by the waterfall
+      //    rule: only characters owned by the SAME account as the parent page
+      //    (see waterfallParent for why that boundary matters).
+      try {
+        const parents = (await sharedParentPages(env)).filter(p =>
+          p.editors.includes(Number(sess.userId)) && Number(p.ownerId) !== Number(sess.userId));
+        // Collection membership is matched, not stored, so it needs the
+        // slug/appearsIn corpus — loaded once, and only when a shared parent
+        // is actually a collection.
+        let corpus = null;
+        for (const p of parents) {
+          let slugs = [];
+          if (p.type === 'script') {
+            slugs = (Array.isArray(p.data.characters) ? p.data.characters : [])
+              .map(x => String(x || '')).filter(x => x && !x.startsWith('off-'));
+          } else {
+            if (!corpus) {
+              const { results } = await env.DB.prepare(
+                "SELECT slug, appears_in AS appearsIn FROM characters WHERE status IS NOT 'deleted'"
+              ).all().catch(() => ({ results: [] }));
+              corpus = results || [];
+            }
+            slugs = PageRender.resolveCollectionMembers(p.data, corpus)
+              .map(c => c.slug).filter(Boolean);
+          }
+          slugs = [...new Set(slugs)].filter(s => !seen.has(s) && !lockedChars.has(s))
+            .slice(0, OWNER_WATERFALL_MAX);
+          const via = {
+            kind: 'roster', type: p.type,
+            key: p.type === 'collection' ? (p.data.id || p.slug) : p.slug,
+            name: (p.type === 'script' ? p.data.name : p.data.displayName) || p.slug
+          };
+          for (let i = 0; i < slugs.length; i += 100) {
+            const chunk = slugs.slice(i, i + 100);
+            const q = chunk.map(() => '?').join(',');
+            const { results } = await env.DB.prepare(
+              `SELECT slug, name, team, owner_id, status, updated_at FROM characters
+                WHERE slug IN (${q}) AND owner_id = ? AND status IN ('published','draft')`
+            ).bind(...chunk, p.ownerId).all().catch(() => ({ results: [] }));
+            for (const r of results || []) {
+              if (canEditRow(sess, r)) continue;   // an admin is not a guest
+              push(r, false, via);
+            }
+          }
+          if (out.length >= 1500) break;
+        }
+      } catch { /* same: a broken scan must not hide the owned list */ }
+
+      return jsonResponse({ characters: out.slice(0, 1500) });
+    }
+
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
     // Discord sign-in has two failure modes nothing on the wiki can see on its
     // own, because both happen outside the repo: a Git deploy wiping a
@@ -8084,8 +8207,13 @@ export default {
 
       // ---- add / edit / remove a single jinx, from the /jinxes page ----
       // A jinx is a relationship, so it can be created from either end: you
-      // need to own (or admin) just ONE of the two characters. It is stored on
-      // the side you own, and the other page shows it mirrored on read.
+      // need to be able to EDIT just ONE of the two characters. That is the
+      // page's ordinary edit permission — its owner, an approved editor (named
+      // on the page, or on a script/collection carrying it), or anyone when
+      // the page is open to everyone — because a jinx is page content, saved
+      // by the full editor's save already. 'tags' and 'suggest' are not
+      // writing modes here any more than they are in /api/character. The jinx
+      // is stored on the side you can edit; the other page mirrors it on read.
       if (path === '/api/jinx') {
         {
           const limited = await writeLimited(env, request, sess, 'character');
@@ -8099,10 +8227,13 @@ export default {
 
         const row = await getEntityRow(env, 'character', String(b.from));
         if (!row) return jsonResponse({ error: 'No such character' }, { status: 404 });
-        if (!canEditRow(sess, row)) {
-          return jsonResponse({ error: 'That character belongs to another account.' }, { status: 403 });
+        const jinxPerm = await editPermission(env, sess, 'character', row);
+        // editPermission already refuses a protected page for anyone but an
+        // admin-owner, so only the owner path needs the explicit check below.
+        if (jinxPerm !== 'owner' && jinxPerm !== 'approved' && jinxPerm !== 'all') {
+          return jsonResponse({ error: 'Jinxes can only be written on a character you can edit.' }, { status: 403 });
         }
-        if (!sess.isAdmin && await isProtected(env, 'character', row.slug)) {
+        if (jinxPerm === 'owner' && !sess.isAdmin && await isProtected(env, 'character', row.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         // The other side has to exist: an official id checked against
@@ -8160,6 +8291,15 @@ export default {
           `UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?`
         ).bind(JSON.stringify(d), row.slug).run();
         await logActivity(env, sess, 'update', 'character', row.slug, row.name);
+        // Same courtesy as every other non-owner write: the page's owner
+        // hears about it through the notification the site already has.
+        if (jinxPerm !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: row.owner_id, type: 'character', slug: row.slug,
+            what: b.remove ? 'removed a jinx from' : 'wrote a jinx on',
+            name: row.name, path: '/c/' + (charAddress(row) || row.slug), origin: url.origin
+          }));
+        }
         return jsonResponse({ ok: true, slug: row.slug, jinxes: d.jinxes || [] });
       }
 

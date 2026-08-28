@@ -69,6 +69,8 @@
 }
 .pub-move-btn:hover:not(:disabled) { color:var(--maroon); border-color:var(--maroon); }
 .pub-move-btn:disabled { opacity:.3; cursor:default; }
+.pub-del-btn { flex-shrink:0; }
+.pub-del-btn:hover:not(:disabled) { color:#9A0D12; border-color:#9A0D12; }
 .pub-empty { color:#6b5d49; font-size:.92rem; }
 .pub-empty a { color:var(--maroon); font-weight:600; }
 .pub-back { display:inline-block; margin-top:4px; font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
@@ -472,7 +474,24 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       writeRoster(r);
       renderSummary();
     }
+    // ✕ takes a character off the script right here — the other half of
+    // add/remove, which otherwise lives only in the Script Builder. It edits
+    // the same local roster the ▲▼ buttons do, so nothing is saved until
+    // Publish / Save as Draft, and it works for anyone who may save this
+    // script: the owner, and the editors they named. Removing by slug also
+    // covers the "Not in the wiki" rows, which is the only way to drop a
+    // roster entry this wiki has no page for.
+    function removeChar(slug){
+      var list = getScript();
+      var i = list.indexOf(slug);
+      if (i === -1) return;
+      list.splice(i, 1);
+      setScript(list);
+      renderSummary();
+    }
     document.addEventListener('click', function(e){
+      var del = e.target.closest && e.target.closest('.pub-del-btn');
+      if (del){ removeChar(del.getAttribute('data-del')); return; }
       var mv = e.target.closest && e.target.closest('.pub-move-btn');
       if (!mv) return;
       moveChar(parseInt(mv.getAttribute('data-i'), 10), mv.getAttribute('data-move') === 'up' ? -1 : 1);
@@ -650,7 +669,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       });
       html += '</div>';
       html += '<p class="sub" style="margin:8px 0 0">' + chars.length + ' character' + (chars.length===1?'':'s') + ' total. ' +
-        'This is the order the script page shows, within each team — use ▲▼ to arrange it.</p>';
+        'This is the order the script page shows, within each team — use ▲▼ to arrange it, ✕ to take a character off. ' +
+        '<a href="script">Add characters in the Script Builder →</a></p>';
       html += '<div class="pub-roster">';
       var lastTeam = null;
       chars.forEach(function(c, i){
@@ -670,13 +690,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
               (last ? ' disabled' : '') + ' aria-label="Move ' + esc(c.name) + ' down">▼</button>' +
           '</span>' +
           '<span class="pub-roster-name">' + esc(c.name) + '</span>' +
+          '<button type="button" class="pub-move-btn pub-del-btn" data-del="' + esc(c.slug) + '"' +
+            ' aria-label="Remove ' + esc(c.name) + ' from the script" title="Remove from the script">✕</button>' +
           '</div>';
       });
       if (roster.missing.length){
         html += '<div class="pub-roster-head">Not in the wiki</div>';
         roster.missing.forEach(function(slug){
           html += '<div class="pub-roster-row"><span class="pub-move"></span>' +
-            '<span class="pub-roster-name pub-roster-missing">' + esc(slug) + '</span></div>';
+            '<span class="pub-roster-name pub-roster-missing">' + esc(slug) + '</span>' +
+            '<button type="button" class="pub-move-btn pub-del-btn" data-del="' + esc(slug) + '"' +
+              ' aria-label="Remove ' + esc(slug) + ' from the script" title="Remove from the script">✕</button></div>';
         });
       }
       html += '</div>';

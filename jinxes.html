@@ -322,9 +322,11 @@
        are jinxed with, and one edge per jinx. The map and the list are two
        views of that one payload, so they cannot disagree.
 
-       "Add a Jinx" only appears for a logged-in account that owns at least one
-       character. The Worker is the real gate (POST /api/jinx re-checks
-       ownership); this just avoids showing a form that could only fail. */
+       "Add a Jinx" only appears for a logged-in account that can edit at
+       least one character — its own, or one shared with it (approved editing,
+       including a shared script or collection's roster). The Worker is the
+       real gate (POST /api/jinx re-checks the permission); this just avoids
+       showing a form that could only fail. */
     (function () {
       'use strict';
 
@@ -338,7 +340,7 @@
       var DATA = null, GRAPH = null, NODE = {}, NEIGHBOURS = {};
       var homebrewOnly = false, officialOnly = false, author = '';
       var listHomebrewOnly = false, listQuery = '';
-      var MY_CHARS = {};        // slug -> name, for the characters you own
+      var MY_CHARS = {};        // slug -> name, for the characters you can edit
 
       // ---------- the map ----------
       function buildGraph() {
@@ -392,9 +394,9 @@
             (n.official ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' +
             (n.official ? 'View on the official wiki →' : 'Open this page →') + '</a></p>';
         sel.jinxes.forEach(function (j, i) {
-          // A jinx is stored on one of the two characters. Only that page's
-          // owner can change it, so only they get the buttons; everyone else
-          // is told where it lives instead of getting a button that 403s.
+          // A jinx is stored on one of the two characters. Only somebody who
+          // can edit that page can change it, so only they get the buttons;
+          // everyone else is told where it lives instead of a button that 403s.
           var mine = !j.base && j.storedOn && MY_CHARS[j.storedOn.slug];
           var elsewhere = !j.base && j.storedOn && j.storedOn.slug !== n.slug;
           html += '<div class="jg-panel-jinx">' +
@@ -749,13 +751,16 @@
       }
 
       // ---------- add a jinx ----------
-      /* Shown only when the reader has a character to hang a jinx off. The
-         Worker checks ownership again on POST: convenience, not security. */
+      /* Shown only when the reader has a character to hang a jinx off — their
+         own, or one another creator opened to them (an approved editor of the
+         character, or of a script/collection carrying it, may write its
+         jinxes too, which is what /api/editable-characters lists). The Worker
+         re-checks the permission on POST: convenience, not security. */
       function setupForm() {
-        fetch('/api/account', { credentials: 'same-origin' })
+        fetch('/api/editable-characters', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (acct) {
-            var chars = (acct && acct.characters) || [];
+          .then(function (res) {
+            var chars = (res && res.characters) || [];
             if (!chars.length) return;
             var sel = $('jx-mine');
             chars.slice().sort(function (a, b) {
@@ -763,7 +768,8 @@
             }).forEach(function (c) {
               var o = document.createElement('option');
               o.value = c.slug;
-              o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '');
+              o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '') +
+                (c.owned ? '' : ' · shared with you');
               sel.appendChild(o);
             });
             chars.forEach(function (c) { MY_CHARS[c.slug] = c.name; });
