@@ -10,7 +10,7 @@ architecture changes or removing features.
 
 A **Cloudflare Worker** (`worker/worker.js`, config in `wrangler.toml`) serves
 everything. Content lives in a **D1 database** (`botc-wiki` — SQLite); login
-sessions and rate-limit counters live in **KV** (`SESSIONS`); uploaded images
+sessions live in **KV** (`SESSIONS`); uploaded images
 and nightly backups live in **R2** (`ART` binding, bucket `botc-wiki-art`).
 The repo's HTML/CSS/JS are uploaded as static assets on deploy. The Worker
 intercepts the routes in `run_worker_first` (wrangler.toml); everything else
@@ -705,6 +705,8 @@ collection they belong to, author, owner_id, JSON `data`, status — see the
 section below), `redirects` (`entity_type`+`from_slug` PK → `to_slug`: the URLs
 a renamed page used to live at — for characters `to_slug` is the page's
 **identity**, never another address, see "Character identity vs address" below),
+`rate_limits` (the rate-limiter's counters — `key` PK, `n`, `expires` as a
+unix timestamp; see "Rate limiting" below),
 `site_text` (the rewrites made on /text-editor — only strings that were
 actually CHANGED, keyed `(scope, original)`; see "System text" below), and a
 lazily ALTERed `users.banned` column. `settings` also holds
@@ -2178,6 +2180,52 @@ collection's pages were handed to an account before the assignment did it by
 itself, and it is still the way to move pages somebody already owns (see
 "Assigning an owner"). Curata lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
+
+## Rate limiting (and why the counters are not in KV)
+
+`rateLimited()` in worker.js is the whole limiter: one counter per
+bucket-and-identity, keyed on the account for anything only a logged-in user
+can do and on the IP for signup/login/reset, where there is no account yet.
+`WRITE_LIMITS` + `writeLimited()` are the content-save half; admins are exempt.
+
+**The counters live in D1 (`rate_limits`), not in KV, and moving them back
+would take the site down.** Each one costs a write per action, and the KV free
+tier allows **1,000 writes a day** — three members running Bloodstar imports
+reached 68% of that in a single day. Past the cap `put` throws, and the throw
+is not contained to the limiter: `createSession` writes to the same namespace,
+so an exhausted KV quota meant **nobody could log in** until 00:00 UTC. D1
+allows 100,000 row writes a day, and a member's save already writes three or
+four rows before it reaches the limiter. KV writes are now roughly two per
+login.
+
+Two rules in the upsert are load-bearing:
+
+- **An expired window is restarted in place**, not deleted and re-inserted.
+- **An expiry is never pushed forward** by a request arriving inside the window
+  it already has, or "200 an hour" would silently become "200, then nothing
+  until an hour after you stop trying".
+
+It is one statement, so SQLite settles the read-modify-write; the KV version
+was two operations against an eventually consistent store and could overshoot.
+Rows are pruned by the nightly cron, which is housekeeping only — the upsert
+ignores an expired row regardless.
+
+**Everything here fails soft.** If the counter cannot be reached the action
+goes through unlimited: a limiter that stops limiting for a few minutes is a
+far smaller problem than every upload on the wiki returning a 500. `getSession`
+is the same shape (no cookie, no KV read at all — a logged-out reader costs
+nothing). **`createSession` is the one that cannot be**: a token that was never
+stored is not a session, and handing one out sets a cookie the next click finds
+nothing behind. It returns `null` instead, and all six callers answer with a
+503 (or `loginErrorRedirect`) saying which half succeeded — the account was
+made, or the password was saved — because "signup failed" would send someone
+to create an account that already exists.
+
+**Cloudflare's own `ratelimit` binding does not fit this.** Its `period` must
+be *either 10 or 60 seconds* and every limit here is hour-scale; reshaping
+"200 saves an hour" into a per-minute rate either blocks the bulk imports that
+are the legitimate burst, or raises the real ceiling to 12,000 an hour. Its
+counters are also per-Cloudflare-location. Don't swap it in.
 
 ## Assigning an owner (and what comes with it)
 

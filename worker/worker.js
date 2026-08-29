@@ -411,14 +411,39 @@ async function revokeSessions(env, userId, keepToken) {
   } catch { /* best-effort: D1 re-checks bans on every write regardless */ }
 }
 
+// Returns the new token, or NULL when the session could not be stored.
+//
+// This one cannot fail soft the way the rate limiter does: a token that was
+// never written is not a session, so handing it out would set a cookie that
+// `getSession` finds nothing behind and log the reader straight back out on
+// their next click. Every caller has to check, and say something a person can
+// act on — an unhandled throw here is Cloudflare's "Error 1101" page on the
+// site's front door, which is how a KV write quota turns into "the wiki is
+// down". (With the rate-limit counters moved to D1 the daily KV write budget
+// is spent almost entirely on logins, so reaching it is now unlikely rather
+// than a busy Tuesday.)
 async function createSession(env, userId, isAdmin) {
   const token = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, '');
   const session = JSON.stringify({ userId, isAdmin, created: Date.now() });
-  // 30-day expiry
-  await env.SESSIONS.put('sess:' + token, session, { expirationTtl: SESSION_TTL });
+  try {
+    // 30-day expiry
+    await env.SESSIONS.put('sess:' + token, session, { expirationTtl: SESSION_TTL });
+  } catch (e) {
+    console.error('[session] could not be stored:', (e && e.message) || e);
+    return null;
+  }
   await indexSession(env, userId, token);
   return token;
 }
+
+// What the six callers of createSession() say when it comes back empty. The
+// account work they did has already happened and is not lost — only the
+// signing-in half failed — so each of them says which it was.
+const SESSION_DOWN_MSG = 'Signing you in failed — the sign-in service is briefly unavailable. Wait a minute and log in.';
+// For the callers that put it after a clause of their own ("Your account was
+// created, but ...").
+function lowerFirst(str) { return str.charAt(0).toLowerCase() + str.slice(1); }
+
 async function getSession(env, request) {
   const cookie = request.headers.get('Cookie') || '';
   const m = cookie.match(/botc_session=([^;]+)/);
@@ -473,25 +498,60 @@ async function assetsOrNotFound(env, request) {
   return notFoundResponse(env, request, res);
 }
 
-// ---- basic rate limiting (KV counter; best-effort) ----
+// ---- basic rate limiting (D1 counter; best-effort) ----
 // `opts.sess` switches the bucket from the caller's IP to their account. Use it
 // for anything only a logged-in user can do: an IP bucket is the wrong shape
 // there in both directions — one account rotating IPs is unlimited, while a
 // school or a household behind one NAT punishes everybody on it. Signup, login
 // and password reset stay on IP, because there is no account to key on yet.
 //
-// Still best-effort by design: KV is eventually consistent, so a tight
-// concurrent burst can overshoot the limit. That is fine at these thresholds —
-// the job is to stop a flood, not to be an exact quota.
+// The counters live in D1, NOT in KV, and that is a quota decision rather than
+// a design preference. Every one of these buckets costs one write per action,
+// and the Workers KV free tier allows 1,000 writes a DAY — three members doing
+// Bloodstar imports reached 68% of it in a single day, and the ceiling is not a
+// soft one: past it `put` throws, which took out `createSession` too. Logging in
+// genuinely needs KV and cannot be made to fail soft, so the counters had to be
+// the thing that moved. D1 allows 100,000 row writes a day, and a member's save
+// is already writing three or four rows (the page, `activity_log`, `revisions`)
+// before it gets here.
+//
+// It is also more accurate than what it replaces. The KV version read the
+// counter and wrote it back as two separate operations against an eventually
+// consistent store, so a concurrent burst overshot the limit; this is one
+// statement and SQLite settles it.
 async function rateLimited(env, request, bucket, limit, windowSec, opts = {}) {
   const identity = opts.sess && opts.sess.userId
     ? 'u' + opts.sess.userId
     : (request.headers.get('CF-Connecting-IP') || 'unknown');
   const key = `rl:${bucket}:${identity}`;
-  const cur = parseInt((await env.SESSIONS.get(key)) || '0', 10);
-  if (cur >= limit) return true;
-  await env.SESSIONS.put(key, String(cur + 1), { expirationTtl: windowSec });
-  return false;
+  const now = Math.floor(Date.now() / 1000);
+  const expires = now + windowSec;
+  try {
+    await ensureRateTable(env);
+    // A window that has run out is RESTARTED in place rather than deleted and
+    // re-inserted, and — the half that is easy to get wrong — an expiry is
+    // never pushed forward by a request arriving inside the window it already
+    // has. Refreshing it on every hit would turn "200 an hour" into "200, then
+    // nothing until an hour after you stop trying", which is a different rule.
+    const row = await env.DB.prepare(
+      `INSERT INTO rate_limits (key, n, expires) VALUES (?, 1, ?)
+       ON CONFLICT(key) DO UPDATE SET
+         n       = CASE WHEN rate_limits.expires <= ? THEN 1 ELSE rate_limits.n + 1 END,
+         expires = CASE WHEN rate_limits.expires <= ? THEN ? ELSE rate_limits.expires END
+       RETURNING n`
+    ).bind(key, expires, now, now, expires).first();
+    // `n` is the count INCLUDING this request, so the limit is passed at n+1:
+    // a limit of 5 lets n reach 5 and turns away the sixth.
+    return !!row && row.n > limit;
+  } catch (e) {
+    // Never let the limiter be the thing that breaks a save. If the counter
+    // cannot be reached the action goes through unlimited: a limiter that
+    // quietly stops limiting for a few minutes is a far smaller problem than
+    // every upload on the wiki returning a 500, and this was best-effort by
+    // design already.
+    console.error('[ratelimit] counter unavailable, allowing:', (e && e.message) || e);
+    return false;
+  }
 }
 
 // Every 429 the site sends should say when to come back; none of them did.
@@ -1122,6 +1182,24 @@ async function ensureViewsTable(env) {
      )`
   ).run();
   _viewsReady = true;
+}
+
+// The rate-limit counters (see rateLimited()). `expires` is a unix timestamp
+// rather than a datetime string because every read of it is a comparison
+// against `Date.now()`, and rows are pruned by the nightly cron — an expired
+// row is already ignored by the upsert, so pruning is housekeeping, not
+// correctness.
+let _rateReady = false;
+async function ensureRateTable(env) {
+  if (_rateReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS rate_limits (
+       key     TEXT PRIMARY KEY,
+       n       INTEGER NOT NULL DEFAULT 0,
+       expires INTEGER NOT NULL
+     )`
+  ).run();
+  _rateReady = true;
 }
 
 let _messagesReady = false;
@@ -5313,8 +5391,14 @@ export default {
 
       const token = await createSession(env, userId, false);
       await logActivity(env, { userId }, 'signup', 'user', null, username);
-      // Best-effort verification email; signup succeeds either way.
+      // Best-effort verification email; signup succeeds either way — including
+      // the way below, where the account was made and only the cookie failed.
       ctx.waitUntil(sendVerificationEmail(env, url.origin, { id: userId, username, email }));
+      if (!token) {
+        // Say the account exists, or they will sign up again and be told the
+        // name is taken by what is in fact their own account.
+        return jsonResponse({ error: 'Your account was created, but ' + lowerFirst(SESSION_DOWN_MSG) }, { status: 503 });
+      }
       return jsonResponse({ ok: true, username }, { 'Set-Cookie': sessionCookie(token) });
     }
 
@@ -5355,6 +5439,7 @@ export default {
         return jsonResponse({ error: 'This account has been suspended. Contact the admins if you think this is a mistake.' }, { status: 403 });
       }
       const token = await createSession(env, user.id, !!user.is_admin);
+      if (!token) return jsonResponse({ error: SESSION_DOWN_MSG }, { status: 503 });
       ctx.waitUntil(env.DB.prepare("UPDATE users SET last_login=datetime('now') WHERE id=?").bind(user.id).run());
       return jsonResponse({ ok: true, isAdmin: !!user.is_admin, username: user.username }, { 'Set-Cookie': sessionCookie(token) });
     }
@@ -5636,6 +5721,11 @@ export default {
       // Log them straight in for convenience.
       const u = await env.DB.prepare('SELECT id, is_admin FROM users WHERE id=?').bind(userId).first();
       const sessTok = await createSession(env, u.id, !!u.is_admin);
+      if (!sessTok) {
+        // The new password is already saved. Sending them back to the reset
+        // form would be a lie — the link is spent and would refuse them.
+        return jsonResponse({ error: 'Your new password was saved, but ' + lowerFirst(SESSION_DOWN_MSG) }, { status: 503 });
+      }
       return jsonResponse({ ok: true }, { 'Set-Cookie': sessionCookie(sessTok) });
     }
 
@@ -5691,11 +5781,21 @@ export default {
         linkUserId = sess.userId;
       }
       const state = randomToken();
-      await env.SESSIONS.put(
+      // put() resolves to undefined on success, so null is unambiguously the
+      // catch below rather than a value KV handed back.
+      const stored = await env.SESSIONS.put(
         'oauth:' + state,
         JSON.stringify({ link: linkUserId }),
         { expirationTtl: OAUTH_STATE_TTL }
-      );
+      ).catch((e) => {
+        // The callback checks this value back, so a state that was never
+        // stored means a round trip to Discord that can only end in "that
+        // sign-in link has expired". Stop here instead, where the reason can
+        // still be said plainly.
+        console.error('[discord] oauth state could not be stored:', (e && e.message) || e);
+        return null;
+      });
+      if (stored === null) return loginErrorRedirect(url.origin, SESSION_DOWN_MSG);
 
       const auth = new URL('https://discord.com/oauth2/authorize');
       auth.searchParams.set('client_id', env.DISCORD_CLIENT_ID);
@@ -5808,6 +5908,7 @@ export default {
           `UPDATE users SET discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
         ).bind(du.username || discordName, avatarUrl, byDiscord.id).run();
         const t = await createSession(env, byDiscord.id, !!byDiscord.is_admin);
+        if (!t) return loginErrorRedirect(url.origin, SESSION_DOWN_MSG);
         return redirectResponse(url.origin + '/account', sessionCookie(t));
       }
 
@@ -5825,6 +5926,8 @@ export default {
             `UPDATE users SET discord_id=?, discord_username=?, avatar_url=COALESCE(avatar_url, ?), last_login=datetime('now') WHERE id=?`
           ).bind(discordId, du.username || discordName, avatarUrl, byEmail.id).run();
           const t = await createSession(env, byEmail.id, !!byEmail.is_admin);
+          // The Discord link is saved either way, so a retry logs straight in.
+          if (!t) return loginErrorRedirect(url.origin, SESSION_DOWN_MSG);
           return redirectResponse(url.origin + '/account?linked=1', sessionCookie(t));
         }
       }
@@ -5839,6 +5942,7 @@ export default {
       const newId = ins.meta.last_row_id;
       await logActivity(env, { userId: newId }, 'signup', 'user', null, username);
       const t = await createSession(env, newId, false);
+      if (!t) return loginErrorRedirect(url.origin, 'Your account was created, but ' + lowerFirst(SESSION_DOWN_MSG) + ' Use the Discord button again.');
       return redirectResponse(url.origin + '/account?welcome=1', sessionCookie(t));
     }
 
@@ -10194,7 +10298,12 @@ export default {
         // investigating something.
         ["DELETE FROM activity_log WHERE ts < datetime('now', '-365 day')", 'activity_log'],
         // Contact-form messages that were dealt with long ago.
-        ["DELETE FROM messages WHERE status='resolved' AND ts < datetime('now', '-180 day')", 'messages']
+        ["DELETE FROM messages WHERE status='resolved' AND ts < datetime('now', '-180 day')", 'messages'],
+        // Spent rate-limit counters. The longest window in WRITE_LIMITS is an
+        // hour, so a day past expiry is far beyond anything still being read;
+        // the upsert ignores an expired row regardless, so this is only there
+        // to stop the table growing a row per member per bucket forever.
+        ["DELETE FROM rate_limits WHERE expires < CAST(strftime('%s','now') AS INTEGER) - 86400", 'rate_limits']
       ];
       for (const [sql, label] of prune) {
         try { await env.DB.prepare(sql).run(); }
