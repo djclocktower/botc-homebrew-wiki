@@ -509,7 +509,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       return { match: matchTerms(), include: include, exclude: exclude, order: order };
     }
     function artSrc(c){
-      return c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png');
+      return artURL(c);
     }
 
     // ── membership list ──

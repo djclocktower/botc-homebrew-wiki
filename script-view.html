@@ -123,7 +123,7 @@
           listHTML += '<div class="script-char-list">';
           grp.forEach(function(c){
             listHTML += '<a class="script-char-row" href="' + esc(c.page) + '">' +
-              '<img class="script-char-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="script-char-thumb" src="' + esc(artURL(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + '</span>' +
               '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
           });

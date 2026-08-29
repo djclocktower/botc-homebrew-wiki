@@ -304,7 +304,7 @@
       var banner = header || (coll && coll.logo);
       var topHTML = banner
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(artURL(c)) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -324,7 +324,7 @@
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
+        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(artURL(c)) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
@@ -437,7 +437,7 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + '">' +
+        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(artURL(c)) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
@@ -523,7 +523,7 @@
         var allIcons = pickIcons(list, 4);
         html += '<a class="collection-tile" href="all-collections">' +
           '<div class="collection-icons">' + allIcons.map(function(c){
-            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
+            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(artURL(c)) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
           }).join('') + '</div>' +
           '<h3 class="collection-name">All Collections</h3>' +
           '<div class="collection-footer">' +

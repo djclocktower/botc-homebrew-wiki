@@ -77,7 +77,7 @@
         rel: rel,
         // what an <img> on the page loads: the relative file where there is
         // one, so a page renders against its own root and R2 serves it.
-        src: rel ? (prefix + 'assets/' + rel) : abs,
+        src: rel ? stampedSrc(prefix + 'assets/' + rel, d) : abs,
         // what leaves the wiki — the JSON the official app reads, and the
         // Token Tool fetching art across origins. Always absolute.
         url: abs || (rel ? ART_ABS + rel : '')
@@ -119,6 +119,32 @@
       btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
     }
   }
+  /* The cache-busting stamp appended to an <img src> for this wiki's own
+     pages — and to NOTHING else. Art is served `no-cache` so that replacing a
+     character's icon shows up at once, which means every icon impression costs
+     a Worker request forever, even for a reader who has the file already: one
+     scroll of All Characters is ~1,600 of them. A stamped URL is served with a
+     real max-age instead (see the /assets/ route in worker.js), so the browser
+     stops asking, and replacing the art changes the stamp and therefore the
+     URL — the update stays instant.
+
+     The stamp is the row's `updated_at`, digits only. It is deliberately NOT
+     put on the stored `art` field, because that field is also what leaves the
+     wiki: `artVersions().url` goes into the official-schema JSON the app reads
+     and into the Token Tool's cross-origin fetches, and a query string has no
+     business in either. Only `src` gets it. */
+  function artStamp(d) {
+    var v = d && d.v;
+    return v ? String(v).replace(/[^0-9]/g, '').slice(0, 14) : '';
+  }
+  function stampedSrc(src, d) {
+    if (!src) return src;
+    var v = artStamp(d);
+    // Absolute art on somebody else's host is not ours to cache-bust.
+    if (!v || /^https?:/i.test(src)) return src;
+    return src + (src.indexOf('?') === -1 ? '?v=' : '&v=') + v;
+  }
+
   function artVersion(d, key) {
     var v = artVersions(d, '');
     for (var i = 0; i < v.length; i++) if (v[i].key === key) return v[i];
@@ -1425,6 +1451,7 @@
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL,
       artVersions: artVersions, artVersion: artVersion,
+      artStamp: artStamp, stampedSrc: stampedSrc,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,

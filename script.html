@@ -456,7 +456,7 @@
             ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
             ' data-partial="' + partial + '" data-curata="' + star + '">' +
             '<button type="button" class="sb-add-item' + (onScript(c.slug) ? ' on' : '') + '" data-slug="' + esc(c.slug) + '">' +
-              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+              '<img class="sb-add-thumb" loading="lazy" decoding="async" src="' + esc(artURL(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               '<span class="sb-add-name">' + esc(c.name) +
                 (c.official ? ' <span class="sb-add-off">official</span>' : '') + '</span>' +
             '</button>' +
@@ -512,7 +512,7 @@
         html += '<div class="sb-script-group"><h3 class="sb-script-grouphead">' + esc(label) + ' <span>(' + group.length + ')</span></h3>';
         group.forEach(function (c) {
           html += '<div class="sb-script-item">' +
-            '<img class="sb-script-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+            '<img class="sb-script-thumb" src="' + esc(artURL(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
             '<div class="sb-script-info"><a class="sb-script-name" href="' + esc(c.page) + '"' +
               (c.official ? ' target="_blank" rel="noopener" title="Official character; opens the official wiki"' : '') + '>' +
               esc(c.name) + (c.official ? ' <span class="sb-add-off">official &#8599;</span>' : '') + '</a>' +

@@ -96,7 +96,7 @@
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artURL(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) +
           window.classBadgeHTML(window.classifyCharacter(c), { from: c.curataFrom }) + '</div>' +

@@ -1,3 +1,40 @@
+/* ── artURL(): the one character-card image URL ────────────────────────────
+   Every browse grid on the wiki used to build this expression by hand — the
+   same line copied into all-characters, tag, team, index (four times),
+   all-collections, script and script-view. It is here because site.js is the
+   only file all of those pages load.
+
+   It exists to add the `?v=` cache stamp. Character art is served `no-cache`
+   so that replacing an icon shows at once, and every one of these images is a
+   Worker route (`/assets/art/*` is in run_worker_first), so each impression
+   cost a Worker request even for a reader who already had the file — and one
+   scroll of All Characters asks for about sixteen hundred of them. A stamped
+   URL is served with a real max-age instead, and because the stamp is the
+   page's own updated_at, replacing the art changes the URL and the update
+   stays instant. A row with no stamp comes out exactly as it did before.
+
+   render.js carries the same three lines as stampedSrc(), because the emblem
+   on a /c/ page is rendered inside the Worker, where site.js does not exist.
+   Change one, change the other; the tests cover both.
+
+   One constraint on callers: site.js is loaded at the BOTTOM of every page, so
+   this is not defined while a page's own inline script is first executing. It
+   is safe from anything that draws after data arrives — which is every grid on
+   the wiki, since they all render in a fetch's .then() — but a page that ever
+   paints a card synchronously at boot would need site.js moved up. */
+window.artURL = function (c, root) {
+  c = c || {};
+  root = root || '';
+  if (c.art) {
+    var src = root + 'assets/' + c.art;
+    var v = c.v ? String(c.v).replace(/[^0-9]/g, '').slice(0, 14) : '';
+    return v ? src + (src.indexOf('?') === -1 ? '?v=' : '&v=') + v : src;
+  }
+  if (typeof c.image === 'string' && c.image) return c.image;
+  if (Array.isArray(c.image) && c.image[0]) return c.image[0];
+  return root + 'assets/favicon.png';
+};
+
 /* ── System text overrides (the /text-editor page) ─────────────────────────
    Wording the owner has rewritten on /text-editor, applied to this page as it
    renders. The catalogue of editable strings is built in the browser by

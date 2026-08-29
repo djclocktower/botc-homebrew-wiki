@@ -2317,7 +2317,47 @@ seeded with whole collections whose characters all arrived unowned.
   refresh); icons, fonts, pyodide, token assets are immutable long-cache.
   Later rules override earlier ones — keep the generic rules at the top.
 - Worker responses: JSON endpoints and SSR pages send `no-store`; R2 images
-  send `no-cache, must-revalidate` (+ ETag) so replaced art shows immediately.
+  send `no-cache, must-revalidate` (+ ETag) so replaced art shows immediately —
+  **unless the URL carries a `?v=` stamp**, which gets a real week-long
+  `max-age` instead. That stamp is the whole art-caching story:
+
+  Every image under `/assets/art/*` is a **Worker route** (it is in
+  `run_worker_first`, because R2 is tried first), and `no-cache` means the
+  browser revalidates on every impression. So each icon cost a Worker
+  invocation *forever*, even for a reader who already had the file and even
+  when the answer was a 304 — and one scroll of All Characters asks for about
+  1,600 of them. On the free plan's 100,000 requests a day, roughly sixty full
+  browses would have spent the lot, and the failure is site-wide (Error 1027,
+  or the Worker bypassed, which breaks every `/c/`, `/s/` and `/api/` route).
+
+  The stamp is a character's own `updated_at`, digits only, so replacing art
+  and saving the page changes the URL and the update is still instant. Three
+  rules hold it together:
+
+  - **It goes on the `<img src>` and nowhere else.** `artVersions()` returns
+    both `src` (this wiki's pages) and `url` (what LEAVES — the
+    official-schema JSON the app reads, the Token Tool's cross-origin
+    fetches). Only `src` is stamped; a query string has no business in an
+    exported script file. It is likewise never written to the stored `art`
+    field, only added as the URL is built.
+  - **`window.artURL(c, root)` in `site.js` is the one builder** every browse
+    grid calls. That expression used to be hand-copied into all-characters,
+    tag, team, index (four times), all-collections, script, script-view and
+    publish-collection; site.js is the only file all of them load. `render.js`
+    carries the same three lines as `stampedSrc()` because the `/c/` emblem is
+    rendered inside the Worker, where site.js does not exist — change one,
+    change the other. site.js loads at the BOTTOM of every page, so `artURL`
+    is only safe from code that draws after data arrives; every grid does,
+    but a page painting a card synchronously at boot would need it moved up.
+  - **A week, not a year** (`ART_VERSIONED_CACHE`). The stamp is only as
+    truthful as `updated_at`, and `/api/upload` does not touch the row — every
+    real path (both editors, Icon Forge, the Token Tool, Bloodstar,
+    mass-upload) saves the page right after uploading, so it is correct in
+    practice, but if some future path ever writes art without saving, a wrong
+    icon corrects itself in days rather than being frozen.
+
+  An un-stamped URL — an old link, a hotlink, anything not taught about this —
+  behaves exactly as it always did.
 
 ## Verifying changes (no local server needed)
 

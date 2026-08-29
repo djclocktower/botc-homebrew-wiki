@@ -289,6 +289,8 @@ const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/', 'pages/', 'n
 // /api/upload — profile pictures only go through /api/account/avatar,
 // which pins the key to the logged-in user's own slot.
 const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/']);
+// What a `?v=`-stamped image is cached for. See the /assets/ route.
+const ART_VERSIONED_CACHE = 'public, max-age=604800, immutable';
 const EXT_CONTENT_TYPE = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
@@ -3310,7 +3312,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   // (what links go to). Twelve pages already link through `page`, which is why
   // this one line is most of the frontend's share of nesting.
   if (chars) await ensureUrlSlugColumn(env);
-  const cols = chars ? 'data, status, slug, url_slug' : 'data, status';
+  const cols = chars ? 'data, status, slug, url_slug, updated_at' : 'data, status';
   let results;
   try {
     ({ results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all());
@@ -3335,6 +3337,16 @@ async function buildPublicJSON(env, table, opts = {}) {
     delete d.editors;
     if (chars && r.slug) {
       d.slug = String(r.slug);
+      // The art cache stamp. Every icon on this wiki is served `no-cache` so
+      // that replacing one shows at once, which costs a Worker request per
+      // impression forever — one scroll of All Characters is ~1,600 of them.
+      // A stamped URL gets a real max-age instead (see the /assets/ route),
+      // and because the stamp is the row's own updated_at, saving the page
+      // that replaced the art changes the URL and the update stays instant.
+      // render.js appends it to the <img src> and to nothing else: it must
+      // never reach `artVersions().url`, which is what goes into the
+      // official-schema JSON and the Token Tool's cross-origin fetches.
+      if (r.updated_at) d.v = String(r.updated_at).replace(/[^0-9]/g, '').slice(0, 14);
       // The address, derived on every read. The stored `page` is whatever some
       // editor wrote there years ago and is never trusted for a character.
       d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
@@ -4700,6 +4712,9 @@ export default {
             });
           }
           const d = foldLegacyCurata(JSON.parse(row.data));
+          // Same art cache stamp the feed carries, so the emblem on a /c/ page
+          // is cacheable too rather than being the one icon still revalidated.
+          if (row.updated_at) d.v = String(row.updated_at).replace(/[^0-9]/g, '').slice(0, 14);
           // The row is the truth for both: `slug` is the identity (the art
           // paths and every reference are keyed on it) and `page` is the
           // address, which is what the canonical link and the OG tags use.
@@ -4781,9 +4796,32 @@ export default {
     }
 
     // ---------- IMAGE ASSETS (served from R2, fall back to static) ----------
+    // A `?v=` stamp means the caller asked for THIS version of the file, so
+    // the answer can be cached properly instead of revalidated on every
+    // impression. Everything here is in `run_worker_first`, so a revalidation
+    // is a Worker invocation even when it ends in a 304 — and the free plan
+    // allows 100,000 of those a day, while one scroll of All Characters asks
+    // for ~1,600 icons. Nothing else changes: a URL with no stamp (an old
+    // link, a hotlink, anything that has not been taught about this) keeps the
+    // revalidate-every-time behaviour it has always had.
+    //
+    // The stamp is a character's `updated_at`, so replacing art and saving the
+    // page changes the URL and readers see it at once. ART_VERSIONED_CACHE is
+    // deliberately a week rather than a year: if some future path ever writes
+    // art without touching its row, the wrong icon corrects itself in days
+    // instead of being frozen until the next rename.
     if (method === 'GET' && path.startsWith('/assets/')) {
       const key = path.slice('/assets/'.length);
-      if (env.ART && R2_SERVE_PREFIXES.some(p => key.startsWith(p))) {
+      // Only the media paths honour the stamp. Scoping it to those rather than
+      // to all of /assets/ keeps a stray `?v=` on a stylesheet or a script from
+      // silently buying it a week of caching, when those are deliberately on
+      // the revalidate-every-load rule so an edit shows on a normal refresh.
+      const mediaPath = R2_SERVE_PREFIXES.some(p => key.startsWith(p));
+      // `avatars/` gets this for free and correctly: /api/account/avatar
+      // already hands back '/assets/{key}?v=' + Date.now(), which is the same
+      // versioned-URL shape, so a new profile picture is a new URL.
+      const versioned = mediaPath && url.searchParams.has('v');
+      if (env.ART && mediaPath) {
         const obj = await env.ART.get(key);
         if (obj) {
           const headers = new Headers();
@@ -4803,12 +4841,19 @@ export default {
           // response on this path is an image.
           headers.set('X-Content-Type-Options', 'nosniff');
           headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
-          headers.set('Cache-Control', 'no-cache, must-revalidate');
+          headers.set('Cache-Control', versioned ? ART_VERSIONED_CACHE : 'no-cache, must-revalidate');
           if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
           return new Response(obj.body, { headers });
         }
       }
-      return env.ASSETS.fetch(request); // not in R2 -> committed static file
+      // Not in R2 -> the committed file. `_headers` cannot match on a query
+      // string, so a stamped request for repo art would come back with the
+      // revalidate rule and the stamp would buy nothing; set it here instead.
+      const asset = await env.ASSETS.fetch(request);
+      if (!versioned || !asset.ok) return asset;
+      const out = new Response(asset.body, asset);
+      out.headers.set('Cache-Control', ART_VERSIONED_CACHE);
+      return out;
     }
 
     // ---------- RANDOM CHARACTER (302 to a random published page) ----------

@@ -107,7 +107,7 @@
       var banner = header || (coll && coll.logo);
       var topHTML = banner
         ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(artURL(c)) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +

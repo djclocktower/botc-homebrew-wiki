@@ -200,7 +200,15 @@
   }
 
   function artSrc(c, root) {
-    if (c.art) return root + 'assets/' + c.art;
+    // Stamped so the browser can cache the icon instead of revalidating it on
+    // every impression — a grid of these is the wiki's single biggest source
+    // of Worker requests. render.js owns the stamp; without it (an old cached
+    // copy of that file) this returns the plain URL and behaves as before.
+    var stamp = dep('stampedSrc');
+    if (c.art) {
+      var src = root + 'assets/' + c.art;
+      return stamp ? stamp(src, c) : src;
+    }
     if (typeof c.image === 'string' && c.image) return c.image;
     if (Array.isArray(c.image) && c.image[0]) return c.image[0];
     return root + 'assets/favicon.png';

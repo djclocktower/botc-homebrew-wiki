@@ -12,7 +12,12 @@
 /assets/*.js
   Cache-Control: no-cache, must-revalidate
 
-# Character art & other repo images: revalidate so updated art shows immediately
+# Character art & other repo images: revalidate so updated art shows immediately.
+# NOTE: a request carrying a `?v=` stamp is answered by the Worker with a real
+# max-age instead (ART_VERSIONED_CACHE in worker.js) — every card grid on the
+# wiki asks that way now, because these paths run the Worker and a revalidation
+# is an invocation even when it ends in a 304. Rules here cannot match on a
+# query string, which is why that override lives in the Worker and not below.
 /assets/*.png
   Cache-Control: no-cache, must-revalidate
 /assets/*.jpg
