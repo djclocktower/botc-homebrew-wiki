@@ -2043,6 +2043,18 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   0.7 row-growth margin is what keeps 3-line abilities inside one row pitch,
   and rows deliberately do NOT grow for 1–3-line abilities (constant pitch,
   like the reference). Change one constant at a time against a known render.
+  Two column layouts (`columnLayout`): **'even'** (default — both columns of
+  a section start together and END together, each column dealing the
+  section's leftover height evenly between its rows, like the official
+  printed sheets; the first section clears the title/author ink instead of
+  giving the title a column slot) and **'shared'** (the classic reference
+  layout — one shared row grid, col 2 staggered one row under the title).
+  The sidebar ribbon can be recoloured (`sidebarColor`): a CSS filter moves
+  the navy damask's hue/sat/brightness by RATIO against the art's measured
+  base (`SIDEBAR_BASE` in script.js), so the pattern's shading survives and
+  the default colour means no filter at all. The density slider is never
+  disabled — under auto-fit it displays the solved density ("auto · 96%")
+  and dragging it unticks auto-fit; a disabled slider just read as broken.
 - **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
   LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
   400 file on purpose, because the reference used Chromium's synthetic bold),

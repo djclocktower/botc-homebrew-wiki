@@ -75,8 +75,15 @@ export const U = SHEET_H / 100;
 export const TRIM_W_PT = 595.57;
 export const TRIM_H_PT = 794.05;
 
+/* The sidebar ribbon art's own colour (measured off sidebar.png: hue 243.7°,
+   sat 0.62, light 0.135). The recolour filter in sheet.js works in ratios
+   against these, so the picker's default IS the art untouched. */
+export const SIDEBAR_BASE = { hex: '#0f0d37', h: 243.7, s: 0.62, l: 0.135 };
+
 export const DEFAULT_OPTIONS = {
   sortMode: 'script', // 'script' (as in the JSON) | 'official' (ability-shape sort)
+  columnLayout: 'even', // 'even' (both columns fill the section, official style)
+  //                       | 'shared' (classic: col 2 staggered under the title)
   showJinxes: true,
   showFootnote: true,
   titleOverride: '',
@@ -84,6 +91,7 @@ export const DEFAULT_OPTIONS = {
   titleColor: '#10102e',
   goodColor: '#0d6c97',
   evilColor: '#731d1f',
+  sidebarColor: SIDEBAR_BASE.hex,
   density: 1, // used when fitToContent is off
   fitToContent: true, // auto-scale the grid to fill the page
   iconSize: 1,

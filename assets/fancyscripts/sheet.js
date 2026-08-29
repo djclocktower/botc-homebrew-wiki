@@ -22,7 +22,7 @@
  */
 
 import {
-  SHEET, SHEET_W, SHEET_H, U,
+  SHEET, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
   groupByTeam, splitColumns, proxied, smartTypography,
 } from './script.js';
@@ -198,6 +198,44 @@ function shade(hex, dl) {
   return '#' + to(r2) + to(g2) + to(b2);
 }
 
+/* hex → {h (deg), s, l} for the sidebar recolour ratios */
+function hexHsl(hex) {
+  const m = /^#?([\da-f]{6})$/i.exec(hex);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  const l = (mx + mn) / 2;
+  const d = mx - mn;
+  let h = 0, s = 0;
+  if (d) {
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return { h, s, l };
+}
+
+/* Re-tint the sidebar ribbon toward any picked colour. The art itself is one
+   navy damask strip; a CSS filter moves its hue/saturation/brightness by the
+   RATIO between the picked colour and the art's measured base (SIDEBAR_BASE),
+   so the damask pattern's own shading survives. The default colour returns
+   no filter — the untouched art. */
+function sidebarFilter(color) {
+  if (!color || color.toLowerCase() === SIDEBAR_BASE.hex) return '';
+  const t = hexHsl(color);
+  if (!t) return '';
+  const parts = [];
+  if (t.s < 0.06) {
+    parts.push('saturate(0)');
+  } else {
+    parts.push(`hue-rotate(${Math.round(t.h - SIDEBAR_BASE.h)}deg)`);
+    parts.push(`saturate(${clamp(t.s / SIDEBAR_BASE.s, 0.2, 2.5).toFixed(2)})`);
+  }
+  parts.push(`brightness(${clamp(t.l / SIDEBAR_BASE.l, 0.5, 3).toFixed(2)})`);
+  return parts.join(' ');
+}
+
 /* shared canvas context for word-wrap measurement of ability text */
 let measureCtx = null;
 function wrappedLineCount(text, fontPx, maxW) {
@@ -366,11 +404,30 @@ export function renderSheet(script, options, requestRender) {
     return { g, left, right };
   });
 
-  /* The title occupies the first row slot of the SECOND column in the first
-     section (reference: col2 starts one row lower than col1, below the
-     title) — hence shift = 1 there. */
+  /* Two column layouts:
+
+     'shared' — the classic reference layout: the two columns share one row
+     grid (each row as tall as its taller side), and the title occupies the
+     first row slot of the SECOND column in the first section, so col 2
+     starts one row lower than col 1 (hence shift = 1 there).
+
+     'even' — the official printed sheets: both columns start together and
+     both END together. Each column keeps every row's needed height and the
+     section's leftover space is dealt out evenly between its rows, so a
+     7/6 townsfolk split gives the 6-row column a slightly wider pitch
+     instead of a hole at the bottom. The title no longer takes a column
+     slot, so the first section starts below the title/author ink instead
+     (firstExtraEm — fixed, because the title does not scale with density). */
+  const layoutEven = options.columnLayout !== 'shared';
+
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
   const measure = (density) =>
     cols.map((c, ci) => {
+      if (layoutEven) {
+        const leftNeeds = c.left.map((ch) => rowHeightEm(ch, density));
+        const rightNeeds = c.right.map((ch) => rowHeightEm(ch, density));
+        return { leftNeeds, rightNeeds, need: Math.max(sum(leftNeeds), sum(rightNeeds)) };
+      }
       const shift = ci === 0 ? 1 : 0;
       const rows = Math.max(c.left.length, c.right.length + shift);
       const rowHeights = [];
@@ -380,20 +437,36 @@ export function renderSheet(script, options, requestRender) {
           rowHeightEm(c.right[i - shift], density),
         ));
       }
-      return rowHeights;
+      return { rowHeights, need: sum(rowHeights) };
     });
 
+  // even layout: clear the title band (title or logo, plus the author line)
+  let firstExtraEm = 0;
+  if (layoutEven) {
+    const bottoms = [];
+    if (script.meta.logo && options.useLogo) {
+      bottoms.push(SHEET.titleCY + options.titleDY + (9.4 * options.titleSize) / 2);
+    } else {
+      // the swash title's ink reaches ~3.05 em below its centre at size 1
+      bottoms.push(SHEET.titleCY + options.titleDY + 3.05 * options.titleSize);
+    }
+    const author0 = (options.authorOverride.trim() || script.meta.author || '').trim();
+    if (options.showAuthor && author0) bottoms.push(10.8 + options.titleDY + 0.75);
+    firstExtraEm = Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
+  }
+  const availEm = availableEm - firstExtraEm;
+
   let d = options.fitToContent ? 1 : options.density;
-  let heights = measure(d);
+  let measured = measure(d);
   if (options.fitToContent) {
     for (let iter = 0; iter < 3; iter++) {
       const neededEm =
-        heights.reduce((n, hs) => n + hs.reduce((a, b) => a + b, 0), 0) +
+        measured.reduce((n, m) => n + m.need, 0) +
         Math.max(0, groups.length - 1) * SHEET.sectionGap;
-      const fit = clamp(availableEm / neededEm, 0.42, 1.55);
+      const fit = clamp(availEm / neededEm, 0.42, 1.55);
       if (Math.abs(fit - d) < 0.002) { d = fit; break; }
       d = fit;
-      heights = measure(d);
+      measured = measure(d);
     }
   }
 
@@ -401,12 +474,24 @@ export function renderSheet(script, options, requestRender) {
   const e = (em) => em * U; // fixed px
   const iconEm = iconEmFor(d);
 
-  let cursorPx = SHEET.contentTop * U;
+  // deal a section's leftover height evenly between one column's rows
+  const dealEven = (needs, needEm) => {
+    if (!needs.length) return [];
+    const per = (needEm - sum(needs)) / needs.length;
+    return needs.map((n) => n + per);
+  };
+
+  let cursorPx = (SHEET.contentTop + firstExtraEm) * U;
   const sections = cols.map((c, i) => {
+    const m = measured[i];
     const topPx = cursorPx;
-    const heightPx = ed(heights[i].reduce((a, b) => a + b, 0));
+    const heightPx = ed(m.need);
     cursorPx += heightPx + ed(SHEET.sectionGap);
-    return { ...c, rowHeights: heights[i], topPx, heightPx };
+    const leftHeights = layoutEven ? dealEven(m.leftNeeds, m.need) : m.rowHeights;
+    const rightHeights = layoutEven
+      ? dealEven(m.rightNeeds, m.need)
+      : m.rowHeights.slice(i === 0 ? 1 : 0);
+    return { ...c, leftHeights, rightHeights, rightTopPx: (!layoutEven && i === 0) ? topPx + ed(m.rowHeights[0] || 0) : topPx, topPx, heightPx };
   });
 
   const nameColor = (team) =>
@@ -443,18 +528,24 @@ export function renderSheet(script, options, requestRender) {
     fontFeatureSettings: '"kern" 1, "liga" 1',
   });
   sheet.className = 'script-sheet';
+  // the density auto-fit actually solved for — the page reads this to show
+  // it on the (always live) density slider
+  sheet.dataset.fsDensity = d.toFixed(3);
 
   // baked parchment (texture + garland) and the damask sidebar strip
   sheet.append(img(ART + 'parchment.jpg', {
     position: 'absolute', inset: '0', width: '100%', height: '100%',
   }));
-  sheet.append(img(ART + 'sidebar.png', {
+  const sidebarImg = img(ART + 'sidebar.png', {
     position: 'absolute',
     left: SHEET.sidebarX + '%',
     top: SHEET.sidebarY + '%',
     width: SHEET.sidebarW + '%',
     height: SHEET.sidebarH + '%',
-  }));
+  });
+  const sbFilter = sidebarFilter(options.sidebarColor);
+  if (sbFilter) sidebarImg.style.filter = sbFilter;
+  sheet.append(sidebarImg);
 
   // movable header decor: skull + flourishes
   sheet.append(img(ART + 'skull.png', {
@@ -514,7 +605,7 @@ export function renderSheet(script, options, requestRender) {
   }
 
   // team sections
-  sections.forEach(({ g, left, right, rowHeights, topPx, heightPx }, si) => {
+  sections.forEach(({ g, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx }, si) => {
     const wrap = el('div');
 
     // divider above every section except the first: soft-light pass plus a
@@ -575,21 +666,21 @@ export function renderSheet(script, options, requestRender) {
       width: colWPct + '%',
     });
     left.forEach((c, i) => colL.append(
-      characterEntry(c, nameColor(c.team), options.showJinxes, rowHeights[i], iconEm, textSize, nameSize, ed),
+      characterEntry(c, nameColor(c.team), options.showJinxes, leftHeights[i], iconEm, textSize, nameSize, ed),
     ));
     wrap.append(colL);
 
+    // rightTopPx: same as topPx, except the classic layout's first section,
+    // where the title takes the second column's first row slot
     const colR = el('div', {
       position: 'absolute',
       left: SHEET.col2IconX + '%',
-      // first section: second column starts one row lower — the title takes
-      // its first slot
-      top: px(si === 0 ? topPx + ed(rowHeights[0] || 0) : topPx),
+      top: px(rightTopPx),
       width: colWPct + '%',
     });
     right.forEach((c, i) => colR.append(
       characterEntry(c, nameColor(c.team), options.showJinxes,
-        rowHeights[si === 0 ? i + 1 : i], iconEm, textSize, nameSize, ed),
+        rightHeights[i], iconEm, textSize, nameSize, ed),
     ));
     wrap.append(colR);
 

@@ -105,6 +105,7 @@ function render() {
   wrap.textContent = '';
   wrap.append(sheet);
   fitTitle(sheet);
+  showSolvedDensity(sheet);
   fitPreview();
 }
 
@@ -212,6 +213,7 @@ const COLORS = [
   ['titleColor', 'Title'],
   ['goodColor', 'Good names'],
   ['evilColor', 'Evil names'],
+  ['sidebarColor', 'Sidebar'],
 ];
 
 const controlEls = {}; // key -> input element
@@ -231,6 +233,12 @@ function buildControls() {
     input.type = 'range';
     input.min = min; input.max = max; input.step = step;
     input.addEventListener('input', () => {
+      // touching the density slider IS choosing manual density — a disabled
+      // slider just read as broken, so auto-fit unticks itself instead
+      if (key === 'density' && options.fitToContent) {
+        options.fitToContent = false;
+        if (controlEls.fitToContent) controlEls.fitToContent.input.checked = false;
+      }
       options[key] = Number(input.value);
       val.textContent = format(options[key]);
       requestRender();
@@ -282,15 +290,21 @@ function syncControls() {
     else entry.input.value = v;
     if (entry.val) entry.val.textContent = entry.format(Number(v));
   }
-  // density is meaningless while auto-fit solves for it
-  const dens = controlEls.density;
-  if (dens) {
-    dens.input.disabled = options.fitToContent;
-    if (options.fitToContent) dens.val.textContent = 'auto';
-  }
   $('fs-title-override').value = options.titleOverride;
   $('fs-author-override').value = options.authorOverride;
   $('fs-sort-mode').value = options.sortMode;
+  $('fs-column-layout').value = options.columnLayout;
+}
+
+/* while auto-fit is on, the density slider tracks the density it solved
+   for — so the thumb is honest, and dragging it takes over from there */
+function showSolvedDensity(sheet) {
+  if (!options.fitToContent) return;
+  const dens = controlEls.density;
+  const solved = Number(sheet.dataset.fsDensity);
+  if (!dens || !solved) return;
+  dens.input.value = solved;
+  dens.val.textContent = 'auto · ' + dens.format(solved);
 }
 
 /* ── export ── */
@@ -464,6 +478,10 @@ async function boot() {
   });
   $('fs-sort-mode').addEventListener('change', (e) => {
     options.sortMode = e.target.value;
+    requestRender();
+  });
+  $('fs-column-layout').addEventListener('change', (e) => {
+    options.columnLayout = e.target.value;
     requestRender();
   });
   $('fs-decor-reset').addEventListener('click', () => {
