@@ -707,23 +707,27 @@ export function renderSheet(script, options, requestRender) {
     const wrap = el('div');
 
     // divider above every section except the first: soft-light pass plus a
-    // sepia-tinted pass (matches the reference's baked brown), and the cap
+    // sepia-tinted pass (matches the reference's baked brown), and the cap.
+    // 0.28 em tall — the official printed sheets rule a hairline (~0.35% of
+    // sheet height of ink); the first cut used 0.4924 and the double pass
+    // smudged it into a heavy band. Centred where the thick one was.
     if (si > 0) {
-      const divTop = topPx - ed(SHEET.sectionGap) + ed(0.55);
+      const divH = 0.28;
+      const divTop = topPx - ed(SHEET.sectionGap) + ed(0.7962 - divH / 2);
       wrap.append(img(ART + 'divider.png', {
         position: 'absolute', left: '8.3%', top: px(divTop),
-        width: '89.35%', height: px(ed(0.4924)),
+        width: '89.35%', height: px(ed(divH)),
         objectFit: 'fill', mixBlendMode: 'soft-light',
       }));
       wrap.append(img(ART + 'divider.png', {
         position: 'absolute', left: '8.3%', top: px(divTop),
-        width: '89.35%', height: px(ed(0.4924)),
-        objectFit: 'fill', opacity: '0.45',
+        width: '89.35%', height: px(ed(divH)),
+        objectFit: 'fill', opacity: '0.4',
         filter: 'sepia(1) saturate(2.2) hue-rotate(-18deg) brightness(1.35)',
       }));
       wrap.append(img(ART + 'divider-cap.png', {
         position: 'absolute', left: '2.337%', top: px(divTop),
-        width: '6.26%', height: px(ed(0.4924)),
+        width: '6.26%', height: px(ed(divH)),
         objectFit: 'fill',
       }));
     }
