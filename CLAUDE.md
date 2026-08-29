@@ -2081,7 +2081,11 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   sidebar, skull, flourishes and dividers in `art/` are the sealed payload
   (immutable-cached in `_headers`) — the skull is a feathered opaque patch
   cut from the same parchment source, so "optimizing" images here breaks the
-  blend. `sidebar.png` is a **full-bleed composite**: the damask stretched
+  blend. The divider (`divider-taper.png`) is generated to the official
+  sheet's shape — a hairline with a small knot where it meets the ribbon,
+  near-constant thickness, fading to fully transparent by the right end;
+  the handoff's spindle art (thin ends, fat middle) was the wrong shape and
+  is gone. `sidebar-full.png` is a **full-bleed composite**: the damask stretched
   to the whole ribbon column (sheet edge to sidebarX+sidebarW, full height)
   with the parchment frame's shading multiplied in (parchment column
   luminance normalized so its inner backdrop = 1.0). The handoff's inset
@@ -2089,7 +2093,11 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   top/left/bottom — invisible against navy, glaring once the ribbon was
   recoloured. The renderer therefore draws it at left 0 / top 0;
   `sidebarX`/`sidebarW` still place the labels. The pre-composite strip is
-  in git history (commit df66f84) if it ever needs rebaking.
+  in git history (commit df66f84, as `sidebar.png`) if it ever needs
+  rebaking. Changed art gets a NEW filename (`sidebar.png` →
+  `sidebar-full.png`): `art/*` is immutable-cached, so replacing content
+  under an old name strands anyone who already fetched it on the stale
+  copy for a year.
 - **Official roster data is the wiki's own** (`assets/roles.json`, handed to
   the engine via `setOfficialRoster()`) — but the **icons are the tool's own
   bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official

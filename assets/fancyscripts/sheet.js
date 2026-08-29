@@ -294,7 +294,7 @@ function sidebarTintCanvas(color, requestRender) {
   if (!st.img) {
     st.img = new Image();
     st.img.onload = () => { st.imgReady = true; pumpSidebarTint(); };
-    st.img.src = ART + 'sidebar.png';
+    st.img.src = ART + 'sidebar-full.png';
   } else {
     pumpSidebarTint();
   }
@@ -642,7 +642,7 @@ export function renderSheet(script, options, requestRender) {
     Object.assign(tinted.style, sidebarStyle);
     sheet.append(tinted);
   } else {
-    sheet.append(img(ART + 'sidebar.png', sidebarStyle));
+    sheet.append(img(ART + 'sidebar-full.png', sidebarStyle));
   }
 
   // movable header decor: skull + flourishes
@@ -706,29 +706,26 @@ export function renderSheet(script, options, requestRender) {
   sections.forEach(({ g, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx }, si) => {
     const wrap = el('div');
 
-    // divider above every section except the first: soft-light pass plus a
-    // sepia-tinted pass (matches the reference's baked brown), and the cap.
-    // 0.28 em tall — the official printed sheets rule a hairline (~0.35% of
-    // sheet height of ink); the first cut used 0.4924 and the double pass
-    // smudged it into a heavy band. Centred where the thick one was.
+    // divider above every section except the first, plus the cap on the
+    // ribbon. divider-taper.png is drawn to the official sheet's shape —
+    // a hairline with a small knot where it meets the ribbon, near-constant
+    // thickness, fading to fully transparent by the right end (the old
+    // spindle art was thin at both ends and fat in the middle, which is
+    // not how the print rules them). One multiply pass; the colour and the
+    // fade are baked into the art's alpha.
     if (si > 0) {
-      const divH = 0.28;
+      const divH = 0.5;
       const divTop = topPx - ed(SHEET.sectionGap) + ed(0.7962 - divH / 2);
-      wrap.append(img(ART + 'divider.png', {
+      wrap.append(img(ART + 'divider-taper.png', {
         position: 'absolute', left: '8.3%', top: px(divTop),
         width: '89.35%', height: px(ed(divH)),
-        objectFit: 'fill', mixBlendMode: 'soft-light',
-      }));
-      wrap.append(img(ART + 'divider.png', {
-        position: 'absolute', left: '8.3%', top: px(divTop),
-        width: '89.35%', height: px(ed(divH)),
-        objectFit: 'fill', opacity: '0.4',
-        filter: 'sepia(1) saturate(2.2) hue-rotate(-18deg) brightness(1.35)',
+        objectFit: 'fill', mixBlendMode: 'multiply',
       }));
       wrap.append(img(ART + 'divider-cap.png', {
         position: 'absolute', left: '2.337%', top: px(divTop),
-        width: '6.26%', height: px(ed(divH)),
+        width: '6.26%', height: px(ed(divH * 0.56)),
         objectFit: 'fill',
+        marginTop: px(ed(divH * 0.22)),
       }));
     }
 
