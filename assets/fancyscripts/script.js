@@ -191,9 +191,13 @@ function slugId(name) {
   return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
-/* official icons are the wiki's own committed set — one file per id */
+/* Official icons: the tool bundles the REAL official painted icons
+   (assets/fancyscripts/icons/{id}.webp — one per roles.json id). The wiki's
+   own assets/icons/ set is deliberately NOT used here: those are flat
+   recreations (fine at 20px in a jinx pill, wrong on a print sheet), and the
+   reference sheets this layout was calibrated against use the real art. */
 export function bundledIcon(id) {
-  return '/assets/icons/' + id + '.png';
+  return '/assets/fancyscripts/icons/' + id + '.webp';
 }
 
 /* Route off-site images through a resizing CORS proxy so the PNG/PDF capture

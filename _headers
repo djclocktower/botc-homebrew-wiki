@@ -73,3 +73,5 @@
   Cache-Control: public, max-age=31536000, immutable
 /assets/fancyscripts/fonts/*
   Cache-Control: public, max-age=31536000, immutable
+/assets/fancyscripts/icons/*
+  Cache-Control: public, max-age=31536000, immutable

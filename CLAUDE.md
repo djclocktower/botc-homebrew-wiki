@@ -454,7 +454,8 @@ assets/
                        modules. script.js is the engine (parsing, sorting, the
                        calibrated SHEET geometry — pure, no DOM); sheet.js the
                        DOM renderer the export captures; app.js the page
-                       controller. art/ and fonts/ are the sealed calibrated
+                       controller. art/, fonts/ and icons/ (the REAL official
+                       painted icons — see the section below) are the sealed
                        payload, vendor/ the export libraries. See "Fancy
                        Scripts" below before touching ANY number in script.js.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
@@ -2060,9 +2061,14 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   (immutable-cached in `_headers`) — the skull is a feathered opaque patch
   cut from the same parchment source, so "optimizing" images here breaks the
   blend.
-- **Official data is the wiki's own**: `assets/roles.json` + the committed
-  `assets/icons/{id}.png` set (every id matches), handed to the engine via
-  `setOfficialRoster()`. Jinxes are NOT in roles.json, so the tool carries
+- **Official roster data is the wiki's own** (`assets/roles.json`, handed to
+  the engine via `setOfficialRoster()`) — but the **icons are the tool's own
+  bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official
+  painted art, one per roles.json id). The wiki's committed
+  `assets/icons/{id}.png` set is deliberately NOT used on the sheet: those
+  are flat recreations — right at 20px in a jinx pill, visibly wrong on a
+  print sheet the reference renders with the real art (the official Imp
+  trident isn't even red in that set). Jinxes are NOT in roles.json, so the tool carries
   `assets/fancyscripts/official-jinxes.json` ({id: [{id, reason}]}, from the
   script-tool dataset) — a per-character map, unlike the pair-based
   `assets/official-jinxes.json` /jinxes uses. Jinx icons show beside the
