@@ -1982,7 +1982,7 @@ A **creator** is drawn first, then one of that creator's characters
 gave the slot to whoever had written the most pages, so the same handful of
 prolific creators held it most weeks; every creator now has the same chance of
 the day however many characters they have made. **Curata is not a condition**
-any more — it stays a 5× thumb on the scale for which of that creator's
+any more — it stays a 3× thumb on the scale for which of that creator's
 characters is drawn (`weightedPick`), never a gate on being drawn at all.
 Partial pages are still out (`eligible()`), as is a page with no art or nothing
 to read, and an uncredited page — the rotation is a turn for each creator, and
@@ -2043,7 +2043,7 @@ and the Worker (which stamps `classification` + `curata` onto every row in
   anything.
 - **Standard** — the default. No badge, nothing to earn.
 - **Curata** — admin-only, on characters, collections **and** scripts.
-  Weighted `CURATA_WEIGHT` (5×) in `/random`, the homepage strips and the
+  Weighted `CURATA_WEIGHT` (3×) in `/random`, the homepage strips and the
   choice of WHICH of a creator's characters is Featured, and filterable on
   its own (a "Curata only" chip on All Characters, All Collections and
   Scripts). It is no longer a condition of being Featured at all.
