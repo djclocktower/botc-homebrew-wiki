@@ -216,24 +216,106 @@ function hexHsl(hex) {
   return { h, s, l };
 }
 
-/* Re-tint the sidebar ribbon toward any picked colour. The art itself is one
-   navy damask strip; a CSS filter moves its hue/saturation/brightness by the
-   RATIO between the picked colour and the art's measured base (SIDEBAR_BASE),
-   so the damask pattern's own shading survives. The default colour returns
-   no filter — the untouched art. */
-function sidebarFilter(color) {
-  if (!color || color.toLowerCase() === SIDEBAR_BASE.hex) return '';
+/* ── sidebar ribbon recolour ────────────────────────────────────────────
+   Re-tint the navy damask strip toward any picked colour — in a CANVAS,
+   pixel by pixel in real HSL, not with a CSS hue-rotate filter. The filter
+   was tried first and failed exactly where the art is darkest: hue-rotate
+   is a linear matrix approximation, and it maps the strip's near-black
+   navy (the shadowed edges at the top, bottom and left) to neutral mud,
+   so a red ribbon showed un-tinted "missing" bands along those edges.
+
+   Per pixel: hue is ROTATED by the picked colour's offset from the art's
+   measured base (SIDEBAR_BASE), and saturation/lightness are scaled by
+   ratio against that base — so the damask keeps its own shading and its
+   darkest shadow ends up the darkest shade of the picked colour. The
+   recolour runs once per picked colour (~2.5M px, cached), asynchronously:
+   renderSheet() shows the newest canvas it has and asks for a re-render
+   when a fresh one lands, exactly like the icon-ink measurements. */
+const sidebarTint = {
+  img: null, imgReady: false,
+  color: '', canvas: null, // the newest finished recolour
+  busy: false, want: '', notify: null,
+};
+
+function recolorSidebar(color) {
   const t = hexHsl(color);
-  if (!t) return '';
-  const parts = [];
-  if (t.s < 0.06) {
-    parts.push('saturate(0)');
-  } else {
-    parts.push(`hue-rotate(${Math.round(t.h - SIDEBAR_BASE.h)}deg)`);
-    parts.push(`saturate(${clamp(t.s / SIDEBAR_BASE.s, 0.2, 2.5).toFixed(2)})`);
+  const src = sidebarTint.img;
+  const c = document.createElement('canvas');
+  c.width = src.naturalWidth;
+  c.height = src.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(src, 0, 0);
+  const im = ctx.getImageData(0, 0, c.width, c.height);
+  const d = im.data;
+  const dH = t.h - SIDEBAR_BASE.h;
+  const sRatio = t.s < 0.06 ? 0 : t.s / SIDEBAR_BASE.s;
+  const lRatio = t.l / SIDEBAR_BASE.l;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    let l = (mx + mn) / 2;
+    const df = mx - mn;
+    let h = 0, s = 0;
+    if (df) {
+      s = l > 0.5 ? df / (2 - mx - mn) : df / (mx + mn);
+      h = mx === r ? (g - b) / df + (g < b ? 6 : 0) : mx === g ? (b - r) / df + 2 : (r - g) / df + 4;
+      h *= 60;
+    }
+    h = (((h + dH) % 360) + 360) % 360;
+    s = Math.min(1, s * sRatio);
+    l = Math.min(1, l * lRatio);
+    // hsl -> rgb
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const hh = h / 360;
+    const chan = (tt) => {
+      if (tt < 0) tt += 1;
+      if (tt > 1) tt -= 1;
+      if (tt < 1 / 6) return p + (q - p) * 6 * tt;
+      if (tt < 1 / 2) return q;
+      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
+      return p;
+    };
+    d[i] = Math.round(chan(hh + 1 / 3) * 255);
+    d[i + 1] = Math.round(chan(hh) * 255);
+    d[i + 2] = Math.round(chan(hh - 1 / 3) * 255);
   }
-  parts.push(`brightness(${clamp(t.l / SIDEBAR_BASE.l, 0.5, 3).toFixed(2)})`);
-  return parts.join(' ');
+  ctx.putImageData(im, 0, 0);
+  return c;
+}
+
+/* newest recoloured canvas for `color`, or the best stale one while the
+   fresh one is computed off this frame (null = show the plain navy art) */
+function sidebarTintCanvas(color, requestRender) {
+  const st = sidebarTint;
+  st.notify = requestRender;
+  if (st.color === color && st.canvas) return st.canvas;
+  st.want = color;
+  if (!st.img) {
+    st.img = new Image();
+    st.img.onload = () => { st.imgReady = true; pumpSidebarTint(); };
+    st.img.src = ART + 'sidebar.png';
+  } else {
+    pumpSidebarTint();
+  }
+  return st.canvas; // possibly a stale colour — better than flashing navy
+}
+
+function pumpSidebarTint() {
+  const st = sidebarTint;
+  if (st.busy || !st.imgReady || !st.want || st.want === st.color) return;
+  st.busy = true;
+  const color = st.want;
+  // off the current frame, so a drag on the picker stays responsive
+  setTimeout(() => {
+    try {
+      st.canvas = recolorSidebar(color);
+      st.color = color;
+    } catch { st.want = st.color; }
+    st.busy = false;
+    if (st.notify) st.notify();
+    pumpSidebarTint(); // the wanted colour may have moved on meanwhile
+  }, 0);
 }
 
 /* shared canvas context for word-wrap measurement of ability text */
@@ -536,16 +618,24 @@ export function renderSheet(script, options, requestRender) {
   sheet.append(img(ART + 'parchment.jpg', {
     position: 'absolute', inset: '0', width: '100%', height: '100%',
   }));
-  const sidebarImg = img(ART + 'sidebar.png', {
+  const sidebarStyle = {
     position: 'absolute',
     left: SHEET.sidebarX + '%',
     top: SHEET.sidebarY + '%',
     width: SHEET.sidebarW + '%',
     height: SHEET.sidebarH + '%',
-  });
-  const sbFilter = sidebarFilter(options.sidebarColor);
-  if (sbFilter) sidebarImg.style.filter = sbFilter;
-  sheet.append(sidebarImg);
+  };
+  const wantsTint = options.sidebarColor &&
+    options.sidebarColor.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(options.sidebarColor);
+  const tinted = wantsTint ? sidebarTintCanvas(options.sidebarColor, requestRender) : null;
+  if (tinted) {
+    // the singleton canvas is adopted by each new sheet; the old sheet is
+    // already detached, so moving it is safe
+    Object.assign(tinted.style, sidebarStyle);
+    sheet.append(tinted);
+  } else {
+    sheet.append(img(ART + 'sidebar.png', sidebarStyle));
+  }
 
   // movable header decor: skull + flourishes
   sheet.append(img(ART + 'skull.png', {

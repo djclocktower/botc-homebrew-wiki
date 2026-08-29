@@ -267,25 +267,168 @@ function buildControls() {
   }
 
   for (const [key, label] of COLORS) {
-    const lab = document.createElement('label');
-    lab.className = 'fs-color';
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.addEventListener('input', () => {
-      options[key] = input.value;
+    const row = document.createElement('div');
+    row.className = 'fs-color';
+    const picker = createColorPicker(options[key], (hex) => {
+      options[key] = hex;
       requestRender();
     });
     const span = document.createElement('span');
     span.textContent = label;
-    lab.append(input, span);
-    $('fs-colors').append(lab);
-    controlEls[key] = { input };
+    row.append(picker.root, span);
+    $('fs-colors').append(row);
+    controlEls[key] = { picker };
   }
+}
+
+/* ── colour picker ──────────────────────────────────────────────────────
+   Hand-rolled: a saturation/value square, a hue slider and a hex box in a
+   little popover. Exists because <input type="color"> on Android Chrome is
+   a grid of ~20 preset swatches with no free choice at all — the one place
+   the owner actually reviews from. */
+function hexToRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function rgbToHex(r, g, b) {
+  const to = (v) => Math.round(v).toString(16).padStart(2, '0');
+  return '#' + to(r) + to(g) + to(b);
+}
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h *= 60;
+  }
+  return { h, s: mx ? d / mx : 0, v: mx };
+}
+function hsvToRgb(h, s, v) {
+  h = ((h % 360) + 360) % 360;
+  const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+    : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+
+let openPickerClose = null; // at most one popover open at a time
+
+function createColorPicker(initial, onChange) {
+  const root = document.createElement('div');
+  root.className = 'fs-cp';
+  const swatch = document.createElement('button');
+  swatch.type = 'button';
+  swatch.className = 'fs-cp-swatch';
+  swatch.setAttribute('aria-label', 'Pick a colour');
+  const pop = document.createElement('div');
+  pop.className = 'fs-cp-pop';
+  pop.hidden = true;
+  const sv = document.createElement('div');
+  sv.className = 'fs-cp-sv';
+  const dot = document.createElement('div');
+  dot.className = 'fs-cp-dot';
+  sv.append(dot);
+  const hue = document.createElement('input');
+  hue.type = 'range';
+  hue.className = 'fs-cp-hue';
+  hue.min = 0; hue.max = 360; hue.step = 1;
+  const row = document.createElement('div');
+  row.className = 'fs-cp-row';
+  const hex = document.createElement('input');
+  hex.type = 'text';
+  hex.className = 'fs-cp-hex';
+  hex.spellcheck = false;
+  hex.autocapitalize = 'off';
+  const done = document.createElement('button');
+  done.type = 'button';
+  done.className = 'fs-cp-done';
+  done.textContent = 'Done';
+  row.append(hex, done);
+  pop.append(sv, hue, row);
+  root.append(swatch, pop);
+
+  const state = rgbToHsv(...(hexToRgb(initial) || [16, 16, 46]));
+
+  const current = () => rgbToHex(...hsvToRgb(state.h, state.s, state.v));
+  const paint = (skipHex) => {
+    const c = current();
+    swatch.style.background = c;
+    sv.style.backgroundColor = 'hsl(' + Math.round(state.h) + ', 100%, 50%)';
+    dot.style.left = (state.s * 100) + '%';
+    dot.style.top = ((1 - state.v) * 100) + '%';
+    hue.value = state.h;
+    if (!skipHex) hex.value = c;
+  };
+  const emit = (skipHex) => { paint(skipHex); onChange(current()); };
+
+  const svPick = (ev) => {
+    const r = sv.getBoundingClientRect();
+    state.s = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+    state.v = Math.min(1, Math.max(0, 1 - (ev.clientY - r.top) / r.height));
+    emit();
+  };
+  sv.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    sv.setPointerCapture(ev.pointerId);
+    svPick(ev);
+  });
+  sv.addEventListener('pointermove', (ev) => {
+    if (sv.hasPointerCapture(ev.pointerId)) svPick(ev);
+  });
+  hue.addEventListener('input', () => {
+    state.h = Number(hue.value);
+    emit();
+  });
+  hex.addEventListener('input', () => {
+    const rgb = hexToRgb(hex.value);
+    if (rgb) {
+      Object.assign(state, rgbToHsv(...rgb));
+      emit(true); // keep the half-typed text as the user wrote it
+    }
+  });
+
+  const close = () => {
+    pop.hidden = true;
+    document.removeEventListener('pointerdown', onOutside, true);
+    if (openPickerClose === close) openPickerClose = null;
+  };
+  const onOutside = (ev) => { if (!root.contains(ev.target)) close(); };
+  swatch.addEventListener('click', () => {
+    if (!pop.hidden) return close();
+    if (openPickerClose) openPickerClose();
+    openPickerClose = close;
+    paint();
+    pop.hidden = false;
+    // keep the popover on screen for swatches near the right edge
+    pop.style.left = '0';
+    pop.style.right = 'auto';
+    const pr = pop.getBoundingClientRect();
+    if (pr.right > document.documentElement.clientWidth - 4) {
+      pop.style.left = 'auto';
+      pop.style.right = '0';
+    }
+    document.addEventListener('pointerdown', onOutside, true);
+  });
+  done.addEventListener('click', close);
+
+  paint();
+  return {
+    root,
+    set(hexValue) {
+      const rgb = hexToRgb(hexValue);
+      if (rgb) Object.assign(state, rgbToHsv(...rgb));
+      paint();
+    },
+  };
 }
 
 function syncControls() {
   for (const [key, entry] of Object.entries(controlEls)) {
     const v = options[key];
+    if (entry.picker) { entry.picker.set(String(v)); continue; }
     if (entry.input.type === 'checkbox') entry.input.checked = !!v;
     else entry.input.value = v;
     if (entry.val) entry.val.textContent = entry.format(Number(v));

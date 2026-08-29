@@ -2049,12 +2049,21 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   printed sheets; the first section clears the title/author ink instead of
   giving the title a column slot) and **'shared'** (the classic reference
   layout — one shared row grid, col 2 staggered one row under the title).
-  The sidebar ribbon can be recoloured (`sidebarColor`): a CSS filter moves
-  the navy damask's hue/sat/brightness by RATIO against the art's measured
-  base (`SIDEBAR_BASE` in script.js), so the pattern's shading survives and
-  the default colour means no filter at all. The density slider is never
-  disabled — under auto-fit it displays the solved density ("auto · 96%")
-  and dragging it unticks auto-fit; a disabled slider just read as broken.
+  The sidebar ribbon can be recoloured (`sidebarColor`) — **in a canvas,
+  per pixel in real HSL, never with a CSS hue-rotate filter**: hue-rotate
+  is a linear approximation that maps the art's near-black navy (the
+  shadowed edges at the strip's top, bottom and left) to neutral mud, so a
+  red ribbon showed un-tinted bands there. The recolour rotates hue by the
+  offset from the art's measured base (`SIDEBAR_BASE` in script.js) and
+  scales sat/lightness by ratio, runs once per colour (~2.5M px, cached,
+  async — renderSheet shows the newest canvas and re-renders when a fresh
+  one lands, like the icon-ink pass), and the default colour bypasses it
+  entirely. The colour controls are a HAND-ROLLED picker (SV square + hue
+  slider + hex box in app.js), because `<input type="color">` on Android
+  Chrome is a grid of ~20 preset swatches with no free choice — the one
+  surface the owner reviews from. The density slider is never disabled —
+  under auto-fit it displays the solved density ("auto · 96%") and
+  dragging it unticks auto-fit; a disabled slider just read as broken.
 - **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
   LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
   400 file on purpose, because the reference used Chromium's synthetic bold),
