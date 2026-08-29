@@ -294,7 +294,7 @@
      CURATA_WEIGHT tickets in the hat instead of one; Partial entries are
      not in the hat at all. `rand` defaults to Math.random so the Worker can
      pass a seeded generator for its daily rotation. */
-  var CURATA_WEIGHT = 5;
+  var CURATA_WEIGHT = 3;
 
   function weightedPick(list, rand) {
     var pool = eligible(list);
