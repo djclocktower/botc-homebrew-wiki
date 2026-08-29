@@ -450,6 +450,13 @@ assets/
                        (DOMParser). SEED_PAGES/SEED_ASSETS are the known
                        files; anything newer is found by crawling <a href>
                        and <script src>.
+  fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
+                       modules. script.js is the engine (parsing, sorting, the
+                       calibrated SHEET geometry — pure, no DOM); sheet.js the
+                       DOM renderer the export captures; app.js the page
+                       controller. art/ and fonts/ are the sealed calibrated
+                       payload, vendor/ the export libraries. See "Fancy
+                       Scripts" below before touching ANY number in script.js.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
@@ -545,8 +552,9 @@ publish-news.html      Admin-only news editor: the same kit as publish-page
                        summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
-                       Creator Icons. This is what the "Tools" nav entry points at.
+                       Fancy Scripts, Grimoire Forge, Icon Forge, Bloodstar
+                       Import, Jinxes, Creator Icons. This is what the "Tools"
+                       nav entry points at.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -584,6 +592,18 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        roster comes from render-page.js's
                        resolveCollectionMembers(), not a second copy of the
                        membership rule.
+fancyscripts.html      Fancy Scripts (/fancyscripts) — turns a script into an
+                       official-style print sheet (parchment, engraved
+                       dividers, gold-leaf title), exported as PNG or a
+                       print-ready PDF. Same treatment as the two Forges: the
+                       handoff was a React + Tailwind app ("The Grimoire
+                       Press"), rebuilt in vanilla ES modules on the wiki's
+                       styling — do not reintroduce a framework. The page owns
+                       only the chrome; the tool lives in assets/fancyscripts/.
+                       Takes a script published here (the picker, or ?s={slug}
+                       — the "Fancy Sheet" action on /s/ pages), an uploaded/
+                       pasted script-tool JSON, or a sample. See "Fancy
+                       Scripts" below.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React
@@ -2004,6 +2024,65 @@ uploaded — except for the one opt-in save described below.
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
 
+
+## Fancy Scripts (`/fancyscripts`)
+
+Official script-tool JSON in, an official-style print sheet out — the classic
+parchment sheet with the damask sidebar, engraved dividers and the gold-leaf
+swash title, downloadable as a print-resolution PNG or a two-page PDF (sheet +
+damask back cover). Client-side only: no Worker route, no D1, nothing stored.
+
+- **Every number in `script.js`'s `SHEET` is calibration, not layout
+  preference.** The geometry was reverse-measured from a reference render of
+  the classic generator family (JohnForster/botc-fancy-script-generator) as
+  *fractions of the sheet* and then re-trued against that project's own CSS.
+  The unit system: 1 em = 1% of sheet height, horizontals in % of sheet
+  width, rendered at 1242×1656. Odd-looking values are load-bearing —
+  `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
+  0.7 row-growth margin is what keeps 3-line abilities inside one row pitch,
+  and rows deliberately do NOT grow for 1–3-line abilities (constant pitch,
+  like the reference). Change one constant at a time against a known render.
+- **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
+  LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
+  400 file on purpose, because the reference used Chromium's synthetic bold),
+  Trade Gothic (abilities), Dumbledor (sidebar labels). All `font-display:
+  block`, and the renderer re-measures after `document.fonts.ready`, because
+  ability word-wrap is computed with canvas `measureText` and a fallback font
+  would wrap differently. Do NOT substitute the visually-similar fonts the
+  repo already has (dumbledor2.ttf, trade-gothic otf) — different cuts,
+  different advance widths, every wrap moves. Chromium ignores `line-height`
+  in vertical-rl/upright text, so sidebar letter pitch is compressed with
+  negative `letter-spacing` — that is why the labels carry `-0.15em`.
+- **`sheet.js` styles itself entirely inline** and must keep doing so: the
+  element is what html-to-image captures for export, and page CSS the capture
+  library has to chase is a source of export-only bugs. The parchment,
+  sidebar, skull, flourishes and dividers in `art/` are the sealed payload
+  (immutable-cached in `_headers`) — the skull is a feathered opaque patch
+  cut from the same parchment source, so "optimizing" images here breaks the
+  blend.
+- **Official data is the wiki's own**: `assets/roles.json` + the committed
+  `assets/icons/{id}.png` set (every id matches), handed to the engine via
+  `setOfficialRoster()`. Jinxes are NOT in roles.json, so the tool carries
+  `assets/fancyscripts/official-jinxes.json` ({id: [{id, reason}]}, from the
+  script-tool dataset) — a per-character map, unlike the pair-based
+  `assets/official-jinxes.json` /jinxes uses. Jinx icons show beside the
+  declaring character when the partner is also on the script; partners are
+  matched by id AND by slugified name, because wiki exports write whichever
+  the jinx row stored.
+- **Wiki integration is read-only**: the picker lists `/scripts.json`, and
+  `?s={slug}` (the "Fancy Sheet" action on `/s/` pages, render-page.js)
+  fetches `/api/page-json` — the same export the Download JSON button saves,
+  so the sheet can never disagree with the page. The Script Builder's credits
+  Fabled (`botchomebrewwiki`) is skipped like every other importer skips it.
+  Off-site images are routed through a resizing CORS proxy (weserv) so the
+  canvas capture is never tainted; the wiki's own art is deliberately NOT
+  proxied (same-origin can't taint, and the proxy can't see draft art).
+- **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
+  vendor/, lazy-loaded on first export). The PDF pages are embedded as
+  **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
+  PDF came out 90 MB; the sheet and the flattened back cover as JPEG land
+  around 6. The back cover (damask + canvas-drawn title) is composed into one
+  flattened canvas for the same reason.
 
 ## Featured Character (the homepage slot)
 
