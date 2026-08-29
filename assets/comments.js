@@ -105,6 +105,17 @@
     }).join('');
   }
 
+  /* attach.js owns both halves of an attachment — the picker and the
+     gallery — so a comment and a modmail message show images the same way.
+     It is loaded beside this file by every page that mounts comments; if it
+     ever is not, a comment with images still renders, without them, rather
+     than throwing halfway through the list. */
+  function imagesHTML(list) {
+    if (!list || !list.length) return '';
+    if (typeof window.attachmentsHTML !== 'function') return '';
+    return window.attachmentsHTML(list);
+  }
+
   function canRemove(c) {
     if (!state.me) return false;
     return c.mine || state.me.canModerate;
@@ -148,6 +159,7 @@
           '<span class="cmt-when">' + esc(when(c.ts)) + '</span>' +
         '</div>' +
         '<div class="cmt-body">' + bodyHTML(c.body) + '</div>' +
+        imagesHTML(c.images) +
         (actions.length ? '<div class="cmt-actions">' + actions.join('') + '</div>' : '') +
         '<div class="cmt-reply-slot" id="cmt-reply-slot-' + c.id + '"></div>' +
         (replies && replies.length
@@ -193,6 +205,7 @@
     return '<form class="cmt-form" id="cmt-form">' +
       '<textarea id="cmt-box" rows="3" maxlength="2000" placeholder="Add a comment…" ' +
         'aria-label="Write a comment"></textarea>' +
+      '<div class="cmt-attach" id="cmt-attach"></div>' +
       '<div class="cmt-form-row">' +
         '<span class="cmt-count" id="cmt-count">0 / 2000</span>' +
         '<button type="submit" class="cmt-submit" id="cmt-submit">Post comment</button>' +
@@ -226,6 +239,9 @@
       box.addEventListener('input', function () {
         count.textContent = box.value.length + ' / 2000';
       });
+      // The picker is rebuilt with the form on every render(), so the handle
+      // is kept on `state` rather than in a closure the next render orphans.
+      state.attach = attachOn(root.querySelector('#cmt-attach'), box);
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         submit(box.value);
@@ -245,6 +261,16 @@
     root.querySelectorAll('[data-reply]').forEach(function (btn) {
       btn.addEventListener('click', function () { openReply(btn.getAttribute('data-reply'), btn); });
     });
+  }
+
+  /* One place mounts the picker, so the comment box and the reply box get the
+     same rules — including the paste target, which is what makes pasting a
+     screenshot straight into the box work. Returns null when attach.js is not
+     loaded, and every caller treats that as "no images", so the comment
+     section keeps working on a page that has not been given the script. */
+  function attachOn(host, pasteTarget) {
+    if (!host || typeof window.mountAttach !== 'function') return null;
+    return window.mountAttach(host, { pasteTarget: pasteTarget });
   }
 
   /* Inline reply box, opened under the comment being answered. Only one is
@@ -270,6 +296,7 @@
       '<form class="cmt-form cmt-form-reply">' +
         '<textarea rows="2" maxlength="2000" placeholder="Reply…" aria-label="Write a reply">' +
           esc(prefill) + '</textarea>' +
+        '<div class="cmt-attach"></div>' +
         '<div class="cmt-form-row">' +
           '<button type="button" class="cmt-action cmt-reply-cancel">Cancel</button>' +
           '<button type="submit" class="cmt-submit">Post reply</button>' +
@@ -279,6 +306,9 @@
 
     var form = slot.querySelector('form');
     var box = slot.querySelector('textarea');
+    // Only one reply box is ever open, so one handle is enough — and closing
+    // the box throws its images away with it, which is what cancelling means.
+    state.replyAttach = attachOn(slot.querySelector('.cmt-attach'), box);
     box.focus();
     box.setSelectionRange(box.value.length, box.value.length);
     slot.querySelector('.cmt-reply-cancel').addEventListener('click', function () {
@@ -318,7 +348,11 @@
      is actually looking at instead of at the bottom of the page. */
   function submit(text, parentId, form) {
     var body = String(text || '').trim();
-    if (!body) return;
+    var att = parentId ? state.replyAttach : state.attach;
+    var images = att ? att.paths() : [];
+    // A picture on its own is a comment (the server agrees), but a picture
+    // still on its way up is not: posting now would drop it silently.
+    if (!body && !images.length) return;
     var errEl = form ? form.querySelector('.cmt-error') : root.querySelector('#cmt-error');
     var btn = form ? form.querySelector('.cmt-submit') : root.querySelector('#cmt-submit');
     var btnLabel = parentId ? 'Post reply' : 'Post comment';
@@ -328,11 +362,16 @@
       errEl.hidden = !msg;
     }
     fail('');
+    if (att && att.busy()) {
+      fail('Wait for the image to finish uploading.');
+      return;
+    }
     if (btn) { btn.disabled = true; btn.textContent = 'Posting…'; }
 
     function send(agree) {
       return post('/api/comments', {
         type: TYPE, slug: SLUG, body: body,
+        images: images.length ? images : undefined,
         parentId: parentId || undefined, agree: !!agree
       }).then(function (d) {
         if (d.needsAgreement) {
@@ -352,6 +391,7 @@
         if (!parentId) {
           var box = root.querySelector('#cmt-box');
           if (box) box.value = '';
+          if (att) att.clear();
         }
         if (state.me) state.me.agreed = true;
         // load() re-renders everything, which closes the reply box for us.

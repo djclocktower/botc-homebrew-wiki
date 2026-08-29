@@ -35,8 +35,11 @@
  *   POST /api/account/password-> change (or set) password
  *   POST /api/account/email   -> change email (re-verifies)
  *   POST /api/account/unlink-discord
- *   GET  /api/contact         -> your own messages to the admins
- *   POST /api/contact         -> send a message to the admins (bug/suggestion/…)
+ *   GET  /api/contact         -> your modmail conversations with the admins
+ *   GET  /api/contact/thread  -> one of them in full (?id=), head + replies
+ *   POST /api/contact         -> open one ({category, body, images[]})
+ *   POST /api/contact/reply   -> carry one on ({id, body, images[]}); reopens
+ *                                the thread so it returns to the admin queue
  *   POST /api/report-broken-link -> the 404 page's "this looks like a mistake"
  *                                box; same inbox as /api/contact, but works
  *                                without an account (rate-limited per IP)
@@ -96,6 +99,11 @@
  *   POST /api/publish         -> flip a page between draft and published
  *   POST /api/delete          -> soft-delete a page you own (recoverable)
  *   POST /api/upload          -> image upload to R2 (ownership-checked)
+ *   POST /api/attachment      -> one image for a comment or a modmail message.
+ *                                Unlike /api/upload the KEY IS MINTED HERE,
+ *                                not sent by the client — a conversation
+ *                                image belongs to no page, so there is no
+ *                                slot whose owner could be asked
  *   GET  /api/page-json       -> a script's or collection's export JSON as a
  *                                real downloadable file (?type=&slug=), which is
  *                                what the page's Download JSON button links to
@@ -154,10 +162,27 @@
  *   GET  /api/admin/users     -> user list (?q= search) for the users panel
  *   GET  /api/admin/user-names -> every handle, for the dashboard type-ahead
  *   POST /api/admin/user      -> ban/unban/promote/demote/reset-link for a user
- *   GET  /api/admin/messages  -> contact-form inbox (?status=open|all)
- *   POST /api/admin/message   -> reply to / resolve / reopen / delete an inbox
- *                                message; {action:'reply', body} sends the
- *                                answer to its author as a direct message
+ *   GET  /api/admin/messages  -> modmail inbox (?status=open|all), newest
+ *                                ACTIVITY first, each row flagged `waiting`
+ *                                when the member spoke last
+ *   GET  /api/admin/message-thread -> one conversation in full (?id=). Every
+ *                                admin reads the same thread — no report
+ *                                needed, unlike /api/admin/dm-thread: a
+ *                                message addressed to the admins is not a
+ *                                private conversation between two members
+ *   POST /api/admin/message   -> reply to / resolve / reopen / delete a
+ *                                conversation; {action:'reply', body, images}
+ *                                writes into the THREAD and sends its author
+ *                                a DM notification pointing back at it
+ *   POST /api/admin/draft-page -> admin: take somebody's published page off
+ *                                the site AND tell them why ({type, slug,
+ *                                reason}). The reason is stored on the page
+ *                                as data._draftNote — shown on the draft bar
+ *                                and at the top of its editor until it goes
+ *                                live again — and sent to the owner as a DM.
+ *                                A plain unpublish (/api/publish, or the bulk
+ *                                tool) tells the creator nothing, which is
+ *                                the gap this fills.
  *   POST /api/admin/protect   -> protect/unprotect one page from edits
  *   POST /api/admin/announce  -> set/clear the site-wide announcement banner
  *   GET  /api/admin/site-text -> every saved system-text override, with who
@@ -285,10 +310,58 @@ const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
 const APP_NAME = 'BOTC Homebrew Wiki';
 
 const R2_PREFIXES = ['art/', 'collections/', 'scripts/', 'tokens/', 'pages/', 'news/'];
-// avatars/ is servable from R2 but NOT uploadable through the generic
-// /api/upload — profile pictures only go through /api/account/avatar,
-// which pins the key to the logged-in user's own slot.
-const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/']);
+// avatars/ and attachments/ are servable from R2 but NOT uploadable through
+// the generic /api/upload — profile pictures only go through
+// /api/account/avatar, which pins the key to the logged-in user's own slot,
+// and conversation images only through /api/attachment, which NAMES the key
+// itself (see ATTACH_PREFIX below).
+const R2_SERVE_PREFIXES = R2_PREFIXES.concat(['avatars/', 'attachments/']);
+
+/* ---- conversation images (comments + modmail) ----
+   Every other R2 prefix names the PAGE an image belongs to, so who may write
+   to a key is a question about that page (uploadSlotDenied). A comment or a
+   modmail reply has no such slot: the image belongs to a message that does not
+   exist yet, and two people writing at once must not be able to land on one
+   key. So this prefix is the one the CLIENT never names — /api/attachment
+   mints the key from the account id and a random token, which makes a
+   collision impossible and an overwrite of somebody else's file unreachable
+   rather than merely refused.
+
+   Nothing garbage-collects these: an image whose comment is removed stays in
+   the bucket, exactly as character art does when a page is deleted, and the
+   dashboard's orphan sweep is where that is dealt with. */
+const ATTACH_PREFIX = 'attachments/';
+const ATTACH_MAX = 4;                    // images on one comment or message
+const ATTACH_BYTES = 5 * 1024 * 1024;    // per image, before base64
+const ATTACH_PATH_RE = /^\/assets\/attachments\/[0-9]{6}\/[0-9]+-[a-z0-9]+\.(png|jpg|jpeg|webp|gif)$/;
+
+/* What a client is allowed to hand back as "the images on this message".
+   These strings are printed into an <img src> on somebody else's screen, so
+   the shape is whitelisted rather than escaped: only a path this Worker can
+   itself have minted is accepted, which means no data:, no other origin and
+   no other R2 prefix can ever get through. Storing the path (not the key)
+   keeps the rendering side a plain attribute copy. */
+function sanitizeAttachments(v) {
+  if (!Array.isArray(v)) return [];
+  const out = [];
+  for (const item of v) {
+    const s = String(item == null ? '' : item).trim();
+    if (!ATTACH_PATH_RE.test(s)) continue;
+    if (out.includes(s)) continue;
+    out.push(s);
+    if (out.length >= ATTACH_MAX) break;
+  }
+  return out;
+}
+
+// Stored as a JSON array in a TEXT column, and every reader wants an array.
+function parseAttachments(v) {
+  if (!v) return [];
+  try { return sanitizeAttachments(JSON.parse(v)); } catch { return []; }
+}
+function packAttachments(list) {
+  return list && list.length ? JSON.stringify(list) : null;
+}
 const EXT_CONTENT_TYPE = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
   gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml'
@@ -968,7 +1041,7 @@ async function isWikiLocked(env) {
 const FEED_CHANGING_ACTIONS = new Set([
   'create', 'update', 'delete', 'rename', 'publish', 'unpublish',
   'curata', 'uncurata', 'rollback', 'restore', 'restore-backup',
-  'assign-owner', 'protect', 'unprotect', 'purge',
+  'assign-owner', 'protect', 'unprotect', 'purge', 'admin-draft',
   // Approving a suggestion writes the page; 'suggest' itself changes nothing.
   'suggestion-approve'
 ]);
@@ -1202,6 +1275,28 @@ async function ensureRateTable(env) {
   _rateReady = true;
 }
 
+/* ---- modmail (the contact-the-admins inbox) ----
+   A `messages` row is the HEAD of a conversation, and `modmail_replies` holds
+   everything said after it, from either side.
+
+   It used to be one row and nothing else: an admin's answer went out as a
+   `dms` row from that admin to the writer, which made the reply reachable but
+   turned the conversation into a private DM the moment it was answered. The
+   writer's next message went to one admin's inbox; no other admin could see
+   it, or knew the question had been answered at all, and the dashboard row
+   kept saying "replied" beside a thread that had moved on somewhere they
+   could not read. Two people would answer the same question twice.
+
+   So the thread is the record, and every admin reads and writes the same one.
+   What stayed is the NOTIFICATION: an admin reply still writes a `dms` row —
+   with sender_deleted=1, exactly as a comment notification does — so it rides
+   the unread count on /api/me and the mail flag site.js puts on "My Account".
+   The notification points at the thread; the answer lives in the thread.
+
+   `last_reply` / `replied_at` / `replied_by` are kept: they are what the
+   dashboard list shows without opening every thread, and rows written before
+   this table existed carry their whole answer there and nowhere else. */
+const MODMAIL_MAX = 3000;
 let _messagesReady = false;
 async function ensureMessagesTable(env) {
   if (_messagesReady) return;
@@ -1216,18 +1311,88 @@ async function ensureMessagesTable(env) {
        status   TEXT NOT NULL DEFAULT 'open'
      )`
   ).run();
-  // An admin's answer to a contact message is DELIVERED as a direct message —
-  // that is the channel the site already has, with an unread count and the
-  // mail flag on "My Account", and it lets the person write back. These three
-  // columns are only the dashboard's record that it happened, so an admin can
-  // see at a glance which messages have been answered and what was said
-  // without opening the thread. Lazily ALTERed, like every other column added
-  // after the fact (see users.banned).
-  for (const col of ['last_reply TEXT', 'replied_at TEXT', 'replied_by TEXT']) {
+  // Lazily ALTERed, like every other column added after the fact (see
+  // users.banned). `images` is the JSON array sanitizeAttachments() writes;
+  // `last_at` is the thread's last activity, which is what the inbox sorts on
+  // — without it a two-week-old thread somebody answered an hour ago sits at
+  // the bottom of the list, under threads nobody has touched since.
+  for (const col of ['last_reply TEXT', 'replied_at TEXT', 'replied_by TEXT',
+                     'images TEXT', 'last_at TEXT']) {
     try { await env.DB.prepare('ALTER TABLE messages ADD COLUMN ' + col).run(); }
     catch { /* already there */ }
   }
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS modmail_replies (
+       id         INTEGER PRIMARY KEY AUTOINCREMENT,
+       message_id INTEGER NOT NULL,
+       ts         TEXT NOT NULL DEFAULT (datetime('now')),
+       user_id    INTEGER,
+       is_staff   INTEGER NOT NULL DEFAULT 0,
+       body       TEXT NOT NULL,
+       images     TEXT
+     )`
+  ).run();
+  // Every read of this table is "one thread, in order".
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_modmail_thread ON modmail_replies(message_id, id)'
+  ).run();
+  // The inbox orders by last activity, which is last_at when there is one and
+  // the opening message's own timestamp when the thread has no replies yet.
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_messages_status ON messages(status, id)'
+  ).run();
   _messagesReady = true;
+}
+
+/* One thread's replies, oldest first, with the writer's handle resolved.
+   `is_staff` is stored rather than derived from is_admin: an admin who is
+   later demoted must not retroactively turn every answer they gave into a
+   member's message, and the writer of the thread being promoted to admin
+   must not turn their own question into a staff reply. */
+async function modmailReplies(env, head) {
+  const { results } = await env.DB.prepare(
+    `SELECT r.id, r.ts, r.user_id, r.is_staff, r.body, r.images,
+            u.username, u.display_name, u.avatar_url
+       FROM modmail_replies r LEFT JOIN users u ON u.id = r.user_id
+      WHERE r.message_id = ?
+      ORDER BY r.id ASC LIMIT 200`
+  ).bind(head.id).all().catch(() => ({ results: [] }));
+  const turns = (results || []).map(r => ({
+    id: r.id, ts: r.ts,
+    staff: !!r.is_staff,
+    username: r.username || null,
+    displayName: r.display_name || r.username || null,
+    avatarUrl: r.avatar_url || null,
+    body: r.body,
+    images: parseAttachments(r.images)
+  }));
+  /* Conversations answered before this table existed have their whole answer
+     in `last_reply` and no reply row at all. Without this they would open as
+     "no replies yet" while the row beside them said the admins had answered —
+     that answer went out as a DM and is not lost, but it is not HERE, and the
+     thread is now where everybody is told to look. So it is shown as the
+     first turn, reconstructed rather than back-filled: nothing is written,
+     and a thread that gets a real reply later simply gains a turn under it. */
+  if (!turns.length && head.replied_at && head.last_reply) {
+    turns.push({
+      id: 0, ts: head.replied_at, staff: true, legacy: true,
+      username: head.replied_by || null,
+      displayName: head.replied_by || null,
+      avatarUrl: null,
+      body: head.last_reply,
+      images: []
+    });
+  }
+  return turns;
+}
+
+/* Stamp a thread as just-active. `last_at` sorts the admin inbox and the
+   writer's own list; reopening is what makes a reply visible in the default
+   "open" view instead of vanishing into a thread somebody marked resolved. */
+async function touchModmail(env, id, reopen) {
+  await env.DB.prepare(
+    "UPDATE messages SET last_at=datetime('now')" + (reopen ? ", status='open'" : '') + ' WHERE id=?'
+  ).bind(id).run().catch(() => {});
 }
 
 // ---- direct messages (user <-> user DMs, tables created lazily) ----
@@ -1340,6 +1505,12 @@ async function ensureCommentTables(env) {
   try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN parent_id INTEGER').run(); }
   catch { /* already there */ }
   try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0').run(); }
+  catch { /* already there */ }
+  // Images on a comment: a JSON array of /assets/attachments/ paths, written
+  // by sanitizeAttachments() and by nothing else. A column rather than a data
+  // blob because `comments` is the one content table with no JSON in it, and
+  // one nullable TEXT is cheaper than teaching it the hybrid shape.
+  try { await env.DB.prepare('ALTER TABLE comments ADD COLUMN images TEXT').run(); }
   catch { /* already there */ }
   _commentsReady = true;
 }
@@ -2380,6 +2551,65 @@ async function notifyPageEdit(env, opts) {
       'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
     ).bind(fromId, ownerId, text).run();
   } catch { /* a notification must never break a save */ }
+}
+
+/* ---- an admin took a page down, and said why ----
+   Unpublishing somebody else's page is a moderation act with a reason behind
+   it — the art is somebody else's, the ability is an official character's,
+   the page is half-written — and until now the reason lived only in the
+   admin's head. The creator saw a published page become a draft and had to
+   guess, or ask.
+
+   The reason is kept in TWO places on purpose, because they answer different
+   questions:
+   - a DM to the owner, which is the notification the site already has (the
+     unread count on /api/me, the mail flag on "My Account") and the thing
+     that actually reaches them;
+   - `data._draftNote` on the page, which is what the page and its editor
+     still say a week later when the DM has scrolled away.
+
+   It is cleared the moment the page goes back up (see clearDraftNote): a note
+   saying why a page was taken down, on a page that is up, is worse than no
+   note at all. */
+const DRAFT_NOTE_MAX = 1000;
+
+function draftNote(reason, by) {
+  return {
+    at: new Date().toISOString(),
+    by: by || null,
+    reason: String(reason || '').trim().slice(0, DRAFT_NOTE_MAX)
+  };
+}
+
+/* A save must not silently throw the note away — the creator opens the
+   editor BECAUSE of the note, and fixing one field is not republishing. So
+   every save carries it forward, and only going live clears it. Called from
+   the three content save handlers with the status that is about to be
+   written. */
+function carryDraftNote(next, existing, status) {
+  const stored = existing ? parseData(existing) : null;
+  if (status === 'published') { delete next._draftNote; return; }
+  if (stored && stored._draftNote) next._draftNote = stored._draftNote;
+  else delete next._draftNote;
+}
+
+async function notifyDrafted(env, opts) {
+  // opts: {fromId, ownerId, type, name, path, reason, origin, editHref}
+  try {
+    const { fromId, ownerId, name, reason, origin } = opts;
+    if (ownerId == null || ownerId === fromId) return;
+    await ensureDmTables(env);
+    // Deliberately NOT checking dm_blocks. This is not a message from one
+    // member to another: it is the wiki telling somebody their page is no
+    // longer public, and a block list must not be able to hide that.
+    const text = 'An admin moved \u201c' + (name || '') + '\u201d to drafts, so it is no longer public.' +
+      (reason ? '\n\n\u201c' + reason + '\u201d' : '') +
+      '\n\nNothing is lost — the page is still yours and still there. Fix it and publish it again: ' +
+      (origin || '') + opts.editHref;
+    await env.DB.prepare(
+      'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+    ).bind(fromId, ownerId, text).run();
+  } catch { /* a notification must never fail the moderation act */ }
 }
 
 async function getEntityRow(env, type, slug) {
@@ -3604,6 +3834,26 @@ const PARTIAL_PREHIDE =
   'if(m[n.getAttribute("data-partial-slug")]===n.getAttribute("data-partial-sig"))n.remove();' +
   '}catch(e){}})();<\/script>';
 
+/* The reason an admin took this page down, printed under the draft bar.
+   Only ever rendered on a draft, and a draft is only visible to the people
+   who can act on it (its owner, its approved editors, the admins) — so this
+   needs no audience check of its own beyond being inside the draft banner.
+
+   The wording lives in assets/system-text.js like every other string the
+   Worker prints, so the owner can rewrite it on /text-editor. The reason and
+   the admin's handle are somebody's typed text and are escaped. */
+function draftNoteHTML(d) {
+  const n = d && d._draftNote;
+  if (!n || !n.reason) return '';
+  return '<div style="background:#5b1f21;color:#f7ecd0;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;line-height:1.5">' +
+    '<strong>' + SYS.draftedByAdmin + '</strong> ' +
+    (n.by ? '<em style="opacity:.85">' + SYS.draftedByAdminWho.replace('{by}', escapeHtml(n.by)) + '</em> ' : '') +
+    '<span style="display:block;margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere">' +
+      escapeHtml(n.reason) + '</span>' +
+    '<span style="display:block;font-size:.86em;opacity:.8">' + SYS.draftedByAdminFix + '</span>' +
+  '</div>';
+}
+
 function partialNoticeHTML(d, root) {
   const R = root || '../';
   const bits = Classify.missingBits(d);
@@ -3661,14 +3911,15 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   d.classification = Classify.classifyCharacter(d);
   const body = Render.renderCharacter(d, artSrc, root);
   const draftBanner = (isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + root + 'edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + root + 'edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>' +
+      draftNoteHTML(d)
     : '') + (showPartialNotice ? partialNoticeHTML(d, root) : '');
   return pageShell({
     title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
-    scripts: ['render.js', 'tags.js', 'charpage.js', 'comments.js', 'site.js']
+    scripts: ['render.js', 'tags.js', 'charpage.js', 'attach.js', 'comments.js', 'site.js']
   });
 }
 
@@ -4124,7 +4375,8 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const canonical = url.origin + (isScript ? '/s/' : '/collection/') + encodeURIComponent(isScript ? d.slug : (d.id || d.slug));
   const img = url.origin + '/assets/' + (d.header || d.logo || 'logo_skull.png');
   const draftBanner = isDraft
-    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>'
+    ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + attr(editHref) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>' +
+      draftNoteHTML(d)
     : '';
 
   const html = pageShell({
@@ -4136,8 +4388,8 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
     scripts: isScript
-      ? ['render.js', 'pageview.js', 'comments.js', 'site.js']
-      : ['render.js', 'pageview.js', 'sao.js', 'card-filters.js', 'comments.js', 'site.js']
+      ? ['render.js', 'pageview.js', 'attach.js', 'comments.js', 'site.js']
+      : ['render.js', 'pageview.js', 'sao.js', 'card-filters.js', 'attach.js', 'comments.js', 'site.js']
   });
   return new Response(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -4446,7 +4698,7 @@ export default {
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
         // newspage.js puts the Edit button in the top bar for admins.
-        scripts: ['comments.js', 'newspage.js', 'site.js']
+        scripts: ['attach.js', 'comments.js', 'newspage.js', 'site.js']
       });
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -4587,7 +4839,7 @@ export default {
           : '',
         bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
           (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
-        scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'comments.js', 'site.js']
+        scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'attach.js', 'comments.js', 'site.js']
       });
       return new Response(html, {
         headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
@@ -4605,7 +4857,7 @@ export default {
       // oldest-first so a thread reads in the order it was written. Replies
       // are grouped under their parent by the client.
       const { results } = await env.DB.prepare(
-        `SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned,
+        `SELECT c.id, c.ts, c.body, c.user_id, c.parent_id, c.pinned, c.images,
                 u.username, u.display_name, u.avatar_url, u.is_admin
          FROM comments c LEFT JOIN users u ON u.id = c.user_id
          WHERE c.entity_type=? AND c.slug=? AND c.status='visible'
@@ -4636,6 +4888,7 @@ export default {
         me,
         comments: (results || []).map(r => ({
           id: r.id, ts: r.ts, body: r.body,
+          images: parseAttachments(r.images),
           parentId: r.parent_id || null,
           pinned: !!r.pinned,
           username: r.username || '[deleted user]',
@@ -5946,17 +6199,58 @@ export default {
       return redirectResponse(url.origin + '/account?welcome=1', sessionCookie(t));
     }
 
-    // ---------- YOUR OWN MESSAGES TO THE ADMINS ----------
+    // ---------- YOUR OWN CONVERSATIONS WITH THE ADMINS ----------
+    // The list. Each row carries how many replies the thread has and when it
+    // was last touched, so the account page can say "2 replies · answered
+    // yesterday" without opening every thread to find out.
     if (method === 'GET' && path === '/api/contact') {
       const sess = await getSession(env, request);
       if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
       await ensureMessagesTable(env);
       const { results } = await env.DB.prepare(
-        // replied_at lets the account page say an answer is waiting; the answer
-        // itself was delivered as a DM, so it is read in /messages.
-        'SELECT id, ts, category, body, status, replied_at, replied_by FROM messages WHERE user_id=? ORDER BY id DESC LIMIT 20'
-      ).bind(sess.userId).all();
-      return jsonResponse({ messages: results || [] });
+        `SELECT m.id, m.ts, m.category, m.body, m.status, m.images,
+                m.replied_at, m.replied_by, m.last_at,
+                (SELECT COUNT(*) FROM modmail_replies r WHERE r.message_id = m.id) AS replies
+           FROM messages m
+          WHERE m.user_id = ?
+          ORDER BY COALESCE(m.last_at, m.ts) DESC, m.id DESC
+          LIMIT 30`
+      ).bind(sess.userId).all().catch(() => ({ results: [] }));
+      return jsonResponse({
+        messages: (results || []).map(m => ({
+          ...m, images: parseAttachments(m.images), replies: Number(m.replies) || 0
+        }))
+      });
+    }
+
+    // ---------- ONE OF YOUR CONVERSATIONS, IN FULL ----------
+    // Your own only, by account id. An admin reads the same thread through
+    // /api/admin/message-thread; there is no shared route, because "the
+    // thread belongs to this session" and "the session is an admin" are two
+    // different checks and folding them into one is how the wrong one gets
+    // skipped.
+    if (method === 'GET' && path === '/api/contact/thread') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      await ensureMessagesTable(env);
+      const id = parseInt(url.searchParams.get('id'), 10) || 0;
+      const head = await env.DB.prepare(
+        // last_reply / replied_at / replied_by are read for the legacy turn
+        // modmailReplies() reconstructs — see the comment there.
+        `SELECT id, ts, user_id, category, body, status, images, last_at,
+                last_reply, replied_at, replied_by
+           FROM messages WHERE id=?`
+      ).bind(id).first().catch(() => null);
+      if (!head || head.user_id !== sess.userId) {
+        return jsonResponse({ error: 'That message is not yours.' }, { status: 404 });
+      }
+      return jsonResponse({
+        message: {
+          id: head.id, ts: head.ts, category: head.category, body: head.body,
+          status: head.status, images: parseAttachments(head.images)
+        },
+        replies: await modmailReplies(env, head)
+      });
     }
 
     // ---------- DIRECT MESSAGES: CONVERSATION LIST ----------
@@ -6770,15 +7064,68 @@ export default {
       if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
       await ensureMessagesTable(env);
       const status = url.searchParams.get('status') || 'open';
-      let sql = 'SELECT id, ts, user_id, username, category, body, status, last_reply, replied_at, replied_by FROM messages';
+      /* Ordered by LAST ACTIVITY, not by id. Once a thread can be replied to,
+         the oldest question in the inbox is routinely the one somebody said
+         something on ten minutes ago, and an id sort buries it.
+         `waiting` is the flag the queue is actually read for: the last thing
+         said was said by the member, so it is the admins' turn. */
+      let sql =
+        `SELECT m.id, m.ts, m.user_id, m.username, m.category, m.body, m.status,
+                m.images, m.last_reply, m.replied_at, m.replied_by, m.last_at,
+                (SELECT COUNT(*) FROM modmail_replies r WHERE r.message_id = m.id) AS replies,
+                (SELECT r.is_staff FROM modmail_replies r
+                  WHERE r.message_id = m.id ORDER BY r.id DESC LIMIT 1) AS last_is_staff
+           FROM messages m`;
       const binds = [];
-      if (status !== 'all') { sql += ' WHERE status=?'; binds.push(status === 'resolved' ? 'resolved' : 'open'); }
-      sql += ' ORDER BY id DESC LIMIT 200';
+      if (status !== 'all') { sql += ' WHERE m.status=?'; binds.push(status === 'resolved' ? 'resolved' : 'open'); }
+      sql += ' ORDER BY COALESCE(m.last_at, m.ts) DESC, m.id DESC LIMIT 200';
       const [list, open] = await Promise.all([
-        env.DB.prepare(sql).bind(...binds).all(),
+        env.DB.prepare(sql).bind(...binds).all().catch(() => ({ results: [] })),
         env.DB.prepare("SELECT COUNT(*) AS n FROM messages WHERE status='open'").first()
       ]);
-      return jsonResponse({ messages: list.results || [], openCount: open ? open.n : 0 });
+      return jsonResponse({
+        messages: (list.results || []).map(m => ({
+          ...m,
+          images: parseAttachments(m.images),
+          replies: Number(m.replies) || 0,
+          // A thread with no replies at all is waiting on us too — that is
+          // the plain unanswered question this inbox has always been for.
+          /* A thread with no reply rows at all is normally the plain
+             unanswered question this inbox has always been for — but not
+             when `replied_at` is set: that is a conversation answered before
+             modmail_replies existed, whose whole answer lives in
+             `last_reply`. Flagging every one of those "needs a reply" would
+             fill the queue with questions that were dealt with a year ago. */
+          waiting: m.last_is_staff == null ? !m.replied_at : !Number(m.last_is_staff)
+        })),
+        openCount: open ? open.n : 0
+      });
+    }
+
+    /* ---------- ADMIN: ONE MODMAIL CONVERSATION ----------
+       Every admin reads the same thread. That is the whole point of the
+       change: an answer used to leave as a DM from one admin, and from then
+       on the conversation happened somewhere the other admins could not see,
+       so two of them would answer the same question a day apart.
+
+       No report is needed to open one, unlike /api/admin/dm-thread — a
+       message addressed TO the admins is not a private conversation somebody
+       else is having. */
+    if (method === 'GET' && path === '/api/admin/message-thread') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+      await ensureMessagesTable(env);
+      const id = parseInt(url.searchParams.get('id'), 10) || 0;
+      const head = await env.DB.prepare(
+        `SELECT id, ts, user_id, username, category, body, status, images,
+                last_reply, replied_at, replied_by, last_at
+           FROM messages WHERE id=?`
+      ).bind(id).first().catch(() => null);
+      if (!head) return jsonResponse({ error: 'That message no longer exists.' }, { status: 404 });
+      return jsonResponse({
+        message: { ...head, images: parseAttachments(head.images) },
+        replies: await modmailReplies(env, head)
+      });
     }
 
     // ---------- ADMIN: REPORTED DM CONVERSATIONS ----------
@@ -7054,7 +7401,7 @@ export default {
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 1), 200);
       const base =
         `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
-                c.parent_id, c.pinned, u.username, u.id AS user_id
+                c.parent_id, c.pinned, c.images, u.username, u.id AS user_id
          FROM comments c LEFT JOIN users u ON u.id = c.user_id`;
       let sql, binds = [];
       if (view === 'recent') {
@@ -7067,7 +7414,7 @@ export default {
         binds = [limit];
       } else {
         sql = `SELECT c.id, c.ts, c.entity_type, c.slug, c.body, c.status, c.removed_by, c.removed_at,
-                      c.parent_id, c.pinned, u.username, u.id AS user_id,
+                      c.parent_id, c.pinned, c.images, u.username, u.id AS user_id,
                       COUNT(r.id) AS reports, MAX(r.reason) AS reason
                FROM comment_reports r
                JOIN comments c ON c.id = r.comment_id
@@ -7079,7 +7426,10 @@ export default {
       const { results } = await env.DB.prepare(sql).bind(...binds).all().catch(() => ({ results: [] }));
       const open = await env.DB.prepare("SELECT COUNT(*) AS n FROM comment_reports WHERE status='open'")
         .first().catch(() => ({ n: 0 }));
-      return jsonResponse({ view, comments: results || [], openReports: (open && open.n) || 0 });
+      // An image is exactly the kind of comment that gets reported, so the
+      // queue has to show what was posted, not just the text beside it.
+      const queue = (results || []).map(r => ({ ...r, images: parseAttachments(r.images) }));
+      return jsonResponse({ view, comments: queue, openReports: (open && open.n) || 0 });
     }
 
     // ---------- ADMIN: JINX HEALTH ----------
@@ -7343,7 +7693,10 @@ export default {
       //   /api/account/password  they must be able to secure their own account
       //   /api/account/email     same
       const BANNED_ALLOWED = new Set([
-        '/api/contact', '/api/logout', '/api/account/password', '/api/account/email'
+        // '/api/contact/reply' is here for the same reason '/api/contact' is:
+        // an appeal that cannot be followed up is not an appeal.
+        '/api/contact', '/api/contact/reply',
+        '/api/logout', '/api/account/password', '/api/account/email'
       ]);
       if (acctFlags.banned && !BANNED_ALLOWED.has(path)) {
         return jsonResponse({ error: 'This account is suspended. You can contact the admins from your account page.' }, { status: 403 });
@@ -7550,6 +7903,58 @@ export default {
         // Uploads were never recorded anywhere, so there was no way to answer
         // "who put this image here" or to see a flood while it was happening.
         // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
+        await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
+        return jsonResponse({ ok: true, path: '/assets/' + key });
+      }
+
+      /* ---- an image on a comment or a modmail message ----
+         Deliberately NOT /api/upload. That route takes the key from the
+         client, because every slot it writes to is named after a page and the
+         permission question is about that page. A conversation image belongs
+         to a message nobody has written yet, so there is no page to ask — the
+         key is minted here instead, from the account id and a random token.
+         Nothing a client sends decides where the bytes land, which is what
+         makes "you cannot overwrite someone else's image" true by
+         construction rather than by a check that has to be got right.
+
+         The type whitelist, the extension agreement and the customMetadata
+         owner stamp are exactly /api/upload's, for exactly its reasons: an
+         SVG is a script-execution format wearing an image extension, and
+         these files are served from the site's own origin. */
+      if (path === '/api/attachment') {
+        if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
+        if (await rateLimited(env, request, 'attach', 60, 3600)) {
+          return tooManyResponse('That is a lot of images in an hour. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        let data = String(b.data || '');
+        if (!data) return jsonResponse({ error: 'Missing image data.' }, { status: 400 });
+        let declared = '';
+        if (data.startsWith('data:')) {
+          declared = data.slice(5, data.indexOf(';'));
+          data = data.slice(data.indexOf(',') + 1);
+        }
+        declared = declared.toLowerCase().split(';')[0].trim();
+        const kind = UPLOAD_CONTENT_TYPES[declared];
+        if (!kind) return jsonResponse({ error: 'Images must be PNG, JPEG, WebP, or GIF.' }, { status: 400 });
+        let bytes;
+        try { bytes = base64ToBytes(data); }
+        catch { return jsonResponse({ error: 'That image could not be read.' }, { status: 400 }); }
+        if (!bytes.length) return jsonResponse({ error: 'That image is empty.' }, { status: 400 });
+        if (bytes.length > ATTACH_BYTES) {
+          return jsonResponse({ error: 'Image is too large (5 MB max).' }, { status: 413 });
+        }
+        // Month folders keep one prefix from growing into a single flat
+        // listing of every image ever posted, which is what the orphan sweep
+        // and any future retention pass have to walk.
+        const now = new Date();
+        const month = String(now.getUTCFullYear()) + String(now.getUTCMonth() + 1).padStart(2, '0');
+        const rand = randomToken().replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 16) || 'x';
+        const key = ATTACH_PREFIX + month + '/' + sess.userId + '-' + rand + '.' + kind.exts[0];
+        await env.ART.put(key, bytes, {
+          httpMetadata: { contentType: kind.type },
+          customMetadata: { owner: String(sess.userId) }
+        });
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
@@ -7837,7 +8242,13 @@ export default {
         const target = await commentTarget(env, type, String(b.slug || ''));
         if (!target) return jsonResponse({ error: 'That page does not exist (or is not published yet).' }, { status: 404 });
         const body = String(b.body || '').replace(/\r\n/g, '\n').trim().slice(0, COMMENT_MAX);
-        if (!body) return jsonResponse({ error: 'Write something first.' }, { status: 400 });
+        // An image on its own is a comment — a screenshot of the bug, the
+        // token as it prints, the layout going wrong on a phone. Requiring a
+        // sentence beside it would only get "this" typed above the picture.
+        const images = sanitizeAttachments(b.images);
+        if (!body && !images.length) {
+          return jsonResponse({ error: 'Write something, or attach an image.' }, { status: 400 });
+        }
         await ensureCommentTables(env);
         // First-time commenters must accept the terms; the client sends
         // agree:true from the modal alongside their first comment.
@@ -7871,13 +8282,17 @@ export default {
           parentAuthorId = parent.user_id;   // told about the reply
         }
         const res = await env.DB.prepare(
-          'INSERT INTO comments (entity_type, slug, user_id, body, parent_id) VALUES (?,?,?,?,?)'
-        ).bind(type, target.slug, sess.userId, body, parentId).run();
+          'INSERT INTO comments (entity_type, slug, user_id, body, parent_id, images) VALUES (?,?,?,?,?,?)'
+        ).bind(type, target.slug, sess.userId, body, parentId, packAttachments(images)).run();
         await logActivity(env, sess, parentId ? 'comment-reply' : 'comment',
           type, target.slug, body.slice(0, 60));
         // Tell the page's owner (and whoever is being replied to) about it.
+        // An image-only comment quotes as the picture count, or the
+        // notification would arrive as an empty pair of quotation marks.
         ctx.waitUntil(notifyComment(env, {
-          fromId: sess.userId, target, body, origin: url.origin, parentAuthorId
+          fromId: sess.userId, target,
+          body: body || (images.length + ' image' + (images.length === 1 ? '' : 's')),
+          origin: url.origin, parentAuthorId
         }));
         return jsonResponse({
           ok: true, id: (res.meta && res.meta.last_row_id) || null, parentId
@@ -8115,6 +8530,12 @@ export default {
           status = 'draft';
           iconBlocked = true;
         }
+        /* An admin's "why this went to drafts" note survives an ordinary
+           save and is cleared only by going live. The creator opens the
+           editor BECAUSE of the note, and fixing one field is not
+           republishing — a note that vanished on the first save would be gone
+           before it had been acted on. */
+        carryDraftNote(c, existing, status);
         if (existing) await saveRevision(env, sess, 'character', existing);
         await env.DB.prepare(
           `INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,created_at,updated_at)
@@ -8353,6 +8774,12 @@ export default {
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
+        /* An admin's "why this went to drafts" note survives an ordinary
+           save and is cleared only by going live. The creator opens the
+           editor BECAUSE of the note, and fixing one field is not
+           republishing — a note that vanished on the first save would be gone
+           before it had been acted on. */
+        carryDraftNote(c, existing, status);
         if (existing) await saveRevision(env, sess, 'collection', existing);
         await env.DB.prepare(
           `INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at)
@@ -8451,6 +8878,12 @@ export default {
         if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.curata = existing ? !!parseData(existing).curata : false;
+        /* An admin's "why this went to drafts" note survives an ordinary
+           save and is cleared only by going live. The creator opens the
+           editor BECAUSE of the note, and fixing one field is not
+           republishing — a note that vanished on the first save would be gone
+           before it had been acted on. */
+        carryDraftNote(s, existing, status);
         if (existing) await saveRevision(env, sess, 'script', existing);
         await env.DB.prepare(
           `INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at)
@@ -8596,8 +9029,11 @@ export default {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
         }
         const status = b.status === 'draft' ? 'draft' : 'published';
+        // Parsed for every type, because clearing an admin's draft note below
+        // is not a character-only concern; the publish CHECK still is.
+        const pubDataAll = parseData(row);
         // Same rule as /api/character: a name, an icon, an ability and tags.
-        const pubData = type === 'character' ? parseData(row) : null;
+        const pubData = type === 'character' ? pubDataAll : null;
         const pubMissing = type === 'character' ? Classify.missingForPublish(pubData) : [];
         if (status === 'published' && pubMissing.length) {
           return jsonResponse({
@@ -8606,8 +9042,19 @@ export default {
             needsIcon: true, missingForPublish: pubMissing
           }, { status: 400 });
         }
-        await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
-          .bind(status, row.slug).run();
+        // Going live answers whatever an admin's draft note asked for — the
+        // note is about a page that is down, so it must not outlive that.
+        // Taking a page back to draft leaves any existing note alone: the
+        // owner unpublishing their own page does not clear the reason it was
+        // taken down.
+        if (status === 'published' && pubDataAll && pubDataAll._draftNote) {
+          delete pubDataAll._draftNote;
+          await env.DB.prepare(`UPDATE ${t.table} SET status=?, data=?, updated_at=datetime('now') WHERE slug=?`)
+            .bind(status, JSON.stringify(pubDataAll), row.slug).run();
+        } else {
+          await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
+            .bind(status, row.slug).run();
+        }
         await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug, status });
       }
@@ -8854,7 +9301,7 @@ export default {
         return jsonResponse({ ok: true, characters: chars.length, collections: cols.length, scripts: scripts.length });
       }
 
-      // ---- contact the admins (bug reports, suggestions, anything) ----
+      // ---- contact the admins: open a conversation ----
       if (path === '/api/contact') {
         if (await rateLimited(env, request, 'contact', 5, 3600)) {
           return tooManyResponse('Too many messages in a row. Try again in a bit.', 3600);
@@ -8864,16 +9311,68 @@ export default {
         const body = String(b.body || '').trim().slice(0, 2000);
         if (body.length < 5) return jsonResponse({ error: 'Please write a message first.' }, { status: 400 });
         await ensureMessagesTable(env);
+        // A screenshot IS the bug report. Most of what reaches this inbox is
+        // "this looks wrong on my phone", which a picture settles and three
+        // paragraphs do not — so the opening message takes images too, not
+        // only the replies.
+        const images = sanitizeAttachments(b.images);
         let uname = null;
         try {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           uname = u ? u.username : null;
         } catch { /* non-fatal */ }
-        await env.DB.prepare(
-          'INSERT INTO messages (user_id, username, category, body) VALUES (?,?,?,?)'
-        ).bind(sess.userId, uname, category, body).run();
+        const ins = await env.DB.prepare(
+          "INSERT INTO messages (user_id, username, category, body, images, last_at) VALUES (?,?,?,?,?,datetime('now'))"
+        ).bind(sess.userId, uname, category, body, packAttachments(images)).run();
         await logActivity(env, sess, 'contact', 'message', null, category);
-        return jsonResponse({ ok: true, message: 'Message sent — the admins will see it on their dashboard.' });
+        return jsonResponse({
+          ok: true, id: (ins.meta && ins.meta.last_row_id) || null,
+          message: 'Message sent — the admins will see it on their dashboard.'
+        });
+      }
+
+      /* ---- contact the admins: carry on a conversation ----
+         The half that was missing. An answer used to arrive as a DM from the
+         one admin who wrote it, so writing back meant writing to that person:
+         the thread the other admins could see stopped at the question. Now a
+         reply goes into the thread, which is what every admin reads, and
+         reopens it so it comes back to the top of the queue.
+
+         Deliberately reachable by a SUSPENDED account (see BANNED_ALLOWED):
+         appealing the ban is the one conversation a banned user has to be
+         able to continue, and a first message they cannot follow up is not a
+         conversation. */
+      if (path === '/api/contact/reply') {
+        if (await rateLimited(env, request, 'contact-reply', 30, 3600)) {
+          return tooManyResponse('Too many replies in a row. Try again in a bit.', 3600);
+        }
+        await ensureMessagesTable(env);
+        const b = await request.json().catch(() => ({}));
+        const id = parseInt(b.id, 10) || 0;
+        const head = await env.DB.prepare('SELECT id, user_id FROM messages WHERE id=?')
+          .bind(id).first().catch(() => null);
+        if (!head || head.user_id !== sess.userId) {
+          return jsonResponse({ error: 'That message is not yours.' }, { status: 404 });
+        }
+        const body = String(b.body || '').trim().slice(0, MODMAIL_MAX);
+        const images = sanitizeAttachments(b.images);
+        if (!body && !images.length) {
+          return jsonResponse({ error: 'Write something, or attach an image.' }, { status: 400 });
+        }
+        // How long a thread may run before it has to be a new one. Without a
+        // ceiling a single message id is an unbounded write target, and the
+        // read is capped at 200 anyway — a thread past that would silently
+        // stop showing what was just said.
+        const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM modmail_replies WHERE message_id=?')
+          .bind(id).first().catch(() => ({ n: 0 }));
+        if ((Number(n && n.n) || 0) >= 200) {
+          return jsonResponse({ error: 'This conversation is very long — please start a new message instead.' }, { status: 400 });
+        }
+        const ins = await env.DB.prepare(
+          'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,0,?,?)'
+        ).bind(id, sess.userId, body, packAttachments(images)).run();
+        await touchModmail(env, id, true);
+        return jsonResponse({ ok: true, id: (ins.meta && ins.meta.last_row_id) || null });
       }
 
       // ---- direct messages: send ----
@@ -9055,19 +9554,31 @@ export default {
         const id = parseInt(b.id, 10) || 0;
         const action = String(b.action || '');
         if (action === 'delete') {
+          // The thread goes with its head, or modmail_replies accumulates
+          // rows pointing at a message id nothing can reach.
+          await env.DB.prepare('DELETE FROM modmail_replies WHERE message_id=?').bind(id).run().catch(() => {});
           await env.DB.prepare('DELETE FROM messages WHERE id=?').bind(id).run();
         } else if (action === 'resolve' || action === 'reopen') {
           await env.DB.prepare('UPDATE messages SET status=? WHERE id=?')
             .bind(action === 'resolve' ? 'resolved' : 'open', id).run();
         } else if (action === 'reply') {
-          // Answering a contact message. The answer goes out as a direct
-          // message from the admin who wrote it, which is what makes it
-          // reachable: it lands in the person's /messages, bumps the unread
-          // count on /api/me, lights the mail flag site.js puts on "My
-          // Account", and they can simply write back — none of which a reply
-          // stored only on this row would do.
-          const body = String(b.body || '').trim().slice(0, 3000);
-          if (body.length < 2) return jsonResponse({ error: 'Write a reply first.' }, { status: 400 });
+          /* Answering a modmail thread. The answer is written INTO the thread
+             (modmail_replies), which is what makes it a conversation every
+             admin can see and pick up: it used to leave as a DM from whoever
+             happened to answer, and everything said after that happened in a
+             private thread the rest of the admins had no way into.
+
+             What is still sent as a DM is the NOTIFICATION — a `dms` row with
+             sender_deleted=1, exactly like a comment notification — because
+             that is the channel the site already has: the unread count on
+             /api/me and the mail flag site.js puts on "My Account". It quotes
+             the answer and points at the thread; the thread is where the
+             reply is read and where writing back goes. */
+          const body = String(b.body || '').trim().slice(0, MODMAIL_MAX);
+          const images = sanitizeAttachments(b.images);
+          if (body.length < 2 && !images.length) {
+            return jsonResponse({ error: 'Write a reply first, or attach an image.' }, { status: 400 });
+          }
           const msg = await env.DB.prepare('SELECT id, user_id, username FROM messages WHERE id=?')
             .bind(id).first().catch(() => null);
           if (!msg) return jsonResponse({ error: 'That message no longer exists.' }, { status: 404 });
@@ -9077,13 +9588,6 @@ export default {
           if (msg.user_id === sess.userId) {
             return jsonResponse({ error: "That's your own message — you can't reply to yourself." }, { status: 400 });
           }
-          await ensureDmTables(env);
-          // Deliberately NOT checking dm_blocks: admins bypass blocks
-          // everywhere else for exactly this reason, and somebody who wrote to
-          // the admins is owed the answer whatever their block list says.
-          await env.DB.prepare(
-            'INSERT INTO dms (sender_id, recipient_id, body) VALUES (?,?,?)'
-          ).bind(sess.userId, msg.user_id, body).run();
           // The session carries only {userId, isAdmin} — the name is looked up,
           // the same way logActivity does it.
           let adminName = null;
@@ -9093,8 +9597,30 @@ export default {
             adminName = a ? a.username : null;
           } catch { /* the record is still worth writing without a name */ }
           await env.DB.prepare(
+            'INSERT INTO modmail_replies (message_id, user_id, is_staff, body, images) VALUES (?,?,1,?,?)'
+          ).bind(id, sess.userId, body, packAttachments(images)).run();
+          // The thread stays OPEN: it is the member's turn now, and closing it
+          // on the admins' own reply is how a half-finished conversation drops
+          // out of the queue. Resolve is a separate, deliberate click.
+          await touchModmail(env, id, true);
+          // Kept in step for the inbox list, which shows the last answer
+          // without opening the thread — and for rows written before
+          // modmail_replies existed, whose whole answer lives here.
+          await env.DB.prepare(
             "UPDATE messages SET last_reply=?, replied_at=datetime('now'), replied_by=? WHERE id=?"
-          ).bind(body, adminName, id).run();
+          ).bind(body || ('[' + images.length + ' image' + (images.length === 1 ? '' : 's') + ']'), adminName, id).run();
+          await ensureDmTables(env);
+          // Deliberately NOT checking dm_blocks: admins bypass blocks
+          // everywhere else for exactly this reason, and somebody who wrote to
+          // the admins is owed the answer whatever their block list says.
+          const quote = (body || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+          const note = 'The admins replied to your message.' +
+            (quote ? '\n\n\u201c' + quote + '\u201d' : '') +
+            (images.length ? '\n\n(' + images.length + ' image' + (images.length === 1 ? '' : 's') + ' attached.)' : '') +
+            '\n\nRead it and write back: ' + url.origin + '/account?msg=' + id + '#contact';
+          await env.DB.prepare(
+            'INSERT INTO dms (sender_id, recipient_id, body, sender_deleted) VALUES (?,?,?,1)'
+          ).bind(sess.userId, msg.user_id, note).run().catch(() => {});
           await logActivity(env, sess, 'reply', 'message', String(id), msg.username || null);
           return jsonResponse({ ok: true, sentTo: msg.username || null });
         } else {
@@ -9118,6 +9644,76 @@ export default {
           return jsonResponse({ error: 'Unknown action.' }, { status: 400 });
         }
         return jsonResponse({ ok: true });
+      }
+
+      /* ---- admin: send somebody's page to drafts, and say why ----
+         The gap this fills: /api/publish already lets an admin unpublish
+         anything (canEditRow lets admins through), and the bulk tool can do
+         fifty at once — but neither tells the creator anything. A page they
+         published simply stopped being public, with no reason and no notice,
+         and the only way to find out was to notice.
+
+         This is the same act with the reason attached: the page goes to
+         drafts, the reason is written on the page (data._draftNote) so the
+         editor and the draft bar can say it, and the owner is told through
+         the notification channel the site already has. Nothing is deleted and
+         nothing is locked: the creator fixes the page and publishes it again,
+         which clears the note.
+
+         Deliberately admin-only and deliberately not part of the bulk tool:
+         one reason typed once and applied to fifty pages is not a reason. */
+      if (path === '/api/admin/draft-page') {
+        const b = await request.json().catch(() => ({}));
+        const type = String(b.type || '');
+        const t = CONTENT[type];
+        if (!t) return jsonResponse({ error: 'Unknown type' }, { status: 400 });
+        let row = await getEntityRow(env, type, String(b.slug || ''));
+        // Legacy collections have display-string PK slugs; the URL uses the id.
+        if (!row && type === 'collection') row = await findCollectionRow(env, String(b.slug || ''));
+        // A character can be named by its address as well as its identity, so
+        // an admin can paste the URL they are looking at.
+        if (!row && type === 'character') {
+          const found = await resolveCharacterPath(env, String(b.slug || ''));
+          if (found) row = await getEntityRow(env, 'character', found.row.slug);
+        }
+        if (!row) return jsonResponse({ error: 'No page by that name.' }, { status: 404 });
+        if (row.status === 'deleted') {
+          return jsonResponse({ error: 'That page is deleted, not published. Restore it first.' }, { status: 400 });
+        }
+        const reason = String(b.reason || '').trim().slice(0, DRAFT_NOTE_MAX);
+        if (reason.length < 5) {
+          return jsonResponse({ error: 'Say what is wrong with the page — that is the whole point of this over a plain unpublish.' }, { status: 400 });
+        }
+        let adminName = null;
+        try {
+          const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
+          adminName = u ? u.username : null;
+        } catch { /* the note is still worth writing without a name */ }
+        const data = parseData(row);
+        data._draftNote = draftNote(reason, adminName);
+        await env.DB.prepare(
+          `UPDATE ${t.table} SET status='draft', data=?, updated_at=datetime('now') WHERE slug=?`
+        ).bind(JSON.stringify(data), row.slug).run();
+        await logActivity(env, sess, 'admin-draft', type, row.slug, row.name);
+        // Where the creator goes to fix it — the editor, not the page: a
+        // draft's own address is a page only they can see, and the point of
+        // the message is "here is what to do about it".
+        const editHref = type === 'character'
+          ? '/edit?c=' + encodeURIComponent(row.slug)
+          : (type === 'script'
+              ? '/publish-script?s=' + encodeURIComponent(row.slug)
+              : '/publish-collection?c=' + encodeURIComponent(data.id || row.slug));
+        ctx.waitUntil(notifyDrafted(env, {
+          fromId: sess.userId, ownerId: row.owner_id, type,
+          name: row.name, reason, origin: url.origin, editHref
+        }));
+        return jsonResponse({
+          ok: true, slug: row.slug, status: 'draft',
+          name: row.name,
+          // Half the wiki has no owner, so there is often nobody to tell —
+          // the dashboard says so rather than implying a message went out.
+          notified: row.owner_id != null && row.owner_id !== sess.userId
+        });
       }
 
       // ---- admin: protect / unprotect one page ----
@@ -10209,8 +10805,18 @@ export default {
             if (!row) { failed.push(slug); continue; }
             if (action === 'publish' || action === 'unpublish') {
               if (row.status === 'deleted') { failed.push(slug); continue; }
-              await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
-                .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
+              // Going live clears an admin's draft note, here as in
+              // /api/publish — a reason a page is down must not outlive the
+              // page being down, whichever door put it back up.
+              const bd = parseData(row);
+              if (action === 'publish' && bd._draftNote) {
+                delete bd._draftNote;
+                await env.DB.prepare(`UPDATE ${t.table} SET status='published', data=?, updated_at=datetime('now') WHERE slug=?`)
+                  .bind(JSON.stringify(bd), row.slug).run();
+              } else {
+                await env.DB.prepare(`UPDATE ${t.table} SET status=?, updated_at=datetime('now') WHERE slug=?`)
+                  .bind(action === 'publish' ? 'published' : 'draft', row.slug).run();
+              }
             } else if (action === 'delete') {
               if (row.status === 'deleted') { done++; continue; }
               let data; try { data = foldLegacyCurata(JSON.parse(row.data)); } catch { data = {}; }

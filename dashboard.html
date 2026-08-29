@@ -136,7 +136,7 @@
     padding: 1px 7px; border-radius: 999px; flex: 0 0 auto;
   }
   .tag-create,.tag-publish,.tag-signup { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
-  .tag-update,.tag-unpublish { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
+  .tag-update,.tag-unpublish,.tag-admin-draft { background: rgba(176,128,30,.18); color: #8a6310; border: 1px solid rgba(176,128,30,.4); }
   .tag-delete,.tag-lock,.tag-purge { background: rgba(154,44,44,.16); color: #9a2c2c; border: 1px solid rgba(154,44,44,.4); }
   .tag-unlock,.tag-restore { background: rgba(42,110,42,.16); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
   .tag-rollback { background: rgba(90,60,140,.14); color: #5a3c8c; border: 1px solid rgba(90,60,140,.4); }
@@ -171,8 +171,31 @@
   .mini-act.bad  { color: #9a2c2c; border-color: rgba(154,44,44,.4); }
   .mini-act:hover { background: rgba(255,253,248,.95); }
   .mini-act:disabled { opacity: .5; cursor: default; }
-  /* Inbox: replying to a contact message (the answer goes out as a DM). */
+  /* Inbox: replying into a modmail conversation. The reply is written into
+     the thread every admin reads; the DM the member gets is the notification
+     that there is something new in it. */
   .adm-reply { flex-basis: 100%; margin-top: 6px; }
+  .adm-reply-attach { margin-top: 4px; }
+  /* The conversation itself, opened under the row it belongs to. Indented
+     with a rule so a long thread cannot be mistaken for the next inbox row. */
+  .adm-thread-slot:empty { display: none; }
+  .adm-thread-slot { flex-basis: 100%; }
+  .adm-thread {
+    margin-top: 8px; padding-left: 10px;
+    border-left: 3px solid rgba(180,160,120,.6);
+  }
+  .adm-turn { padding: 7px 0; border-top: 1px dotted rgba(0,0,0,.14); }
+  .adm-turn:first-child { border-top: none; }
+  .adm-turn .adm-body { margin-top: 4px; }
+  .adm-turn-who {
+    font-family: 'Oswald', sans-serif; font-size: .72rem;
+    letter-spacing: .05em; text-transform: uppercase; font-weight: 700;
+  }
+  /* An admin's turn is maroon, a member's is green — the same two colours
+     this dashboard already uses for "us" and "them", so a long thread can be
+     scanned for who said what without reading the names. */
+  .adm-turn-staff .adm-turn-who { color: var(--maroon); }
+  .adm-turn:not(.adm-turn-staff) .adm-turn-who { color: #2a6e2a; }
   .adm-reply-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
   .adm-reply-acts .dim { font-size: .78rem; opacity: .7; }
   .adm-reply-prev {
@@ -408,6 +431,9 @@
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Bug reports, suggestions, and messages sent from the “Contact the Admins” form on account pages, plus broken-link reports from the 404 page (those can come from people with no account, so they may have nobody to reply to).
         </p>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;margin:0 0 10px;opacity:.75">
+          Each one is a conversation every admin can read and answer, newest activity first. “Needs a reply” means the member spoke last. Replying writes into the thread and notifies them; it does not start a private DM.
+        </p>
         <label style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.85rem;display:inline-flex;align-items:center;gap:6px;margin-bottom:8px">
           <input type="checkbox" id="msg-show-all"> show resolved too
         </label>
@@ -495,6 +521,26 @@
           Pages deleted by their owners (or by you) are hidden from the whole site but kept here so nothing breaks by accident. <strong>Restore</strong> puts a page back exactly as it was; <strong>Purge</strong> removes it for good and cannot be undone.
         </p>
         <div id="deleted-list"></div>
+      </section>
+      <section class="panel" id="draft-page-panel">
+        <h3>Send a page to drafts</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 12px;opacity:.85">
+          Takes a published page off the site <em>and tells its creator why</em>. Use this instead of a plain unpublish whenever the page has a problem the creator can fix — someone else's art, an official character's ability, a half-written almanac. The reason is sent to them as a message and is shown at the top of their editor until they publish the page again. Nothing is deleted, and the page stays theirs.
+        </p>
+        <div class="act-filters">
+          <select id="dp-type">
+            <option value="character">Character</option>
+            <option value="script">Script</option>
+            <option value="collection">Collection</option>
+          </select>
+          <input type="text" id="dp-slug" placeholder="page slug">
+        </div>
+        <textarea class="adm-textarea" id="dp-reason" rows="3" maxlength="1000" style="margin-top:8px"
+          placeholder="What is wrong with the page, and what would fix it? The creator reads this word for word."></textarea>
+        <div class="act-filters" style="margin-top:8px">
+          <button type="button" class="small-btn alt" id="dp-go">Send to drafts</button>
+        </div>
+        <div class="toast" id="dp-toast"></div>
       </section>
       <section class="panel" id="rollback-panel">
         <h3>Page history &amp; rollback</h3>
@@ -760,6 +806,10 @@
             <optgroup label="Pages">
               <option>create</option><option>update</option><option>delete</option>
               <option>publish</option><option>unpublish</option>
+              <!-- An unpublish with a reason attached, sent to the creator
+                   (POST /api/admin/draft-page). Its own action so a moderation
+                   take-down is not lost among ordinary unpublishes. -->
+              <option value="admin-draft">sent to drafts by an admin</option>
               <option>restore</option><option>purge</option><option>rollback</option>
               <option>curata</option><option>uncurata</option>
               <!-- Curata was called Starlight until the rename; log rows written
@@ -1178,8 +1228,48 @@
       });
     });
 
-    /* ---- inbox (contact-form messages) ---- */
+    /* ---- inbox (modmail conversations) ----
+       Each row is a THREAD every admin can read and answer. It used to be one
+       message and a reply box that sent a DM from whoever clicked it, so the
+       conversation moved into that admin's private messages the moment it was
+       answered — nobody else could see what had been said, or that it had
+       been said at all, and the same question got answered twice. The reply
+       now goes into the thread; the DM the member gets is only the
+       notification pointing back at it. */
     var MSG_LABEL = { bug: 'Bug', suggestion: 'Suggestion', question: 'Question', other: 'Other' };
+    var msgOpenId = null;        // which thread is expanded
+
+    function msgTurnHtml(t){
+      return '<div class="adm-turn' + (t.staff ? ' adm-turn-staff' : '') + '">' +
+        '<span class="adm-turn-who">' +
+          (t.staff ? 'Admin' : 'Member') +
+          (t.username ? ' · @' + esc(t.username) : '') +
+        '</span> <span class="dim" title="' + esc(absTime(t.ts)) + '">' + esc(relTime(t.ts)) + '</span>' +
+        '<div class="adm-body">' + esc(t.body) + '</div>' +
+        shotsHtml(t.images) +
+      '</div>';
+    }
+
+    /* The thread is loaded on demand: the inbox list is 200 rows and pulling
+       every reply for all of them would be one query per row for a panel
+       that is usually skimmed, not read. */
+    function openMsgThread(id, host){
+      if (msgOpenId === id) {          // second click closes it
+        host.innerHTML = ''; msgOpenId = null; return;
+      }
+      document.querySelectorAll('.adm-thread-slot').forEach(function(s){ s.innerHTML = ''; });
+      msgOpenId = id;
+      host.innerHTML = '<p class="note">Loading the conversation…</p>';
+      getJSON('/api/admin/message-thread?id=' + id).then(function(d){
+        if (!d || d.error) { host.innerHTML = '<p class="note">' + esc((d && d.error) || 'Could not load it.') + '</p>'; return; }
+        var turns = (d.replies || []);
+        host.innerHTML = '<div class="adm-thread">' +
+          (turns.length
+            ? turns.map(msgTurnHtml).join('')
+            : '<p class="note">No replies yet — this is still just the opening message.</p>') +
+        '</div>';
+      });
+    }
     function loadMessages(){
       var all = $('msg-show-all').checked;
       getJSON('/api/admin/messages?status=' + (all ? 'all' : 'open')).then(function(d){
@@ -1192,11 +1282,11 @@
         }
         box.innerHTML = d.messages.map(function(m){
           var resolved = m.status === 'resolved';
-          // The reply is delivered as a DM, so it can only go to a message that
-          // has an account behind it. The account page's contact form needs a
-          // login, but the 404 page's broken-link box deliberately does not,
-          // those rows have no username, and the reader was asked for a handle
-          // or an email in the body instead.
+          // The reply goes into a thread the member owns, so it can only go to
+          // a message that has an account behind it. The account page's
+          // contact form needs a login, but the 404 page's broken-link box
+          // deliberately does not, those rows have no username, and the reader
+          // was asked for a handle or an email in the body instead.
           var canReply = !!m.username;
           return '<div class="adm-row" data-msg-id="' + m.id + '">' +
             '<span class="tag tag-type">' + esc(MSG_LABEL[m.category] || m.category || 'Message') + '</span>' +
@@ -1205,29 +1295,42 @@
                 ? '<a href="/u/' + encodeURIComponent(m.username) + '" style="color:var(--good-name,#2c5b9a);font-weight:600;text-decoration:none">' + esc(m.username) + '</a>'
                 : 'not signed in') +
               (resolved ? ' <span class="tag tag-create">resolved</span>' : '') +
-              (m.replied_at ? ' <span class="tag tag-create">replied</span>' : '') + '</span>' +
-            '<span class="dim" title="' + esc(absTime(m.ts)) + '">' + esc(relTime(m.ts)) + '</span>' +
+              // The flag the queue is read for: the last thing said was said
+              // by the member, so somebody still has to answer it.
+              (!resolved && m.waiting ? ' <span class="tag tag-delete">needs a reply</span>' : '') +
+              (m.replies ? ' <span class="dim">' + m.replies + ' repl' + (m.replies === 1 ? 'y' : 'ies') + '</span>' : '') +
+              '</span>' +
+            '<span class="dim" title="' + esc(absTime(m.last_at || m.ts)) + '">' + esc(relTime(m.last_at || m.ts)) + '</span>' +
+            // Also offered for a thread with no reply rows but an old
+            // `replied_at`: that answer was given before modmail_replies
+            // existed and the API reconstructs it as the thread's first turn.
+            (m.replies || m.replied_at
+              ? '<button type="button" class="mini-act" data-msg-act="thread">Conversation</button>' : '') +
             (canReply ? '<button type="button" class="mini-act ok" data-msg-act="reply-open">' +
               (m.replied_at ? 'Reply again' : 'Reply') + '</button>' : '') +
             '<button type="button" class="mini-act ' + (resolved ? 'warn' : 'ok') + '" data-msg-act="' + (resolved ? 'reopen' : 'resolve') + '">' + (resolved ? 'Reopen' : 'Resolve') + '</button>' +
             '<button type="button" class="mini-act bad" data-msg-act="delete">Delete</button>' +
             '<div class="adm-body">' + esc(m.body) + '</div>' +
+            shotsHtml(m.images) +
             (m.replied_at
               ? '<div class="adm-reply-prev">' +
-                  '<span class="adm-reply-head">Replied' +
+                  '<span class="adm-reply-head">Last answered' +
                     (m.replied_by ? ' by ' + esc(m.replied_by) : '') +
                     ' <span class="dim" title="' + esc(absTime(m.replied_at)) + '">' + esc(relTime(m.replied_at)) + '</span>' +
                   '</span>' + esc(m.last_reply || '') +
                 '</div>'
               : '') +
+            '<div class="adm-thread-slot"></div>' +
             (canReply
               ? '<div class="adm-reply" data-reply-for="' + m.id + '" hidden>' +
                   '<textarea class="adm-textarea adm-reply-text" rows="3" maxlength="3000" ' +
                     'placeholder="Your reply to @' + esc(m.username) + '…"></textarea>' +
+                  '<div class="adm-reply-attach"></div>' +
                   '<div class="adm-reply-acts">' +
                     '<button type="button" class="mini-act ok" data-msg-act="reply-send">Send reply</button>' +
                     '<button type="button" class="mini-act" data-msg-act="reply-cancel">Cancel</button>' +
-                    '<span class="dim">Goes to @' + esc(m.username) + ' as a direct message — they can write back.</span>' +
+                    '<span class="dim">Goes into this conversation, which every admin can read. @' +
+                      esc(m.username) + ' gets a notification and can write straight back.</span>' +
                   '</div>' +
                 '</div>'
               : '') +
@@ -1243,12 +1346,27 @@
       var row = btn.closest('.adm-row');
       var id = parseInt(row.getAttribute('data-msg-id'), 10);
 
-      // Opening and closing the reply box are page-local — no request.
+      // Reading the thread and opening the reply box are page-local (the
+      // thread costs one request of its own); neither touches the inbox.
+      if (act === 'thread') {
+        openMsgThread(id, row.querySelector('.adm-thread-slot'));
+        return;
+      }
       var panel = row.querySelector('.adm-reply');
       if (act === 'reply-open') {
         panel.hidden = false;
         btn.style.display = 'none';
-        panel.querySelector('.adm-reply-text').focus();
+        var ta0 = panel.querySelector('.adm-reply-text');
+        // Mounted on first open rather than with the row: 200 pickers, 199 of
+        // them never used, is 200 file inputs in the document.
+        if (!panel.dataset.mounted && typeof window.mountAttach === 'function') {
+          panel.dataset.mounted = '1';
+          // Kept on the panel, not in a module variable: several rows can
+          // have their reply box open at once, and one shared handle would
+          // post row A's images with row B's reply.
+          panel._att = window.mountAttach(panel.querySelector('.adm-reply-attach'), { pasteTarget: ta0 });
+        }
+        ta0.focus();
         return;
       }
       if (act === 'reply-cancel') {
@@ -1259,11 +1377,14 @@
       }
       if (act === 'reply-send') {
         var ta = panel.querySelector('.adm-reply-text');
+        var att = panel._att || null;
+        var imgs = att ? att.paths() : [];
         var body = ta.value.trim();
-        if (!body) { ta.focus(); return; }
+        if (!body && !imgs.length) { ta.focus(); return; }
+        if (att && att.busy()) { alert('Wait for the image to finish uploading.'); return; }
         btn.disabled = true;
-        postJSON('/api/admin/message', { id: id, action: 'reply', body: body }).then(function(res){
-          if (res.body && res.body.ok) loadMessages();
+        postJSON('/api/admin/message', { id: id, action: 'reply', body: body, images: imgs }).then(function(res){
+          if (res.body && res.body.ok) { msgOpenId = null; loadMessages(); }
           else { btn.disabled = false; alert((res.body && res.body.error) || 'Failed to send the reply.'); }
         });
         return;
@@ -1552,6 +1673,19 @@
     });
 
     /* ---- comment moderation ---- */
+    /* The images on a comment or a modmail message. attach.js owns the markup
+       so the dashboard, the account page and the comment section all show one
+       thing; the guard is for a dashboard loaded before that script (or with
+       it blocked), which should still be able to moderate the text. */
+    function shotsHtml(list){
+      if (!list || !list.length) return '';
+      if (typeof window.attachmentsHTML !== 'function') {
+        return '<br><span class="dim">' + list.length + ' image' +
+          (list.length === 1 ? '' : 's') + ' attached</span>';
+      }
+      return window.attachmentsHTML(list);
+    }
+
     function cmtSnippet(body){
       var t = String(body || '').replace(/\s+/g, ' ').trim();
       return t.length > 220 ? t.slice(0, 219) + '…' : t;
@@ -1591,6 +1725,10 @@
                 (c.status === 'hidden' ? ' · hidden with its parent comment' : '') +
               '</span>' +
               '<br>' + esc(cmtSnippet(c.body)) +
+              // What was actually posted. An image is exactly the kind of
+              // comment somebody reports, and a queue that shows only the
+              // text beside it cannot be acted on without opening the page.
+              shotsHtml(c.images) +
               (c.reason ? '<br><span class="dim">Reason given: ' + esc(c.reason) + '</span>' : '') +
             '</span>' +
             '<span>' + acts + '</span>' +
@@ -2047,6 +2185,35 @@
         setToast('odyc-toast', true, d.pages + ' pages cleaned, ' + d.fields + ' blocks of text rewritten.');
         loadActivity(true);
       });
+    });
+
+    /* ---- send a page to drafts, with a reason ----
+       The difference from a plain unpublish is the message: the creator is
+       told what is wrong, in the notification channel the site already has,
+       and the same words sit at the top of their editor until the page goes
+       back up. Deliberately one page at a time — one reason typed once and
+       applied to fifty pages is not a reason, which is why this is a card of
+       its own rather than another entry in the bulk-action list. */
+    $('dp-go').addEventListener('click', function(){
+      var slug = $('dp-slug').value.trim();
+      var reason = $('dp-reason').value.trim();
+      if (!slug) { setToast('dp-toast', false, 'Which page?'); return; }
+      if (reason.length < 5) { setToast('dp-toast', false, 'Say what is wrong with it — the creator reads this.'); return; }
+      if (!confirm('Take “' + slug + '” off the site and send its creator this note?')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/draft-page', { type: $('dp-type').value, slug: slug, reason: reason })
+        .then(function(res){
+          btn.disabled = false;
+          var d = res.body || {};
+          if (!d.ok) { setToast('dp-toast', false, d.error || 'Failed.'); return; }
+          $('dp-slug').value = '';
+          $('dp-reason').value = '';
+          // Half the wiki has no owner account, so say plainly whether
+          // anybody was actually told rather than implying a message went out.
+          setToast('dp-toast', true, '“' + (d.name || d.slug) + '” is a draft now' +
+            (d.notified ? ' and its creator has been told why.' : ' — but it has no owner account, so nobody was notified.'));
+          loadActivity(true);
+        });
     });
 
     /* ---- news ---- */
@@ -2957,6 +3124,7 @@
       function pageOf(selId){ return function(){ return feed($(selId).value); }; }
 
       mount('rb-slug', pageOf('rb-type'), 'No page by that name.');
+      mount('dp-slug', pageOf('dp-type'), 'No page by that name.');
       mount('prot-slug', pageOf('prot-type'), 'No page by that name.');
       mount('curata-slug', pageOf('curata-type'), 'No page by that name.');
       mount('bk-slug', pageOf('bk-type'), 'No page by that name.');
@@ -3013,6 +3181,8 @@
   <!-- The type-ahead on every field below, and the tag list it offers. -->
   <script src="assets/tags.js"></script>
   <script src="assets/suggest.js"></script>
+  <!-- The picker AND the gallery for images on modmail replies and comments. -->
+  <script src="assets/attach.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

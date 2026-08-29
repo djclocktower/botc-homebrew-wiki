@@ -34,7 +34,9 @@ run_worker_first = [
   "/author", "/author.html",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",
-  "/assets/avatars/*", "/assets/pages/*", "/assets/news/*"
+  "/assets/avatars/*", "/assets/pages/*", "/assets/news/*",
+  # Images posted on comments and modmail messages (see ATTACH_PREFIX).
+  "/assets/attachments/*"
 ]
 
 # ---- D1 database (the source of truth) ----
