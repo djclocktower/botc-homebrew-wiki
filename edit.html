@@ -1095,6 +1095,21 @@
       var card = document.querySelector('.formcard');
       if (card) card.insertBefore(bar, card.firstChild);
     }
+    /* An admin's "this is what is wrong with your page" note, drawn at the top
+       of the form for anyone who can see the draft — its owner, an approved
+       editor, an admin. The wording is Render.draftedNoticeHTML so the three
+       editors cannot word a moderation notice differently. */
+    function draftedNotice(entry) {
+      if (!entry || !entry._draftNote || typeof window.draftedNoticeHTML !== 'function') return;
+      var html = window.draftedNoticeHTML(entry._draftNote);
+      if (!html) return;
+      var card = document.querySelector('.formcard');
+      if (!card) return;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      card.insertBefore(wrap.firstChild, card.firstChild);
+    }
+
     function histLink(entry) {
       return '<a href="history?type=character&slug=' + encodeURIComponent(originalSlug) + '">' +
         'this page\u2019s history</a>';
@@ -1829,6 +1844,10 @@
           }
           $('loading').style.display = 'none';
           $('builder').style.display = 'grid';
+          // Why this page is a draft, when an admin is the one who made it
+          // one. First thing in the form, above every other banner: it is the
+          // reason the creator is here.
+          draftedNotice(entry);
           populateForm(entry);
           showRelatedBy(res.relatedBy);
           syncCurataBox(entry, res.curataFrom === undefined ? null : res.curataFrom,

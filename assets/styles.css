@@ -3676,6 +3676,27 @@ html.textedit-on .te-live-hit {
 .guest-bar strong { color: #1b3c58; }
 .guest-bar a { color: #2f6fb8; font-weight: 600; }
 
+/* An admin took this page down and said why (Render.draftedNoticeHTML).
+   Maroon, not the guest bar's blue: this is the one notice in the editor
+   that is about something being WRONG, and it has to be the first thing the
+   creator sees rather than another informational stripe. */
+.drafted-bar {
+  background: rgba(122,45,47,.09); border: 1px solid rgba(122,45,47,.5);
+  border-left-width: 4px;
+  border-radius: 8px; padding: 11px 14px; margin: 0 0 16px;
+  font-size: .9rem; line-height: 1.5; color: #5b1f21;
+}
+.drafted-bar strong { color: var(--maroon); }
+.drafted-bar .db-who { font-size: .82rem; opacity: .75; }
+/* The reason is somebody's typed prose: it keeps its line breaks, and a URL
+   pasted into it must not widen the form (see the wrap rules at the end of
+   this file). */
+.drafted-bar .db-reason {
+  display: block; margin: 6px 0; white-space: pre-wrap;
+  overflow-wrap: anywhere; font-style: italic;
+}
+.drafted-bar .db-fix { display: block; font-size: .82rem; opacity: .8; font-style: normal; }
+
 /* ─── Approved editors (assets/approved-editors.js) ────────────
    The named-accounts list in all four editors. One block, because one widget:
    a character, a script and a collection all mount the same thing. */
@@ -3754,3 +3775,68 @@ html.textedit-on .te-live-hit {
 .sg-inbox-note { display: block; font-size: .86rem; font-style: italic; color: var(--ink); margin-top: 2px; }
 /* The note box in the editor when a page takes suggestions */
 .suggest-note-fld textarea { min-height: 60px; }
+
+/* ── images on a message (assets/attach.js) ───────────────────────────────
+   The picker is mounted in three places with three different backgrounds:
+   the comment section (dark, outside the parchment), the account page's
+   contact panel and the dashboard inbox (both light parchment). So the
+   default skin here is deliberately colourless — it borrows the surrounding
+   text colour and paints its edges with translucent black — and only the
+   comment section overrides it, further down, for the dark ground. */
+.att-box { margin-top: 10px; }
+.att-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.att-add {
+  font-family: 'Oswald', sans-serif; text-transform: uppercase;
+  font-size: .74rem; letter-spacing: .06em; cursor: pointer;
+  padding: 5px 12px; color: inherit;
+  background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.3);
+}
+.att-add::before { content: '\1F4CE\00a0'; }   /* paperclip */
+.att-add:disabled { opacity: .45; cursor: not-allowed; }
+.att-add:not(:disabled):hover { background: rgba(0,0,0,.12); }
+.att-note { font-size: .78rem; opacity: .75; overflow-wrap: anywhere; }
+.att-note-bad { color: #9a2c2c; opacity: 1; }
+.att-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 9px; }
+/* The thumb is a fixed square so a strip of them stays a strip whatever
+   shape the pictures are; the remove button sits ON it rather than under it,
+   because a caption row under four thumbnails is taller than the thumbnails. */
+.att-thumb { position: relative; width: 64px; height: 64px; display: block; }
+.att-thumb img { width: 100%; height: 100%; object-fit: cover; border: 1px solid rgba(0,0,0,.3); }
+.att-thumb-wait {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed rgba(0,0,0,.35); font-size: 1.2rem; opacity: .6;
+}
+.att-drop {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px;
+  line-height: 1; font-size: 1rem; cursor: pointer; padding: 0;
+  color: #f7ecd0; background: var(--maroon); border: 1px solid #f7ecd0;
+  border-radius: 50%;
+}
+.att-drop:hover { background: #7a2c2e; }
+
+/* The posted images, under a comment or a message. A row that wraps, each
+   one capped so a tall screenshot cannot push the rest of the conversation
+   off the screen — the full-size look is the link, which opens a new tab. */
+.att-shots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 9px; }
+.att-shot { display: block; line-height: 0; }
+.att-shot img {
+  max-width: 220px; max-height: 220px; width: auto; height: auto;
+  border: 1px solid rgba(0,0,0,.3); background: rgba(0,0,0,.04);
+}
+.att-shot:hover img { border-color: var(--maroon); }
+@media (max-width: 640px) {
+  .att-shot img { max-width: 46vw; max-height: 46vw; }
+}
+
+/* Dark ground: the comment section sits outside the parchment (see the
+   .comments-section block above), so its edges have to be cream, not black. */
+.comments-section .att-add {
+  background: rgba(236,225,200,.1); border-color: rgba(236,225,200,.35);
+  color: var(--cmt-cream);
+}
+.comments-section .att-add:not(:disabled):hover { background: rgba(236,225,200,.2); }
+.comments-section .att-note { color: var(--cmt-cream-dim); }
+.comments-section .att-note-bad { color: #ff9d9d; }
+.comments-section .att-thumb img,
+.comments-section .att-shot img { border-color: rgba(236,225,200,.35); }
+.comments-section .att-thumb-wait { border-color: rgba(236,225,200,.4); color: var(--cmt-cream); }

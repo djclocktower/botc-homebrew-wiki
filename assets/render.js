@@ -269,6 +269,42 @@
       esc(t[1]) + (links ? ' ' + links : '') + '</p>';
   }
 
+  /* ── why an admin took this page down ──
+     `data._draftNote` — {at, by, reason} — written by
+     POST /api/admin/draft-page and cleared the moment the page goes live
+     again. Unpublishing somebody else's page is a moderation act with a
+     reason behind it, and until this existed the reason lived only in the
+     admin's head: a creator saw a published page become a draft and had to
+     guess, or ask.
+
+     The owner is told by DM at the time, but a DM scrolls away and the page
+     may sit in drafts for a month — so the note is on the page too, and the
+     editor is where it has to be read, because the editor is where it gets
+     acted on. One function for all three editors (edit.html,
+     publish-script.html, publish-collection.html), the same reasoning as
+     editStatusHTML above: a character, a script and a collection must not
+     word a moderation notice differently.
+
+     Returns '' for a page with no note, which is almost every page — the
+     caller can insert the result unconditionally. */
+  function draftedNoticeHTML(note) {
+    if (!note || !note.reason) return '';
+    var when = '';
+    try {
+      var d = new Date(note.at);
+      if (!isNaN(d)) {
+        when = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      }
+    } catch (e) { /* an undated note still says what is wrong */ }
+    return '<div class="drafted-bar">' +
+      '<strong>An admin moved this page to drafts.</strong>' +
+      (note.by ? ' <span class="db-who">' + esc(note.by) + (when ? ', ' + esc(when) : '') + '</span>' : '') +
+      '<span class="db-reason">' + esc(note.reason) + '</span>' +
+      '<span class="db-fix">Fix that and publish it again \u2014 this note goes away when the page goes back up. ' +
+      'Nothing was deleted.</span>' +
+    '</div>';
+  }
+
   function jinxURL(name) {
     return 'https://wiki.bloodontheclocktower.com/' +
       esc(String(name).trim().replace(/\s+/g, '_'));
@@ -1413,6 +1449,7 @@
     window.creatorSymbol = creatorSymbol;
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
+    window.draftedNoticeHTML = draftedNoticeHTML;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1436,7 +1473,8 @@
       setCreators: setCreators, setCurataMark: setCurataMark,
       creatorSymbol: creatorSymbol, stripCreatorMark: stripCreatorMark,
       splitCreators: splitCreators,
-      editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS
+      editStatusHTML: editStatusHTML, EDIT_STATUS: EDIT_STATUS,
+      draftedNoticeHTML: draftedNoticeHTML
     };
   }
 })();

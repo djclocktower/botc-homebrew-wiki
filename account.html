@@ -198,6 +198,26 @@
     background: rgba(42,110,42,.07); border-left: 3px solid rgba(42,110,42,.45);
   }
   .msg-item .msg-reply a { color: inherit; font-weight: 700; }
+  /* A conversation, not a receipt. The list row is a button that opens the
+     thread underneath it, so the whole exchange reads in place and nobody has
+     to go looking for the answer somewhere else. */
+  .msg-open {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: none; border: 0; padding: 0; font: inherit; color: inherit;
+  }
+  .msg-open:hover strong { text-decoration: underline; }
+  .msg-thread { margin-top: 8px; border-left: 3px solid rgba(0,0,0,.12); padding-left: 10px; }
+  .msg-turn { padding: 7px 0; border-top: 1px dotted rgba(0,0,0,.12); }
+  .msg-turn:first-child { border-top: none; }
+  .msg-turn .who { font-weight: 700; font-size: .8rem; }
+  /* The admins' turns are marked, and the mark is the maroon the site uses
+     for staff everywhere else — a member scanning a long thread should be
+     able to find the answer without reading the names. */
+  .msg-turn-staff .who { color: var(--maroon); }
+  .msg-turn-staff { background: rgba(122,45,47,.05); padding-left: 8px; margin-left: -8px; }
+  .msg-reply-box { margin-top: 10px; }
+  .msg-reply-box textarea { width: 100%; min-height: 70px; }
+  .msg-waiting { font-size: .75rem; }
   .btn {
     font-family: 'Dumbledor2', serif;
     font-size: 1rem; letter-spacing: .04em;
@@ -432,10 +452,10 @@
       </div>
 
       <!-- contact the admins -->
-      <div class="panel">
+      <div class="panel" id="contact">
         <h3>Contact the Admins</h3>
         <p class="acct-body" style="font-size:.9rem;opacity:.85;margin:0 0 12px">
-          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard.
+          Spotted a bug? Have a suggestion or a question? Send a message straight to the wiki admins — they'll see it on their dashboard. You can attach a screenshot, and every message is a conversation: when they answer, you can write straight back here.
         </p>
         <div class="settings-grid">
           <section>
@@ -452,11 +472,13 @@
               <label for="c-body">Message</label>
               <textarea id="c-body" maxlength="2000" placeholder="Tell us what's up — the more detail the better."></textarea>
             </div>
-            <button class="btn" id="c-send">Send Message</button>
+            <!-- A screenshot settles most of what reaches this inbox. -->
+            <div id="c-attach"></div>
+            <button class="btn" id="c-send" style="margin-top:12px">Send Message</button>
             <div class="inline-msg" id="c-msg"></div>
           </section>
           <section>
-            <h4>Your messages</h4>
+            <h4>Your conversations</h4>
             <div id="c-history" class="acct-body" style="font-size:.88rem"></div>
           </section>
         </div>
@@ -467,6 +489,9 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- The picker AND the gallery for images on modmail messages. Loaded
+       BEFORE the page script, which mounts the picker as it draws the form. -->
+  <script src="assets/attach.js"></script>
   <script>
     // Login state may have just changed (OAuth redirect lands here) — drop the nav cache.
     try { sessionStorage.removeItem('botc_me'); } catch(e){}
@@ -997,10 +1022,27 @@
       });
     });
 
-    // contact the admins
+    /* ── contact the admins ───────────────────────────────────────────────
+       Modmail is a conversation now, not a form you post into. Each row here
+       is a thread: opening it shows the whole exchange and a box to write
+       back in, which is what the admins read — their answer used to arrive as
+       a direct message from whichever one of them happened to reply, so
+       writing back went to that person and the rest of the admins never saw
+       it. The thread is the record; the DM is only the notification that
+       there is something new in it. */
     var C_LABEL = { bug: 'Bug report', suggestion: 'Suggestion', question: 'Question', other: 'Other' };
-    function loadMyMessages() {
-      fetch('/api/contact', { credentials: 'same-origin' })
+    var cAttach = null;          // the picker on the new-message form
+    var cReplyAttach = null;     // the picker inside the open thread
+    var cOpenId = null;          // which thread is expanded, if any
+
+    function shotsHtml(list){
+      if (!list || !list.length) return '';
+      if (typeof window.attachmentsHTML !== 'function') return '';
+      return window.attachmentsHTML(list);
+    }
+
+    function loadMyMessages(keepOpen) {
+      return fetch('/api/contact', { credentials: 'same-origin' })
         .then(function(r){ return r.json(); })
         .then(function(d){
           var box = $('c-history');
@@ -1011,29 +1053,120 @@
           box.innerHTML = d.messages.map(function(m){
             var badge = m.status === 'resolved'
               ? '<span class="badge ok">resolved</span>'
-              : '<span class="badge warn">received</span>';
-            // The admins' answer is sent as a direct message, so point at it
-            // rather than repeating it here — that is where you can write back.
-            var replied = m.replied_at
-              ? '<div class="msg-reply">The admins replied ' + esc(fmtDate(m.replied_at)) +
-                ' — <a href="/messages">read it in your messages</a>.</div>'
+              : '<span class="badge warn">open</span>';
+            var count = m.replies
+              ? '<span class="msg-waiting" style="opacity:.7"> · ' + m.replies +
+                ' repl' + (m.replies === 1 ? 'y' : 'ies') + '</span>'
               : '';
-            return '<div class="msg-item"><strong>' + esc(C_LABEL[m.category] || m.category || 'Message') + '</strong> ' +
-              badge + '<span class="when">' + esc(fmtDate(m.ts)) + '</span>' +
-              '<div class="msg-body">' + esc(m.body) + '</div>' + replied + '</div>';
+            return '<div class="msg-item" data-thread="' + m.id + '">' +
+              '<button type="button" class="msg-open" data-open="' + m.id + '">' +
+                '<strong>' + esc(C_LABEL[m.category] || m.category || 'Message') + '</strong> ' +
+                badge + count +
+                '<span class="when">' + esc(fmtDate(m.ts)) + '</span>' +
+                '<div class="msg-body">' + esc(m.body) + '</div>' +
+              '</button>' +
+              shotsHtml(m.images) +
+              (m.replied_at
+                ? '<div class="msg-reply">The admins replied ' + esc(fmtDate(m.replied_at)) +
+                  '. Open the conversation to read it and write back.</div>'
+                : '') +
+              '<div class="msg-thread-slot"></div>' +
+            '</div>';
           }).join('');
+          box.querySelectorAll('[data-open]').forEach(function(btn){
+            btn.addEventListener('click', function(){
+              openThread(parseInt(btn.getAttribute('data-open'), 10));
+            });
+          });
+          // Re-open whatever was open before the list was redrawn — a reply
+          // that closed the thread it was posted in would read as a failure.
+          if (keepOpen) openThread(keepOpen, true);
         })
         .catch(function(){});
+    }
+
+    function turnHtml(t, mine){
+      var who = t.staff
+        ? 'Admin' + (t.username ? ' · ' + esc(t.displayName || t.username) : '')
+        : (mine ? 'You' : esc(t.displayName || t.username || 'You'));
+      return '<div class="msg-turn' + (t.staff ? ' msg-turn-staff' : '') + '">' +
+        '<span class="who">' + who + '</span>' +
+        '<span class="when">' + esc(fmtDate(t.ts)) + '</span>' +
+        '<div class="msg-body">' + esc(t.body) + '</div>' +
+        shotsHtml(t.images) +
+      '</div>';
+    }
+
+    function openThread(id, force){
+      var row = document.querySelector('[data-thread="' + id + '"]');
+      if (!row) return;
+      var slot = row.querySelector('.msg-thread-slot');
+      if (cOpenId === id && !force) {            // second click closes it
+        slot.innerHTML = ''; cOpenId = null; cReplyAttach = null; return;
+      }
+      // Only one thread open at a time: three expanded conversations on a
+      // phone is a page nobody can find their way back up.
+      document.querySelectorAll('.msg-thread-slot').forEach(function(s){ s.innerHTML = ''; });
+      cOpenId = id; cReplyAttach = null;
+      slot.innerHTML = '<div class="msg-thread"><span style="opacity:.7">Loading…</span></div>';
+      fetch('/api/contact/thread?id=' + id, { credentials: 'same-origin' })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || d.error) { slot.innerHTML = '<div class="msg-thread">' + esc((d && d.error) || 'Could not load that conversation.') + '</div>'; return; }
+          slot.innerHTML =
+            '<div class="msg-thread">' +
+              (d.replies || []).map(function(t){ return turnHtml(t, true); }).join('') +
+              (!(d.replies || []).length ? '<div class="msg-turn" style="opacity:.7">No replies yet.</div>' : '') +
+              '<div class="msg-reply-box">' +
+                '<textarea id="c-reply-body" maxlength="3000" placeholder="Write back to the admins…"></textarea>' +
+                '<div id="c-reply-attach"></div>' +
+                '<button type="button" class="btn" id="c-reply-send" style="margin-top:10px">Send Reply</button>' +
+                '<div class="inline-msg" id="c-reply-msg"></div>' +
+              '</div>' +
+            '</div>';
+          var ta = slot.querySelector('#c-reply-body');
+          if (typeof window.mountAttach === 'function') {
+            cReplyAttach = window.mountAttach(slot.querySelector('#c-reply-attach'), { pasteTarget: ta });
+          }
+          slot.querySelector('#c-reply-send').addEventListener('click', function(){
+            sendReply(id, this, ta);
+          });
+        })
+        .catch(function(){
+          slot.innerHTML = '<div class="msg-thread">Could not load that conversation.</div>';
+        });
+    }
+
+    function sendReply(id, btn, ta){
+      var body = ta.value.trim();
+      var images = cReplyAttach ? cReplyAttach.paths() : [];
+      if (!body && !images.length) { setInline('c-reply-msg', 'err', 'Write something, or attach an image.'); return; }
+      if (cReplyAttach && cReplyAttach.busy()) { setInline('c-reply-msg', 'err', 'Wait for the image to finish uploading.'); return; }
+      btn.disabled = true;
+      postJSON('/api/contact/reply', { id: id, body: body, images: images }).then(function(res){
+        btn.disabled = false;
+        if (res.ok && res.body.ok) loadMyMessages(id);
+        else setInline('c-reply-msg', 'err', (res.body && res.body.error) || 'Could not send — try again.');
+      });
+    }
+
+    if (typeof window.mountAttach === 'function') {
+      cAttach = window.mountAttach($('c-attach'), { pasteTarget: $('c-body') });
     }
 
     $('c-send').addEventListener('click', function(){
       var body = $('c-body').value.trim();
       if (body.length < 5) { setInline('c-msg', 'err', 'Write a message first.'); return; }
+      if (cAttach && cAttach.busy()) { setInline('c-msg', 'err', 'Wait for the image to finish uploading.'); return; }
       var btn = this; btn.disabled = true;
-      postJSON('/api/contact', { category: $('c-category').value, body: body }).then(function(res){
+      postJSON('/api/contact', {
+        category: $('c-category').value, body: body,
+        images: cAttach ? cAttach.paths() : []
+      }).then(function(res){
         btn.disabled = false;
         if (res.ok && res.body.ok) {
           $('c-body').value = '';
+          if (cAttach) cAttach.clear();
           setInline('c-msg', 'ok', res.body.message || 'Message sent!');
           loadMyMessages();
         } else {
@@ -1059,7 +1192,11 @@
           $('acct').style.display = 'block';
           renderProfile(data.profile);
           renderLists(data);
-          loadMyMessages();
+          // The DM that says "the admins replied" links to
+          // /account?msg={id}#contact — open that conversation rather than
+          // making somebody hunt for it in a list of thirty.
+          var want = parseInt(new URLSearchParams(location.search).get('msg'), 10) || 0;
+          loadMyMessages(want || undefined);
           loadSuggestions();
           loadShared();
         })

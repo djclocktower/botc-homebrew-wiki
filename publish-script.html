@@ -1084,6 +1084,21 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       }
       return host;
     }
+    /* An admin took this page down and said why. Drawn above the edit-status
+       bar, in the same host, for anyone who can see the draft. The wording is
+       Render.draftedNoticeHTML so the three editors cannot word a moderation
+       notice differently — see edit.html. */
+    function draftedNotice(entry){
+      if (!entry || !entry._draftNote || typeof window.draftedNoticeHTML !== 'function') return;
+      var html = window.draftedNoticeHTML(entry._draftNote);
+      if (!html) return;
+      var host = editStatusHost();
+      if (!host) return;
+      var wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      host.parentNode.insertBefore(wrap.firstChild, host);
+    }
+
     function renderEditStatus(){
       var host = document.getElementById('edit-status');
       // Nothing to say on a script that has never been saved: it is yours
@@ -1165,6 +1180,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .then(function(res){
           var entry = res.data; if (!entry) return;
           currentStatus = res.status || 'published';
+          draftedNotice(entry);
           setScript((entry.characters || []).slice());
           var m = {
             name: entry.name||'', author: entry.author||'', description: entry.description||'',

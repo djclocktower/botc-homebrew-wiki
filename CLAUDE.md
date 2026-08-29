@@ -61,9 +61,13 @@ Key dynamic behavior:
 - `/api/*` — auth (signup/login/Discord OAuth/password reset), account
   management, content writes (`/api/character|collection|script|publish|
   delete|upload`), direct messages (`/api/messages*` — user↔user DMs backing
-  the `/messages` page), **comments** (`/api/comments*` — the comment section on
-  every character/script/collection/news/wiki page), **wiki pages**
-  (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
+  the `/messages` page), **modmail** (`/api/contact`, `/api/contact/thread`,
+  `/api/contact/reply` — the member's side; `/api/admin/messages`,
+  `/api/admin/message-thread`, `/api/admin/message` — the admins' side), **comments** (`/api/comments*` — the comment section on
+  every character/script/collection/news/wiki page),
+  **message images** (`/api/attachment` — one image for a comment or a modmail
+  message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
+  **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
   (`GET /api/bloodstar` reads a project on Bloodstar, `POST
@@ -263,6 +267,17 @@ assets/
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Curata weighting used by
                        Featured, /random and the homepage strips. Browser+Worker.
+  attach.js            Images on a message — BOTH halves, so a comment and a
+                       modmail reply cannot show one differently:
+                       mountAttach() is the picker (uploads on pick, not on
+                       send, because the API stores PATHS and a phone should
+                       do the slow part while you are still typing) and
+                       attachmentsHTML() is the gallery. Loaded beside
+                       comments.js by every SSR page that mounts it, and by
+                       account.html + dashboard.html for modmail. Shrinks to
+                       1600px before uploading; GIFs are passed through
+                       untouched, or a canvas would keep frame one and throw
+                       the animation away. See "Images on a message" below.
   comments.js          Comment section widget for /c/, /s/, /collection/, /news/
                        and /p/ (reads window.PAGE_TYPE + PAGE_SLUG), incl. the
                        one-time "be respectful" agreement modal and the
@@ -609,6 +624,15 @@ login.html, account.html, dashboard.html, reset-password.html
                        behind a "Show all N edits" toggle; a busy month used
                        to put fifty lines between the top of the page and the
                        settings below it.
+                       Its Contact panel is the member's half of MODMAIL: each
+                       message opens as a conversation in place, with the
+                       admins' answers and a box to write straight back —
+                       /account?msg={id}#contact opens one, which is where the
+                       "the admins replied" notification points. The
+                       dashboard's Inbox is the other half: the same threads,
+                       readable and answerable by EVERY admin. See "Modmail"
+                       below, and "Send a page to drafts" (a dashboard card on
+                       the Content tab) for taking a page down with a reason.
 text-editor.html       /text-editor — admin-only. Every string the SITE writes
                        about itself, in one searchable list: filter to the em
                        dashes / curly quotes / any character you type, sort by
@@ -677,17 +701,21 @@ set only on top-level rows, by the page owner or an admin, and sorts first.
 Comment `status` is `visible` | `removed` (taken down on its own) |
 `hidden` (a reply that went down with its parent); restoring a parent
 un-hides exactly the `hidden` ones and leaves individually-removed replies
-alone. Purge deletes a comment and its replies for good) and a lazily ALTERed `users.comment_terms` column
+alone. Purge deletes a comment and its replies for good. A lazily-ALTERed
+`comments.images` column holds the JSON array of attachment paths — see
+"Images on a message" below) and a lazily ALTERed `users.comment_terms` column
 holding the comment-guidelines version that account agreed to,
 `revisions` (every content save snapshots the replaced version, 20 kept per
-page, for admin rollback), `messages` (contact-the-admins form → dashboard
-inbox — NOT user DMs. An admin answers one with
-`POST /api/admin/message {action:'reply', body}`, which DELIVERS the answer as
-a `dms` row from that admin to the message's author — so it rides the unread
-count, the mail flag on "My Account", and can be replied to. The lazily-ALTERed
-`last_reply`/`replied_at`/`replied_by` columns are only the dashboard's record
-that it happened; blocks are deliberately not checked, as everywhere else an
-admin messages a user), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
+page, for admin rollback), `messages` + `modmail_replies` (modmail — the
+contact-the-admins inbox, NOT user DMs. See "Modmail" below: a `messages` row
+is the HEAD of a conversation and `modmail_replies` holds everything said
+after it, from either side, with `is_staff` marking the admins' turns. The
+lazily-ALTERed `last_reply`/`replied_at`/`replied_by` columns stay because
+they are what the dashboard list shows without opening every thread — and
+because conversations answered before `modmail_replies` existed carry their
+whole answer there and nowhere else. `last_at` is the thread's last activity,
+which is what both inboxes sort on; `images` is the opening message's
+attachments), `dms` + `dm_blocks` + `dm_reports` (user↔user direct
 messages with per-side conversation hiding and per-user block lists; blocks
 don't apply to admin senders; unread count rides on `/api/me`; a `dm_reports`
 row is what unlocks that one conversation for admin reading via
@@ -698,7 +726,9 @@ replied to — so the notification is the one the site already has, the unread
 count on `/api/me` and the mail flag site.js puts on "My Account". The row is
 written with `sender_deleted=1`, which keeps it out of the *commenter's* own
 conversation list: they wrote a comment, not a message. See `notifyComment()`
-in worker.js; a block stops the notification too), `page_views` (per-page daily
+in worker.js; a block stops the notification too. **Modmail replies and admin
+take-downs ride it the same way** — see `notifyDrafted()` and the modmail
+section below), `page_views` (per-page daily
 view counts, bots filtered, 180-day retention), `pages` (the custom wiki
 pages: `slug` PK, title, `parent_type`+`parent_slug` pointing at the script or
 collection they belong to, author, owner_id, JSON `data`, status — see the
@@ -2180,6 +2210,154 @@ collection's pages were handed to an account before the assignment did it by
 itself, and it is still the way to move pages somebody already owns (see
 "Assigning an owner"). Curata lifts a page out of Partial, so
 this is how admin-written pages stop being hidden for want of a tag.
+
+## Images on a message (comments and modmail)
+
+A comment, a modmail message and a modmail reply can each carry up to four
+images. One prefix, one route, one widget — the three places a person can
+attach one must not diverge.
+
+**`/api/attachment` is not `/api/upload`, and the difference is the key.**
+Every other R2 prefix names the PAGE its image belongs to, so who may write to
+a key is a question about that page and `uploadSlotDenied()` answers it. A
+conversation image belongs to a message that does not exist yet: there is no
+slot, no owner to ask, and two people posting at once must not be able to land
+on one key. So this is the one prefix the client never names — the Worker
+mints `attachments/{yyyymm}/{userId}-{token}.{ext}` itself, which makes a
+collision impossible and an overwrite of somebody else's file *unreachable*
+rather than merely refused. Everything else (the PNG/JPEG/WebP/GIF whitelist,
+the extension agreeing with the bytes, the `owner` stamp) is `/api/upload`'s,
+for `/api/upload`'s reasons — an SVG is a script-execution format wearing an
+image extension and these files are served from our own origin.
+
+- **What is stored is the PATH, and it is whitelisted, not escaped.**
+  `sanitizeAttachments()` accepts only a string matching `ATTACH_PATH_RE` —
+  a path this Worker could itself have minted. So no `data:`, no other origin
+  and no other R2 prefix can reach an `<img src>` on somebody else's screen,
+  whatever a client posts. It caps at `ATTACH_MAX` and de-duplicates.
+  `parseAttachments()` / `packAttachments()` are the column ends of it.
+- **Uploads happen on PICK, not on send** (`assets/attach.js`). The API stores
+  paths, so the bytes have to be in R2 before the comment is posted; doing it
+  at send time would mean a comment that fails halfway with the text already
+  gone from the box, on what is usually a phone. The thumbnail is the proof it
+  worked, and posting is then one small JSON request.
+- **`attach.js` owns the gallery too** (`attachmentsHTML`), so the comment
+  section, the account page and the dashboard's moderation queue all render an
+  attachment the same way. Both halves guard on the function existing: a page
+  that has not been given the script shows a comment without its images rather
+  than throwing halfway through the list.
+- An image on its own is a comment, and a reply, and a modmail message. The
+  server takes body-or-images everywhere; requiring a sentence beside a
+  screenshot would only get "this" typed above the picture.
+- **Nothing garbage-collects these.** An image whose comment was removed stays
+  in the bucket, exactly as character art does when a page is deleted; the
+  dashboard's orphan sweep is where that is dealt with.
+- Adding a fifth attachment surface means adding `attachments/` nowhere new:
+  the prefix is already in `R2_SERVE_PREFIXES` and in `run_worker_first`. It
+  is deliberately **not** in `R2_PREFIXES`, so `/api/upload` cannot write
+  there and the minted-key rule cannot be routed around.
+
+## Modmail (the contact-the-admins inbox)
+
+A `messages` row is the **head** of a conversation; `modmail_replies` holds
+everything said after it, from either side, with `is_staff` marking the
+admins' turns.
+
+**It used to be one row and a DM.** An admin's answer went out as a `dms` row
+from that admin to the writer, which made the answer reachable and turned the
+conversation into a private DM the moment it was given: the writer's next
+message went to one admin's inbox, no other admin could see it — or knew the
+question had been answered at all — and the dashboard row kept saying
+"replied" beside a thread that had moved somewhere they could not read. Two
+admins would answer the same question a day apart.
+
+So **the thread is the record**, and every admin reads and writes the same
+one. What stayed is the **notification**: an admin reply still writes a `dms`
+row with `sender_deleted=1`, exactly as a comment notification does, so it
+rides the unread count on `/api/me` and the mail flag `site.js` puts on "My
+Account". It quotes the answer and links `/account?msg={id}#contact`; the
+answer itself lives in the thread, and that is where writing back goes.
+
+Things worth knowing:
+
+- **`is_staff` is stored, not derived from `is_admin`.** An admin who is later
+  demoted must not retroactively turn every answer they gave into a member's
+  message, and a member promoted to admin must not turn their own question
+  into a staff reply.
+- **A reply reopens the thread** (`touchModmail(env, id, true)`) and stamps
+  `last_at`, which is what both inboxes sort on. An admin's own reply reopens
+  it too: it is the member's turn now, and closing a half-finished
+  conversation on the answer is how it drops out of the queue. **Resolve stays
+  a separate, deliberate click.**
+- **`waiting`** on the admin list is the flag the queue is actually read for:
+  the last thing said was said by the member. A thread with no replies at all
+  is waiting too — *unless* it has a `replied_at`, which means it was answered
+  before `modmail_replies` existed. Without that exception every historical
+  thread would come back flagged "needs a reply".
+- **Legacy conversations are reconstructed, never back-filled.**
+  `modmailReplies()` synthesises a first turn from `last_reply` /
+  `replied_at` / `replied_by` when a thread has no reply rows, so an old
+  exchange opens with its answer in it. Nothing is written; a thread that
+  gets a real reply later simply gains a turn under it.
+- **`/api/admin/message-thread` needs no report**, unlike `/api/admin/dm-thread`.
+  A message addressed *to the admins* is not a private conversation between two
+  members, and the whole point is that every admin can see it.
+- **`/api/contact/reply` is in `BANNED_ALLOWED`**, for the same reason
+  `/api/contact` is: appealing a ban is the one conversation a suspended
+  account has to be able to continue, and a first message they cannot follow
+  up is not a conversation. (`/api/attachment` is not, so a suspended account
+  writes text.)
+- The member's side is the **account page's Contact panel** — each row opens
+  its thread in place with a reply box. The admins' side is the dashboard
+  Inbox, where "Conversation" loads the thread on demand: the list is 200 rows
+  and pulling every reply for a panel that is usually skimmed would be a query
+  per row.
+- `last_reply` / `replied_at` / `replied_by` are still written on every staff
+  reply. They are the list's preview — the last answer without opening the
+  thread — and the only home of a pre-thread answer.
+- Deleting a message deletes its replies with it, or `modmail_replies`
+  accumulates rows pointing at a head nothing can reach.
+
+## Taking somebody's page down, and saying why
+
+`POST /api/admin/draft-page {type, slug, reason}` — the dashboard card **"Send
+a page to drafts"**.
+
+An admin could always unpublish anything (`canEditRow` lets admins through, and
+the bulk tool does fifty at once), but neither told the creator anything: a
+page they published simply stopped being public, with no reason and no notice.
+This is the same act with the reason attached.
+
+- **The reason is kept in two places, because they answer different
+  questions.** A DM to the owner is what actually *reaches* them (the unread
+  count, the mail flag). `data._draftNote` — `{at, by, reason}` — is what the
+  page still says a week later, when the DM has scrolled away and the page has
+  been sitting in drafts for a month.
+- **It is cleared the moment the page goes live again**, through `/api/publish`,
+  through a save that publishes, and through the bulk `publish` action. A note
+  saying why a page was taken down, on a page that is up, is worse than no note.
+- **An ordinary save carries it forward** (`carryDraftNote()`, called from all
+  three content save handlers with the status about to be written). The creator
+  opens the editor *because* of the note, and fixing one field is not
+  republishing — a note that vanished on the first save would be gone before it
+  had been acted on. It is re-pinned from the stored row exactly as `curata` is,
+  so a client cannot forge one either.
+- **Where it is shown:** the SSR draft bar (`draftNoteHTML()` in worker.js,
+  wording in `assets/system-text.js` so it is editable on /text-editor) and the
+  top of all three editors (`Render.draftedNoticeHTML()`, one function so a
+  character, a script and a collection cannot word a moderation notice
+  differently — the same reasoning as `editStatusHTML`). Both are inside a
+  draft, which only its owner, its approved editors and the admins can see, so
+  neither needs an audience check of its own.
+- **A reason is required** (5 characters); without one this is just
+  `/api/publish` with extra steps.
+- **Deliberately one page at a time, and deliberately not a bulk action**: one
+  reason typed once and applied to fifty pages is not a reason.
+- The response says whether anybody was actually notified — half the wiki has
+  no owner account — and the dashboard prints that rather than implying a
+  message went out. The log action is `admin-draft` (its own action, so a
+  moderation take-down is not lost among ordinary unpublishes) and it is in
+  `FEED_CHANGING_ACTIONS`.
 
 ## Rate limiting (and why the counters are not in KV)
 
