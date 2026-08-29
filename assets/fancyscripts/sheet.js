@@ -618,12 +618,20 @@ export function renderSheet(script, options, requestRender) {
   sheet.append(img(ART + 'parchment.jpg', {
     position: 'absolute', inset: '0', width: '100%', height: '100%',
   }));
+  /* The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
+     the strip's right edge (sidebarX + sidebarW) over the full height, with
+     the parchment frame's shading baked into it (multiplied in when the
+     composite was built — see CLAUDE.md). It used to be drawn inset at
+     sidebarX/sidebarY like the handoff, which left the parchment's black
+     frame showing as a bare gap along the top, left and bottom — invisible
+     against the navy art, glaring the moment the ribbon was recoloured.
+     sidebarX/sidebarW still position the LABELS on the strip's damask. */
   const sidebarStyle = {
     position: 'absolute',
-    left: SHEET.sidebarX + '%',
-    top: SHEET.sidebarY + '%',
-    width: SHEET.sidebarW + '%',
-    height: SHEET.sidebarH + '%',
+    left: '0',
+    top: '0',
+    width: (SHEET.sidebarX + SHEET.sidebarW) + '%',
+    height: '100%',
   };
   const wantsTint = options.sidebarColor &&
     options.sidebarColor.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(options.sidebarColor);
