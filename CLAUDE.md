@@ -2081,7 +2081,18 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   sidebar, skull, flourishes and dividers in `art/` are the sealed payload
   (immutable-cached in `_headers`) — the skull is a feathered opaque patch
   cut from the same parchment source, so "optimizing" images here breaks the
-  blend. The divider (`divider-taper.png`) is generated to the official
+  blend. The ribbon is TWO files: `sidebar-flat.png` (the damask stretched
+  full-bleed over the whole ribbon column — sheet edge to sidebarX+sidebarW,
+  full height) and `sidebar-shade.png`, the parchment frame's shading as a
+  black overlay whose alpha is 1 minus that column's normalized luminance.
+  They were one baked composite at first, which pushed a hard left-to-right
+  lightness ramp through the ribbon (measured 9 → 27 luminance): nearly
+  invisible in navy, an obvious band in any other colour. So the shading is
+  now the `sidebarShade` option, **0 by default** (a solid, even strip); at
+  1 it reproduces the old composite exactly, because drawing black at
+  opacity IS the multiply that baked it. The overlay element is only created
+  when the option is above 0 — it is a 1.6 MB image nobody should fetch to
+  see the default. The divider (`divider-taper.png`) is generated to the official
   sheet's shape — a hairline with a small knot where it meets the ribbon,
   near-constant thickness, fading to fully transparent by the right end;
   the handoff's spindle art (thin ends, fat middle) was the wrong shape and
@@ -2093,11 +2104,11 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   top/left/bottom — invisible against navy, glaring once the ribbon was
   recoloured. The renderer therefore draws it at left 0 / top 0;
   `sidebarX`/`sidebarW` still place the labels. The pre-composite strip is
-  in git history (commit df66f84, as `sidebar.png`) if it ever needs
-  rebaking. Changed art gets a NEW filename (`sidebar.png` →
-  `sidebar-full.png`): `art/*` is immutable-cached, so replacing content
-  under an old name strands anyone who already fetched it on the stale
-  copy for a year.
+  in git history (commit df66f84, as `sidebar.png`) if either file ever
+  needs rebaking. Changed art gets a NEW filename (`sidebar.png` →
+  `sidebar-full.png` → `sidebar-flat.png`): `art/*` is immutable-cached, so
+  replacing content under an old name strands anyone who already fetched it
+  on the stale copy for a year.
 - **Official roster data is the wiki's own** (`assets/roles.json`, handed to
   the engine via `setOfficialRoster()`) — but the **icons are the tool's own
   bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official

@@ -92,6 +92,10 @@ export const DEFAULT_OPTIONS = {
   goodColor: '#0d6c97',
   evilColor: '#731d1f',
   sidebarColor: SIDEBAR_BASE.hex,
+  // how much of the parchment frame's shading is laid over the ribbon.
+  // 0 = a solid, even strip (the default); 1 = the old baked-in blend,
+  // which puts a strong left-to-right lightness ramp through it.
+  sidebarShade: 0,
   density: 1, // used when fitToContent is off
   fitToContent: true, // auto-scale the grid to fill the page
   iconSize: 1,

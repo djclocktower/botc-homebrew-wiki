@@ -294,7 +294,7 @@ function sidebarTintCanvas(color, requestRender) {
   if (!st.img) {
     st.img = new Image();
     st.img.onload = () => { st.imgReady = true; pumpSidebarTint(); };
-    st.img.src = ART + 'sidebar-full.png';
+    st.img.src = ART + 'sidebar-flat.png';
   } else {
     pumpSidebarTint();
   }
@@ -623,13 +623,20 @@ export function renderSheet(script, options, requestRender) {
     position: 'absolute', inset: '0', width: '100%', height: '100%',
   }));
   /* The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
-     the strip's right edge (sidebarX + sidebarW) over the full height, with
-     the parchment frame's shading baked into it (multiplied in when the
-     composite was built — see CLAUDE.md). It used to be drawn inset at
-     sidebarX/sidebarY like the handoff, which left the parchment's black
-     frame showing as a bare gap along the top, left and bottom — invisible
-     against the navy art, glaring the moment the ribbon was recoloured.
-     sidebarX/sidebarW still position the LABELS on the strip's damask. */
+     the strip's right edge (sidebarX + sidebarW) over the full height. It
+     used to be drawn inset at sidebarX/sidebarY like the handoff, which
+     left the parchment's black frame showing as a bare gap along the top,
+     left and bottom — invisible against the navy art, glaring the moment
+     the ribbon was recoloured. sidebarX/sidebarW still position the LABELS.
+
+     The art is now FLAT damask, and the parchment frame's shading is a
+     SEPARATE overlay (sidebar-shade.png: black, alpha = 1 - the parchment
+     column's normalized luminance) drawn over it at `sidebarShade`. Baking
+     that shading into the ribbon put a hard left-to-right lightness ramp
+     through it — barely readable in navy, an obvious band in any other
+     colour — so the default is 0 (a solid, even ribbon) and the slider
+     dials the old blend back in; at 1 it reproduces the baked composite
+     exactly, because opacity over black IS the multiply that baked it. */
   const sidebarStyle = {
     position: 'absolute',
     left: '0',
@@ -646,7 +653,13 @@ export function renderSheet(script, options, requestRender) {
     Object.assign(tinted.style, sidebarStyle);
     sheet.append(tinted);
   } else {
-    sheet.append(img(ART + 'sidebar-full.png', sidebarStyle));
+    sheet.append(img(ART + 'sidebar-flat.png', sidebarStyle));
+  }
+  // only fetched when it is actually asked for — it is a 1.6 MB overlay
+  const shade = clamp(Number(options.sidebarShade) || 0, 0, 1);
+  if (shade > 0) {
+    sheet.append(img(ART + 'sidebar-shade.png',
+      { ...sidebarStyle, opacity: String(shade) }));
   }
 
   // movable header decor: skull + flourishes (fitTitle slides them in

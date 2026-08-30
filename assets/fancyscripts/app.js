@@ -188,6 +188,7 @@ const SLIDERS = [
   ['iconSize', 'Icon size', 0.6, 1.6, 0.01, pct, 'layout'],
   ['textSize', 'Text size', 0.7, 1.4, 0.01, pct, 'layout'],
   ['nameSize', 'Name size', 0.6, 1.5, 0.01, pct, 'layout'],
+  ['sidebarShade', 'Sidebar shading', 0, 1, 0.01, pct, 'colors'],
   ['titleSize', 'Title size', 0.5, 1.6, 0.01, pct, 'decor'],
   ['titleDX', 'Title horizontal', -15, 15, 0.1, signed(1, '%'), 'decor'],
   ['titleDY', 'Title vertical', -4, 4, 0.05, signed(2), 'decor'],
