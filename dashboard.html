@@ -699,6 +699,19 @@
 
       <div class="dash-tab-panel" id="tab-health" role="tabpanel" aria-labelledby="dashtab-health" hidden>
       <section class="panel">
+        <h3>Outgoing email</h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Checks that verification emails and password resets are actually leaving the site. Email depends on three settings that live outside the wiki &mdash; the Resend API key in Cloudflare, a verified domain at Resend, and a from address on that domain &mdash; and when one of them goes the only symptom is that nothing arrives. Nobody reports an email they never knew to expect, so this is the only way to see it break. Run it after any change to either service.
+        </p>
+        <button type="button" class="small-btn" id="em-check">Check outgoing email</button>
+        <div id="em-result"></div>
+        <div class="adm-row" style="margin-top:10px">
+          <input type="email" id="em-to" placeholder="Send a test to (your own address by default)" style="flex:1;min-width:0">
+          <button type="button" class="small-btn" id="em-test">Send test email</button>
+        </div>
+        <div id="em-test-result"></div>
+      </section>
+      <section class="panel">
         <h3>Discord sign-in</h3>
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Checks that the "Continue with Discord" button still works, without anyone having to try it. Discord sign-in depends on two settings that live outside the wiki — the app credentials in Cloudflare and the callback URL in the Discord Developer Portal — and if either goes missing the button simply stops working with nothing to see from this end. Run this after any change to either, or whenever someone says they can't log in.
@@ -2307,6 +2320,53 @@
           $('bulk-load').click();
           loadActivity(true);
         } else setToast('bulk-toast', false, (res.body && res.body.error) || 'Failed.');
+      });
+    });
+
+    /* ---- outgoing email check ---- */
+    $('em-check').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      var box = $('em-result');
+      box.innerHTML = '<p class="note">Asking Resend\u2026</p>';
+      getJSON('/api/admin/email-check').then(function(d){
+        btn.disabled = false;
+        if (!d || d.error) { box.innerHTML = '<p class="note">' + esc((d && d.error) || 'Check failed.') + '</p>'; return; }
+        var colour = d.ok ? '#3a7a4a' : (d.inconclusive ? '#8a6310' : '#9a2c2c');
+        var mark = d.ok ? '\u2713 ' : (d.inconclusive ? '? ' : '\u2715 ');
+        var bits = ['<div class="adm-row"><span class="grow" style="color:' + colour + ';font-weight:700">' +
+          mark + esc(d.status) + '</span></div>'];
+        bits.push('<p class="note">Mail goes out as <code style="word-break:break-all;user-select:all">' +
+          esc(d.from) + '</code>' + (d.sandboxFrom ? ' (MAIL_FROM is not set)' : '') + '.</p>');
+        if (d.domains && d.domains.length) {
+          bits.push('<p class="note">Domains on this Resend account: ' + d.domains.map(function(x){
+            return esc(x.name) + ' (' + esc(x.status) + ')';
+          }).join(', ') + '.</p>');
+        }
+        if (d.note) bits.push('<p class="note">' + esc(d.note) + '</p>');
+        box.innerHTML = bits.join('');
+      }).catch(function(){
+        btn.disabled = false;
+        box.innerHTML = '<p class="note">Check failed.</p>';
+      });
+    });
+
+    $('em-test').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      var box = $('em-test-result');
+      box.innerHTML = '<p class="note">Sending\u2026</p>';
+      postJSON('/api/admin/email-test', { to: $('em-to').value.trim() }).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (d.ok) {
+          box.innerHTML = '<p class="note" style="color:#3a7a4a;font-weight:700">\u2713 Resend accepted a message to ' +
+            esc(d.to) + '. If it does not arrive, the fault is after Resend \u2014 check its dashboard and the spam folder.</p>';
+        } else {
+          box.innerHTML = '<p class="note" style="color:#9a2c2c;font-weight:700">\u2715 ' + esc(d.error || 'Send failed.') + '</p>' +
+            (d.detail ? '<p class="note">Resend said: ' + esc(d.detail) + '</p>' : '');
+        }
+      }).catch(function(){
+        btn.disabled = false;
+        box.innerHTML = '<p class="note">Send failed.</p>';
       });
     });
 

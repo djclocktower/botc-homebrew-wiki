@@ -379,8 +379,17 @@
         .then(function(res){
           if (res.ok && res.body.ok) {
             try { sessionStorage.removeItem('botc_me'); } catch(e){}
-            setMsg('success', 'Account created! Redirecting…');
-            setTimeout(function(){ location.href = 'account?welcome=1'; }, 700);
+            // The account is made and they are logged in either way, so this
+            // is never an error — but if the verification email did not go,
+            // saying nothing sends them off to watch an empty inbox.
+            if (res.body.emailSent === false) {
+              setMsg('error', 'Account created, and you are logged in — but the verification email could not be sent. ' +
+                (res.body.emailError || '') + ' You can try again from your account page.');
+              setTimeout(function(){ location.href = 'account?welcome=1'; }, 4000);
+            } else {
+              setMsg('success', 'Account created! Redirecting…');
+              setTimeout(function(){ location.href = 'account?welcome=1'; }, 700);
+            }
           } else {
             setMsg('error', res.body.error || 'Signup failed.');
             btn.disabled = false; btn.textContent = 'Create Account';

@@ -201,6 +201,11 @@
  *                                 &flag=no-icon|partial|curata|no-owner)
  *   POST /api/admin/bulk      -> bulk publish/unpublish/delete/owner/tag/curata ops
  *   GET  /api/admin/analytics -> most-viewed pages for the last ?days=N days
+ *   GET  /api/admin/email-check -> is outgoing email actually working: is the
+ *                                Resend key set and accepted, is MAIL_FROM on
+ *                                a verified domain (or the sandbox address,
+ *                                which only reaches the Resend account owner)
+ *   POST /api/admin/email-test -> send a real test message to prove it
  *   GET  /api/admin/discord-check -> is Discord sign-in actually working: asks
  *                                Discord whether the app credentials are still
  *                                valid, and prints the exact callback URL the
@@ -241,8 +246,12 @@
  * ----------------------------------------------------------------
  * Secrets / vars this Worker uses (set via `wrangler secret put` or the
  * Cloudflare dashboard — all optional, features degrade gracefully):
- *   RESEND_API_KEY        -> enables outgoing email (password reset, verify)
- *   MAIL_FROM             -> e.g. 'BOTC Homebrew Wiki <no-reply@yourdomain>'
+ *   RESEND_API_KEY        -> enables outgoing email (password reset, verify).
+ *                            Without it NOTHING is sent, silently.
+ *   MAIL_FROM             -> e.g. 'BOTC Homebrew Wiki <no-reply@yourdomain>'.
+ *                            Not optional in practice: the fallback is
+ *                            Resend's shared onboarding@resend.dev, which only
+ *                            delivers to the Resend account's own inbox.
  *   DISCORD_CLIENT_ID     -> enables "Sign in with Discord"
  *   DISCORD_CLIENT_SECRET
  *   SITE_ORIGIN           -> the site's canonical origin, if it ever moves
@@ -254,7 +263,10 @@
  *
  * Discord sign-in is checkable without a reader: GET /api/admin/discord-check
  * (admin) asks Discord whether the client id/secret pair is still valid and
- * prints the exact redirect URL the portal has to hold.
+ * prints the exact redirect URL the portal has to hold. Outgoing email is
+ * checkable the same way: GET /api/admin/email-check, and POST
+ * /api/admin/email-test to prove a message actually leaves. Both are cards on
+ * the dashboard's Health tab.
  */
 
 // esbuild bundles render.js's CommonJS export into the Worker; no DOM here.
@@ -801,11 +813,64 @@ function emailShell(title, bodyHtml) {
 </div>`;
 }
 
+// What a MEMBER is told when the key is missing. It stays plain: somebody
+// signing up has no use for the name of a Cloudflare variable. EMAIL_UNSET_ADMIN
+// is the same fact with the fix in it, and only the health check prints that.
+const EMAIL_UNSET_MSG = 'Email is not configured on this server yet. Contact an admin.';
+const EMAIL_UNSET_ADMIN =
+  'RESEND_API_KEY is missing, so nothing is going out at all \u2014 no verification emails, ' +
+  'no password resets. Add it in the Cloudflare dashboard as type Secret; a variable of ' +
+  'type Text is deleted by the next Git deploy, which is how this goes missing.';
+
+// What a MEMBER is shown when a send fails. The detailed reason names Resend,
+// the domain and the variable to re-add: that is the ADMIN's diagnosis, it is
+// what the health check prints, and it has no business on a signup form. The
+// real reason is logged instead, so it is still recoverable from the tail.
+function memberEmailError(r, where) {
+  console.error('[email] ' + where + ' failed:', (r && r.error) || '', (r && r.detail) || '');
+  if (r && r.unconfigured) return EMAIL_UNSET_MSG;
+  return 'The email could not be sent just now. You can try again from your account page in a few minutes, or contact an admin.';
+}
+
+// The default from address. Resend hands every new account onboarding@resend.dev
+// so it can send something on day one, and that address is SANDBOXED: it will
+// only deliver to the inbox the Resend account itself was opened with. So a
+// wiki running on the fallback appears to work for whoever set it up and
+// silently refuses every member who signs up. MAIL_FROM on a verified domain
+// is the only configuration that actually sends.
+function mailFrom(env) {
+  return (env && env.MAIL_FROM) || `${APP_NAME} <onboarding@resend.dev>`;
+}
+
+// Resend answers a refusal with a JSON body naming the reason, and the reason
+// IS the diagnosis: a bad key, the sandbox from-address above, and an
+// unverified sending domain are three different faults with three different
+// fixes that are indistinguishable as a status code. This used to report the
+// number alone, so the one thing that could have said what was wrong was read
+// and thrown away.
+async function resendFailure(res) {
+  let msg = '';
+  try {
+    const body = await res.json();
+    msg = String((body && (body.message || body.error || body.name)) || '');
+  } catch { /* no body, or not JSON */ }
+  const detail = msg.slice(0, 300);
+  if (res.status === 401 || (res.status === 403 && /api[_ ]?key|unauthor/i.test(detail))) {
+    return { error: 'Resend rejected the API key. Copy it again from resend.com and re-save it in Cloudflare as type Secret.', detail };
+  }
+  if (/testing emails to your own|own email address/i.test(detail)) {
+    return { error: 'Resend is in sandbox mode: the from address can only deliver to the Resend account\u2019s own inbox, so every other member gets nothing. Verify a domain at resend.com and set MAIL_FROM to an address on it.', detail };
+  }
+  if (/not verified|verify a domain|domain is not/i.test(detail)) {
+    return { error: 'The sending domain in MAIL_FROM is not verified at resend.com, so Resend refused the message.', detail };
+  }
+  return { error: 'Email delivery failed (' + res.status + ')' + (detail ? ': ' + detail : '.'), detail };
+}
+
 async function sendEmail(env, to, subject, html) {
   if (!env.RESEND_API_KEY) {
-    return { ok: false, error: 'Email is not configured on this server yet.' };
+    return { ok: false, error: EMAIL_UNSET_MSG, unconfigured: true };
   }
-  const from = env.MAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`;
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -813,20 +878,46 @@ async function sendEmail(env, to, subject, html) {
         'Authorization': 'Bearer ' + env.RESEND_API_KEY,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ from, to: [to], subject, html })
+      body: JSON.stringify({ from: mailFrom(env), to: [to], subject, html }),
+      // The send is awaited at signup now so the person can be told whether it
+      // actually went; a provider that hangs must not hang the signup with it.
+      signal: AbortSignal.timeout(10000)
     });
-    if (!res.ok) return { ok: false, error: 'Email delivery failed (' + res.status + ').' };
+    if (!res.ok) return { ok: false, ...(await resendFailure(res)) };
     return { ok: true };
-  } catch {
-    return { ok: false, error: 'Email delivery failed.' };
+  } catch (e) {
+    return {
+      ok: false,
+      error: 'Email delivery failed: could not reach Resend.',
+      detail: String((e && e.message) || e).slice(0, 160)
+    };
   }
 }
 
-async function sendVerificationEmail(env, origin, user) {
+async function sendVerificationEmail(env, user) {
   if (!user.email) return { ok: false, error: 'No email on this account.' };
+  if (!env.RESEND_API_KEY) return { ok: false, error: EMAIL_UNSET_MSG, unconfigured: true };
   const token = randomToken();
-  await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
-  const link = origin + '/api/verify-email?token=' + token;
+  // The token has to be stored before the link is worth anything, and KV is
+  // the one store here with a daily write cap low enough to actually reach
+  // (the rate limiter was moved to D1 for exactly that). Past the cap `put`
+  // THROWS — and at signup this ran inside ctx.waitUntil, where the rejection
+  // went nowhere: no email, no error, nothing in the response to say so.
+  try {
+    await env.SESSIONS.put('verify:' + token, String(user.id), { expirationTtl: 60 * 60 * 24 });
+  } catch (e) {
+    return {
+      ok: false,
+      error: 'Could not start the verification \u2014 the session store refused the token. Try again in a few minutes.',
+      detail: String((e && e.message) || e).slice(0, 160)
+    };
+  }
+  // Pinned to the canonical origin for the same reason the Discord callback is:
+  // Cloudflare answers on every hostname pointed at this Worker, and a link
+  // built from whichever one the reader happened to sign up on lands them
+  // somewhere other than the site. It is also a link that has to survive in an
+  // inbox for a day.
+  const link = canonicalOrigin(env) + '/api/verify-email?token=' + token;
   return sendEmail(env, user.email, 'Verify your email — ' + APP_NAME, emailShell(
     'Verify your email',
     `<p>Hi ${escapeHtml(user.display_name || user.username)},</p>
@@ -5644,15 +5735,24 @@ export default {
 
       const token = await createSession(env, userId, false);
       await logActivity(env, { userId }, 'signup', 'user', null, username);
-      // Best-effort verification email; signup succeeds either way — including
-      // the way below, where the account was made and only the cookie failed.
-      ctx.waitUntil(sendVerificationEmail(env, url.origin, { id: userId, username, email }));
+      // The verification email is still best-effort — the account is made
+      // either way, including the way below where only the cookie failed — but
+      // it is AWAITED and its answer is reported. Fired into ctx.waitUntil the
+      // result went nowhere, so a wiki whose RESEND_API_KEY had gone missing
+      // sent every new member off to check an inbox nothing had been posted to,
+      // and said the same thing to the next one for as long as it took somebody
+      // to complain.
+      const verify = await sendVerificationEmail(env, { id: userId, username, email });
       if (!token) {
         // Say the account exists, or they will sign up again and be told the
         // name is taken by what is in fact their own account.
         return jsonResponse({ error: 'Your account was created, but ' + lowerFirst(SESSION_DOWN_MSG) }, { status: 503 });
       }
-      return jsonResponse({ ok: true, username }, { 'Set-Cookie': sessionCookie(token) });
+      return jsonResponse({
+        ok: true, username,
+        emailSent: verify.ok,
+        emailError: verify.ok ? undefined : memberEmailError(verify, 'signup verification')
+      }, { 'Set-Cookie': sessionCookie(token) });
     }
 
     // ---------- AUTH: LOG IN ----------
@@ -5932,15 +6032,24 @@ export default {
       const identifier = String(body.email || body.username || '').trim();
       if (!identifier) return jsonResponse({ error: 'Enter your email or username.' }, { status: 400 });
       if (!env.RESEND_API_KEY) {
-        return jsonResponse({ error: 'Password reset email is not configured on this server yet. Contact an admin.' }, { status: 501 });
+        return jsonResponse({ error: EMAIL_UNSET_MSG }, { status: 501 });
       }
       const user = await findUserByLogin(env, identifier);
       // Always report success so account existence can't be probed.
       if (user && user.email) {
         const token = randomToken();
-        await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
-        const link = url.origin + '/reset-password?token=' + token;
-        ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
+        // Guarded for the reason sendVerificationEmail's put is: past KV's
+        // daily write cap this throws, and a 500 here would also tell whoever
+        // sent it that the account exists, which this route exists not to say.
+        let stored = true;
+        try {
+          await env.SESSIONS.put('pwreset:' + token, String(user.id), { expirationTtl: 3600 });
+        } catch (e) {
+          stored = false;
+          console.error('[forgot-password] could not store the reset token:', (e && e.message) || e);
+        }
+        const link = canonicalOrigin(env) + '/reset-password?token=' + token;
+        if (stored) ctx.waitUntil(sendEmail(env, user.email, 'Reset your password — ' + APP_NAME, emailShell(
           'Reset your password',
           // Half the people who ask for a reset are stuck on the OTHER field:
           // their display name is the only name the site shows them, so this
@@ -6002,8 +6111,8 @@ export default {
         .bind(sess.userId).first();
       if (!u || !u.email) return jsonResponse({ error: 'No email on this account.' }, { status: 400 });
       if (u.email_verified) return jsonResponse({ ok: true, message: 'Email is already verified.' });
-      const sent = await sendVerificationEmail(env, url.origin, u);
-      if (!sent.ok) return jsonResponse({ error: sent.error }, { status: 502 });
+      const sent = await sendVerificationEmail(env, u);
+      if (!sent.ok) return jsonResponse({ error: memberEmailError(sent, 'resend verification') }, { status: 502 });
       return jsonResponse({ ok: true, message: 'Verification email sent.' });
     }
 
@@ -6660,6 +6769,99 @@ export default {
       // always hands over the string to compare against, character for
       // character, rather than implying it has checked it.
       out.note = 'Discord Developer Portal -> your application -> OAuth2 -> Redirects must contain this exact URL: ' + redirectUri;
+      return jsonResponse(out);
+    }
+
+    // ---------- ADMIN: IS OUTGOING EMAIL ACTUALLY WORKING ----------
+    // The same shape as the Discord check above, and it exists for the same
+    // reason: email here is three settings that live OUTSIDE the wiki (the key
+    // in Cloudflare, the domain at Resend, the from address that has to be on
+    // it), and when one of them goes the only symptom is that nothing arrives.
+    // Nobody reports an email they never knew to expect, so this went unnoticed
+    // long enough that signup had been telling people to check their inbox for
+    // a message the Worker had never even attempted.
+    if (method === 'GET' && path === '/api/admin/email-check') {
+      const sess = await adminSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not authorized' }, { status: 403 });
+
+      const from = mailFrom(env);
+      const out = {
+        apiKey: !!env.RESEND_API_KEY,
+        from,
+        // No MAIL_FROM means the shared sandbox address, which only delivers to
+        // the Resend account's own inbox. That is a fault, not a note: it is
+        // indistinguishable from working for whoever set the wiki up.
+        sandboxFrom: !env.MAIL_FROM,
+        fromDomain: (from.match(/@([^>\s]+)/) || [, ''])[1].toLowerCase(),
+        linkOrigin: canonicalOrigin(env)
+      };
+      if (!out.apiKey) {
+        out.ok = false;
+        out.status = 'Not configured: ' + EMAIL_UNSET_ADMIN;
+        return jsonResponse(out);
+      }
+
+      // Ask Resend whether the key is still good and which domains it may send
+      // from. It needs no recipient, so it can be run any time.
+      try {
+        const res = await fetch('https://api.resend.com/domains', {
+          headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY },
+          signal: AbortSignal.timeout(10000)
+        });
+        if (res.ok) {
+          const body = await res.json().catch(() => null);
+          const list = (body && (Array.isArray(body.data) ? body.data : Array.isArray(body) ? body : [])) || [];
+          out.domains = list.map(d => ({ name: String(d.name || ''), status: String(d.status || '') }));
+          const verified = out.domains.filter(d => /^verified$/i.test(d.status));
+          out.ok = true;
+          out.status = 'Resend accepted the API key.';
+          if (out.sandboxFrom) {
+            out.ok = false;
+            out.status = 'The key works, but MAIL_FROM is not set, so mail goes out as ' + from +
+              ' — Resend’s shared sandbox address, which only delivers to the inbox the Resend ' +
+              'account was opened with. Members signing up get nothing. Verify a domain at resend.com ' +
+              'and set MAIL_FROM to an address on it (as type Secret).';
+          } else if (!out.fromDomain) {
+            out.ok = false;
+            out.status = 'The key works, but MAIL_FROM has no email address in it (' + from +
+              '). It has to be an address, optionally with a display name: ' +
+              'BOTC Homebrew Wiki <no-reply@yourdomain>.';
+          } else if (!verified.length) {
+            out.ok = false;
+            out.status = 'The key works, but no domain on this Resend account is verified, so Resend ' +
+              'will refuse every message. Add and verify ' + (out.fromDomain || 'the MAIL_FROM domain') +
+              ' at resend.com.';
+          } else if (!verified.some(d => out.fromDomain === d.name.toLowerCase() ||
+                                         out.fromDomain.endsWith('.' + d.name.toLowerCase()))) {
+            out.ok = false;
+            out.status = 'The key works, but MAIL_FROM sends from ' + out.fromDomain +
+              ', which is not one of the domains verified on this Resend account (' +
+              verified.map(d => d.name).join(', ') + '). Resend refuses mail from a domain it has not verified.';
+          }
+        } else if (res.status === 401) {
+          out.ok = false;
+          out.status = 'Resend rejected the API key. Copy it again from resend.com and re-save it in ' +
+            'Cloudflare as type Secret (a Text variable is deleted by the next Git deploy).';
+        } else {
+          // A key restricted to sending only cannot read the domain list, and
+          // that is not the same as email being broken. Say so rather than
+          // sending somebody off to replace a key that works.
+          out.inconclusive = true;
+          out.ok = false;
+          out.status = 'Could not confirm either way — Resend answered ' + res.status +
+            ' to the domain check, which a send-only API key is expected to do. ' +
+            'Send a test message below to find out for certain.';
+        }
+      } catch (e) {
+        out.ok = false;
+        out.inconclusive = true;
+        out.status = 'Could not reach Resend: ' + String((e && e.message) || e).slice(0, 120);
+      }
+
+      // A verification link has to survive a day in an inbox, so it is built
+      // from the canonical origin rather than whichever hostname the reader
+      // signed up on. Printed for the same reason the Discord callback is.
+      out.note = 'Verification and password-reset links are sent as ' + out.linkOrigin + '/…';
       return jsonResponse(out);
     }
 
@@ -7814,8 +8016,17 @@ export default {
         await env.DB.prepare('UPDATE users SET email=?, email_verified=0 WHERE id=?')
           .bind(email, sess.userId).run();
         const u = await env.DB.prepare('SELECT id, username, display_name, email FROM users WHERE id=?').bind(sess.userId).first();
-        ctx.waitUntil(sendVerificationEmail(env, url.origin, u));
-        return jsonResponse({ ok: true, message: 'Email updated. Check your inbox for a verification link.' });
+        // Awaited, not fired and forgotten: "check your inbox" is a promise,
+        // and the one thing worse than not sending it is saying it was sent.
+        const sentNew = await sendVerificationEmail(env, u);
+        return jsonResponse({
+          ok: true,
+          emailSent: sentNew.ok,
+          message: sentNew.ok
+            ? 'Email updated. Check your inbox for a verification link.'
+            : 'Email updated, but the verification link could not be sent. ' +
+              memberEmailError(sentNew, 'email change verification')
+        });
       }
 
       if (path === '/api/account/unlink-discord') {
@@ -9096,6 +9307,39 @@ export default {
           .bind(JSON.stringify(data), row.slug).run();
         await logActivity(env, sess, 'delete', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug });
+      }
+
+      // ---- admin: send a real test email ----
+      // The check above proves the key is accepted. Only a send proves a
+      // message actually leaves, which is the question being asked, and it is
+      // the only way to settle a send-only key that cannot read the domain
+      // list. Defaults to the admin's own address so it cannot be used to post
+      // to a stranger.
+      if (path === '/api/admin/email-test') {
+        if (await rateLimited(env, request, 'emailtest', 10, 3600, { sess })) {
+          return tooManyResponse('Too many test emails. Try again later.', 3600);
+        }
+        const b = await request.json().catch(() => ({}));
+        const me = await env.DB.prepare('SELECT username, display_name, email FROM users WHERE id=?')
+          .bind(sess.userId).first();
+        const to = String(b.to || (me && me.email) || '').trim();
+        if (!EMAIL_RE.test(to) || to.length > 254) {
+          return jsonResponse({
+            error: me && me.email
+              ? 'That is not a valid email address.'
+              : 'There is no email address on your account — type one to send the test to.'
+          }, { status: 400 });
+        }
+        const sent = await sendEmail(env, to, 'Test message — ' + APP_NAME, emailShell(
+          'Outgoing email is working',
+          `<p>This is a test sent from the ${APP_NAME} admin dashboard.</p>
+           <p>If you are reading it, verification emails and password resets are reaching inboxes.</p>`
+        ));
+        return jsonResponse({
+          ok: !!sent.ok, to, from: mailFrom(env),
+          error: sent.ok ? undefined : sent.error,
+          detail: sent.detail
+        }, sent.ok ? {} : { status: 502 });
       }
 
       // ---- admin: restore a soft-deleted page ----

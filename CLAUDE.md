@@ -2614,6 +2614,36 @@ seeded with whole collections whose characters all arrived unowned.
    new callback URL in the Discord Developer Portal → OAuth2 → Redirects in
    the same sitting. Adding a hostname needs no code change and no second
    portal entry — that is the point.
+11b. **Outgoing email is three settings outside the wiki, and when one goes
+   the only symptom is that nothing arrives.** `RESEND_API_KEY` (Cloudflare,
+   type **Secret** — same trap as gotcha 11: a Text variable is deleted by the
+   next Git deploy), a **verified domain** at resend.com, and a `MAIL_FROM` on
+   that domain. **`MAIL_FROM` is not optional in practice**: the fallback is
+   Resend's shared `onboarding@resend.dev`, which delivers ONLY to the inbox
+   the Resend account was opened with — so it works for whoever set the wiki up
+   and silently refuses every member who signs up, which is the most expensive
+   way this can fail. Nobody reports an email they never knew to expect, so
+   there is a health check rather than a hope: **`GET /api/admin/email-check`**
+   asks Resend whether the key is accepted and whether the from-domain is one
+   it has verified, and **`POST /api/admin/email-test`** sends a real message
+   (to the admin's own address by default) because only a send proves a send.
+   Both are one card on the dashboard's Health tab. A send-only API key cannot
+   read the domain list and reports **inconclusive** rather than crying wolf —
+   the test send is what settles it.
+   Three code rules hold this up, and each replaced a way the failure hid:
+   **the reason is read out, never just the status** (`resendFailure()` — a bad
+   key, the sandbox address and an unverified domain are three different fixes
+   and one status code); **the send at signup is awaited and reported**
+   (`emailSent`/`emailError` on the response, which login.html prints) rather
+   than fired into `ctx.waitUntil`, where the result went nowhere and every new
+   member was told to check an inbox nothing had been posted to; and
+   **`sendVerificationEmail` fails soft on KV** — it writes the token with
+   `SESSIONS.put`, which THROWS once the daily write cap is reached (see "Rate
+   limiting" for why that is a real event here), and inside `waitUntil` that
+   rejection was invisible.
+   The links in both emails are built from **`canonicalOrigin(env)`**, not
+   `url.origin`, for gotcha 11a's reason plus one of their own: a verification
+   link has to still work after a day in an inbox.
 12. **Usernames carry their own letters — fadas included — and identity is
    `users.username_key`, never `lower(username)`.** `@tir-far-thóinn` keeps its
    fada; the account code was once ASCII-only and turned it into
