@@ -1289,7 +1289,7 @@ Things worth knowing before touching any of it:
   picture already seen included, cost a round trip to revalidate before
   anything could be painted, and the `<img>` sat empty in the meantime. Half
   a second a click, a second for the printable token, and a blink of the
-  card's background each time. Four things hold the replacement up:
+  card's background each time. Five things hold the replacement up:
   - **Only the version on screen carries a `src`**; the rest arrive as
     `data-src` and are fetched on idle (`hydrateEmblems`), or on first touch,
     whichever comes first — so the picture everybody wants is never held up
@@ -1311,6 +1311,17 @@ Things worth knowing before touching any of it:
     so `emPaint()` takes it as an argument and every caller says which. Get
     it wrong and the outgoing icon jumps across the frame instead of leaving
     the way the finger sent it.
+  - **A picture that changes SIDES is moved without animating it.** Every
+    step round a ring of three or more swaps one of them end for end —
+    walking 1 → 2 leaves version 0 waiting on the wrong side — and animating
+    that sends it the whole way across the frame, through the middle, behind
+    the version arriving. That is what made going round to the first icon
+    look broken, and it was on every step, not only the wrap. Both the place
+    such a picture leaves and the place it lands are off screen (it is always
+    the one on the far side of the drag), so moving it in a single frame
+    cannot be seen. `emPaint()` keeps each `<img>`'s last slot on it as
+    `__emOff` to tell the two cases apart, seeded from the position
+    styles.css gives it so the very first move is right too.
 - **The stack sets `touch-action: pan-y`**, so a sideways drag is ours and an
   up-and-down one is still the page scrolling; a vertical drag that starts on
   the icon is handed back and its click swallowed. A transparent

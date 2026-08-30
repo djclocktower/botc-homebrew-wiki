@@ -176,8 +176,24 @@
       if (off > n / 2) off -= n;
       else if (off < -n / 2) off += n;
       if (n === 2 && off !== 0) off = side === -1 ? -1 : 1;
-      imgs[i].style.transition = animate ? '' : 'none';
-      imgs[i].style.transform = 'translateX(' + (off * step + dx) + 'px)';
+      var img = imgs[i];
+      /* A picture that has to change SIDES is moved without animating it.
+         Every step round a ring of three or more makes one of them swap
+         ends — walking 1 → 2 leaves version 0 waiting on the wrong side —
+         and animating that sends it the whole way across the frame, right
+         through the middle, behind the version arriving. It is what made
+         going round to the first icon look broken. Both the place it leaves
+         and the place it lands are off screen, so moving it in one frame
+         cannot be seen at all.
+
+         Where it starts from, before this has ever run, is the position
+         styles.css gives it: the one on screen in place, the rest waiting
+         on the right. */
+      var was = img.__emOff;
+      if (was == null) was = img.classList.contains('is-on') ? 0 : 1;
+      img.style.transition = (animate && Math.abs(off - was) <= 1) ? '' : 'none';
+      img.style.transform = 'translateX(' + (off * step + dx) + 'px)';
+      img.__emOff = off;
     }
   }
   /* Show one version — the single door, so the picture and the pips can
