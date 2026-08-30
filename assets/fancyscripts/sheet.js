@@ -586,7 +586,11 @@ export function renderSheet(script, options, requestRender) {
   const hasNightStar = script.characters.some((c) => c.ability.includes('night*'));
   const colWPct = SHEET.textOffsetX + SHEET.textWidth;
 
-  // header decor geometry (movable / scalable, inner edges anchored)
+  /* header decor geometry (movable / scalable). Verticals are settled here;
+     the HORIZONTAL positions set below are only the calibrated full-width
+     fallback — fitTitle() re-places the skull and flourishes against the
+     title's measured width so they come in to meet a short name (see the
+     hug pass there). */
   const skullW = SHEET.skullW * options.skullScale;
   const skullLeft = SHEET.skullX + (SHEET.skullW - skullW) / 2 + options.skullDX;
   const skullTop = SHEET.skullY + (SHEET.skullH * (1 - options.skullScale)) / 2 + options.skullDY;
@@ -645,20 +649,25 @@ export function renderSheet(script, options, requestRender) {
     sheet.append(img(ART + 'sidebar-full.png', sidebarStyle));
   }
 
-  // movable header decor: skull + flourishes
-  sheet.append(img(ART + 'skull.png', {
+  // movable header decor: skull + flourishes (fitTitle slides them in
+  // against the rendered title — these lefts are the widest-title fallback)
+  const skullEl = img(ART + 'skull.png', {
     position: 'absolute', left: skullLeft + '%', top: px(e(skullTop)), width: skullW + '%',
-  }));
-  sheet.append(img(ART + 'flourish-left.png', {
+  });
+  skullEl.dataset.fsDecor = 'skull';
+  const flLEl = img(ART + 'flourish-left.png', {
     position: 'absolute', left: flLLeft + '%', top: px(e(flLTop)), width: flLW + '%',
-  }));
-  sheet.append(img(ART + 'flourish-right.png', {
+  });
+  flLEl.dataset.fsDecor = 'fll';
+  const flREl = img(ART + 'flourish-right.png', {
     position: 'absolute', left: flRLeft + '%', top: px(e(flRTop)), width: flRW + '%',
-  }));
+  });
+  flREl.dataset.fsDecor = 'flr';
+  sheet.append(skullEl, flLEl, flREl);
 
   // title: homebrew logo image when provided, else the swash text title
   if (script.meta.logo && options.useLogo) {
-    sheet.append(iconImg(proxied(script.meta.logo, options.proxyIcons), {
+    const logoEl = iconImg(proxied(script.meta.logo, options.proxyIcons), {
       position: 'absolute',
       left: (SHEET.titleCX + options.titleDX) + '%',
       top: px(e(SHEET.titleCY + options.titleDY)),
@@ -667,7 +676,11 @@ export function renderSheet(script, options, requestRender) {
       maxHeight: px(e(9.4) * options.titleSize),
       objectFit: 'contain',
       filter: `drop-shadow(${e(0.09)}px ${e(0.13)}px ${e(0.11)}px rgba(40, 26, 10, 0.45))`,
-    }, title));
+    }, title);
+    logoEl.dataset.fsTbox = '1';
+    // the logo's width is only known once it loads — re-hug the decor then
+    logoEl.addEventListener('load', () => fitTitle(sheet, options));
+    sheet.append(logoEl);
   } else {
     const titleEl = el('div', {
       position: 'absolute',
@@ -682,6 +695,7 @@ export function renderSheet(script, options, requestRender) {
       mixBlendMode: 'multiply',
     }, swashTitle(title, options.titleColor, e(0.11), e(0.13)));
     titleEl.dataset.fsTitle = String(e(8.35) * options.titleSize);
+    titleEl.dataset.fsTbox = '1';
     sheet.append(titleEl);
   }
 
@@ -823,16 +837,54 @@ export function renderSheet(script, options, requestRender) {
   return sheet;
 }
 
-/* Shrink the swash title to the band between the skull and the right
-   flourish. Needs the element laid out, so the caller runs this AFTER the
-   sheet is in the document — scrollWidth at the natural size gives the true
-   width in one pass, no iteration. */
-export function fitTitle(sheet) {
+/* Two jobs that both need real layout, so the caller runs this AFTER the
+   sheet is in the document (and again when the logo image loads):
+
+   1. Shrink the swash title to the band between the skull and the right
+      flourish — scrollWidth at the natural size gives the true width in
+      one pass, no iteration.
+
+   2. THE HUG PASS: slide the skull (with the left flourish riding along)
+      and the right flourish in against the title's measured width, the way
+      the official sheets set them — a short name like "Biota" pulls the
+      decor in to meet it instead of leaving it stranded at the calibrated
+      full-width positions. The three inset constants below are derived
+      from the calibration itself (skull overlaps the title box's left
+      bearing by 1.49%, the left flourish tucks 1.24% under the skull, the
+      right flourish starts 0.58% inside the title box), so a title at the
+      full band width reproduces the reference positions exactly. */
+export function fitTitle(sheet, options) {
   const titleEl = sheet.querySelector('[data-fs-title]');
-  if (!titleEl) return;
-  const naturalFs = Number(titleEl.dataset.fsTitle);
-  const bandW = 0.4911 * SHEET_W; // reference title ink width (skull → right swirl)
-  titleEl.style.fontSize = px(naturalFs);
-  const trueW = titleEl.scrollWidth;
-  if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
+  if (titleEl) {
+    const naturalFs = Number(titleEl.dataset.fsTitle);
+    const bandW = 0.4911 * SHEET_W; // reference title ink width (skull → right swirl)
+    titleEl.style.fontSize = px(naturalFs);
+    const trueW = titleEl.scrollWidth;
+    if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
+  }
+
+  const tbox = sheet.querySelector('[data-fs-tbox]');
+  const skullEl = sheet.querySelector('[data-fs-decor="skull"]');
+  const flLEl = sheet.querySelector('[data-fs-decor="fll"]');
+  const flREl = sheet.querySelector('[data-fs-decor="flr"]');
+  if (!options || !tbox || !skullEl || !flLEl || !flREl) return;
+  const sheetRect = sheet.getBoundingClientRect();
+  const tRect = tbox.getBoundingClientRect();
+  if (!sheetRect.width || !tRect.width) return; // logo not loaded yet
+  // rects survive the preview's scale transform because both are scaled alike
+  const wPct = (tRect.width / sheetRect.width) * 100;
+  const centerPct = SHEET.titleCX + options.titleDX;
+  const leftPct = centerPct - wPct / 2;
+  const rightPct = centerPct + wPct / 2;
+
+  const skullW = SHEET.skullW * options.skullScale;
+  const flLW = SHEET.flLW * options.flourishScale;
+  const flRW = SHEET.flRW * options.flourishScale;
+  // never ride onto the ribbon, however long the name gets
+  const skullLeft = Math.max(9.2, leftPct + 1.49 - skullW + options.skullDX);
+  const flLLeft = skullLeft + 1.24 - flLW - options.flourishSpread;
+  const flRLeft = Math.min(97.65 - flRW, rightPct - 0.58 + options.flourishSpread);
+  skullEl.style.left = skullLeft + '%';
+  flLEl.style.left = flLLeft + '%';
+  flREl.style.left = flRLeft + '%';
 }

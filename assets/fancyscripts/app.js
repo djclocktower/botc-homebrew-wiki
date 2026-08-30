@@ -104,7 +104,7 @@ function render() {
   const sheet = renderSheet(parsed, options, requestRender);
   wrap.textContent = '';
   wrap.append(sheet);
-  fitTitle(sheet);
+  fitTitle(sheet, options);
   showSolvedDensity(sheet);
   fitPreview();
 }
