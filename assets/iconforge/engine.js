@@ -829,12 +829,165 @@ function buildBorder(union, widthPx, edgePx) {
   // r*0.06 hides polygonal stamping artifacts; edgePx is the user sharpness.
   return blurred(out, r * 0.06 + edgePx);
 }
+/* ---- The grain sheet -------------------------------------------------
+   The texture PNGs are 591 px square and the field zooms out to 0.4x, so
+   the icon is regularly wider than one sheet and the field has to repeat.
+   It used to repeat by MIRRORING every other tile — seamless, but on any
+   icon with a large unbroken area the eye reads the mirror axes instantly
+   and the grain looks kaleidoscoped rather than grungy.
+
+   So each sheet is grown ONCE into a 2x mosaic that repeats without any
+   symmetry to see. The base of that mosaic is the old 2x2 mirrored block,
+   which is exactly what makes the mosaic tile seamlessly: a mirrored block
+   meets itself at every edge, so the mosaic wraps like a torus and can be
+   laid out with plain, unflipped tiles. Random crops of the SOURCE are
+   then stamped over that base — wrapped around the edges, so the wrap
+   survives — until none of the mirrored base is left to see. The block is
+   doubled rather than tripled because doubling is what the zoom range
+   needs: the sheet is two textures across, so at the default zoom one crop
+   of it covers the whole icon and there is nothing to repeat at all.
+
+   The crops are stamped nearly hard-edged — a full-strength core with a
+   narrow feathered rim — on purpose: blending a dozen translucent crops
+   over each other averages the grunge into mush, and mush is what the
+   texture is there not to be.
+
+   Everything is seeded, so a texture always grows the same mosaic and the
+   preview and the export cannot disagree. */
+/** Crop size, as a fraction of the SOURCE texture — not of the grown
+ *  sheet. Sized off the sheet it comes out at 90% of the source, so every
+ *  crop is the whole texture over again and the mosaic decorrelates
+ *  nothing. At 0.4 there are ~350 px of travel in each direction to take a
+ *  crop from, which is what makes them look unrelated. */
+const MOSAIC_PATCH = 0.4;
+/** Grid step between crops, as a fraction of the crop. */
+const MOSAIC_STEP = 0.45;
+/** Where the crop's full-strength core ends, as a fraction of its radius.
+ *  The rim outside it is the only part that blends, and it is kept narrow
+ *  on purpose: crops averaged over each other lose the contrast that makes
+ *  the grain read as grunge. */
+const MOSAIC_CORE = 0.85;
+/** How far a crop wanders off its grid point, as a fraction of the step.
+ *  Enough to hide the grid, not so much that the cores stop overlapping —
+ *  MOSAIC_STEP, MOSAIC_CORE and this are tuned together so that every
+ *  pixel of the sheet falls inside some crop's full-strength core and none
+ *  of the mirrored base is left showing. */
+const MOSAIC_JITTER = 0.6;
+const sheetCache = new WeakMap();
+/** mulberry32 — a seeded PRNG, so the mosaic is the same every time. */
+function seededRandom(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+/** The 2x2 mirrored block: the one arrangement of a non-tiling sheet that
+ *  meets itself on all four edges, which is what lets the mosaic wrap. */
+function mirroredBlock(tex) {
+  const w = tex.width;
+  const h = tex.height;
+  const out = makeCanvas(w * 2, h * 2);
+  const ctx = ctx2d(out);
+  for (let ty = 0; ty < 2; ty++) {
+    for (let tx = 0; tx < 2; tx++) {
+      ctx.save();
+      ctx.translate(tx * w, ty * h);
+      if (tx === 1) {
+        ctx.translate(w, 0);
+        ctx.scale(-1, 1);
+      }
+      if (ty === 1) {
+        ctx.translate(0, h);
+        ctx.scale(1, -1);
+      }
+      ctx.drawImage(tex, 0, 0);
+      ctx.restore();
+    }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  return out;
+}
+/** Grow one texture into a bigger sheet that repeats with no symmetry.
+ *  Cached per image — building it is a few milliseconds and the result is
+ *  shared by the live preview and the export. */
+function grainSheet(tex) {
+  let sheet = sheetCache.get(tex);
+  if (sheet) return sheet;
+  sheet = mirroredBlock(tex);
+  const SW = sheet.width;
+  const SH = sheet.height;
+  const ctx = ctx2d(sheet);
+  const P = Math.round(Math.min(tex.width, tex.height) * MOSAIC_PATCH);
+  const step = Math.max(1, Math.round(P * MOSAIC_STEP));
+  const rand = seededRandom(tex.width * 7349 + tex.height * 131 + 17);
+  // One crop, cut out with a soft rim, reused for every stamp.
+  const patch = makeCanvas(P);
+  const pctx = ctx2d(patch);
+  const rim = makeCanvas(P);
+  const rctx = ctx2d(rim);
+  const grad = rctx.createRadialGradient(P / 2, P / 2, (P / 2) * MOSAIC_CORE, P / 2, P / 2, P / 2);
+  grad.addColorStop(0, 'rgba(0,0,0,1)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  rctx.fillStyle = grad;
+  rctx.fillRect(0, 0, P, P);
+  // Crops come from the ORIGINAL texture, never from the mirrored block:
+  // one straddling the block's mirror line carries that line with it and
+  // would stamp the symmetry straight back on.
+  const maxX = Math.max(0, tex.width - P);
+  const maxY = Math.max(0, tex.height - P);
+  for (let gy = 0; gy < SH; gy += step) {
+    for (let gx = 0; gx < SW; gx += step) {
+      const sx = Math.round(rand() * maxX);
+      const sy = Math.round(rand() * maxY);
+      const flipX = rand() < 0.5;
+      const flipY = rand() < 0.5;
+      pctx.setTransform(1, 0, 0, 1, 0, 0);
+      pctx.clearRect(0, 0, P, P);
+      pctx.save();
+      pctx.translate(flipX ? P : 0, flipY ? P : 0);
+      pctx.scale(flipX ? -1 : 1, flipY ? -1 : 1);
+      pctx.drawImage(tex, sx, sy, P, P, 0, 0, P, P);
+      pctx.restore();
+      pctx.globalCompositeOperation = 'destination-in';
+      pctx.drawImage(rim, 0, 0);
+      pctx.globalCompositeOperation = 'source-over';
+      const jx = (rand() - 0.5) * step * MOSAIC_JITTER;
+      const jy = (rand() - 0.5) * step * MOSAIC_JITTER;
+      const dx = gx + jx - P / 2;
+      const dy = gy + jy - P / 2;
+      // Stamped wrapped, so a crop running off one edge comes back on the
+      // opposite one and the mosaic stays seamless as a tile.
+      for (let wy = -1; wy <= 1; wy++) {
+        for (let wx = -1; wx <= 1; wx++) {
+          const px = dx + wx * SW;
+          const py = dy + wy * SH;
+          if (px > SW || py > SH || px + P < 0 || py + P < 0) continue;
+          ctx.drawImage(patch, px, py);
+        }
+      }
+    }
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  sheetCache.set(tex, sheet);
+  return sheet;
+}
 /** Render one texture as a continuous transformed field covering the canvas.
- *  Uses mirror-tiled drawImage calls (instead of CanvasPattern) so coverage is
- *  guaranteed at any pan/zoom/rotation, with no visible seams in the grain. */
+ *  Tiles the grain sheet with plain drawImage calls (instead of a
+ *  CanvasPattern) so coverage is guaranteed at any pan/zoom/rotation. The
+ *  sheet is CENTRED on the icon: the field used to be laid out from the
+ *  canvas centre as its top-left corner, which put a tile join on both
+ *  centre lines of every icon ever rendered. Centred, the sheet is twice
+ *  the icon across, so at the usual zooms one crop covers the whole icon
+ *  and there is no join at all. */
 function textureField(tex, W, opts) {
+  const sheet = grainSheet(tex);
   const out = makeCanvas(W);
   const ctx = ctx2d(out);
+  // Grain scale follows the ORIGINAL texture, not the grown sheet, so
+  // texScale 1 still means "one texture across the icon".
   const fit = W / tex.width; // userScale 1 -> texture spans the icon
   const s = fit * opts.texScale;
   const m = new DOMMatrix()
@@ -843,7 +996,8 @@ function textureField(tex, W, opts) {
       W / 2 + (opts.texOffsetY * tex.height * s) / 2,
     )
     .rotate(opts.texRotation)
-    .scale(s);
+    .scale(s)
+    .translate(-sheet.width / 2, -sheet.height / 2);
   // Map the canvas corners back into texture space to find the needed tiles.
   const inv = m.inverse();
   const xs = [];
@@ -858,28 +1012,18 @@ function textureField(tex, W, opts) {
     xs.push(p.x);
     ys.push(p.y);
   }
-  const minTX = Math.floor(Math.min(...xs) / tex.width);
-  const maxTX = Math.floor(Math.max(...xs) / tex.width);
-  const minTY = Math.floor(Math.min(...ys) / tex.height);
-  const maxTY = Math.floor(Math.max(...ys) / tex.height);
+  const minTX = Math.floor(Math.min(...xs) / sheet.width);
+  const maxTX = Math.floor(Math.max(...xs) / sheet.width);
+  const minTY = Math.floor(Math.min(...ys) / sheet.height);
+  const maxTY = Math.floor(Math.max(...ys) / sheet.height);
   ctx.setTransform(m);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
   for (let ty = minTY; ty <= maxTY; ty++) {
     for (let tx = minTX; tx <= maxTX; tx++) {
-      ctx.save();
-      ctx.translate(tx * tex.width, ty * tex.height);
-      // Mirror every other tile so edges join seamlessly.
-      if (((tx % 2) + 2) % 2 === 1) {
-        ctx.translate(tex.width, 0);
-        ctx.scale(-1, 1);
-      }
-      if (((ty % 2) + 2) % 2 === 1) {
-        ctx.translate(0, tex.height);
-        ctx.scale(1, -1);
-      }
-      ctx.drawImage(tex, 0, 0);
-      ctx.restore();
+      // No mirroring: the sheet wraps, so plain tiles join seamlessly and
+      // nothing repeats about an axis.
+      ctx.drawImage(sheet, tx * sheet.width, ty * sheet.height);
     }
   }
   ctx.resetTransform();

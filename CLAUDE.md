@@ -1995,7 +1995,15 @@ uploaded — except for the one opt-in save described below.
   1. Any new option read by `prepSource`/`buildMasks`/`buildLighting`/
      `buildBevel` **must be added to `MASK_OPTS`**, or the mask cache goes
      stale and the control appears to do nothing intermittently.
-  2. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
+  2. The texture field is **centred** on the icon and its tiles are
+     **never mirrored**. Both were once the other way round, and together
+     they kaleidoscoped every icon with a large unbroken area: the tile was
+     laid out from the canvas centre as its top-left corner, so four
+     mirrored tiles met on both centre lines. `grainSheet()` is what makes
+     plain tiling possible — it grows each sheet once into a seamless,
+     symmetry-free 2× mosaic (see the guide's Stage D). Its crop size is a
+     fraction of the SOURCE texture, never of the grown sheet.
+  3. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
      stages are `cloneCanvas()`d before being fed to them — keep the clones.
      Also: any helper that sets a canvas transform resets it before returning.
   The full reasoning is in `migration/icon-forge-guide.md` (§2, §3, §7), which
