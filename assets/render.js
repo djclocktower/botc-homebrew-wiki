@@ -106,18 +106,244 @@
     }
     return out;
   }
-  /* Show one version of the icon. Browser only — the group lives beside the
-     <img> inside .char-infocard, so the emblem is found from the group. */
-  function emblemShow(group, btn) {
-    if (!group || !btn) return;
-    var img = group.parentNode && group.parentNode.querySelector('.emblem');
-    if (img) img.setAttribute('src', btn.getAttribute('data-src') || img.getAttribute('src'));
-    var btns = group.querySelectorAll('.emblem-ver');
-    for (var i = 0; i < btns.length; i++) {
-      var on = btns[i] === btn;
-      btns[i].classList.toggle('is-on', on);
-      btns[i].setAttribute('aria-pressed', on ? 'true' : 'false');
+  /* ── The icon gallery ──────────────────────────────────────────────────
+     A character can have up to four pictures: the icon, a traveller's good
+     and evil tokens, and the printable token. They used to be ONE <img>
+     whose `src` was rewritten on every click, and that is why the gallery
+     was both slow and ugly:
+
+       - R2 serves art `no-cache, must-revalidate`, so every switch — back
+         to a picture already seen included — cost a round trip to
+         revalidate before a single pixel could be painted. That is the
+         half-second pause after each click, and the second the printable
+         token took the first time.
+       - While that request was in flight the <img> had no image to show,
+         so the picture blinked out and the card's background flashed
+         through it.
+
+     So each version is now its OWN <img>, stacked one on top of another,
+     and switching is a transform — no request, no repaint of anything but
+     the transform, nothing to wait for. Only the version on screen carries
+     a `src` in the HTML; the rest carry `data-src` and are fetched once the
+     page has gone quiet (or the moment the reader touches the stack,
+     whichever comes first), so the pictures nobody may look at never race
+     the one everybody does.
+
+     Nothing ever moves SIDEWAYS. A drag used to carry the pictures across
+     and clip them at the edge of the stack, the way a carousel does — but a
+     carousel is cut off by something a reader can see, a screen edge or the
+     side of a card, and this icon floats in the middle of a parchment panel
+     with no edge anywhere near it. A picture sliced off in open space does
+     not read as "there is more this way", it reads as a page drawn wrong.
+     So a swipe dissolves one picture into the next instead: the one leaving
+     fades and shrinks a little, the one arriving grows into place, both of
+     them centred and whole. The gesture still follows the finger exactly —
+     how far you have dragged is how far through the change you are — and
+     nothing can be cut off, because nothing ever reaches an edge. */
+  var EM_SLOP = 8;      // a pointer that moved less than this was a tap
+  var EM_SPAN = 0.5;    // dragging half the width is a whole change
+  var EM_COMMIT = 0.5;  // ... and letting go past halfway keeps it
+  var EM_FLICK = 0.35;  // ... as does letting go this fast (px per ms)
+  var EM_DIP = 0.06;    // how far a picture shrinks on its way out
+
+  function emImgs(stack) { return stack.querySelectorAll('.emblem'); }
+  function emPips(stack) {
+    return stack.parentNode ? stack.parentNode.querySelector('.emblem-versions') : null;
+  }
+  function emAt(stack) { return Number(stack.getAttribute('data-at')) || 0; }
+  /* The other pictures, fetched. Called on idle and again on first touch,
+     and it costs nothing the second time — every <img> it can do anything
+     with loses its data-src. */
+  function emHydrate(stack) {
+    var imgs = stack.querySelectorAll('.emblem[data-src]');
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].setAttribute('src', imgs[i].getAttribute('data-src'));
+      imgs[i].removeAttribute('data-src');
     }
+  }
+  function hydrateEmblems(doc) {
+    if (!doc) return;
+    var st = doc.querySelectorAll('.emblem-stack');
+    for (var i = 0; i < st.length; i++) emHydrate(st[i]);
+  }
+  /* Paint one moment of the gallery: version `at` on screen, version `to`
+     coming in behind it, and `p` how far the change has got — 0 for "not
+     started", 1 for "done". `to` is -1 when nothing is being pulled in.
+
+     Every picture is drawn in the same place, so the whole state is how
+     solid each one is; the shrink is tied to that rather than tracked
+     separately, which is what keeps the two from ever disagreeing. */
+  function emPaint(stack, at, to, p, animate) {
+    var imgs = emImgs(stack), n = imgs.length;
+    if (!n) return;
+    for (var i = 0; i < n; i++) {
+      var o = i === at ? 1 - p : (i === to ? p : 0);
+      imgs[i].style.transition = animate ? '' : 'none';
+      imgs[i].style.opacity = o;
+      imgs[i].style.transform = 'scale(' + (1 - EM_DIP * (1 - o)).toFixed(4) + ')';
+    }
+  }
+  /* Show one version — the single door, so the picture and the pips can
+     never end up disagreeing about which one is on screen. */
+  function emShow(stack, at, animate) {
+    var imgs = emImgs(stack), n = imgs.length;
+    if (!n) return;
+    at = ((at % n) + n) % n;
+    stack.setAttribute('data-at', at);
+    emPaint(stack, at, -1, 0, animate !== false);
+    for (var i = 0; i < n; i++) imgs[i].classList.toggle('is-on', i === at);
+    var pips = emPips(stack);
+    if (!pips) return;
+    var btns = pips.querySelectorAll('.emblem-ver');
+    for (var k = 0; k < btns.length; k++) {
+      var on = k === at;
+      btns[k].classList.toggle('is-on', on);
+      btns[k].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+  }
+  /* Wire one document's icon galleries: tap to walk through, drag or swipe
+     to pull the next one across, arrow keys from the pips.
+
+     It takes the document rather than assuming `document` because the live
+     preview in the two character editors is an iframe with a document of
+     its own. That copy used to be hand-duplicated inside a string in
+     char-preview.js, with a comment saying it had to be changed in both
+     places; the frame calls this instead. */
+  function mountEmblemGallery(doc) {
+    if (!doc || doc.__emblemGallery) return;
+    doc.__emblemGallery = true;
+    var win = doc.defaultView;
+
+    /* Pull the other pictures in once the page is quiet — doing it up front
+       would make them race the one actually on screen. Not on a metered or
+       very slow connection, though: there the reader has asked us to spend
+       their data on what they came for, and the first tap still fetches. */
+    var conn = win && win.navigator ? (win.navigator.connection || null) : null;
+    var thrifty = !!conn && (conn.saveData === true || /(^|-)2g$/.test(conn.effectiveType || ''));
+    var soon = function () { hydrateEmblems(doc); };
+    if (win && !thrifty) {
+      if (win.requestIdleCallback) win.requestIdleCallback(soon, { timeout: 4000 });
+      else win.setTimeout(soon, 1500);
+    }
+
+    var drag = null;
+    /* A drag ends in a click too, and that click must not ALSO walk the
+       gallery on. Cleared on the next pointerdown as well as on the click
+       itself, so a release the click never follows cannot swallow the
+       reader's next tap. */
+    var swallow = false;
+
+    function stackOf(e) {
+      return e.target.closest ? e.target.closest('.emblem-stack') : null;
+    }
+    function endDrag(commit) {
+      if (!drag) return null;
+      var d = drag;
+      drag = null;
+      d.stack.classList.remove('is-dragging');
+      /* Past halfway it sticks; short of that the picture coming in fades
+         back out and the one you started on comes back. A flick counts as
+         well however short it was, and has to: a thumb flicked across a
+         phone is how this gesture is actually made, and it covers nowhere
+         near a quarter of the icon before it lifts. */
+      var flick = d.v * (d.dx < 0 ? -1 : 1) > EM_FLICK;
+      var took = commit && d.to != null && (d.p >= EM_COMMIT || flick);
+      emShow(d.stack, took ? d.to : d.at, true);
+      return d;
+    }
+
+    doc.addEventListener('pointerdown', function (e) {
+      swallow = false;
+      var stack = stackOf(e);
+      if (!stack || (e.button != null && e.button > 0)) return;
+      if (emImgs(stack).length < 2) return;
+      emHydrate(stack);   // nothing can be dragged in that has not been fetched
+      drag = { stack: stack, id: e.pointerId, x: e.clientX, y: e.clientY,
+               dx: 0, p: 0, v: 0, t: e.timeStamp, to: null,
+               at: emAt(stack), lock: '' };
+      // Capture, so a finger that leaves the picture still finishes its drag.
+      try { stack.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    });
+
+    doc.addEventListener('pointermove', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      /* Which gesture is this? A drag that starts downwards is the page
+         being scrolled and is none of our business — touch-action: pan-y
+         means the browser is already scrolling it, so all we do is let go.
+         Decided ONCE and then held, or a diagonal flick would hand the
+         gesture back and forth mid-drag. */
+      if (!drag.lock) {
+        if (Math.abs(dx) > EM_SLOP && Math.abs(dx) > Math.abs(dy)) {
+          drag.lock = 'x';
+          drag.stack.classList.add('is-dragging');
+        } else if (Math.abs(dy) > EM_SLOP) {
+          /* Theirs, not ours. Swallow the click it may still end in, so a
+             page scrolled by a finger that happened to land on the icon
+             does not also change which icon that is. */
+          endDrag(false);
+          swallow = true;
+          return;
+        } else return;
+      }
+      // How fast it is going right now, not on average over the whole drag —
+      // a slow hunt that ends in a flick is a flick.
+      var ms = e.timeStamp - drag.t;
+      if (ms > 0) { drag.v = (dx - drag.dx) / ms; drag.t = e.timeStamp; }
+      drag.dx = dx;
+      var n = emImgs(drag.stack).length;
+      var span = (drag.stack.clientWidth || 1) * EM_SPAN;
+      drag.p = Math.min(Math.abs(dx) / span, 1);
+      drag.to = ((drag.at + (dx < 0 ? 1 : -1)) % n + n) % n;
+      emPaint(drag.stack, drag.at, drag.to, drag.p, false);
+    });
+
+    doc.addEventListener('pointerup', function (e) {
+      if (!drag || e.pointerId !== drag.id) return;
+      var moved = drag.lock === 'x' && Math.abs(drag.dx) > EM_SLOP;
+      endDrag(true);
+      if (moved) swallow = true;
+    });
+    doc.addEventListener('pointercancel', function (e) {
+      if (drag && e.pointerId === drag.id) endDrag(false);
+    });
+
+    doc.addEventListener('click', function (e) {
+      var pip = e.target.closest && e.target.closest('.emblem-ver');
+      if (pip) {
+        var group = pip.parentNode;
+        var st = group.parentNode && group.parentNode.querySelector('.emblem-stack');
+        if (!st) return;
+        var bs = group.querySelectorAll('.emblem-ver'), idx = 0;
+        for (var i = 0; i < bs.length; i++) if (bs[i] === pip) idx = i;
+        emHydrate(st);
+        emShow(st, idx, true);
+        return;
+      }
+      var stack = stackOf(e);
+      if (!stack || emImgs(stack).length < 2) return;
+      // That click was the end of a drag, which has already had its say.
+      if (swallow) { swallow = false; return; }
+      emHydrate(stack);
+      emShow(stack, emAt(stack) + 1, true);
+    });
+
+    // Arrow keys from the pips — they are the gallery's only tab stop.
+    doc.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      var pip = e.target.closest && e.target.closest('.emblem-ver');
+      if (!pip) return;
+      var group = pip.parentNode;
+      var st = group.parentNode && group.parentNode.querySelector('.emblem-stack');
+      if (!st) return;
+      e.preventDefault();
+      emHydrate(st);
+      var bs = group.querySelectorAll('.emblem-ver'), n = bs.length;
+      if (!n) return;
+      var to = ((emAt(st) + (e.key === 'ArrowRight' ? 1 : -1)) % n + n) % n;
+      emShow(st, to, true);
+      bs[to].focus();
+    });
   }
   function artVersion(d, key) {
     var v = artVersions(d, '');
@@ -1151,23 +1377,34 @@
     if (artVers.length && artSrc) artVers[0].src = artSrc;
     else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
     var emblem = '';
-    if (artVers.length) {
-      var multi = artVers.length > 1;
-      emblem = '<img class="emblem' + (multi ? ' has-alt' : '') + '" src="' + esc(artVers[0].src) +
-        '" alt="' + esc(d.name) + '"' +
-        (multi ? ' title="Click to see the other versions of this icon"' : '') + '>';
-      if (multi) {
-        emblem += '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
-          artVers.map(function (v, i) {
-            // Empty on purpose — the pip is drawn by CSS. The label is the
-            // button's accessible name, so a screen reader and a hover both
-            // still get "Evil".
-            return '<button type="button" class="emblem-ver' + (i === 0 ? ' is-on' : '') +
-              '" data-src="' + esc(v.src) + '" title="' + esc(v.label) +
-              '" aria-label="' + esc(v.label) +
-              '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"></button>';
-          }).join('') + '</div>';
-      }
+    if (artVers.length === 1) {
+      emblem = '<img class="emblem" src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+    } else if (artVers.length) {
+      /* Every version is its own <img>, stacked — see the icon gallery
+         above for why swapping one src is not good enough. Only the one on
+         screen carries a `src`; the rest wait on `data-src` until the page
+         is quiet, so the picture a reader came for is never held up by
+         three they may never ask for. Marked `is-on` in the HTML so the
+         right one is showing before a line of script has run. */
+      emblem = '<div class="emblem-stack" data-at="0"' +
+        ' title="Swipe or click to see the other versions of this icon">' +
+        artVers.map(function (v, i) {
+          return '<img class="emblem' + (i === 0 ? ' is-on' : '') + '" ' +
+            (i === 0 ? 'src' : 'data-src') + '="' + esc(v.src) +
+            '" alt="' + (i === 0 ? esc(d.name) : '') + '"' +
+            (i === 0 ? '' : ' aria-hidden="true"') +
+            ' draggable="false" decoding="async">';
+        }).join('') + '</div>' +
+        '<div class="emblem-versions" role="group" aria-label="Versions of this icon">' +
+        artVers.map(function (v, i) {
+          // Empty on purpose — the pip is drawn by CSS. The label is the
+          // button's accessible name, so a screen reader and a hover both
+          // still get "Evil".
+          return '<button type="button" class="emblem-ver' + (i === 0 ? ' is-on' : '') +
+            '" title="' + esc(v.label) +
+            '" aria-label="' + esc(v.label) +
+            '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '"></button>';
+        }).join('') + '</div>';
     }
     var infoCard = '<div class="card char-infocard">' +
       '<div class="card-actions">' + copyBtn + '</div>' +
@@ -1332,6 +1569,9 @@
   /* ── one-time delegated handlers for JSON box toggle + copy ── */
   if (typeof document !== 'undefined' && !window.__jsonBoxBound) {
     window.__jsonBoxBound = true;
+    // The icon gallery keeps its own handlers — tap, drag and arrow keys are
+    // one gesture set, and the live preview mounts them on its own document.
+    mountEmblemGallery(document);
     document.addEventListener('click', function (e) {
       // Copy-link button
       var cl = e.target.closest && e.target.closest('.copy-link-btn');
@@ -1342,24 +1582,6 @@
             cl.innerHTML = '\u2713 Copied!';
             setTimeout(function () { cl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> Copy link'; }, 1500);
           });
-        }
-        return;
-      }
-      /* The icon's other versions — a traveller's good and evil tokens.
-         A pip jumps straight to one; the emblem itself walks through them in
-         order, which is the gesture the page has always had. Both go through
-         emblemShow so the picture and the pips cannot end up disagreeing
-         about which version is on screen. */
-      var vb = e.target.closest && e.target.closest('.emblem-ver');
-      if (vb) { emblemShow(vb.parentNode, vb); return; }
-      var em = e.target.closest && e.target.closest('.emblem.has-alt');
-      if (em) {
-        var bars = em.parentNode && em.parentNode.querySelector('.emblem-versions');
-        if (bars) {
-          var btns = bars.querySelectorAll('.emblem-ver');
-          var at = 0;
-          for (var bi = 0; bi < btns.length; bi++) if (btns[bi].classList.contains('is-on')) at = bi;
-          emblemShow(bars, btns[(at + 1) % btns.length]);
         }
         return;
       }
@@ -1432,6 +1654,8 @@
     window.TEAM_LABEL = TEAM_LABEL;
     window.artVersions = artVersions;
     window.artVersion = artVersion;
+    window.mountEmblemGallery = mountEmblemGallery;
+    window.hydrateEmblems = hydrateEmblems;
     window.isTraveller = isTraveller;
     window.ART_ABS = ART_ABS;
     window.findScriptJinxes = findScriptJinxes;

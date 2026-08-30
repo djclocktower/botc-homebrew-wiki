@@ -2046,10 +2046,46 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* ── A character's other icons ──
    A traveller has a good token and an evil token, so the page has to say
    there is more than one picture here rather than hide it behind a click
-   nobody would guess at. The emblem stays clickable — that is the gesture
-   the page has always had — and the pips below mark how many versions there
-   are and which one is on screen. */
-.emblem.has-alt { cursor: pointer; }
+   nobody would guess at. The picture stays clickable — that is the gesture
+   the page has always had — it can now be swiped or dragged as well, and the
+   pips below mark how many versions there are and which one is on screen.
+
+   Every version is its own <img>, stacked in the SAME place; switching is a
+   fade and never a new `src` (see "the icon gallery" in render.js for both
+   halves of why). Nothing slides sideways and nothing is clipped: there is
+   no visible edge anywhere near this icon for a picture to be cut off by,
+   so a picture cut off here would only look like a bug. */
+.emblem-stack {
+  position: relative;
+  width: min(86%, 286px);
+  aspect-ratio: 1;
+  margin: 4px auto 6px;
+  cursor: pointer;
+  /* The gesture is ours sideways and the browser's up and down, so a swipe
+     switches the icon and a scroll still scrolls the page. */
+  touch-action: pan-y;
+  /* Two things a phone does to a draggable picture that read as bugs here:
+     the blue tap flash over the whole icon on every switch, and selecting
+     the card's text when a drag runs off the edge of it. */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+}
+.emblem-stack .emblem {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  margin: 0;
+  opacity: 0;
+  transition: opacity .18s ease, transform .18s ease;
+  -webkit-user-drag: none;
+}
+/* Which one is showing before a line of script has run. Once the gallery is
+   working these are inline styles, and a version part-way through a drag is
+   part-way between the two. */
+.emblem-stack .emblem.is-on { opacity: 1; }
+.emblem-stack.is-dragging { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) {
+  .emblem-stack .emblem { transition: none; }
+}
 /* Carousel pips, not labelled buttons. These sit on a parchment almanac card
    directly above the flavour quote, where a row of filled pills read as app
    chrome bolted onto the page. The version NAMES live in each pip's
@@ -2072,6 +2108,9 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .emblem-ver {
   width: 19px; height: 19px; padding: 0; border: 0; background: none;
   cursor: pointer; display: grid; place-items: center;
+  /* A 19px target with a 6px mark in it, flashed blue by the phone, is a
+     blue square four times the size of the thing it is meant to be marking. */
+  -webkit-tap-highlight-color: transparent;
 }
 .emblem-ver::before {
   content: ''; width: 6px; height: 6px; border-radius: 50%;
