@@ -1279,9 +1279,45 @@ Things worth knowing before touching any of it:
   active one never brightens out of it; the pip's visible dot is its
   `::before`, so a 6px mark can sit inside a 19px touch target; and the
   buttons are **empty elements**, so nothing here needs escaping but the
-  attributes. Clicking the emblem still walks through the versions and a pip
-  jumps straight to one, both through `emblemShow()` so the picture and the
-  pips cannot disagree.
+  attributes. Tapping the picture walks through the versions, a swipe or a
+  drag pulls the next one across, a pip jumps straight to one and the arrow
+  keys work from the pips — all four through `emShow()`, so the picture and
+  the pips cannot disagree.
+- **Every version is its own `<img>`, stacked; switching is a transform and
+  never a new `src`.** It used to be one `<img>` whose `src` was rewritten,
+  and R2 serves art `no-cache, must-revalidate` — so every switch, back to a
+  picture already seen included, cost a round trip to revalidate before
+  anything could be painted, and the `<img>` sat empty in the meantime. Half
+  a second a click, a second for the printable token, and a blink of the
+  card's background each time. Four things hold the replacement up:
+  - **Only the version on screen carries a `src`**; the rest arrive as
+    `data-src` and are fetched on idle (`hydrateEmblems`), or on first touch,
+    whichever comes first — so the picture everybody wants is never held up
+    by three they may not ask for. The idle fetch is skipped on a metered or
+    2g connection; the first tap still works, it just pays for itself.
+  - **`mountEmblemGallery(doc)` takes a document** rather than assuming
+    `document`, because the editors' live preview is an iframe with one of
+    its own. That copy used to be hand-duplicated inside a string in
+    `char-preview.js`; the frame calls this instead, and `__cpEmb` re-runs it
+    after each repaint.
+  - **The versions off screen wait a full width plus a 28px gutter** on
+    either side (`EM_GAP`, matched in styles.css), and the stack clips them
+    with `overflow: clip` — never `visible`, or a page's own icon would
+    widen the document the way a long URL does. The gutter is what keeps the
+    neighbour hidden despite `overflow-clip-margin`, which is there so the
+    icon's drop shadow can still escape.
+  - **With exactly two versions the side is a fact about the gesture**, not
+    about the order — the other picture is one step away in both directions —
+    so `emPaint()` takes it as an argument and every caller says which. Get
+    it wrong and the outgoing icon jumps across the frame instead of leaving
+    the way the finger sent it.
+- **The stack sets `touch-action: pan-y`**, so a sideways drag is ours and an
+  up-and-down one is still the page scrolling; a vertical drag that starts on
+  the icon is handed back and its click swallowed. A transparent
+  `-webkit-tap-highlight-color` (on the stack and on the pips) is what stops
+  a phone flashing a blue rectangle over the whole icon on every switch, and
+  `user-select: none` + `draggable="false"` stop a drag selecting the card's
+  text or picking the picture up.
 - **`uploadSlotDenied()` strips a trailing `-alt` / `-alt2`** when the key
   matched no row, so the alternates inherit the character's own permission
   check. Without it those slots had no row behind them and only the R2
