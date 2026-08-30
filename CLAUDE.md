@@ -1280,16 +1280,17 @@ Things worth knowing before touching any of it:
   `::before`, so a 6px mark can sit inside a 19px touch target; and the
   buttons are **empty elements**, so nothing here needs escaping but the
   attributes. Tapping the picture walks through the versions, a swipe or a
-  drag pulls the next one across, a pip jumps straight to one and the arrow
+  drag dissolves it into the next, a pip jumps straight to one and the arrow
   keys work from the pips — all four through `emShow()`, so the picture and
   the pips cannot disagree.
-- **Every version is its own `<img>`, stacked; switching is a transform and
-  never a new `src`.** It used to be one `<img>` whose `src` was rewritten,
-  and R2 serves art `no-cache, must-revalidate` — so every switch, back to a
-  picture already seen included, cost a round trip to revalidate before
-  anything could be painted, and the `<img>` sat empty in the meantime. Half
-  a second a click, a second for the printable token, and a blink of the
-  card's background each time. Five things hold the replacement up:
+- **Every version is its own `<img>`, stacked in the same place; switching
+  is a fade and never a new `src`.** It used to be one `<img>` whose `src`
+  was rewritten, and R2 serves art `no-cache, must-revalidate` — so every
+  switch, back to a picture already seen included, cost a round trip to
+  revalidate before anything could be painted, and the `<img>` sat empty in
+  the meantime. Half a second a click, a second for the printable token, and
+  a blink of the card's background each time. Three things hold the
+  replacement up:
   - **Only the version on screen carries a `src`**; the rest arrive as
     `data-src` and are fetched on idle (`hydrateEmblems`), or on first touch,
     whichever comes first — so the picture everybody wants is never held up
@@ -1300,28 +1301,26 @@ Things worth knowing before touching any of it:
     its own. That copy used to be hand-duplicated inside a string in
     `char-preview.js`; the frame calls this instead, and `__cpEmb` re-runs it
     after each repaint.
-  - **The versions off screen wait a full width plus a 28px gutter** on
-    either side (`EM_GAP`, matched in styles.css), and the stack clips them
-    with `overflow: clip` — never `visible`, or a page's own icon would
-    widen the document the way a long URL does. The gutter is what keeps the
-    neighbour hidden despite `overflow-clip-margin`, which is there so the
-    icon's drop shadow can still escape.
-  - **With exactly two versions the side is a fact about the gesture**, not
-    about the order — the other picture is one step away in both directions —
-    so `emPaint()` takes it as an argument and every caller says which. Get
-    it wrong and the outgoing icon jumps across the frame instead of leaving
-    the way the finger sent it.
-  - **A picture that changes SIDES is moved without animating it.** Every
-    step round a ring of three or more swaps one of them end for end —
-    walking 1 → 2 leaves version 0 waiting on the wrong side — and animating
-    that sends it the whole way across the frame, through the middle, behind
-    the version arriving. That is what made going round to the first icon
-    look broken, and it was on every step, not only the wrap. Both the place
-    such a picture leaves and the place it lands are off screen (it is always
-    the one on the far side of the drag), so moving it in a single frame
-    cannot be seen. `emPaint()` keeps each `<img>`'s last slot on it as
-    `__emOff` to tell the two cases apart, seeded from the position
-    styles.css gives it so the very first move is right too.
+  - **Nothing ever moves sideways, and nothing is ever clipped.** A drag did
+    carry the pictures across and clip them at the edge of the stack, the way
+    a carousel does — but a carousel is cut off by something a reader can
+    see, a screen edge or the side of a card, and this icon floats in the
+    middle of a parchment panel with no edge anywhere near it. A picture
+    sliced off in open space does not read as "there is more this way", it
+    reads as a page drawn wrong. So a swipe dissolves one picture into the
+    next: the one leaving fades and shrinks by `EM_DIP`, the one arriving
+    grows into place, both centred and whole. `emPaint()` is the whole of it
+    — how solid each picture is *is* the state, and the shrink is derived
+    from that rather than tracked beside it. It also costs the ring nothing:
+    with no left and right there is no shortest-way-round, no side to get
+    right when there are exactly two versions, and no picture having to swap
+    ends mid-step (which, when it was animated, sent it straight through the
+    middle of the frame behind the version arriving).
+- **A flick commits, however short it was.** Dragging past `EM_COMMIT` of
+  the way through keeps the change, but a thumb flicked across a phone
+  covers nowhere near a quarter of the icon before it lifts, so a speed past
+  `EM_FLICK` counts too — measured from the last move rather than averaged
+  over the drag, or a slow hunt ending in a flick would not register.
 - **The stack sets `touch-action: pan-y`**, so a sideways drag is ours and an
   up-and-down one is still the page scrolling; a vertical drag that starts on
   the icon is handed back and its click swallowed. A transparent

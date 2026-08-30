@@ -129,12 +129,22 @@
      whichever comes first), so the pictures nobody may look at never race
      the one everybody does.
 
-     Off-screen versions wait one width plus EM_GAP out on either side and
-     the stack clips them, which is what makes a drag work: the next
-     picture is already there, under the finger, and follows it. */
-  var EM_GAP = 28;      // gutter between versions; matches styles.css
+     Nothing ever moves SIDEWAYS. A drag used to carry the pictures across
+     and clip them at the edge of the stack, the way a carousel does — but a
+     carousel is cut off by something a reader can see, a screen edge or the
+     side of a card, and this icon floats in the middle of a parchment panel
+     with no edge anywhere near it. A picture sliced off in open space does
+     not read as "there is more this way", it reads as a page drawn wrong.
+     So a swipe dissolves one picture into the next instead: the one leaving
+     fades and shrinks a little, the one arriving grows into place, both of
+     them centred and whole. The gesture still follows the finger exactly —
+     how far you have dragged is how far through the change you are — and
+     nothing can be cut off, because nothing ever reaches an edge. */
   var EM_SLOP = 8;      // a pointer that moved less than this was a tap
-  var EM_COMMIT = 0.3;  // ... and a drag past this much of the width switches
+  var EM_SPAN = 0.5;    // dragging half the width is a whole change
+  var EM_COMMIT = 0.5;  // ... and letting go past halfway keeps it
+  var EM_FLICK = 0.35;  // ... as does letting go this fast (px per ms)
+  var EM_DIP = 0.06;    // how far a picture shrinks on its way out
 
   function emImgs(stack) { return stack.querySelectorAll('.emblem'); }
   function emPips(stack) {
@@ -156,54 +166,31 @@
     var st = doc.querySelectorAll('.emblem-stack');
     for (var i = 0; i < st.length; i++) emHydrate(st[i]);
   }
-  /* Place every picture for "version `at` is on screen, dragged `dx` px".
+  /* Paint one moment of the gallery: version `at` on screen, version `to`
+     coming in behind it, and `p` how far the change has got — 0 for "not
+     started", 1 for "done". `to` is -1 when nothing is being pulled in.
 
-     `side` is only ever read when there are exactly TWO versions, and that
-     case is the one the ring cannot answer on its own: the other picture is
-     a single step away in both directions, so which side of the frame it
-     belongs on is a fact about the gesture rather than about the order. It
-     is -1 for "off to the left" and 1 for "off to the right", and every
-     caller says which, because guessing it wrong makes the outgoing picture
-     jump across the frame instead of leaving the way the finger sent it. */
-  function emPaint(stack, at, dx, animate, side) {
+     Every picture is drawn in the same place, so the whole state is how
+     solid each one is; the shrink is tied to that rather than tracked
+     separately, which is what keeps the two from ever disagreeing. */
+  function emPaint(stack, at, to, p, animate) {
     var imgs = emImgs(stack), n = imgs.length;
     if (!n) return;
-    var step = (stack.clientWidth || 1) + EM_GAP;
     for (var i = 0; i < n; i++) {
-      // The shortest way round the ring, so the last version sits to the
-      // LEFT of the first rather than n-1 widths off to its right.
-      var off = i - at;
-      if (off > n / 2) off -= n;
-      else if (off < -n / 2) off += n;
-      if (n === 2 && off !== 0) off = side === -1 ? -1 : 1;
-      var img = imgs[i];
-      /* A picture that has to change SIDES is moved without animating it.
-         Every step round a ring of three or more makes one of them swap
-         ends — walking 1 → 2 leaves version 0 waiting on the wrong side —
-         and animating that sends it the whole way across the frame, right
-         through the middle, behind the version arriving. It is what made
-         going round to the first icon look broken. Both the place it leaves
-         and the place it lands are off screen, so moving it in one frame
-         cannot be seen at all.
-
-         Where it starts from, before this has ever run, is the position
-         styles.css gives it: the one on screen in place, the rest waiting
-         on the right. */
-      var was = img.__emOff;
-      if (was == null) was = img.classList.contains('is-on') ? 0 : 1;
-      img.style.transition = (animate && Math.abs(off - was) <= 1) ? '' : 'none';
-      img.style.transform = 'translateX(' + (off * step + dx) + 'px)';
-      img.__emOff = off;
+      var o = i === at ? 1 - p : (i === to ? p : 0);
+      imgs[i].style.transition = animate ? '' : 'none';
+      imgs[i].style.opacity = o;
+      imgs[i].style.transform = 'scale(' + (1 - EM_DIP * (1 - o)).toFixed(4) + ')';
     }
   }
   /* Show one version — the single door, so the picture and the pips can
      never end up disagreeing about which one is on screen. */
-  function emShow(stack, at, animate, side) {
+  function emShow(stack, at, animate) {
     var imgs = emImgs(stack), n = imgs.length;
     if (!n) return;
     at = ((at % n) + n) % n;
     stack.setAttribute('data-at', at);
-    emPaint(stack, at, 0, animate !== false, side);
+    emPaint(stack, at, -1, 0, animate !== false);
     for (var i = 0; i < n; i++) imgs[i].classList.toggle('is-on', i === at);
     var pips = emPips(stack);
     if (!pips) return;
@@ -254,15 +241,14 @@
       var d = drag;
       drag = null;
       d.stack.classList.remove('is-dragging');
-      var w = d.stack.clientWidth || 1;
-      var fwd = d.dx < 0;   // dragged left, so the NEXT version is coming in
-      if (commit && emImgs(d.stack).length > 1 && Math.abs(d.dx) > w * EM_COMMIT) {
-        // Settled on the new one: the old picture leaves the way it was sent.
-        emShow(d.stack, d.at + (fwd ? 1 : -1), true, fwd ? -1 : 1);
-      } else {
-        // Not far enough: the one being pulled in goes back where it came from.
-        emShow(d.stack, d.at, true, fwd ? 1 : -1);
-      }
+      /* Past halfway it sticks; short of that the picture coming in fades
+         back out and the one you started on comes back. A flick counts as
+         well however short it was, and has to: a thumb flicked across a
+         phone is how this gesture is actually made, and it covers nowhere
+         near a quarter of the icon before it lifts. */
+      var flick = d.v * (d.dx < 0 ? -1 : 1) > EM_FLICK;
+      var took = commit && d.to != null && (d.p >= EM_COMMIT || flick);
+      emShow(d.stack, took ? d.to : d.at, true);
       return d;
     }
 
@@ -273,7 +259,8 @@
       if (emImgs(stack).length < 2) return;
       emHydrate(stack);   // nothing can be dragged in that has not been fetched
       drag = { stack: stack, id: e.pointerId, x: e.clientX, y: e.clientY,
-               dx: 0, at: emAt(stack), lock: '' };
+               dx: 0, p: 0, v: 0, t: e.timeStamp, to: null,
+               at: emAt(stack), lock: '' };
       // Capture, so a finger that leaves the picture still finishes its drag.
       try { stack.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
     });
@@ -299,8 +286,16 @@
           return;
         } else return;
       }
+      // How fast it is going right now, not on average over the whole drag —
+      // a slow hunt that ends in a flick is a flick.
+      var ms = e.timeStamp - drag.t;
+      if (ms > 0) { drag.v = (dx - drag.dx) / ms; drag.t = e.timeStamp; }
       drag.dx = dx;
-      emPaint(drag.stack, drag.at, dx, false, dx > 0 ? -1 : 1);
+      var n = emImgs(drag.stack).length;
+      var span = (drag.stack.clientWidth || 1) * EM_SPAN;
+      drag.p = Math.min(Math.abs(dx) / span, 1);
+      drag.to = ((drag.at + (dx < 0 ? 1 : -1)) % n + n) % n;
+      emPaint(drag.stack, drag.at, drag.to, drag.p, false);
     });
 
     doc.addEventListener('pointerup', function (e) {
@@ -322,7 +317,7 @@
         var bs = group.querySelectorAll('.emblem-ver'), idx = 0;
         for (var i = 0; i < bs.length; i++) if (bs[i] === pip) idx = i;
         emHydrate(st);
-        emShow(st, idx, true, idx >= emAt(st) ? -1 : 1);
+        emShow(st, idx, true);
         return;
       }
       var stack = stackOf(e);
@@ -330,7 +325,7 @@
       // That click was the end of a drag, which has already had its say.
       if (swallow) { swallow = false; return; }
       emHydrate(stack);
-      emShow(stack, emAt(stack) + 1, true, -1);
+      emShow(stack, emAt(stack) + 1, true);
     });
 
     // Arrow keys from the pips — they are the gallery's only tab stop.
@@ -345,18 +340,9 @@
       emHydrate(st);
       var bs = group.querySelectorAll('.emblem-ver'), n = bs.length;
       if (!n) return;
-      var next = e.key === 'ArrowRight';
-      var to = ((emAt(st) + (next ? 1 : -1)) % n + n) % n;
-      emShow(st, to, true, next ? -1 : 1);
+      var to = ((emAt(st) + (e.key === 'ArrowRight' ? 1 : -1)) % n + n) % n;
+      emShow(st, to, true);
       bs[to].focus();
-    });
-
-    /* The stack places its pictures in pixels, so a resize moves where the
-       off-screen ones wait. Nothing is visible until the next drag, but by
-       then it is too late to measure. */
-    if (win) win.addEventListener('resize', function () {
-      var st = doc.querySelectorAll('.emblem-stack');
-      for (var i = 0; i < st.length; i++) emPaint(st[i], emAt(st[i]), 0, false);
     });
   }
   function artVersion(d, key) {
