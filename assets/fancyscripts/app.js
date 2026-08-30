@@ -468,15 +468,14 @@ function exportName(ext) {
   return (parsed.meta.name || 'script').replace(/[^\w\d]+/g, '_') + '_script.' + ext;
 }
 
+const EXPORT_BUTTONS = ['fs-export-share', 'fs-export-png', 'fs-export-pdf'];
 let exporting = false;
 async function withExport(btn, fn) {
   if (exporting) return;
   exporting = true;
   const old = btn.textContent;
   btn.textContent = 'Exporting…';
-  btn.disabled = true;
-  $('fs-export-png').disabled = true;
-  $('fs-export-pdf').disabled = true;
+  for (const id of EXPORT_BUTTONS) $(id).disabled = true;
   try {
     await fn();
   } catch (e) {
@@ -485,22 +484,27 @@ async function withExport(btn, fn) {
   } finally {
     exporting = false;
     btn.textContent = old;
-    btn.disabled = false;
-    $('fs-export-png').disabled = false;
-    $('fs-export-pdf').disabled = false;
+    for (const id of EXPORT_BUTTONS) $(id).disabled = false;
   }
 }
 
+/* Three capture grades:
+   - 'png'   print PNG, pixelRatio 3 (3726 px wide) — lossless, ~30 MB
+   - 'jpeg'  print JPEG, pixelRatio 3 — the PDF page; the sheet is fully
+             opaque, and jsPDF stores an RGBA PNG this size as ~90 MB of
+             raw pixels where the JPEG lands under 10
+   - 'share' JPEG at pixelRatio 1.5 (1863 px wide, ~1 MB) — crisp on any
+             screen and small enough for Discord */
 async function captureSheet(kind) {
   await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
   await document.fonts.ready;
   const node = document.querySelector('#fs-sheet-wrap .script-sheet');
   if (!node) throw new Error('Nothing to export yet.');
-  // print-resolution capture (3726 px wide). The PDF page goes in as JPEG:
-  // the sheet is fully opaque, and jsPDF stores an RGBA PNG this size as
-  // ~90 MB of raw pixels where the JPEG lands under 10 MB.
   if (kind === 'jpeg') {
     return window.htmlToImage.toJpeg(node, { pixelRatio: 3, cacheBust: false, quality: 0.92 });
+  }
+  if (kind === 'share') {
+    return window.htmlToImage.toJpeg(node, { pixelRatio: 1.5, cacheBust: false, quality: 0.85 });
   }
   return window.htmlToImage.toPng(node, { pixelRatio: 3, cacheBust: false });
 }
@@ -514,6 +518,10 @@ function download(href, name) {
 
 async function exportPNG() {
   download(await captureSheet('png'), exportName('png'));
+}
+
+async function exportShare() {
+  download(await captureSheet('share'), exportName('jpg'));
 }
 
 function loadImage(src) {
@@ -662,6 +670,7 @@ async function boot() {
   $('fs-sample-tb').addEventListener('click', () => loadJson(SAMPLE_TROUBLE_BREWING, 'Trouble Brewing'));
   $('fs-sample-hh').addEventListener('click', () => loadJson(SAMPLE_HAROLD_HOLT, "Harold Holt's Revenge"));
 
+  $('fs-export-share').addEventListener('click', (e) => withExport(e.target, exportShare));
   $('fs-export-png').addEventListener('click', (e) => withExport(e.target, exportPNG));
   $('fs-export-pdf').addEventListener('click', (e) => withExport(e.target, exportPDF));
 

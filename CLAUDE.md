@@ -2121,7 +2121,10 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   canvas capture is never tainted; the wiki's own art is deliberately NOT
   proxied (same-origin can't taint, and the proxy can't see draft art).
 - **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
-  vendor/, lazy-loaded on first export). The PDF pages are embedded as
+  vendor/, lazy-loaded on first export). Three grades: Share Image (JPEG at
+  pixelRatio 1.5, ~1 MB — the print PNG is ~30 MB, which no one can post to
+  Discord), Print PNG (lossless, pixelRatio 3) and Print PDF.
+  The PDF pages are embedded as
   **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
   PDF came out 90 MB; the sheet and the flattened back cover as JPEG land
   around 6. The back cover (damask + canvas-drawn title) is composed into one
