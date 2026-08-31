@@ -988,7 +988,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         entry.logo = logo;   // '' clears it — the whole object replaces the old one
         if (theme) entry.theme = theme;
         return apiSaveScript(entry);
-      }).then(function(){
+      }).then(function(res){
         if (headerDataURL){ existingHeader = 'scripts/' + slug + '.png'; headerDataURL = null; }
         if (logoDataURL){ existingLogo = 'scripts/' + slug + '-logo.png'; logoDataURL = null; }
         if (bgDataURL){
@@ -1014,6 +1014,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           ? ' <em>A page already used <code>/s/' + esc(wanted) + '</code>, so this one has its own address. ' +
             'If you meant to change a script you already made, open it from <a href="account">your account</a>.</em>'
           : '';
+        // Characters this set files (waterfallAddresses in the Worker) took
+        // their address from it, so a membership change moves their URLs. They
+        // are somebody's pages and they moved without being opened, so the
+        // save says how many; the old addresses 301, so nothing breaks.
+        var movedChars = res && res.movedCharacters;
+        if (movedChars) note += ' <em>' + movedChars + ' character page' +
+          (movedChars === 1 ? '' : 's') + ' changed address to match. Their old links still work.</em>';
         if (isDraft) {
           pubStatus('ok', '✓ Draft saved (not public). <a href="' + url + '" target="_blank">Preview →</a> or manage it from <a href="account">your account</a>. Hit <strong>Publish to Wiki</strong> when it’s ready.' + note);
         } else {

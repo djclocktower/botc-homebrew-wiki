@@ -3034,6 +3034,88 @@ async function setCharAddress(env, uid, address) {
   return true;
 }
 
+// The other half of "moving a character into a collection moves its URL".
+//
+// A character with no "Appears in" of its own is filed under the collection —
+// or the script — whose roster lists it (characterQualifier step 4). But the
+// address is stored on the CHARACTER row, and it was only ever recomputed when
+// THAT page was saved. Membership is edited from the other side: adding a
+// character to a collection writes the collection row and never touches the
+// character, so the character kept whatever address it already had and the
+// wiki disagreed with itself — the page said "Appears in: Tales from Tir-Far's
+// Archive" while its URL still read /c/tir-far-thoinn/zeitgeist. Six of that
+// collection's fifteen characters were in that state.
+//
+// `before` and `after` are the set's roster as it was and as it now is. The
+// union is what may have to move, because LEAVING a set re-files a character
+// exactly as joining one does — and passing the same list twice is how a
+// publish or unpublish asks, since there the roster is unchanged and it is the
+// set's own status that moved.
+//
+// A character with any "Appears in" text of its own is skipped before a single
+// query: that text wins at steps 1-3 and never reaches the membership step, so
+// no membership change can move it. That is what keeps a save cheap on a
+// collection with hundreds of members — the scan is free and only a page that
+// actually moves costs anything.
+const SET_WATERFALL_MAX = 50;   // moves per save; the admin backfill does the wiki
+async function waterfallAddresses(env, before, after) {
+  const slugs = [...new Set(
+    [...(Array.isArray(before) ? before : []), ...(Array.isArray(after) ? after : [])]
+      // An `off-` slug is an official character on a script's roster: no page
+      // here, and nothing to file.
+      .filter(s => typeof s === 'string' && s && !s.startsWith('off-'))
+  )];
+  if (!slugs.length) return 0;
+  await ensureUrlSlugColumn(env);
+  const rows = [];
+  // Asked in chunks: a collection holds up to 500 slugs, and that is 500 bind
+  // parameters in one statement.
+  for (let i = 0; i < slugs.length; i += 40) {
+    const chunk = slugs.slice(i, i + 40);
+    try {
+      const { results } = await env.DB.prepare(
+        `SELECT slug, url_slug, name, creator, appears_in, owner_id FROM characters
+          WHERE slug IN (${chunk.map(() => '?').join(',')}) AND status IS NOT 'deleted'`
+      ).bind(...chunk).all();
+      for (const r of results || []) rows.push(r);
+    } catch { /* a chunk that fails leaves those pages where they are */ }
+  }
+  let moved = 0;
+  for (const r of rows) {
+    if (String(r.appears_in || '').split(',').some(s => s.trim())) continue;
+    const current = r.url_slug ? String(r.url_slug) : '';
+    try {
+      // Recomputed exactly as the character's own save would recompute it —
+      // one rule, asked from the other side. A settled page costs no query and
+      // a moved one leaves a 301 behind, so nobody's link breaks.
+      const address = await characterAddress(
+        env, r.slug,
+        { slug: r.slug, name: r.name, appearsIn: '', creator: r.creator },
+        r.owner_id, current
+      );
+      if (address && address !== current && await setCharAddress(env, r.slug, address)) moved++;
+    } catch { /* never let a re-file break the save it follows */ }
+    if (moved >= SET_WATERFALL_MAX) break;
+  }
+  // Written straight to the character rows, so the feeds and the in-isolate
+  // caches have to be told (gotcha 13). The save's own bump happened before
+  // any of this ran.
+  if (moved) await bumpContentVersion(env);
+  return moved;
+}
+
+// The roster a set is filed under, which is NOT its membership. A collection
+// files by `include[]` alone — `match[]` resolves membership from the
+// character's own "Appears in", and a character with one of those never
+// reaches the membership step at all.
+function setRosterSlugs(type, data) {
+  if (!data) return [];
+  const list = type === 'collection' ? data.include
+             : type === 'script'     ? data.characters
+             : null;   // a character is filed, never filing
+  return Array.isArray(list) ? list : [];
+}
+
 // Resolve whatever followed /c/ to a character row, and say where that page
 // should canonically be read. Callers 301 when the reader arrived elsewhere.
 async function resolveCharacterPath(env, key) {
@@ -8797,6 +8879,12 @@ export default {
              display_name=excluded.display_name, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(pkSlug, c.displayName, sess.userId, JSON.stringify(c), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'collection', pkSlug, c.displayName);
+        // A character listed here is filed under this collection, so a change
+        // to that list is an address change on the character pages — made from
+        // the set's side, where nothing used to recompute it.
+        const collMoved = await waterfallAddresses(
+          env, setRosterSlugs('collection', storedColl), setRosterSlugs('collection', c)
+        );
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'collection', slug: pkSlug,
@@ -8810,6 +8898,7 @@ export default {
           }));
         }
         return jsonResponse({ ok: true, slug: pkSlug, id: c.id, status,
+                              movedCharacters: collMoved,
                               editors: c.editors || [], editorsUnknown });
       }
 
@@ -8901,6 +8990,11 @@ export default {
              name=excluded.name, author=excluded.author, data=excluded.data, status=excluded.status, updated_at=datetime('now')`
         ).bind(s.slug, s.name || s.slug, s.author || null, sess.userId, JSON.stringify(s), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'script', s.slug, s.name || s.slug);
+        // A roster files its characters the same way a collection's include[]
+        // does, one step further down characterQualifier.
+        const scriptMoved = await waterfallAddresses(
+          env, setRosterSlugs('script', storedScript), setRosterSlugs('script', s)
+        );
         if (existing && perm !== 'owner') {
           ctx.waitUntil(notifyPageEdit(env, {
             fromId: sess.userId, ownerId: existing.owner_id, type: 'script', slug: s.slug,
@@ -8914,6 +9008,7 @@ export default {
           }));
         }
         return jsonResponse({ ok: true, slug: s.slug, status,
+                              movedCharacters: scriptMoved,
                               editors: s.editors || [], editorsUnknown });
       }
 
@@ -9065,7 +9160,12 @@ export default {
             .bind(status, row.slug).run();
         }
         await logActivity(env, sess, status === 'published' ? 'publish' : 'unpublish', type, row.slug, row.name);
-        return jsonResponse({ ok: true, slug: row.slug, status });
+        // Only a PUBLISHED set files anything, so publishing or unpublishing
+        // one re-files its characters even though the roster did not change.
+        // Passing the same list as before and after is how that is asked.
+        const pubRoster = setRosterSlugs(type, pubDataAll);
+        const pubMoved = pubRoster.length ? await waterfallAddresses(env, pubRoster, pubRoster) : 0;
+        return jsonResponse({ ok: true, slug: row.slug, status, movedCharacters: pubMoved });
       }
 
       // ---- delete a page (SOFT delete) ----

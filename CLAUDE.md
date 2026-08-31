@@ -1475,6 +1475,49 @@ with a 301 left behind. A save that changed neither the name nor the set keeps
 the address it has, numbered suffix included, so nothing shuffles when a sibling
 moves away.
 
+### Re-filing from the set's side (`waterfallAddresses`)
+
+Steps 4-5 are decided by a list that lives on the **other** page, and the
+address is stored on the character row — so for a long time only saving the
+CHARACTER applied them. Adding a character to a collection writes the
+collection and never touches the character, which left the wiki disagreeing
+with itself: Zeitgeist's page said "Appears in: Tales from Tir-Far's Archive"
+while its URL still read `/c/tir-far-thoinn/zeitgeist`. Sixteen pages across
+three collections were in that state, and nothing but the admin backfill would
+ever have fixed them.
+
+So saving a **collection** (`include[]`), saving a **script** (its roster) and
+publishing or unpublishing either now re-file the characters involved, through
+`waterfallAddresses()` in worker.js. Five things hold it up:
+
+- **It is the same rule, asked from the other side.** It calls
+  `characterAddress()`, exactly what the character's own save calls, so the two
+  can never reach different answers. Nothing new decides anything.
+- **The union of before and after**, because leaving a set re-files a character
+  just as joining one does. A publish or unpublish passes the same list twice:
+  the roster did not change, the set's *status* did, and only a published set
+  files anything.
+- **A character with any "Appears in" text of its own is skipped before a
+  single query.** That text wins at steps 1-3 and never reaches the membership
+  step, so no membership change can move it. That is what keeps a save cheap on
+  a collection with hundreds of members: the scan is free and only a page that
+  actually moves costs a query.
+- **Every move leaves a 301**, so no link anywhere breaks — which is what makes
+  this safe to do to a page nobody opened. There is deliberately **no ownership
+  check**: a collection can list anybody's characters, and the address rule has
+  never had one either, so restricting this would only delay what the
+  character's next save does anyway. The editors say how many pages moved
+  rather than moving them silently.
+- **Capped at `SET_WATERFALL_MAX` (50) moves per save**, and it bumps
+  `content_version` itself when it moved anything (gotcha 13) — the save's own
+  bump happened before any of it ran. The admin backfill is still the way to do
+  the whole wiki at once.
+
+`setRosterSlugs()` is the one answer to "what does this set file": a collection
+files by `include[]` **alone** (`match[]` resolves membership from the
+character's own "Appears in", and a character with one of those never reaches
+the membership step), a script by its roster, and a character files nothing.
+
 ### Retroactive nesting
 
 `POST /api/admin/nest-urls` ({dryRun:true} first; dashboard card "Nested
