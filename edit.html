@@ -433,6 +433,7 @@
 
       <button type="button" class="btn btn-save" id="save">Save Changes</button>
       <button type="button" class="btn btn-ghost" id="save-publish" style="display:none" title="Save your changes and make this page public">Save &amp; Publish</button>
+      <button type="button" class="btn btn-ghost" id="snapshot" title="One picture of the whole almanac entry, to share or print">Snapshot</button>
       <button type="button" class="btn btn-del" id="delete-char" style="display:none" title="Remove this character from the site (an admin can restore it)">Delete Character</button>
       <div id="status"></div>
     </div>
@@ -452,6 +453,8 @@
   <script src="assets/creators.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
+  <script src="assets/qr.js"></script>
+  <script src="assets/char-snapshot.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
@@ -468,6 +471,9 @@
   <script>
     var SITE_ROOT  = new URL('.', location.href).href;
     var ART_BASE   = 'https://botchomebrew.wiki/assets/art/';
+    // Where a shared picture has to point, whatever hostname this editor was
+    // opened on (Cloudflare answers on the apex, www and workers.dev alike).
+    var CANONICAL_ORIGIN = 'https://botchomebrew.wiki/';
     var $ = function(id){ return document.getElementById(id); };
     // Official character jinx icons come from roles.json (same source the Token
     // Tool uses); load it so the preview matches the published /c/ page.
@@ -605,6 +611,7 @@
 
     var originalSlug  = new URLSearchParams(location.search).get('c') || '';
     var originalEntry = null;
+    var pageIdentity  = '';   // the row's PK, for the snapshot's QR square
     var loadedUpdatedAt = null;
     var artChanged    = false;
     var artDataURL    = null;
@@ -1768,6 +1775,20 @@
     $('save').addEventListener('click', function(){ saveCharacter(); });
     $('save-publish').addEventListener('click', function(){ saveCharacter('published'); });
 
+    // ── snapshot: the whole almanac entry as one picture ──
+    // Same data the live preview is painted from, so the two cannot disagree.
+    $('snapshot').addEventListener('click', function(){
+      if (!window.CharSnapshot) return;
+      var d = gather();
+      var src = artDataURL || (originalEntry ? SITE_ROOT + 'assets/' + originalEntry.art : '');
+      var id = pageIdentity || originalSlug;
+      window.CharSnapshot.open(d, {
+        artSrc: src,
+        siteRoot: SITE_ROOT,
+        pageUrl: id ? CANONICAL_ORIGIN + 'c/' + id : ''
+      });
+    });
+
     // ── delete: soft-delete this character (recoverable by an admin) ──
     $('delete-char').addEventListener('click', function(){
       var name = $('name') && $('name').value ? $('name').value : originalSlug;
@@ -1820,6 +1841,9 @@
         })
         .then(function(res){
           var entry = res.data;
+          // The IDENTITY, not the address: /c/{identity} 301s to wherever the
+          // page lives now, so a QR built on it survives every rename.
+          pageIdentity = res.slug || originalSlug;
           currentStatus = res.status || 'published';
           // Stamp of the version this editor was opened on. Posted back with
           // the save so the Worker can refuse a write based on a stale copy

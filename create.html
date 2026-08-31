@@ -427,6 +427,7 @@
 
       <button type="button" class="btn btn-pub" id="publish">Publish to Wiki</button>
       <button type="button" class="btn btn-ghost" id="save-draft" title="Saved privately to your account — not visible on the wiki until you publish">Save as Draft</button>
+      <button type="button" class="btn btn-ghost" id="snapshot" title="One picture of the whole almanac entry, to share or print">Snapshot</button>
       <div id="status"></div>
     </div>
 
@@ -445,6 +446,8 @@
   <script src="assets/creators.js"></script>
   <script src="assets/render-wiki.js"></script>
   <script src="assets/render.js"></script>
+  <script src="assets/qr.js"></script>
+  <script src="assets/char-snapshot.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
@@ -1249,6 +1252,19 @@
     }
     $('publish').addEventListener('click', function () { submitCharacter('published'); });
     $('save-draft').addEventListener('click', function () { submitCharacter('draft'); });
+
+    // ── snapshot: the whole almanac entry as one picture ──
+    // Same data the live preview is painted from. A character that has never
+    // been saved has no page to point a QR square at, so it goes without one
+    // until it has been published and is opened in the editor.
+    $('snapshot').addEventListener('click', function () {
+      if (!window.CharSnapshot) return;
+      var d = gather();
+      window.CharSnapshot.open(d, {
+        artSrc: artDataURL || importedImage || '',
+        siteRoot: SITE_ROOT
+      });
+    });
 
     addJinx();
     update();
