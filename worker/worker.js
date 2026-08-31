@@ -5057,6 +5057,15 @@ export default {
           headers.set('X-Content-Type-Options', 'nosniff');
           headers.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
           headers.set('Cache-Control', 'no-cache, must-revalidate');
+          // The official script tool (script.bloodontheclocktower.com) embeds
+          // a script's character icons into its print preview and PNG/PDF
+          // sheet exports by fetch()ing each image URL cross-origin. Without
+          // this header that fetch is refused by the browser, so every
+          // character hosted here printed as the generic placeholder while
+          // the same script looked fine on screen (plain <img> needs no
+          // CORS). These are public images — the same rule is in _headers
+          // for the committed copies.
+          headers.set('Access-Control-Allow-Origin', '*');
           if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
           return new Response(obj.body, { headers });
         }

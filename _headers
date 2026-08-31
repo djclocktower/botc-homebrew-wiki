@@ -4,6 +4,16 @@
 # /assets/tokens/* are served by the Worker (R2 first), which sets its own
 # Cache-Control — rules here only apply to files served from the repo.
 
+# Everything under /assets/ is public, and outside tools read it cross-origin:
+# the official script tool (script.bloodontheclocktower.com) fetch()es a
+# script's character icons to embed them in its print preview and PNG/PDF
+# sheet exports, which the browser refuses without this header — wiki-hosted
+# characters printed as generic placeholders while looking fine on screen.
+# The Worker sets the same header on the R2-served image prefixes; this rule
+# covers the committed copies (assets/icons/, assets/art/, logo_skull.png …).
+/assets/*
+  Access-Control-Allow-Origin: *
+
 # HTML / CSS / JS: always revalidate so edits show on a normal refresh
 /*.html
   Cache-Control: no-cache, must-revalidate

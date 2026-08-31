@@ -2550,6 +2550,12 @@ seeded with whole collections whose characters all arrived unowned.
   Later rules override earlier ones — keep the generic rules at the top.
 - Worker responses: JSON endpoints and SSR pages send `no-store`; R2 images
   send `no-cache, must-revalidate` (+ ETag) so replaced art shows immediately.
+- Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
+  `_headers` blanket rule for committed files, and the Worker's R2 image route
+  for uploads. The official script tool fetch()es character icons cross-origin
+  to embed them in its print preview and PNG/PDF sheet exports; without the
+  header, wiki-hosted characters print as generic placeholders while looking
+  fine on screen. Keep both halves in step.
 
 ## Verifying changes (no local server needed)
 
