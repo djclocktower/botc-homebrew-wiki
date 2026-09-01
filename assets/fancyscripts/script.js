@@ -121,7 +121,11 @@ export const DEFAULT_OPTIONS = {
    2480×3508): the pattern's base colour for the recolour ratios, and the
    title treatment — gold fill rgb(190,168,129), 3px outside black stroke,
    black drop shadow cast downward — scaled to the sheet's 1242px space. */
-export const BACK_BASE = { hex: '#0b3217', h: 137.1, s: 0.652, l: 0.100 };
+/* The lightness here is the template's dark green ×g, the pattern gain the
+   CAL constants in back.js were divided by — so a picked back colour paints
+   true to its swatch (the pattern's midtone IS the picked colour) and the
+   default still reproduces the template exactly. See back.js. */
+export const BACK_BASE = { hex: '#1d893c', h: 137.1, s: 0.652, l: 0.325 };
 
 export const DEFAULT_BACK = {
   bgColor: BACK_BASE.hex,

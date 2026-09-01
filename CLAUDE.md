@@ -2134,14 +2134,28 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   proxied (same-origin can't taint, and the proxy can't see draft art).
 - **The Back Cover tab** is the owner's PSD template ("Clockback", A4
   2480×3508) rebuilt as a live editor. The background is BUILT per render,
-  not baked: a grayscale pattern tile (`art/back-pattern.png` — a
-  high-passed, 2×2-MIRRORED block cut from the template's damask, seamless
-  by construction; mirroring, because the damask has no clean repeat period
-  to cut on) is tiled at the chosen **Pattern size/rotation**, colorized
+  not baked: a grayscale pattern tile (`art/back-pattern2.png` — a
+  period-aligned 2134×1067 block of the owner's high-res swirl texture,
+  illumination-flattened and wrap-blended at the seams; the texture's
+  half-drop lattice repeats every 1067px, which is what makes a non-mirrored
+  seamless cut possible — its predecessor, a soft resample of the template's
+  own damask, is in git history) is tiled at the chosen
+  **Pattern size/rotation**, colorized
   per pixel in HSL — the `CAL` constants in back.js were REGRESSED from
-  the template crop, so the default colour reproduces its look — then
-  multiplied by `art/back-vignette.png` (the template's glow/vignette as a
-  luminance ratio, encoded 0..2) raised to the **Border shading** strength.
+  the template crop, then NORMALIZED so `lA + lB·L_avg = 1` for the tile:
+  a picked colour paints true to its swatch (the pattern midtone IS the
+  picked lightness) instead of ×3ing into white, with the regression gain
+  folded into `BACK_BASE`'s lightness so the default look is unchanged.
+  Rebaking the tile changes `L_avg` — re-do that normalization. Then
+  multiplied by `art/back-vignette2.png` (the template's glow/vignette as a
+  luminance ratio, encoded 0..2, glow peak = 1.0) raised to the **Border
+  shading** strength. The vignette map is BLURRED CLEAN of the template's
+  own damask: the first cut carried it, which painted a blurry second
+  pattern layer over the tile — the pattern must come from the tile alone.
+  **The back's colour seeds from the sidebar ONCE**: the first time the
+  back is actually shown (tabbing over, or a PDF export rendering it
+  unseen), `seedBackColor()` in app.js copies `sidebarColor` into
+  `back.bgColor`; later sidebar changes never touch the back again.
   **Brightness/Saturation** multiply in the same pass, and the background
   **Gradient** swaps the single target colour for a 256-step two-colour
   ramp along an angle. One cached async canvas job, keyed on all of it;

@@ -6,13 +6,17 @@
  * stroke, drop shadow — one word to a line at varying sizes.
  *
  * The background is BUILT, not baked: a grayscale pattern tile
- * (art/back-pattern.png — a high-passed, 2×2-mirrored block cut from the
- * template's damask, seamless by construction) is tiled at the chosen scale
+ * (art/back-pattern2.png — a period-aligned block cut from the owner's
+ * high-res swirl texture, illumination-flattened and wrap-blended at the
+ * seams so it tiles cleanly) is tiled at the chosen scale
  * and rotation, colorized per pixel in HSL (the CAL constants below were
  * regressed from the template so the default colour reproduces its look),
  * and multiplied by the template's glow/vignette map
- * (art/back-vignette.png, luminance ratio encoded 0..2) raised to the
- * Border-shading strength. Brightness/saturation multiply in the same pass,
+ * (art/back-vignette2.png, luminance ratio encoded 0..2, glow peak = 1.0)
+ * raised to the Border-shading strength. The map is BLURRED CLEAN of the
+ * template's own damask — the first cut carried it, which painted a soft
+ * second pattern layer over the crisp tile and read as "blurry"; the
+ * pattern must come from the tile alone. Brightness/saturation multiply in the same pass,
  * and a background gradient swaps the single target colour for a 256-step
  * ramp between two picked colours along an angle. One async cached canvas
  * job; renderBack() shows the newest canvas it has and asks for a re-render
@@ -43,13 +47,22 @@ export const BACK_H = 1656;
 const SRC_W = 2480;
 const SRC_H = 3307;
 
-/* the tile asset is a 1600px resample of a 2400px block cut at the
-   template's native scale — ×1.5 draws the pattern at template size */
-const TILE_BASE = 1.5;
+/* the tile asset is 2134×1067 — two motif periods wide, one tall, kept at
+   the source texture's full resolution (period 1067px). ×0.75 draws a motif
+   at ~800 canvas px, so patScale 1 is a slight DOWNscale and stays crisp */
+const TILE_BASE = 0.75;
 
 /* regressed from the template (see CLAUDE.md): with the default colour,
-   shading 1, brightness/saturation 1, the build reproduces its look */
-const CAL = { lA: 3.033, lB: 0.489, sC: 0.955, sD: -0.038 };
+   shading 1, brightness/saturation 1, the build reproduces its look.
+   The lightness pair is NORMALIZED so lA + lB·L_avg = 1 for this tile
+   (L_avg 0.447): a picked colour then paints true to its swatch — the
+   pattern's midtone in the neutral vignette zone IS the picked lightness —
+   instead of ×3ing it into white the moment somebody picks a mid colour
+   (the raw regression was lA 3.033, lB 0.489 against a 0.100-lightness
+   default; that gain now lives in BACK_BASE's lightness instead, so the
+   default render is unchanged). Rebaking the tile changes L_avg — re-do
+   the normalization then. */
+const CAL = { lA: 0.9327, lB: 0.1504, sC: 0.955, sD: -0.038 };
 
 const px = (v) => v + 'px';
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -90,7 +103,7 @@ function loadImage(src) {
 function ensureImages() {
   if (bk.loading) return;
   bk.loading = true;
-  Promise.all([loadImage(ART + 'back-pattern.png'), loadImage(ART + 'back-vignette.png')])
+  Promise.all([loadImage(ART + 'back-pattern2.png'), loadImage(ART + 'back-vignette2.png')])
     .then(([p, v]) => {
       bk.pattern = p; bk.vignette = v; bk.ready = true;
       pumpBack();

@@ -126,9 +126,24 @@ function render() {
   fitPreview();
 }
 
+/* One-time colour handoff: the first time the back cover is actually shown
+   (tabbing over — or a PDF export rendering it unseen), its background
+   colour is copied from the sidebar ribbon so the two sides match. Once
+   only: later sidebar changes never overwrite the back colour again. */
+let backColorSeeded = false;
+function seedBackColor() {
+  if (backColorSeeded) return;
+  backColorSeeded = true;
+  if (options.sidebarColor && options.sidebarColor !== options.back.bgColor) {
+    options.back.bgColor = options.sidebarColor;
+    buildBackControls(); // the picker has to show the colour it now holds
+  }
+}
+
 /* switch the preview side and show that side's controls */
 function applyView(v) {
   view = v;
+  if (v === 'back') seedBackColor();
   $('fs-tab-front').classList.toggle('on', v === 'front');
   $('fs-tab-back').classList.toggle('on', v === 'back');
   document.querySelectorAll('.fs-front-card').forEach((el) => { el.hidden = v !== 'front'; });
@@ -570,6 +585,7 @@ function waitBackReady() {
 }
 
 async function withSideNode(side, fn) {
+  if (side === 'back') seedBackColor(); // a PDF export may render it first
   const live = document.querySelector(
     side === 'back' ? '#fs-sheet-wrap .script-back' : '#fs-sheet-wrap .script-sheet');
   if (live && side === 'front') return fn(live);
