@@ -819,6 +819,7 @@
               <option value="unstarlight">uncurata (old: unstarlight)</option>
               <option>protect</option><option>unprotect</option>
               <option value="tags-open">tag editing opened</option>
+              <option value="open-editing">editing opened (all but the ability)</option>
               <option>assign-owner</option><option>clean-refs</option>
               <option value="bulk-*">any bulk action</option>
             </optgroup>
@@ -943,6 +944,20 @@
         </div>
         <div id="tgo-list"></div>
         <div class="toast" id="tgo-toast"></div>
+      </section>
+      <section class="panel">
+        <h3>Open editing on unowned pages <span class="count-pill" id="oed-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Sets every character with <strong>no owner</strong>, or owned by the import account named below, to <em>anyone with an account can edit, except the ability</em>. These pages have no creator to open them up, so the members look after them; the ability text stays locked. Members of the collections listed are left exactly as they are. Pages already on this mode are skipped, so it is safe to re-run. Scan first.
+        </p>
+        <div class="act-filters">
+          <input type="text" id="oed-user" placeholder="import account" value="admin">
+          <input type="text" id="oed-except" placeholder="collections to skip, comma-separated" value="ravenswood-chronicle" style="min-width:16em">
+          <button type="button" class="small-btn" id="oed-scan">Scan</button>
+          <button type="button" class="small-btn alt" id="oed-go" style="display:none">Open editing</button>
+        </div>
+        <div id="oed-list"></div>
+        <div class="toast" id="oed-toast"></div>
       </section>
       <section class="panel">
         <h3>Jinx health <span class="count-pill" id="jxh-count"></span></h3>
@@ -1940,6 +1955,73 @@
         if (!d.ok) { setToast('tgo-toast', false, d.error || 'Failed.'); return; }
         setToast('tgo-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' opened to tag editing.');
         $('tgo-scan').click();
+        loadActivity(true);
+      });
+    });
+
+    /* ---- open editing (all but the ability) on unowned / import-owned characters ---- */
+    function oedBody(dryRun) {
+      return {
+        username: $('oed-user').value.trim(),
+        except: $('oed-except').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean),
+        dryRun: dryRun
+      };
+    }
+    function oedSetsNote(d) {
+      return (d.exceptedSets || []).map(function (x) {
+        return x.found
+          ? esc(x.name || x.key) + ' (' + x.members + ' character' + (x.members === 1 ? '' : 's') + ')'
+          : '<strong>' + esc(x.key) + '</strong> \u2014 no such collection';
+      }).join(', ');
+    }
+    $('oed-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('oed-list').innerHTML = '<p class="note">Scanning\u2026</p>';
+      postJSON('/api/admin/open-editing', oedBody(true)).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { $('oed-list').innerHTML = '<p class="note">' + esc(d.error || 'Scan failed.') + '</p>'; $('oed-go').style.display = 'none'; return; }
+        $('oed-count').textContent = d.count ? d.count + ' to open' : '';
+        var who = d.username ? 'owned by ' + esc(d.username) : 'with no owner';
+        var sets = oedSetsNote(d);
+        var tail = (d.alreadyOpen ? ' ' + d.alreadyOpen + ' already on this mode.' : '') +
+          (d.excepted ? ' ' + d.excepted + ' skipped as members of: ' + sets + '.' : (sets ? ' Skipping: ' + sets + '.' : '')) +
+          ((d.skipped && d.skipped.length)
+            ? ' <strong>' + d.skipped.length + '</strong> row' + (d.skipped.length === 1 ? '' : 's') +
+              ' could not be read and are skipped: ' + esc(d.skipped.slice(0, 20).join(', ')) + '.'
+            : '');
+        if (!d.count) {
+          $('oed-list').innerHTML = '<p class="note">' + d.scanned + ' character' + (d.scanned === 1 ? '' : 's') +
+            ' with no owner or ' + who + '.' + tail + ' Nothing to open.</p>';
+          $('oed-go').style.display = 'none';
+          return;
+        }
+        $('oed-list').innerHTML =
+          '<p class="note"><strong>' + d.count + '</strong> of the ' + d.scanned + ' character' + (d.scanned === 1 ? '' : 's') +
+          ' with no owner or ' + who + ' would be opened to editing (all but the ability): ' +
+          d.unowned + ' unowned, ' + d.adminOwned + ' ' + (d.username ? esc(d.username) + '-owned' : 'owned') + '.' +
+          (d.wasAll ? ' ' + d.wasAll + ' currently fully open (the ability will lock).' : '') +
+          (d.wasOther ? ' ' + d.wasOther + ' currently on another mode.' : '') +
+          tail + '</p>' +
+          d.pages.map(function(p){
+            return '<div class="adm-row"><span class="grow"><a href="' + esc(pubUrl('character', p.slug)) +
+              '" target="_blank">' + esc(p.name || p.slug) + '</a></span>' +
+              (p.was ? '<span class="note">' + esc(p.was) + '</span>' : '') + '</div>';
+          }).join('') +
+          (d.count > d.pages.length ? '<p class="note">(showing the first ' + d.pages.length + ')</p>' : '');
+        $('oed-go').style.display = '';
+      });
+    });
+    $('oed-go').addEventListener('click', function(){
+      if (!confirm('Let anyone with an account edit every unowned or ' + ($('oed-user').value.trim() || 'admin') +
+        '-owned character, except its ability?\n\nMembers of the listed collections are left alone. You can change any page from its editor afterwards.')) return;
+      var btn = this; btn.disabled = true;
+      postJSON('/api/admin/open-editing', oedBody(false)).then(function(res){
+        btn.disabled = false;
+        var d = res.body || {};
+        if (!d.ok) { setToast('oed-toast', false, d.error || 'Failed.'); return; }
+        setToast('oed-toast', true, d.count + ' page' + (d.count === 1 ? '' : 's') + ' opened to editing (all but the ability).');
+        $('oed-scan').click();
         loadActivity(true);
       });
     });

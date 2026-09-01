@@ -932,17 +932,75 @@ A page belongs to whoever made it. Its creator may open it to other people,
 stored on the page's `data` as `publicEdit`:
 
 - **`'all'`**: anyone with an account may edit the page.
+- **`'all-but-ability'`**: the same, except the **ability text**. Characters
+  only. The save handler re-pins `ability` from the stored row for this
+  mode, and `customJson` with it (a custom JSON replaces the page's JSON box
+  outright, so it would be a second way to rewrite the ability). The editor
+  locks both boxes and says so. On a script or collection
+  `sanitizePublicEdit(v, type)` stores it as `'all'`.
 - **`'tags'`**: anyone with an account may change the tags and nothing else.
   Characters only; on a script or collection it is treated as closed.
+- **`'closed'`** (`PUBLIC_EDIT_CLOSED`): the owner chose "Only me". Stored as
+  a word rather than as nothing so the choice is remembered — see the
+  default below. Reads as closed everywhere (`publicEditMode()` returns `''`
+  for it). Characters only; a script or collection stores nothing.
 - **`'suggest'`**: anyone with an account may PROPOSE a version for the creator
   to approve. Not write access: every save handler asks `permCanWrite()`, and
   'suggest' is not a writing mode, so it can never be mistaken for an edit.
 - **`'approved'`**: only the accounts the creator NAMED may edit — see below.
 
 `editPermission(env, sess, type, row)` is the single answer to "what may this
-session do to this row": `'owner'`, `'approved'`, `'all'`, `'tags'` or `''`.
-Never open whatever the setting says: a **draft** (except approved editing), an
-**admin-protected** page, and a page whose creator never opted in.
+session do to this row": `'owner'`, `'approved'`, `'all'`,
+`'all-but-ability'`, `'tags'` or `''`.
+Never open whatever the setting says: a **draft** (except approved editing) and
+an **admin-protected** page.
+
+### The default: tags open until the owner tags the page
+
+A **character** whose owner chose nothing is not closed. Its tags are open to
+anyone with an account (`'tags'`, exactly as if the owner had picked it) for
+as long as the page has no tags of the owner's own. `defaultTagsOpen(type, d)`
+in worker.js is the whole rule and nothing is stored for it:
+
+- no stored mode, and not `'closed'`;
+- and the page has no tags, **or** its tags are marked `tagsBy: 'guest'`.
+
+It ends the moment the owner acts: an owner save **with tags** (the save
+handler deletes `tagsBy` on any owner save, so tags the owner saved are the
+owner's), or any explicit choice in the "Who can edit" select, "Only me"
+included (that is what `'closed'` exists for). A broader mode (`'all'`,
+`'all-but-ability'`) already includes the tags. Tags supplied by a guest —
+under the default or under `'tags'` — are stamped `tagsBy: 'guest'` so a
+stranger tagging the page does not shut it behind themselves; an admin saving
+somebody else's page counts as a guest there. A page carrying tags and no
+mark is taken as tagged by its owner, which is every page tagged before the
+rule existed. `tagsBy` is in `CARD_DROP_FIELDS`.
+
+`effectivePublicEdit(type, d)` is the mode in force (stored, or the default),
+which is what `/api/page-history` reports and history.html prints. `/api/page`
+adds `editDefault: true` when a guest's `'tags'` came from the default, so
+edit.html's banner says the page has no tags yet rather than crediting the
+creator with a choice. The owner's editor draws the status bar from the
+select **and the tag picker**: nothing chosen with an empty tag box is
+`'default'` in `EDIT_STATUS`; nothing chosen with tags of the owner's own is
+`''`. The select's first option is the default, and "Only me" posts
+`'closed'`. The dashboard's "Open tag editing" card predates the default and
+now mostly finds nothing to do; it treats `'closed'` as a chosen mode.
+
+### Opening the pages nobody looks after
+
+`POST /api/admin/open-editing` ({dryRun:true} first; dashboard card "Open
+editing on unowned pages") sets every character with **no owner, or owned by
+the import account** (`username`, default `admin` — deliberately not every
+admin account) to `'all-but-ability'`. The members of the collections in
+`except[]` (default `ravenswood-chronicle`, resolved through
+`rosterCharacterSlugs()` / `resolveCollectionMembers()`) are left exactly as
+they are. A page already on the mode is skipped, so it is re-runnable; a page
+on any other mode, `'all'` included, is moved onto it — these pages have
+nobody whose choice that was. Logs `open-editing`, which is in
+`FEED_CHANGING_ACTIONS` (so is `tags-open`) because `publicEdit` rides the
+feeds. Rows whose JSON cannot be parsed are reported and skipped
+(`readRowDataStrict()`, shared with the tags-open card).
 `canEditRow()` still means ownership, and everything belonging to the creator
 goes through it: renaming, publishing, unpublishing, deleting, rolling back, and
 the setting itself. `/api/publish` and `/api/delete` are deliberately left on
@@ -960,7 +1018,9 @@ The save handlers enforce the rest:
   field would unpublish somebody else's live page.
 - A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413).
 - The editor makes the **name read-only** for a guest: renaming moves the URL,
-  and that stays with the creator.
+  and that stays with the creator. Art uploads go through `canEditPage()`
+  (ownership or an approved editor), so an `'all'` / `'all-but-ability'`
+  guest edits the text, not the icon.
 - Every public edit notifies the owner (`notifyPageEdit`) through the same `dms`
   row comments use, so it rides the unread count and the mail flag.
 
