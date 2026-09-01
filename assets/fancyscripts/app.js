@@ -111,8 +111,10 @@ function render() {
     const backEl = renderBack(parsed, options, requestRender, { selected: backSel });
     mountBackDrag(backEl, options.back, {
       getScale: () => lastScale,
-      onSelect: (i) => { backSel = i; buildBackElementPanel(); requestRender(); },
-      onChange: requestRender,
+      // selection must not rebuild the preview — a rebuild mid-drag destroys
+      // the element holding the pointer capture; the ring is drawn live
+      onSelect: (i) => { backSel = i; buildBackChips(); buildBackElementPanel(); },
+      onCommit: requestRender,
     });
     wrap.append(backEl);
   } else {
@@ -154,7 +156,7 @@ function loadJson(json, sourceLabel) {
   options.titleOverride = '';
   options.authorOverride = '';
   options.back.texts = seedBackTexts(parsed.meta.name);
-  backSel = -1;
+  backSel = options.back.texts.length ? 0 : -1; // the panel stays open
   buildBackChips();
   buildBackElementPanel();
   syncControls();
@@ -660,17 +662,47 @@ const fmtDeg = (v) => (v > 0 ? '+' : '') + Math.round(v) + '°';
 const fmtEm = (v) => v.toFixed(2) + 'em';
 
 function buildBackControls() {
-  const bgBox = $('fs-back-bg');
-  bgBox.textContent = '';
-  const picker = createColorPicker(options.back.bgColor, (hex) => {
-    options.back.bgColor = hex;
+  const box = $('fs-back-bgbox');
+  box.textContent = '';
+  const b = options.back;
+
+  const colorRow = document.createElement('div');
+  colorRow.className = 'fs-back-colors';
+  const addPicker = (parent, label, get, set) => {
+    const row = document.createElement('div');
+    row.className = 'fs-color';
+    const picker = createColorPicker(get() || '#000000', (hex) => { set(hex); requestRender(); });
+    const span = document.createElement('span');
+    span.textContent = label;
+    row.append(picker.root, span);
+    parent.append(row);
+  };
+  addPicker(colorRow, 'Color', () => b.bgColor, (h) => { b.bgColor = h; });
+  const gradLab = document.createElement('label');
+  gradLab.className = 'fs-toggle';
+  const gradTick = document.createElement('input');
+  gradTick.type = 'checkbox';
+  gradTick.checked = !!b.bgGradient;
+  gradTick.addEventListener('change', () => {
+    b.bgGradient = gradTick.checked;
+    buildBackControls(); // the gradient rows come and go with the tick
     requestRender();
   });
-  bgBox.append(picker.root);
-  const sl = $('fs-back-shading');
-  sl.textContent = '';
-  makeSlider(sl, 'Border shading', 0, 2, 0.02, pct,
-    () => options.back.shading, (v) => { options.back.shading = v; });
+  const gradSpan = document.createElement('span');
+  gradSpan.textContent = 'Gradient';
+  gradLab.append(gradTick, gradSpan);
+  colorRow.append(gradLab);
+  if (b.bgGradient) addPicker(colorRow, 'Color 2', () => b.bgColor2, (h) => { b.bgColor2 = h; });
+  box.append(colorRow);
+  if (b.bgGradient) {
+    makeSlider(box, 'Gradient angle', 0, 360, 5, fmtDeg,
+      () => b.bgGradAngle || 0, (v) => { b.bgGradAngle = v; });
+  }
+  makeSlider(box, 'Brightness', 0.4, 1.8, 0.02, pct, () => b.brightness, (v) => { b.brightness = v; });
+  makeSlider(box, 'Saturation', 0, 2, 0.02, pct, () => b.saturation, (v) => { b.saturation = v; });
+  makeSlider(box, 'Border shading', 0, 2, 0.02, pct, () => b.shading, (v) => { b.shading = v; });
+  makeSlider(box, 'Pattern size', 0.4, 3, 0.02, pct, () => b.patScale, (v) => { b.patScale = v; });
+  makeSlider(box, 'Pattern rotation', -180, 180, 1, fmtDeg, () => b.patRot, (v) => { b.patRot = v; });
 }
 
 function buildBackChips() {
@@ -744,13 +776,36 @@ function buildBackElementPanel() {
   makeSlider(box, 'Shadow down', -25, 25, 1, fmtPx, () => t.shadowY || 0, (v) => { t.shadowY = v; });
   makeSlider(box, 'Shadow blur', 0, 50, 1, fmtPx, () => t.shadowBlur || 0, (v) => { t.shadowBlur = v; });
 
+  const gradLab = document.createElement('label');
+  gradLab.className = 'fs-toggle';
+  const gradTick = document.createElement('input');
+  gradTick.type = 'checkbox';
+  gradTick.checked = !!t.fillGrad;
+  gradTick.addEventListener('change', () => {
+    t.fillGrad = gradTick.checked;
+    buildBackElementPanel(); // the second colour + angle come and go
+    requestRender();
+  });
+  const gradSpan = document.createElement('span');
+  gradSpan.textContent = 'Gradient fill';
+  gradLab.append(gradTick, gradSpan);
+  box.append(gradLab);
+  if (t.fillGrad) {
+    makeSlider(box, 'Fill gradient angle', 0, 360, 5, fmtDeg,
+      () => t.gradAngle ?? 180, (v) => { t.gradAngle = v; });
+  }
+
   const colors = document.createElement('div');
   colors.className = 'fs-back-colors';
-  for (const [label, get, set] of [
+  const colorRows = [
     ['Fill', () => t.fill, (h) => { t.fill = h; }],
+  ];
+  if (t.fillGrad) colorRows.push(['Fill 2', () => t.fill2 || '#e8d9a0', (h) => { t.fill2 = h; }]);
+  colorRows.push(
     ['Stroke', () => t.strokeColor, (h) => { t.strokeColor = h; }],
     ['Shadow', () => t.shadowColor, (h) => { t.shadowColor = h; }],
-  ]) {
+  );
+  for (const [label, get, set] of colorRows) {
     const row = document.createElement('div');
     row.className = 'fs-color';
     const picker = createColorPicker(get() || '#000000', (hex) => { set(hex); requestRender(); });
@@ -828,14 +883,14 @@ async function boot() {
   $('fs-back-remove').addEventListener('click', () => {
     if (backSel < 0) return;
     options.back.texts.splice(backSel, 1);
-    backSel = -1;
+    backSel = Math.min(backSel, options.back.texts.length - 1);
     buildBackChips();
     buildBackElementPanel();
     requestRender();
   });
   $('fs-back-reset').addEventListener('click', () => {
     options.back.texts = seedBackTexts(backTitleNow());
-    backSel = -1;
+    backSel = options.back.texts.length ? 0 : -1;
     buildBackChips();
     buildBackElementPanel();
     requestRender();

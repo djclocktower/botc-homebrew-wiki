@@ -125,7 +125,14 @@ export const BACK_BASE = { hex: '#0b3217', h: 137.1, s: 0.652, l: 0.100 };
 
 export const DEFAULT_BACK = {
   bgColor: BACK_BASE.hex,
+  bgGradient: false, // two-colour background ramp along bgGradAngle
+  bgColor2: '#11294a',
+  bgGradAngle: 180,
+  brightness: 1,
+  saturation: 1,
   shading: 1, // 0 = flat pattern, 1 = the template's glow + vignette, 2 = stronger
+  patScale: 1, // pattern tile size (1 = the template's own scale)
+  patRot: 0, // pattern rotation, degrees
   texts: [],  // seeded from the script title by seedBackTexts()
 };
 
@@ -163,6 +170,9 @@ export function seedBackTexts(title) {
       size: Math.round(sizeOf(r)),
       font: 'unlovable',
       fill: '#bea881',
+      fillGrad: false,
+      fill2: '#e8d9a0',
+      gradAngle: 180,
       strokeW: 1.5,
       strokeColor: '#000000',
       shadowX: 0,

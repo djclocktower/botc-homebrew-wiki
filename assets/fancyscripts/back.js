@@ -5,21 +5,29 @@
  * and the script title stacked in large LHF Unlovable — gold fill, black
  * stroke, drop shadow — one word to a line at varying sizes.
  *
- * The background is TWO assets extracted from that PSD (art/back-flat.jpg,
- * the pattern with no shading; art/back-shaded.jpg, the exact composite with
- * the glow + vignette in). The shading slider interpolates per pixel between
- * them — 0 is flat, 1 is the template exactly, up to 2 extrapolates darker
- * edges — and any non-default colour is a per-pixel HSL rotate/scale against
- * the template's measured base (BACK_BASE), the same approach as the front
- * sheet's ribbon. Both passes run in one async canvas job, cached per
- * (colour, shading); renderBack() shows the newest canvas it has and asks
- * for a re-render when a fresh one lands.
+ * The background is BUILT, not baked: a grayscale pattern tile
+ * (art/back-pattern.png — a high-passed, 2×2-mirrored block cut from the
+ * template's damask, seamless by construction) is tiled at the chosen scale
+ * and rotation, colorized per pixel in HSL (the CAL constants below were
+ * regressed from the template so the default colour reproduces its look),
+ * and multiplied by the template's glow/vignette map
+ * (art/back-vignette.png, luminance ratio encoded 0..2) raised to the
+ * Border-shading strength. Brightness/saturation multiply in the same pass,
+ * and a background gradient swaps the single target colour for a 256-step
+ * ramp between two picked colours along an angle. One async cached canvas
+ * job; renderBack() shows the newest canvas it has and asks for a re-render
+ * when a fresh one lands.
  *
  * Text elements are plain DOM: two stacked spans per element (a stroked one
- * underneath carrying the drop shadow, a clean fill on top), so the stroke
- * reads as an outside stroke and the shadow is cast by the stroked
- * silhouette — which is how the PSD's layer styles compose. Everything is
- * inline-styled; the element is what html-to-image captures.
+ * underneath carrying the drop shadow, a clean fill on top — so the stroke
+ * reads as an outside stroke and the shadow silhouette includes it, like
+ * the PSD's layer styles). A gradient fill clips a two-colour ramp to the
+ * glyphs, the same background-clip:text the front title uses.
+ *
+ * DRAGGING NEVER REBUILDS: pointermove writes the live element's left/top
+ * and the model, and the full re-render happens on release. The first cut
+ * re-rendered per move, which destroyed the element (and its pointer
+ * capture) one frame into every drag — it moved a hair and died.
  *
  * Browser-only (canvas + DOM) — do not import from the Worker.
  */
@@ -28,17 +36,20 @@ import { BACK_BASE } from './script.js';
 
 const ART = '/assets/fancyscripts/art/';
 
-/* the back is the same logical size as the front sheet */
 export const BACK_W = 1242;
 export const BACK_H = 1656;
 
-/* The PSD is A4 (2480×3508); the sheet is 3:4. The pixel pass crops the A4
-   art to 3:4 centred (top and bottom lose ~2.9% each — the vignette is
-   symmetric, nothing structural is cut). */
+/* working canvas: print-resolution 3:4 */
 const SRC_W = 2480;
-const SRC_H = 3508;
-const CROP_H = Math.round(SRC_W * 4 / 3); // 3307
-const CROP_Y = Math.round((SRC_H - CROP_H) / 2);
+const SRC_H = 3307;
+
+/* the tile asset is a 1600px resample of a 2400px block cut at the
+   template's native scale — ×1.5 draws the pattern at template size */
+const TILE_BASE = 1.5;
+
+/* regressed from the template (see CLAUDE.md): with the default colour,
+   shading 1, brightness/saturation 1, the build reproduces its look */
+const CAL = { lA: 3.033, lB: 0.489, sC: 0.955, sD: -0.038 };
 
 const px = (v) => v + 'px';
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -60,12 +71,9 @@ function hexHsl(hex) {
   return { h, s, l };
 }
 
-/* ── background pipeline ────────────────────────────────────────────────
-   One cached canvas per (colour, shading). The default pair is a cheap
-   drawImage crop; anything else is a per-pixel pass over ~8M px, run off
-   the current frame and swapped in on completion. */
+/* ── background pipeline ──────────────────────────────────────────────── */
 const bk = {
-  flat: null, shaded: null, ready: false, loading: false,
+  pattern: null, vignette: null, ready: false, loading: false,
   key: '', canvas: null,
   busy: false, want: '', notify: null,
 };
@@ -82,100 +90,134 @@ function loadImage(src) {
 function ensureImages() {
   if (bk.loading) return;
   bk.loading = true;
-  Promise.all([loadImage(ART + 'back-flat.jpg'), loadImage(ART + 'back-shaded.jpg')])
-    .then(([f, s]) => {
-      bk.flat = f; bk.shaded = s; bk.ready = true;
+  Promise.all([loadImage(ART + 'back-pattern.png'), loadImage(ART + 'back-vignette.png')])
+    .then(([p, v]) => {
+      bk.pattern = p; bk.vignette = v; bk.ready = true;
       pumpBack();
     })
     .catch(() => { bk.loading = false; });
 }
 
-function cropDraw(img) {
-  const c = document.createElement('canvas');
-  c.width = SRC_W;
-  c.height = CROP_H;
-  c.getContext('2d').drawImage(img, 0, CROP_Y, SRC_W, CROP_H, 0, 0, SRC_W, CROP_H);
-  return c;
-}
-
-function buildBackCanvas(color, shading) {
-  const flatC = cropDraw(bk.flat);
-  if (shading === 1 && color === BACK_BASE.hex) return cropDraw(bk.shaded);
-  const shadC = cropDraw(bk.shaded);
-  const ctx = shadC.getContext('2d', { willReadFrequently: true });
-  const fctx = flatC.getContext('2d', { willReadFrequently: true });
-  const A = ctx.getImageData(0, 0, SRC_W, CROP_H);
-  const F = fctx.getImageData(0, 0, SRC_W, CROP_H);
-  const a = A.data, f = F.data;
-  const t = hexHsl(color) || BACK_BASE;
-  const recolor = color.toLowerCase() !== BACK_BASE.hex;
-  const dH = t.h - BACK_BASE.h;
-  const sRatio = t.s < 0.06 ? 0 : t.s / BACK_BASE.s;
-  const lRatio = t.l / BACK_BASE.l;
-  for (let i = 0; i < a.length; i += 4) {
-    // shading: per-channel lerp flat -> shaded (1 = the template exactly)
-    let r = f[i] + (a[i] - f[i]) * shading;
-    let g = f[i + 1] + (a[i + 1] - f[i + 1]) * shading;
-    let b = f[i + 2] + (a[i + 2] - f[i + 2]) * shading;
-    if (recolor) {
-      r /= 255; g /= 255; b /= 255;
-      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      let l = (mx + mn) / 2;
-      const d = mx - mn;
-      let h = 0, s = 0;
-      if (d) {
-        s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-        h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-        h *= 60;
-      }
-      h = (((h + dH) % 360) + 360) % 360;
-      s = Math.min(1, s * sRatio);
-      l = Math.min(1, l * lRatio);
-      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-      const p = 2 * l - q;
-      const hh = h / 360;
-      const chan = (tt) => {
-        if (tt < 0) tt += 1;
-        if (tt > 1) tt -= 1;
-        if (tt < 1 / 6) return p + (q - p) * 6 * tt;
-        if (tt < 1 / 2) return q;
-        if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
-        return p;
-      };
-      r = chan(hh + 1 / 3) * 255; g = chan(hh) * 255; b = chan(hh - 1 / 3) * 255;
-    }
-    a[i] = clamp(Math.round(r), 0, 255);
-    a[i + 1] = clamp(Math.round(g), 0, 255);
-    a[i + 2] = clamp(Math.round(b), 0, 255);
-  }
-  ctx.putImageData(A, 0, 0);
-  return shadC;
+function backParams(back) {
+  return {
+    c1: hexHsl(back.bgColor) || BACK_BASE,
+    c2: hexHsl(back.bgColor2) || BACK_BASE,
+    grad: !!back.bgGradient,
+    gradAngle: Number(back.bgGradAngle) || 0,
+    bright: clamp(Number(back.brightness) || 1, 0.1, 3),
+    sat: clamp(Number(back.saturation ?? 1), 0, 3),
+    shading: clamp(Number(back.shading ?? 1), 0, 2),
+    patScale: clamp(Number(back.patScale) || 1, 0.2, 5),
+    patRot: Number(back.patRot) || 0,
+  };
 }
 
 function backKey(back) {
-  return (back.bgColor || BACK_BASE.hex).toLowerCase() + '|' + Number(back.shading).toFixed(2);
+  const p = backParams(back);
+  return [back.bgColor, p.grad ? back.bgColor2 + '@' + p.gradAngle : '-',
+    p.bright.toFixed(2), p.sat.toFixed(2), p.shading.toFixed(2),
+    p.patScale.toFixed(2), p.patRot.toFixed(1)].join('|').toLowerCase();
 }
 
-/* newest background canvas for these settings, or the best stale one while
-   a fresh one is computed (null = nothing yet; a plain colour shows) */
+function buildBackCanvas(p) {
+  // 1) tile the pattern at scale + rotation (pattern fills follow the CTM)
+  const c = document.createElement('canvas');
+  c.width = SRC_W; c.height = SRC_H;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  const k = TILE_BASE * p.patScale;
+  ctx.save();
+  ctx.translate(SRC_W / 2, SRC_H / 2);
+  ctx.rotate((p.patRot * Math.PI) / 180);
+  ctx.scale(k, k);
+  ctx.fillStyle = ctx.createPattern(bk.pattern, 'repeat');
+  const r = Math.hypot(SRC_W, SRC_H) / 2 / k + bk.pattern.width;
+  ctx.fillRect(-r, -r, 2 * r, 2 * r);
+  ctx.restore();
+  const img = ctx.getImageData(0, 0, SRC_W, SRC_H);
+  const d = img.data;
+
+  // 2) the vignette map, stretched over the sheet
+  const vc = document.createElement('canvas');
+  vc.width = SRC_W; vc.height = SRC_H;
+  const vctx = vc.getContext('2d', { willReadFrequently: true });
+  vctx.drawImage(bk.vignette, 0, 0, SRC_W, SRC_H);
+  const v = vctx.getImageData(0, 0, SRC_W, SRC_H).data;
+
+  // LUT: encoded vignette byte -> ratio^shading
+  const powLut = new Float32Array(256);
+  for (let i = 0; i < 256; i++) powLut[i] = Math.pow(i / 127.5, p.shading);
+
+  // gradient ramp LUT (256 HSL stops c1 -> c2, hue by the shortest path)
+  let ramp = null, ca = 0, sa = 0;
+  if (p.grad) {
+    ramp = { h: new Float32Array(256), s: new Float32Array(256), l: new Float32Array(256) };
+    let dh = p.c2.h - p.c1.h;
+    if (dh > 180) dh -= 360;
+    if (dh < -180) dh += 360;
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255;
+      ramp.h[i] = (p.c1.h + dh * t + 360) % 360;
+      ramp.s[i] = p.c1.s + (p.c2.s - p.c1.s) * t;
+      ramp.l[i] = p.c1.l + (p.c2.l - p.c1.l) * t;
+    }
+    const a = ((p.gradAngle - 90) * Math.PI) / 180; // CSS-style: 0deg = bottom->top
+    ca = Math.cos(a); sa = Math.sin(a);
+  }
+  const span = Math.abs(ca) * SRC_W + Math.abs(sa) * SRC_H || 1;
+
+  // 3) colorize
+  const { lA, lB, sC, sD } = CAL;
+  let i = 0;
+  for (let y = 0; y < SRC_H; y++) {
+    for (let x = 0; x < SRC_W; x++, i += 4) {
+      const L = d[i] / 255; // grayscale tile: any channel
+      let th, ts, tl;
+      if (ramp) {
+        const t = clamp((((x - SRC_W / 2) * ca + (y - SRC_H / 2) * sa) / span + 0.5) * 255, 0, 255) | 0;
+        th = ramp.h[t]; ts = ramp.s[t]; tl = ramp.l[t];
+      } else { th = p.c1.h; ts = p.c1.s; tl = p.c1.l; }
+      const l = clamp(tl * (lA + lB * L) * p.bright * powLut[v[i]], 0, 1);
+      const s = clamp(ts * (sC + sD * L) * p.sat, 0, 1);
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const pp = 2 * l - q;
+      const hh = th / 360;
+      const chan = (tt) => {
+        if (tt < 0) tt += 1;
+        if (tt > 1) tt -= 1;
+        if (tt < 1 / 6) return pp + (q - pp) * 6 * tt;
+        if (tt < 1 / 2) return q;
+        if (tt < 2 / 3) return pp + (q - pp) * (2 / 3 - tt) * 6;
+        return pp;
+      };
+      d[i] = Math.round(chan(hh + 1 / 3) * 255);
+      d[i + 1] = Math.round(chan(hh) * 255);
+      d[i + 2] = Math.round(chan(hh - 1 / 3) * 255);
+      d[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
 export function backCanvas(back, requestRender) {
   bk.notify = requestRender;
   const key = backKey(back);
   if (bk.key === key && bk.canvas) return bk.canvas;
   bk.want = key;
+  bk.wantParams = backParams(back);
   ensureImages();
   pumpBack();
-  return bk.canvas;
+  return bk.canvas; // possibly a stale mix — better than flashing flat colour
 }
 
 function pumpBack() {
   if (bk.busy || !bk.ready || !bk.want || bk.want === bk.key) return;
   bk.busy = true;
   const key = bk.want;
+  const params = bk.wantParams;
   setTimeout(() => {
     try {
-      const [color, shading] = key.split('|');
-      bk.canvas = buildBackCanvas(color, Number(shading));
+      bk.canvas = buildBackCanvas(params);
       bk.key = key;
     } catch { bk.want = bk.key; }
     bk.busy = false;
@@ -184,7 +226,6 @@ function pumpBack() {
   }, 0);
 }
 
-/* everything the current settings need is already cached (export waits on this) */
 export function backReady(back) {
   return bk.key === backKey(back) && !!bk.canvas;
 }
@@ -198,9 +239,6 @@ const FONT_FAMILIES = {
   dumbledor: '"Dumbledor", serif',
 };
 
-/* renderBack(script, options, requestRender, {selected}) → .script-back.
-   `selected` draws the editing ring on that text element; export renders
-   with selected: -1 so the ring can never reach a download. */
 export function renderBack(script, options, requestRender, ui) {
   const back = options.back;
   const sel = ui && ui.selected != null ? ui.selected : -1;
@@ -245,9 +283,6 @@ export function renderBack(script, options, requestRender, ui) {
     const shadow = t.shadowBlur || t.shadowX || t.shadowY
       ? `${t.shadowX || 0}px ${t.shadowY || 0}px ${t.shadowBlur || 0}px ${t.shadowColor || '#000000'}`
       : 'none';
-    // stroke layer: centred stroke at double width reads as an outside
-    // stroke once the fill covers the inner half; it also casts the shadow,
-    // so the shadow silhouette includes the stroke, like the PSD's styles
     const strokeSpan = document.createElement('span');
     Object.assign(strokeSpan.style, {
       position: 'absolute', left: '0', top: '0',
@@ -255,16 +290,28 @@ export function renderBack(script, options, requestRender, ui) {
       textShadow: shadow,
     });
     if (t.strokeW > 0) {
-      strokeSpan.style.webkitTextStroke = `${t.strokeW * 2}px ${t.strokeColor || '#000000'}`;
       strokeSpan.style.setProperty('-webkit-text-stroke', `${t.strokeW * 2}px ${t.strokeColor || '#000000'}`);
     }
     strokeSpan.textContent = t.text;
     const fillSpan = document.createElement('span');
-    Object.assign(fillSpan.style, {
-      position: 'relative',
-      color: t.fill || '#bea881',
-    });
-    if (!(t.strokeW > 0)) strokeSpan.style.textShadow = shadow; // shadow still wants the plain glyph
+    fillSpan.style.position = 'relative';
+    if (t.fillGrad) {
+      // two-colour ramp clipped to the glyphs — the front title's technique.
+      // The background only PAINTS inside the span's box, and LHF's swashes
+      // overhang it (left bearing, tall ascenders) — those parts got no
+      // gradient and showed the stroke layer as bare black. Padding grows
+      // the painting area over the overhang; the equal negative margin puts
+      // the box back so the glyphs (and the stroke overlay) do not move.
+      fillSpan.style.padding = '0.45em';
+      fillSpan.style.margin = '-0.45em';
+      fillSpan.style.backgroundImage =
+        `linear-gradient(${Number(t.gradAngle) || 180}deg, ${t.fill || '#bea881'}, ${t.fill2 || '#e8d9a0'})`;
+      fillSpan.style.setProperty('-webkit-background-clip', 'text');
+      fillSpan.style.backgroundClip = 'text';
+      fillSpan.style.color = 'transparent';
+    } else {
+      fillSpan.style.color = t.fill || '#bea881';
+    }
     fillSpan.textContent = t.text;
     wrap.append(strokeSpan, fillSpan);
     if (i === sel) {
@@ -277,17 +324,30 @@ export function renderBack(script, options, requestRender, ui) {
   return root;
 }
 
-/* drag-to-move: the page mounts this once per render on the PREVIEW copy
-   (never on an export render). `getScale` maps pointer px to sheet px. */
-export function mountBackDrag(root, back, { getScale, onSelect, onChange }) {
+/* drag-to-move on the PREVIEW copy. Selection and movement touch the live
+   DOM only; the full re-render happens on release (onCommit) — a rebuild
+   mid-drag destroys the element holding the pointer capture. */
+export function mountBackDrag(root, back, { getScale, onSelect, onCommit }) {
   let drag = null;
+  const ring = (el) => {
+    root.querySelectorAll('[data-back-idx]').forEach((w) => {
+      w.style.outline = 'none';
+      w.style.outlineOffset = '';
+    });
+    if (el) {
+      el.style.outline = '2px dashed rgba(255,255,255,0.75)';
+      el.style.outlineOffset = '6px';
+    }
+  };
   root.addEventListener('pointerdown', (ev) => {
     const el = ev.target.closest('[data-back-idx]');
     if (!el) return;
     const idx = Number(el.dataset.backIdx);
-    onSelect(idx);
+    ring(el);
+    onSelect(idx); // chips + panel only — must not rebuild the preview
     const t = back.texts[idx];
-    drag = { idx, sx: ev.clientX, sy: ev.clientY, x0: t.x, y0: t.y };
+    if (!t) return;
+    drag = { el, idx, sx: ev.clientX, sy: ev.clientY, x0: t.x, y0: t.y };
     root.setPointerCapture(ev.pointerId);
     ev.preventDefault();
   });
@@ -298,9 +358,14 @@ export function mountBackDrag(root, back, { getScale, onSelect, onChange }) {
     if (!t) return;
     t.x = clamp(drag.x0 + ((ev.clientX - drag.sx) / s / BACK_W) * 100, -10, 110);
     t.y = clamp(drag.y0 + ((ev.clientY - drag.sy) / s / BACK_H) * 100, -10, 110);
-    onChange();
+    drag.el.style.left = t.x + '%';
+    drag.el.style.top = t.y + '%';
   });
-  const end = () => { drag = null; };
+  const end = () => {
+    if (!drag) return;
+    drag = null;
+    onCommit();
+  };
   root.addEventListener('pointerup', end);
   root.addEventListener('pointercancel', end);
 }

@@ -2133,28 +2133,43 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   canvas capture is never tainted; the wiki's own art is deliberately NOT
   proxied (same-origin can't taint, and the proxy can't see draft art).
 - **The Back Cover tab** is the owner's PSD template ("Clockback", A4
-  2480×3508) rebuilt as a live editor. The background is TWO extracted
-  assets — `art/back-flat.jpg` (the damask pattern, unshaded) and
-  `art/back-shaded.jpg` (the exact composite with the centre glow + edge
-  vignette) — and the **Border shading** slider interpolates per pixel
-  between them (0 flat, 1 the template exactly, 2 extrapolates), with any
-  non-default background colour applied as the same per-pixel HSL pass as
-  the sidebar, against `BACK_BASE` in script.js. Both passes are one async
-  cached canvas job in back.js; the A4 art is centre-cropped to the sheet's
-  3:4 in that pass. Title text is one DRAGGABLE element per word
-  (`seedBackTexts()` builds the stacked official arrangement from the
-  title — connector words small and offset, like the template's
-  Axiom/of/Logic), each with text, font, size, rotation, letter-spacing,
-  fill, an outside stroke (a doubled centred `-webkit-text-stroke` on a
-  transparent span UNDER the fill span — that lower span also casts the
-  drop shadow, so the shadow silhouette includes the stroke, matching the
-  PSD's layer styles) and a drop shadow. The template's own text treatment
-  (gold #bea881, 1.5px black stroke, soft downward shadow) is the seed.
-  The selection ring lives only on the preview render: every export
-  re-renders the back offscreen with no selection, and waits for the
-  background canvas (`backReady`) so a recolour in flight can never export
-  stale. The PSD itself is not in the repo (103 MB); it is on the owner's
-  Google Drive as "Clockback copy.psd" if the assets ever need re-extracting.
+  2480×3508) rebuilt as a live editor. The background is BUILT per render,
+  not baked: a grayscale pattern tile (`art/back-pattern.png` — a
+  high-passed, 2×2-MIRRORED block cut from the template's damask, seamless
+  by construction; mirroring, because the damask has no clean repeat period
+  to cut on) is tiled at the chosen **Pattern size/rotation**, colorized
+  per pixel in HSL — the `CAL` constants in back.js were REGRESSED from
+  the template crop, so the default colour reproduces its look — then
+  multiplied by `art/back-vignette.png` (the template's glow/vignette as a
+  luminance ratio, encoded 0..2) raised to the **Border shading** strength.
+  **Brightness/Saturation** multiply in the same pass, and the background
+  **Gradient** swaps the single target colour for a 256-step two-colour
+  ramp along an angle. One cached async canvas job, keyed on all of it;
+  the source crops those assets were built from are in git history
+  (commit b7c592a, `back-flat.jpg`/`back-shaded.jpg`), and the PSD itself
+  is on the owner's Google Drive as "Clockback copy.psd".
+  Title text is one DRAGGABLE element per word (`seedBackTexts()` builds
+  the stacked official arrangement from the title — connector words small
+  and offset, like the template's Axiom/of/Logic), each with text, font,
+  size, rotation, letter-spacing, fill — solid or a two-colour
+  **gradient fill** (background-clip:text; the span gets `padding:.45em;
+  margin:-.45em` because a background only paints inside the box and LHF's
+  swashes overhang it — without that the overhang showed the stroke layer
+  as bare black) — an outside stroke (a doubled centred
+  `-webkit-text-stroke` on a transparent span UNDER the fill span — that
+  lower span also casts the drop shadow, so the shadow silhouette includes
+  the stroke, matching the PSD's layer styles) and a drop shadow. The
+  template's own treatment (gold #bea881, 1.5px black stroke, soft
+  downward shadow) is the seed. **Dragging never rebuilds**: pointermove
+  writes the live element's left/top and the model, and the full re-render
+  happens on release — the first cut re-rendered per move, which destroyed
+  the element (and its pointer capture) one frame into every drag.
+  Selection is therefore also ring-only until release, and one element is
+  ALWAYS selected (`backSel` defaults to 0) so the editing panel never
+  shows an empty state. The selection ring lives only on the preview
+  render: every export re-renders the back offscreen with no selection,
+  and waits for the background canvas (`backReady`) so a recolour in
+  flight can never export stale.
 - **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
   vendor/, lazy-loaded on first export). Three grades: Share Image (JPEG at
   pixelRatio 1.5, ~1 MB — the print PNG is ~30 MB, which no one can post to
