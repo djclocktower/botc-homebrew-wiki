@@ -360,10 +360,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -877,6 +877,18 @@
           <a href="normalize-icons" style="color:var(--good-name,#2c5b9a);font-weight:600">Standardize character icons &rarr;</a>
           &mdash; re-fit every character's art to the 591&times;591 frame so icon sizes are consistent site-wide.
         </p>
+      </section>
+      <section class="panel">
+        <h3>Card thumbnails <span class="count-pill" id="thumb-count"></span></h3>
+        <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
+          Every card, search result and roster row draws a small WebP copy of the character's icon (about 8&nbsp;KB) instead of the full 591px art (150&nbsp;KB and up).
+          The editors make one whenever art is uploaded; art that arrived before that, or through the server-side Bloodstar copy, has none yet and its cards still load the big picture.
+          <strong>Scan</strong> lists them; <strong>Make them</strong> builds and uploads each thumbnail from this browser, one at a time. Re-runnable and safe: a character with no thumbnail just keeps showing the original.
+        </p>
+        <button type="button" class="small-btn" id="thumb-scan">Scan</button>
+        <button type="button" class="small-btn alt" id="thumb-run" style="display:none">Make them</button>
+        <div id="thumb-list"></div>
+        <div class="toast" id="thumb-toast"></div>
       </section>
       <section class="panel">
         <h3>Gather a creator into a collection <span class="count-pill" id="cc-count"></span></h3>
@@ -2019,6 +2031,55 @@
         btn.disabled = false;
         $('nest-list').innerHTML = '<p class="note">Scan failed.</p>';
       });
+    });
+    // ---- card thumbnails (see /api/admin/thumb-missing + assets/art-thumb.js) ----
+    var thumbItems = [];
+    $('thumb-scan').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      $('thumb-run').style.display = 'none';
+      $('thumb-list').innerHTML = '<p class="note">Scanning&hellip;</p>';
+      getJSON('/api/admin/thumb-missing').then(function(d){
+        btn.disabled = false;
+        if (!d || !d.ok) { $('thumb-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>'; return; }
+        thumbItems = d.items || [];
+        $('thumb-count').textContent = d.missing;
+        var html = '<p class="note">' + d.withArt + ' characters have art; ' + d.missing + ' still have no thumbnail' +
+          (d.missing ? ' (' + d.r2Thumbs + ' made so far, ' + d.committed + ' committed with the repo).' : '. Every card is on the small picture.') + '</p>';
+        if (thumbItems.length) {
+          html += '<ul class="note" style="max-height:220px;overflow:auto;margin:6px 0 0;padding-left:18px">' +
+            thumbItems.slice(0, 200).map(function(it){ return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + '</span></li>'; }).join('') +
+            (thumbItems.length > 200 ? '<li>&hellip; and ' + (thumbItems.length - 200) + ' more</li>' : '') + '</ul>';
+          $('thumb-run').style.display = '';
+          $('thumb-run').textContent = 'Make ' + thumbItems.length + ' thumbnail' + (thumbItems.length === 1 ? '' : 's');
+        }
+        $('thumb-list').innerHTML = html;
+      }).catch(function(){
+        btn.disabled = false;
+        $('thumb-list').innerHTML = '<p class="note">Scan failed.</p>';
+      });
+    });
+    $('thumb-run').addEventListener('click', function(){
+      if (!window.ArtThumb) { setToast('thumb-toast', false, 'The thumbnail helper did not load.'); return; }
+      var btn = this; btn.disabled = true;
+      var todo = thumbItems.slice(), done = 0, failed = 0, total = todo.length;
+      var bar = $('thumb-list');
+      function step(){
+        var it = todo.shift();
+        if (!it) {
+          btn.disabled = false;
+          setToast('thumb-toast', failed === 0, done + ' thumbnail' + (done === 1 ? '' : 's') + ' made' + (failed ? ', ' + failed + ' could not be' : '') + '.');
+          $('thumb-scan').click();
+          return;
+        }
+        // Reads the art back from the site and uploads the 192px WebP beside
+        // it; a browser that cannot encode WebP resolves false and we say so.
+        ArtThumb.uploadFromUrl(it.art).then(function(ok){
+          if (ok) done++; else failed++;
+          bar.innerHTML = '<p class="note">' + (done + failed) + ' of ' + total + ' &mdash; ' + esc(it.name || it.slug) + (ok ? '' : ' (skipped)') + '</p>';
+          setTimeout(step, 30);
+        });
+      }
+      step();
     });
     $('nest-run').addEventListener('click', function(){
       var n = ($('nest-count').textContent || '').replace(/\D+/g, '') || 'every';
@@ -3183,6 +3244,7 @@
   <script src="assets/suggest.js"></script>
   <!-- The picker AND the gallery for images on modmail replies and comments. -->
   <script src="assets/attach.js"></script>
+  <script src="assets/art-thumb.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

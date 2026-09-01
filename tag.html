@@ -7,6 +7,11 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The feeds this page draws from start downloading here, while the
+     stylesheet and scripts are still on their way, instead of after the
+     scripts at the end of the body have run. `crossorigin` has to be there
+     for the preload to match a plain fetch(). -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -14,10 +19,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -90,10 +95,22 @@
       });
     }
 
+    // A card's picture: the 192px WebP thumbnail beside the art
+    // (thumb/{file}.webp — the Worker serves the original where there is none
+    // yet), versioned by the row's `v` so it caches for a year. Same order as
+    // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
+    function thumb(c){
+      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
+      if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
+      if (c.art) return 'assets/' + c.art + ver;
+      if (typeof c.image === 'string' && c.image) return c.image;
+      if (Array.isArray(c.image) && c.image[0]) return c.image[0];
+      return 'assets/favicon.png';
+    }
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + '</div>' +
         '<div class="char-card-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</div>' +
@@ -102,7 +119,7 @@
         '</div></a>';
     }
 
-    fetch('characters.json?fields=card')
+    fetch('characters.json?fields=grid')
       .then(function(r) { return r.json(); })
       .then(function(list) {
         var panel = document.getElementById('panel');

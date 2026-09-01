@@ -62,9 +62,9 @@
       '<base href="' + siteRoot + '">' +
       '<link rel="stylesheet" href="assets/styles.css">' +
       '</head><body>' +
-      '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.png" alt="">' +
+      '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.webp" alt="">' +
       '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +
-      '<img class="topbar-badge" src="assets/ccc-parchment.png" alt=""></a></header>' +
+      '<img class="topbar-badge" src="assets/ccc-parchment.webp" alt=""></a></header>' +
       '<main class="wrap" id="' + ROOT_ID + '">' + (inner || '') + '</main>' +
       frameScript() + '</body></html>';
   }

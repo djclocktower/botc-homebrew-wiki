@@ -157,7 +157,7 @@ html.create-redesign .preview-pane { position: sticky; top: 74px; }
 html.create-redesign .preview-label {
   display: flex; align-items: baseline; gap: 10px;
   margin: 0; padding: 10px 16px 9px;
-  background-color: var(--parch); background-image: url('parchment.jpg');
+  background-color: var(--parch); background-image: url('parchment.webp');
   background-size: cover;
   border: 3px solid var(--parch-frame); border-bottom: none;
   border-radius: 10px 10px 0 0;

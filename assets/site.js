@@ -217,11 +217,19 @@
     undoRules = [];
   }
 
+  /* One request for everything site.js needs from the server on a page load:
+     the text overrides AND the announcement (the banner code below reads the
+     same promise). They were two fetches, two Worker invocations and, on a
+     phone, two round trips per page. /api/boot answers both.
+     cache:'no-store' matters as much as the header does — without it a
+     refresh right after a save can be answered from the browser's own copy. */
+  var bootPromise = fetch('/api/boot', { credentials: 'same-origin', cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .catch(function () { return null; });
+  window.__botcBoot = bootPromise;
+
   function refresh() {
-    // cache:'no-store' matters as much as the header does — without it a
-    // refresh right after a save can be answered from the browser's own copy.
-    return fetch('/api/site-text', { credentials: 'same-origin', cache: 'no-store' })
-      .then(function (r) { return r.json(); })
+    return bootPromise
       .then(function (d) {
         var items = (d && d.items) || [];
         try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), items: items })); } catch (e) {}
@@ -377,8 +385,9 @@
       var cached = JSON.parse(sessionStorage.getItem(CACHE_KEY));
       if (cached && (Date.now() - cached.ts) < 60 * 1000) { show(cached.ann); return; }
     } catch (e) {}
-    fetch('/api/announcement')
-      .then(function (r) { return r.json(); })
+    // The announcement rides the /api/boot call the text-override block above
+    // already made (window.__botcBoot); the standalone endpoint is the fallback.
+    (window.__botcBoot || fetch('/api/announcement').then(function (r) { return r.json(); }))
       .then(function (d) {
         var ann = (d && d.announcement) || null;
         try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ann: ann })); } catch (e) {}
@@ -578,7 +587,11 @@
       if (allChars) return Promise.resolve(allChars);
       if (fetchPromise) return fetchPromise;
       fetchPromise = Promise.all([
-        fetch(ROOT + 'characters.json?fields=card').then(function (r) { return r.json(); }),
+        // `grid` is the smallest feed tier — what a card or a search result
+        // needs and nothing else (a third of `card`; see GRID_FIELDS in
+        // worker.js). The browse pages fetch the same URL, so on most visits
+        // this is already in the browser's cache.
+        fetch(ROOT + 'characters.json?fields=grid').then(function (r) { return r.json(); }),
         fetch(ROOT + 'scripts.json').then(function (r) { return r.json(); }).catch(function () { return []; }),
         fetch(ROOT + 'collections.json').then(function (r) { return r.json(); }).catch(function () { return []; })
       ]).then(function (res) {
@@ -667,11 +680,14 @@
     function assetSrc(v) {
       return /^(?:https?:)?\/\//i.test(v) ? v : (ROOT + 'assets/' + v);
     }
-    // The same order as artSrc() in render-page.js, which is what every card
-    // on the wiki draws through: `art` first, then `image` (a string or the
-    // first of a list), then the favicon.
+    // The same order as thumbSrc() in render-page.js, which is what every
+    // card on the wiki draws through: the 192px thumbnail of `art`
+    // (thumb/{file}.webp, versioned by the row's `v` so it caches for a
+    // year), then `image` (a string or the first of a list), then the favicon.
     function charThumb(c) {
-      if (c.art) return assetSrc(c.art);
+      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
+      if (c.art && /^art\/[^/]+$/.test(c.art)) return ROOT + 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
+      if (c.art) return assetSrc(c.art) + ver;
       if (typeof c.image === 'string' && c.image) return assetSrc(c.image);
       if (Array.isArray(c.image) && c.image[0]) return assetSrc(c.image[0]);
       return ROOT + 'assets/favicon.png';

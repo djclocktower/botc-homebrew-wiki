@@ -33,6 +33,9 @@ run_worker_first = [
   "/c/*", "/s/*", "/collection/*", "/news/*", "/p/*", "/u/*",
   "/author", "/author.html",
   "/random", "/sitemap.xml", "/script-view.html", "/script-view",
+  # Card thumbnails (thumb/{file}.webp beside art/{file}) — the Worker falls
+  # back to the original when a thumbnail does not exist yet. See THUMB_PREFIX.
+  "/assets/thumb/*",
   "/assets/art/*", "/assets/collections/*", "/assets/scripts/*", "/assets/tokens/*",
   "/assets/avatars/*", "/assets/pages/*", "/assets/news/*",
   # Images posted on comments and modmail messages (see ATTACH_PREFIX).

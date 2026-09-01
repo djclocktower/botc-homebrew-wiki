@@ -908,6 +908,9 @@ $('if-save').addEventListener('click', async () => {
       body: JSON.stringify({ key, data: dataUrl })
     }).then((r) => r.json());
     if (!up || up.error) throw new Error((up && up.error) || 'The upload failed.');
+    // The card thumbnail rides along with the art (assets/art-thumb.js is
+    // loaded by iconforge.html); never awaited.
+    if (window.ArtThumb) window.ArtThumb.upload(key, dataUrl);
 
     // Point the row at the slot we just wrote. Everything else on the page is
     // sent back unchanged, including its published/draft status.
