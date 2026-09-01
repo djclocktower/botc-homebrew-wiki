@@ -1018,9 +1018,24 @@ The save handlers enforce the rest:
   field would unpublish somebody else's live page.
 - A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413).
 - The editor makes the **name read-only** for a guest: renaming moves the URL,
-  and that stays with the creator. Art uploads go through `canEditPage()`
-  (ownership or an approved editor), so an `'all'` / `'all-but-ability'`
-  guest edits the text, not the icon.
+  and that stays with the creator.
+- **An open page is open to its art too.** Image uploads go through
+  `canEditPageArt()` — ownership, an approved editor, **or** a guest on a page
+  whose mode is `'all'` / `'all-but-ability'`. They used to go through
+  `canEditPage()`, which is ownership or an approved editor and nothing else,
+  and the mismatch showed: the editor offered a guest the art pickers, took
+  their icon, and the upload came back *"the art slot for X already belongs to
+  a character on another account — give your character a different name"*, on
+  somebody else's page they cannot rename. The save handler had already
+  settled it the other way, since a guest's save carries `art`/`image` and the
+  alternates straight through — they could always repoint a page at an image
+  hosted anywhere, and were refused only when uploading into the slot named
+  after the page itself, so the block protected nothing. `'tags'` and the
+  tags-open default stay out (that editor shows nothing but the tag picker),
+  and so does `'suggest'`: a suggestion is stored rather than applied, so it
+  must never land in the live page's R2 slot — which is why edit.html disables
+  the art inputs there. `canUploadArt()` in edit.html is the same answer on the
+  browser side, and it is what gates the automatic printable token.
 - Every public edit notifies the owner (`notifyPageEdit`) through the same `dms`
   row comments use, so it rides the unread count and the mail flag.
 

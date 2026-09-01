@@ -702,13 +702,14 @@ async function uploadSlotDenied(env, sess, key) {
   // the original and let every rule below apply to it unchanged.
   if (key.startsWith(THUMB_PREFIX)) key = 'art/' + key.slice(THUMB_PREFIX.length).replace(/\.webp$/i, '');
   /* Set when this upload is aimed at the image slot of a page this
-     session may actually edit — its owner, or an approved editor the
-     owner named. It switches off the catch-all "somebody else's file
-     is already here" check further down, which is about slots with no
-     page behind them: once the page has said yes, whoever uploaded the
-     previous file is not a second opinion. Approved editing needs this
-     or a shared character can never get its icon, which is the one
-     thing that keeps it out of drafts. */
+     session may actually edit — its owner, an approved editor the owner
+     named, or a guest on a page opened to everyone (canEditPageArt). It
+     switches off the catch-all "somebody else's file is already here"
+     check further down, which is about slots with no page behind them:
+     once the page has said yes, whoever uploaded the previous file is
+     not a second opinion. Approved editing needs this or a shared
+     character can never get its icon, which is the one thing that keeps
+     it out of drafts. */
   let ownedSlot = false;
   // tokens/ is reserved for admin tooling; news/ for the news editor,
   // which is admin-only anyway.
@@ -758,7 +759,7 @@ async function uploadSlotDenied(env, sess, key) {
       slug = named.replace(/-(alt2?|token)$/, '');
       row = await getEntityRow(env, 'character', slug);
     }
-    if (row && await canEditPage(env, sess, 'character', row)) ownedSlot = true;
+    if (row && await canEditPageArt(env, sess, 'character', row)) ownedSlot = true;
     else if (row && !canEditRow(sess, row)) {
       // Almost always a name clash on a brand-new character: the art
       // slot is named after the character's identity, which is derived
@@ -776,7 +777,7 @@ async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('scripts/')) {
     const base = key.slice(8).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
     const row = await getEntityRow(env, 'script', base);
-    if (row && await canEditPage(env, sess, 'script', row)) ownedSlot = true;
+    if (row && await canEditPageArt(env, sess, 'script', row)) ownedSlot = true;
     else if (row && !canEditRow(sess, row)) {
       return jsonResponse({ error: 'That image slot belongs to a script owned by another account.' }, { status: 403 });
     }
@@ -787,7 +788,7 @@ async function uploadSlotDenied(env, sess, key) {
   if (key.startsWith('collections/')) {
     const base = key.slice(12).replace(/\.[a-z0-9]+$/i, '').replace(/-(logo|bg)$/, '');
     const row = await findCollectionRow(env, base);
-    if (row && await canEditPage(env, sess, 'collection', row)) ownedSlot = true;
+    if (row && await canEditPageArt(env, sess, 'collection', row)) ownedSlot = true;
     else if (row && !canEditRow(sess, row)) {
       return jsonResponse({ error: 'That image slot belongs to a collection owned by another account.' }, { status: 403 });
     }
@@ -2622,6 +2623,39 @@ async function canEditPage(env, sess, type, row) {
   // an art upload, not just be saved.
   if (type === 'character') return waterfallEditor(env, sess, row);
   return false;
+}
+
+/* Who may put an IMAGE in a page's own R2 slot.
+
+   Ownership and approved editing (canEditPage) are not the whole answer here,
+   and the gap was visible from the outside: a page opened to everyone showed
+   its guest the art pickers, took their icon, and the upload came back with
+   "the art slot for X already belongs to a character on another account —
+   give your character a different name", on somebody else's page they cannot
+   rename. The save handler had already settled the question the other way,
+   because a guest's save carries `art`/`image` (and the alternates, and the
+   printable token) straight through: they could always repoint a page at an
+   image hosted anywhere, and were refused only when uploading into the slot
+   named after the page itself. Nothing was protected by that — the icon on
+   screen was theirs to change either way — so the block only stopped the
+   tidy version of it.
+
+   So an open page's guest may write its image slots, exactly as they may
+   write its text. What stays out:
+
+   - 'tags' (and the tags-open default): tags only means tags only, and that
+     editor shows nothing else.
+   - 'suggest': a suggestion is stored, not applied, and an upload would land
+     in the live page's slot before anyone approved it — which is why
+     edit.html disables the art inputs in that mode.
+
+   editPermission() has already ruled out a draft, a deleted row and an
+   admin-protected page for the two open modes, so a guest who gets a yes here
+   is on a live page its creator opened. */
+async function canEditPageArt(env, sess, type, row) {
+  if (await canEditPage(env, sess, type, row)) return true;
+  const perm = await editPermission(env, sess, type, row);
+  return perm === 'all' || perm === 'all-but-ability';
 }
 
 /* 'suggest' is not write access: it is permission to PROPOSE a version

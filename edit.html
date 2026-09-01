@@ -940,7 +940,7 @@
                  firstNight: d.firstNight, otherNight: d.otherNight,
                  reminders: d.reminders, remindersGlobal: d.remindersGlobal };
       },
-      allowed: function(){ return EDIT_MODE === 'owner' || EDIT_MODE === 'approved'; },
+      allowed: canUploadArt,
       art: function(){
         return artDataURL || (originalEntry && originalEntry.art ? SITE_ROOT + 'assets/' + originalEntry.art : null);
       },
@@ -1024,6 +1024,19 @@
     // True when 'tags' came from the default (the owner chose nothing and the
     // page has no tags of their own) rather than from the owner opening them.
     var EDIT_DEFAULT = false;
+
+    /* The modes that may write this page's IMAGE slots — the same answer
+       canEditPageArt() gives in the Worker. A page opened to everyone is
+       opened to its art as well: the save already carries whatever `art`
+       points at, so a guest could always repoint the icon and was refused
+       only when uploading the tidy version of it. 'tags' shows no art fields
+       at all, and 'suggest' leaves them disabled on purpose — a suggestion is
+       stored rather than applied, so it must not land in the live page's
+       slot before anyone has approved it. */
+    function canUploadArt() {
+      return EDIT_MODE === 'owner' || EDIT_MODE === 'approved' ||
+             EDIT_MODE === 'all' || EDIT_MODE === 'all-but-ability';
+    }
 
     /* Sending a suggestion. The art is deliberately not uploaded: it would
        write into the page's own R2 slot, which is the one thing a suggestion
