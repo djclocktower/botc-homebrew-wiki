@@ -2086,6 +2086,26 @@ async function resolveCreatorAccount(env, name) {
   } catch { return null; }
 }
 
+// resolveCreatorAccount, behind the edge cache. Every character page's credit
+// line links /author?a={name}, so crawlers hit that route constantly — and
+// the ownership proof behind it is an unindexable scan of the characters
+// table. Cached per (name, content version) with the PEOPLE ttl: linking an
+// alias or publishing a page bumps the version and shows immediately; an
+// avatar or display-name edit surfaces within half an hour.
+async function cachedCreatorAccount(env, ctx, name) {
+  const nkey = normCreator(name);
+  if (!nkey) return null;
+  const cacheKey = 'https://feed.internal/creator-account.json?n=' +
+    encodeURIComponent(nkey) + '&v=' + (await contentVersion(env));
+  const hit = await edgeCacheGet(cacheKey);
+  if (hit !== null) {
+    try { return JSON.parse(hit).u || null; } catch { /* rebuild below */ }
+  }
+  const u = await resolveCreatorAccount(env, name);
+  edgeCachePut(ctx, cacheKey, JSON.stringify({ u: u || null }), PEOPLE_CACHE_CONTROL);
+  return u;
+}
+
 // An account -> every creator name it has published under (proof by ownership),
 // plus any name an admin has pointed at it. Lower-cased for comparison; the
 // display spelling comes off the pages themselves.
@@ -3447,12 +3467,33 @@ function sanitizeWikiFields(o, imgBase, themeBase) {
 // the bandwidth is worth. Revalidation is nearly free — the Worker compares one
 // ETag (a single indexed settings lookup) and returns an empty 304 without ever
 // touching the content tables.
-// `s-maxage=300` is the half that matters: the EDGE holds the built feed for
-// five minutes, so the expensive full-table read is amortised across every
-// visitor in that colo rather than paid per request. A content write bumps the
-// version, which changes the cache key, so an edit is visible immediately
-// regardless of the 300.
-const FEED_CACHE_CONTROL = 'public, max-age=0, s-maxage=300, must-revalidate';
+// This is the CLIENT-facing header only. The edge copy is stored separately,
+// under a version-keyed internal URL with its own much longer TTL — see
+// INTERNAL_CACHE_CONTROL below. (This constant used to carry s-maxage=300,
+// which also capped the STORED copy at five minutes and so forced every colo
+// to re-read the whole characters table from D1 up to 288 times a day per
+// variant — the single biggest reason the D1 free tier's 5M-rows-read daily
+// budget was running out.)
+const FEED_CACHE_CONTROL = 'public, max-age=0, must-revalidate';
+
+// The version-keyed INTERNAL cache entries (https://feed.internal/...) live
+// long, because their freshness comes from the version in the KEY, not from
+// expiry: a content write bumps content_version, every key changes, and the
+// stale entries are simply never matched again. The TTL therefore only
+// decides how long an UNCHANGED corpus stays warm at the edge — and a week
+// keeps a quiet day from ever re-reading it. Cloudflare may still evict
+// sooner under pressure; that costs one rebuild, never correctness. Do not
+// shorten this back to minutes: every rebuild of the character feed reads
+// the whole table, and the D1 free tier allows 5M rows read per day.
+const INTERNAL_CACHE_CONTROL = 'public, s-maxage=604800';
+
+// Creator/profile lookups carry ACCOUNT fields too (avatar, bio, display
+// name), and editing those bumps no content version — so their entries are
+// additionally capped at half an hour. That half hour is the ceiling on how
+// stale a bio can look to a logged-out reader; content changes (a new page,
+// a rename, an alias) still show immediately, because every one of them
+// bumps the version and rolls the key.
+const PEOPLE_CACHE_CONTROL = 'public, s-maxage=1800';
 const CONTENT_VERSION_KEY = 'content_version';
 const CONTENT_VERSION_CACHE_MS = 5000;
 let _contentVersionCache = null;
@@ -3602,6 +3643,60 @@ async function buildPublicJSON(env, table, opts = {}) {
   }
   return out;
 }
+
+// ---- version-keyed edge cache plumbing ----
+// One synthetic URL per (thing, content version). caches.default is shared by
+// every isolate in the colo, so a fresh isolate — the normal case on a
+// low-traffic site, where idle isolates are evicted within minutes — finds
+// the built copy instead of re-reading whole tables from D1. Failures fall
+// through to a rebuild: the cache is an optimisation, never a dependency.
+async function edgeCacheGet(key) {
+  try {
+    const hit = await caches.default.match(new Request(key, { method: 'GET' }));
+    return hit ? await hit.text() : null;
+  } catch { return null; }
+}
+function edgeCachePut(ctx, key, body, cacheControl, contentType) {
+  try {
+    const stored = new Response(body, {
+      headers: {
+        'Content-Type': contentType || JSON_HEADERS['Content-Type'],
+        'Cache-Control': cacheControl
+      }
+    });
+    const put = caches.default.put(new Request(key, { method: 'GET' }), stored).catch(() => {});
+    // Without a ctx the put is fire-and-forget: it may be cancelled when the
+    // response returns, which costs a warm start later, never a wrong answer.
+    if (ctx) ctx.waitUntil(put);
+  } catch { /* the response still goes out uncached */ }
+}
+
+// The built feed BODIES, memoised in-isolate and at the edge. The public
+// feed endpoint, the card-character cache (SSR collection pages, /random,
+// the export download), the jinx index and the [[Name]] link map all pull
+// from here — so however cold the isolate, one content version costs at
+// most ONE full read of each table per colo. It used to be one read per
+// consumer per five minutes, which is what was eating the D1 read budget.
+const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
+async function cachedFeedBody(env, ctx, table, fields) {
+  const version = await contentVersion(env);
+  const memoKey = table + '|' + fields;
+  const memo = _feedBodyCache.get(memoKey);
+  if (memo && memo.version === version) return memo.body;
+  const key = `https://feed.internal/${table}.json?fields=${fields}&v=${version}`;
+  let body = await edgeCacheGet(key);
+  if (body === null) {
+    body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
+    edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+  }
+  _feedBodyCache.set(memoKey, { version, body });
+  return body;
+}
+
+// The built sitemap, same two layers (crawlers re-fetch it constantly, and it
+// used to read four tables from D1 on every hit). Keyed on origin too, since
+// the URLs inside embed it.
+let _sitemapCache = null;   // { version, origin, body }
 
 // ---- D1 -> R2 backup (nightly cron + POST /api/backup) ----
 // Dumps every content table to backups/{YYYY-MM-DD}/{table}.json in the ART
@@ -4038,12 +4133,14 @@ async function jinxIndex(env, ctx) {
     }
   } catch { /* cache miss is not an error */ }
 
-  const rows = await buildPublicJSON(env, 'characters', { fields: 'card' });
+  // Built from the shared card cache, so a /c/ page in a cold isolate pays
+  // for at most one corpus read — the same one the link map derives from.
+  const rows = await cachedCardChars(env, ctx);
   const index = buildJinxIndex(rows);
   _jinxIndexCache = { version, index };
   try {
     const stored = new Response(JSON.stringify(index), {
-      headers: { ...JSON_HEADERS, 'Cache-Control': FEED_CACHE_CONTROL }
+      headers: { ...JSON_HEADERS, 'Cache-Control': INTERNAL_CACHE_CONTROL }
     });
     if (ctx) ctx.waitUntil(caches.default.put(cacheKey, stored).catch(() => {}));
   } catch { /* the in-isolate copy is enough */ }
@@ -4155,34 +4252,39 @@ function buildJinxIndex(chars) {
 //  1. A script only ever needs its own roster, so fetch exactly those slugs.
 //  2. A collection genuinely has to look at every character (membership is
 //     matched on `appearsIn`, not stored), but it only needs card fields, and
-//     the result is memoised per isolate against the content version.
+//     the result is memoised per isolate against the content version — and
+//     parsed out of the shared feed body, so a cold isolate finds it at the
+//     edge instead of re-reading the table.
 //  3. The [[Character Name]] link map needs every name, but only name+slug —
-//     never the data blob. That is its own cheap, separately cached query.
+//     so it is derived from the same card rows rather than being one more
+//     scan of its own.
 
 let _cardCharsCache = null;
-async function cachedCardChars(env) {
+async function cachedCardChars(env, ctx) {
   const version = await contentVersion(env);
   if (_cardCharsCache && _cardCharsCache.version === version) return _cardCharsCache.rows;
-  const rows = await buildPublicJSON(env, 'characters', { fields: 'card' });
+  const rows = JSON.parse(await cachedFeedBody(env, ctx, 'characters', 'card'));
   _cardCharsCache = { version, rows };
   return rows;
 }
 
 let _charLinkCache = null;
-async function cachedCharLinkMap(env) {
+async function cachedCharLinkMap(env, ctx) {
   const version = await contentVersion(env);
   if (_charLinkCache && _charLinkCache.version === version) return _charLinkCache.map;
   const map = {};
   const nkey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
   try {
-    await ensureUrlSlugColumn(env);
-    const { results } = await env.DB.prepare(
-      "SELECT slug, url_slug, name FROM characters WHERE status='published'"
-    ).all();
-    for (const r of results || []) {
+    // Derived from the card feed: the SSR routes that need this map pull the
+    // card rows anyway (jinx index, collection rosters), so the map costs no
+    // D1 read of its own any more. `page` is stamped on every card row from
+    // url_slug, so the address here is the same one the old query computed.
+    for (const r of await cachedCardChars(env, ctx)) {
+      if (!r || !r.slug) continue;
       // The ADDRESS: render-wiki turns this into `c/{value}`.
-      const addr = charAddress(r);
-      if (r.slug) map[nkey(r.slug)] = addr;
+      const addr = (typeof r.page === 'string' && r.page.indexOf('c/') === 0)
+        ? r.page.slice(2) : String(r.slug);
+      map[nkey(r.slug)] = addr;
       if (r.name) map[nkey(r.name)] = addr;
     }
   } catch { /* an empty map just means [[Name]] renders as a plain token */ }
@@ -4242,7 +4344,7 @@ async function charsBySlug(env, slugs) {
 
    Content-Disposition is what makes it save rather than display; the filename
    is the page's own slug, as the blob version named it. */
-async function pageJsonResponse(env, request, url) {
+async function pageJsonResponse(env, ctx, request, url) {
   const type = url.searchParams.get('type') === 'collection' ? 'collection' : 'script';
   const slug = String(url.searchParams.get('slug') || '');
   if (!slug) return jsonResponse({ error: 'Missing slug' }, { status: 400 });
@@ -4264,7 +4366,7 @@ async function pageJsonResponse(env, request, url) {
   }
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
-    : await cachedCardChars(env);
+    : await cachedCardChars(env, ctx);
   if (isScript && ((d.characters || []).some(x => String(x).indexOf('off-') === 0) || d.nightOrder)) {
     const official = await loadOfficialRoles(env, url.origin);
     chars = chars.concat(official.filter(c => (d.characters || []).includes(c.slug)));
@@ -4323,7 +4425,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // so it does — but from the memoised card feed, not a fresh full parse.
   let chars = isScript
     ? await charsBySlug(env, d.characters || [])
-    : await cachedCardChars(env);
+    : await cachedCardChars(env, ctx);
   // Scripts can carry imported official roles ('off-' slugs), so resolve them.
   // An arranged night order needs this call on an all-homebrew script too: it
   // is what loads the night's non-character steps.
@@ -4345,9 +4447,9 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const pagesHTML = WikiRender.renderPageLinks(wikiPages, { linkRoot: '../' });
   // [[Character Name]] inside a custom box links to that character. This needs
   // EVERY character's name, not just the ones on this page, so it cannot come
-  // from `chars` on a script page — but it only needs name+slug, so it is its
-  // own cheap cached query rather than a reason to load the whole corpus.
-  await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env));
+  // from `chars` on a script page — it derives from the shared card cache,
+  // which is already warm on a collection page and one edge read on a script.
+  await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env, ctx));
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -4555,26 +4657,17 @@ export default {
         });
       }
 
-      // Edge cache, keyed on the content version so a bump misses automatically
-      // rather than needing an explicit purge.
-      const cache = caches.default;
-      const cacheKey = new Request(
-        `https://feed.internal/${table}.json?fields=${fields}&v=${version}`,
-        { method: 'GET' }
-      );
-      const hit = await cache.match(cacheKey).catch(() => null);
-      if (hit) return hit;
-
-      const body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
-      const response = new Response(body, {
+      // Isolate + edge cache, keyed on the content version so a bump misses
+      // automatically rather than needing an explicit purge (cachedFeedBody
+      // owns both layers; the stored copy carries the long INTERNAL ttl).
+      const body = await cachedFeedBody(env, ctx, table, fields);
+      return new Response(body, {
         headers: {
           ...JSON_HEADERS,
           ETag: etag,
           'Cache-Control': FEED_CACHE_CONTROL
         }
       });
-      if (ctx) ctx.waitUntil(cache.put(cacheKey, response.clone()).catch(() => {}));
-      return response;
     }
 
     // ---------- SITE-WIDE ANNOUNCEMENT (public; site.js shows the banner) ----------
@@ -4981,8 +5074,9 @@ export default {
           Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
           Render.setOfficialNames(await officialNameMap(env, url.origin));
           // [[Character Name]] inside a jinx rule or a custom box links to
-          // that character. Cheap cached name->slug query, not the corpus.
-          WikiRender.setCharLinks(await cachedCharLinkMap(env));
+          // that character. Derived from the same card cache the jinx index
+          // below uses, so the two cost one corpus read between them.
+          WikiRender.setCharLinks(await cachedCharLinkMap(env, ctx));
           // Jinxes are a property of the pair, so this page shows the ones it
           // declares AND the ones other characters declare with it.
           try {
@@ -5083,7 +5177,7 @@ export default {
       // so it must never be the thing that pays to build it.
       let picked = null;
       try {
-        picked = Classify.weightedPick(await cachedCardChars(env));
+        picked = Classify.weightedPick(await cachedCardChars(env, ctx));
       } catch { /* fall through */ }
       let row = picked && picked.slug ? { slug: picked.slug, page: picked.page } : null;
       if (!row) {
@@ -5131,8 +5225,10 @@ export default {
       if (who) {
         // A D1 hiccup must not 500 a page that used to be a static file:
         // resolveCreatorAccount swallows its own errors and returns null, so
-        // the worst case here is the un-redirected creator page.
-        const acct = await resolveCreatorAccount(env, who);
+        // the worst case here is the un-redirected creator page. Cached —
+        // this link is on every character page's credit line, and the
+        // resolve behind it is a full scan of the characters table.
+        const acct = await cachedCreatorAccount(env, ctx, who);
         if (acct && acct.username) {
           return new Response(null, {
             status: 302,
@@ -5155,6 +5251,22 @@ export default {
       const aname = (url.searchParams.get('a') || '').trim();
       if (!uname && !aname) return jsonResponse({ error: 'Missing username' }, { status: 400 });
 
+      // Resolved up front so the logged-out case — which is what a crawler
+      // is — can be answered from the edge cache without touching D1. The
+      // anonymous response is identical for everyone (no drafts, no session),
+      // and building it costs five table scans; a logged-in viewer skips the
+      // cache entirely, so their own drafts and profile edits stay live.
+      const sess = await getSession(env, request);
+      const anonKey = sess ? null
+        : 'https://feed.internal/user.json?' + (uname ? 'u' : 'a') + '=' +
+          encodeURIComponent(normCreator(uname || aname)) + '&v=' + (await contentVersion(env));
+      if (anonKey) {
+        const hit = await edgeCacheGet(anonKey);
+        if (hit !== null) {
+          return new Response(hit, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
+        }
+      }
+
       let u = null;
       if (uname) {
         await ensureProfileColumn(env);
@@ -5165,7 +5277,7 @@ export default {
         if (!u) u = await selectUserByName(env, cols, uname);
         if (!u) return jsonResponse({ error: 'No such user' }, { status: 404 });
       } else {
-        u = await resolveCreatorAccount(env, aname);
+        u = await cachedCreatorAccount(env, ctx, aname);
         if (u) {
           await ensureProfileColumn(env);
           const full = await env.DB.prepare('SELECT profile_json FROM users WHERE id=?')
@@ -5180,7 +5292,7 @@ export default {
 
       // Drafts are for the people who can do something about them: the owner
       // of the profile and the admins. Same rule the old author page used.
-      const sess = await getSession(env, request);
+      // (`sess` was resolved at the top, before the anonymous cache check.)
       const canSeeDrafts = !!(sess && (sess.isAdmin || (u && sess.userId === u.id)));
 
       const statusIn = canSeeDrafts ? "('published','draft')" : "('published')";
@@ -5342,7 +5454,7 @@ export default {
         }
       } catch { /* the creator page still works without them */ }
 
-      return jsonResponse({
+      const payload = {
         profile: u ? {
           claimed: true,
           username: u.username,
@@ -5367,7 +5479,11 @@ export default {
         drafts: canSeeDrafts
           ? { characters: c.drafts, scripts: s.drafts, collections: k.drafts }
           : null
-      });
+      };
+      // Only the anonymous answer is cached (drafts: null by construction);
+      // the 404 above never is, so probing can't pin a wrong "no such user".
+      if (anonKey) edgeCachePut(ctx, anonKey, JSON.stringify(payload), PEOPLE_CACHE_CONTROL);
+      return jsonResponse(payload);
     }
 
     // ---------- CREATOR INDEX DATA (every creator, claimed or not) ----------
@@ -5451,6 +5567,14 @@ export default {
     }
 
     if (method === 'GET' && path === '/api/creators') {
+      // Cached per content version (with the PEOPLE ttl — the rows carry
+      // avatars and display names, which bump nothing when they change).
+      // Building this list reads five tables end to end.
+      const creatorsKey = 'https://feed.internal/creators.json?v=' + (await contentVersion(env));
+      const creatorsHit = await edgeCacheGet(creatorsKey);
+      if (creatorsHit !== null) {
+        return new Response(creatorsHit, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
+      }
       const tally = new Map();   // lower(name) -> {name, characters, scripts, collections}
       // One credit string can name several people; each of them gets their own
       // row here, the same way each of them gets their own creator page.
@@ -5540,11 +5664,27 @@ export default {
         });
       }
       out.sort((a, b) => b.total - a.total || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
-      return jsonResponse({ creators: out });
+      const creatorsBody = JSON.stringify({ creators: out });
+      edgeCachePut(ctx, creatorsKey, creatorsBody, PEOPLE_CACHE_CONTROL);
+      return new Response(creatorsBody, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
     }
 
     // ---------- SITEMAP (built live from D1) ----------
     if (method === 'GET' && path === '/sitemap.xml') {
+      // Version-keyed and cached like the feeds: the body only changes when
+      // the content does, and a content write bumps the version.
+      const smVersion = await contentVersion(env);
+      const xmlHeaders = { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' };
+      if (_sitemapCache && _sitemapCache.version === smVersion && _sitemapCache.origin === url.origin) {
+        return new Response(_sitemapCache.body, { headers: xmlHeaders });
+      }
+      const smKey = 'https://feed.internal/sitemap.xml?v=' + smVersion +
+        '&o=' + encodeURIComponent(url.origin);
+      const smHit = await edgeCacheGet(smKey);
+      if (smHit !== null) {
+        _sitemapCache = { version: smVersion, origin: url.origin, body: smHit };
+        return new Response(smHit, { headers: xmlHeaders });
+      }
       const xmlEsc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       async function pub(table) {
         // Characters are listed at their address, not their identity, or
@@ -5597,9 +5737,9 @@ export default {
       const body = '<?xml version="1.0" encoding="UTF-8"?>\n' +
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
         urls.join('\n') + '\n</urlset>';
-      return new Response(body, {
-        headers: { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' }
-      });
+      _sitemapCache = { version: smVersion, origin: url.origin, body };
+      edgeCachePut(ctx, smKey, body, INTERNAL_CACHE_CONTROL, 'application/xml; charset=utf-8');
+      return new Response(body, { headers: xmlHeaders });
     }
 
     // ---------- SCRIPT VIEW (legacy URLs redirect to the SSR /s/ pages) ----------
@@ -5744,7 +5884,7 @@ export default {
 
     // The Download JSON button on /s/ and /collection/ points straight here.
     if (method === 'GET' && path === '/api/page-json') {
-      return pageJsonResponse(env, request, url);
+      return pageJsonResponse(env, ctx, request, url);
     }
 
     /* ---- read a Bloodstar project ----
@@ -9194,6 +9334,10 @@ export default {
         const key = creatorAliasKey(name);
         if (b.clear) {
           await env.DB.prepare('DELETE FROM settings WHERE key=?').bind(key).run();
+          // The cached creator resolutions key on the content version; the
+          // link/unlink branches bump it through logActivity('update'), and
+          // without this one an unlink could take the PEOPLE ttl to show.
+          await bumpContentVersion(env);
           const acct = await resolveCreatorAccount(env, name);
           return jsonResponse({ ok: true, username: acct ? acct.username : null, cleared: true });
         }

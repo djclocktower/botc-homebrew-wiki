@@ -2556,6 +2556,22 @@ seeded with whole collections whose characters all arrived unowned.
   to embed them in its print preview and PNG/PDF sheet exports; without the
   header, wiki-hosted characters print as generic placeholders while looking
   fine on screen. Keep both halves in step.
+- **The D1 read budget is guarded by version-keyed edge caching** — the free
+  tier allows 5M `rows_read` a day and the site once burned through it on
+  cache rebuilds alone. The built feeds, the jinx index, the card-character
+  cache, the `[[Name]]` link map and the sitemap are all stored in
+  `caches.default` under synthetic `https://feed.internal/...?v={version}`
+  URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
+  from `content_version` in the key — every content write bumps it and rolls
+  every key — never from expiry, so do not shorten those TTLs back to
+  minutes. They all pull from one shared body (`cachedFeedBody()`), so a
+  cold isolate costs at most one full table read per colo per version.
+  Creator lookups (`/author?a=` redirects, anonymous `/api/user`,
+  `/api/creators`) are cached the same way but capped at 30 minutes
+  (`PEOPLE_CACHE_CONTROL`), because avatar/bio/display-name edits bump no
+  version; logged-in `/api/user` responses are never cached (they carry the
+  viewer's drafts). If a new endpoint scans a table per request, put it
+  behind the same plumbing before it ships.
 
 ## Verifying changes (no local server needed)
 
