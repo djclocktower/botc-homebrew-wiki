@@ -44,6 +44,12 @@ fixed shape that maps almost one-to-one onto this wiki's character page:
 - flavour quote (some carry "(Additional credit: …)" inline)
 - **ABILITY**
 - **STORYTELLER NOTES**
+- a **bold one-line summary** of what the character does, standing alone
+  between the Storyteller Notes and the strategy sections ("The Cartographer
+  learns where the majority of good players might reside.", "The Umbra evades
+  execution, moving about the Grimoire, poisoning neighbours in the
+  process.") — this is a flavour lede in the wiki's sense, and most
+  characters have one
 - **"Playing as the X"** + an Example
 - **"Bluffing as the X"** (good characters) or **"Fighting the X"** (evil
   characters) + an Example
@@ -121,6 +127,7 @@ validation all apply automatically). Field mapping:
 | name, team, ability | name, team, ability | `traveler` → `traveller` via `normTeam` |
 | `flavor` | the quote | "(Additional credit: …)" kept verbatim |
 | ABILITY (page) | — | same text as JSON `ability`; JSON wins |
+| the bold one-line summary | `lede` | the flavour line under the title — the wiki's lede, in the author's own words |
 | STORYTELLER NOTES | `howToRun` | renders as "How to Run" |
 | "Playing as the X" | `tips` | renders as "Tips & Tricks" — closest existing section; the text itself is untouched |
 | "Bluffing as the X" | `bluffing` | the wiki renders this heading **verbatim** ("Bluffing as the {Name}") |
@@ -131,13 +138,16 @@ validation all apply automatically). Field mapping:
 | `image[0..2]` | art slots 1–3 | positions already match (traveller = unaligned/good/evil) |
 | — | `creator: "Goodpart"`, `appearsIn: "The Menagerie"` | from `_meta` |
 
-**What stays empty, and what that means.** The site has no flavour-line
-*lede*, no summary bullets and no tags, and we may not write any. By
-`classify.js` rules every imported character will therefore read as
-**Partial** — visible at its own URL, on the creator page and in the
-collection, but hidden from All Characters / team / tag pages unless the
-reader ticks "Show Partial". That is the honest outcome of "only their
-words". Section 4 lists the levers if you want them surfaced anyway.
+**What stays empty, and what that means.** The site has no **summary
+bullets** and no **tags**, and we may not write any. By `classify.js` rules
+(`STANDARD_REQUIREMENTS` wants tags, lede, summary, how-to-run and an
+example) every imported character will therefore read as **Partial** —
+visible at its own URL, on the creator page and in the collection, but
+hidden from All Characters / team / tag pages unless the reader ticks "Show
+Partial". The bold lede, the Storyteller Notes and the examples are all
+there, so tags + a summary are the whole gap; the 5 JSON-only holiday
+characters additionally lack all prose. That is the honest outcome of "only
+their words". Section 4 lists the levers if you want them surfaced anyway.
 
 **Name clashes.** 31 of the 83 names already exist on this wiki (Banker,
 Martyr, Ronin, Shogun, Arbiter, …). This is routine: `/api/slug-check`'s
@@ -209,7 +219,10 @@ committed alongside the repo's other `*-import.json` files:
 - `migration/menagerie-scripts-import.json` — the 22 scripts with their
   descriptions and `_meta`
 
-Text handling in the scraper: Google Sites boilerplate stripped; emphasis
+Text handling in the scraper: the bold standalone summary line between
+Storyteller Notes and "Playing as …" is captured as the `lede` (recognised
+by its position and formatting, and verified by eye on a sample before the
+run); Google Sites boilerplate stripped; emphasis
 converted to plain text exactly as the Bloodstar importer does (character
 fields take only the links-only mark subset — typed asterisks would print);
 `image` strings normalised to arrays; `traveler` → `traveller`. The
@@ -274,7 +287,8 @@ bumps, the official guard and revision history all come for free.
    one roster + one verbatim paragraph, and they give the characters their
    script context.) The 5 unlisted JSONs stay out unless you say otherwise.
 2. **Partial visibility** — the imported characters will be Partial (no
-   tags, no lede, no summary — the site has none and we write nothing).
+   tags and no summary bullets — the site has neither and we write nothing;
+   the lede, how-to-run and examples all come from the site).
    Options, none of which add our words to pages:
    - leave them Partial (default; "Show Partial" reveals them, and the
      collection + creator pages show everything regardless);
