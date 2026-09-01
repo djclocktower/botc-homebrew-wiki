@@ -45,6 +45,11 @@ export const SHEET = {
   sidebarW: 7.788,
   sidebarH: 98.54,
   labelSize: 1.43, // 4mm at 210mm print width
+  // the label shrinks to fit its band; this is as small as it may get.
+  // A one-row TRAVELLERS band cannot hold the official size whatever we
+  // do, but a label small enough to read as a smudge is worse than one
+  // overhanging into the dead ribbon of the section gap. 2mm at print.
+  labelSizeMin: 0.72,
   // header / footer
   titleCX: 56.07, // title text horizontal centre (between skull and right swirl)
   titleCY: 6.66,

@@ -2076,6 +2076,17 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   different advance widths, every wrap moves. Chromium ignores `line-height`
   in vertical-rl/upright text, so sidebar letter pitch is compressed with
   negative `letter-spacing` — that is why the labels carry `-0.15em`.
+  A sidebar label shrinks to fit **its own section plus the trailing gap**,
+  floored at `labelSizeMin`; the LAST section additionally owns the ribbon
+  down to the garland, but only ever as a `Math.max` bonus. That run used to
+  BE its band — measured from a fixed 87.5 em bottom against a top that moves
+  with the density — so the last label shrank as the sheet filled and the
+  span went negative once the rows reached past 87.5 em, i.e. at any density
+  above the auto fit, including the default 1.0 the slider starts on. Every
+  last label then floored: TRAVELLER, FABLED and a five-letter LORIC alike,
+  because the fault is positional, not a long-word problem. A long label in a
+  one-row band is still smaller than its neighbours (TRAVELLERS cannot be
+  10 letters at 4mm in one row) — that part is the band, not a bug.
 - **`sheet.js` styles itself entirely inline** and must keep doing so: the
   element is what html-to-image captures for export, and page CSS the capture
   library has to chase is a source of export-only bugs. The parchment,

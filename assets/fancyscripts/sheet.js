@@ -763,7 +763,17 @@ export function renderSheet(script, options, requestRender) {
       : TEAM_LABELS[g.team]).toUpperCase();
     const baseFs = e(SHEET.labelSize); // official labels: one fixed size
     const isLast = si === sections.length - 1;
-    const spanH = isLast ? 87.5 * U - topPx : heightPx + ed(SHEET.sectionGap);
+    /* The band a label is centred on and shrinks to fit: its own section
+       plus the trailing gap. The LAST section owns the ribbon on down to
+       the garland — but only ever as a BONUS. Taking that run as the band
+       outright measured it from a fixed bottom (87.5 em) against a top that
+       moves with the density, so the last label shrank as the sheet filled
+       and the span went NEGATIVE once the rows reached past 87.5 em (any
+       density above the auto fit) — flooring the last label at the minimum
+       whatever it said. It is positional, not a long-word problem: a
+       five-letter LORIC collapsed exactly like TRAVELLERS did. */
+    const ownH = heightPx + ed(SHEET.sectionGap);
+    const spanH = isLast ? Math.max(ownH, 87.5 * U - topPx) : ownH;
     // upright vertical letters advance ≈ font-size (Chromium ignores
     // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
     const fitFs = (spanH - e(0.2)) / (label.length * 0.85);
@@ -775,7 +785,7 @@ export function renderSheet(script, options, requestRender) {
       writingMode: 'vertical-rl',
       textOrientation: 'upright',
       fontFamily: FONT_SIDEBAR,
-      fontSize: px(Math.max(8, Math.min(baseFs, fitFs))),
+      fontSize: px(clamp(fitFs, e(SHEET.labelSizeMin), baseFs)),
       lineHeight: '1',
       letterSpacing: '-0.15em',
       color: '#eeeeee',
