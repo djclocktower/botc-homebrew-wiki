@@ -4027,3 +4027,11 @@ html.textedit-on .te-live-hit {
 .comments-section .att-thumb img,
 .comments-section .att-shot img { border-color: rgba(236,225,200,.35); }
 .comments-section .att-thumb-wait { border-color: rgba(236,225,200,.4); color: var(--cmt-cream); }
+
+/* A field the editor has locked for a guest (edit.html's "open except the
+   ability" mode): still readable, plainly not for typing in. */
+.formcard textarea.is-locked, .formcard textarea[readonly].is-locked {
+  opacity: .7;
+  cursor: not-allowed;
+  background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(0,0,0,.035) 8px 10px);
+}

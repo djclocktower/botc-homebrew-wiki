@@ -335,9 +335,11 @@
           <summary>Who can edit these pages afterwards</summary>
           <div class="bs-fld" style="margin-top:10px">
             <select id="bs-publicedit">
-              <option value="">Only me (and admins)</option>
+              <option value="">Default: tags open until I tag the page</option>
+              <option value="closed">Only me (and admins)</option>
               <option value="suggest">Anyone can suggest an edit</option>
               <option value="tags">Anyone can change the tags</option>
+              <option value="all-but-ability">Anyone with an account can edit, except the ability</option>
               <option value="all">Anyone with an account can edit</option>
             </select>
             <span class="hint">Applied to every page this import makes. You can change it per page afterwards.</span>

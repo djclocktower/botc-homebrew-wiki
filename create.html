@@ -405,10 +405,12 @@
         <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
-            <option value="">Only me (and the wiki admins)</option>
+            <option value="">Default: tags open to anyone until I tag the page myself</option>
+            <option value="closed">Only me (and the wiki admins)</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
+            <option value="all-but-ability">Anyone with an account can edit this page, except the ability</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>

@@ -475,7 +475,14 @@
      the bar is the page's status, not only a notice when it is unusual. */
   var EDIT_STATUS = {
     '':        ['yours alone', 'only you and the wiki admins can edit this page.'],
+    closed:    ['yours alone', 'only you and the wiki admins can edit this page.'],
+    /* A character whose owner chose nothing keeps its tags open until the
+       owner tags it (the Worker's defaultTagsOpen). The editor asks for this
+       key when that default is what the next save will leave in force, and
+       for '' once the owner's own tags have switched it off. */
+    'default': ['tags open for now', 'anyone with an account can add tags until you tag the page yourself or pick another option.'],
     all:       ['open to all', 'anyone with an account can edit this page.'],
+    'all-but-ability': ['open except the ability', 'anyone with an account can edit this page, but the ability text stays yours.'],
     tags:      ['tags open to all', 'anyone with an account can change the tags.'],
     suggest:   ['suggestions welcome', 'anyone with an account can propose an edit for you to approve.'],
     /* Approved editing names accounts rather than opening the page. It is not
@@ -484,7 +491,8 @@
        that reason, so nothing but the owner's own form ever names them. */
     approved:  ['shared', 'only the accounts you have named can edit this page.']
   };
-  /* mode: the stored `publicEdit` ('' for a closed page).
+  /* mode: the stored `publicEdit` ('' or 'closed' for a closed page,
+     'default' for a character still on the tags-open default).
      opts.links: [{href, label}] appended after the sentence — the history
      page, a suggestions queue, whatever the editor has to offer. */
   function editStatusHTML(mode, opts) {

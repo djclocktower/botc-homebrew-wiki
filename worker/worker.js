@@ -218,6 +218,12 @@
  *                                character one account owns ({dryRun:true}
  *                                first; never touches a page that already
  *                                names a sharing mode)
+ *   POST /api/admin/open-editing -> set every unowned or admin-owned
+ *                                character to 'all-but-ability' (anyone with
+ *                                an account edits everything but the ability),
+ *                                skipping the members of the collections in
+ *                                {except:[...]} (default: ravenswood-chronicle).
+ *                                {dryRun:true} first.
  *   POST /api/admin/demote-incomplete -> sweep published characters that no
  *                                longer meet the publish bar into drafts
  *                                (alias: /api/admin/demote-no-icon)
@@ -1065,7 +1071,9 @@ const FEED_CHANGING_ACTIONS = new Set([
   'curata', 'uncurata', 'rollback', 'restore', 'restore-backup',
   'assign-owner', 'protect', 'unprotect', 'purge', 'admin-draft',
   // Approving a suggestion writes the page; 'suggest' itself changes nothing.
-  'suggestion-approve'
+  'suggestion-approve',
+  // `publicEdit` rides the feeds, and these rewrite it in bulk.
+  'tags-open', 'open-editing'
 ]);
 
 // ---- activity log helper ----
@@ -2209,22 +2217,71 @@ function canEditRow(sess, row) {
    On top of that a creator may open a page up, stored on its data as
    `publicEdit`. editPermission() answers what THIS session may do to THIS row:
 
-     'owner'    everything (the owner, or an admin)
-     'approved' the page's content, for an account the owner named by hand
-     'all'      the page's content, but none of the owner's own settings
-     'tags'     the tags and nothing else (characters only)
-     ''         nothing
+     'owner'            everything (the owner, or an admin)
+     'approved'         the page's content, for an account the owner named by hand
+     'all'              the page's content, but none of the owner's own settings
+     'all-but-ability'  the same, except the ability text (characters only)
+     'tags'             the tags and nothing else (characters only)
+     ''                 nothing
 
    Never open, whatever the setting says: a draft, an admin-protected page,
    and a page whose owner never opted in. 'approved' is the one exception to
-   the draft half of that — see editPermission below. */
-const PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
+   the draft half of that — see editPermission below.
+
+   ---- the default: tags open until the owner tags the page ----
+   A CHARACTER whose owner has chosen nothing is not closed: its tags are open
+   to anyone with an account for as long as the page has no tags of the
+   owner's own. Tags are the one field a stranger can fill in correctly
+   without knowing the character, and an untagged page is Partial and hidden
+   from the browse pages, so the default gets the gap filled. It ends the
+   moment the owner acts:
+
+     - the owner saves the page WITH tags (`tagsBy` below);
+     - the owner picks any mode, including "Only me", which is stored as
+       PUBLIC_EDIT_CLOSED rather than as nothing so the choice is remembered;
+     - or the page is on a broader mode ('all', 'all-but-ability'), which
+       already includes the tags.
+
+   `tagsBy: 'guest'` marks tags that arrived through the default (or through
+   'tags' mode) rather than from the owner, so a stranger tagging the page
+   does not shut it behind themselves; any owner save clears the mark. A
+   page that already carries tags and no mark is taken as tagged by its
+   owner — that is every page tagged before this rule existed.
+   defaultTagsOpen() is the whole rule; editPermission() and the editor read
+   it, nothing is stored for it. */
+const PUBLIC_EDIT_MODES = { all: 1, 'all-but-ability': 1, tags: 1, suggest: 1, approved: 1 };
+const PUBLIC_EDIT_CLOSED = 'closed';
+// Modes that only mean something on a character (the other two page types
+// have no ability and no tags). On a script or collection they read as closed.
+const CHARACTER_ONLY_MODES = { tags: 1, 'all-but-ability': 1 };
 function publicEditMode(d) {
   const v = d && d.publicEdit;
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
 }
-function sanitizePublicEdit(v) {
-  return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
+/* What a save may store. A character keeps 'closed' (the owner's explicit
+   "Only me", which switches the default off); a script or collection has no
+   default to switch off, so for them it is nothing, and a character-only mode
+   becomes its nearest equivalent rather than a word their editors never
+   offered. */
+function sanitizePublicEdit(v, type) {
+  if (typeof v !== 'string') return '';
+  const character = !type || type === 'character';
+  if (v === PUBLIC_EDIT_CLOSED) return character ? PUBLIC_EDIT_CLOSED : '';
+  if (!PUBLIC_EDIT_MODES[v]) return '';
+  if (!character && CHARACTER_ONLY_MODES[v]) return v === 'all-but-ability' ? 'all' : '';
+  return v;
+}
+function defaultTagsOpen(type, d) {
+  if (type !== 'character' || !d) return false;
+  if (publicEditMode(d) || d.publicEdit === PUBLIC_EDIT_CLOSED) return false;
+  const tags = typeof d.tags === 'string' ? d.tags.trim() : '';
+  return !tags || d.tagsBy === 'guest';
+}
+/* The mode in force: what the owner stored, or the default when they stored
+   nothing. Ignores the draft / protected / deleted gates, which are
+   editPermission()'s. */
+function effectivePublicEdit(type, d) {
+  return publicEditMode(d) || (defaultTagsOpen(type, d) ? 'tags' : '');
 }
 
 /* ---- approved editing: the accounts the owner named ----
@@ -2536,12 +2593,15 @@ async function editPermission(env, sess, type, row) {
      page's owner who named them. Checked here so it applies to a page that
      opted into nothing of its own — which is most of them. */
   if (type === 'character' && await waterfallEditor(env, sess, row)) return 'approved';
-  if (!mode) return '';
-  if (mode === 'approved') return '';    // named editing, and this is not one of the names
+  // Nothing chosen is not nothing on a character: the tags stay open until
+  // the owner tags the page or picks a mode (see defaultTagsOpen).
+  const eff = mode || (defaultTagsOpen(type, d) ? 'tags' : '');
+  if (!eff) return '';
+  if (eff === 'approved') return '';    // named editing, and this is not one of the names
   if ((row.status || 'published') !== 'published') return '';
-  if (mode === 'tags' && type !== 'character') return '';
+  if (CHARACTER_ONLY_MODES[eff] && type !== 'character') return '';
   if (await isProtected(env, type, row.slug)) return '';
-  return mode;
+  return eff;
 }
 
 /* Ownership, or an approved editor the owner named. This is the gate on
@@ -2568,7 +2628,8 @@ async function canEditPage(env, sess, type, row) {
    (POST /api/suggest). Every save handler asks this before writing, so a mode
    that is not a writing mode can never be mistaken for one. */
 function permCanWrite(perm) {
-  return perm === 'owner' || perm === 'approved' || perm === 'all' || perm === 'tags';
+  return perm === 'owner' || perm === 'approved' || perm === 'all' ||
+    perm === 'all-but-ability' || perm === 'tags';
 }
 
 /* Telling a suggester what happened, through the same DM row as every other
@@ -3382,6 +3443,18 @@ function foldLegacyCurata(d) {
 }
 
 // A row's `data` blob, or {} if the row is missing or the JSON is corrupt.
+/* parseData() answers {} for a blob it cannot read, which is right for
+   rendering and wrong for a read-modify-write: a handler that writes the
+   object back would turn a row whose JSON is broken into {"publicEdit":"…"}
+   with the whole character gone. The bulk editors use this instead and skip
+   anything that is not a readable object. */
+function readRowDataStrict(r) {
+  if (!r || !r.data) return null;
+  try {
+    const d = JSON.parse(r.data);
+    return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
+  } catch { return null; }
+}
 function parseData(row) {
   if (!row || !row.data) return {};
   try { return foldLegacyCurata(JSON.parse(row.data)); } catch { return {}; }
@@ -3606,7 +3679,7 @@ async function bumpContentVersion(env) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related'
+  'related', 'tagsBy'
 ]);
 
 // ---- the GRID feed: only what a card needs ----
@@ -6929,6 +7002,9 @@ export default {
       // a form.
       const mode = owns ? 'owner' : await editPermission(env, sess, type, row);
       const editable = !!mode;
+      // Tags open because the owner chose nothing (defaultTagsOpen), not
+      // because they opened them — the editor words its banner on it.
+      const editDefault = mode === 'tags' && !publicEditMode(parseData(row));
       // Soft-deleted pages read as gone; restore from the dashboard first.
       if (row.status === 'deleted') return jsonResponse({ error: 'Not found' }, { status: 404 });
       // A draft is invisible to everyone but the people who may work on it —
@@ -6995,7 +7071,7 @@ export default {
         slug: row.slug, data: pageData,
         curataFrom, editVia, relatedBy,
         status: row.status || 'published', canEdit: editable,
-        editMode: mode || false, isOwner: owns,
+        editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
         // the current row from one based on an hour-old copy.
         updatedAt: row.updated_at || null
@@ -7417,7 +7493,7 @@ export default {
         createdAt: row.created_at || null,
         updatedAt: row.updated_at || null,
         canRestore: owns,
-        publicEdit: publicEditMode(parseData(row)) || '',
+        publicEdit: effectivePublicEdit(type, parseData(row)),
         entries
       });
     }
@@ -8993,6 +9069,10 @@ export default {
           if (conflict) return conflict;
         }
         const stored = existing ? parseData(existing) : null;
+        // Read before the tags-only branch below, which makes `c` and
+        // `stored` one object.
+        const storedTags = stored && typeof stored.tags === 'string' ? stored.tags.trim() : '';
+        const storedTagsBy = stored ? stored.tagsBy : undefined;
         if (perm === 'tags') {
           // Tags and nothing else. Rather than compare field by field and
           // hope nothing was missed, the stored page IS the save and only the
@@ -9000,6 +9080,30 @@ export default {
           const tags = typeof c.tags === 'string' ? c.tags : '';
           c = stored;
           c.tags = tags.slice(0, PUBLIC_EDIT_TAGS_MAX);
+        }
+        if (perm === 'all-but-ability') {
+          // Everything but the rule itself. The ability is what the page IS
+          // — it goes into every export and onto every token — so it is
+          // re-pinned from the stored row whatever was posted. The custom
+          // JSON goes with it: it replaces the page's JSON box outright, so
+          // leaving it open would be a second way to rewrite the ability.
+          c.ability = stored.ability;
+          if (stored.customJson) c.customJson = stored.customJson; else delete c.customJson;
+        }
+        /* Who the tags came from — the switch on the tags-open default (see
+           defaultTagsOpen). Tags a guest supplied are marked so they do not
+           close the page behind them; any save by the owner clears the mark,
+           because tags the owner saved are the owner's. An admin saving
+           somebody else's page counts as a guest here: moderating a page is
+           not tagging it. */
+        {
+          const asOwner = perm === 'owner' &&
+            !(sess.isAdmin && existing && existing.owner_id && existing.owner_id !== sess.userId);
+          const postedTags = typeof c.tags === 'string' ? c.tags.trim() : '';
+          if (asOwner) delete c.tagsBy;
+          else if (storedTagsBy === 'guest') c.tagsBy = 'guest';
+          else if (existing && !storedTags && postedTags) c.tagsBy = 'guest';
+          else delete c.tagsBy;
         }
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
@@ -9019,7 +9123,7 @@ export default {
           // friend to somebody else's page, and cannot take the others off.
           c.editors = approvedEditors(stored);
         } else {
-          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          c.publicEdit = sanitizePublicEdit(c.publicEdit, 'character');
           const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
           const before = new Set(approvedEditors(stored).map(e => Number(e.id)));
           editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
@@ -9300,7 +9404,7 @@ export default {
           c.publicEdit = storedColl.publicEdit;
           c.editors = approvedEditors(storedColl);
         } else {
-          c.publicEdit = sanitizePublicEdit(c.publicEdit);
+          c.publicEdit = sanitizePublicEdit(c.publicEdit, 'collection');
           const eds = await sanitizeEditors(env, c.editors, existing ? existing.owner_id : sess.userId);
           const before = new Set(approvedEditors(storedColl).map(e => Number(e.id)));
           editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
@@ -9407,7 +9511,7 @@ export default {
           s.publicEdit = storedScript.publicEdit;
           s.editors = approvedEditors(storedScript);
         } else {
-          s.publicEdit = sanitizePublicEdit(s.publicEdit);
+          s.publicEdit = sanitizePublicEdit(s.publicEdit, 'script');
           const eds = await sanitizeEditors(env, s.editors, existing ? existing.owner_id : sess.userId);
           const before = new Set(approvedEditors(storedScript).map(e => Number(e.id)));
           editorsAdded = eds.list.filter(e => !before.has(Number(e.id)));
@@ -10640,6 +10744,88 @@ export default {
            'suggest' or 'approved' keeps what its owner chose — this must never
            quietly NARROW an open page to tags-only.
          Re-runnable, and reversible one page at a time from the editor. */
+      /* ---- open editing on the pages nobody looks after ----
+         Half the wiki was bulk-imported: owned by the import account or by
+         nobody, credited to people who never had a login. Those pages have
+         no creator to open them up, and no creator to object, so this hands
+         them to the members: 'all-but-ability' — anyone with an account may
+         improve everything on the page except the rule itself, which is the
+         one field a stranger must not be able to rewrite in bulk (it goes into
+         every export and onto every token).
+
+         Deliberately NOT every page an admin account owns: only the one
+         import account ({username}, default "admin"). Other admins' own
+         characters are their own work.
+
+         The collections in {except:[...]} are left exactly as they are
+         (default: ravenswood-chronicle, whose owner asked for it), matched
+         through resolveCollectionMembers() like everywhere else. A page
+         already on this mode is skipped, so it is re-runnable; a page on any
+         OTHER mode — 'all' included — is moved onto this one, because these
+         pages have nobody whose choice that was. {dryRun:true} first. */
+      if (path === '/api/admin/open-editing') {
+        const b = await request.json().catch(() => ({}));
+        const dryRun = b.dryRun !== false;
+        const MODE = 'all-but-ability';
+        const adminName = String(b.username || 'admin').trim();
+        const adminUser = adminName ? await findUserByUsername(env, adminName) : null;
+        const adminId = adminUser ? Number(adminUser.id) : null;
+        const exceptKeys = Array.isArray(b.except)
+          ? b.except.map(x => String(x || '').trim()).filter(Boolean).slice(0, 20)
+          : ['ravenswood-chronicle'];
+        const cache = {};
+        const excepted = new Set();
+        const exceptedSets = [];
+        for (const key of exceptKeys) {
+          const coll = await findCollectionRow(env, key);
+          if (!coll) { exceptedSets.push({ key, found: false, members: 0 }); continue; }
+          const slugs = await rosterCharacterSlugs(env, 'collection', coll, cache);
+          for (const sl of slugs) excepted.add(sl);
+          exceptedSets.push({
+            key, found: true, members: slugs.length,
+            name: parseData(coll).displayName || coll.slug
+          });
+        }
+        const base = "SELECT slug, name, owner_id, data FROM characters WHERE status IS NOT 'deleted' AND ";
+        const q = adminId != null
+          ? env.DB.prepare(base + '(owner_id IS NULL OR owner_id=?)').bind(adminId)
+          : env.DB.prepare(base + 'owner_id IS NULL');
+        const { results } = await q.all();
+        const rows = results || [];
+        const hits = [], skipped = [];
+        let alreadyOpen = 0, exceptedCount = 0, wasAll = 0, wasOther = 0, unowned = 0, adminOwned = 0;
+        for (const r of rows) {
+          if (excepted.has(r.slug)) { exceptedCount++; continue; }
+          const d = readRowDataStrict(r);
+          if (!d) { skipped.push(r.slug); continue; }
+          if (d.publicEdit === MODE) { alreadyOpen++; continue; }
+          const was = publicEditMode(d) || (d.publicEdit === PUBLIC_EDIT_CLOSED ? PUBLIC_EDIT_CLOSED : '');
+          if (was === 'all') wasAll++; else if (was) wasOther++;
+          if (r.owner_id == null) unowned++; else adminOwned++;
+          hits.push({ row: r, data: d, was });
+        }
+        const summary = {
+          ok: true, dryRun, mode: MODE,
+          username: adminUser ? adminUser.username : null,
+          scanned: rows.length, count: hits.length,
+          unowned, adminOwned, alreadyOpen, excepted: exceptedCount, exceptedSets,
+          wasAll, wasOther, skipped
+        };
+        if (dryRun) {
+          summary.pages = hits.slice(0, 300).map(h => ({ slug: h.row.slug, name: h.row.name, was: h.was }));
+          return jsonResponse(summary);
+        }
+        for (const h of hits) {
+          h.data.publicEdit = MODE;
+          await env.DB.prepare("UPDATE characters SET data=?, updated_at=datetime('now') WHERE slug=?")
+            .bind(JSON.stringify(h.data), h.row.slug).run();
+        }
+        await logActivity(env, sess, 'open-editing', 'character', null,
+          'editing opened (all but the ability) on ' + hits.length + ' unowned/' +
+          (adminUser ? adminUser.username : 'admin') + '-owned page(s)');
+        return jsonResponse(summary);
+      }
+
       if (path === '/api/admin/tags-open-owner') {
         const b = await request.json().catch(() => ({}));
         const uname = String(b.username || '').trim();
@@ -10650,18 +10836,7 @@ export default {
           "SELECT slug, name, tags, data FROM characters WHERE owner_id=? AND status IS NOT 'deleted'"
         ).bind(u.id).all();
         const owned = results || [];
-        /* parseData() answers {} for a blob it cannot read, which is right for
-           rendering and wrong for a read-modify-write: this handler writes the
-           object back, so a row whose JSON is broken would come out as
-           {"publicEdit":"tags"} with the whole character gone. Parse it here
-           instead and skip anything that is not a readable object. */
-        const readData = r => {
-          if (!r || !r.data) return null;
-          try {
-            const d = JSON.parse(r.data);
-            return (d && typeof d === 'object' && !Array.isArray(d)) ? d : null;
-          } catch { return null; }
-        };
+        const readData = readRowDataStrict;
         // The tags column and the blob can disagree on a hand-written row, so a
         // page counts as tagged if EITHER says so.
         const untagged = (r, d) => !String(r.tags || '').trim() && !String(d.tags || '').trim();
@@ -10672,7 +10847,7 @@ export default {
           if (!d) { skipped.push(r.slug); continue; }
           if (!untagged(r, d)) continue;
           untaggedTotal++;
-          if (publicEditMode(d)) { alreadyOpen++; continue; }
+          if (publicEditMode(d) || d.publicEdit === PUBLIC_EDIT_CLOSED) { alreadyOpen++; continue; }
           hits.push({ row: r, data: d });
         }
         if (b.dryRun !== false) {
