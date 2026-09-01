@@ -116,6 +116,65 @@ export const DEFAULT_OPTIONS = {
   showAuthor: true, // "by <author>" credit under the title
 };
 
+/* ── the back cover ─────────────────────────────────────────────────────
+   Template constants measured from the owner's PSD ("Clockback", A4
+   2480×3508): the pattern's base colour for the recolour ratios, and the
+   title treatment — gold fill rgb(190,168,129), 3px outside black stroke,
+   black drop shadow cast downward — scaled to the sheet's 1242px space. */
+export const BACK_BASE = { hex: '#0b3217', h: 137.1, s: 0.652, l: 0.100 };
+
+export const DEFAULT_BACK = {
+  bgColor: BACK_BASE.hex,
+  shading: 1, // 0 = flat pattern, 1 = the template's glow + vignette, 2 = stronger
+  texts: [],  // seeded from the script title by seedBackTexts()
+};
+
+const BACK_SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to', 'at', '&', 'or']);
+
+/* One element per word, stacked and staggered like the template (Axiom /
+   of / Logic): connector words small and offset right, the rest large,
+   sizes shrunk until the tallest word fits the width and the stack fits
+   the page. Pure — the page hands the result to options.back.texts. */
+export function seedBackTexts(title) {
+  const words = String(title || '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
+  if (!words.length) words.push('Untitled');
+  const rows = words.map((w) => ({ text: w, small: BACK_SMALL_WORDS.has(w.toLowerCase()) }));
+  // base sizes from the template: big ≈ 31–37% of width, small ≈ 22%
+  let big = rows.length <= 3 ? 400 : rows.length <= 5 ? 330 : 260;
+  const sizeOf = (r) => Math.min(
+    r.small ? big * 0.58 : big,
+    // LHF Unlovable advances ≈ 0.43 em — keep every word inside the page
+    (1242 * 0.88) / (0.43 * Math.max(2, r.text.length)),
+  );
+  // overlapping stack like the template (pitch ≈ 0.62 of the glyph size)
+  let total = rows.reduce((n, r) => n + sizeOf(r) * 0.62, 0);
+  if (total > 1656 * 0.62) big *= (1656 * 0.62) / total;
+  const heights = rows.map((r) => sizeOf(r) * 0.62);
+  total = heights.reduce((a, b) => a + b, 0);
+  let y = 46 - ((total / 1656) * 100) / 2;
+  const stagger = [-2, 4, 2, -3, 3, -2, 2, 0];
+  return rows.map((r, i) => {
+    const h = (heights[i] / 1656) * 100;
+    y += h;
+    return {
+      text: r.text,
+      x: 50 + (r.small ? 5 : stagger[i % stagger.length]),
+      y: y - h / 2,
+      size: Math.round(sizeOf(r)),
+      font: 'unlovable',
+      fill: '#bea881',
+      strokeW: 1.5,
+      strokeColor: '#000000',
+      shadowX: 0,
+      shadowY: 2,
+      shadowBlur: 5,
+      shadowColor: '#000000',
+      rotate: 0,
+      spacing: 0,
+    };
+  });
+}
+
 export const TEAM_ORDER = [
   'townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'
 ];

@@ -13,15 +13,20 @@
  */
 
 import {
-  DEFAULT_OPTIONS, TRIM_W_PT, TRIM_H_PT, SHEET_W, SHEET_H,
-  parseScript, setOfficialRoster,
+  DEFAULT_OPTIONS, DEFAULT_BACK, TRIM_W_PT, TRIM_H_PT, SHEET_W, SHEET_H,
+  parseScript, setOfficialRoster, seedBackTexts,
 } from './script.js';
 import { renderSheet, fitTitle } from './sheet.js';
+import { renderBack, mountBackDrag, backCanvas, backReady } from './back.js';
 
 const $ = (id) => document.getElementById(id);
 
 /* ── state ── */
 let options = { ...DEFAULT_OPTIONS };
+options.back = { ...DEFAULT_BACK, texts: [] };
+let view = 'front'; // which side the preview shows: 'front' | 'back'
+let backSel = -1; // selected back-cover text element
+let lastScale = 1; // preview scale, for mapping drag pointer px to sheet px
 let rawJson = null;
 let parsed = { meta: { name: 'Untitled Script', author: '' }, characters: [], warnings: [] };
 
@@ -101,12 +106,32 @@ function reparse() {
 
 function render() {
   const wrap = $('fs-sheet-wrap');
-  const sheet = renderSheet(parsed, options, requestRender);
   wrap.textContent = '';
-  wrap.append(sheet);
-  fitTitle(sheet, options);
-  showSolvedDensity(sheet);
+  if (view === 'back') {
+    const backEl = renderBack(parsed, options, requestRender, { selected: backSel });
+    mountBackDrag(backEl, options.back, {
+      getScale: () => lastScale,
+      onSelect: (i) => { backSel = i; buildBackElementPanel(); requestRender(); },
+      onChange: requestRender,
+    });
+    wrap.append(backEl);
+  } else {
+    const sheet = renderSheet(parsed, options, requestRender);
+    wrap.append(sheet);
+    fitTitle(sheet, options);
+    showSolvedDensity(sheet);
+  }
   fitPreview();
+}
+
+/* switch the preview side and show that side's controls */
+function applyView(v) {
+  view = v;
+  $('fs-tab-front').classList.toggle('on', v === 'front');
+  $('fs-tab-back').classList.toggle('on', v === 'back');
+  document.querySelectorAll('.fs-front-card').forEach((el) => { el.hidden = v !== 'front'; });
+  $('fs-back-card').hidden = v !== 'back';
+  requestRender();
 }
 
 /* fit the fixed-size sheet into whatever width the preview box has */
@@ -115,6 +140,7 @@ function fitPreview() {
   const outer = $('fs-scale-box');
   const wrap = $('fs-sheet-wrap');
   const scale = Math.min(1, (box.clientWidth - 12) / SHEET_W);
+  lastScale = scale;
   outer.style.width = SHEET_W * scale + 'px';
   outer.style.height = SHEET_H * scale + 'px';
   wrap.style.transform = 'scale(' + scale + ')';
@@ -127,6 +153,10 @@ function loadJson(json, sourceLabel) {
   // a fresh script gets fresh overrides — the old title would stick otherwise
   options.titleOverride = '';
   options.authorOverride = '';
+  options.back.texts = seedBackTexts(parsed.meta.name);
+  backSel = -1;
+  buildBackChips();
+  buildBackElementPanel();
   syncControls();
   requestRender();
   if (sourceLabel) note('Loaded ' + sourceLabel + '.', 'ok');
@@ -206,7 +236,7 @@ const TOGGLES = [
   ['showFootnote', '“*Not the first night” footnote'],
   ['useLogo', 'Use the script’s logo image as the title'],
   ['showAuthor', 'Author credit under the title'],
-  ['includeBackCover', 'Damask back cover in the PDF'],
+  ['includeBackCover', 'Back cover page in the PDF'],
   ['proxyIcons', 'Route off-site icons through a proxy (safer export)'],
 ];
 
@@ -465,8 +495,8 @@ function loadScriptOnce(src, ready) {
   });
 }
 
-function exportName(ext) {
-  return (parsed.meta.name || 'script').replace(/[^\w\d]+/g, '_') + '_script.' + ext;
+function exportName(ext, suffix) {
+  return (parsed.meta.name || 'script').replace(/[^\w\d]+/g, '_') + '_script' + (suffix || '') + '.' + ext;
 }
 
 const EXPORT_BUTTONS = ['fs-export-share', 'fs-export-png', 'fs-export-pdf'];
@@ -496,10 +526,9 @@ async function withExport(btn, fn) {
              raw pixels where the JPEG lands under 10
    - 'share' JPEG at pixelRatio 1.5 (1863 px wide, ~1 MB) — crisp on any
              screen and small enough for Discord */
-async function captureSheet(kind) {
+async function captureNode(node, kind) {
   await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
   await document.fonts.ready;
-  const node = document.querySelector('#fs-sheet-wrap .script-sheet');
   if (!node) throw new Error('Nothing to export yet.');
   if (kind === 'jpeg') {
     return window.htmlToImage.toJpeg(node, { pixelRatio: 3, cacheBust: false, quality: 0.92 });
@@ -510,6 +539,60 @@ async function captureSheet(kind) {
   return window.htmlToImage.toPng(node, { pixelRatio: 3, cacheBust: false });
 }
 
+/* Exports render the side they need OFFSCREEN when it is not the one on
+   screen (the PDF always needs both), in a laid-out but invisible holder —
+   fitTitle and the drag-free back both need real layout. The back render
+   waits for its background canvas: the recolour/shading pass is async and
+   an export must never carry a stale background. */
+function offscreenHolder() {
+  const holder = document.createElement('div');
+  Object.assign(holder.style, {
+    position: 'fixed', left: '-99999px', top: '0',
+    width: SHEET_W + 'px', height: SHEET_H + 'px', overflow: 'hidden',
+  });
+  document.body.append(holder);
+  return holder;
+}
+
+function waitBackReady() {
+  backCanvas(options.back, requestRender); // kick the pass if it is not cached
+  return new Promise((resolve, reject) => {
+    const t0 = Date.now();
+    const poll = () => {
+      if (backReady(options.back)) return resolve();
+      if (Date.now() - t0 > 20000) return reject(new Error('The back cover background timed out.'));
+      setTimeout(poll, 120);
+    };
+    poll();
+  });
+}
+
+async function withSideNode(side, fn) {
+  const live = document.querySelector(
+    side === 'back' ? '#fs-sheet-wrap .script-back' : '#fs-sheet-wrap .script-sheet');
+  if (live && side === 'front') return fn(live);
+  // the back always re-renders for export: the live copy may carry the
+  // selection ring, and the singleton background canvas travels with it
+  let holder = null;
+  try {
+    if (side === 'back') await waitBackReady();
+    holder = offscreenHolder();
+    let node;
+    if (side === 'back') {
+      node = renderBack(parsed, options, requestRender, { selected: -1 });
+    } else {
+      node = renderSheet(parsed, options, requestRender);
+    }
+    holder.append(node);
+    if (side === 'front') fitTitle(node, options);
+    await new Promise((r) => setTimeout(r, 250)); // let layout + images settle
+    return await fn(node);
+  } finally {
+    if (holder) holder.remove();
+    requestRender(); // hand the back's singleton canvas to the preview again
+  }
+}
+
 function download(href, name) {
   const a = document.createElement('a');
   a.href = href;
@@ -518,89 +601,169 @@ function download(href, name) {
 }
 
 async function exportPNG() {
-  download(await captureSheet('png'), exportName('png'));
+  const url = await withSideNode(view, (n) => captureNode(n, 'png'));
+  download(url, exportName('png', view === 'back' ? '_back' : ''));
 }
 
 async function exportShare() {
-  download(await captureSheet('share'), exportName('jpg'));
-}
-
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('Could not load ' + src));
-    image.src = src;
-  });
-}
-
-/* The damask back cover: the pattern inset like the reference (26.5 pt
-   margin) with the title in gold blackletter over it, composed into ONE
-   flattened canvas and embedded as JPEG. jsPDF stores anything with an
-   alpha channel as raw pixels — two full-page RGBA layers made the PDF
-   ~35 MB; this lands around 1. */
-async function backCoverDataUrl() {
-  const titleStr = options.titleOverride.trim() || parsed.meta.name;
-  const damask = await loadImage('assets/fancyscripts/art/damask.jpg');
-  const cv = document.createElement('canvas');
-  cv.width = SHEET_W * 2;
-  cv.height = SHEET_H * 2;
-  const ctx = cv.getContext('2d');
-  ctx.scale(2, 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, SHEET_W, SHEET_H);
-  const m = (26.5 / TRIM_W_PT) * SHEET_W;
-  ctx.drawImage(damask, m, m, SHEET_W - 2 * m, SHEET_H - 2 * m);
-
-  const maxW = SHEET_W * 0.62;
-  // shrink-to-fit font size, then word-wrap
-  let fontPx = 110;
-  const wrap = (size) => {
-    ctx.font = size + 'px "LHF Unlovable", "Goudy Text MT", serif';
-    const lines = [];
-    let cur = '';
-    for (const w of titleStr.split(/\s+/)) {
-      const t = cur ? cur + ' ' + w : w;
-      if (ctx.measureText(t).width > maxW && cur) {
-        lines.push(cur);
-        cur = w;
-      } else cur = t;
-    }
-    if (cur) lines.push(cur);
-    return lines;
-  };
-  let lines = wrap(fontPx);
-  while (fontPx > 40 && lines.some((l) => ctx.measureText(l).width > maxW)) {
-    fontPx -= 4;
-    lines = wrap(fontPx);
-  }
-  const lh = fontPx * 1.18;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  lines.forEach((ln, i) => {
-    const y = SHEET_H / 2 + (i - (lines.length - 1) / 2) * lh;
-    ctx.fillStyle = 'rgba(46, 36, 10, 0.6)';
-    ctx.fillText(ln, SHEET_W / 2 + 4, y + 4);
-    ctx.fillStyle = '#c1a52e';
-    ctx.fillText(ln, SHEET_W / 2, y);
-  });
-  return cv.toDataURL('image/jpeg', 0.85);
+  const url = await withSideNode(view, (n) => captureNode(n, 'share'));
+  download(url, exportName('jpg', view === 'back' ? '_back' : ''));
 }
 
 async function exportPDF() {
-  const dataUrl = await captureSheet('jpeg');
+  const front = await withSideNode('front', (n) => captureNode(n, 'jpeg'));
   await loadScriptOnce('assets/fancyscripts/vendor/jspdf.umd.min.js', () => window.jspdf);
   const pdf = new window.jspdf.jsPDF({
     orientation: 'portrait',
     unit: 'pt',
     format: [TRIM_W_PT, TRIM_H_PT],
   });
-  pdf.addImage(dataUrl, 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
+  pdf.addImage(front, 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
   if (options.includeBackCover) {
+    const back = await withSideNode('back', (n) => captureNode(n, 'jpeg'));
     pdf.addPage([TRIM_W_PT, TRIM_H_PT], 'portrait');
-    pdf.addImage(await backCoverDataUrl(), 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
+    pdf.addImage(back, 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
   }
   pdf.save(exportName('pdf'));
+}
+
+/* ── back cover controls ────────────────────────────────────────────────
+   The card rebuilds around the selection: chips name the text elements,
+   the panel below edits the selected one. Everything writes straight into
+   options.back and asks for a render, like every other control. */
+function makeSlider(parent, label, min, max, step, format, get, set) {
+  const row = document.createElement('div');
+  row.className = 'fs-slider';
+  const head = document.createElement('div');
+  head.className = 'fs-slider-head';
+  const name = document.createElement('span');
+  name.textContent = label;
+  const val = document.createElement('span');
+  val.className = 'fs-slider-val';
+  val.textContent = format(get());
+  head.append(name, val);
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min; input.max = max; input.step = step;
+  input.value = get();
+  input.addEventListener('input', () => {
+    set(Number(input.value));
+    val.textContent = format(get());
+    requestRender();
+  });
+  row.append(head, input);
+  parent.append(row);
+}
+
+const fmtPx = (v) => Math.round(v) + 'px';
+const fmtDeg = (v) => (v > 0 ? '+' : '') + Math.round(v) + '°';
+const fmtEm = (v) => v.toFixed(2) + 'em';
+
+function buildBackControls() {
+  const bgBox = $('fs-back-bg');
+  bgBox.textContent = '';
+  const picker = createColorPicker(options.back.bgColor, (hex) => {
+    options.back.bgColor = hex;
+    requestRender();
+  });
+  bgBox.append(picker.root);
+  const sl = $('fs-back-shading');
+  sl.textContent = '';
+  makeSlider(sl, 'Border shading', 0, 2, 0.02, pct,
+    () => options.back.shading, (v) => { options.back.shading = v; });
+}
+
+function buildBackChips() {
+  const box = $('fs-back-chips');
+  if (!box) return;
+  box.textContent = '';
+  (options.back.texts || []).forEach((t, i) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'fs-chip' + (i === backSel ? ' on' : '');
+    chip.textContent = (t.text || '…').slice(0, 14);
+    chip.addEventListener('click', () => {
+      backSel = i;
+      buildBackChips();
+      buildBackElementPanel();
+      requestRender();
+    });
+    box.append(chip);
+  });
+}
+
+const BACK_FONTS = [
+  ['unlovable', 'LHF Unlovable (title)'],
+  ['goudy', 'Goudy Old Style'],
+  ['trade', 'Trade Gothic'],
+  ['dumbledor', 'Dumbledor'],
+];
+
+function buildBackElementPanel() {
+  const box = $('fs-back-el');
+  if (!box) return;
+  box.textContent = '';
+  const t = (options.back.texts || [])[backSel];
+  if (!t) {
+    const hint = document.createElement('p');
+    hint.className = 'fs-back-hint';
+    hint.textContent = 'Tap a word on the preview (or a chip above) to edit it — then drag it to move.';
+    box.append(hint);
+    return;
+  }
+  const text = document.createElement('input');
+  text.type = 'text';
+  text.className = 'fs-field';
+  text.value = t.text;
+  text.setAttribute('aria-label', 'Text');
+  text.addEventListener('input', () => {
+    t.text = text.value;
+    buildBackChips();
+    requestRender();
+  });
+  box.append(text);
+
+  const fontSel = document.createElement('select');
+  fontSel.className = 'fs-select';
+  fontSel.style.margin = '8px 0';
+  for (const [v, label] of BACK_FONTS) {
+    const o = document.createElement('option');
+    o.value = v;
+    o.textContent = label;
+    fontSel.append(o);
+  }
+  fontSel.value = t.font || 'unlovable';
+  fontSel.addEventListener('change', () => { t.font = fontSel.value; requestRender(); });
+  box.append(fontSel);
+
+  makeSlider(box, 'Size', 40, 640, 2, fmtPx, () => t.size, (v) => { t.size = v; });
+  makeSlider(box, 'Rotation', -45, 45, 1, fmtDeg, () => t.rotate || 0, (v) => { t.rotate = v; });
+  makeSlider(box, 'Letter spacing', -0.1, 0.4, 0.01, fmtEm, () => t.spacing || 0, (v) => { t.spacing = v; });
+  makeSlider(box, 'Stroke width', 0, 8, 0.25, (v) => v.toFixed(2) + 'px', () => t.strokeW || 0, (v) => { t.strokeW = v; });
+  makeSlider(box, 'Shadow across', -25, 25, 1, fmtPx, () => t.shadowX || 0, (v) => { t.shadowX = v; });
+  makeSlider(box, 'Shadow down', -25, 25, 1, fmtPx, () => t.shadowY || 0, (v) => { t.shadowY = v; });
+  makeSlider(box, 'Shadow blur', 0, 50, 1, fmtPx, () => t.shadowBlur || 0, (v) => { t.shadowBlur = v; });
+
+  const colors = document.createElement('div');
+  colors.className = 'fs-back-colors';
+  for (const [label, get, set] of [
+    ['Fill', () => t.fill, (h) => { t.fill = h; }],
+    ['Stroke', () => t.strokeColor, (h) => { t.strokeColor = h; }],
+    ['Shadow', () => t.shadowColor, (h) => { t.shadowColor = h; }],
+  ]) {
+    const row = document.createElement('div');
+    row.className = 'fs-color';
+    const picker = createColorPicker(get() || '#000000', (hex) => { set(hex); requestRender(); });
+    const span = document.createElement('span');
+    span.textContent = label;
+    row.append(picker.root, span);
+    colors.append(row);
+  }
+  box.append(colors);
+}
+
+function backTitleNow() {
+  return options.titleOverride.trim() || parsed.meta.name || 'Untitled';
 }
 
 /* ── boot ── */
@@ -642,6 +805,39 @@ async function boot() {
       options[k] = DEFAULT_OPTIONS[k];
     }
     syncControls();
+    requestRender();
+  });
+
+  $('fs-tab-front').addEventListener('click', () => applyView('front'));
+  $('fs-tab-back').addEventListener('click', () => applyView('back'));
+  buildBackControls();
+  buildBackChips();
+  buildBackElementPanel();
+  $('fs-back-add').addEventListener('click', () => {
+    options.back.texts.push({
+      text: 'New text', x: 50, y: 85, size: 120, font: 'goudy',
+      fill: '#bea881', strokeW: 0, strokeColor: '#000000',
+      shadowX: 0, shadowY: 2, shadowBlur: 4, shadowColor: '#000000',
+      rotate: 0, spacing: 0,
+    });
+    backSel = options.back.texts.length - 1;
+    buildBackChips();
+    buildBackElementPanel();
+    requestRender();
+  });
+  $('fs-back-remove').addEventListener('click', () => {
+    if (backSel < 0) return;
+    options.back.texts.splice(backSel, 1);
+    backSel = -1;
+    buildBackChips();
+    buildBackElementPanel();
+    requestRender();
+  });
+  $('fs-back-reset').addEventListener('click', () => {
+    options.back.texts = seedBackTexts(backTitleNow());
+    backSel = -1;
+    buildBackChips();
+    buildBackElementPanel();
     requestRender();
   });
 

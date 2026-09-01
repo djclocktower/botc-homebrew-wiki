@@ -452,9 +452,10 @@ assets/
                        and <script src>.
   fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
                        modules. script.js is the engine (parsing, sorting, the
-                       calibrated SHEET geometry — pure, no DOM); sheet.js the
-                       DOM renderer the export captures; app.js the page
-                       controller. art/, fonts/ and icons/ (the REAL official
+                       calibrated SHEET geometry, the back-cover model — pure,
+                       no DOM); sheet.js the front-sheet renderer and back.js
+                       the back-cover renderer (both captured by the export);
+                       app.js the page controller. art/, fonts/ and icons/ (the REAL official
                        painted icons — see the section below) are the sealed
                        payload, vendor/ the export libraries. See "Fancy
                        Scripts" below before touching ANY number in script.js.
@@ -2131,15 +2132,39 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   Off-site images are routed through a resizing CORS proxy (weserv) so the
   canvas capture is never tainted; the wiki's own art is deliberately NOT
   proxied (same-origin can't taint, and the proxy can't see draft art).
+- **The Back Cover tab** is the owner's PSD template ("Clockback", A4
+  2480×3508) rebuilt as a live editor. The background is TWO extracted
+  assets — `art/back-flat.jpg` (the damask pattern, unshaded) and
+  `art/back-shaded.jpg` (the exact composite with the centre glow + edge
+  vignette) — and the **Border shading** slider interpolates per pixel
+  between them (0 flat, 1 the template exactly, 2 extrapolates), with any
+  non-default background colour applied as the same per-pixel HSL pass as
+  the sidebar, against `BACK_BASE` in script.js. Both passes are one async
+  cached canvas job in back.js; the A4 art is centre-cropped to the sheet's
+  3:4 in that pass. Title text is one DRAGGABLE element per word
+  (`seedBackTexts()` builds the stacked official arrangement from the
+  title — connector words small and offset, like the template's
+  Axiom/of/Logic), each with text, font, size, rotation, letter-spacing,
+  fill, an outside stroke (a doubled centred `-webkit-text-stroke` on a
+  transparent span UNDER the fill span — that lower span also casts the
+  drop shadow, so the shadow silhouette includes the stroke, matching the
+  PSD's layer styles) and a drop shadow. The template's own text treatment
+  (gold #bea881, 1.5px black stroke, soft downward shadow) is the seed.
+  The selection ring lives only on the preview render: every export
+  re-renders the back offscreen with no selection, and waits for the
+  background canvas (`backReady`) so a recolour in flight can never export
+  stale. The PSD itself is not in the repo (103 MB); it is on the owner's
+  Google Drive as "Clockback copy.psd" if the assets ever need re-extracting.
 - **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
   vendor/, lazy-loaded on first export). Three grades: Share Image (JPEG at
   pixelRatio 1.5, ~1 MB — the print PNG is ~30 MB, which no one can post to
-  Discord), Print PNG (lossless, pixelRatio 3) and Print PDF.
+  Discord), Print PNG (lossless, pixelRatio 3) and Print PDF. Share and
+  Print PNG export **the side the preview shows** (`_back` suffix on the
+  filename); the PDF is always front + back (behind the "Back cover page"
+  toggle), each side rendered offscreen when it is not the one on screen.
   The PDF pages are embedded as
   **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
-  PDF came out 90 MB; the sheet and the flattened back cover as JPEG land
-  around 6. The back cover (damask + canvas-drawn title) is composed into one
-  flattened canvas for the same reason.
+  PDF came out 90 MB; as JPEG the two pages land around 7.
 
 ## Featured Character (the homepage slot)
 
