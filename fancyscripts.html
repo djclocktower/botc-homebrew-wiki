@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fancy Scripts — BOTC HomeBrew Wiki</title>
+<meta name="description" content="Turn any Blood on the Clocktower script into a polished, print-style script sheet — parchment, engraved dividers and all — and download it as a PNG or a print-ready PDF.">
+<meta property="og:site_name" content="BOTC HomeBrew Wiki">
+<meta property="og:title" content="Fancy Scripts">
+<meta property="og:description" content="Print-style Blood on the Clocktower script sheets from any script JSON or any script published on the wiki. PNG and PDF export.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+/* ─── Fancy Scripts ("The Grimoire Press") ─────────────────────────
+   Everything here is page-local. Shared colours come from styles.css:
+   --parch, --parch-frame, --maroon, --ink, --good-name, --evil.
+
+   The typefaces below belong to the SHEET, not the page: the renderer
+   (assets/fancyscripts/sheet.js) styles itself entirely inline and only
+   needs these families registered. font-display: block on all four —
+   the renderer measures word-wrap with the real fonts after
+   document.fonts.ready, and a swapped-in fallback would flash wrong
+   wraps. Goudy 700 maps to the 400 file on purpose: the reference
+   sheets were rendered with Chromium's synthetic bold of the regular
+   cut, so a real bold would change every name's width. */
+@font-face { font-family: 'LHF Unlovable'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/LHFUnlovable-400.woff2') format('woff2'); }
+@font-face { font-family: 'Dumbledor'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/Dumbledor-400.woff2') format('woff2'); }
+@font-face { font-family: 'Goudy Old Style'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/GoudyOldStyle-400.woff2') format('woff2'); }
+@font-face { font-family: 'Goudy Old Style'; font-style: normal; font-weight: 700; font-display: block; src: url('assets/fancyscripts/fonts/GoudyOldStyle-400.woff2') format('woff2'); }
+@font-face { font-family: 'Trade Gothic'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/TradeGothic-400.woff2') format('woff2'); }
+
+.fs-hero { padding-bottom: 10px; }
+.fs-credit {
+  font-family: 'Oswald', sans-serif; font-size: .82rem; letter-spacing: .07em;
+  text-transform: uppercase; color: rgba(236,225,200,.62); margin: 12px 0 0;
+}
+
+.fs-layout {
+  display: grid; grid-template-columns: 340px minmax(0, 1fr);
+  gap: 22px; align-items: start;
+}
+@media (max-width: 940px) {
+  .fs-layout { grid-template-columns: 1fr; }
+  /* phone: the sheet first, the knobs after — the preview is the product */
+  .fs-preview-col { order: -1; }
+}
+
+/* control cards */
+.fs-card {
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  padding: 16px 16px 14px;
+  margin-bottom: 16px;
+  color: var(--ink);
+}
+.fs-card h2 {
+  font-family: 'Dumbledor2', serif; font-weight: 400;
+  font-size: 1.06rem; letter-spacing: .04em; color: var(--maroon);
+  margin: 0 0 10px;
+}
+.fs-card details > summary {
+  font-family: 'Dumbledor2', serif; font-size: 1.06rem; letter-spacing: .04em;
+  color: var(--maroon); cursor: pointer; list-style: none;
+}
+.fs-card details > summary::before { content: '▸ '; font-size: .8em; }
+.fs-card details[open] > summary::before { content: '▾ '; }
+.fs-card details[open] > summary { margin-bottom: 10px; }
+
+.fs-field, .fs-select {
+  width: 100%; box-sizing: border-box;
+  border: 1px solid var(--parch-frame); border-radius: 4px;
+  background: rgba(255,252,240,.75); color: var(--ink);
+  font: inherit; font-size: .92rem; padding: 7px 9px;
+}
+.fs-field:focus, .fs-select:focus { outline: 2px solid var(--maroon); outline-offset: 0; }
+.fs-field + .fs-field { margin-top: 8px; }
+.fs-lab {
+  display: block; font-family: 'Oswald', sans-serif; font-weight: 600;
+  font-size: .74rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--maroon); margin: 12px 0 5px;
+}
+.fs-lab:first-child { margin-top: 0; }
+
+.fs-btn {
+  display: inline-block; border: 1px solid var(--parch-frame); border-radius: 4px;
+  background: rgba(255,252,240,.75); color: var(--maroon);
+  font: inherit; font-size: .92rem; font-weight: 600;
+  padding: 8px 12px; cursor: pointer;
+}
+.fs-btn:hover { background: rgba(255,252,240,.95); }
+.fs-btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.fs-linkish {
+  background: none; border: none; padding: 0; margin-top: 8px;
+  font: inherit; font-size: .85rem; color: var(--good-name);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+#fs-paste-text {
+  width: 100%; box-sizing: border-box; margin-top: 8px;
+  border: 1px solid var(--parch-frame); border-radius: 4px;
+  background: rgba(255,252,240,.75); color: var(--ink);
+  font-family: ui-monospace, monospace; font-size: .8rem;
+  padding: 7px 9px; min-height: 110px;
+}
+#fs-paste-box .fs-btn { margin-top: 8px; }
+
+.fs-note { margin: 10px 0 0; font-size: .88rem; padding: 8px 10px; border-radius: 4px;
+  border: 1px solid var(--parch-frame); background: rgba(255,252,240,.6); }
+.fs-note-err { border-color: var(--evil); color: var(--evil); background: rgba(115,29,31,.08); }
+.fs-note-ok { color: #3c5a2c; border-color: #3c5a2c; background: rgba(70,110,50,.08); }
+.fs-warnings { margin: 10px 0 0; font-size: .84rem; color: #6b4a17;
+  border: 1px solid #a8874a; background: rgba(168,135,74,.12);
+  border-radius: 4px; padding: 8px 10px; }
+.fs-warnings p { margin: 2px 0; }
+
+/* generated controls */
+.fs-slider { margin-bottom: 10px; }
+.fs-slider-head { display: flex; justify-content: space-between; font-size: .84rem; margin-bottom: 2px; }
+.fs-slider-val { color: var(--maroon); font-weight: 600; }
+.fs-slider input[type="range"] { width: 100%; accent-color: var(--maroon); }
+.fs-slider input[type="range"]:disabled { opacity: .4; }
+.fs-toggle {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .88rem; margin: 7px 0; cursor: pointer;
+}
+.fs-toggle input { accent-color: var(--maroon); width: 16px; height: 16px; flex-shrink: 0; }
+.fs-color { display: flex; align-items: center; gap: 8px; font-size: .88rem; }
+#fs-colors { display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* the hand-rolled colour picker (Android's native one is presets-only) */
+.fs-cp { position: relative; }
+.fs-cp-swatch {
+  width: 40px; height: 28px; border: 1px solid var(--parch-frame);
+  border-radius: 4px; padding: 0; cursor: pointer; display: block;
+}
+.fs-cp-pop {
+  position: absolute; z-index: 40; top: calc(100% + 6px); left: 0;
+  width: 216px; padding: 10px;
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  border-radius: 6px; box-shadow: 0 10px 26px rgba(20,8,16,.5);
+}
+.fs-cp-sv {
+  position: relative; width: 100%; height: 130px; border-radius: 4px;
+  border: 1px solid var(--parch-frame); cursor: crosshair;
+  touch-action: none;
+  background-image: linear-gradient(to top, #000, rgba(0,0,0,0)),
+                    linear-gradient(to right, #fff, rgba(255,255,255,0));
+}
+.fs-cp-dot {
+  position: absolute; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.6);
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+.fs-cp-hue {
+  width: 100%; margin: 10px 0 8px; height: 14px; border-radius: 7px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  outline: none;
+}
+.fs-cp-hue::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--parch-frame); cursor: pointer;
+}
+.fs-cp-hue::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--parch-frame); cursor: pointer;
+}
+.fs-cp-row { display: flex; gap: 8px; }
+.fs-cp-hex {
+  flex: 1; min-width: 0; box-sizing: border-box;
+  border: 1px solid var(--parch-frame); border-radius: 4px;
+  background: rgba(255,252,240,.75); color: var(--ink);
+  font-family: ui-monospace, monospace; font-size: .84rem; padding: 5px 7px;
+}
+.fs-cp-done {
+  border: 1px solid var(--parch-frame); border-radius: 4px;
+  background: rgba(255,252,240,.75); color: var(--maroon);
+  font: inherit; font-size: .84rem; font-weight: 600;
+  padding: 5px 10px; cursor: pointer;
+}
+.fs-row-between { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+
+/* front/back tabs + back-cover card */
+.fs-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.fs-tab {
+  border: 1px solid rgba(236,225,200,.4); border-radius: 4px;
+  background: rgba(255,252,240,.1); color: rgba(236,225,200,.8);
+  font: inherit; font-size: .95rem; font-weight: 600;
+  padding: 7px 16px; cursor: pointer;
+}
+.fs-tab.on {
+  background-color: var(--parch);
+  background-image: url('assets/parchment.jpg');
+  background-size: cover;
+  color: var(--maroon); border-color: var(--parch-frame);
+}
+.fs-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.fs-chip {
+  border: 1px solid var(--parch-frame); border-radius: 14px;
+  background: rgba(255,252,240,.6); color: var(--ink);
+  font: inherit; font-size: .84rem; padding: 4px 11px; cursor: pointer;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+.fs-chip.on { background: var(--maroon); color: #f3e9d2; border-color: var(--maroon); }
+.fs-back-colors { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; }
+.fs-back-hint { font-size: .82rem; color: rgba(91,31,33,.75); margin: 10px 0 0; }
+#fs-back-el .fs-slider { margin-top: 10px; }
+
+/* preview */
+.fs-preview-col { min-width: 0; }
+.fs-export-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.fs-export-row .fs-btn { font-size: .98rem; }
+.fs-export-row .fs-btn-primary { background: var(--maroon); color: #f3e9d2; border-color: var(--maroon); }
+.fs-export-row .fs-btn-primary:hover { background: #6d2628; }
+.fs-btn:disabled { opacity: .55; cursor: default; }
+#fs-preview { min-width: 0; }
+#fs-scale-box { margin: 0 auto; box-shadow: 0 12px 34px rgba(0,0,0,.5); }
+#fs-sheet-wrap { transform-origin: top left; }
+.fs-preview-hint { font-size: .82rem; color: rgba(236,225,200,.62); text-align: center; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero fs-hero">
+    <h1>Fancy Scripts</h1>
+    <p>Turn any script into a polished, print-style sheet — parchment, engraved dividers, the works. Pick a script published on the wiki or load any official-schema script JSON, tune it, and download a PNG or a print-ready PDF.</p>
+    <p class="fs-credit">In the style of the classic fancy script sheets</p>
+  </div>
+
+  <main class="home-panel" id="content">
+    <div class="fs-layout">
+
+      <aside>
+        <section class="fs-card">
+          <h2>Script</h2>
+          <span class="fs-lab">From this wiki</span>
+          <select class="fs-select" id="fs-wiki-script" aria-label="Pick a published script">
+            <option value="">Pick a published script…</option>
+          </select>
+          <span class="fs-lab">Or bring your own</span>
+          <div class="fs-btn-row">
+            <button class="fs-btn" id="fs-upload-btn" type="button">Upload script .json</button>
+            <button class="fs-btn" id="fs-sample-tb" type="button">Trouble Brewing</button>
+            <button class="fs-btn" id="fs-sample-hh" type="button">Demo teensyville</button>
+          </div>
+          <input type="file" id="fs-file" accept=".json,application/json" hidden>
+          <button class="fs-linkish" id="fs-paste-toggle" type="button">…or paste JSON directly</button>
+          <div id="fs-paste-box" hidden>
+            <textarea id="fs-paste-text" spellcheck="false" placeholder='[{"id":"_meta","name":"My Script"}, "washerwoman", …]'></textarea>
+            <button class="fs-btn" id="fs-paste-load" type="button">Load pasted JSON</button>
+          </div>
+          <p class="fs-note" id="fs-note" hidden></p>
+          <div class="fs-warnings" id="fs-warnings" hidden></div>
+        </section>
+
+        <section class="fs-card" id="fs-back-card" hidden>
+          <h2>Back Cover</h2>
+          <span class="fs-lab">Background</span>
+          <div id="fs-back-bgbox"></div>
+          <span class="fs-lab">Text</span>
+          <div id="fs-back-chips" class="fs-chip-row"></div>
+          <div class="fs-btn-row" style="margin-top:8px">
+            <button class="fs-btn" id="fs-back-add" type="button">+ Add text</button>
+            <button class="fs-btn" id="fs-back-remove" type="button">Remove</button>
+            <button class="fs-btn" id="fs-back-reset" type="button">Reset layout</button>
+          </div>
+          <div id="fs-back-el" style="margin-top:12px"></div>
+          <p class="fs-back-hint">Drag any word on the preview to move it; its controls follow below. Reset layout re-stacks the current title.</p>
+        </section>
+
+        <section class="fs-card fs-front-card">
+          <h2>Title &amp; credit</h2>
+          <input class="fs-field" id="fs-title-override" type="text" placeholder="Title (blank = the script's own)">
+          <input class="fs-field" id="fs-author-override" type="text" placeholder="Author (blank = the script's own)">
+        </section>
+
+        <section class="fs-card fs-front-card">
+          <h2>Layout</h2>
+          <div class="fs-row-between">
+            <span class="fs-lab">Character order</span>
+            <select class="fs-select" id="fs-sort-mode" style="width:auto">
+              <option value="script">As in the script</option>
+              <option value="official">Official style</option>
+            </select>
+          </div>
+          <div class="fs-row-between">
+            <span class="fs-lab">Column spacing</span>
+            <select class="fs-select" id="fs-column-layout" style="width:auto">
+              <option value="even">Even columns (official)</option>
+              <option value="shared">Classic (col 2 under the title)</option>
+            </select>
+          </div>
+          <div id="fs-toggles"></div>
+          <div id="fs-layout-sliders"></div>
+        </section>
+
+        <section class="fs-card fs-front-card">
+          <h2>Colors</h2>
+          <div id="fs-colors"></div>
+          <div id="fs-colors-sliders" style="margin-top:14px"></div>
+        </section>
+
+        <section class="fs-card fs-front-card">
+          <details>
+            <summary>Fine-tune the header</summary>
+            <div id="fs-decor-sliders"></div>
+            <button class="fs-btn" id="fs-decor-reset" type="button">Reset header tuning</button>
+          </details>
+        </section>
+
+        <section class="fs-card">
+          <p style="margin:0; font-size:.84rem; line-height:1.5;">
+            Accepts official script-tool JSON: a <code>_meta</code> object plus
+            official character ids and/or full character objects with
+            <code>id, name, team, ability, image</code> — exactly what the
+            <a href="script">Script Builder</a> exports and what every published
+            script page's Download JSON button saves. Official icons are built in;
+            wiki characters bring their own art.
+          </p>
+        </section>
+      </aside>
+
+      <div class="fs-preview-col">
+        <div class="fs-tabs" role="tablist">
+          <button class="fs-tab on" id="fs-tab-front" type="button">Script Sheet</button>
+          <button class="fs-tab" id="fs-tab-back" type="button">Back Cover</button>
+        </div>
+        <div class="fs-export-row">
+          <button class="fs-btn fs-btn-primary" id="fs-export-share" type="button">Share Image</button>
+          <button class="fs-btn" id="fs-export-png" type="button">Print PNG</button>
+          <button class="fs-btn" id="fs-export-pdf" type="button">Print PDF</button>
+        </div>
+        <div id="fs-preview">
+          <div id="fs-scale-box">
+            <div id="fs-sheet-wrap"></div>
+          </div>
+        </div>
+        <p class="fs-preview-hint">Share Image and Print PNG download the side you're looking at; Print PDF is always both. Share Image is a small JPEG (about 1&nbsp;MB — right for Discord).</p>
+      </div>
+
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/site.js"></script>
+  <script type="module" src="assets/fancyscripts/app.js"></script>
+</body>
+</html>

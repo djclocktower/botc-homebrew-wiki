@@ -450,6 +450,15 @@ assets/
                        (DOMParser). SEED_PAGES/SEED_ASSETS are the known
                        files; anything newer is found by crawling <a href>
                        and <script src>.
+  fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
+                       modules. script.js is the engine (parsing, sorting, the
+                       calibrated SHEET geometry, the back-cover model — pure,
+                       no DOM); sheet.js the front-sheet renderer and back.js
+                       the back-cover renderer (both captured by the export);
+                       app.js the page controller. art/, fonts/ and icons/ (the REAL official
+                       painted icons — see the section below) are the sealed
+                       payload, vendor/ the export libraries. See "Fancy
+                       Scripts" below before touching ANY number in script.js.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
@@ -545,8 +554,9 @@ publish-news.html      Admin-only news editor: the same kit as publish-page
                        summary/hero/pin, and preview/publish/delete
 scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
-                       Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
-                       Creator Icons. This is what the "Tools" nav entry points at.
+                       Fancy Scripts, Grimoire Forge, Icon Forge, Bloodstar
+                       Import, Jinxes, Creator Icons. This is what the "Tools"
+                       nav entry points at.
 grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        Tool by Ma'ayan, rebuilt in vanilla JS on the wiki's
                        parchment styling (the original was React + Tailwind via
@@ -584,6 +594,18 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        roster comes from render-page.js's
                        resolveCollectionMembers(), not a second copy of the
                        membership rule.
+fancyscripts.html      Fancy Scripts (/fancyscripts) — turns a script into an
+                       official-style print sheet (parchment, engraved
+                       dividers, gold-leaf title), exported as PNG or a
+                       print-ready PDF. Same treatment as the two Forges: the
+                       handoff was a React + Tailwind app ("The Grimoire
+                       Press"), rebuilt in vanilla ES modules on the wiki's
+                       styling — do not reintroduce a framework. The page owns
+                       only the chrome; the tool lives in assets/fancyscripts/.
+                       Takes a script published here (the picker, or ?s={slug}
+                       — the "Fancy Sheet" action on /s/ pages), an uploaded/
+                       pasted script-tool JSON, or a sample. See "Fancy
+                       Scripts" below.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React
@@ -2058,6 +2080,195 @@ uploaded — except for the one opt-in save described below.
   that local patch — are deliberately left on the site-wide revalidate rule so
   a change shows on a normal refresh.
 
+
+## Fancy Scripts (`/fancyscripts`)
+
+Official script-tool JSON in, an official-style print sheet out — the classic
+parchment sheet with the damask sidebar, engraved dividers and the gold-leaf
+swash title, downloadable as a print-resolution PNG or a two-page PDF (sheet +
+damask back cover). Client-side only: no Worker route, no D1, nothing stored.
+
+- **Every number in `script.js`'s `SHEET` is calibration, not layout
+  preference.** The geometry was reverse-measured from a reference render of
+  the classic generator family (JohnForster/botc-fancy-script-generator) as
+  *fractions of the sheet* and then re-trued against that project's own CSS.
+  The unit system: 1 em = 1% of sheet height, horizontals in % of sheet
+  width, rendered at 1242×1656. Odd-looking values are load-bearing —
+  `nameSize 1.318` / `abilitySize 1.031` are wrap-fidelity corrections, the
+  0.7 row-growth margin is what keeps 3-line abilities inside one row pitch,
+  and rows deliberately do NOT grow for 1–3-line abilities (constant pitch,
+  like the reference). Change one constant at a time against a known render.
+  Two column layouts (`columnLayout`): **'even'** (default — both columns of
+  a section start together and END together, each column dealing the
+  section's leftover height evenly between its rows, like the official
+  printed sheets; the first section clears the title/author ink instead of
+  giving the title a column slot) and **'shared'** (the classic reference
+  layout — one shared row grid, col 2 staggered one row under the title).
+  The sidebar ribbon can be recoloured (`sidebarColor`) — **in a canvas,
+  per pixel in real HSL, never with a CSS hue-rotate filter**: hue-rotate
+  is a linear approximation that maps the art's near-black navy (the
+  shadowed edges at the strip's top, bottom and left) to neutral mud, so a
+  red ribbon showed un-tinted bands there. The recolour rotates hue by the
+  offset from the art's measured base (`SIDEBAR_BASE` in script.js) and
+  scales sat/lightness by ratio, runs once per colour (~2.5M px, cached,
+  async — renderSheet shows the newest canvas and re-renders when a fresh
+  one lands, like the icon-ink pass), and the default colour bypasses it
+  entirely. The colour controls are a HAND-ROLLED picker (SV square + hue
+  slider + hex box in app.js), because `<input type="color">` on Android
+  Chrome is a grid of ~20 preset swatches with no free choice — the one
+  surface the owner reviews from. The density slider is never disabled —
+  under auto-fit it displays the solved density ("auto · 96%") and
+  dragging it unticks auto-fit; a disabled slider just read as broken.
+- **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
+  LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
+  400 file on purpose, because the reference used Chromium's synthetic bold),
+  Trade Gothic (abilities), Dumbledor (sidebar labels). All `font-display:
+  block`, and the renderer re-measures after `document.fonts.ready`, because
+  ability word-wrap is computed with canvas `measureText` and a fallback font
+  would wrap differently. Do NOT substitute the visually-similar fonts the
+  repo already has (dumbledor2.ttf, trade-gothic otf) — different cuts,
+  different advance widths, every wrap moves. Chromium ignores `line-height`
+  in vertical-rl/upright text, so sidebar letter pitch is compressed with
+  negative `letter-spacing` — that is why the labels carry `-0.15em`.
+  A sidebar label shrinks to fit **its own section plus the trailing gap**,
+  floored at `labelSizeMin`; the LAST section additionally owns the ribbon
+  down to the garland, but only ever as a `Math.max` bonus. That run used to
+  BE its band — measured from a fixed 87.5 em bottom against a top that moves
+  with the density — so the last label shrank as the sheet filled and the
+  span went negative once the rows reached past 87.5 em, i.e. at any density
+  above the auto fit, including the default 1.0 the slider starts on. Every
+  last label then floored: TRAVELLER, FABLED and a five-letter LORIC alike,
+  because the fault is positional, not a long-word problem. A long label in a
+  one-row band is still smaller than its neighbours (TRAVELLERS cannot be
+  10 letters at 4mm in one row) — that part is the band, not a bug.
+- **`sheet.js` styles itself entirely inline** and must keep doing so: the
+  element is what html-to-image captures for export, and page CSS the capture
+  library has to chase is a source of export-only bugs. The parchment,
+  sidebar, skull, flourishes and dividers in `art/` are the sealed payload
+  (immutable-cached in `_headers`) — the skull is a feathered opaque patch
+  cut from the same parchment source, so "optimizing" images here breaks the
+  blend. The ribbon is TWO files: `sidebar-flat.png` (the damask stretched
+  full-bleed over the whole ribbon column — sheet edge to sidebarX+sidebarW,
+  full height) and `sidebar-shade.png`, the parchment frame's shading as a
+  black overlay whose alpha is 1 minus that column's normalized luminance.
+  They were one baked composite at first, which pushed a hard left-to-right
+  lightness ramp through the ribbon (measured 9 → 27 luminance): nearly
+  invisible in navy, an obvious band in any other colour. So the shading is
+  now the `sidebarShade` option, **0 by default** (a solid, even strip); at
+  1 it reproduces the old composite exactly, because drawing black at
+  opacity IS the multiply that baked it. The overlay element is only created
+  when the option is above 0 — it is a 1.6 MB image nobody should fetch to
+  see the default. The divider (`divider-taper.png`) is generated to the official
+  sheet's shape — a hairline with a small knot where it meets the ribbon,
+  near-constant thickness, fading to fully transparent by the right end;
+  the handoff's spindle art (thin ends, fat middle) was the wrong shape and
+  is gone. `sidebar-full.png` is a **full-bleed composite**: the damask stretched
+  to the whole ribbon column (sheet edge to sidebarX+sidebarW, full height)
+  with the parchment frame's shading multiplied in (parchment column
+  luminance normalized so its inner backdrop = 1.0). The handoff's inset
+  strip left the parchment's black frame showing as a bare gap along the
+  top/left/bottom — invisible against navy, glaring once the ribbon was
+  recoloured. The renderer therefore draws it at left 0 / top 0;
+  `sidebarX`/`sidebarW` still place the labels. The pre-composite strip is
+  in git history (commit df66f84, as `sidebar.png`) if either file ever
+  needs rebaking. Changed art gets a NEW filename (`sidebar.png` →
+  `sidebar-full.png` → `sidebar-flat.png`): `art/*` is immutable-cached, so
+  replacing content under an old name strands anyone who already fetched it
+  on the stale copy for a year.
+- **Official roster data is the wiki's own** (`assets/roles.json`, handed to
+  the engine via `setOfficialRoster()`) — but the **icons are the tool's own
+  bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official
+  painted art, one per roles.json id). The wiki's committed
+  `assets/icons/{id}.png` set is deliberately NOT used on the sheet: those
+  are flat recreations — right at 20px in a jinx pill, visibly wrong on a
+  print sheet the reference renders with the real art (the official Imp
+  trident isn't even red in that set). Jinxes are NOT in roles.json, so the tool carries
+  `assets/fancyscripts/official-jinxes.json` ({id: [{id, reason}]}, from the
+  script-tool dataset) — a per-character map, unlike the pair-based
+  `assets/official-jinxes.json` /jinxes uses. Jinx icons show beside the
+  declaring character when the partner is also on the script; partners are
+  matched by id AND by slugified name, because wiki exports write whichever
+  the jinx row stored.
+- **Wiki integration is read-only**: the picker lists `/scripts.json`, and
+  `?s={slug}` (the "Fancy Sheet" action on `/s/` pages, render-page.js)
+  fetches `/api/page-json` — the same export the Download JSON button saves,
+  so the sheet can never disagree with the page. The Script Builder's credits
+  Fabled (`botchomebrewwiki`) is skipped like every other importer skips it.
+  Off-site images are routed through a resizing CORS proxy (weserv) so the
+  canvas capture is never tainted; the wiki's own art is deliberately NOT
+  proxied (same-origin can't taint, and the proxy can't see draft art).
+- **The Back Cover tab** is the owner's PSD template ("Clockback", A4
+  2480×3508) rebuilt as a live editor. The background is BUILT per render,
+  not baked: a grayscale pattern tile (`art/back-pattern2.png` — a
+  period-aligned 2134×1067 block of the owner's high-res swirl texture,
+  illumination-flattened and wrap-blended at the seams; the texture's
+  half-drop lattice repeats every 1067px, which is what makes a non-mirrored
+  seamless cut possible — its predecessor, a soft resample of the template's
+  own damask, is in git history) is tiled at the chosen
+  **Pattern size/rotation**, colorized
+  per pixel in HSL — the `CAL` constants in back.js were REGRESSED from
+  the template crop, then NORMALIZED so `lA + lB·L_avg = 1` for the tile:
+  a picked colour paints true to its swatch (the pattern midtone IS the
+  picked lightness) instead of ×3ing into white, with the regression gain
+  folded into `BACK_BASE`'s lightness so the default look is unchanged.
+  **Pattern strength** (`patStrength`, 0–5, default 1) is a gain on that
+  modulation, and `L_avg` is the pivot it turns around: each term's
+  deviation from the tile's mean is scaled, so 0 is the flat picked colour,
+  1 is byte-for-byte the template, and above that the pattern deepens
+  without the cover's overall lightness or saturation moving. It exists
+  because the template's modulation is a small MULTIPLE of the picked
+  lightness (±7%), which on a dark cover works out to a couple of RGB steps
+  and reads as no texture at all — scaling the raw terms instead would have
+  darkened the whole cover as the pattern strengthened.
+  Rebaking the tile changes `L_avg` — re-do that normalization, and
+  re-measure the mean. Then
+  multiplied by `art/back-vignette2.png` (the template's glow/vignette as a
+  luminance ratio, encoded 0..2, glow peak = 1.0) raised to the **Border
+  shading** strength. The vignette map is BLURRED CLEAN of the template's
+  own damask: the first cut carried it, which painted a blurry second
+  pattern layer over the tile — the pattern must come from the tile alone.
+  **The back's colour seeds from the sidebar ONCE**: the first time the
+  back is actually shown (tabbing over, or a PDF export rendering it
+  unseen), `seedBackColor()` in app.js copies `sidebarColor` into
+  `back.bgColor`; later sidebar changes never touch the back again.
+  **Brightness/Saturation** multiply in the same pass, and the background
+  **Gradient** swaps the single target colour for a 256-step two-colour
+  ramp along an angle. One cached async canvas job, keyed on all of it;
+  the source crops those assets were built from are in git history
+  (commit b7c592a, `back-flat.jpg`/`back-shaded.jpg`), and the PSD itself
+  is on the owner's Google Drive as "Clockback copy.psd".
+  Title text is one DRAGGABLE element per word (`seedBackTexts()` builds
+  the stacked official arrangement from the title — connector words small
+  and offset, like the template's Axiom/of/Logic), each with text, font,
+  size, rotation, letter-spacing, fill — solid or a two-colour
+  **gradient fill** (background-clip:text; the span gets `padding:.45em;
+  margin:-.45em` because a background only paints inside the box and LHF's
+  swashes overhang it — without that the overhang showed the stroke layer
+  as bare black) — an outside stroke (a doubled centred
+  `-webkit-text-stroke` on a transparent span UNDER the fill span — that
+  lower span also casts the drop shadow, so the shadow silhouette includes
+  the stroke, matching the PSD's layer styles) and a drop shadow. The
+  template's own treatment (gold #bea881, 1.5px black stroke, soft
+  downward shadow) is the seed. **Dragging never rebuilds**: pointermove
+  writes the live element's left/top and the model, and the full re-render
+  happens on release — the first cut re-rendered per move, which destroyed
+  the element (and its pointer capture) one frame into every drag.
+  Selection is therefore also ring-only until release, and one element is
+  ALWAYS selected (`backSel` defaults to 0) so the editing panel never
+  shows an empty state. The selection ring lives only on the preview
+  render: every export re-renders the back offscreen with no selection,
+  and waits for the background canvas (`backReady`) so a recolour in
+  flight can never export stale.
+- **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
+  vendor/, lazy-loaded on first export). Three grades: Share Image (JPEG at
+  pixelRatio 1.5, ~1 MB — the print PNG is ~30 MB, which no one can post to
+  Discord), Print PNG (lossless, pixelRatio 3) and Print PDF. Share and
+  Print PNG export **the side the preview shows** (`_back` suffix on the
+  filename); the PDF is always front + back (behind the "Back cover page"
+  toggle), each side rendered offscreen when it is not the one on screen.
+  The PDF pages are embedded as
+  **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
+  PDF came out 90 MB; as JPEG the two pages land around 7.
 
 ## Featured Character (the homepage slot)
 

@@ -975,7 +975,8 @@
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
         label: '⬇ Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
-      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
+      { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' },
+      { href: root + 'fancyscripts?s=' + encodeURIComponent(sc.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderPageBody({
       root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo,
