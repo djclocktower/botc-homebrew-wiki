@@ -10,7 +10,9 @@
  * high-res swirl texture, illumination-flattened and wrap-blended at the
  * seams so it tiles cleanly) is tiled at the chosen scale
  * and rotation, colorized per pixel in HSL (the CAL constants below were
- * regressed from the template so the default colour reproduces its look),
+ * regressed from the template so the default colour reproduces its look)
+ * at the chosen strength (a gain on the pattern's depth, pivoting on the
+ * tile's mean so the cover's own lightness does not move with it),
  * and multiplied by the template's glow/vignette map
  * (art/back-vignette2.png, luminance ratio encoded 0..2, glow peak = 1.0)
  * raised to the Border-shading strength. The map is BLURRED CLEAN of the
@@ -63,6 +65,13 @@ const TILE_BASE = 0.75;
    default render is unchanged). Rebaking the tile changes L_avg — re-do
    the normalization then. */
 const CAL = { lA: 0.9327, lB: 0.1504, sC: 0.955, sD: -0.038 };
+
+/* the tile's mean luminance, and therefore the point the CAL pair is
+   normalized about (lA + lB·L_AVG = 1). It is also the PIVOT the pattern
+   strength turns around: the gain scales each modulation term's deviation
+   from this, so the pattern deepens or flattens without the cover's own
+   lightness moving. Rebaking the tile changes it — measure the new mean. */
+const L_AVG = 0.447;
 
 const px = (v) => v + 'px';
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -122,6 +131,7 @@ function backParams(back) {
     shading: clamp(Number(back.shading ?? 1), 0, 2),
     patScale: clamp(Number(back.patScale) || 1, 0.2, 5),
     patRot: Number(back.patRot) || 0,
+    patStrength: clamp(Number(back.patStrength ?? 1), 0, 6),
   };
 }
 
@@ -129,7 +139,8 @@ function backKey(back) {
   const p = backParams(back);
   return [back.bgColor, p.grad ? back.bgColor2 + '@' + p.gradAngle : '-',
     p.bright.toFixed(2), p.sat.toFixed(2), p.shading.toFixed(2),
-    p.patScale.toFixed(2), p.patRot.toFixed(1)].join('|').toLowerCase();
+    p.patScale.toFixed(2), p.patRot.toFixed(1),
+    p.patStrength.toFixed(2)].join('|').toLowerCase();
 }
 
 function buildBackCanvas(p) {
@@ -178,8 +189,15 @@ function buildBackCanvas(p) {
   }
   const span = Math.abs(ca) * SRC_W + Math.abs(sa) * SRC_H || 1;
 
-  // 3) colorize
-  const { lA, lB, sC, sD } = CAL;
+  // 3) colorize. The strength gain scales how far each modulation term
+  //    departs from the tile's mean: at 0 the pattern is gone and the cover
+  //    is the flat picked colour, at 1 it is the template's own depth, above
+  //    that it deepens. Pivoting on L_AVG is what keeps the overall lightness
+  //    (and saturation) where the picked colour put it at every setting —
+  //    scaling the raw terms would darken the whole cover as it strengthened.
+  const g = p.patStrength;
+  const lA = CAL.lA + CAL.lB * L_AVG * (1 - g), lB = CAL.lB * g;
+  const sC = CAL.sC + CAL.sD * L_AVG * (1 - g), sD = CAL.sD * g;
   let i = 0;
   for (let y = 0; y < SRC_H; y++) {
     for (let x = 0; x < SRC_W; x++, i += 4) {

@@ -2146,7 +2146,17 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   a picked colour paints true to its swatch (the pattern midtone IS the
   picked lightness) instead of ×3ing into white, with the regression gain
   folded into `BACK_BASE`'s lightness so the default look is unchanged.
-  Rebaking the tile changes `L_avg` — re-do that normalization. Then
+  **Pattern strength** (`patStrength`, 0–5, default 1) is a gain on that
+  modulation, and `L_avg` is the pivot it turns around: each term's
+  deviation from the tile's mean is scaled, so 0 is the flat picked colour,
+  1 is byte-for-byte the template, and above that the pattern deepens
+  without the cover's overall lightness or saturation moving. It exists
+  because the template's modulation is a small MULTIPLE of the picked
+  lightness (±7%), which on a dark cover works out to a couple of RGB steps
+  and reads as no texture at all — scaling the raw terms instead would have
+  darkened the whole cover as the pattern strengthened.
+  Rebaking the tile changes `L_avg` — re-do that normalization, and
+  re-measure the mean. Then
   multiplied by `art/back-vignette2.png` (the template's glow/vignette as a
   luminance ratio, encoded 0..2, glow peak = 1.0) raised to the **Border
   shading** strength. The vignette map is BLURRED CLEAN of the template's

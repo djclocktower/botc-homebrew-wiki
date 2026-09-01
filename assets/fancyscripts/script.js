@@ -137,6 +137,11 @@ export const DEFAULT_BACK = {
   shading: 1, // 0 = flat pattern, 1 = the template's glow + vignette, 2 = stronger
   patScale: 1, // pattern tile size (1 = the template's own scale)
   patRot: 0, // pattern rotation, degrees
+  // how deeply the pattern reads: 0 = flat colour, 1 = the template's own
+  // depth, above that bolder. The template's modulation is a small
+  // MULTIPLE of the picked lightness (±7%), so on a dark cover it comes out
+  // to a couple of RGB steps and all but disappears — this is the way back.
+  patStrength: 1,
   texts: [],  // seeded from the script title by seedBackTexts()
 };
 

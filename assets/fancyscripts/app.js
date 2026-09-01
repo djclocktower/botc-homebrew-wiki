@@ -717,6 +717,8 @@ function buildBackControls() {
   makeSlider(box, 'Brightness', 0.4, 1.8, 0.02, pct, () => b.brightness, (v) => { b.brightness = v; });
   makeSlider(box, 'Saturation', 0, 2, 0.02, pct, () => b.saturation, (v) => { b.saturation = v; });
   makeSlider(box, 'Border shading', 0, 2, 0.02, pct, () => b.shading, (v) => { b.shading = v; });
+  makeSlider(box, 'Pattern strength', 0, 5, 0.05, pct,
+    () => b.patStrength ?? 1, (v) => { b.patStrength = v; });
   makeSlider(box, 'Pattern size', 0.4, 3, 0.02, pct, () => b.patScale, (v) => { b.patScale = v; });
   makeSlider(box, 'Pattern rotation', -180, 180, 1, fmtDeg, () => b.patRot, (v) => { b.patRot = v; });
 }
