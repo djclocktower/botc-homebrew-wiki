@@ -21,7 +21,15 @@ framework — plain HTML/CSS/JS everywhere.
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
-  live from D1** (published rows only). Adding **`?drafts=1`** includes draft
+  live from D1** (published rows only). Characters come in **three tiers**:
+  `?fields=grid` (what a card needs and nothing else — the browse pages, the
+  homepage, the top-bar search; ~35% of the card feed), `?fields=card` (the
+  tools: Script Builder, editors, Token Tool, importers — everything
+  `buildSchema()` needs to export a script) and the bare URL (the whole
+  almanac, for `/api/seed` and a few admin tools). See "Caching" for which
+  page uses which and why. Every row carries **`v`**, the row's version
+  (base-36 `updated_at`), which the card renderers append to image URLs as
+  `?v=` — see "Caching". Adding **`?drafts=1`** includes draft
   rows and stamps each row's `status` — but **only for a logged-in admin**;
   anyone else asking for it silently gets the normal published-only feed, so
   the site never reveals that unpublished pages exist. The repo copies of these files are
@@ -67,6 +75,11 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
+  **`GET /api/boot`** (the one call `site.js` makes on every page: the
+  system-text overrides AND the announcement together — they were two
+  requests per page view; `/api/site-text` and `/api/announcement` stay for
+  the editors), **`GET /api/admin/thumb-missing`** (the dashboard's "Card
+  thumbnails" scan, see "Caching"),
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
@@ -127,7 +140,10 @@ worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        DOMParser, so the almanac is scanned rather than parsed.
                        See "Importing from Bloodstar" below.
 wrangler.toml          Worker config: D1/KV/R2 bindings, run_worker_first, cron
-_headers               Cache rules for static assets (order matters; later wins)
+_headers               Cache rules for static assets. Matching rules COMBINE
+                       (same header -> values joined with a comma), so an
+                       immutable rule must `! Cache-Control` first — see
+                       Gotcha 14. Also the Link preload header for the pages.
 .assetsignore          Files excluded from asset upload — CRITICAL, see Gotchas
 assets/
   styles.css           ALL shared CSS (no per-page stylesheets)
@@ -155,6 +171,19 @@ assets/
                        (see script.html below) — and artVersions(), the single
                        answer to "what icons does this character have" (see
                        "A character's three icons" below).
+  art-thumb.js         Card thumbnails, browser side: ArtThumb.upload(artKey,
+                       src) makes the 192px WebP twin of a character's art and
+                       uploads it to thumb/{file}.webp right after the art
+                       itself. Mounted by every page that uploads art
+                       (create, edit, mass-upload, bloodstar, normalize-icons,
+                       iconforge) and by the dashboard's backfill card. Fire
+                       and forget; WebP or nothing. See "Caching".
+  thumb/               The committed thumbnails of the committed art
+                       (assets/art/x.png -> assets/thumb/x.png.webp) plus
+                       manifest.json. Generated, never hand-edited:
+                       `node migration/optimize-images.js thumbs`.
+  fonts/README.md      Which fonts are self-hosted and why there is no Google
+                       Fonts @import any more; how to refresh the woff2 files.
   art-labels.js        Names the three art slots for the team being written:
                        a traveller's are its unaligned, good and evil tokens,
                        and slot three is drawn for a traveller alone. Mounted
@@ -685,7 +714,11 @@ messages.html         Direct messages (/messages): conversation list + thread UI
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
-                       schema_explanation.md, ACCOUNTS_SETUP.md)
+                       schema_explanation.md, ACCOUNTS_SETUP.md), plus the
+                       two image/font maintenance scripts: optimize-images.js
+                       (the WebP page furniture and the committed thumbnails)
+                       and fetch-google-fonts.js (refreshes assets/fonts/*.woff2
+                       and prints the @font-face block for styles.css).
 ```
 
 ## Database (D1, SQLite)
@@ -2543,35 +2576,119 @@ seeded with whole collections whose characters all arrived unowned.
   while `/api/user`'s card builder never put `logo` on the wire, so the second
   half could never fire. Pin cards on the creator page fall back the same way.
 
-## Caching
+## Caching (and why the site is fast on a phone)
 
-- `_headers`: HTML/CSS/JS/art revalidate on every load (edits show on normal
-  refresh); icons, fonts, pyodide, token assets are immutable long-cache.
-  Later rules override earlier ones — keep the generic rules at the top.
-- Worker responses: JSON endpoints and SSR pages send `no-store`; R2 images
-  send `no-cache, must-revalidate` (+ ETag) so replaced art shows immediately.
-- Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
-  `_headers` blanket rule for committed files, and the Worker's R2 image route
-  for uploads. The official script tool fetch()es character icons cross-origin
-  to embed them in its print preview and PNG/PDF sheet exports; without the
-  header, wiki-hosted characters print as generic placeholders while looking
-  fine on screen. Keep both halves in step.
-- **The D1 read budget is guarded by version-keyed edge caching** — the free
-  tier allows 5M `rows_read` a day and the site once burned through it on
-  cache rebuilds alone. The built feeds, the jinx index, the card-character
-  cache, the `[[Name]]` link map and the sitemap are all stored in
-  `caches.default` under synthetic `https://feed.internal/...?v={version}`
-  URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
-  from `content_version` in the key — every content write bumps it and rolls
-  every key — never from expiry, so do not shorten those TTLs back to
-  minutes. They all pull from one shared body (`cachedFeedBody()`), so a
-  cold isolate costs at most one full table read per colo per version.
-  Creator lookups (`/author?a=` redirects, anonymous `/api/user`,
-  `/api/creators`) are cached the same way but capped at 30 minutes
-  (`PEOPLE_CACHE_CONTROL`), because avatar/bio/display-name edits bump no
-  version; logged-in `/api/user` responses are never cached (they carry the
-  viewer's drafts). If a new endpoint scans a table per request, put it
-  behind the same plumbing before it ships.
+Four layers, each keyed so that freshness never depends on a timer:
+
+**1. Static files (`_headers`).** HTML/CSS/JS/art revalidate on every load
+(edits show on a normal refresh); icons, fonts, pyodide, token assets, the
+committed `*.webp` furniture and Icon Forge's payload are immutable for a
+year. **Matching rules COMBINE** — see Gotcha 14 — so every immutable block
+detaches the generic header first. Anything served immutable is replaced by
+a NEW filename, never by overwriting. The `/` and `/:page` rules add a
+`Link: rel=preload` header for the stylesheet and the two above-the-fold
+faces, and `pageShell()` sends the same header on the server-rendered pages
+(`PAGE_LINK_HEADER`). **Early Hints has to be switched on for the zone**
+(Cloudflare dashboard → Speed → Content Optimization → Early Hints) for
+Cloudflare to replay those as a 103 before the page is fetched; without the
+toggle the header still gets the preloads going as soon as the response
+headers land. The browse pages also carry `<link rel="preload" as="fetch">`
+for the feeds they draw from, so the feed download starts while the
+stylesheet is still loading rather than after the scripts at the end of the
+body have run; `crossorigin` on those is what makes the preload match a
+plain `fetch()`.
+
+**2. The JSON feeds.** `Cache-Control: private, max-age=0, must-revalidate`
+with an ETag of `W/"{table}-{fields}-v{version}"`, answered with an empty 304
+when it matches. **`private` is load-bearing**: with `public` Cloudflare
+stored the feed at the edge, revalidated it with the Worker on every
+request, and served the browser its own copy under an ETag of its own
+making (a hash of the compressed body) — so the browser's If-None-Match
+never matched the Worker's and every browse page re-downloaded the whole
+feed. The bodies themselves are still built once per content version and
+kept in `caches.default` under synthetic `https://feed.internal/...?v=`
+URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
+from `content_version` in the key — every content write bumps it and rolls
+every key — never from expiry, so do not shorten those TTLs back to minutes;
+the D1 free tier allows 5M `rows_read` a day and the site once burned
+through it on rebuilds alone. The jinx index, the card-character cache, the
+`[[Name]]` link map and the sitemap share that plumbing (`cachedFeedBody()`).
+Creator lookups (`/author?a=`, anonymous `/api/user`, `/api/creators`) are
+capped at 30 minutes (`PEOPLE_CACHE_CONTROL`) because avatar/bio edits bump
+no version; logged-in `/api/user` responses are never cached.
+**The `grid` tier** (`GRID_FIELDS`, an include list) exists because the card
+feed carried night reminders, jinx text, quotes and custom JSON to pages that
+draw 64px thumbnails — 413 KB compressed on every browse page view. A page
+that only DRAWS characters (index, All Characters, team, tag, tags,
+All Collections, the 404 page, the top-bar search) asks for `grid`; anything
+that exports or edits stays on `card`. All Characters' "Collection JSON" box
+fetches the card feed lazily, the first time somebody reaches for it. If a
+grid page needs a new field, add it to `GRID_FIELDS`; `jinxCount` and the
+lede-less `quote` are the two derived stamps.
+
+**3. Images.** Every row carries `v` (`rowVersion()`, base-36 `updated_at`),
+and every card renderer appends it: `assets/art/x.png?v=abc`. **A versioned
+image URL is served `public, max-age=31536000, immutable` and kept in the
+colo's edge cache** (`serveR2Image`), so an unchanged icon costs a returning
+reader nothing and the Worker nothing past the cache lookup; a save is a new
+version is a new URL, which is how replaced art still shows at once. The
+bare URL keeps `no-cache, must-revalidate` + ETag exactly as before — and now
+actually answers a matching If-None-Match with a 304 (`onlyIf` on the R2
+read) instead of the whole file, which it never did. **Cards draw
+thumbnails**: `thumb/{file}.webp` is the 192px WebP twin of `art/{file}` (8 KB
+against 150–700 KB), reached through `PageRender.thumbSrc(c, root)` (the
+same order as `artSrc()`; site.js, render.js and the inline `thumb()` in the
+browse pages mirror it). The Worker's `serveThumb` falls back R2 thumbnail →
+R2 original → committed thumbnail → committed original, so a missing
+thumbnail is never a broken image, and an original standing in at the
+thumbnail URL is cached an hour, not a year. Writing `art/{file}` deletes its
+thumbnail (`dropThumbFor`, in `/api/upload` and `/api/bloodstar-art`), and the
+uploading page makes a fresh one (`assets/art-thumb.js`); the dashboard's
+**"Card thumbnails"** card (Maintenance tab, `/api/admin/thumb-missing`)
+backfills whatever is left, from the admin's browser — the Worker cannot
+resize an image. Only `art/` keys have thumbnails; `uploadSlotDenied()` maps
+`thumb/` back to `art/` so the permission is the art's. Things that show the
+icon LARGE (the `/c/` emblem, the featured card) keep `artSrc()`.
+The page furniture is WebP beside its originals (`bg.webp` + the phone-sized
+`bg-m.webp`, `parchment.webp`, `ccc-parchment.webp`, `logo_skull.webp`, all
+from `migration/optimize-images.js`), immutable; the `.png`/`.jpg` originals
+stay because OG images and the credits Fabled point at them.
+
+**4. Server-rendered pages.** `/c/`, `/s/`, `/collection/`, `/news/` and
+`/p/` go through `ssrRoute()`. For a reader with no session cookie a
+published page is identical for everybody (edit button, draft bar and
+Partial notice are all decided from the session; the comment widget asks
+the API itself), so the HTML is kept in `caches.default` under a key of
+content version + origin + path and served from there on the next request
+with no D1 read — a `/c/` page was 6–10 queries and ~1.4 s of TTFB. Only a
+200 marked `X-Botc-View` (which the routes set ONLY for a published page) is
+stored; the header is `type|slug`, and a cache hit counts the view from it
+and strips it, so `page_views` keep counting. The browser still gets
+`no-store`. A logged-in reader always gets a fresh render.
+
+Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
+`_headers` blanket rule for committed files, and the Worker's image route
+for uploads. The official script tool fetch()es character icons cross-origin
+to embed them in its print preview and PNG/PDF sheet exports; without the
+header, wiki-hosted characters print as generic placeholders while looking
+fine on screen. Keep both halves in step.
+
+Two things that are NOT done, deliberately: Cloudflare's **Workers Cache**
+(`[cache] enabled = true` in wrangler.toml) would serve cached Worker
+responses without invoking the Worker at all, but it also caches any
+response with NO Cache-Control header for two hours by heuristic — one
+per-user API route missing its `no-store` would leak across accounts, so it
+needs a full audit first. And `stale-while-revalidate` on CSS/JS was
+rejected: the owner reviews edits on the live site, and a load that shows
+new HTML with last deploy's script is worse than the revalidation costs.
+
+Fonts: there is **no Google Fonts `@import`** any more (it put two more
+origins in the render-blocking path of every page). The seven families are
+self-hosted woff2 subsets in `assets/fonts/` with `unicode-range`, declared
+in styles.css; the wiki's own faces have woff2 twins too. See
+`assets/fonts/README.md`. All Characters draws its 1,800 cards in slices per
+animation frame (`renderToken`) and `.type-section` has
+`content-visibility: auto`, so off-screen sections cost no layout.
 
 ## Verifying changes (no local server needed)
 
@@ -2734,3 +2851,12 @@ seeded with whole collections whose characters all arrived unowned.
    `INSERT INTO settings (key,value) VALUES ('content_version','1') ON CONFLICT
    (key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
    after the write is the whole fix.
+14. **`_headers` rules do not override each other — they COMBINE.** Every
+   rule whose pattern matches is applied, and a header two rules both set is
+   sent with the values joined by a comma. `/assets/*.png` (no-cache) and
+   `/assets/icons/*` (immutable) both match an official icon, so for a year
+   the icons went out as `no-cache, must-revalidate, public, max-age=31536000,
+   immutable` and browsers, seeing `no-cache`, revalidated them on every page.
+   A rule that means to REPLACE a header detaches it first with a
+   `! Cache-Control` line. And `_headers` never applies to a response the
+   Worker generated — those set their own.

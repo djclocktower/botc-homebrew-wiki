@@ -1,8 +1,8 @@
-/* ─── Google Fonts ─────────────────────────────────────────── */
+/* ─── Fonts ─────────────────────────────────────────── */
 /* Dumbledor 2 - self-hosted, licensed for free personal & commercial use */
 @font-face {
   font-family: 'Dumbledor2';
-  src: url('fonts/dumbledor2.ttf') format('truetype');
+  src: url('fonts/dumbledor2.woff2') format('woff2'), url('fonts/dumbledor2.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -15,7 +15,7 @@
    at a time — an accented name renders mixed rather than as tofu. */
 @font-face {
   font-family: 'LHFUnlovable';
-  src: url('fonts/lhf-unlovable.ttf') format('truetype');
+  src: url('fonts/lhf-unlovable.woff2') format('woff2'), url('fonts/lhf-unlovable.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -24,19 +24,156 @@
 /* Trade Gothic LT Std - self-hosted, licensed for free personal & commercial use */
 @font-face {
   font-family: 'TradeGothicLT';
-  src: url('fonts/trade-gothic-lt-std.otf') format('opentype');
+  src: url('fonts/trade-gothic-lt-std.woff2') format('woff2'), url('fonts/trade-gothic-lt-std.otf') format('opentype');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'TradeGothicLT';
-  src: url('fonts/trade-gothic-lt-std-bold-condensed.otf') format('opentype');
+  src: url('fonts/trade-gothic-lt-std-bold-condensed.woff2') format('woff2'), url('fonts/trade-gothic-lt-std-bold-condensed.otf') format('opentype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
-@import url('https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,800;1,400&family=Oswald:wght@500;600;700&family=EB+Garamond:ital,wght@1,400;1,500&family=Cinzel:wght@600;700&family=Pirata+One&family=IM+Fell+English:ital@0;1&family=Grenze+Gotisch:wght@400;600&display=swap');
+/* ─── Web fonts: self-hosted (see assets/fonts/README.md) ────────────────
+   These seven families used to arrive through one @import from Google Fonts.
+   That put two more origins in the render-blocking path of EVERY page: the
+   browser could not paint until it had fetched this stylesheet, then Google's
+   CSS, then the font files from a third host. Self-hosted, the CSS is one
+   fetch and the browser only downloads the faces a page actually renders —
+   the four theme-kit faces cost nothing on a page whose theme does not use
+   them. Weight RANGES are variable fonts (one file, every weight); the
+   unicode-range on each rule is what keeps the latin-ext file unfetched on a
+   page with no accented text. */
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('fonts/cinzel-regular-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Cinzel';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/cinzel-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'EB Garamond';
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('fonts/eb-garamond-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'EB Garamond';
+  font-style: italic;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('fonts/eb-garamond-italic-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Grenze Gotisch';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('fonts/grenze-gotisch-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Grenze Gotisch';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('fonts/grenze-gotisch-regular-latin-400.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Grenze Gotisch';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/grenze-gotisch-regular-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IM Fell English';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/im-fell-english-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Libre Franklin';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/libre-franklin-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Libre Franklin';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/libre-franklin-italic-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Libre Franklin';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('fonts/libre-franklin-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Libre Franklin';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('fonts/libre-franklin-regular-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('fonts/oswald-regular-latin-ext-500.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 500 700;
+  font-display: swap;
+  src: url('fonts/oswald-regular-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oswald';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/oswald-regular-latin-ext-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Pirata One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/pirata-one-regular-latin.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 /* ─── Variables ────────────────────────────────────────────── */
 :root {
@@ -81,8 +218,14 @@ body::before {
   height: 100vh;   /* fallback for browsers without large-viewport units */
   height: 100lvh;
   z-index: -1;
-  background: url('bg.jpg') center top / cover no-repeat var(--purple-deep);
+  /* bg.webp / bg-m.webp are the WebP twins of bg.jpg (345 KB -> 77 KB, and
+     28 KB at the phone size), generated by migration/optimize-images.js. A
+     phone never needs the 1920px picture for a 400px-wide screen. */
+  background: url('bg.webp') center top / cover no-repeat var(--purple-deep);
   pointer-events: none;
+}
+@media (max-width: 760px) {
+  body::before { background-image: url('bg-m.webp'); }
 }
 body::after { display: none; }
 
@@ -132,7 +275,7 @@ body::after { display: none; }
 
 /* ─── Cards ──────────────────────────────────────────────────── */
 .card {
-  background-color: var(--card); background-image: url('parchment.jpg'); background-size: cover; background-repeat: no-repeat;
+  background-color: var(--card); background-image: url('parchment.webp'); background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame);
   border-radius: 0; padding: 18px 20px;
   box-shadow: 0 8px 20px rgba(40,12,30,.32);
@@ -163,7 +306,7 @@ body::after { display: none; }
 .char-parchment {
   position: relative; border-radius: 0;
   padding: clamp(18px,2.6vw,34px) clamp(18px,2.8vw,38px);
-  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover; background-repeat: no-repeat;
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame);
   box-shadow: 0 20px 48px -16px rgba(0,0,0,.6);
 }
@@ -470,7 +613,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .sidebar-card {
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 2px solid var(--parch-frame);
   border-radius: 0;
@@ -543,6 +686,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .char-card:hover { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(40,12,30,.42); }
 .char-card-thumb { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+/* A browse page draws up to 1,800 cards. content-visibility lets the browser
+   skip laying out and painting the sections that are off screen, which is
+   most of them, and the intrinsic size keeps the scrollbar honest while it
+   does. Anchors (#townsfolk) still work: a section is rendered on demand. */
+.type-section { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 .char-card-info { flex: 1; min-width: 0; }
 .char-card-name {
   font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 700;
@@ -1016,7 +1164,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
     display: block;
     margin: 0 clamp(12px,3vw,40px) 32px;
     background-color: var(--parch);
-    background-image: url('parchment.jpg');
+    background-image: url('parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
     text-align: center;
@@ -1034,7 +1182,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* ── Creators page (wide grid) ────────────────────────────────── */
 .creators-page-box {
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 4px solid var(--parch-frame);
   padding: 28px 32px;
@@ -1103,7 +1251,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   display: flex;
   flex-direction: column;
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   background-repeat: no-repeat;
   border-right: 4px solid var(--parch-frame);
@@ -1180,7 +1328,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .sb-script-grouphead span { color: rgba(236,225,200,.6); font-size: .85rem; }
 .sb-script-item {
   display: flex; align-items: center; gap: 14px;
-  background-color: var(--card); background-image: url('parchment.jpg');
+  background-color: var(--card); background-image: url('parchment.webp');
   background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame);
   padding: 12px 14px; margin-bottom: 10px;
@@ -1394,7 +1542,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .collection-tile {
   display: flex; flex-direction: column;
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 18px 18px 14px;
@@ -1527,7 +1675,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   gap: 24px; align-items: center;
   width: 100%; max-width: 100%;
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 22px 26px;
@@ -1581,7 +1729,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 /* ─── About card ──────────────────────────────────────────── */
 .about-card {
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 2px solid var(--parch-frame);
   padding: 22px 28px;
@@ -1872,7 +2020,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 @media (max-width: 900px) { .script-view-layout { grid-template-columns: minmax(0, 1fr); } }
 .script-chars-panel {
-  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover;
   border: 2px solid var(--parch-frame); padding: 20px 24px;
 }
 .script-team-group { margin-bottom: 18px; }
@@ -2358,7 +2506,7 @@ body.theme-bg::before {
 .rules-modal-lock { overflow: hidden; }
 .rules-modal-card {
   background-color: var(--card);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover; background-repeat: no-repeat;
   border: 4px solid var(--parch-frame); border-radius: 0;
   padding: 18px 20px; width: min(680px, 100%);
@@ -2712,7 +2860,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-card {
   display: block; text-decoration: none;
   background-color: var(--card);
-  background-image: url('parchment.jpg'); background-size: cover;
+  background-image: url('parchment.webp'); background-size: cover;
   border: 2px solid var(--parch-frame); padding: 14px 16px;
   transition: transform .12s ease, box-shadow .12s ease;
 }
@@ -2734,7 +2882,7 @@ a:hover .curata-mark { opacity: .9; }
 .news-article {
   max-width: 900px; margin: 0 auto;
   background-color: var(--card);
-  background-image: url('parchment.jpg'); background-size: cover;
+  background-image: url('parchment.webp'); background-size: cover;
   border: 3px solid var(--parch-frame); padding: 22px 26px;
 }
 .news-article-head { border-bottom: 2px solid var(--parch-frame); padding-bottom: 12px; margin-bottom: 16px; }
@@ -2831,7 +2979,7 @@ a:hover .curata-mark { opacity: .9; }
 
 .wiki-page-head {
   background-color: var(--card);
-  background-image: url('parchment.jpg'); background-size: cover;
+  background-image: url('parchment.webp'); background-size: cover;
   border: 3px solid var(--parch-frame);
   padding: 18px 24px; margin-bottom: 16px;
 }
@@ -2860,7 +3008,7 @@ a:hover .curata-mark { opacity: .9; }
 
 .wiki-body {
   background-color: var(--card);
-  background-image: url('parchment.jpg'); background-size: cover;
+  background-image: url('parchment.webp'); background-size: cover;
   border: 3px solid var(--parch-frame);
   padding: 20px 26px;
   color: var(--ink); font-size: 1.02rem; line-height: 1.62;
@@ -3262,7 +3410,7 @@ html.textedit-on .te-live-hit {
   width: min(440px, calc(100vw - 24px));
   padding: 14px;
   background-color: var(--parch);
-  background-image: url('parchment.jpg');
+  background-image: url('parchment.webp');
   background-size: cover;
   border: 2px solid var(--parch-frame);
   border-radius: 6px;
@@ -3397,7 +3545,7 @@ html.textedit-on .te-live-hit {
   padding: 16px; overflow-y: auto;
 }
 .aa-panel {
-  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover;
   border: 2px solid var(--parch-frame); border-radius: 8px;
   box-shadow: 0 18px 50px rgba(0,0,0,.55);
   padding: 18px 20px 16px; width: min(460px, 100%);

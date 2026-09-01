@@ -47,10 +47,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -122,6 +122,7 @@
   </main>
 
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-thumb.js"></script>
   <script>
     function $(id){ return document.getElementById(id); }
     function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){
@@ -144,7 +145,11 @@
       return fetch('/api/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
-      }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; }); });
+      }).then(function(r){ return r.json().then(function(j){
+        // A resized icon gets a fresh card thumbnail too (assets/art-thumb.js).
+        if (r.ok && j && !j.error && window.ArtThumb) ArtThumb.upload(key, dataUrl);
+        return { status: r.status, body: j };
+      }); });
     }
 
     function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }

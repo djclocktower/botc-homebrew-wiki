@@ -125,10 +125,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -399,6 +399,7 @@
        jinxTargetCheck), which is what the jinx warning below asks. -->
   <script src="assets/render.js"></script>
   <script src="assets/bloodstar.js"></script>
+  <script src="assets/art-thumb.js"></script>
   <script>
   (function () {
     'use strict';
@@ -851,6 +852,13 @@
       var onBloodstar = bloodstarUrl(src);
       if (onBloodstar) {
         return post('/api/bloodstar-art', { key: key, src: onBloodstar })
+          .then(function (res) {
+            // The copy happened on the server, so the browser never held the
+            // image: read it back and make the card thumbnail from that
+            // (assets/art-thumb.js). Never awaited.
+            if (window.ArtThumb) ArtThumb.uploadFromUrl(key);
+            return res;
+          })
           .catch(function (err) {
             if (err && err.rateLimited) throw err;
             return canvasUpload(key, onBloodstar);
@@ -860,7 +868,10 @@
     }
     function canvasUpload(key, src) {
       return loadImage(src).then(function (dataUrl) {
-        return post('/api/upload', { key: key, data: dataUrl });
+        return post('/api/upload', { key: key, data: dataUrl }).then(function (res) {
+          if (window.ArtThumb) ArtThumb.upload(key, dataUrl);
+          return res;
+        });
       });
     }
     function loadImage(src) {

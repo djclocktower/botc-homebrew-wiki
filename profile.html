@@ -126,10 +126,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="/assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="/assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="/assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="/assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="/all-characters">All Characters</a>
@@ -248,7 +248,7 @@
       // box instead of being clipped. Same trick as the /c/ page title.
       var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
       var headerHTML = sc.header || sc.logo
-        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
+        ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="/assets/' + esc(sc.header || sc.logo) + PageRender.artVer(sc) + '" alt="' + esc(sc.name) + '"></div>'
         : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
       return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
         headerHTML +
@@ -267,7 +267,7 @@
       // collection's own page falls back through.
       var collBanner = coll.header || coll.logo;
       var topHTML = collBanner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(collBanner) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="/assets/' + esc(collBanner) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
         : '';
       // The blurb goes in the tagline paragraph, the same slot (and the same
       // three-line cutoff) every other collection tile on the site uses. It

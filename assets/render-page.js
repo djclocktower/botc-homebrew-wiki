@@ -199,11 +199,32 @@
     return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
+  /* The row's version (`v`, stamped by the Worker from updated_at — see
+     rowVersion() in worker.js) as a query string. A versioned image URL is
+     served immutable for a year and kept at the edge, so an unchanged icon
+     costs a returning reader nothing; a save is a new version is a new URL.
+     Rows without one (the editors' live preview, a legacy import) get the
+     bare URL, which still revalidates every time as it always did. */
+  function artVer(c) {
+    return c && c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
+  }
   function artSrc(c, root) {
-    if (c.art) return root + 'assets/' + c.art;
+    if (c.art) return root + 'assets/' + c.art + artVer(c);
     if (typeof c.image === 'string' && c.image) return c.image;
     if (Array.isArray(c.image) && c.image[0]) return c.image[0];
     return root + 'assets/favicon.png';
+  }
+  /* What a CARD draws: the 192px WebP thumbnail (thumb/{file}.webp beside
+     art/{file}, ~8 KB against the original's ~150 KB). Only art under art/ has
+     one; a remote `image` or another prefix falls back to artSrc(). The Worker
+     serves the original at the thumbnail URL when no thumbnail exists yet, so
+     this never needs an onerror of its own. Anything that shows the icon
+     LARGE (the /c/ emblem, the featured card) keeps artSrc(). */
+  function thumbSrc(c, root) {
+    if (c.art && /^art\/[^/]+$/.test(c.art)) {
+      return root + 'assets/thumb/' + c.art.slice(4) + '.webp' + artVer(c);
+    }
+    return artSrc(c, root);
   }
   function charHref(c, root) {
     var p = c.page || ('c/' + c.slug);
@@ -244,7 +265,7 @@
         '<div class="script-char-list">';
       grp.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -258,7 +279,7 @@
       html += '<div class="script-team-group"><h3 class="script-team-head">Other <span class="script-team-count">(' + other.length + ')</span></h3><div class="script-char-list">';
       other.forEach(function (c) {
         html += '<a class="script-char-row" href="' + esc(charHref(c, root)) + '"' + offsite(c) + '>' +
-          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(artSrc(c, root)) + '" alt="">' +
+          '<img loading="lazy" decoding="async" class="script-char-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="">' +
           '<div class="script-char-text"><span class="script-char-name">' + esc(c.name) + offMark(c) + '</span>' +
           '<span class="script-char-ability">' + esc(c.ability || '') + '</span></div></a>';
       });
@@ -329,7 +350,7 @@
         (cls === 'partial' && !hasCurata ? ' data-partial="1"' : '') +
         (hasCurata ? ' data-curata="1"' : '') +
         ' data-order="' + (orderMap[c.slug] != null ? orderMap[c.slug] : 0) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(artSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumbSrc(c, root)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(root) + 'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) + marks + '</div>' +
         '<div class="char-card-type' + (GOOD[c.team] ? ' good' : '') + '">' + esc(label) + '</div>' +
@@ -459,7 +480,7 @@
       '<div class="script-char-list">';
     function side(c) {
       return '<a class="jx-pair-side" href="' + esc(charHref(c, root)) + '">' +
-        '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' + esc(artSrc(c, root)) + '" alt=""' +
+        '<img loading="lazy" decoding="async" class="jx-pair-ico" src="' + esc(thumbSrc(c, root)) + '" alt=""' +
         ' onerror="this.style.display=\'none\'">' +
         '<span class="jx-pair-name">' + esc(c.name) + '</span></a>';
     }
@@ -545,7 +566,7 @@
       if (!items.length) return '<p class="sv-night-empty">No characters act.</p>';
       return '<ol class="sv-night-list">' + items.map(function (it) {
         return '<li class="sv-night-item">' +
-          '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(artSrc(it.c, root)) + '" alt="" onerror="this.style.display=\'none\'">' +
+          '<img loading="lazy" decoding="async" class="sv-night-thumb" src="' + esc(thumbSrc(it.c, root)) + '" alt="" onerror="this.style.display=\'none\'">' +
           '<div class="sv-night-text"><a class="sv-night-name" href="' + esc(charHref(it.c, root)) + '"' + offsite(it.c) + '>' + esc(it.c.name) + offMark(it.c) + '</a>' +
           (it.r ? '<span class="sv-night-reminder">' + esc(it.r) + '</span>' : '') +
           '</div></li>';
@@ -1037,6 +1058,9 @@
     LOGO_SIZE_MAX: LOGO_SIZE_MAX,
     buildPageExport: buildPageExport,
     FONT_PRESETS: FONT_PRESETS,
+    artSrc: artSrc,
+    thumbSrc: thumbSrc,
+    artVer: artVer,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL
   };
   if (typeof window !== 'undefined') { window.PageRender = api; }

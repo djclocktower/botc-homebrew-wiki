@@ -63,6 +63,11 @@
     var arr = Array.isArray(d.image) ? d.image : [];
     var labels = isTraveller(d.team) ? ART_LABELS_TRAVELLER : ART_LABELS_OTHER;
     var prefix = (root == null ? R() : root);
+    // The row's version (`v`, stamped by the Worker from updated_at) makes
+    // the <img> URL immutable-cacheable — see the /assets/ route. Only `src`
+    // takes it: `url` is what leaves in the official-schema JSON and must
+    // stay the plain address.
+    var ver = d.v ? '?v=' + encodeURIComponent(String(d.v)) : '';
     var out = [];
     for (var i = 0; i < ART_SLOTS.length; i++) {
       var slot = ART_SLOTS[i];
@@ -77,7 +82,7 @@
         rel: rel,
         // what an <img> on the page loads: the relative file where there is
         // one, so a page renders against its own root and R2 serves it.
-        src: rel ? (prefix + 'assets/' + rel) : abs,
+        src: rel ? (prefix + 'assets/' + rel + ver) : abs,
         // what leaves the wiki — the JSON the official app reads, and the
         // Token Tool fetching art across origins. Always absolute.
         url: abs || (rel ? ART_ABS + rel : '')
@@ -99,7 +104,7 @@
           key: 'token',
           label: 'Printable token',
           rel: trel,
-          src: trel ? (prefix + 'assets/' + trel) : tabs,
+          src: trel ? (prefix + 'assets/' + trel + ver) : tabs,
           url: tabs || (trel ? ART_ABS + trel : '')
         });
       }
@@ -621,7 +626,13 @@
      import, and a page may carry either or both. */
   function wikiCharIcon(c, root) {
     if (!c) return '';
-    if (c.art) return root + 'assets/' + c.art;
+    // These icons are drawn small (a jinx row, a related card), so they take
+    // the 192px thumbnail like every card does — thumb/{file}.webp beside
+    // art/{file}, the Worker serving the original where none exists yet —
+    // versioned by the row's `v` so the URL is immutable-cacheable.
+    var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
+    if (c.art && /^art\/[^/]+$/.test(c.art)) return root + 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
+    if (c.art) return root + 'assets/' + c.art + ver;
     if (typeof c.image === 'string' && c.image) return c.image;
     if (Array.isArray(c.image) && c.image[0]) return c.image[0];
     return '';
