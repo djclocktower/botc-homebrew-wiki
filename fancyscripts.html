@@ -31,6 +31,11 @@
 @font-face { font-family: 'Goudy Old Style'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/GoudyOldStyle-400.woff2') format('woff2'); }
 @font-face { font-family: 'Goudy Old Style'; font-style: normal; font-weight: 700; font-display: block; src: url('assets/fancyscripts/fonts/GoudyOldStyle-400.woff2') format('woff2'); }
 @font-face { font-family: 'Trade Gothic'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/TradeGothic-400.woff2') format('woff2'); }
+/* the teensy style's two faces: OptimusPrinceps (the PSD's headings and
+   names — the wiki's own copy, subset) and Liberation Sans standing in for
+   the PSD's Helvetica (metric-compatible, so the abilities wrap alike). */
+@font-face { font-family: 'OptimusPrinceps'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/OptimusPrinceps-400.woff2') format('woff2'); }
+@font-face { font-family: 'Liberation Sans'; font-style: normal; font-weight: 400; font-display: block; src: url('assets/fancyscripts/fonts/LiberationSans-400.woff2') format('woff2'); }
 
 .fs-hero { padding-bottom: 10px; }
 .fs-credit {
@@ -85,6 +90,8 @@
   color: var(--maroon); margin: 12px 0 5px;
 }
 .fs-lab:first-child { margin-top: 0; }
+.fs-hint { font-size: .8rem; color: rgba(91,31,33,.75); margin: 8px 0 0; line-height: 1.4; }
+textarea.fs-field { resize: vertical; min-height: 70px; font-size: .88rem; margin-top: 8px; }
 
 .fs-btn {
   display: inline-block; border: 1px solid var(--parch-frame); border-radius: 4px;
@@ -224,6 +231,7 @@
 #fs-preview { min-width: 0; }
 #fs-scale-box { margin: 0 auto; box-shadow: 0 12px 34px rgba(0,0,0,.5); }
 #fs-sheet-wrap { transform-origin: top left; }
+#fs-sheet-wrap [contenteditable]:focus { outline: 2px dashed rgba(91,31,33,.7); outline-offset: 2px; }
 .fs-preview-hint { font-size: .82rem; color: rgba(236,225,200,.62); text-align: center; margin: 10px 0 0; }
 </style>
 </head>
@@ -264,14 +272,23 @@
 
   <div class="home-hero fs-hero">
     <h1>Fancy Scripts</h1>
-    <p>Turn any script into a polished, print-style sheet — parchment, engraved dividers, the works. Pick a script published on the wiki or load any official-schema script JSON, tune it, and download a PNG or a print-ready PDF.</p>
-    <p class="fs-credit">In the style of the classic fancy script sheets</p>
+    <p>Turn any script into a polished, print-style sheet — parchment, engraved dividers, the works — or the teensy template with night-order strips down its ribbons. Pick a script published on the wiki or load any official-schema script JSON, tune it, and download a PNG or a print-ready PDF.</p>
+    <p class="fs-credit">Classic fancy script sheets &middot; the No Greater Joy teensy template</p>
   </div>
 
   <main class="home-panel" id="content">
     <div class="fs-layout">
 
       <aside>
+        <section class="fs-card">
+          <h2>Style</h2>
+          <select class="fs-select" id="fs-mode" aria-label="Sheet style">
+            <option value="classic">Classic fancy script (3:4)</option>
+            <option value="teensy">Teensy — No Greater Joy template (5:7)</option>
+          </select>
+          <p class="fs-hint">Teensy: night order runs down the ribbons as icons, three columns of townsfolk, the demon in one big row. Built for teensyvilles but takes any script.</p>
+        </section>
+
         <section class="fs-card">
           <h2>Script</h2>
           <span class="fs-lab">From this wiki</span>
@@ -283,6 +300,7 @@
             <button class="fs-btn" id="fs-upload-btn" type="button">Upload script .json</button>
             <button class="fs-btn" id="fs-sample-tb" type="button">Trouble Brewing</button>
             <button class="fs-btn" id="fs-sample-hh" type="button">Demo teensyville</button>
+            <button class="fs-btn" id="fs-sample-ngj" type="button">No Greater Joy</button>
           </div>
           <input type="file" id="fs-file" accept=".json,application/json" hidden>
           <button class="fs-linkish" id="fs-paste-toggle" type="button">…or paste JSON directly</button>
@@ -296,6 +314,8 @@
 
         <section class="fs-card" id="fs-back-card" hidden>
           <h2>Back Cover</h2>
+          <span class="fs-lab">Boxes on the back</span>
+          <div id="fs-back-panels"></div>
           <span class="fs-lab">Background</span>
           <div id="fs-back-bgbox"></div>
           <span class="fs-lab">Text</span>
@@ -313,6 +333,18 @@
           <h2>Title &amp; credit</h2>
           <input class="fs-field" id="fs-title-override" type="text" placeholder="Title (blank = the script's own)">
           <input class="fs-field" id="fs-author-override" type="text" placeholder="Author (blank = the script's own)">
+          <input class="fs-field" id="fs-players" type="text" placeholder="Players (blank = worked out from the roster)" aria-label="Player count">
+          <p class="fs-hint">The player count shows on the back cover's player box, and on the front when its toggle is on.</p>
+        </section>
+
+        <section class="fs-card fs-front-card">
+          <h2>Bootlegger box</h2>
+          <div id="fs-bootlegger-toggles"></div>
+          <div id="fs-bootlegger-box" hidden>
+            <textarea class="fs-field" id="fs-bootlegger-text" rows="3" spellcheck="false" aria-label="Bootlegger rules"></textarea>
+            <p class="fs-hint">One rule per line. You can also tap the box on the sheet and type straight into it.</p>
+            <div id="fs-bootlegger-sliders"></div>
+          </div>
         </section>
 
         <section class="fs-card fs-front-card">
@@ -324,11 +356,20 @@
               <option value="official">Official style</option>
             </select>
           </div>
-          <div class="fs-row-between">
+          <div class="fs-row-between" data-fs-modes="classic">
             <span class="fs-lab">Column spacing</span>
             <select class="fs-select" id="fs-column-layout" style="width:auto">
               <option value="even">Even columns (official)</option>
               <option value="shared">Classic (col 2 under the title)</option>
+            </select>
+          </div>
+          <div class="fs-row-between" data-fs-modes="teensy">
+            <span class="fs-lab">Townsfolk columns</span>
+            <select class="fs-select" id="fs-townsfolk-cols" style="width:auto">
+              <option value="0">Automatic</option>
+              <option value="2">2</option>
+              <option value="3">3 (the template)</option>
+              <option value="4">4</option>
             </select>
           </div>
           <div id="fs-toggles"></div>
@@ -338,12 +379,13 @@
         <section class="fs-card fs-front-card">
           <h2>Colors</h2>
           <div id="fs-colors"></div>
-          <div id="fs-colors-sliders" style="margin-top:14px"></div>
+          <div id="fs-color-toggles" style="margin-top:10px"></div>
+          <div id="fs-colors-sliders" style="margin-top:8px"></div>
         </section>
 
         <section class="fs-card fs-front-card">
           <details>
-            <summary>Fine-tune the header</summary>
+            <summary>Fine-tune the title &amp; header</summary>
             <div id="fs-decor-sliders"></div>
             <button class="fs-btn" id="fs-decor-reset" type="button">Reset header tuning</button>
           </details>
@@ -376,7 +418,7 @@
             <div id="fs-sheet-wrap"></div>
           </div>
         </div>
-        <p class="fs-preview-hint">Share Image and Print PNG download the side you're looking at; Print PDF is always both. Share Image is a small JPEG (about 1&nbsp;MB — right for Discord).</p>
+        <p class="fs-preview-hint">Share Image and Print PNG download the side you're looking at; Print PDF is always both. Share Image is a small JPEG (about 1&nbsp;MB — right for Discord). With the bootlegger box on, tap it on the sheet to edit the rules in place.</p>
       </div>
 
     </div>

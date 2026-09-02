@@ -2,22 +2,30 @@
  *
  * Owns everything around the sheet: loading a script (a published wiki
  * script, an uploaded/pasted JSON, a sample), the option controls, the
- * scaled preview, and the PNG/PDF export. The sheet itself is sheet.js;
- * parsing and geometry are script.js. State is the truth and the DOM is a
- * view of it: every control writes into `options` and asks for a render,
- * and render() rebuilds the sheet from scratch (a full build is a few
- * milliseconds — cheap enough to run per input event behind one rAF).
+ * scaled preview, and the PNG/PDF export. The sheets themselves are
+ * sheet.js (classic) and teensy.js (the PSD template); the back cover is
+ * back.js; parsing and geometry are script.js. State is the truth and the
+ * DOM is a view of it: every control writes into `options` and asks for a
+ * render, and render() rebuilds the sheet from scratch (a full build is a
+ * few milliseconds — cheap enough to run per input event behind one rAF).
+ *
+ * Two styles share one set of options. Every control declares which
+ * styles it belongs to and applyMode() hides the rest, so switching style
+ * never leaves a knob on screen that does nothing. Colours that still read
+ * the old style's default are swapped to the new style's; a colour picked
+ * by hand stays (applyModeColors in script.js).
  *
  * The export libraries (html-to-image, jspdf — assets/fancyscripts/vendor/)
  * are lazy-loaded on the first export, so an ordinary visit costs nothing.
  */
 
 import {
-  DEFAULT_OPTIONS, DEFAULT_BACK, TRIM_W_PT, TRIM_H_PT, SHEET_W, SHEET_H,
-  parseScript, setOfficialRoster, seedBackTexts,
+  DEFAULT_OPTIONS, DEFAULT_BACK, sheetSize, applyModeColors, backHasPanels,
+  parseScript, setOfficialRoster, seedBackTexts, isTeensyville, playersGuess,
 } from './script.js';
 import { renderSheet, fitTitle } from './sheet.js';
-import { renderBack, mountBackDrag, backCanvas, backReady } from './back.js';
+import { renderTeensy } from './teensy.js';
+import { renderBack, mountBackDrag, backCanvas, backReady, backSize } from './back.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,7 +36,7 @@ let view = 'front'; // which side the preview shows: 'front' | 'back'
 let backSel = -1; // selected back-cover text element
 let lastScale = 1; // preview scale, for mapping drag pointer px to sheet px
 let rawJson = null;
-let parsed = { meta: { name: 'Untitled Script', author: '' }, characters: [], warnings: [] };
+let parsed = { meta: { name: 'Untitled Script', author: '', bootlegger: [] }, characters: [], warnings: [] };
 
 /* ── samples ── */
 const SAMPLE_TROUBLE_BREWING = [
@@ -61,6 +69,16 @@ const SAMPLE_HAROLD_HOLT = [
   { id: 'pithag', ability: 'Each night*, choose a player and a character they become (if not in play). If a Demon is made, deaths tonight are arbitrary.' },
   { id: 'goblin', ability: 'If you publicly claim to be the Goblin when nominated and are executed that day, your team wins.' },
   'leviathan',
+];
+
+/* The teensy template's own script — "No Greater Joy", the PSD the teensy
+   style was measured from, so the two can be laid side by side. */
+const SAMPLE_NO_GREATER_JOY = [
+  { id: '_meta', name: 'No Greater Joy', author: '' },
+  'investigator', 'clockmaker', 'empath', 'chambermaid', 'artist', 'sage',
+  'drunk', 'klutz',
+  'scarletwoman', 'baron',
+  'imp',
 ];
 
 /* ── messages ── */
@@ -104,13 +122,38 @@ function reparse() {
   }
 }
 
+/* the front renderer for the current style */
+function renderFront(ui) {
+  return options.mode === 'teensy'
+    ? renderTeensy(parsed, options, requestRender, ui)
+    : renderSheet(parsed, options, requestRender, ui);
+}
+
+/* in-place editing of the bootlegger box on the preview: typing writes
+   the text straight into the options (and the textarea) without a
+   rebuild — a rebuild would destroy the caret; leaving the box rebuilds */
+const liveUI = {
+  editable: true,
+  onBootleggerEdit: (text) => {
+    options.bootleggerText = text;
+    const ta = $('fs-bootlegger-text');
+    if (ta && ta.value !== text) ta.value = text;
+  },
+  onBootleggerCommit: () => requestRender(),
+};
+
 function render() {
   const wrap = $('fs-sheet-wrap');
+  // an edit in progress on the sheet must not be rebuilt out from under
+  // the caret (a render request can arrive from an async icon measurement)
+  const editing = wrap.querySelector('[data-fs-bootlegger] [contenteditable]:focus');
+  if (editing) return;
   wrap.textContent = '';
   if (view === 'back') {
     const backEl = renderBack(parsed, options, requestRender, { selected: backSel });
     mountBackDrag(backEl, options.back, {
       getScale: () => lastScale,
+      size: backSize(options),
       // selection must not rebuild the preview — a rebuild mid-drag destroys
       // the element holding the pointer capture; the ring is drawn live
       onSelect: (i) => { backSel = i; buildBackChips(); buildBackElementPanel(); },
@@ -118,9 +161,9 @@ function render() {
     });
     wrap.append(backEl);
   } else {
-    const sheet = renderSheet(parsed, options, requestRender);
+    const sheet = renderFront(liveUI);
     wrap.append(sheet);
-    fitTitle(sheet, options);
+    if (options.mode !== 'teensy') fitTitle(sheet, options);
     showSolvedDensity(sheet);
   }
   fitPreview();
@@ -129,7 +172,8 @@ function render() {
 /* One-time colour handoff: the first time the back cover is actually shown
    (tabbing over — or a PDF export rendering it unseen), its background
    colour is copied from the sidebar ribbon so the two sides match. Once
-   only: later sidebar changes never overwrite the back colour again. */
+   only: later sidebar changes never overwrite the back colour again —
+   unless the colours are linked, which keeps them together for good. */
 let backColorSeeded = false;
 function seedBackColor() {
   if (backColorSeeded) return;
@@ -148,6 +192,7 @@ function applyView(v) {
   $('fs-tab-back').classList.toggle('on', v === 'back');
   document.querySelectorAll('.fs-front-card').forEach((el) => { el.hidden = v !== 'front'; });
   $('fs-back-card').hidden = v !== 'back';
+  applyMode(); // the front cards also split by style
   requestRender();
 }
 
@@ -156,24 +201,54 @@ function fitPreview() {
   const box = $('fs-preview');
   const outer = $('fs-scale-box');
   const wrap = $('fs-sheet-wrap');
-  const scale = Math.min(1, (box.clientWidth - 12) / SHEET_W);
+  const size = sheetSize(options.mode);
+  const scale = Math.min(1, (box.clientWidth - 12) / size.w);
   lastScale = scale;
-  outer.style.width = SHEET_W * scale + 'px';
-  outer.style.height = SHEET_H * scale + 'px';
+  outer.style.width = size.w * scale + 'px';
+  outer.style.height = size.h * scale + 'px';
   wrap.style.transform = 'scale(' + scale + ')';
 }
 
+/* ── the style switch ──
+   Hides every control that belongs to the other style, swaps the colours
+   that still read the old default, and re-stacks the back title for the
+   new trim (its word sizes are pixels of the sheet). */
+function applyMode(from) {
+  const mode = options.mode;
+  if (from && from !== mode) {
+    applyModeColors(options, from, mode);
+    if (options.linkColors) linkColorsFrom('sidebarColor');
+    reseedBackTexts();
+  }
+  document.documentElement.classList.toggle('fs-mode-teensy', mode === 'teensy');
+  document.querySelectorAll('[data-fs-modes]').forEach((el) => {
+    const modes = el.dataset.fsModes.split(' ');
+    el.hidden = !modes.includes(mode);
+  });
+  document.querySelectorAll('.fs-teensy-only').forEach((el) => { el.hidden = mode !== 'teensy' || (el.classList.contains('fs-front-card') && view !== 'front'); });
+  document.querySelectorAll('.fs-classic-only').forEach((el) => { el.hidden = mode === 'teensy' || (el.classList.contains('fs-front-card') && view !== 'front'); });
+  syncControls();
+}
+
 /* ── loading scripts ── */
+function reseedBackTexts() {
+  options.back.texts = seedBackTexts(backTitleNow(), backSize(options), backHasPanels(options.back));
+  backSel = options.back.texts.length ? 0 : -1; // the panel stays open
+  buildBackChips();
+  buildBackElementPanel();
+}
+
 function loadJson(json, sourceLabel) {
   rawJson = json;
   reparse();
   // a fresh script gets fresh overrides — the old title would stick otherwise
   options.titleOverride = '';
   options.authorOverride = '';
-  options.back.texts = seedBackTexts(parsed.meta.name);
-  backSel = options.back.texts.length ? 0 : -1; // the panel stays open
-  buildBackChips();
-  buildBackElementPanel();
+  options.bootleggerText = '';
+  options.players = '';
+  // a teensyville's first night has no minion or demon info step
+  options.nightInfoSteps = !isTeensyville(parsed.characters);
+  reseedBackTexts();
   syncControls();
   requestRender();
   if (sourceLabel) note('Loaded ' + sourceLabel + '.', 'ok');
@@ -225,51 +300,74 @@ async function fillScriptPicker(preselect) {
 /* ── controls ──
    Built from a schema so there is exactly one binding path. Each row writes
    options[key] and requests a render; syncControls() pushes state back into
-   the inputs (after Reset or loading a script). */
+   the inputs (after Reset or loading a script). The last field of every
+   row names the styles it belongs to; applyMode() hides the others. */
 const pct = (v) => Math.round(v * 100) + '%';
 const signed = (dp, unit) => (v) => (v > 0 ? '+' : '') + v.toFixed(dp) + (unit || '');
 
 const SLIDERS = [
-  // [key, label, min, max, step, format, section]
-  ['density', 'Text density', 0.5, 1.5, 0.01, pct, 'layout'],
-  ['iconSize', 'Icon size', 0.6, 1.6, 0.01, pct, 'layout'],
-  ['textSize', 'Text size', 0.7, 1.4, 0.01, pct, 'layout'],
-  ['nameSize', 'Name size', 0.6, 1.5, 0.01, pct, 'layout'],
-  ['sidebarShade', 'Sidebar shading', 0, 1, 0.01, pct, 'colors'],
-  ['titleSize', 'Title size', 0.5, 1.6, 0.01, pct, 'decor'],
-  ['titleDX', 'Title horizontal', -15, 15, 0.1, signed(1, '%'), 'decor'],
-  ['titleDY', 'Title vertical', -4, 4, 0.05, signed(2), 'decor'],
-  ['skullScale', 'Skull size', 0.5, 1.5, 0.01, pct, 'decor'],
-  ['skullDX', 'Skull horizontal', -10, 10, 0.1, signed(1, '%'), 'decor'],
-  ['skullDY', 'Skull vertical', -3, 3, 0.05, signed(2), 'decor'],
-  ['flourishScale', 'Flourish size', 0.5, 1.5, 0.01, pct, 'decor'],
-  ['flourishSpread', 'Flourish spread', -8, 8, 0.1, signed(1, '%'), 'decor'],
-  ['flourishDY', 'Flourish vertical', -3, 3, 0.05, signed(2), 'decor'],
+  // [key, label, min, max, step, format, section, modes]
+  ['density', 'Text density', 0.5, 1.5, 0.01, pct, 'layout', 'classic teensy'],
+  ['iconSize', 'Icon size', 0.6, 1.6, 0.01, pct, 'layout', 'classic teensy'],
+  ['textSize', 'Text size', 0.7, 1.4, 0.01, pct, 'layout', 'classic teensy'],
+  ['nameSize', 'Name size', 0.6, 1.5, 0.01, pct, 'layout', 'classic teensy'],
+  ['sidebarShade', 'Sidebar shading', 0, 1, 0.01, pct, 'colors', 'classic'],
+  ['titleSize', 'Title size', 0.5, 1.6, 0.01, pct, 'decor', 'classic teensy'],
+  ['titleDX', 'Title horizontal', -15, 15, 0.1, signed(1, '%'), 'decor', 'classic teensy'],
+  ['titleDY', 'Title vertical', -4, 4, 0.05, signed(2), 'decor', 'classic teensy'],
+  ['skullScale', 'Skull size', 0.5, 1.5, 0.01, pct, 'decor', 'classic'],
+  ['skullDX', 'Skull horizontal', -10, 10, 0.1, signed(1, '%'), 'decor', 'classic'],
+  ['skullDY', 'Skull vertical', -3, 3, 0.05, signed(2), 'decor', 'classic'],
+  ['flourishScale', 'Flourish size', 0.5, 1.5, 0.01, pct, 'decor', 'classic'],
+  ['flourishSpread', 'Flourish spread', -8, 8, 0.1, signed(1, '%'), 'decor', 'classic'],
+  ['flourishDY', 'Flourish vertical', -3, 3, 0.05, signed(2), 'decor', 'classic'],
+  ['bootleggerSize', 'Box text size', 0.6, 1.8, 0.02, pct, 'bootlegger', 'classic teensy'],
 ];
 
 const TOGGLES = [
-  ['fitToContent', 'Auto-fit text to fill the page'],
-  ['showJinxes', 'Jinx icons beside names'],
-  ['showFootnote', '“*Not the first night” footnote'],
-  ['useLogo', 'Use the script’s logo image as the title'],
-  ['showAuthor', 'Author credit under the title'],
-  ['includeBackCover', 'Back cover page in the PDF'],
-  ['proxyIcons', 'Route off-site icons through a proxy (safer export)'],
+  // [key, label, section, modes]
+  ['fitToContent', 'Auto-fit text to fill the page', 'toggles', 'classic teensy'],
+  ['showJinxes', 'Jinx icons beside names', 'toggles', 'classic'],
+  ['showFootnote', '“*Not the first night” footnote', 'toggles', 'classic teensy'],
+  ['useLogo', 'Use the script’s logo image as the title', 'toggles', 'classic teensy'],
+  ['showAuthor', 'Author credit under the title', 'toggles', 'classic teensy'],
+  ['showPlayersFront', 'Player count on the front', 'toggles', 'classic teensy'],
+  ['nightStrips', 'Night order strips on the ribbons', 'toggles', 'teensy'],
+  ['nightInfoSteps', 'Minion & Demon info steps in the night order', 'toggles', 'classic teensy'],
+  ['clockArt', 'Clock art beside the title', 'toggles', 'teensy'],
+  ['titleCapsShort', 'Short title words in capitals (NO / Greater / JOY)', 'toggles', 'teensy'],
+  ['cornerArt', 'Watercolour corner flourishes', 'toggles', 'teensy'],
+  ['includeBackCover', 'Back cover page in the PDF', 'toggles', 'classic teensy'],
+  ['proxyIcons', 'Route off-site icons through a proxy (safer export)', 'toggles', 'classic teensy'],
+  ['bootleggerBox', 'Bootlegger rules in a box at the top right', 'bootlegger-toggles', 'classic teensy'],
+  ['linkColors', 'Match colours: sidebar, title and back cover move together', 'color-toggles', 'classic teensy'],
 ];
 
 const COLORS = [
   ['titleColor', 'Title'],
   ['goodColor', 'Good names'],
   ['evilColor', 'Evil names'],
-  ['sidebarColor', 'Sidebar'],
+  ['sidebarColor', 'Sidebar / ribbons'],
 ];
+
+/* the three colours that move together while "Match colours" is on */
+const LINKED = ['sidebarColor', 'titleColor'];
+
+function linkColorsFrom(key) {
+  const hex = key === 'back' ? options.back.bgColor : options[key];
+  if (!hex) return;
+  for (const k of LINKED) options[k] = hex;
+  options.back.bgColor = hex;
+  backColorSeeded = true; // the handoff has happened, by hand
+}
 
 const controlEls = {}; // key -> input element
 
 function buildControls() {
-  for (const [key, label, min, max, step, format, section] of SLIDERS) {
+  for (const [key, label, min, max, step, format, section, modes] of SLIDERS) {
     const row = document.createElement('div');
     row.className = 'fs-slider';
+    row.dataset.fsModes = modes;
     const head = document.createElement('div');
     head.className = 'fs-slider-head';
     const name = document.createElement('span');
@@ -296,21 +394,24 @@ function buildControls() {
     controlEls[key] = { input, val, format };
   }
 
-  for (const [key, label] of TOGGLES) {
+  for (const [key, label, section, modes] of TOGGLES) {
     const lab = document.createElement('label');
     lab.className = 'fs-toggle';
+    lab.dataset.fsModes = modes;
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.addEventListener('change', () => {
       options[key] = input.checked;
       if (key === 'fitToContent') syncControls(); // density goes (in)active
       if (key === 'proxyIcons') reparse(); // icon urls are chosen at parse time
+      if (key === 'linkColors' && input.checked) { linkColorsFrom('sidebarColor'); syncControls(); buildBackControls(); }
+      if (key === 'bootleggerBox') $('fs-bootlegger-box').hidden = !input.checked;
       requestRender();
     });
     const span = document.createElement('span');
     span.textContent = label;
     lab.append(input, span);
-    $('fs-toggles').append(lab);
+    $('fs-' + section).append(lab);
     controlEls[key] = { input };
   }
 
@@ -319,6 +420,11 @@ function buildControls() {
     row.className = 'fs-color';
     const picker = createColorPicker(options[key], (hex) => {
       options[key] = hex;
+      if (options.linkColors && LINKED.includes(key)) {
+        linkColorsFrom(key);
+        syncControls();
+        buildBackControls();
+      }
       requestRender();
     });
     const span = document.createElement('span');
@@ -483,8 +589,18 @@ function syncControls() {
   }
   $('fs-title-override').value = options.titleOverride;
   $('fs-author-override').value = options.authorOverride;
+  $('fs-players').value = options.players;
+  $('fs-players').placeholder = playersGuess(parsed.characters) + ' (worked out from the roster)';
   $('fs-sort-mode').value = options.sortMode;
   $('fs-column-layout').value = options.columnLayout;
+  $('fs-mode').value = options.mode;
+  $('fs-townsfolk-cols').value = String(options.townsfolkCols || 0);
+  const ta = $('fs-bootlegger-text');
+  ta.value = options.bootleggerText;
+  ta.placeholder = (parsed.meta.bootlegger || []).length
+    ? parsed.meta.bootlegger.join('\n')
+    : 'One rule per line — or type straight into the box on the sheet.';
+  $('fs-bootlegger-box').hidden = !options.bootleggerBox;
 }
 
 /* while auto-fit is on, the density slider tracks the density it solved
@@ -542,18 +658,21 @@ async function withExport(btn, fn) {
              opaque, and jsPDF stores an RGBA PNG this size as ~90 MB of
              raw pixels where the JPEG lands under 10
    - 'share' JPEG at pixelRatio 1.5 (1863 px wide, ~1 MB) — crisp on any
-             screen and small enough for Discord */
+             screen and small enough for Discord
+   The teensy sheet is 1500 px wide, so its ratios come down a notch to
+   land on the same output sizes. */
 async function captureNode(node, kind) {
   await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
   await document.fonts.ready;
   if (!node) throw new Error('Nothing to export yet.');
+  const k = 1242 / sheetSize(options.mode).w;
   if (kind === 'jpeg') {
-    return window.htmlToImage.toJpeg(node, { pixelRatio: 3, cacheBust: false, quality: 0.92 });
+    return window.htmlToImage.toJpeg(node, { pixelRatio: 3 * k, cacheBust: false, quality: 0.92 });
   }
   if (kind === 'share') {
-    return window.htmlToImage.toJpeg(node, { pixelRatio: 1.5, cacheBust: false, quality: 0.85 });
+    return window.htmlToImage.toJpeg(node, { pixelRatio: 1.5 * k, cacheBust: false, quality: 0.85 });
   }
-  return window.htmlToImage.toPng(node, { pixelRatio: 3, cacheBust: false });
+  return window.htmlToImage.toPng(node, { pixelRatio: 3 * k, cacheBust: false });
 }
 
 /* Exports render the side they need OFFSCREEN when it is not the one on
@@ -562,21 +681,23 @@ async function captureNode(node, kind) {
    waits for its background canvas: the recolour/shading pass is async and
    an export must never carry a stale background. */
 function offscreenHolder() {
+  const size = sheetSize(options.mode);
   const holder = document.createElement('div');
   Object.assign(holder.style, {
     position: 'fixed', left: '-99999px', top: '0',
-    width: SHEET_W + 'px', height: SHEET_H + 'px', overflow: 'hidden',
+    width: size.w + 'px', height: size.h + 'px', overflow: 'hidden',
   });
   document.body.append(holder);
   return holder;
 }
 
 function waitBackReady() {
-  backCanvas(options.back, requestRender); // kick the pass if it is not cached
+  const size = backSize(options);
+  backCanvas(options.back, requestRender, size); // kick the pass if it is not cached
   return new Promise((resolve, reject) => {
     const t0 = Date.now();
     const poll = () => {
-      if (backReady(options.back)) return resolve();
+      if (backReady(options.back, size)) return resolve();
       if (Date.now() - t0 > 20000) return reject(new Error('The back cover background timed out.'));
       setTimeout(poll, 120);
     };
@@ -586,11 +707,8 @@ function waitBackReady() {
 
 async function withSideNode(side, fn) {
   if (side === 'back') seedBackColor(); // a PDF export may render it first
-  const live = document.querySelector(
-    side === 'back' ? '#fs-sheet-wrap .script-back' : '#fs-sheet-wrap .script-sheet');
-  if (live && side === 'front') return fn(live);
-  // the back always re-renders for export: the live copy may carry the
-  // selection ring, and the singleton background canvas travels with it
+  // the front is always re-rendered for export: the live copy carries the
+  // editable bootlegger box, and the export must never capture a caret
   let holder = null;
   try {
     if (side === 'back') await waitBackReady();
@@ -599,10 +717,10 @@ async function withSideNode(side, fn) {
     if (side === 'back') {
       node = renderBack(parsed, options, requestRender, { selected: -1 });
     } else {
-      node = renderSheet(parsed, options, requestRender);
+      node = renderFront(null);
     }
     holder.append(node);
-    if (side === 'front') fitTitle(node, options);
+    if (side === 'front' && options.mode !== 'teensy') fitTitle(node, options);
     await new Promise((r) => setTimeout(r, 250)); // let layout + images settle
     return await fn(node);
   } finally {
@@ -629,18 +747,19 @@ async function exportShare() {
 }
 
 async function exportPDF() {
+  const size = sheetSize(options.mode);
   const front = await withSideNode('front', (n) => captureNode(n, 'jpeg'));
   await loadScriptOnce('assets/fancyscripts/vendor/jspdf.umd.min.js', () => window.jspdf);
   const pdf = new window.jspdf.jsPDF({
     orientation: 'portrait',
     unit: 'pt',
-    format: [TRIM_W_PT, TRIM_H_PT],
+    format: [size.trimW, size.trimH],
   });
-  pdf.addImage(front, 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
+  pdf.addImage(front, 'JPEG', 0, 0, size.trimW, size.trimH);
   if (options.includeBackCover) {
     const back = await withSideNode('back', (n) => captureNode(n, 'jpeg'));
-    pdf.addPage([TRIM_W_PT, TRIM_H_PT], 'portrait');
-    pdf.addImage(back, 'JPEG', 0, 0, TRIM_W_PT, TRIM_H_PT);
+    pdf.addPage([size.trimW, size.trimH], 'portrait');
+    pdf.addImage(back, 'JPEG', 0, 0, size.trimW, size.trimH);
   }
   pdf.save(exportName('pdf'));
 }
@@ -693,7 +812,10 @@ function buildBackControls() {
     row.append(picker.root, span);
     parent.append(row);
   };
-  addPicker(colorRow, 'Color', () => b.bgColor, (h) => { b.bgColor = h; });
+  addPicker(colorRow, options.linkColors ? 'Color (matched)' : 'Color', () => b.bgColor, (h) => {
+    b.bgColor = h;
+    if (options.linkColors) { linkColorsFrom('back'); syncControls(); }
+  });
   const gradLab = document.createElement('label');
   gradLab.className = 'fs-toggle';
   const gradTick = document.createElement('input');
@@ -721,6 +843,52 @@ function buildBackControls() {
     () => b.patStrength ?? 1, (v) => { b.patStrength = v; });
   makeSlider(box, 'Pattern size', 0.4, 3, 0.02, pct, () => b.patScale, (v) => { b.patScale = v; });
   makeSlider(box, 'Pattern rotation', -180, 180, 1, fmtDeg, () => b.patRot, (v) => { b.patRot = v; });
+
+  buildBackPanelControls();
+}
+
+/* The boxes on the back. Ticking the first one re-stacks the title into
+   the top band to make room (and unticking the last one puts it back);
+   in between, the title is left wherever it was dragged. */
+const BACK_PANELS = [
+  ['playersBox', 'Player count box'],
+  ['nightOrder', 'Night order (icons in order, first night / other nights)'],
+  ['nightNames', 'Character names beside the night-order icons'],
+  ['travellers', 'Travellers in a box on the back (off the front)'],
+  ['fabled', 'Fabled in a box on the back (off the front)'],
+  ['loric', 'Loric in a box on the back (off the front)'],
+];
+
+function buildBackPanelControls() {
+  const box = $('fs-back-panels');
+  box.textContent = '';
+  const b = options.back;
+  for (const [key, label] of BACK_PANELS) {
+    const lab = document.createElement('label');
+    lab.className = 'fs-toggle';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = !!b[key];
+    input.addEventListener('change', () => {
+      const had = backHasPanels(b);
+      b[key] = input.checked;
+      const has = backHasPanels(b);
+      if (had !== has) reseedBackTexts();
+      buildBackPanelControls();
+      requestRender();
+    });
+    const span = document.createElement('span');
+    span.textContent = label;
+    lab.append(input, span);
+    if (key === 'nightNames') lab.hidden = !b.nightOrder;
+    box.append(lab);
+  }
+  if (backHasPanels(b)) {
+    makeSlider(box, 'Box text & icon size', 0.5, 1.6, 0.02, pct,
+      () => b.panelScale ?? 1, (v) => { b.panelScale = v; });
+    makeSlider(box, 'Boxes start (down the page)', 8, 60, 1, (v) => Math.round(v) + '%',
+      () => b.panelTop ?? 30, (v) => { b.panelTop = v; });
+  }
 }
 
 function buildBackChips() {
@@ -747,6 +915,8 @@ const BACK_FONTS = [
   ['goudy', 'Goudy Old Style'],
   ['trade', 'Trade Gothic'],
   ['dumbledor', 'Dumbledor'],
+  ['optimus', 'OptimusPrinceps'],
+  ['helvetica', 'Helvetica (Liberation Sans)'],
 ];
 
 function buildBackElementPanel() {
@@ -844,18 +1014,26 @@ async function boot() {
   buildControls();
   syncControls();
 
-  // the official roster: roles.json + this tool's jinx map, handed to the engine
+  // the official roster: roles.json, this tool's jinx map and the official
+  // night order (for the night strips), handed to the engine
   try {
-    const [roles, jinxes] = await Promise.all([
+    const [roles, jinxes, night] = await Promise.all([
       fetch('assets/roles.json').then((r) => r.json()),
       fetch('assets/fancyscripts/official-jinxes.json').then((r) => r.json()),
+      fetch('assets/night-order.json').then((r) => r.json()).catch(() => null),
     ]);
-    setOfficialRoster(roles, jinxes);
+    setOfficialRoster(roles, jinxes, night);
   } catch {
     note('Could not load the official roster — official character ids will render bare.', 'err');
   }
 
   // wire the static inputs
+  $('fs-mode').addEventListener('change', (e) => {
+    const from = options.mode;
+    options.mode = e.target.value === 'teensy' ? 'teensy' : 'classic';
+    applyMode(from);
+    requestRender();
+  });
   $('fs-title-override').addEventListener('input', (e) => {
     options.titleOverride = e.target.value;
     requestRender();
@@ -864,12 +1042,24 @@ async function boot() {
     options.authorOverride = e.target.value;
     requestRender();
   });
+  $('fs-players').addEventListener('input', (e) => {
+    options.players = e.target.value;
+    requestRender();
+  });
+  $('fs-bootlegger-text').addEventListener('input', (e) => {
+    options.bootleggerText = e.target.value;
+    requestRender();
+  });
   $('fs-sort-mode').addEventListener('change', (e) => {
     options.sortMode = e.target.value;
     requestRender();
   });
   $('fs-column-layout').addEventListener('change', (e) => {
     options.columnLayout = e.target.value;
+    requestRender();
+  });
+  $('fs-townsfolk-cols').addEventListener('change', (e) => {
+    options.townsfolkCols = Number(e.target.value) || 0;
     requestRender();
   });
   $('fs-decor-reset').addEventListener('click', () => {
@@ -907,10 +1097,7 @@ async function boot() {
     requestRender();
   });
   $('fs-back-reset').addEventListener('click', () => {
-    options.back.texts = seedBackTexts(backTitleNow());
-    backSel = options.back.texts.length ? 0 : -1;
-    buildBackChips();
-    buildBackElementPanel();
+    reseedBackTexts();
     requestRender();
   });
 
@@ -939,6 +1126,7 @@ async function boot() {
   });
   $('fs-sample-tb').addEventListener('click', () => loadJson(SAMPLE_TROUBLE_BREWING, 'Trouble Brewing'));
   $('fs-sample-hh').addEventListener('click', () => loadJson(SAMPLE_HAROLD_HOLT, "Harold Holt's Revenge"));
+  $('fs-sample-ngj').addEventListener('click', () => loadJson(SAMPLE_NO_GREATER_JOY, 'No Greater Joy'));
 
   $('fs-export-share').addEventListener('click', (e) => withExport(e.target, exportShare));
   $('fs-export-png').addEventListener('click', (e) => withExport(e.target, exportPNG));
@@ -948,8 +1136,13 @@ async function boot() {
   // wraps and the title width both change once the real fonts arrive
   document.fonts.ready.then(() => { reparse(); requestRender(); });
 
-  // ?s={slug} deep link — the "Fancy script sheet" button on /s/ pages
-  const slug = new URLSearchParams(location.search).get('s');
+  // ?s={slug} deep link — the "Fancy script sheet" button on /s/ pages;
+  // ?style=teensy opens in the teensy style
+  const params = new URLSearchParams(location.search);
+  const slug = params.get('s');
+  if (params.get('style') === 'teensy') options.mode = 'teensy';
+  applyModeColors(options, 'classic', options.mode);
+  applyMode();
   fillScriptPicker(slug || '');
   if (slug) await loadWikiScript(slug);
   if (rawJson == null) loadJson(SAMPLE_TROUBLE_BREWING);

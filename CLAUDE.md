@@ -459,10 +459,14 @@ assets/
                        and <script src>.
   fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
                        modules. script.js is the engine (parsing, sorting, the
-                       calibrated SHEET geometry, the back-cover model — pure,
-                       no DOM); sheet.js the front-sheet renderer and back.js
-                       the back-cover renderer (both captured by the export);
-                       app.js the page controller. art/, fonts/ and icons/ (the REAL official
+                       calibrated SHEET and TEENSY geometry, night lists, the
+                       back-cover model — pure, no DOM); sheet.js the classic
+                       front sheet, teensy.js the No Greater Joy template,
+                       back.js the back cover with its panels (all captured
+                       by the export); panels.js the pieces they share
+                       (bootlegger box, night-order strips, parchment panels,
+                       team rows); tint.js the art recolour; app.js the page
+                       controller. art/, fonts/ and icons/ (the REAL official
                        painted icons — see the section below) are the sealed
                        payload, vendor/ the export libraries. See "Fancy
                        Scripts" below before touching ANY number in script.js.
@@ -2328,6 +2332,135 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   The PDF pages are embedded as
   **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
   PDF came out 90 MB; as JPEG the two pages land around 7.
+
+### The two styles, and the teensy template
+
+`options.mode` is `'classic'` (everything above) or `'teensy'`, and
+`sheetSize(mode)` in script.js is the one answer to how big a sheet is: the
+classic 1242×1656 on its 595.57×794.05 pt trim, the teensy 1500×2100 (5:7)
+on an A4-wide page. The back cover takes its front's trim, so switching style
+rebuilds the damask at the new ratio (`srcHFor` in back.js) and re-stacks the
+back title for the new pixel space.
+
+**Teensy is the owner's "No Greater Joy" PSD** (`nogreaterjoy.psd`, 1500×2100)
+as a live template, rendered by `assets/fancyscripts/teensy.js`:
+
+- **Every number in `TEENSY` (script.js) is a coordinate in the PSD's own
+  pixels**, and the sheet is built at exactly that size so the two can be
+  laid side by side — text boxes for the headings and names, layer bounds
+  for the art, font size × transform for the type. The fonts measure the
+  same in Chromium as in the file (TOWNSFOLK at 50 px is 314 px wide here,
+  312 there), so the calibration holds.
+- **The art is the PSD's, rendered out with its layer effects** (psd-tools
+  with scikit-image, since the ribbons carry a gradient overlay, a paper
+  pattern overlay and a stroke, and the corners a stroke):
+  `teensy-parchment.jpg` (the engraved clockwork background),
+  `teensy-ribbon-l/r.png` (the purple bands, 100 px at each edge),
+  `teensy-corner-{tl,tr,bl,br}.png` (the watercolour berries — drawn ON TOP
+  of everything, as in the file), `teensy-clock.png`, `teensy-moon.png`,
+  `teensy-sun.png`. The ribbons recolour through `tint.js` against
+  `TEENSY_RIBBON_BASE` (measured hue 285°), exactly as the classic sidebar
+  does against `SIDEBAR_BASE`; `tint.js` is that recolour extracted so the
+  two sheets cannot drift.
+- **Fonts**: OptimusPrinceps (headings, names, the night labels, the
+  footnote — the wiki's own TTF, subset to woff2) and **Liberation Sans**
+  standing in for the PSD's Helvetica (metric-compatible, OFL, so the
+  abilities wrap alike). Both `font-display: block` like the others.
+- **The grid**: three columns of townsfolk, two of outsiders and minions,
+  one big row for a lone demon (`colsFor` — four columns from ten townsfolk,
+  and the Townsfolk-columns select overrides it). `TEENSY.grid` carries each
+  column count's icon, text inset, name/ability sizes and row pitch. Row
+  heights are the TEXT block's pitch, not the icon's: the PSD's icons are
+  taller than their rows and reach into the gaps (the Drunk's tankard is
+  257 px in a row whose text runs 205). The density solve is sheet.js's,
+  with one difference that bit once: the teensy measurements are already
+  scaled by the density, so the fit ratio CORRECTS the current density
+  (`fit = avail / needed × d`) rather than replacing it — assigning the
+  ratio straight, as sheet.js does with its density-free em measurements,
+  bounced between 0.6 and 1.0 and never shrank a big roster. Never above
+  1.0: a small roster keeps the template's sizes and spreads out.
+- **The title** is stacked one word to a line in LHF Unlovable with the
+  PSD's reflected purple gradient and 4 px black drop shadow, sized to a
+  400 px band; `titleCapsShort` sets a first or last word of up to three
+  letters in capitals (NO / Greater / JOY, the file's own casing). The
+  stack starts at 48, not the file's 14, because that is the line box and
+  LHF's cap swashes reach ~0.3 em above it — a T's flourish clipped at the
+  sheet edge at 34.
+- **The night strips on the ribbons** are `nightLists()` drawn by
+  `panels.js`'s `nightColumn()`: the moon, one icon per waking character
+  (and the Minion/Demon info steps when `nightInfoSteps` is on — reset from
+  the roster on load, because a teensyville has neither), the sun. A long
+  night starts higher (never over the corner art) and then closes up evenly
+  through `fitNightSizes()` — moon, icons and sun by one factor — rather
+  than the icons shrinking under a full-size moon. The right strip's floor
+  is higher than the left's: the bottom-right berries start at 1508.
+- **The demon heading sits ON its full-width rule** with a parchment ground
+  behind the word, so the rule reads as broken by it — that is how the file
+  has it (DEMON 1652–1708 over a rule at 1679–1686).
+- **The bootlegger box takes the clock's slot** in this style when there is
+  no logo: the clock is decoration and the rules are content. With a logo
+  it goes to the top-right corner, and either way it is appended AFTER the
+  corner art, or the berries cover it.
+
+### Night order data (`nightLists`)
+
+`parseScript` now keeps `firstNight` / `otherNight` on every character: the
+entry's own numbers, else the official sheet's through `setOfficialRoster()`'s
+third argument (`assets/night-order.json`, keyed by NAME and folded to the
+roles' ids with `slugId`). `_meta.firstNight` / `otherNight` — the owner's
+arranged lists of ids, dusk/dawn/minioninfo/demoninfo included, which the
+wiki's own export writes — win when present, matched on the id as written
+and then on the slugified name; a waking character the list forgot is
+slotted in by its number, never dropped. `NIGHT_ICONS` maps the four steps to
+their art (the moon and sun are the teensy template's; the info steps use
+`assets/icons/minion.png` / `demon.png`).
+
+### The back cover's boxes
+
+`options.back` carries `playersBox`, `nightOrder` (+ `nightNames`),
+`travellers`, `fabled`, `loric`, `panelScale` and `panelTop`.
+`renderPanels()` in back.js stacks parchment panels (`panelFrame()` in
+panels.js, the sheet's own parchment scaled past the box so its dark frame
+edge never lands inside — it did, and hid the heading) from `panelTop` down:
+the player count, then each team moved off the front as icon/name/ability
+rows (`teamRows()`; `backTeams()` is what `groupByTeam()` leaves out of the
+front sheet), then the night order as two strips of icons, moon at the top
+and sun at the bottom the way the teensy template runs them down its
+ribbons, names beside them when asked. **The night panel gives first**: it
+takes whatever height is left, a long night splits each list into two
+side-by-side columns, then the pitch closes up; only when the FIXED panels
+plus a floor for the night still do not fit does everything scale down
+together. Ticking the first box re-stacks the back title compactly in the
+top band (`seedBackTexts(title, size, compact)`), unticking the last puts it
+back; in between the title stays wherever it was dragged.
+
+**`players`** is free text; blank means `playersGuess()` — "5–6 players"
+for a teensyville roster (6/2/2/1 or fewer), "7–15 players" otherwise. It
+prints in the back's player box, and on the front when `showPlayersFront`
+is on (under the credit on the classic sheet; at the right end of the first
+heading's rule on the teensy one, where the reference scripts put it).
+
+### The bootlegger box, and editing on the sheet
+
+`bootleggerBox` draws `_meta.bootlegger` (the script's house rules) in a
+framed parchment box top-right — on the classic sheet the title band
+narrows and shifts left to make room (`titleCenter()` / the band width in
+`fitTitle`). `bootleggerRules()` prints `bootleggerText` when it says
+anything, else the script's own. **The box is `contenteditable` on the
+preview**: typing writes `bootleggerText` (and the textarea) through the
+`ui` hooks `renderSheet` / `renderTeensy` take as a fourth argument, and
+rebuilds NOTHING until the box loses focus — a rebuild would destroy the
+caret, and `render()` refuses to run while that box has focus for the same
+reason (an icon measurement can request one mid-word). The export renders
+its own copy with editing off, so a caret can never be captured.
+
+### Linked colours
+
+`linkColors` ties the sidebar/ribbon, the title and the back cover's
+background together: picking any of the three sets all three
+(`linkColorsFrom()` in app.js), the back's own picker included. Switching
+style swaps only the colours that still read the old style's default
+(`applyModeColors`), so a hand-picked colour survives the switch.
 
 ## Featured Character (the homepage slot)
 

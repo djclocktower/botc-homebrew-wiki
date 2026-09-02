@@ -80,12 +80,128 @@ export const U = SHEET_H / 100;
 export const TRIM_W_PT = 595.57;
 export const TRIM_H_PT = 794.05;
 
+/* ── the two styles ──────────────────────────────────────────────────────
+   'classic' is the 3:4 fancy-script sheet above. 'teensy' is the owner's
+   "No Greater Joy" PSD (1500×2100, a 5:7 trim — see TEENSY below). Every
+   piece of geometry the page needs to know about a style comes from
+   sheetSize(): the CSS pixel size the sheet is built at, and the PDF page
+   it prints to (A4 width for the teensy trim, so a 5:7 sheet lands on a
+   familiar page). The back cover takes the same trim as its front. */
+export function sheetSize(mode) {
+  if (mode === 'teensy') {
+    return { w: TEENSY.w, h: TEENSY.h, trimW: 595.28, trimH: 833.39 };
+  }
+  return { w: SHEET_W, h: SHEET_H, trimW: TRIM_W_PT, trimH: TRIM_H_PT };
+}
+
 /* The sidebar ribbon art's own colour (measured off sidebar.png: hue 243.7°,
    sat 0.62, light 0.135). The recolour filter in sheet.js works in ratios
    against these, so the picker's default IS the art untouched. */
 export const SIDEBAR_BASE = { hex: '#0f0d37', h: 243.7, s: 0.62, l: 0.135 };
 
+/* The teensy ribbons' own colour (measured off the PSD's purple side bands
+   after their gradient/paper/stroke effects: hue 285.1°, sat 0.55,
+   light 0.326) — same job as SIDEBAR_BASE for the classic strip. */
+export const TEENSY_RIBBON_BASE = { hex: '#6a2581', h: 285.1, s: 0.552, l: 0.326 };
+
+/* The colours a style starts from. Switching style swaps a colour ONLY when
+   it still reads the other style's default — a colour the person picked by
+   hand stays (applyModeColors). The teensy set is read straight off the
+   PSD: the title gradient's light stop, the TOWNSFOLK and DEMON headings. */
+export const MODE_COLORS = {
+  classic: { titleColor: '#10102e', goodColor: '#0d6c97', evilColor: '#731d1f', sidebarColor: SIDEBAR_BASE.hex },
+  teensy: { titleColor: '#a132de', goodColor: '#0064ac', evilColor: '#d00000', sidebarColor: TEENSY_RIBBON_BASE.hex },
+};
+
+export function applyModeColors(options, from, to) {
+  if (from === to) return;
+  for (const key of Object.keys(MODE_COLORS[to])) {
+    const cur = String(options[key] || '').toLowerCase();
+    if (cur === MODE_COLORS[from][key].toLowerCase()) options[key] = MODE_COLORS[to][key];
+  }
+}
+
+/* ── the teensy template ────────────────────────────────────────────────
+   Measured off the owner's PSD ("nogreaterjoy.psd", 1500×2100 px), in the
+   PSD's own pixels — the sheet is built at exactly that size, so every
+   number here is a coordinate you can check against the file. Layer
+   positions are the art's bounding boxes; type positions are the text
+   layers' boxes; sizes are the text layers' font size × their transform.
+
+   The character grid comes in three densities in the PSD — three columns
+   for the townsfolk, two for outsiders and minions, one big row for the
+   demon — and `grid` carries each one's icon size, text inset, name and
+   ability sizes and row pitch. The sheet picks the column count per team
+   (see teensy.js) and everything scales together under the density solve. */
+export const TEENSY = {
+  w: 1500,
+  h: 2100,
+  // the side ribbons: the art is 100 px wide at each edge; its ink stops
+  // 96 px in, and the content grid clears it
+  ribbonArtW: 100,
+  contentLeft: 106,
+  contentRight: 1400,
+  contentTop: 480, // first heading's top (TOWNSFOLK's text box)
+  contentBottom: 2020, // last row must end above this (footnote at 2046)
+  // team heading: OptimusPrinceps 50, left at x 116, a 5 px rule from the
+  // word's end to the right ribbon through the text's middle. The rows
+  // start `rowsFrom` under the heading's top (text top 480 → first name
+  // top 598, with the icon reaching up into that gap), and the next
+  // heading follows the last row by `sectionGap` (1026 → 1074).
+  headingX: 116,
+  headingSize: 50,
+  headingH: 50, // the heading's own band
+  headingRule: 5,
+  rowsFrom: 70, // rows start this far under the heading's top
+  sectionGap: 48,
+  // the demon section: a full-width 7 px rule with the heading centred ON
+  // it (DEMON 1652–1708 over the rule at 1679–1686), rows 100 px under the
+  // heading's top, and a shorter gap in front of it (1650 → 1652)
+  demonHeadingSize: 72,
+  demonRule: 7,
+  demonGap: 30,
+  demonRowsFrom: 100,
+  // the title stack (NO / Greater / JOY): LHF Unlovable, centred at x 604
+  // beside the clock; centred on the page when nothing sits to its right.
+  // The PSD's words are 141 / 144 / 179 px and fill 415..792 × 14..467.
+  // (top is the first word's line box, not its ink: LHF's cap swashes
+  // reach up to ~0.3 em above it — a T's flourish more than an N's — so
+  // the box starts lower than the PSD's ink at 14 to keep every title on
+  // the sheet)
+  title: { cx: 604, cxAlone: 750, top: 48, maxW: 400, maxH: 418, size: 190, pitch: 0.66 },
+  // the clock art / the script's logo: a 384×390 box centred at (981, 271)
+  logo: { cx: 981, cy: 271, w: 400, h: 392 },
+  // night strips on the ribbons: label (2 lines of OptimusPrinceps 25),
+  // the moon, one icon per waking character, the sun
+  strip: {
+    leftCX: 49, rightCX: 1452,
+    labelTop: 651, labelSize: 25, labelLine: 25,
+    moon: 84, icon: 72, pitch: 84, sun: 66,
+    minTop: 470, // never above the top corner art
+    leftLimit: 1670, rightLimit: 1495, // the bottom corner art starts here
+  },
+  // corner flourishes: [left, top, width, height] of each PNG
+  corners: { tl: [0, 0, 470, 445], tr: [1125, 0, 375, 425], bl: [0, 1685, 295, 415], br: [1258, 1508, 242, 512] },
+  footnote: { right: 1379, baseline: 2079, size: 43 },
+  // Row heights are the TEXT block's pitch (the PSD's icons are taller than
+  // their rows and reach into the gaps around them — the Drunk's tankard is
+  // 257 px tall in a row whose text runs 205): 3-col names 598 → 837 apart,
+  // the 2-col outsider text 1153..1358, the Imp's 1778..1970.
+  // The PSD's text starts INSIDE its icons' boxes (the Investigator's
+  // magnifier reaches under "You start knowing…" because its handle points
+  // away) — a hand-laid liberty a layout cannot take, so here the text
+  // clears the icon box, whose ink the normalization fills to ~88%.
+  grid: {
+    1: { icon: 262, iconLeft: 117, textLeft: 380, textRight: 80, name: 92, ability: 42, row: 205 },
+    2: { icon: 236, iconLeft: 0, textLeft: 244, textRight: 20, name: 50, ability: 33, row: 215 },
+    3: { icon: 164, iconLeft: 0, textLeft: 170, textRight: 10, name: 34, ability: 25, row: 238 },
+    4: { icon: 122, iconLeft: 0, textLeft: 127, textRight: 6, name: 27, ability: 20, row: 200 },
+  },
+  abilityLine: 1.2, // Helvetica leading 50/41.67
+};
+
 export const DEFAULT_OPTIONS = {
+  mode: 'classic', // 'classic' (the fancy script sheet) | 'teensy' (the PSD template)
   sortMode: 'script', // 'script' (as in the JSON) | 'official' (ability-shape sort)
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
@@ -119,7 +235,40 @@ export const DEFAULT_OPTIONS = {
   includeBackCover: true,
   useLogo: true, // render _meta.logo as the title when present
   showAuthor: true, // "by <author>" credit under the title
+  // one colour for the sidebar/ribbon, the title and the back cover: while
+  // this is on, picking any of the three moves all three
+  linkColors: false,
+  // the script's bootlegger rules (_meta.bootlegger) in a box at the top
+  // right of the sheet. The text is editable ON the sheet; '' means "the
+  // script's own rules", anything else is what was typed there.
+  bootleggerBox: false,
+  bootleggerText: '',
+  bootleggerSize: 1,
+  // "7–15 players": '' = worked out from the roster (playersGuess)
+  players: '',
+  showPlayersFront: false, // the line on the front sheet (under the credit / at the first rule)
+  // the Minion Info / Demon Info steps on the night lists. Reset from the
+  // roster on load: a teensyville (5–6 players) has neither.
+  nightInfoSteps: true,
+  // teensy style only
+  clockArt: true, // the template's clock beside the title (when there is no logo)
+  cornerArt: true, // the watercolour corner flourishes
+  nightStrips: true, // the night-order icon strips on the ribbons
+  townsfolkCols: 0, // 0 = automatic (3, or 4 for a big roster), else 2–4
+  // the PSD sets its short title words in capitals (NO / Greater / JOY):
+  // a first or last word of up to three letters is set that way too
+  titleCapsShort: true,
 };
+
+/* the teams a back-cover box has taken off the front sheet */
+export function backTeams(options) {
+  const b = options.back || {};
+  const out = [];
+  if (b.travellers) out.push('traveller');
+  if (b.fabled) out.push('fabled');
+  if (b.loric) out.push('loric');
+  return out;
+}
 
 /* ── the back cover ─────────────────────────────────────────────────────
    Template constants measured from the owner's PSD ("Clockback", A4
@@ -148,34 +297,58 @@ export const DEFAULT_BACK = {
   // to a couple of RGB steps and all but disappears — this is the way back.
   patStrength: 1,
   texts: [],  // seeded from the script title by seedBackTexts()
+  // the boxes drawn on the back under the title — each one is a panel on
+  // the damask (see back.js): the player count, the night order as icon
+  // strips (moon → icons → sun, like the template's ribbons), and whole
+  // teams moved off the front sheet
+  playersBox: false,
+  nightOrder: false,
+  nightNames: false, // names beside the night-order icons
+  travellers: false,
+  fabled: false,
+  loric: false,
+  panelScale: 1, // the panels' text and icon size
+  panelTop: 30, // % of height where the panels start (the title sits above)
 };
+
+export function backHasPanels(back) {
+  return !!(back && (back.playersBox || back.nightOrder || back.travellers || back.fabled || back.loric));
+}
 
 const BACK_SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to', 'at', '&', 'or']);
 
 /* One element per word, stacked and staggered like the template (Axiom /
    of / Logic): connector words small and offset right, the rest large,
    sizes shrunk until the tallest word fits the width and the stack fits
-   the page. Pure — the page hands the result to options.back.texts. */
-export function seedBackTexts(title) {
+   the page. Pure — the page hands the result to options.back.texts.
+   `size` is the sheet the back is drawn at ({w, h}); `compact` stacks the
+   title in the top band instead of the middle, for a back that carries
+   panels under it. */
+export function seedBackTexts(title, size, compact) {
+  const W = (size && size.w) || 1242;
+  const H = (size && size.h) || 1656;
   const words = String(title || '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
   if (!words.length) words.push('Untitled');
   const rows = words.map((w) => ({ text: w, small: BACK_SMALL_WORDS.has(w.toLowerCase()) }));
   // base sizes from the template: big ≈ 31–37% of width, small ≈ 22%
-  let big = rows.length <= 3 ? 400 : rows.length <= 5 ? 330 : 260;
+  let big = (rows.length <= 3 ? 400 : rows.length <= 5 ? 330 : 260) * (W / 1242);
+  if (compact) big *= 0.55;
+  const bandH = compact ? H * 0.26 : H * 0.62;
   const sizeOf = (r) => Math.min(
     r.small ? big * 0.58 : big,
     // LHF Unlovable advances ≈ 0.43 em — keep every word inside the page
-    (1242 * 0.88) / (0.43 * Math.max(2, r.text.length)),
+    (W * 0.88) / (0.43 * Math.max(2, r.text.length)),
   );
   // overlapping stack like the template (pitch ≈ 0.62 of the glyph size)
   let total = rows.reduce((n, r) => n + sizeOf(r) * 0.62, 0);
-  if (total > 1656 * 0.62) big *= (1656 * 0.62) / total;
+  if (total > bandH) big *= bandH / total;
   const heights = rows.map((r) => sizeOf(r) * 0.62);
   total = heights.reduce((a, b) => a + b, 0);
-  let y = 46 - ((total / 1656) * 100) / 2;
+  const centreY = compact ? 15 : 46;
+  let y = centreY - ((total / H) * 100) / 2;
   const stagger = [-2, 4, 2, -3, 3, -2, 2, 0];
   return rows.map((r, i) => {
-    const h = (heights[i] / 1656) * 100;
+    const h = (heights[i] / H) * 100;
     y += h;
     return {
       text: r.text,
@@ -315,16 +488,33 @@ export function proxied(url, enabled) {
    official-jinxes.json map ({id: [{id, reason}]}) — roles.json itself
    carries no jinxes. */
 let officialById = new Map();
+/* the non-character night steps (dusk, minion info, demon info, dawn) with
+   their positions, from night-order.json's `meta` */
+let nightMeta = [];
 
-export function setOfficialRoster(roles, jinxMap) {
+/* `nightOrder` is assets/night-order.json — the official night positions
+   keyed by NAME (roles.json carries none), folded to the roles' ids through
+   the same slugId fold ("Fortune Teller" → fortuneteller). Without it every
+   official character sits at 0 and the night strips come out empty. */
+export function setOfficialRoster(roles, jinxMap, nightOrder) {
   officialById = new Map();
+  const nightByKey = new Map();
+  for (const c of (nightOrder && nightOrder.characters) || []) {
+    nightByKey.set(slugId(c.name), { first: Number(c.firstNight) || 0, other: Number(c.otherNight) || 0 });
+  }
+  nightMeta = ((nightOrder && nightOrder.meta) || []).map((m) => ({
+    id: String(m.id), first: Number(m.firstNight), other: Number(m.otherNight),
+  }));
   for (const r of roles || []) {
+    const night = nightByKey.get(r.id) || nightByKey.get(slugId(r.name)) || { first: 0, other: 0 };
     officialById.set(r.id, {
       id: r.id,
       name: r.name,
       team: normalizeTeam(r.team),
       ability: r.ability || '',
       jinxes: (jinxMap && jinxMap[r.id]) || [],
+      firstNight: night.first,
+      otherNight: night.other,
     });
   }
 }
@@ -371,6 +561,12 @@ export function parseScript(json, proxyIcons) {
       meta.name = raw.name || meta.name;
       meta.author = raw.author || '';
       meta.logo = firstImage(raw.logo) || undefined;
+      // house rules, and the owner's arranged night order (lists of ids,
+      // dusk/dawn/minioninfo/demoninfo included — the botc-release schema)
+      meta.bootlegger = (Array.isArray(raw.bootlegger) ? raw.bootlegger : [])
+        .map((r) => String(r || '').trim()).filter(Boolean);
+      meta.nightFirst = Array.isArray(raw.firstNight) ? raw.firstNight.map((x) => String(x).toLowerCase()) : null;
+      meta.nightOther = Array.isArray(raw.otherNight) ? raw.otherNight.map((x) => String(x).toLowerCase()) : null;
       continue;
     }
 
@@ -422,13 +618,125 @@ export function parseScript(json, proxyIcons) {
       });
     }
 
+    // night positions: the entry's own numbers, else the official sheet's
+    const nightNum = (v, off) => {
+      const n = Number(v);
+      if (v != null && isFinite(n)) return n;
+      return off || 0;
+    };
+    const firstNight = nightNum(entry.firstNight, official && official.firstNight);
+    const otherNight = nightNum(entry.otherNight, official && official.otherNight);
+
     characters.push({
       id, name, team, ability, icon, jinxIcons,
       isOfficial: !!official,
+      firstNight, otherNight,
     });
   }
 
+  if (!meta.bootlegger) meta.bootlegger = [];
   return { meta, characters, warnings };
+}
+
+/* ── the night order ────────────────────────────────────────────────────
+   nightLists(script, infoSteps) → { first: [item], other: [item] }, each
+   item {kind, id, name, icon, char?}: kind 'dusk' | 'dawn' | 'minioninfo' |
+   'demoninfo' | 'char'. Dusk opens and dawn closes both lists (the moon and
+   the sun on the strips); the two info steps sit where the official sheet
+   puts them, and only when asked (a teensyville has neither).
+
+   The owner's arranged order (_meta.firstNight / otherNight, lists of ids)
+   wins when the file carries one — matched on the id as written, then on
+   the slugified name, so a wiki export's qualified ids and a hand-written
+   file both resolve. A waking character the list forgot is slotted in by
+   its own number rather than dropped. Without a list, the characters' own
+   numbers decide. */
+export const NIGHT_ICONS = {
+  dusk: '/assets/fancyscripts/art/teensy-moon.png',
+  dawn: '/assets/fancyscripts/art/teensy-sun.png',
+  minioninfo: '/assets/icons/minion.png',
+  demoninfo: '/assets/icons/demon.png',
+};
+const NIGHT_NAMES = { dusk: 'Dusk', dawn: 'Dawn', minioninfo: 'Minion info', demoninfo: 'Demon info & bluffs' };
+
+export function nightLists(script, infoSteps) {
+  const build = (which) => {
+    const field = which === 'first' ? 'firstNight' : 'otherNight';
+    const metaField = which === 'first' ? 'first' : 'other';
+    const wakers = script.characters.filter((c) => Number(c[field]) > 0);
+    const step = (id) => ({ kind: id, id, name: NIGHT_NAMES[id] || id, icon: NIGHT_ICONS[id] });
+    const wantStep = (id) => id === 'dusk' || id === 'dawn' || (infoSteps && (id === 'minioninfo' || id === 'demoninfo'));
+    const seq = which === 'first' ? script.meta.nightFirst : script.meta.nightOther;
+    let items = [];
+    if (seq && seq.length) {
+      const byId = new Map();
+      for (const c of wakers) {
+        byId.set(c.id, c);
+        if (!byId.has(slugId(c.name))) byId.set(slugId(c.name), c);
+      }
+      const placed = new Set();
+      for (const id of seq) {
+        if (wantStep(id)) { items.push(step(id)); continue; }
+        const c = byId.get(id) || byId.get(slugId(id));
+        if (!c || placed.has(c)) continue;
+        placed.add(c);
+        items.push({ kind: 'char', id: c.id, name: c.name, icon: c.icon, char: c, n: c[field] });
+      }
+      // anything the list forgot goes in by its own number
+      const missing = wakers.filter((c) => !placed.has(c)).sort((a, b) => a[field] - b[field]);
+      for (const c of missing) {
+        const it = { kind: 'char', id: c.id, name: c.name, icon: c.icon, char: c, n: c[field] };
+        let at = items.findIndex((x) => x.kind === 'char' && x.n > c[field]);
+        if (at < 0) at = items.findIndex((x) => x.kind === 'dawn');
+        if (at < 0) items.push(it); else items.splice(at, 0, it);
+      }
+      if (!items.some((x) => x.kind === 'dusk')) items.unshift(step('dusk'));
+      if (!items.some((x) => x.kind === 'dawn')) items.push(step('dawn'));
+    } else {
+      const marks = nightMeta
+        .map((m) => ({ id: m.id, n: m[metaField] }))
+        .filter((m) => isFinite(m.n) && wantStep(m.id))
+        .sort((a, b) => a.n - b.n);
+      const sorted = [...wakers].sort((a, b) => a[field] - b[field] || a.name.localeCompare(b.name));
+      let mi = 0;
+      for (const c of sorted) {
+        while (mi < marks.length && marks[mi].n <= c[field]) items.push(step(marks[mi++].id));
+        items.push({ kind: 'char', id: c.id, name: c.name, icon: c.icon, char: c, n: c[field] });
+      }
+      while (mi < marks.length) items.push(step(marks[mi++].id));
+      if (!items.some((x) => x.kind === 'dusk')) items.unshift(step('dusk'));
+      if (!items.some((x) => x.kind === 'dawn')) items.push(step('dawn'));
+    }
+    return items;
+  };
+  return { first: build('first'), other: build('other') };
+}
+
+/* ── player count ───────────────────────────────────────────────────────
+   A teensyville is 6 townsfolk, 2 outsiders, 2 minions, 1 demon (or
+   fewer) and seats 5–6; anything bigger is a 7–15 script. Travellers,
+   fabled and loric never count. */
+export function isTeensyville(chars) {
+  const n = (team) => chars.filter((c) => c.team === team).length;
+  return n('townsfolk') <= 6 && n('outsider') <= 2 && n('minion') <= 2 && n('demon') <= 1
+    && n('townsfolk') + n('outsider') + n('minion') + n('demon') > 0;
+}
+
+export function playersGuess(chars) {
+  return isTeensyville(chars) ? '5–6 players' : '7–15 players';
+}
+
+export function playersText(script, options) {
+  const typed = String(options.players || '').trim();
+  return typed || playersGuess(script.characters);
+}
+
+/* the bootlegger rules to print: what was typed on the sheet, else the
+   script's own */
+export function bootleggerRules(script, options) {
+  const typed = String(options.bootleggerText || '');
+  if (typed.trim()) return typed.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  return (script.meta.bootlegger || []).slice();
 }
 
 /* official-style ability category for the "Official style" sort */
@@ -454,9 +762,12 @@ export function officialSort(chars) {
   });
 }
 
-export function groupByTeam(chars, sortMode) {
+/* `exclude` names teams the sheet must leave out (the ones a back-cover box
+   has taken — see backTeams) */
+export function groupByTeam(chars, sortMode, exclude) {
   const sorted = sortMode === 'official' ? officialSort(chars) : chars;
-  return TEAM_ORDER.map((team) => ({
+  const skip = new Set(exclude || []);
+  return TEAM_ORDER.filter((t) => !skip.has(t)).map((team) => ({
     team,
     characters: sorted.filter((c) => c.team === team),
   })).filter((g) => g.characters.length > 0);

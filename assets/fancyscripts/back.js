@@ -38,16 +38,27 @@
  * Browser-only (canvas + DOM) — do not import from the Worker.
  */
 
-import { BACK_BASE } from './script.js';
+import {
+  BACK_BASE, sheetSize, nightLists, playersText, TEAM_LABELS, TEAM_INK,
+} from './script.js';
+import {
+  el, px, clamp, panelFrame, nightColumn, nightColumnHeight, fitNightSizes,
+  teamRowGeometry, teamRowsHeight, teamRows, fontsFor,
+} from './panels.js';
+import { iconFit, normalizeIcons } from './sheet.js';
 
 const ART = '/assets/fancyscripts/art/';
 
-export const BACK_W = 1242;
-export const BACK_H = 1656;
+/* The back takes its front's trim: 1242×1656 for the classic sheet,
+   1500×2100 for the teensy one. Everything below is in that space. */
+export function backSize(options) {
+  const s = sheetSize(options && options.mode);
+  return { w: s.w, h: s.h };
+}
 
-/* working canvas: print-resolution 3:4 */
+/* working canvas: print-resolution, the sheet's own ratio */
 const SRC_W = 2480;
-const SRC_H = 3307;
+const srcHFor = (size) => Math.round((SRC_W * size.h) / size.w);
 
 /* the tile asset is 2134×1067 — two motif periods wide, one tall, kept at
    the source texture's full resolution (period 1067px). ×0.75 draws a motif
@@ -72,9 +83,6 @@ const CAL = { lA: 0.9327, lB: 0.1504, sC: 0.955, sD: -0.038 };
    from this, so the pattern deepens or flattens without the cover's own
    lightness moving. Rebaking the tile changes it — measure the new mean. */
 const L_AVG = 0.447;
-
-const px = (v) => v + 'px';
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 function hexHsl(hex) {
   const m = /^#?([\da-f]{6})$/i.exec(String(hex || ''));
@@ -120,7 +128,7 @@ function ensureImages() {
     .catch(() => { bk.loading = false; });
 }
 
-function backParams(back) {
+function backParams(back, size) {
   return {
     c1: hexHsl(back.bgColor) || BACK_BASE,
     c2: hexHsl(back.bgColor2) || BACK_BASE,
@@ -132,18 +140,20 @@ function backParams(back) {
     patScale: clamp(Number(back.patScale) || 1, 0.2, 5),
     patRot: Number(back.patRot) || 0,
     patStrength: clamp(Number(back.patStrength ?? 1), 0, 6),
+    srcH: srcHFor(size || { w: 1242, h: 1656 }),
   };
 }
 
-function backKey(back) {
-  const p = backParams(back);
+function backKey(back, size) {
+  const p = backParams(back, size);
   return [back.bgColor, p.grad ? back.bgColor2 + '@' + p.gradAngle : '-',
     p.bright.toFixed(2), p.sat.toFixed(2), p.shading.toFixed(2),
     p.patScale.toFixed(2), p.patRot.toFixed(1),
-    p.patStrength.toFixed(2)].join('|').toLowerCase();
+    p.patStrength.toFixed(2), p.srcH].join('|').toLowerCase();
 }
 
 function buildBackCanvas(p) {
+  const SRC_H = p.srcH;
   // 1) tile the pattern at scale + rotation (pattern fills follow the CTM)
   const c = document.createElement('canvas');
   c.width = SRC_W; c.height = SRC_H;
@@ -230,12 +240,12 @@ function buildBackCanvas(p) {
   return c;
 }
 
-export function backCanvas(back, requestRender) {
+export function backCanvas(back, requestRender, size) {
   bk.notify = requestRender;
-  const key = backKey(back);
+  const key = backKey(back, size);
   if (bk.key === key && bk.canvas) return bk.canvas;
   bk.want = key;
-  bk.wantParams = backParams(back);
+  bk.wantParams = backParams(back, size);
   ensureImages();
   pumpBack();
   return bk.canvas; // possibly a stale mix — better than flashing flat colour
@@ -257,8 +267,169 @@ function pumpBack() {
   }, 0);
 }
 
-export function backReady(back) {
-  return bk.key === backKey(back) && !!bk.canvas;
+export function backReady(back, size) {
+  return bk.key === backKey(back, size) && !!bk.canvas;
+}
+
+/* ── the panels ──────────────────────────────────────────────────────────
+   Parchment boxes on the damask, stacked from `panelTop` down: the player
+   count, then any team moved off the front (travellers, fabled, loric as
+   icon/name/ability rows), then the night order — two strips of icons,
+   first night and other nights, moon at the top and sun at the bottom the
+   way the teensy template runs them down its ribbons, with names beside
+   them when asked. The night panel takes whatever height is left and
+   closes its icon pitch up to fit; when even the fixed panels overflow,
+   everything scales down together (never up past `panelScale`). */
+function renderPanels(root, script, options, requestRender, size) {
+  const back = options.back;
+  const W = size.w, H = size.h;
+  const F = fontsFor(options.mode);
+  const parchment = ART + (options.mode === 'teensy' ? 'teensy-parchment.jpg' : 'parchment.jpg');
+  const ornament = options.mode !== 'teensy';
+  const left = W * 0.06, width = W * 0.88;
+  const top = H * (clamp(Number(back.panelTop) || 30, 5, 80) / 100);
+  const bottom = H * 0.965;
+  const wantNight = !!back.nightOrder;
+  const lists = wantNight ? nightLists(script, options.nightInfoSteps) : null;
+  const teams = ['traveller', 'fabled', 'loric'].filter((t) => back[t === 'traveller' ? 'travellers' : t]);
+  const teamChars = (t) => script.characters.filter((c) => c.team === t);
+
+  normalizeIcons(script.characters.map((c) => c.icon), requestRender);
+
+  // one pass at a given unit (px per template px) → panel list with heights
+  const plan = (unit) => {
+    const pad = 18 * unit, border = 3 * unit;
+    const bodyW = width - 2 * pad - 2 * border;
+    const headingPx = 30 * unit;
+    const headingH = headingPx * 1.1 + 12 * unit + 4 * unit + 1.5 * unit;
+    const gap = 16 * unit;
+    const out = [];
+    if (back.playersBox) {
+      out.push({ kind: 'players', h: 82 * unit, w: Math.min(width, Math.max(width * 0.42, 420 * unit)) });
+    }
+    for (const t of teams) {
+      const chars = teamChars(t);
+      if (!chars.length) continue;
+      const cols = chars.length > 4 ? 2 : 1;
+      const g = teamRowGeometry(unit, cols, 25 * unit, 19 * unit, 64 * unit, bodyW);
+      const rows = teamRowsHeight(chars, g, F, cols);
+      out.push({ kind: 'team', team: t, chars, cols, g, rows, h: rows.total + headingH + 10 * unit + 14 * unit + 2 * border });
+    }
+    let night = null;
+    if (wantNight) {
+      const iconPx = 56 * unit, pitch = 66 * unit, moon = 64 * unit, sun = 52 * unit, labelPx = 20 * unit;
+      const sizes = { iconPx, pitchPx: pitch, moonPx: moon, sunPx: sun, labelPx, hasLabel: true };
+      const halves = (l) => { const cut = Math.ceil(l.length / 2); return [l.slice(0, cut), l.slice(cut)]; };
+      // the panel's height at natural sizes: one column per night, or two
+      // (each night split in half) when the lists are long
+      const natural = Math.max(...[lists.first, lists.other].map((l) => nightColumnHeight(l, sizes)));
+      const naturalSplit = Math.max(...[...halves(lists.first), ...halves(lists.other)].map((l) => nightColumnHeight(l, sizes)));
+      const chrome = headingH + 10 * unit + 14 * unit + 2 * border + 6 * unit;
+      night = { kind: 'night', iconPx, pitch, moon, sun, labelPx, natural, naturalSplit, chrome, split: false, h: natural + chrome };
+      out.push(night);
+    }
+    const used = out.reduce((n, p) => n + p.h, 0) + Math.max(0, out.length - 1) * gap;
+    return { out, used, gap, pad, border, bodyW, headingPx, headingH, night };
+  };
+
+  let unit = (W / 1242) * clamp(Number(back.panelScale) || 1, 0.4, 2);
+  let p = plan(unit);
+  const avail = bottom - top;
+  /* Over the page: the night panel gives first — a long list splits each
+     night into two side-by-side columns, then closes its pitch up — and
+     only when the FIXED panels (plus a floor for the night) still do not
+     fit does everything scale down together (twice, because the ability
+     text re-wraps at the smaller size). */
+  // the night panel's floor: a fair share of the page, so three full-size
+  // team boxes cannot squeeze it to a smear — the boxes scale instead
+  const nightFloor = () => (p.night ? Math.min(p.night.h, Math.max(300 * unit, 0.42 * avail)) : 0);
+  for (let iter = 0; iter < 2; iter++) {
+    const fixed = p.used - (p.night ? p.night.h : 0) + nightFloor();
+    if (fixed <= avail) break;
+    unit *= clamp(avail / fixed, 0.4, 1);
+    p = plan(unit);
+  }
+  // the night panel sizes itself to its content: one column per night if
+  // that fits what is left, two per night if THAT fits, and otherwise the
+  // leftover height (never under its floor) with the pitch closed up
+  if (p.night) {
+    const n = p.night;
+    const remaining = avail - (p.used - n.h);
+    const canSplit = lists.first.length > 6 || lists.other.length > 6;
+    if (n.natural + n.chrome <= remaining) {
+      n.h = n.natural + n.chrome;
+    } else if (canSplit && n.naturalSplit + n.chrome <= remaining) {
+      n.h = n.naturalSplit + n.chrome;
+      n.split = true;
+    } else {
+      n.h = Math.max(nightFloor(), remaining);
+      n.split = canSplit;
+    }
+  }
+
+  let y = top;
+  for (const panel of p.out) {
+    if (panel.kind === 'players') {
+      const { root: box, body } = panelFrame({
+        title: '', fonts: F, parchment, scale: unit, headingPx: p.headingPx,
+        width: panel.w, left: left + (width - panel.w) / 2, top: y, height: panel.h,
+      });
+      body.append(el('div', {
+        fontFamily: F.heading,
+        fontSize: px(38 * unit),
+        lineHeight: '1',
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        letterSpacing: '0.1em',
+        color: '#2a1b10',
+        paddingTop: px(8 * unit),
+      }, playersText(script, options)));
+      root.append(box);
+    } else if (panel.kind === 'team') {
+      const { root: box, body } = panelFrame({
+        title: TEAM_LABELS[panel.team], fonts: F, parchment, scale: unit, headingPx: p.headingPx,
+        width, left, top: y, height: panel.h,
+      });
+      body.append(teamRows(panel.chars, panel.g, F, panel.cols, (t) => TEAM_INK[t] || '#7a5230', ornament));
+      root.append(box);
+    } else if (panel.kind === 'night') {
+      const { root: box, body } = panelFrame({
+        title: 'Night order', fonts: F, parchment, scale: unit, headingPx: p.headingPx,
+        width, left, top: y, height: panel.h,
+      });
+      const colAvail = panel.h - p.headingH - 10 * unit - 14 * unit - 2 * p.border - 6 * unit;
+      const halfW = p.bodyW / 2 - 8 * unit;
+      const row = el('div', { display: 'flex', justifyContent: 'space-between', gap: px(16 * unit) });
+      const sizes = { iconPx: panel.iconPx, pitchPx: panel.pitch, moonPx: panel.moon, sunPx: panel.sun, labelPx: panel.labelPx, hasLabel: true };
+      // a night too long for its half splits into two columns, read down
+      // the first and then the second (dusk top-left, dawn bottom-right);
+      // if either night needs it, both split, so the halves match
+      const splitting = !!panel.split;
+      for (const [items, label] of [[lists.first, 'First night'], [lists.other, 'Other nights']]) {
+        let parts = [items];
+        if (splitting && items.length > 3) {
+          const cut = Math.ceil(items.length / 2);
+          parts = [items.slice(0, cut), items.slice(cut)];
+        }
+        const fit = fitNightSizes(parts, sizes, colAvail, 16 * unit);
+        const half = el('div', { display: 'flex', width: px(halfW), gap: px(8 * unit), alignItems: 'flex-start' });
+        parts.forEach((list, pi) => {
+          half.append(nightColumn({
+            items: list, label: pi === 0 ? label : ' \n ', fonts: F,
+            iconPx: fit.iconPx, pitchPx: fit.pitchPx, moonPx: fit.moonPx, sunPx: fit.sunPx,
+            names: !!back.nightNames, width: parts.length > 1 ? (halfW - 8 * unit) / 2 : halfW,
+            labelPx: panel.labelPx,
+            labelColor: '#2a1b10', labelShadow: false, nameColor: '#222222',
+            namePx: Math.min(24 * unit, fit.iconPx * 0.42), iconFit,
+          }));
+        });
+        row.append(half);
+      }
+      body.append(row);
+      root.append(box);
+    }
+    y += panel.h + p.gap;
+  }
 }
 
 /* ── the element ──────────────────────────────────────────────────────── */
@@ -268,25 +439,28 @@ const FONT_FAMILIES = {
   goudy: '"Goudy Old Style", "Goudy Bookletter 1911", serif',
   trade: '"Trade Gothic", "Archivo Narrow", sans-serif',
   dumbledor: '"Dumbledor", serif',
+  optimus: '"OptimusPrinceps", "Trajan Pro", "Cinzel", serif',
+  helvetica: '"Liberation Sans", "Helvetica Neue", Helvetica, Arial, sans-serif',
 };
 
 export function renderBack(script, options, requestRender, ui) {
   const back = options.back;
   const sel = ui && ui.selected != null ? ui.selected : -1;
+  const size = backSize(options);
 
   const root = document.createElement('div');
   root.className = 'script-back';
   Object.assign(root.style, {
     position: 'relative',
-    width: px(BACK_W),
-    height: px(BACK_H),
+    width: px(size.w),
+    height: px(size.h),
     overflow: 'hidden',
     background: back.bgColor || BACK_BASE.hex,
     userSelect: 'none',
     fontKerning: 'normal',
   });
 
-  const canvas = backCanvas(back, requestRender);
+  const canvas = backCanvas(back, requestRender, size);
   if (canvas) {
     Object.assign(canvas.style, {
       position: 'absolute', left: '0', top: '0',
@@ -294,6 +468,9 @@ export function renderBack(script, options, requestRender, ui) {
     });
     root.append(canvas); // singleton canvas adopted by each new render
   }
+
+  // the panels sit under the title words, so a word can be dragged over one
+  renderPanels(root, script, options, requestRender, size);
 
   (back.texts || []).forEach((t, i) => {
     const wrap = document.createElement('div');
@@ -358,8 +535,10 @@ export function renderBack(script, options, requestRender, ui) {
 /* drag-to-move on the PREVIEW copy. Selection and movement touch the live
    DOM only; the full re-render happens on release (onCommit) — a rebuild
    mid-drag destroys the element holding the pointer capture. */
-export function mountBackDrag(root, back, { getScale, onSelect, onCommit }) {
+export function mountBackDrag(root, back, { getScale, onSelect, onCommit, size }) {
   let drag = null;
+  const BACK_W = (size && size.w) || 1242;
+  const BACK_H = (size && size.h) || 1656;
   const ring = (el) => {
     root.querySelectorAll('[data-back-idx]').forEach((w) => {
       w.style.outline = 'none';
