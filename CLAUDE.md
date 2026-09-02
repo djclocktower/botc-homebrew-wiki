@@ -1714,6 +1714,19 @@ others writes a different credit, which is what the credit string is for.
   whole credit off the uploader's profile (the siblings nobody ticked), and
   the per-row `CREDIT_LINKED_SQL` still catches a ticked **draft**, whose
   credit is not disowned because drafts prove nothing either way.
+- **`CREDIT_RULE_V` is salted into the three edge-cache keys that carry an
+  answer to "who owns this name"** — `cachedCreatorAccount`, the anonymous
+  `/api/user` body and `/api/creators`. Those keys roll on `content_version`,
+  which moves when CONTENT moves; a deploy does not touch it and
+  `caches.default` outlives a deploy, so the per-name fix went live and kept
+  serving the old rule's cached answer for the full 30-minute `PEOPLE` ttl —
+  `/author?a=Kinky Clocktower` still 302'd after the merge and the fix
+  looked broken twice over. **Bump it whenever the rule changes** and the
+  stale answers die with the deploy. Also worth knowing while testing any of
+  this: Cloudflare's build queue on this account has taken **16 minutes**
+  from merge to live (#130), so "still redirects" five minutes after a merge
+  means the old Worker is still up — `workers_list`'s `modified_on`, or the
+  editor's hint text, says which code is actually serving.
 - **The test is a substring of the JSON blob**, not `json_extract()`.
   `JSON.stringify` spells the pair `"creditUnlinked":true` and nothing else —
   no spaces, one casing — and a writer who types that sequence into an ability
