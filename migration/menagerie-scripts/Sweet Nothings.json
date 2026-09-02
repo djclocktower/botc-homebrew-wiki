@@ -1,0 +1,287 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Sweet Nothings",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/snlogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "thaumaturge",
+      "barista",
+      "wispr",
+      "yaggababble",
+      "minioninfo",
+      "saboteur",
+      "lunatic",
+      "demoninfo",
+      "godfather",
+      "devilsadvocate",
+      "damsel",
+      "washerwoman",
+      "empath",
+      "dreamer",
+      "knight",
+      "villageidiot",
+      "nightwatchman",
+      "ogre",
+      "highpriestess",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "thaumaturge",
+      "tactician",
+      "saboteur",
+      "harlot",
+      "bonecollector",
+      "wispr",
+      "gambler",
+      "devilsadvocate",
+      "lunatic",
+      "exorcist",
+      "baku",
+      "ojo",
+      "yaggababble",
+      "godfather",
+      "houndmaster",
+      "mime",
+      "damsel",
+      "mentalist",
+      "empath",
+      "dreamer",
+      "villageidiot",
+      "nightwatchman",
+      "highpriestess",
+      "dawn"
+    ]
+  },
+  "knight",
+  "washerwoman",
+  "empath",
+  "highpriestess",
+  "villageidiot",
+  "dreamer",
+  {
+    "id": "thaumaturge",
+    "name": "Thaumaturge",
+    "image": [
+      "http://menagerie.towerrangers.net/images/thag.png",
+      "http://menagerie.towerrangers.net/images/thae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, choose a player. The first Minion ability that targets this player targets that Minion instead. Affected Minions learn you are 1 of 2 players.",
+    "flavor": "Fie, fie I say! Back to whence you came, foul minion!",
+    "firstNight": 6.5,
+    "otherNight": 6.5,
+    "firstNightReminder": "The Thaumaturge chooses a player. If any Minion ability targets them, inform the Minion that they are targeted instead. Inform that Minion that the Thaumaturge is the corresponding player and one wrong player.",
+    "otherNightReminder": "The Thaumaturge chooses a player. If any Minion ability targets them, inform the Minion that they are targeted instead. Inform that Minion that the Thaumaturge is the corresponding player and one wrong player.",
+    "reminders": [
+      "Safe",
+      "Thaumaturge",
+      "Wrong"
+    ],
+    "jinxes": [
+      {
+        "id": "assassin",
+        "reason": "The Assassin is unaffected by the Thaumaturge's ability, but still learns the two players that might be the Thaumaturge."
+      }
+    ]
+  },
+  "gambler",
+  "exorcist",
+  {
+    "id": "mentalist",
+    "name": "Mentalist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/meng.png",
+      "http://menagerie.towerrangers.net/images/mene.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, learn the character of a living player you had a private chat with today. If you spoke with only one living player, this info is false.",
+    "flavor": "I don't need to see the future. I just need to understand the present. (Creator credit: Mega)",
+    "firstNight": 0,
+    "otherNight": 70,
+    "otherNightReminder": "Wake the player, and show them a character of a living player they spoke with privately.",
+    "reminders": [
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted",
+      "Chatted"
+    ]
+  },
+  "nightwatchman",
+  {
+    "id": "houndmaster",
+    "name": "Houndmaster",
+    "image": [
+      "http://menagerie.towerrangers.net/images/houg.png",
+      "http://menagerie.towerrangers.net/images/houe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, pick a player: you learn the number of steps from them to the nearest evil player.",
+    "flavor": "A hunter without a hound is an orchestra without a conductor.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Houndmaster dies at night, wake them and ask them to pick a player. Show them a number."
+  },
+  {
+    "id": "mime",
+    "name": "Mime",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mimg.png",
+      "http://menagerie.towerrangers.net/images/mime.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you are 'mad' as a good role today, learn if it is in play the next night.",
+    "flavor": "...! ...? ...?! ...! ...!",
+    "firstNight": 0,
+    "otherNight": 64,
+    "otherNightReminder": "If the Mime was successful during the day, wake them and nod or shake your head, depending on whether the role is in play.",
+    "reminders": [
+      "...!"
+    ]
+  },
+  "ogre",
+  "lunatic",
+  "recluse",
+  "damsel",
+  "godfather",
+  "devilsadvocate",
+  {
+    "id": "saboteur",
+    "name": "Saboteur",
+    "image": [
+      "http://menagerie.towerrangers.net/images/sabe.png",
+      "http://menagerie.towerrangers.net/images/sabg.png"
+    ],
+    "team": "minion",
+    "ability": "Each night, choose two players. The first character ability that targets or learns something about the first player now targets the second.",
+    "flavor": "Sorry. Plans change.",
+    "firstNight": 19,
+    "otherNight": 8,
+    "firstNightReminder": "The Saboteur chooses two players. Place the 'First' token on the first player chosen :reminder:, and the 'Second' token on the second player chosen :reminder:.",
+    "otherNightReminder": "The Saboteur chooses two players. Place the 'First' token on the first player chosen :reminder:, and the 'Second' token on the second player chosen :reminder:.",
+    "reminders": [
+      "First",
+      "Second"
+    ],
+    "jinxes": [
+      {
+        "id": "preacher",
+        "reason": "If the Saboteur is chosen by the Preacher, and they have redirected an ability from themselves to another player, another Minion is affected by the Preacher's ability instead. The Saboteur learns this."
+      },
+      {
+        "id": "alchemist",
+        "reason": "If the Alchemist has the Poisoner ability and targets the Saboteur, the Saboteur is poisoned, even if they have redirected an ability from themselves to another player."
+      }
+    ]
+  },
+  {
+    "id": "wispr",
+    "name": "Wispr",
+    "image": [
+      "http://menagerie.towerrangers.net/images/wise.png",
+      "http://menagerie.towerrangers.net/images/wisg.png"
+    ],
+    "team": "minion",
+    "ability": "You register as adjacent to different players for good abilities. Once per game, at night, you may become drunk: a good player learns this.",
+    "flavor": "They start to bob and weave as if they're excited you've come to join 'em, and it's not until you've walked a ways that you notice they don't seem to be growing much closer.",
+    "firstNight": 16,
+    "otherNight": 16,
+    "firstNightReminder": "Place the 'Neighbour' tokens on two adjacent players (not including the Wispr) :reminder:. The Wispr may choose to make themselves drunk. If they do, remove the 'Neighbour' tokens; choose a good player and show them the Wispr token.",
+    "otherNightReminder": "The Wispr may choose to make themselves drunk. If they do, remove the 'Neighbour' tokens; choose a good player and show them the Wispr token.",
+    "reminders": [
+      "Drunk",
+      "Knows",
+      "Neighbour",
+      "Neighbour"
+    ],
+    "jinxes": [
+      {
+        "id": "preacher",
+        "reason": "If the Wispr is targeted by the Preacher's ability, a good player (not the Preacher) sees the Wispr's token."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller gains the Wispr's ability, that ability is given to a living Minion instead."
+      },
+      {
+        "id": "alchemist",
+        "reason": "If the Alchemist gains the Wispr's ability, they learn the name of one of their new neighbours."
+      }
+    ]
+  },
+  "yaggababble",
+  "ojo",
+  {
+    "id": "baku",
+    "name": "Baku",
+    "image": [
+      "http://menagerie.towerrangers.net/images/bake.png",
+      "http://menagerie.towerrangers.net/images/bakg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. One Townsfolk you speak to yields false information until dawn.",
+    "flavor": "If you hear the whispers that float on the wind, they may not hear your screams.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Baku chooses a player. :reminder:",
+    "reminders": [
+      "False Info",
+      "Dead"
+    ]
+  },
+  "barista",
+  "harlot",
+  {
+    "id": "tactician",
+    "name": "Tactician",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tac.png",
+      "http://menagerie.towerrangers.net/images/tacg.png",
+      "http://menagerie.towerrangers.net/images/tace.png"
+    ],
+    "team": "traveller",
+    "ability": "Each night*, choose a player. You may give them advice: they learn this, and whether it will help your team win the game.",
+    "flavor": "Let your plans be dark and impenetrable as night, and when you move, fall like a thunderbolt.",
+    "firstNight": 0,
+    "otherNight": 8,
+    "otherNightReminder": "The Tactician chooses a player and offers advice to the Storyteller. The Storyteller wakes that player, provides that advice, and gives a thumbs up or down."
+  },
+  "bonecollector",
+  "scapegoat",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

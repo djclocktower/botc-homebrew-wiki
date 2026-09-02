@@ -1,0 +1,358 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Way of the Samurai",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/samlogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "barista",
+      "philosopher",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "ladylace",
+      "lleech",
+      "ronin",
+      "lostlover",
+      "guardian",
+      "banker",
+      "empath",
+      "shugenja",
+      "dawn",
+      "vizier"
+    ],
+    "otherNight": [
+      "dusk",
+      "recordkeeper",
+      "barista",
+      "bonecollector",
+      "philosopher",
+      "ladylace",
+      "gambler",
+      "polterghast",
+      "necromancer",
+      "nodashii",
+      "lleech",
+      "assassin",
+      "ronin",
+      "shinkan",
+      "lostlover",
+      "guardian",
+      "prophet",
+      "moonchild",
+      "empath",
+      "oracle",
+      "dawn"
+    ]
+  },
+  {
+    "id": "banker",
+    "name": "Banker",
+    "image": [
+      "http://menagerie.towerrangers.net/images/bang.png",
+      "http://menagerie.towerrangers.net/images/bane.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing three roles: one is in play.",
+    "flavor": "Resumes lie; medical records lie; but bank records can be trusted. Even the devil needs somewhere to put their money that isn't a sock drawer.",
+    "firstNight": 47,
+    "otherNight": 0,
+    "firstNightReminder": "Show the Banker three roles."
+  },
+  "shugenja",
+  "empath",
+  {
+    "id": "guardian",
+    "name": "Guardian",
+    "image": [
+      "http://menagerie.towerrangers.net/images/guag.png",
+      "http://menagerie.towerrangers.net/images/guae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, learn a player. From night 2, pick a player (not yourself). If the Demon chooses them at night, learn whether the Demon is a known player.",
+    "flavor": "Ahakoa he iti, he pounamu.",
+    "firstNight": 47,
+    "otherNight": 57.5,
+    "firstNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder:",
+    "otherNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder: Ask the Guardian to pick a player. If that player was chosen by the Demon, nod or shake your head.",
+    "reminders": [
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Learns Tonight"
+    ]
+  },
+  "oracle",
+  "gambler",
+  "alsaahir",
+  {
+    "id": "prophet",
+    "name": "Prophet",
+    "image": [
+      "http://menagerie.towerrangers.net/images/prog.png",
+      "http://menagerie.towerrangers.net/images/proe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each day, you may make a public statement about today’s executee. At night, you learn if it was true.",
+    "flavor": "I sense… a fair complexion, shoulder-length auburn hair… weathered hands… good of heart… it is you! The town washerwoman - today, you will meet your end! So say I, so shall it be.",
+    "firstNight": 0,
+    "otherNight": 65,
+    "otherNightReminder": "Give the Prophet a yes/no depending on whether their statement about the day’s executee was true. If no-one was executed today, do not wake the Prophet.",
+    "reminders": [
+      "Prophecised"
+    ]
+  },
+  "philosopher",
+  {
+    "id": "lostlover",
+    "name": "Lost Lover",
+    "image": [
+      "http://menagerie.towerrangers.net/images/losg.png",
+      "http://menagerie.towerrangers.net/images/lose.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night, choose a living player (not yourself): if either chooses the Lost Lover, 1 learns the in-play Demon; the other, in-play Minions. If either guesses wrong, both get false info. [+Lost Lover]",
+    "flavor": "And she as much in love, her means much less / To meet her new belovèd anywhere / But passion lends them power, time means, to meet / Temp’ring extremities with extreme sweet.",
+    "firstNight": 46,
+    "otherNight": 57.5,
+    "firstNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "otherNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "reminders": [
+      "First",
+      "Wrong Info",
+      "Wrong Info",
+      "Lost Love Found"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "philosopher",
+        "reason": "If the Philosopher gains the Lost Lover ability, one Lost Lover is drunk, not both. If no other Lost Lover is in play, learn either an in-play Demon, or one in-play Minion."
+      },
+      {
+        "id": "pixie",
+        "reason": "If the Pixie is mad as the Lost Lover, they gain the ability if one Lost Lover dies."
+      }
+    ],
+    "special": [
+      {
+        "type": "selection",
+        "name": "bag-duplicate"
+      }
+    ]
+  },
+  {
+    "id": "ronin",
+    "name": "Ronin",
+    "image": [
+      "http://menagerie.towerrangers.net/images/ronig.png",
+      "http://menagerie.towerrangers.net/images/ronie.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On your first night, learn a player. If the Demon kills them, learn an evil player, and the 1st time you die, you don't.",
+    "flavor": "身をあさく思、世をふかく思ふ.",
+    "firstNight": 37,
+    "otherNight": 57.5,
+    "firstNightReminder": "Mark a player with the Ally token. Wake the Ronin and show them that player.",
+    "otherNightReminder": "If the Ronin's learned player has died tonight, wake the Ronin and show them an evil player. Mark the Ronin with the Has Ability token. :reminder:",
+    "reminders": [
+      "Ally",
+      "Died Once"
+    ]
+  },
+  {
+    "id": "shinkan",
+    "name": "Shinkan",
+    "image": [
+      "http://menagerie.towerrangers.net/images/kang.png",
+      "http://menagerie.towerrangers.net/images/kane.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, all evil players are drunk the next day and night.",
+    "flavor": "二礼二拍手一礼.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Shinkan has died tonight, mark all evil players as drunk.",
+    "reminders": [
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk"
+    ]
+  },
+  "fool",
+  "drunk",
+  "moonchild",
+  {
+    "id": "recordkeeper",
+    "name": "Record Keeper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/recg.png",
+      "http://menagerie.towerrangers.net/images/rece.png"
+    ],
+    "team": "outsider",
+    "ability": "If you are executed, the Demon sees the Grimoire tonight.",
+    "flavor": "You would be surprised as to what people are capable of when they think nobody is watching.",
+    "firstNight": 0,
+    "otherNight": 29,
+    "otherNightReminder": "If the Record Keeper has died by execution today, show the Demon the Grimoire.",
+    "reminders": [
+      "Executed"
+    ],
+    "jinxes": [
+      {
+        "id": "damsel",
+        "reason": "If a Damsel is in play, they are drunk when the Record Keeper dies."
+      },
+      {
+        "id": "poppygrower",
+        "reason": "If the Poppy Grower is in play and the Record Keeper dies, the Demon does not see the Grimoire until the Poppy Grower dies."
+      }
+    ],
+    "special": [
+      {
+        "type": "signal",
+        "name": "grimoire",
+        "time": "night",
+        "global": "demon"
+      }
+    ]
+  },
+  "puzzlemaster",
+  {
+    "id": "ladylace",
+    "name": "Lady Lace",
+    "image": [
+      "http://menagerie.towerrangers.net/images/lade.png",
+      "http://menagerie.towerrangers.net/images/ladg.png"
+    ],
+    "team": "minion",
+    "ability": "Each night, choose a player. They are poisoned until you die. Before dawn on the night equal to Minions +1, you die, even if drunk or poisoned.",
+    "flavor": "Pardon the interruption, but this drink comes courtesy of the fair lady in the red dress. She sends her warmest regards.",
+    "firstNight": 29,
+    "otherNight": 15,
+    "firstNightReminder": "Lady Lace chooses a player :reminder:. Mark Lady Lace with the token corresponding to the night equal to Minions +1. :reminder:",
+    "otherNightReminder": "Lady Lace chooses a player :reminder:. If the night number corresponds with the token currently on Lady Lace, they die at the conclusion of the night and all poison effects are removed.",
+    "reminders": [
+      "Dies Night 2",
+      "Dies Night 3",
+      "Dies Night 4",
+      "Poisoned",
+      "Poisoned",
+      "Poisoned",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "preacher",
+        "reason": "Lady Lace still dies if their time expires while under the effects of the Preacher’s ability."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller gains Lady Lace’s ability, they may poison 2 players on subsequent nights: on the 3rd night, all effects are removed."
+      }
+    ]
+  },
+  {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nece.png",
+      "http://menagerie.towerrangers.net/images/necg.png"
+    ],
+    "team": "minion",
+    "ability": "Once per game, at night*, choose a dead player (not a Demon). You gain their ability.",
+    "flavor": "Ⱄⱆⱃⰳⰵ Ⰵⱅ Ⰿⰻⱀⰻⱄⱅⱃⰰ Ⰿⰻⱈⰻ... Ⱄⱆⱃⰳⰵ Ⰵⱅ Ⰿⰻⱀⰻⱄⱅⱃⰰ Ⰿⰻⱈⰻ...",
+    "firstNight": 0,
+    "otherNight": 40,
+    "otherNightReminder": "The Necromancer chooses a player. Mark that player with the 'Raised' reminder token. :reminder: From then on, wake the Necromancer at the point in the night order corresponding to that character.",
+    "reminders": [
+      "Raised"
+    ]
+  },
+  "assassin",
+  "marionette",
+  "vizier",
+  "nodashii",
+  "lleech",
+  {
+    "id": "polterghast",
+    "name": "Polterghast",
+    "image": [
+      "http://menagerie.towerrangers.net/images/pole.png",
+      "http://menagerie.towerrangers.net/images/polg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Once per game, at night*, you may choose to register as dead & poison 1 Townsfolk neighbour.",
+    "flavor": "'Over my dead body', you say? Well, if you insist.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Polterghast chooses a player :reminder:. They may also choose to use their ability to feign death. Give them the 'Play Dead' token and announce them as dead in the morning.",
+    "reminders": [
+      "Dead",
+      "Play Dead",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Polterghast dies while registering as dead, the Scarlet Woman becomes the Polterghast whose ability has already been used."
+      }
+    ]
+  },
+  "barista",
+  "butcher",
+  "bonecollector",
+  "scapegoat",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

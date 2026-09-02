@@ -1,0 +1,200 @@
+[
+    {
+        "id": "_meta",
+        "author": "Goodpart",
+        "name": "Stayin' Alive",
+        "hideTitle": true,
+        "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/endlogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+        "firstNight":
+        [
+            "dusk",
+            "wraith",
+            "barista",
+            "minioninfo",
+            "summoner",
+            "demoninfo",
+            "engineer",
+            "poisoner",
+            "chef",
+            "empath",
+            "fortuneteller",
+            "shugenja",
+            "mathematician",
+            "dawn"
+        ],
+        "otherNight":
+        [
+            "dusk",
+            "wraith",
+            "barista",
+            "bonecollector",
+            "engineer",
+            "poisoner",
+            "monk",
+            "Embalmer",
+            "summoner",
+            "baku",
+            "lycanthrope",
+            "po",
+            "vigormortis",
+            "madscientist",
+            "assassin",
+            "dentist",
+            "barber",
+            "professor",
+            "farmer",
+            "empath",
+            "fortuneteller",
+            "oracle",
+            "mathematician",
+            "dawn"
+        ]
+    },
+    "chef",
+    "shugenja",
+    "empath",
+    "mathematician",
+    "fortuneteller",
+    "oracle",
+    {
+        "id": "dentist",
+        "name": "Dentist",
+        "image":
+        [
+            "http://menagerie.towerrangers.net/images/deng.png",
+            "http://menagerie.towerrangers.net/images/deng.png"
+        ],
+        "team": "townsfolk",
+        "ability": "Each night*, choose a character. You learn if they are dead.",
+        "flavor": "Lying through your teeth doesn't count as flossing.",
+        "firstNight": 0,
+        "otherNight": 57.5,
+        "otherNightReminder": "The Dentist selects a character."
+    },
+    "monk",
+    "lycanthrope",
+    "savant",
+    "engineer",
+    "professor",
+    "farmer",
+    "drunk",
+    "recluse",
+    "golem",
+    "barber",
+    "poisoner",
+    "assassin",
+    "wraith",
+    "summoner",
+    {
+        "id": "Embalmer",
+        "name": "Embalmer",
+        "image":
+        [
+            "http://menagerie.towerrangers.net/images/embe.png",
+            "http://menagerie.towerrangers.net/images/embg.png"
+        ],
+        "flavor": "فَٱلْيَوْمَ نُنَجِّيكَ بِبَدَنِكَ لِتَكُونَ لِمَنْ خَلْفَكَ ءَايَةًۭ ۚ وَإِنَّ كَثِيرًۭا مِّنَ ٱلنَّاسِ عَنْ ءَايَـٰتِنَا.",
+        "ability": "Players who die due to another character's ability appear alive. Once per game*, at night, you may make yourself drunk from now on.",
+        "otherNight": 30,
+        "otherNightReminder": "Wake the Embalmer and ask if they wish to make themselves drunk. If yes, mark them with the Drunk reminder token :reminder:.",
+        "reminders":
+        [
+            "Drunk",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead",
+            "Dead"
+        ],
+        "jinxes":
+        [
+            {
+                "id": "lycanthrope",
+                "reason": "The Lycanthrope may choose any player, living or dead, as part of its ability. If they choose a dead player, their kill fails."
+            },
+            {
+                "id": "professor",
+                "reason": "The Professor may choose any player, living or dead, as part of its ability."
+            },
+            {
+                "id": "virgin",
+                "reason": "If the Virgin's ability would execute a Townsfolk, this is not announced and the day does not end."
+            },
+            {
+                "id": "cerenovus",
+                "reason": "If the Cerenovus' ability would execute a player, this is not announced and the day does not end."
+            },
+            {
+                "id": "boomdandy",
+                "reason": "If the Boomdandy is executed, the Embalmer is immediately drunk."
+            }
+        ],
+        "setup": false,
+        "team": "minion"
+    },
+    {
+        "id": "baku",
+        "name": "Baku",
+        "image":
+        [
+            "http://menagerie.towerrangers.net/images/bake.png",
+            "http://menagerie.towerrangers.net/images/bakg.png"
+        ],
+        "team": "demon",
+        "ability": "Each night*, choose a player: they die. One Townsfolk you speak to yields false information until dawn.",
+        "flavor": "If you hear the whispers that float on the wind, they may not hear your screams.",
+        "firstNight": 0,
+        "otherNight": 37,
+        "otherNightReminder": "The Baku chooses a player. :reminder:",
+        "reminders":
+        [
+            "False Info",
+            "Dead"
+        ]
+    },
+    "po",
+    "vigormortis",
+    "barista",
+    {
+        "id": "madscientist",
+        "name": "Mad Scientist",
+        "image":
+        [
+            "http://menagerie.towerrangers.net/images/sci.png",
+            "http://menagerie.towerrangers.net/images/scig.png",
+            "http://menagerie.towerrangers.net/images/scie.png"
+        ],
+        "team": "traveller",
+        "ability": "Each night*, choose a dead player. They are poisoned and alive until dusk.",
+        "flavor": "It's alive... it's alive!",
+        "firstNight": 0,
+        "otherNight": 50,
+        "otherNightReminder": "The Mad Scientist chooses a dead player. :reminder:",
+        "reminders":
+        [
+            "It's Alive!"
+        ]
+    },
+    "butcher",
+    "bonecollector",
+    "bootlegger"
+]

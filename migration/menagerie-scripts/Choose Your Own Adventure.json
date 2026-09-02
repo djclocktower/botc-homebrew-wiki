@@ -1,0 +1,315 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Choose Your Own Adventure",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/chologo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "bureaucrat",
+      "philosopher",
+      "alchemist",
+      "minioninfo",
+      "snitch",
+      "lunatic",
+      "demoninfo",
+      "preacher",
+      "lilmonsta",
+      "ein",
+      "hypnox",
+      "poisoner",
+      "wizard",
+      "godfather",
+      "smith",
+      "mechanicalman",
+      "shugenja",
+      "chambermaid",
+      "mathematician",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "bureaucrat",
+      "tactician",
+      "harlot",
+      "philosopher",
+      "preacher",
+      "smith",
+      "poisoner",
+      "wizard",
+      "gambler",
+      "lunatic",
+      "ein",
+      "hypnox",
+      "zwei",
+      "necromancer",
+      "lilmonsta",
+      "godfather",
+      "prophet",
+      "mechanicalman",
+      "tinker",
+      "undertaker",
+      "chambermaid",
+      "mathematician",
+      "dawn"
+    ]
+  },
+  "shugenja",
+  "preacher",
+  "chambermaid",
+  "mathematician",
+  {
+    "id": "mechanicalman",
+    "name": "Mechanical Man",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mecg.png",
+      "http://menagerie.towerrangers.net/images/mece.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, receive a task from the Storyteller. If completed before dusk, receive information about the game that night.",
+    "flavor": "6reetin(g)s, Ma5ter. 1 live 7o /serve/. I /serve/ to liv3. Aw4iting inpu7.",
+    "firstNight": 65,
+    "otherNight": 70,
+    "firstNightReminder": "Give the Mechanical Man a task that they must complete. This task can be completed the following day, or any subsequent day.",
+    "otherNightReminder": "If the Mechanical Man has completed their task, provide information about the game and give the Mechanical Man a new task that they must complete. If no task was completed, only give a new task.",
+    "reminders": [
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task Complete"
+    ]
+  },
+  "undertaker",
+  "gambler",
+  {
+    "id": "prophet",
+    "name": "Prophet",
+    "image": [
+      "http://menagerie.towerrangers.net/images/prog.png",
+      "http://menagerie.towerrangers.net/images/proe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each day, you may make a public statement about today’s executee. At night, you learn if it was true.",
+    "flavor": "I sense… a fair complexion, shoulder-length auburn hair… weathered hands… good of heart… it is you! The town washerwoman - today, you will meet your end! So say I, so shall it be.",
+    "firstNight": 0,
+    "otherNight": 65,
+    "otherNightReminder": "Give the Prophet a yes/no depending on whether their statement about the day’s executee was true. If no-one was executed today, do not wake the Prophet.",
+    "reminders": [
+      "Prophecised"
+    ]
+  },
+  "philosopher",
+  "artist",
+  "fisherman",
+  {
+    "id": "smith",
+    "name": "Smith",
+    "image": [
+      "http://menagerie.towerrangers.net/images/smig.png",
+      "http://menagerie.towerrangers.net/images/smie.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On your first night, create an ability for yourself, agreed to by the Storyteller. The Demon learns a clue as to its nature.",
+    "flavor": "With fire and strength, I shape the world.",
+    "firstNight": 45,
+    "otherNight": 16,
+    "firstNightReminder": "The Smith proposes an ability. It can be agreed to or negotiated. Wake the Demon and provide a hint as to the nature of the agreed ability.",
+    "otherNightReminder": "If applicable, wake the Smith at a point in the night appropriate to their ability.",
+    "reminders": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ]
+  },
+  "alchemist",
+  {
+    "id": "egotist",
+    "name": "Egotist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/egog.png",
+      "http://menagerie.towerrangers.net/images/egoe.png"
+    ],
+    "team": "outsider",
+    "ability": "One Townsfolk player who nominates you or votes on your execution is drunk until dawn, even if you are dead. You cannot self-nominate.",
+    "flavor": "How dare you? I'll have you know I am good friends with Baron Morozov - VERY good friends - and he can have you hanged for this. Who do you think you are? You know, you're awfully talkative for a lowly librarian. I bet you don't even read books. I've read over a hundred. Not to mention--",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Drunk"
+    ]
+  },
+  "lunatic",
+  "tinker",
+  "snitch",
+  "godfather",
+  "poisoner",
+  {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nece.png",
+      "http://menagerie.towerrangers.net/images/necg.png"
+    ],
+    "team": "minion",
+    "ability": "Once per game, at night*, choose a dead player (not a Demon). You gain their ability.",
+    "flavor": "Ⱄⱆⱃⰳⰵ Ⰵⱅ Ⰿⰻⱀⰻⱄⱅⱃⰰ Ⰿⰻⱈⰻ... Ⱄⱆⱃⰳⰵ Ⰵⱅ Ⰿⰻⱀⰻⱄⱅⱃⰰ Ⰿⰻⱈⰻ...",
+    "firstNight": 0,
+    "otherNight": 40,
+    "otherNightReminder": "The Necromancer chooses a player. Mark that player with the 'Raised' reminder token. :reminder: From then on, wake the Necromancer at the point in the night order corresponding to that character.",
+    "reminders": [
+      "Raised"
+    ]
+  },
+  "wizard",
+  "lilmonsta",
+  {
+    "id": "ein",
+    "name": "Ein",
+    "image": [
+      "http://menagerie.towerrangers.net/images/eine.png",
+      "http://menagerie.towerrangers.net/images/eing.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. On your first night, choose a player. The first time this happens, they become an evil Zwei. If you both live when 3 players live, evil wins. [-1 Minion]",
+    "flavor": "Wer weiß? Der Teufel ist ein Eichhörnchen.",
+    "firstNight": 32,
+    "otherNight": 37,
+    "firstNightReminder": "The Ein chooses a player. :reminder:",
+    "otherNightReminder": "The Ein chooses a player. :reminder:",
+    "reminders": [
+      "Dead"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Zwei lives and the Ein dies, the Zwei becomes the Demon."
+      },
+      {
+        "id": "barber",
+        "reason": "If the Barber dies, only the Ein is asked if they wish to swap characters. They may swap with the Zwei."
+      }
+    ]
+  },
+  {
+    "id": "hypnox",
+    "name": "Hypnox",
+    "image": [
+      "http://menagerie.towerrangers.net/images/hype.png",
+      "http://menagerie.towerrangers.net/images/hypg.png"
+    ],
+    "team": "demon",
+    "ability": "On Night 1, choose players equal to Minions +1: they are poisoned. Each night*, choose a player: they die. The first time you die at night, chosen players become sober evil Minions & one sober evil Hypnox. [No Minions]",
+    "flavor": "What is this but a play on suggestibility? Their addled mind wants this. You can’t make someone do something they don’t want to do. Or can you?",
+    "firstNight": 32,
+    "otherNight": 37,
+    "firstNightReminder": "Wake the Hypnox, and allow them to choose players equal to the number of Minions +1. :reminder:",
+    "otherNightReminder": "The Hypnox chooses a player. :reminder:",
+    "reminders": [
+      "Chosen",
+      "Chosen",
+      "Chosen",
+      "Chosen",
+      "Dead",
+      "Is The Demon"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "summoner",
+        "reason": "A Hypnox can not create a Summoner. If the Summoner creates a Hypnox, poisoned players are arbitrarily selected; the Summoner must be one of them."
+      }
+    ]
+  },
+  {
+    "id": "zwei",
+    "name": "Zwei",
+    "image": [
+      "http://menagerie.towerrangers.net/images/zwee.png",
+      "http://menagerie.towerrangers.net/images/zweg.png"
+    ],
+    "team": "demon",
+    "ability": "Your good non-Traveler neighbours are poisoned. If the Ein dies, you become the Ein. This can only happen once.",
+    "flavor": "Anderenseites... Das Eichhörnchen ist ein Teufel.",
+    "firstNight": 0,
+    "otherNight": 37.5,
+    "otherNightReminder": "If the Ein died today, wake the Zwei and inform them they are now the Ein.",
+    "reminders": [
+      "Poisoned",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "lunatic",
+        "reason": "If Lunatic is a Zwei, they start seeing a Townsfolk or Outsider token."
+      }
+    ],
+    "special": [
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "bureaucrat",
+  "harlot",
+  {
+    "id": "tactician",
+    "name": "Tactician",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tac.png",
+      "http://menagerie.towerrangers.net/images/tacg.png",
+      "http://menagerie.towerrangers.net/images/tace.png"
+    ],
+    "team": "traveller",
+    "ability": "Each night*, choose a player. You may give them advice: they learn this, and whether it will help your team win the game.",
+    "flavor": "Let your plans be dark and impenetrable as night, and when you move, fall like a thunderbolt.",
+    "firstNight": 0,
+    "otherNight": 8,
+    "otherNightReminder": "The Tactician chooses a player and offers advice to the Storyteller. The Storyteller wakes that player, provides that advice, and gives a thumbs up or down."
+  },
+  "deviant",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

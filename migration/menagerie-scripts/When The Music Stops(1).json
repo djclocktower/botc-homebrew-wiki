@@ -1,0 +1,122 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "When The Music Stops",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+    "logo": "http://menagerie.towerrangers.net/images/logo/muslogo.png",
+    "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+    "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "kazali",
+      "barista",
+      "boffin",
+      "yaggababble",
+      "magician",
+      "minioninfo",
+      "demoninfo",
+      "engineer",
+      "devilsadvocate",
+      "chef",
+      "fortuneteller",
+      "noble",
+      "highpriestess",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "harlot",
+      "bonecollector",
+      "engineer",
+      "gambler",
+      "devilsadvocate",
+      "pithag",
+      "fanggu",
+      "yaggababble",
+      "kazali",
+      "dentist",
+      "hatter",
+      "barber",
+      "sage",
+      "farmer",
+      "fortuneteller",
+      "highpriestess",
+      "dawn"
+    ],
+    "bootlegger": [
+      "View running notes and homebrew almanac at menagerie.towerrangers.net"
+    ]
+  },
+  "chef",
+  "noble",
+  "highpriestess",
+  "fortuneteller",
+  {
+    "id": "dentist",
+    "name": "Dentist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/deng.png",
+      "http://menagerie.towerrangers.net/images/deng.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, choose a character. You learn if they are dead.",
+    "flavor": "Lying through your teeth doesn't count as flossing.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "The Dentist selects a character."
+  },
+  "gambler",
+  "savant",
+  "engineer",
+  "fisherman",
+  "farmer",
+  "sage",
+  "tealady",
+  "magician",
+  "drunk",
+  "recluse",
+  "barber",
+  "hatter",
+  "devilsadvocate",
+  "pithag",
+  "goblin",
+  "boffin",
+  "yaggababble",
+  "kazali",
+  "fanggu",
+  "barista",
+  "harlot",
+  "butcher",
+  "bonecollector",
+  "scapegoat",
+  {
+    "id": "pyro",
+    "name": "Pyro",
+    "image": "http://menagerie.towerrangers.net/images/Pyro2.png",
+    "team": "loric",
+    "ability": "There are no nominations. At the end of each day, the player with the most players pointing at them is executed. Dead players who point at themselves are not counted.",
+    "flavor": "Papa! Look at the pretty colours in the sky! Wow, that was a big one! Oh... Mr. Morozov must have been tired - he's fallen asleep.",
+    "firstNight": 0,
+    "otherNight": 0,
+    "jinxes": [
+      {
+        "id": "goblin",
+        "reason": "The Goblin must publicly claim to be the Goblin before end of day, instead of during nominations."
+      }
+    ],
+    "special": [
+      {
+        "type": "ability",
+        "name": "pointing",
+        "time": "day"
+      }
+    ]
+  },
+  "bootlegger"
+]

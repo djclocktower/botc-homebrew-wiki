@@ -1,0 +1,224 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Shadow of the Colossus",
+        "hideTitle": true,
+    "logo": "http://menagerie.towerrangers.net/images/logo/collogo.png",
+    "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+    "firstNight": [
+      "dusk",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "poisoner",
+      "godfather",
+      "devilsadvocate",
+      "harpy",
+      "conspiracist",
+      "huntsman",
+      "guardian",
+      "damsel",
+      "librarian",
+      "chef",
+      "balloonist",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "harlot",
+      "bonecollector",
+      "poisoner",
+      "gambler",
+      "monk",
+      "devilsadvocate",
+      "imp",
+      "dentist",
+      "guardian",
+      "harpy",
+      "fanggu",
+      "nodashii",
+      "shinkan",
+      "conspiracist",
+      "houndmaster",
+      "godfather",
+      "barber",
+      "huntsman",
+      "damsel",
+      "balloonist",
+      "dawn"
+    ],
+    "bootlegger": [
+      "View running notes and homebrew almanac at menagerie.towerrangers.net"
+    ]
+  },
+  "chef",
+  "librarian",
+  {
+    "id": "conspiracist",
+    "name": "Conspiracist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/conspg.png",
+      "http://menagerie.towerrangers.net/images/conspe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing 1 player. If you are 'mad' that they are evil, when they die, learn their alignment and that of 1 living neighbour. If you claim to be the Conspiracist, lose this ability.",
+    "flavor": "Don’t you see? Don’t you see it? Look at the connections! Just look! It’s so obvious. If we assume that Mister Morozov is– no, wait… this goes deeper. This goes all the way to the top! I knew it all along!",
+    "firstNight": 46,
+    "otherNight": 57.5,
+    "firstNightReminder": "Give the Conspiracist a player's name; give that player the *Hunch* token. :reminder:",
+    "otherNightReminder": "If the marked player has died today or tonight, mark the Conspiracist with the *Knew All Along* token :reminder:: they learn that player's alignment, and that of one living neighbour.",
+    "reminders": [
+      "Hunch",
+      "Knew All Along",
+      "Neighbour"
+    ],
+    "jinxes": [
+      {
+        "id": "harpy",
+        "reason": "If the Harpy makes the Conspiracist mad at another player, the Conspiracist must be mad at both."
+      }
+    ]
+  },
+  "balloonist",
+  {
+    "id": "guardian",
+    "name": "Guardian",
+    "image": [
+      "http://menagerie.towerrangers.net/images/guag.png",
+      "http://menagerie.towerrangers.net/images/guae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, learn a player. From night 2, pick a player (not yourself). If the Demon chooses them at night, learn whether the Demon is a known player.",
+    "flavor": "Ahakoa he iti, he pounamu.",
+    "firstNight": 47,
+    "otherNight": 57.5,
+    "firstNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder:",
+    "otherNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder: Ask the Guardian to pick a player. If that player was chosen by the Demon, nod or shake your head.",
+    "reminders": [
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Learns Tonight"
+    ]
+  },
+  {
+    "id": "dentist",
+    "name": "Dentist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/deng.png",
+      "http://menagerie.towerrangers.net/images/deng.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, choose a character. You learn if they are dead.",
+    "flavor": "Lying through your teeth doesn't count as flossing.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "The Dentist selects a character."
+  },
+  "monk",
+  "gambler",
+  "huntsman",
+  "artist",
+  {
+    "id": "shinkan",
+    "name": "Shinkan",
+    "image": [
+      "http://menagerie.towerrangers.net/images/kang.png",
+      "http://menagerie.towerrangers.net/images/kane.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, all evil players are drunk the next day and night.",
+    "flavor": "二礼二拍手一礼.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Shinkan has died tonight, mark all evil players as drunk.",
+    "reminders": [
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk",
+      "Drunk"
+    ]
+  },
+  {
+    "id": "houndmaster",
+    "name": "Houndmaster",
+    "image": [
+      "http://menagerie.towerrangers.net/images/houg.png",
+      "http://menagerie.towerrangers.net/images/houe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, pick a player: you learn the number of steps from them to the nearest evil player.",
+    "flavor": "A hunter without a hound is an orchestra without a conductor.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Houndmaster dies at night, wake them and ask them to pick a player. Show them a number."
+  },
+  "tealady",
+  "drunk",
+  {
+    "id": "colossus",
+    "name": "Colossus",
+    "image": [
+      "http://menagerie.towerrangers.net/images/colg.png",
+      "http://menagerie.towerrangers.net/images/cole.png"
+    ],
+    "team": "outsider",
+    "ability": "You might not die if executed. Your neighbours might register as a Colossus of your alignment.",
+    "flavor": "No. Weather is same up here. Yes. Doorway is hard.",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Colossus",
+      "Colossus"
+    ]
+  },
+  "barber",
+  "damsel",
+  "godfather",
+  "poisoner",
+  "devilsadvocate",
+  "harpy",
+  "marionette",
+  "nodashii",
+  "imp",
+  "fanggu",
+  "harlot",
+  "butcher",
+  "gunslinger",
+  "bonecollector",
+  "judge",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

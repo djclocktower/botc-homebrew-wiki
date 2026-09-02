@@ -1,0 +1,208 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "The Fix Is Sin",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/fixlogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "thief",
+      "philosopher",
+      "magician",
+      "minioninfo",
+      "demoninfo",
+      "poisoner",
+      "godfather",
+      "organgrinder",
+      "harpy",
+      "guardian",
+      "cartographer",
+      "librarian",
+      "empath",
+      "ogre",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "cacklejack",
+      "tactician",
+      "thief",
+      "philosopher",
+      "poisoner",
+      "organgrinder",
+      "exorcist",
+      "harpy",
+      "umbra",
+      "princess",
+      "imp",
+      "fanggu",
+      "godfather",
+      "guardian",
+      "dentist",
+      "gossip",
+      "ravenkeeper",
+      "empath",
+      "dawn"
+    ]
+  },
+  {
+    "id": "cartographer",
+    "name": "Cartographer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/carg.png",
+      "http://menagerie.towerrangers.net/images/care.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing the largest number of living good players adjacent to each other.",
+    "flavor": "Live your life by a compass, not a clock.",
+    "firstNight": 47,
+    "otherNight": 0,
+    "firstNightReminder": "Show the Cartographer a number."
+  },
+  "librarian",
+  "empath",
+  {
+    "id": "guardian",
+    "name": "Guardian",
+    "image": [
+      "http://menagerie.towerrangers.net/images/guag.png",
+      "http://menagerie.towerrangers.net/images/guae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, learn a player. From night 2, pick a player (not yourself). If the Demon chooses them at night, learn whether the Demon is a known player.",
+    "flavor": "Ahakoa he iti, he pounamu.",
+    "firstNight": 47,
+    "otherNight": 57.5,
+    "firstNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder:",
+    "otherNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder: Ask the Guardian to pick a player. If that player was chosen by the Demon, nod or shake your head.",
+    "reminders": [
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Learns Tonight"
+    ]
+  },
+  {
+    "id": "dentist",
+    "name": "Dentist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/deng.png",
+      "http://menagerie.towerrangers.net/images/deng.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, choose a character. You learn if they are dead.",
+    "flavor": "Lying through your teeth doesn't count as flossing.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "The Dentist selects a character."
+  },
+  "exorcist",
+  "gossip",
+  "savant",
+  "alsaahir",
+  "philosopher",
+  "princess",
+  "ravenkeeper",
+  "magician",
+  "ogre",
+  {
+    "id": "fixer",
+    "name": "Fixer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/doubg.png",
+      "http://menagerie.towerrangers.net/images/doube.png"
+    ],
+    "team": "outsider",
+    "ability": "On your first night, choose 3 players (not yourself). If 2 are among the last 3 alive, you win with the winning team, even if dead. If any die, you might die at any time.",
+    "flavor": "Now listen here, bub. I've got five hundred bones on Morozov over there, so no funny stuff. Stick to the plan, and make sure he makes it out alive. If he goes down, we all go down. You get me?",
+    "firstNight": 47,
+    "otherNight": 0,
+    "firstNightReminder": "The Fixer chooses 3 players.",
+    "reminders": [
+      "Bet",
+      "Bet",
+      "Bet",
+      "Dead"
+    ]
+  },
+  "drunk",
+  "recluse",
+  "godfather",
+  "poisoner",
+  "harpy",
+  "organgrinder",
+  "imp",
+  "fanggu",
+  {
+    "id": "umbra",
+    "name": "Umbra",
+    "image": [
+      "http://menagerie.towerrangers.net/images/umbe.png",
+      "http://menagerie.towerrangers.net/images/umbg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Minions you choose for the first time swap characters with you and poison one Townsfolk neighbour until dusk. [-1 Outsider]",
+    "flavor": "People are like shadows. They disappear when it gets dark.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Umbra selects a player: mark them as dead. :reminder: - if a Minion is chosen instead and has not been chosen previously, inform the Umbra that they are now that Minion, and wake the Minion to tell them they are now the Umbra. Mark one Townsfolk neighbour as poisoned. :reminder:",
+    "reminders": [
+      "Poisoned",
+      "Dead"
+    ],
+    "setup": true
+  },
+  "thief",
+  {
+    "id": "tactician",
+    "name": "Tactician",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tac.png",
+      "http://menagerie.towerrangers.net/images/tacg.png",
+      "http://menagerie.towerrangers.net/images/tace.png"
+    ],
+    "team": "traveller",
+    "ability": "Each night*, choose a player. You may give them advice: they learn this, and whether it will help your team win the game.",
+    "flavor": "Let your plans be dark and impenetrable as night, and when you move, fall like a thunderbolt.",
+    "firstNight": 0,
+    "otherNight": 8,
+    "otherNightReminder": "The Tactician chooses a player and offers advice to the Storyteller. The Storyteller wakes that player, provides that advice, and gives a thumbs up or down."
+  },
+  "cacklejack",
+  "scapegoat",
+  "voudon",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]
