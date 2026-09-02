@@ -74,6 +74,10 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <!-- render-page.js first: the tiles resolve their banner through
+       PageRender.imgSrc(), so without it cardHTML() throws and the
+       catch below reports it as "Could not load scripts." -->
+  <script src="assets/render-page.js"></script>
   <script src="assets/classify.js"></script>
   <script>
   (function(){
@@ -142,7 +146,11 @@
         }
         draw();
       })
-      .catch(function(){
+      // This catches a failed fetch AND anything cardHTML() throws, and the
+      // two read identically on the page. Log the real error, or the next
+      // rendering bug looks like the feed being down.
+      .catch(function(err){
+        if (window.console && console.error) console.error('scripts:', err);
         grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load scripts.</p>';
       });
   })();
