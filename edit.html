@@ -84,6 +84,19 @@
     background:#ece3d2;border:1px solid #c9b78f;border-radius:4px;padding:2px 8px;color:#5b4632}
   .loading-msg{position:relative;z-index:5;text-align:center;
     color:rgba(236,225,200,.7);padding:60px 20px;font-size:1.1rem}
+  /* "This credit isn't mine": the tick that keeps a page's credit from being
+     read as proof that the credited name is this account. Sits with the
+     Creator field because that is the field it is about. Scoped through
+     `.fld label` — that rule is (0,1,1) and uppercases every label in
+     the form, so a bare .credit-unlink would lose to it. */
+  .fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+    margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+    color:#5b4632; cursor:pointer; }
+  .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  .fld .credit-unlink-hint { display:block; margin-top:4px;
+    font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+    letter-spacing:0; font-weight:400; }
   .ck{display:flex;align-items:center;gap:8px}
   .ck input{width:auto}
   #ability-count { font-size:.78rem; color:#726348; float:right; margin-top:3px; }
@@ -169,6 +182,8 @@
         <div class="fld">
           <label for="creator">Creator</label>
           <input type="text" id="creator">
+          <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. Their name gets its own creator page instead of pointing at your account, and the page stays off yours. Untick it to link it back.</span>
         </div>
       </div>
       <div class="fld">
@@ -711,6 +726,7 @@
       return {
         name: $('name').value.trim(), team: $('team').value,
         creator: $('creator').value.trim(), ability: $('ability').value.trim(),
+        creditUnlinked: $('creditUnlinked').checked,
         lede: $('lede').value.trim(), summaryBullets: lines('bullets'),
         howToRun: lines('howto'), callout: $('callout').value.trim(),
         examples: lines('examples'), tips: lines('tips'),
@@ -1294,6 +1310,16 @@
       // stored answer forward whatever a guest posts.
       var cur = $('curata-fld');
       if (cur) cur.style.display = 'none';
+      // So is whether the credit points at the owner's account: whose work a
+      // page is said to be is not a guest's answer, and the Worker pins it
+      // from the stored row whatever gets posted.
+      var cu = $('creditUnlinked');
+      if (cu) {
+        var lab = cu.closest('.credit-unlink');
+        if (lab) lab.style.display = 'none';
+        var hint = lab && lab.nextElementSibling;
+        if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
+      }
     }
     /* Tags only. The save is filtered server-side whatever gets posted, so the
        point of hiding the rest is honesty: a form you can type into but whose
@@ -1504,6 +1530,7 @@
       $('customJson').value      = entry.customJson || '';
       $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
       $('curataOptOut').checked  = !!entry.curataOptOut;
+      $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
       syncEditorsBox();
       ALT_SLOTS.forEach(function (slot) {
@@ -1730,6 +1757,9 @@
           // Explicit for the same reason publicEdit is: unticking the box has
           // to reach the save, and Object.assign would keep the loaded value.
           curataOptOut: d.curataOptOut,
+          // Same again: unticking "this credit isn't mine" has to reach the
+          // save, or the credit would stay unlinked for good.
+          creditUnlinked: d.creditUnlinked,
           status: saveStatus,
           baseUpdatedAt: loadedUpdatedAt
         });

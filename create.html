@@ -85,6 +85,19 @@
   details.help { margin-top:8px; font-size:.84rem; color:#5b4632; }
   details.help summary { cursor:pointer; font-weight:600; }
   details.help ol { margin:8px 0 0; padding-left:20px; line-height:1.5; }
+  /* "This credit isn't mine": the tick that keeps a page's credit from being
+     read as proof that the credited name is this account. Sits with the
+     Creator field because that is the field it is about. Scoped through
+     `.fld label` — that rule is (0,1,1) and uppercases every label in
+     the form, so a bare .credit-unlink would lose to it. */
+  .fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+    margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+    color:#5b4632; cursor:pointer; }
+  .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  .fld .credit-unlink-hint { display:block; margin-top:4px;
+    font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+    letter-spacing:0; font-weight:400; }
   .ck { display:flex; align-items:center; gap:8px; }
   .ck input { width:auto; }
   #ability-count { font-size:.78rem; color:#726348; float:right; margin-top:3px; }
@@ -178,6 +191,8 @@
         <div class="fld">
           <label for="creator">Creator</label>
           <input type="text" id="creator" placeholder="Your name or handle">
+          <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. Their name gets its own creator page instead of pointing at your account, and the page stays off yours. Untick it to link it back.</span>
         </div>
       </div>
       <div class="fld">
@@ -716,6 +731,7 @@
         name: $('name').value.trim(),
         team: $('team').value,
         creator: $('creator').value.trim(),
+        creditUnlinked: $('creditUnlinked').checked,
         ability: $('ability').value.trim(),
         lede: $('lede').value.trim(),
         summaryBullets: lines('bullets'),
@@ -1180,6 +1196,10 @@
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, image: d.image, creator: d.creator,
+            // "This credit isn't mine": the page's credit does not point at
+            // this account. Posted explicitly like everything else here —
+            // this entry is rebuilt field by field, not spread from gather().
+            creditUnlinked: d.creditUnlinked,
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,
