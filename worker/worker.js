@@ -2101,6 +2101,18 @@ const CREDIT_UNLINKED_SQL = `(data IS NOT NULL AND instr(data, '"creditUnlinked"
 const CREDIT_LINKED_SQL = `(NOT ${CREDIT_UNLINKED_SQL})`;
 const CREDIT_DISOWNED_COUNT = `SUM(CASE WHEN ${CREDIT_UNLINKED_SQL} THEN 1 ELSE 0 END)`;
 
+/* The version of the "who owns this name" rule, salted into every edge-cache
+   key that carries an answer to it: cachedCreatorAccount, the anonymous
+   /api/user body and /api/creators. Those keys roll on content_version, and
+   content_version moves when CONTENT moves — a deploy does not touch it, and
+   caches.default outlives a deploy. So a rule change shipped in new code went
+   on serving the OLD rule's answer for the full PEOPLE ttl (30 minutes) on
+   any name nobody had saved a page under since, which is exactly how the
+   per-name fix above looked broken for half an hour after it went live.
+   Bump this whenever the rule changes and the old answers die with the
+   deploy. */
+const CREDIT_RULE_V = 2;
+
 // The same test against a list of names: one bind per name.
 function creditAnySQL(col, n) {
   const one = creditMatchSQL(col);
@@ -2198,7 +2210,7 @@ async function cachedCreatorAccount(env, ctx, name) {
   const nkey = normCreator(name);
   if (!nkey) return null;
   const cacheKey = 'https://feed.internal/creator-account.json?n=' +
-    encodeURIComponent(nkey) + '&v=' + (await contentVersion(env));
+    encodeURIComponent(nkey) + '&v=' + (await contentVersion(env)) + '&r=' + CREDIT_RULE_V;
   const hit = await edgeCacheGet(cacheKey);
   if (hit !== null) {
     try { return JSON.parse(hit).u || null; } catch { /* rebuild below */ }
@@ -5784,7 +5796,8 @@ export default {
       const sess = await getSession(env, request);
       const anonKey = sess ? null
         : 'https://feed.internal/user.json?' + (uname ? 'u' : 'a') + '=' +
-          encodeURIComponent(normCreator(uname || aname)) + '&v=' + (await contentVersion(env));
+          encodeURIComponent(normCreator(uname || aname)) + '&v=' + (await contentVersion(env)) +
+          '&r=' + CREDIT_RULE_V;
       if (anonKey) {
         const hit = await edgeCacheGet(anonKey);
         if (hit !== null) {
@@ -6118,7 +6131,8 @@ export default {
       // Cached per content version (with the PEOPLE ttl — the rows carry
       // avatars and display names, which bump nothing when they change).
       // Building this list reads five tables end to end.
-      const creatorsKey = 'https://feed.internal/creators.json?v=' + (await contentVersion(env));
+      const creatorsKey = 'https://feed.internal/creators.json?v=' + (await contentVersion(env)) +
+        '&r=' + CREDIT_RULE_V;
       const creatorsHit = await edgeCacheGet(creatorsKey);
       if (creatorsHit !== null) {
         return new Response(creatorsHit, { headers: { ...JSON_HEADERS, 'Cache-Control': 'no-store' } });
