@@ -381,10 +381,40 @@
     [].slice.call(document.querySelectorAll('.sbx-pane')).forEach(function (p) {
       p.classList.toggle('on', p.getAttribute('data-tab') === name);
     });
-    $('sbx-scroll').scrollTop = 0;
+    scrollPaneTop();
     prefs.tab = name;
     savePrefs();
     ensurePane();
+  }
+
+  /* Open a tab at its beginning. On a wide screen that is the pane's own
+     scrollbar; on a phone the DOCUMENT scrolls (see the .sbx-* media query),
+     so leaving it alone would open a short pane already scrolled past its
+     end — tap Night Order from half way down a long roster and you land at
+     the bottom of a list of four. Only ever scrolls UP: it is putting the
+     tab strip back where it sticks, never dragging the reader down the
+     page. */
+  function scrollPaneTop() {
+    var sc = $('sbx-scroll');
+    sc.scrollTop = 0;
+    if (getComputedStyle(sc).overflowY !== 'visible') return;
+    // .sbx-scroll is statically positioned, so its offsetTop is a stable
+    // document coordinate — the tab strip's is not, because it is sticky.
+    var target = sc.offsetTop - topbarHeight() - $('sbx-tabs').offsetHeight;
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    if (y > target) window.scrollTo(0, Math.max(0, target));
+  }
+
+  /* The tab strip sticks under the top bar, whose height depends on the
+     brand images and the reader's own text size — so it is measured rather
+     than written down, and re-measured whenever the bar could have changed
+     shape. */
+  function topbarHeight() {
+    var tb = document.querySelector('.topbar');
+    return tb ? tb.offsetHeight : 56;
+  }
+  function syncTopbarHeight() {
+    document.documentElement.style.setProperty('--sbx-top', topbarHeight() + 'px');
   }
 
   /* The night arranger and the jinx editor are only ever built for a tab the
@@ -939,10 +969,12 @@
   function openSide() {
     $('sbx-side').classList.add('on');
     $('sbx-scrim').classList.add('on');
+    document.documentElement.classList.add('sbx-locked');
   }
   function closeSide() {
     $('sbx-side').classList.remove('on');
     $('sbx-scrim').classList.remove('on');
+    document.documentElement.classList.remove('sbx-locked');
   }
 
   var SIDE_MIN = 240;
@@ -1293,6 +1325,10 @@
   loadCurrent();
   primeForm();
   wire();
+  syncTopbarHeight();
+  window.addEventListener('resize', syncTopbarHeight);
+  // The bar's height depends on two images; measure again once they are in.
+  window.addEventListener('load', syncTopbarHeight);
   restoreLayout();
   start();
 })();

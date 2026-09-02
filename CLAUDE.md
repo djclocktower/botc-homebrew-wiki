@@ -734,14 +734,27 @@ to three seconds it used to.
 
 Four things shape it:
 
-- **The document does not scroll.** The shell (`.sbx-*` in styles.css) is a
-  flex column on `<body>` with `overflow: hidden`; the character panel and the
-  main column scroll independently. Height comes from the flex column, not
-  `calc(100vh - 56px)`, so it follows the top bar's real height. This is what
-  removed the band of empty page under the character list, and it is why the
-  night arranger's own `max-height` is unset inside a tab (`.sbx-pane
-  .no-list`) — one scrollbar per pane, never one inside another. The filter
-  box scrolls with the list for the same reason.
+- **On a wide screen the document does not scroll.** The shell (`.sbx-*` in
+  styles.css) is a flex column on `<body>` with `overflow: hidden`; the
+  character panel and the main column scroll independently. Height comes from
+  the flex column, not `calc(100vh - 56px)`, so it follows the top bar's real
+  height. This is what removed the band of empty page under the character
+  list, and it is why the night arranger's own `max-height` is unset inside a
+  tab (`.sbx-pane .no-list`) — one scrollbar per pane, never one inside
+  another. The filter box scrolls with the list for the same reason.
+- **Below 900px it is an ordinary scrolling page.** Two panes inside a fixed
+  frame is a desktop idea; on a phone that frame ate the screen — top bar,
+  builder bar, tab strip and footer all pinned, leaving the roster a window a
+  few rows tall to scroll inside. So the media query unwinds the shell
+  (`body` back to `display: block`, `.sbx-scroll` back to
+  `overflow: visible`) and the roster runs the document's full length. The
+  **tab strip** is the one thing that stays, stuck under the top bar at
+  `top: var(--sbx-top)` — a height `syncTopbarHeight()` measures, because it
+  depends on the brand images and the reader's text size. Two consequences to
+  keep in mind: the drawer is fixed over a page that now moves, so opening it
+  puts `.sbx-locked` on `<html>`; and `showTab()` has to scroll the WINDOW
+  (`scrollPaneTop()`), or tapping a tab from half way down a long roster
+  opens a short pane already scrolled past its end.
 - **A click touches one row.** Every sidebar row is kept in `rowBySlug` when
   the list is built, so nothing queries the DOM to repaint a tick. The roster
   is small and is rebuilt whole. The night arranger and the jinx editor are
