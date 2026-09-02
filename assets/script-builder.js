@@ -78,6 +78,55 @@
     if (typeof c.image === 'string' && c.image) return c.image;
     return 'assets/favicon.png';
   }
+
+  /* ── small icons ────────────────────────────────────────────────────────
+     Character art is a 591x591 PNG averaging 212 KB, and this page draws
+     ~1,800 of them at 26px in the panel and 40px on the sheet. Scrolling the
+     whole panel therefore pulled something like 300 MB of image down a phone,
+     which is more than everything else on the page put together.
+
+     Cloudflare's image transformations resize at the edge:
+     /cdn-cgi/image/width=96,…/assets/art/x.png is the same file as a ~2.3 KB
+     WebP — about 90x smaller — with no second copy stored, nothing to
+     regenerate when somebody replaces their art, and new uploads covered the
+     day they land. ONE width for both sizes on purpose: each distinct set of
+     flags is a separate billable transformation, and one 96px variant covers
+     26px at 3x and 40px at 2x while keeping the whole wiki inside the free
+     allowance.
+
+     It has to be turned on for the zone, though, and until it is that path is
+     a 404 — so `thumbsOn` is decided once per load by probeThumbs() and, when
+     the answer is no, every icon is the original file exactly as before. */
+  var THUMB_PX = 96;
+  var thumbsOn = false;
+
+  // Only files WE serve can be transformed: onerror=redirect needs the source
+  // on the same origin, and an official character's icon is hosted by the
+  // official wiki (and is already small).
+  function ownArt(c) { return c.art ? 'assets/' + c.art : ''; }
+  function thumbOf(c) {
+    var own = ownArt(c);
+    if (!thumbsOn || !own) return artOf(c);
+    return '/cdn-cgi/image/width=' + THUMB_PX + ',quality=82,format=auto,onerror=redirect/' + own;
+  }
+  /* One request against a file that is always there. It rides along with the
+     two data fetches, so by the time anything is drawn the answer is in and
+     nothing is delayed waiting for it. */
+  function probeThumbs() {
+    return new Promise(function (resolve) {
+      var img = new Image(), settled = false;
+      function finish(ok) {
+        if (settled) return;
+        settled = true;
+        thumbsOn = ok;
+        resolve(ok);
+      }
+      img.onload = function () { finish(img.naturalWidth > 0); };
+      img.onerror = function () { finish(false); };
+      setTimeout(function () { finish(false); }, 3000);
+      img.src = '/cdn-cgi/image/width=16,format=auto/assets/logo_skull.png';
+    });
+  }
   function debounce(fn, ms) {
     var t = null;
     return function () {
@@ -265,17 +314,20 @@
       var group = chars.filter(function (c) { return c.team === t[0]; });
       if (!group.length) return;
       html += '<div class="sbx-team"><h3 class="sbx-team-head">' + esc(t[1]) +
-        ' <span>(' + group.length + ')</span></h3><div class="sbx-roster">';
+        ' <span>(' + group.length + ')</span></h3><div class="sbx-sheet">';
       group.forEach(function (c) {
+        // Name and ability are ONE paragraph, the way the character sheet
+        // prints them — not a name stacked over its ability in a box.
         html += '<div class="sbx-ch">' +
-          '<img class="sbx-ch-img" loading="lazy" decoding="async" width="38" height="38" src="' +
-            esc(artOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-          '<span class="sbx-ch-txt">' +
+          '<img class="sbx-ch-img" loading="lazy" decoding="async" width="40" height="40" src="' +
+            esc(thumbOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+          '<p class="sbx-ch-txt">' +
             '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
               (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
-              esc(c.name) + (c.official ? ' <span class="sbx-off">official &#8599;</span>' : '') + '</a>' +
+              esc(c.name) + '</a>' +
+            (c.official ? '<span class="sbx-off">official &#8599;</span> ' : '') +
             '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
-          '</span>' +
+          '</p>' +
           '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
             '" aria-label="Remove ' + esc(c.name) + '">&#10005;</button>' +
         '</div>';
@@ -323,7 +375,7 @@
             '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') +
               '" data-slug="' + esc(c.slug) + '" aria-pressed="' + (sel[c.slug] ? 'true' : 'false') + '">' +
               '<img class="sbx-add-thumb" loading="lazy" decoding="async" width="26" height="26" src="' +
-                esc(artOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
+                esc(thumbOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               // The badge sits OUTSIDE the name, which is ellipsised: inside
               // it, a long name would cut the one word saying whose character
               // this is.
@@ -1208,7 +1260,8 @@
     // chained, which cost a whole round trip before the list could be drawn.
     Promise.all([
       loadOfficial(),
-      fetch('characters.json?fields=card').then(function (r) { return r.json(); })
+      fetch('characters.json?fields=card').then(function (r) { return r.json(); }),
+      probeThumbs()
     ]).then(function (both) {
       allChars = both[1] || [];
       allChars.forEach(function (c) { bySlug[c.slug] = c; });

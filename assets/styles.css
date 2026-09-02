@@ -3898,30 +3898,68 @@ html.sbx-page .nav-dropdown { z-index: 80; }
   padding-bottom: 4px; border-bottom: 2px solid rgba(183,156,111,.5);
 }
 .sbx-team-head span { color: rgba(236,225,200,.5); font-size: .8rem; }
-.sbx-roster {
-  display: grid; gap: 7px;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
-}
-.sbx-ch {
-  display: flex; align-items: flex-start; gap: 9px; padding: 7px 9px;
+
+/* The roster is drawn as the game's own character SHEET: one parchment per
+   team, two columns of rows, each row the icon with the name and the ability
+   running on from it as one line of prose. It was a grid of separately
+   bordered cards with the name stacked over the ability, which reads as a
+   spreadsheet — a box per character, a rule round every box — and looks
+   nothing like the sheet anybody actually plays off.
+
+   Two columns, not `auto-fill`: a sheet has a column count, and auto-fill
+   gave three on a wide window and one the moment the character panel was
+   dragged wider. It is a CONTAINER query rather than a media query for that
+   second reason — the panel's width is the reader's to set, so the main
+   column's own width is the only thing that can answer "is there room for
+   two". The container is #sb-script and not .sbx-scroll on purpose: size
+   containment re-anchors `position: fixed` descendants, and the night-order
+   drag lifts its row with exactly that. */
+#sb-script { container-type: inline-size; }
+.sbx-sheet {
+  display: grid; grid-template-columns: minmax(0, 1fr);
   background-color: var(--card); background-image: url('parchment.jpg');
   background-size: cover; background-repeat: no-repeat;
   border: 2px solid var(--parch-frame);
 }
-.sbx-ch-img { width: 38px; height: 38px; object-fit: contain; flex: none; }
-.sbx-ch-txt { flex: 1; min-width: 0; }
+@container (min-width: 680px) {
+  .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* The gutter rule between the two columns. Only the left column draws it,
+     and only while there IS a left column. */
+  .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+}
+/* Browsers without container queries still get two columns on a wide window;
+   they just cannot follow the panel being dragged. */
+@supports not (container-type: inline-size) {
+  @media (min-width: 1100px) {
+    .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+  }
+}
+.sbx-ch {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(180,160,120,.35);
+}
+.sbx-ch-img { width: 40px; height: 40px; object-fit: contain; flex: none; }
+/* A paragraph, not a stack: the name opens the line and the ability runs on
+   from it, the way the sheet prints it. */
+.sbx-ch-txt {
+  flex: 1; min-width: 0; margin: 0;
+  font-size: .8rem; line-height: 1.4; color: var(--ink);
+}
 .sbx-ch-name {
-  display: block; font-family: 'Dumbledor2', serif; text-transform: uppercase;
-  font-size: .92rem; line-height: 1.12; color: var(--maroon); text-decoration: none;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .95rem; color: var(--maroon); text-decoration: none;
+  margin-right: 5px;
 }
 .sbx-ch-name:hover { color: var(--evil); }
-.sbx-ch-ab { display: block; font-size: .78rem; line-height: 1.35; color: var(--ink); margin-top: 2px; }
+.sbx-ch-ab { color: var(--ink); }
 .sbx-ch-x {
-  flex: none; width: 22px; height: 22px; cursor: pointer; line-height: 1;
-  background: none; border: 1px solid rgba(154,13,18,.5); color: var(--evil);
-  font-size: .8rem; padding: 0;
+  flex: none; width: 20px; height: 20px; cursor: pointer; line-height: 1;
+  background: none; border: none; color: rgba(154,13,18,.45);
+  font-size: .82rem; padding: 0; transition: color .12s;
 }
-.sbx-ch-x:hover { background: var(--evil); color: #fff; }
+.sbx-ch-x:hover { color: var(--evil); }
 .sbx-empty {
   color: rgba(236,225,200,.6); text-align: center; padding: 40px 16px; font-size: .95rem;
 }

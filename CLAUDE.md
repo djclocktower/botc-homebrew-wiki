@@ -764,6 +764,30 @@ Four things shape it:
   saves what was open first and then clears `libId`, so replacing a script
   never overwrites its saved copy.
 
+- **The roster is drawn as the character SHEET**, not as cards: one parchment
+  per team, two columns of rows, the name opening the line and the ability
+  running on from it. Two columns comes from a **container query** on
+  `#sb-script`, not a media query — the panel's width is the reader's to set,
+  so only the main column's own width can answer "is there room for two". The
+  container is `#sb-script` and never `.sbx-scroll`: size containment
+  re-anchors `position: fixed` descendants, and the night-order drag lifts its
+  row with exactly that.
+- **Icons go through Cloudflare's image transformations.** Character art is a
+  591x591 PNG averaging **212 KB** and this page draws ~1,800 of them at 26px,
+  so the panel alone was ~300 MB of image. `thumbOf()` asks for
+  `/cdn-cgi/image/width=96,…/assets/art/x.png` — the same file as a ~2.3 KB
+  WebP, about 90x smaller, with no second copy stored and new uploads covered
+  the day they land. **One** width for both the panel and the sheet, because
+  each distinct set of flags is a separate billable transformation and one
+  96px variant keeps the whole wiki inside the free 5,000/month. Only files
+  this site serves are transformed (`ownArt()`): `onerror=redirect` needs the
+  source same-origin, and an official character's icon is hosted by the
+  official wiki. The feature is **enabled per zone** in the Cloudflare
+  dashboard and the path 404s until it is, so `probeThumbs()` decides it once
+  per load against a file that is always there, riding along with the two data
+  fetches; if the answer is no, every icon is the original file exactly as
+  before. Do not make this a hard dependency in either direction.
+
 Everything else is the same machinery the rest of the wiki uses: the shared
 filter box over the panel, `NightOrderEditor` and `JinxEditor` in tabs,
 `PageRender.buildPageExport` for the JSON, and `buildCreditsFabled()` for the
