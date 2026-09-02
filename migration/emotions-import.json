@@ -1,0 +1,412 @@
+{
+ "_source": {
+  "script_json": "the official-schema export supplied by the wiki owner (Emotions v 3.2)",
+  "almanac": "https://klutzbanana.com/scripts/e5govpsx4u/Emotions%20by%20Moll",
+  "almanac_api": "https://klutzbanana.com/api/public/scripts/e5govpsx4u",
+  "characters_api": "https://klutzbanana.com/api/public/scripts/e5govpsx4u/characters",
+  "fetched": "2026-09-02"
+ },
+ "_meta": {
+  "id": "_meta",
+  "name": "Emotions v 3.2",
+  "author": "Moll",
+  "logo": "https://user-images.klutzbanana.com/vcdkz8z8y7ofadquxvm0viej.png",
+  "almanac": "https://klutzbanana.com/scripts/e5govpsx4u/Emotions%20by%20Moll",
+  "saveName": "Emotions by Moll",
+  "almanacIntroduction": "## Synopsis\nA script around Minions, this time they are less about causing chaos and misinformation. This time its their task to figure out, are shown actual Love or is it just Hope someone has laid out for them. Figure out if you have someone else like you out there, and if you should turn on your demon, while the demon might be trying to lead you on the wrong path. This script isn't only built around the evil team lying, the good team is heavily encouraged to lie to avoid these evils & to make out something they really shouldn't have.\n\nMaybe you have a friend who needs to travel, but its usually terribly unbalanced in teensyvilles, not to worry. You can come into the town as Depression, and lead the town through a ride of emotions.\n\n## Thanks\nThanks to the people who helped a lot with the playtesting of this; special thanks to Swampert, Lucifer, Wildheart, Syddanus, Jasper, Nicklas, Hobbe, Aki & Audeeophile for many long nights.",
+  "background": null,
+  "hideTitle": null,
+  "bootlegger": null,
+  "firstNight": null,
+  "otherNight": null
+ },
+ "characters": [
+  {
+   "id": "fear_emotions",
+   "name": "Fear",
+   "image": [
+    "https://user-images.klutzbanana.com/si39fypmwwia6ufcm7f805td.png",
+    "https://user-images.klutzbanana.com/i531ytrpls4vcgzfrab91h58.png"
+   ],
+   "team": "townsfolk",
+   "ability": "You start knowing a player: they're drunk & get false info.",
+   "firstNight": 35,
+   "firstNightReminder": "Point to the player marked Scared.",
+   "reminders": [
+    "Scared"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Fear knows what haunts them.\n\n## Examples\nHobbe is Fear & learns Jasper the Guilt. On the first night Jasper chooses Happiness which is in play, but learns a no, as they have to get false info.\n\n## How to run\nDuring setup, mark a player Scared, they are drunk & whenever they learn any information from their ability, it must be false.\n\nOn the first night, wake the Fear. Point to the player marked Scared. Put the Fear to sleep.\n\n> I advice against making the Demon drunk. With Faith & Hope it can be fine to do.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "guilt_emotions",
+   "name": "Guilt",
+   "image": [
+    "https://user-images.klutzbanana.com/n01xhnzy8ieq5mw0jnpnvwos.png",
+    "https://user-images.klutzbanana.com/n6ozcvnz2ij7yqdbyy4o1x4v.png"
+   ],
+   "team": "townsfolk",
+   "ability": "Each night, choose an evil character, you learn if it is in play.",
+   "firstNight": 74,
+   "firstNightReminder": "Guilt points towards an evil character. Nod 'yes' or shake head 'no' for whether it is in play.",
+   "otherNight": 86,
+   "otherNightReminder": "Guilt points towards an evil character. Nod 'yes' or shake head 'no' for whether it is in play.",
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Guilt knows things.\n\n## Examples\nSyddanus is Happiness. On the first night Guilt chooses Happiness and learns yes, because Happiness is in play.\n\nAudee is Excitement. On the first night Audee chooses the Guilt player. Guilt chooses Excitement and learns a no, because Excitement makes them have to get false information, and Excitement is in play.\n\nJasper is Faith who thinks they are Guilt. On the second night Jasper chooses Faith, and learns no, since they can get any information.\n\n## How to Run\nEach night, wake Guilt. They point at any Minion or Demon character icon on their character sheet. If it's in-play nod your head yes. If it is not-in play-shake your head no. Put Guilt to sleep.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "anxiety_emotions",
+   "name": "Anxiety",
+   "image": [
+    "https://user-images.klutzbanana.com/c866evminkdpo0ilhbzxdy0t.png",
+    "https://user-images.klutzbanana.com/s8yr6wncojd7kf53qzhvaeq0.png"
+   ],
+   "team": "townsfolk",
+   "ability": "Each night, you learn a character type no Demon has as an alive neighbour (not Travellers).",
+   "firstNight": 74,
+   "firstNightReminder": "Point toward a character type.",
+   "otherNight": 86,
+   "otherNightReminder": "Point toward a character type.",
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Anxiety knows a place they feel safer in.\n\n## Examples\nSydannus is Anxiety, Audee is Hope and Hobbe is Anger. During the first night Syddanus learns Outsider as the Demon doesn't neighbours an Outsider.\n\nJasper and Aki are Faith. Tonight Anxiety learns Minion as neither Demon neighbours a Minion.\n\n## How to run\nEach night, wake Anxiety. Point to a character type on their character sheet. There is no Demon with that character type as their alive neighbour. Put Anxiety to sleep.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "anger_emotions",
+   "name": "Anger",
+   "image": [
+    "https://user-images.klutzbanana.com/hjtr3qm1xkqan7cirupmbbll.png",
+    "https://user-images.klutzbanana.com/fhep7dzvl4cx8177cgwjj64d.png"
+   ],
+   "team": "townsfolk",
+   "ability": "Each night, learn a player & their alignment. Until dusk, they might think they've been or not been affected by an ability.",
+   "firstNight": 46,
+   "firstNightReminder": "Point to a player & give a thumbs up or thumbs down signal. You may wake that player as if an ability has affected them.",
+   "otherNight": 70,
+   "otherNightReminder": "Point to a player & give a thumbs up or thumbs down signal. You may wake that player as if an ability has affected them.",
+   "reminders": [
+    "Angry"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Anger brings other emotions.\n\n## Examples\nWildheart is Sadness. On the first night Anger learns Wildheart and a thumbs up.\n\nJasper is a Dissapointment. On the first night Anger learns Jasper and a thumbs up and Jasper is told they were picked by Happiness even though they were not.\n\n## How to run\nDuring the game, you may wake any player marked Angry as if any ability had affected them. (You may wake them in the night in a way having been chosen by this ability would do.)\n\nDuring setup, mark a player Angry. Each dusk, move the Angry reminder to any player.\n\nEach night, wake Anger. Point to the player marked Anger & give a hand signal for their alignment. Put Anger to sleep.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "sadness_emotions",
+   "name": "Sadness",
+   "image": [
+    "https://user-images.klutzbanana.com/v1nzok3qhbdib70u7u66ahiy.png",
+    "https://user-images.klutzbanana.com/bip98r97g6023u5mgk6d1ac7.png"
+   ],
+   "team": "townsfolk",
+   "ability": "Each night*, you learn who is dead & choose 1, you learn their character.",
+   "otherNight": 86,
+   "otherNightReminder": "Show a character token of a dead player.",
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Sadness comes with memories of the dead.\n\n## Example\nNicklas is Fear, the first day Nicklas is executed. Tonight the demon kills Hobbe the Boredom. Sadness learns Nicklas & Hobbe, they choose Hobbe & learn Boredom.\n\nAki is Grief, the first day Aki is executed. Tonight the Demon kills Swampert, a Dissapointment. Sadness learns Swampert & Aki, they choose Aki & learn Grief.\n\n## How to run\nEach night except the first, wake Sadness. Point to all dead players. The Sadness points to 1 player you pointed to. Show their character token. Put Sadness to sleep.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "grief_emotions",
+   "name": "Grief",
+   "image": [
+    "https://user-images.klutzbanana.com/jaf50y13x2ruuafa3etzy533.png",
+    "https://user-images.klutzbanana.com/we46tr436gx990rf50f9hyz7.png"
+   ],
+   "team": "townsfolk",
+   "ability": "Each night*, you learn todays executee neighbours (not Travellers) 1) a Minion, 2) a Demon, or 3) both.",
+   "otherNight": 86,
+   "otherNightReminder": "If a player was executed today: Give a finger signal.",
+   "reminders": [
+    "Executee"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "You'll show the fallen your Grief.\n\n## Examples\nLucifer is Hope neighbouring Hobbe and Nicklas, Boredom and Gratitude respectively. Today Nicklas is executed. That night Grief learns 2 because the executed player neighbours the Demon.\n\nAudee is Faith thinks they're Grief. They neighbour Jasper the Anger. On the first day Jasper is executed. That night Audee learns a 1, as their information is arbitrary.\n\n## How to run\nIf a player dies by execution, put the Grief's Executee reminder token by the dead player's character token.\n\nEach night except the first, if a player is marked Executee, wake Grief.\n- If the player marked Executee neighbours neither a Demon nor a Minion, give a 0 finger signal.\n- If the player marked Executee neighbours a Minion but no Demon, give a 1 finger signal.\n- If the player marked Executee neighbours a Demon but no Minion, give a 2 finger signal.\n- If the player marked Executee neighbours a Demon & a Minion, give a 3 finger signal.\nPut Grief to sleep & remove the Executee reminder.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "Disappointment_emotions",
+   "name": "Disappointment",
+   "image": [
+    "https://user-images.klutzbanana.com/ggxgi674fx4figcocffb6v9x.png",
+    "https://user-images.klutzbanana.com/yxfxrapyjymh95u4xd6xzo1u.png"
+   ],
+   "team": "outsider",
+   "ability": "You think you are a Minion, but you are not.",
+   "remindersGlobal": [
+    "Is a Disappointment"
+   ],
+   "setup": true,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-disabled"
+    },
+    {
+     "type": "reveal",
+     "name": "replace-character"
+    }
+   ],
+   "almanacDetails": "Dissapointment is simply Dissapointing.\n\n## Examples\nWhen the bag is made, Dissapointment was replaced with an Excitement token. When the tokens are passed out Nicklas draws this one. On the first night he chooses a player,  that player is not told they have been chosen by the Excitement, as Nicklas is not the Excitement.\n\n## How to run\nWhile setting up the game, before putting character tokens in the bag, remove the Dissapointment token and add a Minion character token.\n\nDuring setup, put the Dissapointment's IS A DISSAPOINTMENT reminder token by any Minion character token, changing that player's character to the Dissapointment. They are now an Outsider, and do not have the ability of this Minion character. (But they think they do.)\n\nDuring the game, act as if the Dissapointment is actually this Minion character. (If that character would wake to act at night, the Dissapointment wakes to act. If their ability would give them information, you can give false information to them if you wish.)",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "boredom_emotions",
+   "name": "Boredom",
+   "image": [
+    "https://user-images.klutzbanana.com/pl4bqvaxanq48im0mnwu1lli.png",
+    "https://user-images.klutzbanana.com/r5pi9uv4486f940owj2rhu3r.png"
+   ],
+   "team": "outsider",
+   "ability": "Your neighbours might think they have been or not been affected by abilities.",
+   "reminders": [
+    "Bored",
+    "Bored"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Boredom doesn't want a boring game.\n\n## Examples\nAki is Sadness neighbouring Boredom. On the first night Aki learns they were chosen by Happiness, even though they weren't.\n\nNicklas is the Dissapointment neighbouring Boredom. On the first night Nicklas learns they were chosen by Excitement, even though they weren't. The next day Boredom is executed. That night Nicklas is not told they were chosen by anyone, cause they weren't.\n\nWildheart is Guilt neighbouring Boredom. On the second night Wildheart is chosen by Excitement but doesn't learn this. Their info tonight is still poisoned.\n\n## How to run\nDuring the game, you may act as if Boredoms neighbours were affected by a another ability. (You may wake them in the night in a way having been chosen by this ability would do.)  If any of Boredoms neighbours would learn they're affected by an ability, you may choose for them not to.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "excitement_emotions",
+   "name": "Excitement",
+   "image": [
+    "https://user-images.klutzbanana.com/w01508gnqg1d6ysel62we2j4.png",
+    "https://user-images.klutzbanana.com/i1xeuys7rp0w3rjrkqgo8d5p.png"
+   ],
+   "team": "minion",
+   "ability": "Each night, choose a player: they learn this, are poisoned until dusk & if executed tomorrow their team loses.",
+   "firstNight": 43,
+   "firstNightReminder": "Excitement points to a player. Mark them Excited. Put Excitement to sleep. Wake the player marked Excited. Show the 'This character selected you' card, then the Excitement token.",
+   "otherNight": 28,
+   "otherNightReminder": "Excitement points to a player. Mark them Excited. Put Excitement to sleep. Wake the player marked Excited. Show the 'This character selected you' card, then the Excitement token.",
+   "reminders": [
+    "Excited"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Excitement needs a little danger & distraction.\n\n## Examples\nAki is the Excitement and Jasper is Guilt. On the first night Aki chooses Jasper. Tonight Jasper wakes to learn that Excitement has chosen them. Jasper chooses Faith & learns 'no' even though it's in-play. That day, Jasper is executed & evil wins.\n\n## How to run\nEach night, wake Excitement. They point at any player. Mark the player Excited. Put Excitement to sleep. Wake the player marked Excited. Show them the _This Character Selected You_ info token, then the Excitement token. Put that player to sleep.\n\nThe player marked Excited is poisoned. (They wake and act normally. They have no ability, but they think they do. If their ability would give them information, you can give false information to them if you wish. See “Drunkenness and Poisoning” in the rulebook.)\n\nIf a player marked Excited is executed, immediately declare that their team has lost.\n\nAt dusk, remove the Excited reminder.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "gratitude_emotions",
+   "name": "Gratitude",
+   "image": [
+    "https://user-images.klutzbanana.com/dnlj4sopot3pxk524uba4qog.png",
+    "https://user-images.klutzbanana.com/n7lz72ekjn9qkf24wh51818a.png"
+   ],
+   "team": "minion",
+   "ability": "Once per game, during the day, publicly guess all players characters, if correct, evil wins. [+1 Outsider]",
+   "reminders": [
+    "No ability"
+   ],
+   "setup": true,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "The Gratitude wishes to thank everyone for their valiant efforts.\n\n## Examples\nAudee is the Gratitude. Aki, Jasper, Swampert & Mint are Love, Grief, Sadness & Boredom respectively. Audee guesses  themselves as Gratitude, Aki as Love, Jasper as Grief, Swampert as Sadness & Mint as Boredom. Evil wins.\n\n## How to Run\nDuring the day, the Gratitude can declare that they wish to use their ability. If so, the Gratitude points at each player & a character in any order they wish. If all players are the character the Gratitude pointed to, declare that the Gratitudes team has won. Otherwise, say \"Nothing happens.\" Either way, the Gratitude loses their ability—mark the Gratitude No Ability.\n\nIf a player is bluffing as the Gratitude and declares they wish to use their ability, act as if they were indeed the Gratitude—allow time for discussion, let them make the decision, and act like you're fiddling with tokens in your Grimoire, then say \"Nothing happens.\"",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "happiness_emotions",
+   "name": "Happiness",
+   "image": [
+    "https://user-images.klutzbanana.com/qhvnva2gnukgd61gfm4lxoqc.png",
+    "https://user-images.klutzbanana.com/p833tmxpw7tnz18goenz5hsg.png"
+   ],
+   "team": "minion",
+   "ability": "You start by choosing a player, they learn this & win if & only if you win.",
+   "firstNight": 43,
+   "firstNightReminder": "Happiness points to a player. Mark them Happy. Put Happiness to sleep. Wake the player marked Happy. Show the 'This character selected you' card, then the Happiness token.",
+   "reminders": [
+    "Happy"
+   ],
+   "setup": false,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-duplicate"
+    }
+   ],
+   "almanacDetails": "Happiness speads their happiness.\n\n## Examples\nAki is the Happiness and Jasper is Guilt. On the first night Aki chooses Jasper. Tonight Jasper wakes to learn that Happiness has chosen them. When the game ends only Aki & the demon live so Jasper wins with the evil team.\n\n## How to run\nOn the first night, wake Happiness. They point at any player. Mark the player Happy. Put Happiness to sleep. Wake the player marked Happy. Show them the _This Character Selected You_ info token, then the Happiness token. Put that player to sleep.\n\nWhen the game ends, if Happiness is alive and their team wins, the player marked Happy wins as well. If Happiness team looses, the player marked Happy loses as well.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "love_emotions",
+   "name": "Love",
+   "image": [
+    "https://user-images.klutzbanana.com/c4lf26ztn97jgf23nhec1a1p.png",
+    "https://user-images.klutzbanana.com/nk1oslkxhhhs1201554j33bj.png"
+   ],
+   "team": "demon",
+   "ability": "Each night, choose a player: they die tomorrow night. If they're a Minion, you learn their character.",
+   "firstNight": 47,
+   "firstNightReminder": "Love points to a player. Mark them Dies Tomorrow If they're a Minion, show Love their character token.",
+   "otherNight": 42,
+   "otherNightReminder": "The player marked Dies Tomorrow dies. Love points to a player. Mark them Dies Tomorrow If they're a Minion, show Love their character token.",
+   "reminders": [
+    "Dies tomorrow",
+    "Dead"
+   ],
+   "setup": false,
+   "almanacDetails": "Show your Love, it burns so strong!!\n\n## Examples\nHarry is Love and Audee is Excietement. On the first night Harry chooses Audee and learns Excitement, the next night Audee dies.\n\n## How to run\nEach night, the player marked Dies Tomorrow, dies --- mark them with the Dead reminder, remove their Dies Tomorrow reminder. Wake Love. They point at any player. Mark that player Dies Tomorrow. If they're a Minion, show their character token. Put Love to sleep.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "hope_emotions",
+   "name": "Hope",
+   "image": [
+    "https://user-images.klutzbanana.com/h8gndc4r5dwdo3wrt5yl68xy.png",
+    "https://user-images.klutzbanana.com/z2p0tb4w4vvsybsxsjznelwt.png"
+   ],
+   "team": "demon",
+   "ability": "Each night, you see the grimoire. Each night*, choose a player: they die. You're safe from Minions & they're secretly good. [-? Outsiders. +1 Minion]",
+   "firstNight": 47,
+   "firstNightReminder": "Show Hope the grimoire.",
+   "otherNight": 42,
+   "otherNightReminder": "Show Hope the grimoire. They point to a player, who dies.",
+   "reminders": [
+    "Dead"
+   ],
+   "setup": true,
+   "special": [
+    {
+     "type": "signal",
+     "name": "grimoire",
+     "time": "night"
+    }
+   ],
+   "almanacDetails": "Hope is the feeling of believing everything will be alright, can you hold hope against all odds?\n\n## Examples\nDuring setup Happiness, Gratitude, Boredom, Guilt and Hope was given out. At the end of the game when Hope is executed good wins, including Gratitude and Happiness.\n\n## How to run\nWhen putting character tokens into the bag, remove a Townsfolk and add a Minion instead. You may remove any number of Outsiders, add a Townsfolk token for each.\n\nWhile preparing the first night, change all minions alignment to Good, do not tell them this. When the game ends, announce that they win or lose with good.\n\nEach night, wake Hope. Show them the Grimoire for as long as they need. Put Hope to sleep. \n\nEach night except the first, wake Hope. They point at any player. That player dies - mark them with the Dead reminder. Put Hope to sleep.\n\nIf a Minion would do anything harmful to Hope such as poisoning them or changing their alignment, they do not.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "faith_emotions",
+   "name": "Faith",
+   "image": [
+    "https://user-images.klutzbanana.com/vchbjsuuiss073y8v3n0q4ob.png",
+    "https://user-images.klutzbanana.com/qm4obg3lxxbilbjwbrtu23cx.png"
+   ],
+   "team": "demon",
+   "ability": "Each night*, a player might die. If only 3 live & you die, good wins. Faith think they're the same character. [Minions are Faith]",
+   "otherNight": 42,
+   "otherNightReminder": "You may choose a player, they die.",
+   "remindersGlobal": [
+    "Is Faith",
+    "Is Faith",
+    "Is Faith",
+    "Is Faith",
+    "Dead",
+    "Dead"
+   ],
+   "setup": true,
+   "special": [
+    {
+     "type": "selection",
+     "name": "bag-disabled"
+    },
+    {
+     "type": "reveal",
+     "name": "replace-character"
+    }
+   ],
+   "almanacDetails": "Faith is all you need, are you faithful?\n\n## Examples\nWhen the bag is made, Faith & Minion tokens are replaced with 2 Fear tokens. When the tokens are passed out Nicklas and Lucifer draws one each.\n\n## How to run\nWhile setting up the game, before putting character tokens in the bag, remove the Faith token and all Minion character tokens. Add that many copies of the same token to the bag. Players who draw that token is Faith, mark them with the Is Faith reminder.\n\nDuring the game, act as if Faith is actually the character they saw. (If that character would wake to act at night, Faith wakes to act. If their ability would give them information, you can give false information to them if you wish.)\n\nEach night, except the first, you may kill a player, mark them Dead.\n\n> When running irl, it would be best to hand out tokens by showing them to players 1 at a time instead of by using the bag. This means you can still hand out duplicates for Faith or Dissapointment.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "depression_emotions",
+   "name": "Depression",
+   "image": [
+    "https://user-images.klutzbanana.com/qto1tz913asop8fmu5xu6fzg.png",
+    "https://user-images.klutzbanana.com/df0fjnn6j27jttbssjfhbgvo.png",
+    "https://user-images.klutzbanana.com/lx4g0r3o7x2ll4oh8j8huf60.png"
+   ],
+   "team": "traveller",
+   "ability": "Each night*, choose a player (not yourself): they learn your alignment. If you are exiled, change alignments.",
+   "otherNight": 2,
+   "otherNightReminder": "Depression points to a player. Put Depression to sleep. Wake the chosen player, how the 'This character selected you' card, then the Depression token, and a hand signal for Depressions alignment.",
+   "setup": false,
+   "almanacDetails": "Depression tries to tell others how they feel.\n\n## Examples\nSwampert is the Evil Depression. On the first night Swampert does not learn who the Demon is, and the next day noone is executed. That night Swampert chooses Lucifer who learns that Swampert is evil. The next day Swampert is exiled & becomes good, but is not told.\n\n## How to run\nEach night, wake Depression. They point at any player other than themselves. Put Depression to sleep. Wake this player, show them the \"This Character Selected You\" info token, then the Depression token & give a hand signal for Depressions alignment.\n\nIf Depression is exiled. If they're good, they become evil & vice versa. Turn their character token upside down to show their new alignment.",
+   "flavor": null,
+   "jinxes": null
+  },
+  {
+   "id": "thespiral_emotions",
+   "name": "The spiral",
+   "image": [
+    "https://user-images.klutzbanana.com/szxfsl42upieygw924sjagjh.png"
+   ],
+   "team": "fabled",
+   "ability": "Travelers don't know the Demon or their alignment & can only die by exile.",
+   "setup": false,
+   "almanacDetails": "The Spiral keeps Travellers safe & confused.\n\n## Examples\nOn the 2nd night, Hope chooses Depression. Depression doesn't die.\n\nOn the 2nd night, an evil Depression travels in but does not learn they're evil nor who the Demon is.\n\n## How to run\nWhen a Traveller travels in, do not tell them their alignment. If they're evil, do not tell who the Demon is.\n\nIf a Traveller would die by anything but exile, do not mark them dead.",
+   "flavor": null,
+   "jinxes": null
+  }
+ ]
+}
