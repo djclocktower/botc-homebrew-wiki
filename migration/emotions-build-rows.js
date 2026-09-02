@@ -18,6 +18,14 @@
  * export merged with the almanac Klutzbanana serves for the same project. The
  * two agree field for field on every mechanic; the almanac adds the prose.
  *
+ * The art is NOT hotlinked: every icon is downloaded into the repo's own
+ * assets/art/ (and the logo into assets/scripts/), which the Worker serves
+ * from /assets/ — R2 first, committed file second. So the rows carry the
+ * RELATIVE `art`/`artAlt`/`artAlt2` paths and no absolute `image` URL at all:
+ * artVersions() builds both what the page loads and what leaves in the
+ * official-schema JSON from the relative path, so an absolute one left beside
+ * it would put klutzbanana.com back into the export.
+ *
  * Ground rule, the same one The Menagerie import was held to: EVERY WORD ON
  * THESE PAGES COMES FROM THE SOURCE. Nothing is written here, and nothing is
  * tidied — the author's spellings ("Dissapointment", "Excietement", "speads")
@@ -43,8 +51,8 @@ const kebab = s => String(s || '').toLowerCase().normalize('NFD')
   .replace(/^-+|-+$/g, '').slice(0, 80);
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const SET = 'Emotions';           // the collection's display name
-const SET_KEBAB = 'emotions';     // its id, and the set segment of every address
+const SET = 'Emotions';           // the script's name
+const SET_KEBAB = 'emotions';     // its slug, and the set segment of every address
 const VERSION = '3.2';            // _meta.name is "Emotions v 3.2"
 const CREATOR = IMP._meta.author; // "Moll"
 
@@ -163,14 +171,14 @@ for (const c of IMP.characters) {
     remindersGlobal: Array.isArray(c.remindersGlobal) ? c.remindersGlobal : [],
     setup: !!c.setup,
     special: Array.isArray(c.special) ? c.special : [],
-    // Art stays where the author hosts it, as absolute URLs — the same thing
-    // every bulk import on this wiki does (see "A character's three icons").
-    // For the traveller the three slots ARE unaligned / good / evil.
-    image: images[0] || '',
+    // The three art slots, as paths under /assets — the files are committed
+    // to the repo by migration/emotions-fetch-art.js. For the traveller the
+    // three slots ARE unaligned / good / evil.
+    art: 'art/' + slug + '.png',
     curata: false
   };
-  if (images[1]) d.imageAlt = images[1];
-  if (images[2]) d.imageAlt2 = images[2];
+  if (images[1]) d.artAlt = 'art/' + slug + '-alt.png';
+  if (images[2]) d.artAlt2 = 'art/' + slug + '-alt2.png';
   if (p.tips.length) d.tips = p.tips;
   if (!d.special.length) delete d.special;
   if (!d.remindersGlobal.length) delete d.remindersGlobal;
@@ -210,11 +218,17 @@ for (let i = 0; i < rows.length; i += BATCH) {
     'INSERT INTO characters (slug,name,team,creator,owner_id,tags,appears_in,data,status,url_slug,created_at,updated_at) VALUES\n' + vals + ';\n');
 }
 
-// ---- the collection ----
-/* _meta.almanacIntroduction is one markdown blob with two headings. A
-   collection's synopsis is rendered by render-page.js's prose(), which knows
-   paragraphs and nothing else, so the Synopsis body becomes the synopsis and
-   the Thanks becomes a custom box — those DO go through render-wiki.js. */
+// ---- the script ----
+/* This set is a SCRIPT, not a collection: it is a playable 16-character
+   roster with an arranged night order, which is what a /s/ page renders and a
+   collection page deliberately does not (renderCollectionBody has no
+   night-order box). characters[] IS the roster order, and it is the order the
+   source file lists them in — team first, then the author's own arrangement.
+
+   _meta.almanacIntroduction is one markdown blob with two headings. A script's
+   synopsis is rendered by render-page.js's prose(), which knows paragraphs and
+   nothing else, so the Synopsis body becomes the synopsis and the Thanks
+   becomes a custom box — those DO go through render-wiki.js. */
 function introSections(txt) {
   const out = {};
   let key = null, buf = [];
@@ -227,29 +241,26 @@ function introSections(txt) {
   return out;
 }
 const intro = introSections(IMP._meta.almanacIntroduction);
-const coll = {
+const script = {
   slug: SET_KEBAB,
-  id: SET_KEBAB,
-  displayName: SET,
   name: SET,
   author: CREATOR,
   creator: CREATOR,
   version: VERSION,
+  characters: rows.map(r => r.slug),
   synopsis: intro.Synopsis || '',
-  logo: IMP._meta.logo || '',
+  logo: 'scripts/' + SET_KEBAB + '-logo.png',
   almanac: IMP._meta.almanac || '',
-  match: [norm(SET)],
-  include: rows.map(r => r.slug),
-  exclude: [],
-  // The author's own arrangement, as the roster stands in the script file.
-  // Team grouping still wins over it (the page draws one section per team).
-  order: rows.map(r => r.slug),
   curata: false
 };
-if (intro.Thanks) coll.customBoxes = [{ title: 'Thanks', content: intro.Thanks }];
-fs.writeFileSync(path.join(outDir, 'collection.sql'),
-  'INSERT INTO collections (slug,display_name,owner_id,data,status,created_at,updated_at) VALUES (' +
-  [q(coll.slug), q(SET), 'NULL', q(JSON.stringify(coll)), q('published')].join(',') +
+if (intro.Thanks) script.customBoxes = [{ title: 'Thanks', content: intro.Thanks }];
+/* _meta carries no firstNight/otherNight, so the script stores no arranged
+   night order and the page keeps following each character's own numbers —
+   which is the right answer, not a gap: writing one would freeze today's
+   answer into the row. */
+fs.writeFileSync(path.join(outDir, 'script.sql'),
+  'INSERT INTO scripts (slug,name,author,owner_id,data,status,created_at,updated_at) VALUES (' +
+  [q(script.slug), q(SET), q(CREATOR), 'NULL', q(JSON.stringify(script)), q('published')].join(',') +
   ",datetime('now'),datetime('now'));\n");
 
 console.log('characters:', rows.length, '| batches:', nb);
