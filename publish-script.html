@@ -779,20 +779,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
       if (m.header){
         existingHeader = m.header;
-        var pv = $('sb-header-prev'); pv.src = 'assets/' + m.header; pv.style.display = 'block';
+        var pv = $('sb-header-prev'); pv.src = PageRender.imgSrc('', m.header); pv.style.display = 'block';
         $('sb-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
         $('sb-header-remove').style.display = '';
       }
       if (m.logo){
         existingLogo = m.logo;
-        var lv = $('sb-logo-prev'); lv.src = 'assets/' + m.logo; lv.style.display = 'block';
+        var lv = $('sb-logo-prev'); lv.src = PageRender.imgSrc('', m.logo); lv.style.display = 'block';
         $('sb-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
         $('sb-logo-remove').style.display = '';
         $('sb-appearance').open = true;
       }
       if (m.theme && m.theme.background){
         existingBg = m.theme.background;
-        var bv = $('sb-bg-prev'); bv.src = 'assets/' + m.theme.background; bv.style.display = 'block';
+        var bv = $('sb-bg-prev'); bv.src = PageRender.imgSrc('', m.theme.background); bv.style.display = 'block';
         $('sb-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
         $('sb-bg-remove').style.display = '';
       }

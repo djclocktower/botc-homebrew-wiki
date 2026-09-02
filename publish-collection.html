@@ -974,20 +974,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
           if (c.header){
             existingHeader = c.header;
-            var pv = $('pc-header-prev'); pv.src = 'assets/' + c.header; pv.style.display = 'block';
+            var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
             $('pc-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
             $('pc-header-remove').style.display = '';
           }
           if (c.logo){
             existingLogo = c.logo;
-            var lv = $('pc-logo-prev'); lv.src = 'assets/' + c.logo; lv.style.display = 'block';
+            var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
             $('pc-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
             $('pc-logo-remove').style.display = '';
             $('sb-appearance').open = true;
           }
           if (theme.background){
             existingBg = theme.background;
-            var bv = $('pc-bg-prev'); bv.src = 'assets/' + theme.background; bv.style.display = 'block';
+            var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
             $('pc-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
             $('pc-bg-remove').style.display = '';
           }

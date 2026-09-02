@@ -102,7 +102,7 @@
           // box instead of being clipped. Same trick as the /c/ page title.
           var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
           var headerHTML = banner
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + (sc.v ? '?v=' + encodeURIComponent(String(sc.v)) : '') + '" alt="' + esc(sc.name) + '"></div>'
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + (sc.v ? '?v=' + encodeURIComponent(String(sc.v)) : '') + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +

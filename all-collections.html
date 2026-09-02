@@ -112,7 +112,7 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
