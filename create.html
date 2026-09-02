@@ -775,8 +775,14 @@
     // throws away the preview's scroll position.
     var preview = window.CharPreview.mount($('preview'), { siteRoot: SITE_ROOT });
 
+    // The handle of the account writing this page, for the id the preview's
+    // JSON box shows (Render.exportId puts the uploading account's name in
+    // it). The page does not exist yet, so nothing else can say.
+    var myHandle = '';
+
     function update() {
       var d = gather();
+      if (myHandle) d.ownerName = myHandle;
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       if (artAlt2DataURL) d.imageAlt2 = artAlt2DataURL;
       d.tokenArt = $('tokenArt').checked;
@@ -1099,7 +1105,10 @@
           setStatus('err','You are not logged in. <a href="login?next=create">Log in or create an account</a> to publish your character.');
           var pb = document.getElementById('publish'); if(pb) pb.disabled = true;
           var db = document.getElementById('save-draft'); if(db) db.disabled = true;
+          return;
         }
+        myHandle = d.username || '';
+        if (myHandle) schedule();
       }).catch(function(){});
 
     // ── which URL will this page get? ──────────────────────────────

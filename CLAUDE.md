@@ -314,6 +314,13 @@ assets/
                        render-wiki.js; re-exports inlineFormat() because
                        site.js lazy-loads it for links in announcements.
                        In the Worker it gets the engine through init().
+  export-ids-editor.js The "Character IDs in the JSON export" control (mode +
+                       your own prefix/suffix), mounted by publish-script.html
+                       AND publish-collection.html so the two page types cannot
+                       store the setting differently. Its live sample is a
+                       character off the page's OWN roster qualified by that
+                       page, because a mode name means nothing beside the id it
+                       produces. See "The id a character exports under" below.
   approved-editors.js  The "who else may edit this page" list, mounted by all
                        four editors (create/edit/publish-script/-collection) so
                        the three page types cannot drift. Stores what the Worker
@@ -530,13 +537,16 @@ publish-script.html    Script publishing page: name/author/tagline/version/
                        wiki has no character for are carried along untouched,
                        never dropped. A Night Order panel arranges the two
                        night lists the same way (see "Night order" below).
-                       Publish + Save as
+                       A Character IDs panel sets how the JSON export names
+                       each character (shared widget; see "The id a character
+                       exports under"). Publish + Save as
                        Draft (/api/script status=draft|published), ?s={slug} edit.
 publish-collection.html Collection maker/editor (replaces register-/edit-collection,
                        now redirect stubs). Same fields as publish-script + hybrid
                        membership manager (match terms + manual include/exclude)
                        plus roster arranging: ▲▼ per character, a Sort (SAO)
                        button and Reset order, saved as `order[]`.
+                       The same Character IDs panel as publish-script.
                        Publish/Draft via /api/collection; ?c={id} edit mode.
 publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/author,
                        markdown-ish body with toolbar + live preview, banner and
@@ -1392,6 +1402,109 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   was built for. Touching `web_render.py` means bumping
   `assets/tokens/manifest.json`'s `v`, or the cached toolkit keeps running the
   old code.
+
+## The id a character exports under (`Render.exportId`)
+
+The official schema's `id` is what every tool pairs characters by, and this
+wiki has 166 names more than one page answers to — four Wardens, two
+Changelings. Squashing the name (`slugId('Warden')` -> `warden`) gave all four
+the same id, so loading two of the wiki's scripts into one tool made three of
+them disappear into the first. So an id is qualified:
+
+```
+{name}_{creator}_{set}      warden_djclocktower_odyssey
+```
+
+- **`creator`** is the account that uploaded the page (`ownerName`), falling
+  back to the first name on the free-text credit. Half the wiki was
+  bulk-imported with a credit string and `owner_id NULL`, and that string is
+  the only name those pages have.
+- **`set`** is the script or collection the export is FOR — so the same
+  character exports as `warden_alice_fall_of_rome` out of that script and
+  `warden_alice_odyssey` out of that collection, which is what stops two
+  scripts loaded into one tool from colliding. With no export around it (a
+  character's own JSON box, the Script Builder's ad-hoc roster) it is the set
+  the character's own address files it under, read off `page`.
+- A part that is empty is **left out**, never written as a gap: a page with
+  neither still exports as `warden`.
+
+**`Render.exportId(c, opts)` is the single source of truth**, called by
+`buildSchema()` (render.js) and by `exportId()` in render-page.js, which every
+whole-set export goes through. Two things never take any of it:
+
+- **An official character keeps its official id** (`imp`, `poisoner`). That is
+  the app's own key for a character it already ships; qualifying it would hand
+  the app a Fabled it has never heard of instead of the Imp.
+- The **credits Fabled** is built whole by `buildCreditsFabled()` and never
+  comes through here.
+
+### Jinxes have to follow, and that is the fiddly half
+
+The app reads jinxes off the CHARACTERS and pairs them by id, so a jinx has to
+meet its target inside the file. The stored `j.id` is whatever its writer or an
+import typed years ago, so it is **rewritten to the id its target actually
+exports under**:
+
+- `jinxIdWriter()` in render-page.js builds one index of the export's own
+  roster (`Render.jinxCharIndex`) and resolves each jinx through
+  `Render.jinxTargetCheck` — the same resolver the page's jinx list uses, so
+  the two cannot disagree. A target that is **not** on this script, and any
+  **official** character, keeps the raw id.
+- `schemaJinxId()` in render.js is the same job with no export around it: the
+  `/c/` page's own JSON box resolves through the wiki registries
+  (`setWikiChars` / `setOfficialNames`) instead of a roster.
+- This is why the `/s/`, `/collection/` and `/api/page-json` routes now call
+  `Render.setOfficialNames()`. Without it an official character is not
+  recognised as one and its id would be rewritten to a homebrew page of the
+  same name.
+
+### The owner's setting (`data.exportIds`)
+
+A script or collection may carry `exportIds: {mode, prefix, suffix}`, validated
+by `sanitizeExportIds()` in worker.js. `mode` is one of
+`Render.EXPORT_ID_MODES` — `full` (the default, all three parts), `creator`,
+`set`, or `name`, which is the bare id the wiki wrote before this existed and
+still honours an import's own `jsonId`. `prefix` / `suffix` are the owner's own
+text (letters, digits, spaces, `-`, `_`, 24 chars), wrapped around the finished
+id and never applied to an official character.
+
+**The default is stored as nothing.** An `exportIds` equal to the default is
+dropped on save, so a page nobody has touched keeps following the site's rule
+instead of freezing today's answer into the row — the same reasoning as
+`logoSize`.
+
+`assets/export-ids-editor.js` is the one widget, mounted by
+`publish-script.html` and `publish-collection.html` so the two page types
+cannot store the setting differently. Its sample line is the point of the
+control — a mode name means nothing beside the id it produces — so it asks the
+page for a character off its own roster and shows what that character will
+export as, redrawn as the roster and the page's name change.
+
+### `ownerName` is derived on read, never stored
+
+`ownerNames()` in worker.js is one `users` query memoised per isolate against
+the content version — the same shape as `curataCollections()` — and it stamps
+`ownerName` onto every character row in `buildPublicJSON`, `charsBySlug`, the
+`/c/` SSR route and `/api/page`. The save handler **deletes** any `ownerName` a
+client sends back, exactly as it does `appearsInFrom`: a stored copy could only
+ever be stale, and a forged one would put somebody else's name in this page's
+id. `charsBySlug` also stamps `slug`/`page` off the row now, because the stored
+`page` is whatever an editor wrote there years ago and it is what says which
+set an id is qualified by.
+
+### Reading the new ids back in
+
+- `Render.jinxQualKeys()` registers the exported ids as extra jinx lookup keys
+  (`name+creator`, and `name+creator+set` for each set the page is filed
+  under), so a script this wiki wrote and imported back into it still finds the
+  pages its jinxes name. Strictly extra keys, claimed only where free — the
+  same rule as every other key there.
+- `script.html`'s import map registers every shape this wiki writes, **plus**
+  the `name+creator` stem: a script exported under a set the character is not
+  filed under (`warden_alice_fall_of_rome`) is an id the map has never seen,
+  and it begins with a stem the map has. Longest stem wins, and a stem is only
+  registered when the creator half actually says something — otherwise it
+  would be the bare name and would sweep up every id starting with it.
 
 ## Character identity vs address (`/c/{set}/{character}`)
 

@@ -284,6 +284,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- How this collection writes the `id` on each character in its JSON -->
+    <details class="sb-details" id="sb-ids-sec">
+      <summary>Character IDs <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">How each character is named in the JSON, so two characters of the same name never collide.</span></summary>
+      <div class="sb-details-body">
+        <p class="sub" style="margin-top:0">Every tool that reads a script tells characters apart by their <code>id</code>. This wiki has plenty of names more than one page answers to &mdash; four Wardens, two Changelings &mdash; so an id carries the creator and the set as well as the name. Change it only if a tool you use needs something different.</p>
+        <div id="pc-ids-body"></div>
+      </div>
+    </details>
+
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
       <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
@@ -373,6 +382,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/export-ids-editor.js"></script>
   <script>
   (function () {
     var allChars = [];
@@ -533,11 +543,28 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // here is arranging the page, not a second idea of the order.
     var shownMembers = [];   // what the list currently shows, in display order
 
+    /* ── how this collection names characters in its JSON ──
+       The same widget publish-script.html mounts, so the two page types
+       cannot store the setting differently. The set an id is qualified by is
+       the collection's kebab `id`, which is what its URL uses and what
+       buildPageExport reads. */
+    var idsUI = window.ExportIdsEditor ? window.ExportIdsEditor.mount($('pc-ids-body'), {
+      getSample: function(){
+        for (var i = 0; i < (shownMembers || []).length; i++) {
+          if (shownMembers[i] && !shownMembers[i].official) return shownMembers[i];
+        }
+        return null;
+      },
+      getSet: function(){ return EDIT_KEY || slugify($('pc-name').value || ''); }
+    }) : null;
+
     function renderMembers(){
       var def = currentDef();
       var members = window.PageRender.sortCollectionMembers(
         def, window.PageRender.resolveCollectionMembers(def, allChars));
       shownMembers = members;
+      // The id sample is drawn from this roster, so it follows it.
+      if (idsUI) idsUI.refresh();
       var inc = {}; include.forEach(function(s){ inc[s] = 1; });
       $('pc-member-count').textContent = members.length + ' character' + (members.length===1?'':'s');
       if (!members.length){
@@ -859,6 +886,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           include: include.slice(),
           exclude: exclude.slice(),
           order: order.slice(),
+          exportIds: idsUI ? idsUI.get() : null,
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : [],
           header: headerDataURL ? ('collections/' + id + '.png') : (removeHeader ? '' : (existingHeader || '')),
@@ -965,6 +993,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (editorsUI) editorsUI.set(c.editors || []);
           syncEditorsBox();
           if (c.publicEdit) $('sb-open-sec').open = true;
+          if (idsUI) { idsUI.set(c.exportIds || {}); if (c.exportIds) $('sb-ids-sec').open = true; }
           loadPages(EDIT_KEY);
           include = (c.include || []).slice();
           exclude = (c.exclude || []).slice();

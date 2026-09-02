@@ -721,14 +721,37 @@
     });
 
     // ── Import a script JSON (matches character ids back to slugs) ──
+    // An exported id is qualified — {name}_{creator}_{set}, see
+    // Render.exportId — so the bare name it used to be is only one of the
+    // keys an import can arrive under. `stems` is the rest: every shape this
+    // wiki writes, plus the name+creator stem, which is what lets a script
+    // exported UNDER ANOTHER SET (`warden_alice_fall_of_rome`) still find the
+    // page — the id it does not recognise begins with a stem it does.
+    var idStems = [];
+    function normId(s) { return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
     function idToSlug() {
       var map = {};
+      idStems = [];
       allChars.forEach(function (c) {
-        var id = (window.slugId ? window.slugId(c.name) : (c.name||'').toLowerCase().replace(/[^a-z0-9]/g,''));
+        var id = (window.slugId ? window.slugId(c.name) : normId(c.name));
         map[id] = c.slug;
-        if (c.jsonId) map[String(c.jsonId).toLowerCase().replace(/[^a-z0-9]/g,'')] = c.slug;
+        if (c.jsonId) map[normId(c.jsonId)] = c.slug;
         map[(c.slug||'').replace(/-/g,'')] = c.slug;
+        if (window.exportId) {
+          ['full', 'creator', 'set'].forEach(function (mode) {
+            var k = normId(window.exportId(c, { mode: mode }));
+            if (k && !(k in map)) map[k] = c.slug;
+          });
+          // Only when the creator half actually says something: without it
+          // the stem IS the bare name, and every id starting with that name
+          // would be swept up by it.
+          var stem = normId(window.exportId(c, { mode: 'creator' }));
+          if (stem && stem !== id) idStems.push({ stem: stem, slug: c.slug });
+        }
       });
+      // Longest first, so `wardenalice` is preferred over a bare `warden`
+      // when both would match — a more specific stem is more evidence.
+      idStems.sort(function (a, b) { return b.stem.length - a.stem.length; });
       // Official roles: match by their bare id and by name (homebrew wins — added
       // first — so a homebrew char sharing an official name isn't shadowed).
       officialChars.forEach(function (c) {
@@ -753,6 +776,14 @@
         // script this builder wrote must not report it as unrecognised.
         if (key === (window.CREDITS_FABLED_ID || 'botchomebrewwiki')) return;
         var slug = map[key];
+        // A qualified id this wiki has never written in this exact shape —
+        // the script was exported under a set the character is not filed
+        // under. It still begins with the character's own stem.
+        if (!slug) {
+          for (var si = 0; si < idStems.length && !slug; si++) {
+            if (key.indexOf(idStems[si].stem) === 0) slug = idStems[si].slug;
+          }
+        }
         if (slug) { if (slugs.indexOf(slug) === -1) slugs.push(slug); }
         else { missing.push((entry && entry.name) || id); }
       });
