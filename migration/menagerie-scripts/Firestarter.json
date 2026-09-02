@@ -1,0 +1,203 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Firestarter",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/firlogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "wraith",
+      "wiretapper",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "firebug",
+      "pukka",
+      "dreamer",
+      "knight",
+      "noble",
+      "villageidiot",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "wraith",
+      "harlot",
+      "innkeeper",
+      "firebug",
+      "polterghast",
+      "pukka",
+      "madscientist",
+      "vigormortis",
+      "gossip",
+      "farmer",
+      "dreamer",
+      "flowergirl",
+      "towncrier",
+      "oracle",
+      "villageidiot",
+      "dawn"
+    ]
+  },
+  "knight",
+  "noble",
+  "villageidiot",
+  "dreamer",
+  "flowergirl",
+  "towncrier",
+  "oracle",
+  "innkeeper",
+  "gossip",
+  {
+    "id": "wiretapper",
+    "name": "Wire Tapper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/wirg.png",
+      "http://menagerie.towerrangers.net/images/wire.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On Night 1, if you use your ability, the Demon learns one in-play role as part of their bluffs, and 1 Townsfolk is drunk until dusk. The Demon learns you are in play.",
+    "flavor": "... .-.. .- -.-- . .-. .-.-.- / ... --- .-.. -.. .. . .-. .-.-.- / -- .- -.-- --- .-. .-.-.- (Creator credit: Matt)",
+    "firstNight": 15,
+    "otherNight": 0,
+    "firstNightReminder": "The Wire Tapper may use their ability. If they say yes, replace a Demon bluff with an in-play role (not the Wire Tapper). Mark one Townsfolk as Wires Crossed.",
+    "reminders": [
+      "Bluff",
+      "Wires Crossed"
+    ],
+    "jinxes": [
+      {
+        "id": "snitch",
+        "reason": "If the Snitch is in play, one Minion bluff is also affected by the Wire Tapper: no additional Townsfolk are made drunk."
+      }
+    ]
+  },
+  "soldier",
+  "cannibal",
+  "farmer",
+  "goon",
+  "drunk",
+  "recluse",
+  "mutant",
+  {
+    "id": "firebug",
+    "name": "Firebug",
+    "image": [
+      "http://menagerie.towerrangers.net/images/fire.png",
+      "http://menagerie.towerrangers.net/images/firg.png"
+    ],
+    "team": "minion",
+    "ability": "On Night 1, choose a good player to hold the bomb. Each night*, that player chooses a living player to hold the bomb. If the Demon chooses a player with the bomb, they choose again. You learn evil players holding the bomb.",
+    "flavor": "They told me I have an explosive personality, and I chose to take that literally.",
+    "firstNight": 30,
+    "otherNight": 30,
+    "firstNightReminder": "The Firebug chooses a player. :reminder:",
+    "otherNightReminder": "Wake the player holding the Firebug's bomb and inform them they are holding it, and they choose a player. If an evil player is selected, wake the Firebug to inform them.",
+    "reminders": [
+      "Bomb!"
+    ],
+    "jinxes": [
+      {
+        "id": "alchemist",
+        "reason": "If the Alchemist gains the Firebug's ability and the Demon chooses a player holding the bomb, the Demon does not choose who dies next. The Alchemist does not learn if evil players hold the bomb."
+      },
+      {
+        "id": "goon",
+        "reason": "If the Goon is chosen to hold the bomb, that player can change the Goon's alignment and become drunk. The Goon holds the bomb regardless of whether this happens."
+      },
+      {
+        "id": "pukka",
+        "reason": "The Pukka does not get to choose again if they choose a player holding the bomb on Night 1."
+      }
+    ]
+  },
+  "marionette",
+  "wraith",
+  "baron",
+  "pukka",
+  "vigormortis",
+  {
+    "id": "polterghast",
+    "name": "Polterghast",
+    "image": [
+      "http://menagerie.towerrangers.net/images/pole.png",
+      "http://menagerie.towerrangers.net/images/polg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Once per game, at night*, you may choose to register as dead & poison 1 Townsfolk neighbour.",
+    "flavor": "'Over my dead body', you say? Well, if you insist.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Polterghast chooses a player :reminder:. They may also choose to use their ability to feign death. Give them the 'Play Dead' token and announce them as dead in the morning.",
+    "reminders": [
+      "Dead",
+      "Play Dead",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Polterghast dies while registering as dead, the Scarlet Woman becomes the Polterghast whose ability has already been used."
+      }
+    ]
+  },
+  {
+    "id": "madscientist",
+    "name": "Mad Scientist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/sci.png",
+      "http://menagerie.towerrangers.net/images/scig.png",
+      "http://menagerie.towerrangers.net/images/scie.png"
+    ],
+    "team": "traveller",
+    "ability": "Each night*, choose a dead player. They are poisoned and alive until dusk.",
+    "flavor": "It's alive... it's alive!",
+    "firstNight": 0,
+    "otherNight": 50,
+    "otherNightReminder": "The Mad Scientist chooses a dead player. :reminder:",
+    "reminders": [
+      "It's Alive!"
+    ]
+  },
+  "harlot",
+  "judge",
+  "voudon",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

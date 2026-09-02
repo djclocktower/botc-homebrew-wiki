@@ -1,0 +1,188 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "The Imperial Palace",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/implogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "thief",
+      "boffin",
+      "magician",
+      "minioninfo",
+      "demoninfo",
+      "poisoner",
+      "chef",
+      "empath",
+      "grandmother",
+      "seamstress",
+      "noble",
+      "general",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "thief",
+      "poisoner",
+      "recordkeeper",
+      "gatekeeper",
+      "banshee",
+      "grandmother",
+      "empath",
+      "towncrier",
+      "oracle",
+      "seamstress",
+      "general",
+      "dawn"
+    ]
+  },
+  "chef",
+  "noble",
+  "grandmother",
+  "empath",
+  "general",
+  "towncrier",
+  "oracle",
+  {
+    "id": "gatekeeper",
+    "name": "Gatekeeper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/gatg.png",
+      "http://menagerie.towerrangers.net/images/gate.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, if you nominated today, learn one not-in-play character. [+0 or +1 Outsider]",
+    "flavor": "Halt! Who goes there?",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Gatekeeper nominated today, the Gatekeeper learns a not-in-play character.",
+    "reminders": [
+      "Nominated"
+    ],
+    "setup": true
+  },
+  "alsaahir",
+  "seamstress",
+  "artist",
+  "banshee",
+  "magician",
+  "recluse",
+  "saint",
+  {
+    "id": "recordkeeper",
+    "name": "Record Keeper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/recg.png",
+      "http://menagerie.towerrangers.net/images/rece.png"
+    ],
+    "team": "outsider",
+    "ability": "If you are executed, the Demon sees the Grimoire tonight.",
+    "flavor": "You would be surprised as to what people are capable of when they think nobody is watching.",
+    "firstNight": 0,
+    "otherNight": 29,
+    "otherNightReminder": "If the Record Keeper has died by execution today, show the Demon the Grimoire.",
+    "reminders": [
+      "Executed"
+    ],
+    "jinxes": [
+      {
+        "id": "damsel",
+        "reason": "If a Damsel is in play, they are drunk when the Record Keeper dies."
+      },
+      {
+        "id": "poppygrower",
+        "reason": "If the Poppy Grower is in play and the Record Keeper dies, the Demon does not see the Grimoire until the Poppy Grower dies."
+      }
+    ],
+    "special": [
+      {
+        "type": "signal",
+        "name": "grimoire",
+        "time": "night",
+        "global": "demon"
+      }
+    ]
+  },
+  "zealot",
+  "poisoner",
+  "goblin",
+  "boffin",
+  "baron",
+  {
+    "id": "shogun",
+    "name": "Shogun",
+    "image": [
+      "http://menagerie.towerrangers.net/images/shoe.png",
+      "http://menagerie.towerrangers.net/images/shog.png"
+    ],
+    "team": "demon",
+    "ability": "All players know you are the Shogun. Minions & Demons do not know each other. Each day, publicly choose a player: they die. After execution, players may nominate you & if executed while Minions live, your team wins. [+1 Minion, No Outsiders]",
+    "flavor": "分をわきまえろ痴者が。",
+    "firstNight": 0,
+    "otherNight": 0,
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "The Scarlet Woman cannot become the Demon. Instead, the Scarlet Woman instead gains the ability of the first Minion to die."
+      },
+      {
+        "id": "goblin",
+        "reason": "The Goblin's ability no longer ends the game. Instead, if the Goblin's ability would trigger, they may immediately choose a player: they die."
+      },
+      {
+        "id": "mastermind",
+        "reason": "If a Mastermind's ability would trigger, players must execute a living player that day. If that player is good, evil wins."
+      },
+      {
+        "id": "spy",
+        "reason": "The Shogun learns who the Spy is. The Spy does not see the Grimoire, but instead learns which Minions are in play."
+      },
+      {
+        "id": "widow",
+        "reason": "The Widow learns who the Shogun is. The Widow does not see the Grimoire, but instead learns which Minions are in play."
+      },
+      {
+        "id": "boomdandy",
+        "reason": "If the Boomdandy's ability would trigger, the Shogun must die. Good wins if a Minion is chosen. If the Boomdandy is the only living Minion, the Boomdandy's ability does not trigger."
+      },
+      {
+        "id": "slayer",
+        "reason": "The Slayer can use their ability on Minions."
+      },
+      {
+        "id": "recordkeeper",
+        "reason": "If the Record Keeper is executed, the Shogun does not see the Grimoire: they instead learn who their Minions are."
+      },
+      {
+        "id": "poppygrower",
+        "reason": "The Shogun does not receive bluffs. If the Poppy Grower dies, the Shogun and Minions instead learn players who are dead Minions."
+      },
+      {
+        "id": "magician",
+        "reason": "The Magician is also announced as the Shogun. The Shogun must tell the Storyteller who they are killing privately."
+      },
+      {
+        "id": "lunatic",
+        "reason": "The Lunatic is also announced as the Shogun. If they target a Minion with their ability, that Minion might die. If they target the Shogun with their ability, their team loses."
+      },
+      {
+        "id": "mayor",
+        "reason": "If the Mayor is killed by the Demon when 3 players live, the Mayor's team wins."
+      }
+    ]
+  },
+  "thief",
+  "butcher",
+  "beggar",
+  "bishop",
+  "voudon",
+  "bootlegger"
+]

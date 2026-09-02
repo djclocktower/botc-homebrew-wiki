@@ -1,0 +1,239 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Tag, You're It",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/taglogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "wraith",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "preacher",
+      "poisoner",
+      "snakecharmer",
+      "clockmaker",
+      "noble",
+      "highpriestess",
+      "mathematician",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "wraith",
+      "bonecollector",
+      "preacher",
+      "poisoner",
+      "umbra",
+      "evangelist",
+      "acrobat",
+      "princess",
+      "snakecharmer",
+      "ojo",
+      "po",
+      "martyr",
+      "assassin",
+      "disciple",
+      "barber",
+      "towncrier",
+      "oracle",
+      "highpriestess",
+      "mathematician",
+      "dawn"
+    ]
+  },
+  "noble",
+  "clockmaker",
+  "highpriestess",
+  "preacher",
+  "snakecharmer",
+  "mathematician",
+  "towncrier",
+  "oracle",
+  "acrobat",
+  "savant",
+  {
+    "id": "martyr",
+    "name": "Martyr",
+    "image": [
+      "http://menagerie.towerrangers.net/images/marg.png",
+      "http://menagerie.towerrangers.net/images/mare.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, you may learn the role of a player chosen by the Demon tonight, and die in their place.",
+    "flavor": "The only thing that lingers longer than the blood of a martyr is the guilt of the one who survives.",
+    "firstNight": 0,
+    "otherNight": 34,
+    "otherNightReminder": "The Martyr may choose to use their ability. If they do, mark the Martyr as Dead. The Martyr learns the character marked Dead by the Demon.",
+    "reminders": [
+      "Dead",
+      "Learns"
+    ],
+    "jinxes": [
+      {
+        "id": "innkeeper",
+        "reason": "If the Martyr is protected by the Innkeeper on the night they use their ability, the Martyr does not die, but learns arbitrary information."
+      }
+    ]
+  },
+  {
+    "id": "evangelist",
+    "name": "Evangelist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/evag.png",
+      "http://menagerie.towerrangers.net/images/evae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game*, at night, select a player. If they agree, they become the Disciple.",
+    "flavor": "Lost! Lost! Lost! Better a whole world on fire than a soul lost!",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "Wake the Evangelist and ask them if they want to use their ability. If they do, wake the player they choose and ask them if they wish to become the Disciple.",
+    "reminders": [
+      "No Ability",
+      "Chosen"
+    ]
+  },
+  "princess",
+  {
+    "id": "disciple",
+    "name": "Disciple",
+    "image": [
+      "http://menagerie.towerrangers.net/images/disg.png",
+      "http://menagerie.towerrangers.net/images/dise.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On your first night, you learn if either of the Evangelist's living neighbours are evil.",
+    "flavor": "Thank you for being the shepherd that ushers me unto salvation.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "Wake the Disciple: nod or shake your head.",
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "If the Drunk becomes the Disciple, they remain drunk."
+      },
+      {
+        "id": "stowaway",
+        "reason": "If the Stowaway becomes the Disciple, they are drunk."
+      },
+      {
+        "id": "scarletwoman",
+        "reason": "If a living Demon becomes the Disciple and there are 5 or more players alive, this triggers the Scarlet Woman's ability. (Travellers don't count.)."
+      }
+    ],
+    "special": [
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "goon",
+  "drunk",
+  {
+    "id": "stowaway",
+    "name": "Stowaway",
+    "image": [
+      "http://menagerie.towerrangers.net/images/stog.png",
+      "http://menagerie.towerrangers.net/images/stoe.png"
+    ],
+    "team": "outsider",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "flavor": "Gods above, this crate is heavy!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "remindersGlobal": [
+      "Is The Stowaway"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "The Drunk cannot be a Stowaway."
+      }
+    ],
+    "special": [
+      {
+        "name": "replace-character",
+        "type": "reveal"
+      },
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "saint",
+  "barber",
+  "poisoner",
+  "assassin",
+  "marionette",
+  "wraith",
+  "baron",
+  "ojo",
+  "po",
+  {
+    "id": "umbra",
+    "name": "Umbra",
+    "image": [
+      "http://menagerie.towerrangers.net/images/umbe.png",
+      "http://menagerie.towerrangers.net/images/umbg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Minions you choose for the first time swap characters with you and poison one Townsfolk neighbour until dusk. [-1 Outsider]",
+    "flavor": "People are like shadows. They disappear when it gets dark.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Umbra selects a player: mark them as dead. :reminder: - if a Minion is chosen instead and has not been chosen previously, inform the Umbra that they are now that Minion, and wake the Minion to tell them they are now the Umbra. Mark one Townsfolk neighbour as poisoned. :reminder:",
+    "reminders": [
+      "Poisoned",
+      "Dead"
+    ],
+    "setup": true
+  },
+  "bonecollector",
+  "judge",
+  "bishop",
+  "voudon",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "gardener",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

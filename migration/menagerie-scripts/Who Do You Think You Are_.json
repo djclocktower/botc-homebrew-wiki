@@ -1,0 +1,233 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Who Do You Think You Are?",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/whologo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "abomination",
+      "barista",
+      "bureaucrat",
+      "yaggababble",
+      "minioninfo",
+      "demoninfo",
+      "poisoner",
+      "wizard",
+      "godfather",
+      "cerenovus",
+      "amnesiac",
+      "librarian",
+      "fortuneteller",
+      "dreamer",
+      "oldsheriff",
+      "balloonist",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "bureaucrat",
+      "poisoner",
+      "wizard",
+      "cerenovus",
+      "lycanthrope",
+      "abomination",
+      "fanggu",
+      "yaggababble",
+      "godfather",
+      "mime",
+      "amnesiac",
+      "ravenkeeper",
+      "fortuneteller",
+      "undertaker",
+      "dreamer",
+      "juggler",
+      "balloonist",
+      "dawn"
+    ]
+  },
+  "librarian",
+  {
+    "id": "oldsheriff",
+    "name": "Old Sheriff",
+    "image": [
+      "http://menagerie.towerrangers.net/images/sherg.png",
+      "http://menagerie.towerrangers.net/images/shere.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing how many evil players are sitting within 3 steps of you. This number may be 1 higher or lower. [-1 Outsider]",
+    "flavor": "Upholdin’ the law’s tough work, but if you’re real careful-like, you just might see the autumn years. ’Course, it goes without sayin’ – you should never trust an ol’ man in a young man’s game, heh.",
+    "firstNight": 64,
+    "otherNight": 0,
+    "firstNightReminder": "Give the Old Sheriff a number corresponding to the number of evil players within 3 steps of them either side, 1 higher or lower than the actual number.",
+    "setup": true
+  },
+  "balloonist",
+  "dreamer",
+  "fortuneteller",
+  "undertaker",
+  "lycanthrope",
+  "savant",
+  "juggler",
+  "amnesiac",
+  "ravenkeeper",
+  {
+    "id": "mime",
+    "name": "Mime",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mimg.png",
+      "http://menagerie.towerrangers.net/images/mime.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you are 'mad' as a good role today, learn if it is in play the next night.",
+    "flavor": "...! ...? ...?! ...! ...!",
+    "firstNight": 0,
+    "otherNight": 64,
+    "otherNightReminder": "If the Mime was successful during the day, wake them and nod or shake your head, depending on whether the role is in play.",
+    "reminders": [
+      "...!"
+    ]
+  },
+  "mayor",
+  {
+    "id": "egotist",
+    "name": "Egotist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/egog.png",
+      "http://menagerie.towerrangers.net/images/egoe.png"
+    ],
+    "team": "outsider",
+    "ability": "One Townsfolk player who nominates you or votes on your execution is drunk until dawn, even if you are dead. You cannot self-nominate.",
+    "flavor": "How dare you? I'll have you know I am good friends with Baron Morozov - VERY good friends - and he can have you hanged for this. Who do you think you are? You know, you're awfully talkative for a lowly librarian. I bet you don't even read books. I've read over a hundred. Not to mention--",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Drunk"
+    ]
+  },
+  "drunk",
+  {
+    "id": "stowaway",
+    "name": "Stowaway",
+    "image": [
+      "http://menagerie.towerrangers.net/images/stog.png",
+      "http://menagerie.towerrangers.net/images/stoe.png"
+    ],
+    "team": "outsider",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "flavor": "Gods above, this crate is heavy!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "remindersGlobal": [
+      "Is The Stowaway"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "The Drunk cannot be a Stowaway."
+      }
+    ],
+    "special": [
+      {
+        "name": "replace-character",
+        "type": "reveal"
+      },
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "golem",
+  "mutant",
+  "godfather",
+  "poisoner",
+  "cerenovus",
+  "wizard",
+  "yaggababble",
+  {
+    "id": "abomination",
+    "name": "Abomination",
+    "image": [
+      "http://menagerie.towerrangers.net/images/aboe.png",
+      "http://menagerie.towerrangers.net/images/abog.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. You have two Minion abilities. [-1 Minion, -1 Outsider]",
+    "flavor": "We are many. But we are one.",
+    "firstNight": 2,
+    "otherNight": 37,
+    "firstNightReminder": "Assign the Abomination with two on-script Minion abilities and inform the Abomination of the powers they have. They are performed in the corresponding point in the night order.",
+    "otherNightReminder": "The Abomination chooses a player. :reminder:",
+    "reminders": [
+      "Dead"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Abomination gains the Scarlet Woman ability, that ability is given to a living Minion instead."
+      },
+      {
+        "id": "vizier",
+        "reason": "If the Abomination gains the Vizier ability, they are safe from execution only once."
+      },
+      {
+        "id": "mastermind",
+        "reason": "The Abomination cannot gain the Mastermind ability."
+      },
+      {
+        "id": "boomdandy",
+        "reason": "The Abomination cannot gain the Boomdandy ability."
+      },
+      {
+        "id": "summoner",
+        "reason": "The Abomination cannot gain the Summoner ability."
+      },
+      {
+        "id": "efreet",
+        "reason": "The Abomination cannot gain the Efreet ability."
+      },
+      {
+        "id": "necromancer",
+        "reason": "The Abomination cannot gain the Necromancer ability."
+      },
+      {
+        "id": "goblin",
+        "reason": "If the Abomination gains the Goblin ability, they may lose this ability until dusk each night, and learn if this happens."
+      }
+    ]
+  },
+  "fanggu",
+  "bureaucrat",
+  "barista",
+  "judge",
+  "deviant",
+  "bishop",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

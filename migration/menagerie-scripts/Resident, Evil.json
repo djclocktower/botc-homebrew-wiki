@@ -1,0 +1,346 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Resident, Evil",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/reslogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "thaumaturge",
+      "barista",
+      "bureaucrat",
+      "thief",
+      "doppelganger",
+      "philosopher",
+      "minioninfo",
+      "demoninfo",
+      "lilmonsta",
+      "yang",
+      "blackmailer",
+      "lostlover",
+      "investigator",
+      "chef",
+      "oldsheriff",
+      "villageidiot",
+      "cultleader",
+      "chambermaid",
+      "mathematician",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "bureaucrat",
+      "thaumaturge",
+      "pithag",
+      "swindler",
+      "blackmailer",
+      "yang",
+      "thief",
+      "philosopher",
+      "patientzero",
+      "legion",
+      "lilmonsta",
+      "lostlover",
+      "undertaker",
+      "flowergirl",
+      "villageidiot",
+      "cultleader",
+      "chambermaid",
+      "mathematician",
+      "dawn"
+    ]
+  },
+  "chef",
+  "investigator",
+  {
+    "id": "oldsheriff",
+    "name": "Old Sheriff",
+    "image": [
+      "http://menagerie.towerrangers.net/images/sherg.png",
+      "http://menagerie.towerrangers.net/images/shere.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing how many evil players are sitting within 3 steps of you. This number may be 1 higher or lower. [-1 Outsider]",
+    "flavor": "Upholdin’ the law’s tough work, but if you’re real careful-like, you just might see the autumn years. ’Course, it goes without sayin’ – you should never trust an ol’ man in a young man’s game, heh.",
+    "firstNight": 64,
+    "otherNight": 0,
+    "firstNightReminder": "Give the Old Sheriff a number corresponding to the number of evil players within 3 steps of them either side, 1 higher or lower than the actual number.",
+    "setup": true
+  },
+  "chambermaid",
+  "villageidiot",
+  "mathematician",
+  "cultleader",
+  {
+    "id": "thaumaturge",
+    "name": "Thaumaturge",
+    "image": [
+      "http://menagerie.towerrangers.net/images/thag.png",
+      "http://menagerie.towerrangers.net/images/thae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, choose a player. The first Minion ability that targets this player targets that Minion instead. Affected Minions learn you are 1 of 2 players.",
+    "flavor": "Fie, fie I say! Back to whence you came, foul minion!",
+    "firstNight": 6.5,
+    "otherNight": 6.5,
+    "firstNightReminder": "The Thaumaturge chooses a player. If any Minion ability targets them, inform the Minion that they are targeted instead. Inform that Minion that the Thaumaturge is the corresponding player and one wrong player.",
+    "otherNightReminder": "The Thaumaturge chooses a player. If any Minion ability targets them, inform the Minion that they are targeted instead. Inform that Minion that the Thaumaturge is the corresponding player and one wrong player.",
+    "reminders": [
+      "Safe",
+      "Thaumaturge",
+      "Wrong"
+    ],
+    "jinxes": [
+      {
+        "id": "assassin",
+        "reason": "The Assassin is unaffected by the Thaumaturge's ability, but still learns the two players that might be the Thaumaturge."
+      }
+    ]
+  },
+  "flowergirl",
+  "undertaker",
+  "philosopher",
+  {
+    "id": "lostlover",
+    "name": "Lost Lover",
+    "image": [
+      "http://menagerie.towerrangers.net/images/losg.png",
+      "http://menagerie.towerrangers.net/images/lose.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night, choose a living player (not yourself): if either chooses the Lost Lover, 1 learns the in-play Demon; the other, in-play Minions. If either guesses wrong, both get false info. [+Lost Lover]",
+    "flavor": "And she as much in love, her means much less / To meet her new belovèd anywhere / But passion lends them power, time means, to meet / Temp’ring extremities with extreme sweet.",
+    "firstNight": 46,
+    "otherNight": 57.5,
+    "firstNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "otherNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "reminders": [
+      "First",
+      "Wrong Info",
+      "Wrong Info",
+      "Lost Love Found"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "philosopher",
+        "reason": "If the Philosopher gains the Lost Lover ability, one Lost Lover is drunk, not both. If no other Lost Lover is in play, learn either an in-play Demon, or one in-play Minion."
+      },
+      {
+        "id": "pixie",
+        "reason": "If the Pixie is mad as the Lost Lover, they gain the ability if one Lost Lover dies."
+      }
+    ],
+    "special": [
+      {
+        "type": "selection",
+        "name": "bag-duplicate"
+      }
+    ]
+  },
+  {
+    "id": "swindler",
+    "name": "Swindler",
+    "image": [
+      "http://menagerie.towerrangers.net/images/swing.png",
+      "http://menagerie.towerrangers.net/images/swine.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, receive a good player's info and three players that may have sent it. That info is wrong for both players.",
+    "flavor": "Ho there - yes, you in the dirty apron! You look like a lucky fella. And you, miss! You with those lovely scissors in hand! Something tells me luck is on your side this fine day. Don't be scared, I don't bite. Now, watch closely as I place the ball under the cup...",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "From Night 2: Wake the Swindler and ask if they wish to use their ability. If they do, when a player of your choice receives info tonight, it is wrong: send a copy of that info to the Swindler. If no info is left to send, the Swindler learns nothing.",
+    "reminders": [
+      "Swindled",
+      "Wrong",
+      "Wrong",
+      "No Ability"
+    ],
+    "jinxes": [
+      {
+        "id": "spy",
+        "reason": "The Spy may register to the Swindler’s ability."
+      },
+      {
+        "id": "vortox",
+        "reason": "If a Vortox is in play, the Swindler produces and receives correct information."
+      }
+    ]
+  },
+  {
+    "id": "stowaway",
+    "name": "Stowaway",
+    "image": [
+      "http://menagerie.towerrangers.net/images/stog.png",
+      "http://menagerie.towerrangers.net/images/stoe.png"
+    ],
+    "team": "outsider",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "flavor": "Gods above, this crate is heavy!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "remindersGlobal": [
+      "Is The Stowaway"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "The Drunk cannot be a Stowaway."
+      }
+    ],
+    "special": [
+      {
+        "name": "replace-character",
+        "type": "reveal"
+      },
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "klutz",
+  "saint",
+  "mutant",
+  {
+    "id": "yang",
+    "name": "Yang",
+    "image": [
+      "http://menagerie.towerrangers.net/images/yang.png",
+      "http://menagerie.towerrangers.net/images/yane.png"
+    ],
+    "team": "outsider",
+    "ability": "If you are good, you might not die. Each night, choose a player different to last night: if good, they cannot die, but are drunk until dusk. If you are 'mad' about being an Outsider, you might be executed, even if dead.",
+    "flavor": "Water seeks to quench fire, but it must not linger, lest it boil.",
+    "firstNight": 30,
+    "otherNight": 31,
+    "firstNightReminder": "The Yang chooses a player. :reminder:",
+    "otherNightReminder": "The Yang chooses a player. :reminder:",
+    "reminders": [
+      "Safe & Drunk"
+    ],
+    "jinxes": [
+      {
+        "id": "marionette",
+        "reason": "The Marionette can neighbour the Yang."
+      }
+    ]
+  },
+  {
+    "id": "blackmailer",
+    "name": "Blackmailer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/ablae.png",
+      "http://menagerie.towerrangers.net/images/ablag.png"
+    ],
+    "team": "minion",
+    "ability": "Each night, choose two players. The first must vote with the second. If they do not, one or both might die.",
+    "flavor": "Even the most honourable person is forced to yield to blackmail once or twice in their life, if only to keep the peace. (Creator credit: Matt)",
+    "firstNight": 30,
+    "otherNight": 30,
+    "firstNightReminder": "The Blackmailer chooses two players. Place the 'First' token on the first player chosen, and the 'Second' token on the second player chosen.",
+    "otherNightReminder": "The Blackmailer chooses two players. Place the 'First' token on the first player chosen, and the 'Second' token on the second player chosen.",
+    "reminders": [
+      "First",
+      "Second"
+    ],
+    "jinxes": [
+      {
+        "id": "zealot",
+        "reason": "The Zealot, if forced to vote with another player, must still adhere to their own ability. Neither the Zealot or the Blackmailer's other target die as a result."
+      },
+      {
+        "id": "butler",
+        "reason": "The Butler, if forced to vote with another player, must still adhere to their own ability. Neither the Butler or the Blackmailer's other target die as a result."
+      }
+    ]
+  },
+  "pithag",
+  "baron",
+  {
+    "id": "doppelganger",
+    "name": "Doppelganger",
+    "image": [
+      "http://menagerie.towerrangers.net/images/dope.png",
+      "http://menagerie.towerrangers.net/images/dopg.png"
+    ],
+    "team": "minion",
+    "ability": "1 Townsfolk is poisoned and registers as an evil Minion. You learn a Townsfolk role and register as that role, and good: even if dead. One player knows the Doppelganger is one of two characters. [-1 or +1 Outsider]",
+    "flavor": "You think I am, therefore I am.",
+    "firstNight": 13,
+    "otherNight": 0,
+    "firstNightReminder": "Mark one Townsfolk as Duplicated :reminder:; note another in-play or out-of-play character as the other character to provide to a player. Wake that player, and tell them that the Doppelganger is the character marked as Duplicated, and the other character.",
+    "reminders": [
+      "Duplicated",
+      "Knows"
+    ],
+    "setup": true
+  },
+  "lilmonsta",
+  "legion",
+  {
+    "id": "patientzero",
+    "name": "Patient Zero",
+    "image": [
+      "http://menagerie.towerrangers.net/images/pate.png",
+      "http://menagerie.towerrangers.net/images/patg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, the nearest healthy, good neighbour of the most recently killed executee dies: the other is poisoned. Each day, if no living player is executed, evil wins.",
+    "flavor": "Subject is showing remarkable promise. We shall inject another dose and apply 10,000 volts in the hope that reanimation might occur. Subject’s extremities are black and atrophied - our data did not predict this. To attending partners: caution.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "All effects that took place last night are removed. The player marked 'Dead' is killed :reminder:. The player marked 'Poisoned' is poisoned :reminder:.",
+    "reminders": [
+      "Dead",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "soldier",
+        "reason": "The Soldier is safe from Patient Zero’s abilities: if one would target a Soldier, it jumps to the next player over instead."
+      },
+      {
+        "id": "tealady",
+        "reason": "If the Tea Lady’s ability would activate via execution, this fulfils Patient Zero’s condition around execution. If it would activate at night, good neighbours are safe from Patient Zero’s abilities, but effects jump to the next player over instead."
+      },
+      {
+        "id": "monk",
+        "reason": "The player protected by the Monk is safe from Patient Zero: poisoning or death jumps to the next player over instead."
+      }
+    ]
+  },
+  "thief",
+  "bureaucrat",
+  "barista",
+  "butcher",
+  "gunslinger",
+  "gardener",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

@@ -1,0 +1,201 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "True Colours",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/truclogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "apprentice",
+      "chameleon",
+      "minioninfo",
+      "demoninfo",
+      "poisoner",
+      "hypnox",
+      "devilsadvocate",
+      "empath",
+      "fortuneteller",
+      "clockmaker",
+      "ogre",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "innkeeper",
+      "harlot",
+      "bonecollector",
+      "poisoner",
+      "devilsadvocate",
+      "chameleon",
+      "gerrymanderer",
+      "hypnox",
+      "imp",
+      "vortox",
+      "gatekeeper",
+      "plaguedoctor",
+      "mime",
+      "moonchild",
+      "ravenkeeper",
+      "empath",
+      "fortuneteller",
+      "oracle",
+      "juggler",
+      "dawn"
+    ]
+  },
+  "clockmaker",
+  "empath",
+  "fortuneteller",
+  {
+    "id": "chameleon",
+    "name": "Chameleon",
+    "image": [
+      "http://menagerie.towerrangers.net/images/chamg.png",
+      "http://menagerie.towerrangers.net/images/chame.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, you gain a new ability and learn two roles it could belong to. Once per game, the ability is that of an Outsider or Minion.",
+    "flavor": "Every person has their own shape, shade and hue. I am all of them.",
+    "firstNight": 15,
+    "otherNight": 29,
+    "firstNightReminder": "Assign the Chameleon's role and wake the Chameleon at the point in the night order corresponding to that role. Show the Chameleon two roles prior to any further effects.",
+    "otherNightReminder": "Assign the Chameleon's role and wake the Chameleon at the point in the night order corresponding to that role. Show the Chameleon two roles prior to any further effects.",
+    "reminders": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "Minion",
+      "Outsider"
+    ]
+  },
+  "oracle",
+  "innkeeper",
+  {
+    "id": "gatekeeper",
+    "name": "Gatekeeper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/gatg.png",
+      "http://menagerie.towerrangers.net/images/gate.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night*, if you nominated today, learn one not-in-play character. [+0 or +1 Outsider]",
+    "flavor": "Halt! Who goes there?",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Gatekeeper nominated today, the Gatekeeper learns a not-in-play character.",
+    "reminders": [
+      "Nominated"
+    ],
+    "setup": true
+  },
+  "fisherman",
+  "juggler",
+  "ravenkeeper",
+  {
+    "id": "mime",
+    "name": "Mime",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mimg.png",
+      "http://menagerie.towerrangers.net/images/mime.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you are 'mad' as a good role today, learn if it is in play the next night.",
+    "flavor": "...! ...? ...?! ...! ...!",
+    "firstNight": 0,
+    "otherNight": 64,
+    "otherNightReminder": "If the Mime was successful during the day, wake them and nod or shake your head, depending on whether the role is in play.",
+    "reminders": [
+      "...!"
+    ]
+  },
+  "mayor",
+  "fool",
+  "ogre",
+  "plaguedoctor",
+  "moonchild",
+  "saint",
+  "poisoner",
+  "devilsadvocate",
+  "goblin",
+  {
+    "id": "gerrymanderer",
+    "name": "Gerrymanderer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/gere.png",
+      "http://menagerie.towerrangers.net/images/gerg.png"
+    ],
+    "team": "minion",
+    "ability": "If 5 or more players live, and 3 nominations failed today, choose a player tonight: they die.",
+    "flavor": "Stand up, and let every voice be heard! Mine especially.",
+    "firstNight": 0,
+    "otherNight": 57,
+    "otherNightReminder": "If the Gerrymanderer has the ‘Democracy Manifest’ reminder token :reminder:, wake the Gerrymanderer; they select a player.",
+    "reminders": [
+      "Failed 1st",
+      "Failed 2nd",
+      "Democracy Manifest"
+    ]
+  },
+  "imp",
+  "vortox",
+  {
+    "id": "hypnox",
+    "name": "Hypnox",
+    "image": [
+      "http://menagerie.towerrangers.net/images/hype.png",
+      "http://menagerie.towerrangers.net/images/hypg.png"
+    ],
+    "team": "demon",
+    "ability": "On Night 1, choose players equal to Minions +1: they are poisoned. Each night*, choose a player: they die. The first time you die at night, chosen players become sober evil Minions & one sober evil Hypnox. [No Minions]",
+    "flavor": "What is this but a play on suggestibility? Their addled mind wants this. You can’t make someone do something they don’t want to do. Or can you?",
+    "firstNight": 32,
+    "otherNight": 37,
+    "firstNightReminder": "Wake the Hypnox, and allow them to choose players equal to the number of Minions +1. :reminder:",
+    "otherNightReminder": "The Hypnox chooses a player. :reminder:",
+    "reminders": [
+      "Chosen",
+      "Chosen",
+      "Chosen",
+      "Chosen",
+      "Dead",
+      "Is The Demon"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "summoner",
+        "reason": "A Hypnox can not create a Summoner. If the Summoner creates a Hypnox, poisoned players are arbitrarily selected; the Summoner must be one of them."
+      }
+    ]
+  },
+  "harlot",
+  "bonecollector",
+  "apprentice",
+  "deviant",
+  "bishop",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

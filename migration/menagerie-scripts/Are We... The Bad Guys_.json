@@ -1,0 +1,365 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Are we... The Bad Guys?",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/awtbglogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "barista",
+      "doppelganger",
+      "wiretapper",
+      "magician",
+      "minioninfo",
+      "lunatic",
+      "summoner",
+      "demoninfo",
+      "marionette",
+      "snakecharmer",
+      "seiren",
+      "cerenovus",
+      "guardian",
+      "cartographer",
+      "dreamer",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "harlot",
+      "efreet",
+      "snakecharmer",
+      "cerenovus",
+      "summoner",
+      "seiren",
+      "blasphemer",
+      "lunatic",
+      "imp",
+      "fanggu",
+      "guardian",
+      "evangelist",
+      "disciple",
+      "houndmaster",
+      "sage",
+      "mime",
+      "prophet",
+      "dreamer",
+      "flowergirl",
+      "dawn"
+    ],
+    "bootlegger": [
+      "View running notes and homebrew almanac at menagerie.towerrangers.net"
+    ]
+  },
+  {
+    "id": "cartographer",
+    "name": "Cartographer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/carg.png",
+      "http://menagerie.towerrangers.net/images/care.png"
+    ],
+    "team": "townsfolk",
+    "ability": "You start knowing the largest number of living good players adjacent to each other.",
+    "flavor": "Live your life by a compass, not a clock.",
+    "firstNight": 47,
+    "otherNight": 0,
+    "firstNightReminder": "Show the Cartographer a number."
+  },
+  "snakecharmer",
+  "dreamer",
+  {
+    "id": "guardian",
+    "name": "Guardian",
+    "image": [
+      "http://menagerie.towerrangers.net/images/guag.png",
+      "http://menagerie.towerrangers.net/images/guae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, learn a player. From night 2, pick a player (not yourself). If the Demon chooses them at night, learn whether the Demon is a known player.",
+    "flavor": "Ahakoa he iti, he pounamu.",
+    "firstNight": 47,
+    "otherNight": 57.5,
+    "firstNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder:",
+    "otherNightReminder": "Show the Guardian one player. Mark that player with the *Known* token. :reminder: Ask the Guardian to pick a player. If that player was chosen by the Demon, nod or shake your head.",
+    "reminders": [
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Known",
+      "Learns Tonight"
+    ]
+  },
+  "flowergirl",
+  {
+    "id": "prophet",
+    "name": "Prophet",
+    "image": [
+      "http://menagerie.towerrangers.net/images/prog.png",
+      "http://menagerie.towerrangers.net/images/proe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each day, you may make a public statement about today’s executee. At night, you learn if it was true.",
+    "flavor": "I sense… a fair complexion, shoulder-length auburn hair… weathered hands… good of heart… it is you! The town washerwoman - today, you will meet your end! So say I, so shall it be.",
+    "firstNight": 0,
+    "otherNight": 65,
+    "otherNightReminder": "Give the Prophet a yes/no depending on whether their statement about the day’s executee was true. If no-one was executed today, do not wake the Prophet.",
+    "reminders": [
+      "Prophecised"
+    ]
+  },
+  {
+    "id": "evangelist",
+    "name": "Evangelist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/evag.png",
+      "http://menagerie.towerrangers.net/images/evae.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game*, at night, select a player. If they agree, they become the Disciple.",
+    "flavor": "Lost! Lost! Lost! Better a whole world on fire than a soul lost!",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "Wake the Evangelist and ask them if they want to use their ability. If they do, wake the player they choose and ask them if they wish to become the Disciple.",
+    "reminders": [
+      "No Ability",
+      "Chosen"
+    ]
+  },
+  {
+    "id": "disciple",
+    "name": "Disciple",
+    "image": [
+      "http://menagerie.towerrangers.net/images/disg.png",
+      "http://menagerie.towerrangers.net/images/dise.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On your first night, you learn if either of the Evangelist's living neighbours are evil.",
+    "flavor": "Thank you for being the shepherd that ushers me unto salvation.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "Wake the Disciple: nod or shake your head.",
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "If the Drunk becomes the Disciple, they remain drunk."
+      },
+      {
+        "id": "stowaway",
+        "reason": "If the Stowaway becomes the Disciple, they are drunk."
+      },
+      {
+        "id": "scarletwoman",
+        "reason": "If a living Demon becomes the Disciple and there are 5 or more players alive, this triggers the Scarlet Woman's ability. (Travellers don't count.)."
+      }
+    ],
+    "special": [
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  {
+    "id": "wiretapper",
+    "name": "Wire Tapper",
+    "image": [
+      "http://menagerie.towerrangers.net/images/wirg.png",
+      "http://menagerie.towerrangers.net/images/wire.png"
+    ],
+    "team": "townsfolk",
+    "ability": "On Night 1, if you use your ability, the Demon learns one in-play role as part of their bluffs, and 1 Townsfolk is drunk until dusk. The Demon learns you are in play.",
+    "flavor": "... .-.. .- -.-- . .-. .-.-.- / ... --- .-.. -.. .. . .-. .-.-.- / -- .- -.-- --- .-. .-.-.- (Creator credit: Matt)",
+    "firstNight": 15,
+    "otherNight": 0,
+    "firstNightReminder": "The Wire Tapper may use their ability. If they say yes, replace a Demon bluff with an in-play role (not the Wire Tapper). Mark one Townsfolk as Wires Crossed.",
+    "reminders": [
+      "Bluff",
+      "Wires Crossed"
+    ],
+    "jinxes": [
+      {
+        "id": "snitch",
+        "reason": "If the Snitch is in play, one Minion bluff is also affected by the Wire Tapper: no additional Townsfolk are made drunk."
+      }
+    ]
+  },
+  {
+    "id": "houndmaster",
+    "name": "Houndmaster",
+    "image": [
+      "http://menagerie.towerrangers.net/images/houg.png",
+      "http://menagerie.towerrangers.net/images/houe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, pick a player: you learn the number of steps from them to the nearest evil player.",
+    "flavor": "A hunter without a hound is an orchestra without a conductor.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Houndmaster dies at night, wake them and ask them to pick a player. Show them a number."
+  },
+  {
+    "id": "mime",
+    "name": "Mime",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mimg.png",
+      "http://menagerie.towerrangers.net/images/mime.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you are 'mad' as a good role today, learn if it is in play the next night.",
+    "flavor": "...! ...? ...?! ...! ...!",
+    "firstNight": 0,
+    "otherNight": 64,
+    "otherNightReminder": "If the Mime was successful during the day, wake them and nod or shake your head, depending on whether the role is in play.",
+    "reminders": [
+      "...!"
+    ]
+  },
+  "sage",
+  "virgin",
+  "magician",
+  "lunatic",
+  "recluse",
+  "mutant",
+  {
+    "id": "blasphemer",
+    "name": "Blasphemer",
+    "image": [
+      "http://menagerie.towerrangers.net/images/blag.png",
+      "http://menagerie.towerrangers.net/images/blae.png"
+    ],
+    "team": "outsider",
+    "ability": "The first Townsfolk you speak to privately becomes a not-in-play Outsider if you die. If you die without speaking to a Townsfolk, or if all Outsiders are in play, another player might die that night.",
+    "flavor": "Alas, my wounds are mortal. With my dying breath, I cast thee out!",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Blasphemer has died today or tonight, wake the Townsfolk marked 'Doomed' and show them the YOU ARE token. Assign them a not-in-play Outsider role.",
+    "reminders": [
+      "Doomed",
+      "Turns Tonight",
+      "Dead"
+    ]
+  },
+  "cerenovus",
+  "marionette",
+  "summoner",
+  {
+    "id": "efreet",
+    "name": "Efreet",
+    "image": [
+      "http://menagerie.towerrangers.net/images/efre.png",
+      "http://menagerie.towerrangers.net/images/efrg.png"
+    ],
+    "team": "minion",
+    "ability": "The first time a Minion dies by execution (not yourself), they become good, but are not told. Choose a player: if good, they turn evil, and learn this. You might register as a different Minion, even if dead.",
+    "flavor": "You have outlived your usefulness. Make room for another.",
+    "firstNight": 0,
+    "otherNight": 8.5,
+    "otherNightReminder": "If a Minion was executed during the day and is marked with 'Turns Good' :reminder:, change their alignment but do not inform them. Wake the Efreet, and ask them to choose a player. If good, they turn evil. Inform that player of their alignment change.",
+    "reminders": [
+      "Turns Good",
+      "Turns Evil"
+    ]
+  },
+  {
+    "id": "doppelganger",
+    "name": "Doppelganger",
+    "image": [
+      "http://menagerie.towerrangers.net/images/dope.png",
+      "http://menagerie.towerrangers.net/images/dopg.png"
+    ],
+    "team": "minion",
+    "ability": "1 Townsfolk is poisoned and registers as an evil Minion. You learn a Townsfolk role and register as that role, and good: even if dead. One player knows the Doppelganger is one of two characters. [-1 or +1 Outsider]",
+    "flavor": "You think I am, therefore I am.",
+    "firstNight": 13,
+    "otherNight": 0,
+    "firstNightReminder": "Mark one Townsfolk as Duplicated :reminder:; note another in-play or out-of-play character as the other character to provide to a player. Wake that player, and tell them that the Doppelganger is the character marked as Duplicated, and the other character.",
+    "reminders": [
+      "Duplicated",
+      "Knows"
+    ],
+    "setup": true
+  },
+  {
+    "id": "seiren",
+    "name": "Seiren",
+    "image": [
+      "http://menagerie.towerrangers.net/images/seie.png",
+      "http://menagerie.towerrangers.net/images/seig.png"
+    ],
+    "team": "demon",
+    "ability": "Each night, choose a player: they become your alignment. The previously changed player dies: they swap back before dawn, even if the Seiren is drunk. Anyone 'mad' about being evil might be executed. [-1 Minion]",
+    "flavor": "It is said their song is honey-sweet, carried on rotten air. Among the salt and carrion, it is a tonic that heals and soothes. Pray you never hear it.",
+    "firstNight": 41,
+    "otherNight": 37,
+    "firstNightReminder": "The Seiren selects a player: mark them with the 'Turned' reminder, wake them, and inform them of their new alignment. :reminder:",
+    "otherNightReminder": "The Seiren selects a player: mark them with the 'Turned' reminder, wake them, and inform them of their new alignment. :reminder: The previously turned character dies; inform them that they are their previous alignment before the next day begins.",
+    "reminders": [
+      "Turned",
+      "Dead"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "eviltwin",
+        "reason": "The Evil Twin's good player still counts as good for the purposes of the Evil Twin's ability when turned by the Seiren."
+      },
+      {
+        "id": "monk",
+        "reason": "The Monk's ability fails if they try to protect a player already turned evil by the Seiren. "
+      }
+    ]
+  },
+  "imp",
+  "fanggu",
+  "barista",
+  "harlot",
+  "scapegoat",
+  "bishop",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

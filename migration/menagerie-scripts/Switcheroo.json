@@ -1,0 +1,249 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Switcheroo",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/swilogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "barista",
+      "philosopher",
+      "minioninfo",
+      "summoner",
+      "demoninfo",
+      "marionette",
+      "godfather",
+      "counterfeiter",
+      "harpy",
+      "pixie",
+      "librarian",
+      "empath",
+      "fortuneteller",
+      "mathematician",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "bonecollector",
+      "philosopher",
+      "gambler",
+      "harpy",
+      "baku",
+      "lycanthrope",
+      "counterfeiter",
+      "fanggu",
+      "vortox",
+      "summoner",
+      "madscientist",
+      "godfather",
+      "houndmaster",
+      "swindler",
+      "hatter",
+      "barber",
+      "plaguedoctor",
+      "empath",
+      "fortuneteller",
+      "juggler",
+      "mathematician",
+      "dawn"
+    ]
+  },
+  "librarian",
+  "pixie",
+  "empath",
+  "mathematician",
+  "fortuneteller",
+  "gambler",
+  "lycanthrope",
+  "philosopher",
+  {
+    "id": "swindler",
+    "name": "Swindler",
+    "image": [
+      "http://menagerie.towerrangers.net/images/swing.png",
+      "http://menagerie.towerrangers.net/images/swine.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night*, receive a good player's info and three players that may have sent it. That info is wrong for both players.",
+    "flavor": "Ho there - yes, you in the dirty apron! You look like a lucky fella. And you, miss! You with those lovely scissors in hand! Something tells me luck is on your side this fine day. Don't be scared, I don't bite. Now, watch closely as I place the ball under the cup...",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "From Night 2: Wake the Swindler and ask if they wish to use their ability. If they do, when a player of your choice receives info tonight, it is wrong: send a copy of that info to the Swindler. If no info is left to send, the Swindler learns nothing.",
+    "reminders": [
+      "Swindled",
+      "Wrong",
+      "Wrong",
+      "No Ability"
+    ],
+    "jinxes": [
+      {
+        "id": "spy",
+        "reason": "The Spy may register to the Swindler’s ability."
+      },
+      {
+        "id": "vortox",
+        "reason": "If a Vortox is in play, the Swindler produces and receives correct information."
+      }
+    ]
+  },
+  "juggler",
+  "cannibal",
+  {
+    "id": "houndmaster",
+    "name": "Houndmaster",
+    "image": [
+      "http://menagerie.towerrangers.net/images/houg.png",
+      "http://menagerie.towerrangers.net/images/houe.png"
+    ],
+    "team": "townsfolk",
+    "ability": "If you die at night, pick a player: you learn the number of steps from them to the nearest evil player.",
+    "flavor": "A hunter without a hound is an orchestra without a conductor.",
+    "firstNight": 0,
+    "otherNight": 57.5,
+    "otherNightReminder": "If the Houndmaster dies at night, wake them and ask them to pick a player. Show them a number."
+  },
+  "virgin",
+  "plaguedoctor",
+  "barber",
+  "hatter",
+  {
+    "id": "eccentric",
+    "name": "Eccentric",
+    "image": [
+      "http://menagerie.towerrangers.net/images/eccg.png",
+      "http://menagerie.towerrangers.net/images/ecce.png"
+    ],
+    "team": "outsider",
+    "ability": "If you are nominated by evil and executed, your team loses. Anyone 'mad' that you are in play might die. You cannot self-nominate. [Your token is a square]",
+    "flavor": "Up is down! Left is right! Day is night! I am not me! I am you! Or are you me? Wait, I'm me? Round and round we go... Oh ho!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "jinxes": [
+      {
+        "id": "lycanthrope",
+        "reason": "The Faux Paw nominating the Eccentric does not trigger the Eccentric's ability."
+      },
+      {
+        "id": "spy",
+        "reason": "If the Spy and the Eccentric is in play, the Eccentric is drunk."
+      },
+      {
+        "id": "widow",
+        "reason": "If the Widow and the Eccentric is in play, the Eccentric is drunk."
+      }
+    ]
+  },
+  "godfather",
+  "harpy",
+  {
+    "id": "counterfeiter",
+    "name": "Counterfeiter",
+    "image": [
+      "http://menagerie.towerrangers.net/images/coue.png",
+      "http://menagerie.towerrangers.net/images/coug.png"
+    ],
+    "team": "minion",
+    "ability": "On Nights 1 and 2, you see the Grimoire, with characters removed: you may move 1 unique reminder token in play.",
+    "flavor": "If you're not cheating, you're not trying. (Creator credit: George)",
+    "firstNight": 32.5,
+    "otherNight": 38.5,
+    "firstNightReminder": "Remove characters from the Grimoire (including bluffs) and show the Counterfieter the Grimoire. They may move 1 unique reminder token they see.",
+    "otherNightReminder": "Remove characters from the Grimoire (including bluffs) and show the Counterfieter the Grimoire. They may move 1 unique reminder token they see.",
+    "jinxes": [
+      {
+        "id": "cannibal",
+        "reason": "If the Counterfeiter moves the Lunch token :reminder: to an evil player, it becomes the Cannibal's Poisoned token :reminder:."
+      },
+      {
+        "id": "marionette",
+        "reason": "If the Counterfeiter moves the Is The Marionette token :reminder: from the evil Marionette to a good player, that player becomes the evil Marionette: the previous Marionette turns good and regains their ability."
+      },
+      {
+        "id": "cerenovus",
+        "reason": "If the Counterfeiter moves the Mad token :reminder:, the player it moves to is informed that they are mad as the character the Cerenovus chose."
+      },
+      {
+        "id": "harpy",
+        "reason": "If the Counterfeiter moves the Mad token :reminder:, the player it moves to is informed that they are mad at the same player the Harpy chose. If they move the 2nd token :reminder: the player with the Mad token is informed their target has changed."
+      },
+      {
+        "id": "blackmailer",
+        "reason": "If the Counterfeiter moves the First token :reminder:, the player it moves to is informed that they must vote with the same player the Blackmailer chose. If they move the Second token :reminder: the player with the First token is informed their target has changed."
+      }
+    ],
+    "special": [
+      {
+        "type": "signal",
+        "name": "grimoire",
+        "time": "night"
+      }
+    ]
+  },
+  "marionette",
+  "summoner",
+  {
+    "id": "baku",
+    "name": "Baku",
+    "image": [
+      "http://menagerie.towerrangers.net/images/bake.png",
+      "http://menagerie.towerrangers.net/images/bakg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. One Townsfolk you speak to yields false information until dawn.",
+    "flavor": "If you hear the whispers that float on the wind, they may not hear your screams.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Baku chooses a player. :reminder:",
+    "reminders": [
+      "False Info",
+      "Dead"
+    ]
+  },
+  "vortox",
+  "fanggu",
+  "barista",
+  {
+    "id": "madscientist",
+    "name": "Mad Scientist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/sci.png",
+      "http://menagerie.towerrangers.net/images/scig.png",
+      "http://menagerie.towerrangers.net/images/scie.png"
+    ],
+    "team": "traveller",
+    "ability": "Each night*, choose a dead player. They are poisoned and alive until dusk.",
+    "flavor": "It's alive... it's alive!",
+    "firstNight": 0,
+    "otherNight": 50,
+    "otherNightReminder": "The Mad Scientist chooses a dead player. :reminder:",
+    "reminders": [
+      "It's Alive!"
+    ]
+  },
+  "butcher",
+  "bonecollector",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token :reminder:.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "gardener",
+  "bootlegger"
+]

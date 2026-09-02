@@ -1,0 +1,204 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Balance In All Things",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/ballogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "yang",
+      "poisoner",
+      "godfather",
+      "witch",
+      "pixie",
+      "washerwoman",
+      "librarian",
+      "empath",
+      "seamstress",
+      "balloonist",
+      "highpriestess",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "harlot",
+      "poisoner",
+      "witch",
+      "yang",
+      "yinyang",
+      "yin",
+      "exorcist",
+      "fanggu",
+      "assassin",
+      "godfather",
+      "gossip",
+      "hatter",
+      "plaguedoctor",
+      "ravenkeeper",
+      "empath",
+      "flowergirl",
+      "seamstress",
+      "balloonist",
+      "highpriestess",
+      "dawn"
+    ]
+  },
+  "washerwoman",
+  "librarian",
+  "pixie",
+  "empath",
+  "highpriestess",
+  "balloonist",
+  "flowergirl",
+  "exorcist",
+  "gossip",
+  "savant",
+  "seamstress",
+  "ravenkeeper",
+  "pacifist",
+  {
+    "id": "stowaway",
+    "name": "Stowaway",
+    "image": [
+      "http://menagerie.towerrangers.net/images/stog.png",
+      "http://menagerie.towerrangers.net/images/stoe.png"
+    ],
+    "team": "outsider",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "flavor": "Gods above, this crate is heavy!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "remindersGlobal": [
+      "Is The Stowaway"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "The Drunk cannot be a Stowaway."
+      }
+    ],
+    "special": [
+      {
+        "name": "replace-character",
+        "type": "reveal"
+      },
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "plaguedoctor",
+  "hatter",
+  "mutant",
+  {
+    "id": "yang",
+    "name": "Yang",
+    "image": [
+      "http://menagerie.towerrangers.net/images/yang.png",
+      "http://menagerie.towerrangers.net/images/yane.png"
+    ],
+    "team": "outsider",
+    "ability": "If you are good, you might not die. Each night, choose a player different to last night: if good, they cannot die, but are drunk until dusk. If you are 'mad' about being an Outsider, you might be executed, even if dead.",
+    "flavor": "Water seeks to quench fire, but it must not linger, lest it boil.",
+    "firstNight": 30,
+    "otherNight": 31,
+    "firstNightReminder": "The Yang chooses a player. :reminder:",
+    "otherNightReminder": "The Yang chooses a player. :reminder:",
+    "reminders": [
+      "Safe & Drunk"
+    ],
+    "jinxes": [
+      {
+        "id": "marionette",
+        "reason": "The Marionette can neighbour the Yang."
+      }
+    ]
+  },
+  "godfather",
+  "poisoner",
+  "witch",
+  "assassin",
+  "marionette",
+  {
+    "id": "yinyang",
+    "name": "Yin-Yang",
+    "image": [
+      "http://menagerie.towerrangers.net/images/yyae.png",
+      "http://menagerie.towerrangers.net/images/yyag.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose two players: at least one, or both, die. Yin learns who you are.",
+    "flavor": "Opposites, when combined, can create something greater than themselves alone.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "Yin-Yang chooses two players. :reminder:",
+    "reminders": [
+      "Dead",
+      "Dead"
+    ],
+    "jinxes": [
+      {
+        "id": "hatter",
+        "reason": "The Yin-Yang cannot be swapped to as part of the Hatter's ability."
+      }
+    ],
+    "special": [
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "fanggu",
+  {
+    "id": "yin",
+    "name": "Yin",
+    "image": [
+      "http://menagerie.towerrangers.net/images/yine.png",
+      "http://menagerie.towerrangers.net/images/ying.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. If you choose Yang, they become evil, then swap characters with you. If 5 or more players remain and you die, a living Yang becomes an evil Yin-Yang. [-1 Minion, +Yang]",
+    "flavor": "Water may quell a fire, but in the end, the storm comes, and what is a storm if not water’s surrender to the fire?",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Yin chooses a player. :reminder:",
+    "reminders": [
+      "Dead",
+      "Swap"
+    ],
+    "setup": true
+  },
+  "harlot",
+  "gunslinger",
+  "judge",
+  "bishop",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "gardener",
+  "bootlegger"
+]

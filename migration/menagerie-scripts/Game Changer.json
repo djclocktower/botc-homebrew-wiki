@@ -1,0 +1,261 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Game Changer",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/gclogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "barista",
+      "philosopher",
+      "poppygrower",
+      "minioninfo",
+      "chatterpox",
+      "demoninfo",
+      "sailor",
+      "lilmonsta",
+      "Arbiter",
+      "lleech",
+      "cerenovus",
+      "fearmonger",
+      "harpy",
+      "thrall",
+      "chef",
+      "fortuneteller",
+      "balloonist",
+      "mechanicalman",
+      "highpriestess",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "barista",
+      "chatterpox",
+      "harlot",
+      "philosopher",
+      "poppygrower",
+      "sailor",
+      "gambler",
+      "cerenovus",
+      "Arbiter",
+      "thrall",
+      "vigormortis",
+      "harpy",
+      "fearmonger",
+      "lleech",
+      "lilmonsta",
+      "barber",
+      "mechanicalman",
+      "ravenkeeper",
+      "fortuneteller",
+      "juggler",
+      "balloonist",
+      "highpriestess",
+      "dawn"
+    ]
+  },
+  "chef",
+  "highpriestess",
+  "sailor",
+  "balloonist",
+  "fortuneteller",
+  {
+    "id": "mechanicalman",
+    "name": "Mechanical Man",
+    "image": [
+      "http://menagerie.towerrangers.net/images/mecg.png",
+      "http://menagerie.towerrangers.net/images/mece.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Each night, receive a task from the Storyteller. If completed before dusk, receive information about the game that night.",
+    "flavor": "6reetin(g)s, Ma5ter. 1 live 7o /serve/. I /serve/ to liv3. Aw4iting inpu7.",
+    "firstNight": 65,
+    "otherNight": 70,
+    "firstNightReminder": "Give the Mechanical Man a task that they must complete. This task can be completed the following day, or any subsequent day.",
+    "otherNightReminder": "If the Mechanical Man has completed their task, provide information about the game and give the Mechanical Man a new task that they must complete. If no task was completed, only give a new task.",
+    "reminders": [
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task",
+      "Task Complete"
+    ]
+  },
+  "gambler",
+  "savant",
+  "philosopher",
+  "fisherman",
+  "juggler",
+  "ravenkeeper",
+  "poppygrower",
+  {
+    "id": "thrall",
+    "name": "Thrall",
+    "image": [
+      "http://menagerie.towerrangers.net/images/thrg.png",
+      "http://menagerie.towerrangers.net/images/thre.png"
+    ],
+    "team": "outsider",
+    "ability": "Once per game, a Minion may give you a task until dusk. If 5 or more players live and you fail or reveal the task, even if dead, the Demon gains a Minion ability.",
+    "flavor": "Evil doesn't always look like a monster. Sometimes, it just looks like someone following orders.",
+    "firstNight": 47,
+    "otherNight": 57.5,
+    "firstNightReminder": "Inform a Minion of your choice that the Thrall is in play. Wake that Minion and ask if they wish to give the Thrall a task.",
+    "otherNightReminder": "Wake the Minion that learned of a Thrall and ask if they wish to give the Thrall a task. If the Thrall failed or revealed their task, inform the Demon of the Minion ability they have gained.",
+    "reminders": [
+      "Tasked",
+      "Knows"
+    ],
+    "jinxes": [
+      {
+        "id": "eviltwin",
+        "reason": "The Demon cannot gain the Evil Twin ability."
+      },
+      {
+        "id": "goblin",
+        "reason": "If the Thrall fails their task, a living Minion gains the Goblin ability in addition to their own ability, and learns this."
+      },
+      {
+        "id": "scarletwoman",
+        "reason": "If the Thrall fails their task, a living Minion gains the Scarlet Woman ability in addition to their own ability, and learns this."
+      },
+      {
+        "id": "boomdandy",
+        "reason": "If the Thrall fails their task, a living Minion gains the Boomdandy ability in addition to their own ability, and learns this."
+      },
+      {
+        "id": "baron",
+        "reason": "If the Thrall fails their task, a living Townsfolk becomes the Thrall."
+      },
+      {
+        "id": "marionette",
+        "reason": "If the Demon has a neighbour who is alive and a Townsfolk or Outsider when the Thrall has failed their task, that player becomes an evil Marionette. If there is already an extra evil player, this does not happen."
+      }
+    ]
+  },
+  "drunk",
+  {
+    "id": "missionary",
+    "name": "Missionary",
+    "image": [
+      "http://menagerie.towerrangers.net/images/misg.png",
+      "http://menagerie.towerrangers.net/images/mise.png"
+    ],
+    "team": "outsider",
+    "ability": "You must ask the player you wish to nominate for permission. If you nominate without permission, you might die that night.",
+    "flavor": "Hello there! Could you spare a moment to learn about our lord and-- ah, of course, have a nice day.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "barber",
+  "harpy",
+  "cerenovus",
+  "fearmonger",
+  {
+    "id": "Arbiter",
+    "name": "Arbiter",
+    "image": [
+      "http://menagerie.towerrangers.net/images/taske.png",
+      "http://menagerie.towerrangers.net/images/taskg.png"
+    ],
+    "team": "minion",
+    "ability": "Each night, you may make a rule, agreed to by the Storyteller. If a good player breaks that rule, at night, choose a player: they die.",
+    "flavor": "I am the law, so, I won. (Creator credit: Mega)",
+    "firstNight": 30,
+    "otherNight": 30,
+    "firstNightReminder": "If the Arbiter uses their ability, negotiate a rule with them. Once agreed, announce it during the night. It takes effect immediately.",
+    "otherNightReminder": "The Arbiter selects a player to kill if a rule was broken. :reminder: If the Arbiter uses their ability, negotiate a rule with them. Once agreed, announce it during the night, even if unchanged. It takes effect immediately.",
+    "reminders": [
+      "Rule",
+      "Rule",
+      "Rule",
+      "Rule",
+      "Rule",
+      "Penalty"
+    ],
+    "jinxes": [
+      {
+        "id": "zealot",
+        "reason": "If the Arbiter's rule would conflict with the Zealot's ability, the Zealot is deemed to not have broken a rule."
+      },
+      {
+        "id": "butler",
+        "reason": "If the Arbiter's rule would conflict with the Butler's ability, the Butler is deemed to not have broken a rule."
+      },
+      {
+        "id": "golem",
+        "reason": "If the Arbiter's rule would conflict with the Golem's ability, the Golem is deemed to not have broken a rule."
+      },
+      {
+        "id": "thrall",
+        "reason": "If the Arbiter's rule would conflict with the Thrall's task, the Thrall is deemed to not have broken a rule."
+      },
+      {
+        "id": "alchemist",
+        "reason": "The Alchemist registers as evil to their own ability."
+      }
+    ]
+  },
+  {
+    "id": "chatterpox",
+    "name": "Chatterpox",
+    "image": [
+      "http://menagerie.towerrangers.net/images/dume.png",
+      "http://menagerie.towerrangers.net/images/dumg.png"
+    ],
+    "team": "minion",
+    "ability": "Minion and Demon abilities may be falsely shown or announced to players. They may malfunction in some way.",
+    "flavor": "Hey Gerald, didja ever hear the one about the beermonger hiding as the town's innkeeper? They called him the fearmonger! Wait, is that how it goes? Hey, you try gettin' the words out right with a hand up your--",
+    "firstNight": 19,
+    "otherNight": 8,
+    "firstNightReminder": "Show, or announce a Minion or Demon ability as they would normally: you may break the rules or change the phrasing of these abilities.",
+    "otherNightReminder": "Show, or announce a Minion or Demon ability as they would normally: you may break the rules or change the phrasing of these abilities."
+  },
+  "lilmonsta",
+  "vigormortis",
+  "lleech",
+  "barista",
+  "harlot",
+  "deviant",
+  "bishop",
+  {
+    "id": "taxidermist",
+    "name": "Taxidermist",
+    "image": [
+      "http://menagerie.towerrangers.net/images/tax.png",
+      "http://menagerie.towerrangers.net/images/taxg.png",
+      "http://menagerie.towerrangers.net/images/taxe.png"
+    ],
+    "team": "traveller",
+    "ability": "Dead votes can be used to nominate. If you die, travel out or are exiled, choose 1-3 players: they regain their vote token.",
+    "flavor": "The difference between the tax man and the taxidermist is that the taxidermist leaves the skin.",
+    "firstNight": 0,
+    "otherNight": 0
+  },
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]
