@@ -2064,14 +2064,29 @@ function normCreator(s) { return String(s == null ? '' : s).trim().toLowerCase()
 function creditMatchSQL(col) {
   return `instr(',' || replace(replace(lower(trim(${col})), ' ,', ','), ', ', ',') || ',', ',' || ? || ',') > 0`;
 }
-/* A page whose owner ticked "this credit isn't mine" (`creditUnlinked` on its
-   data) proves nothing about who the credited name is. Somebody uploading
-   another creator's character on their behalf still OWNS the row — they made
-   it, they maintain it — and without this every such upload quietly claimed
-   that creator's name for the uploader's account: /author?a=Moll 302'd to the
-   uploader's profile, and Moll's other pages were gathered onto it. So every
-   ownership query below skips those rows, and the name renders its own
-   accountless creator page exactly as a bulk-imported one does.
+/* "This credit isn't mine" (`creditUnlinked` on a page's data). Somebody
+   uploading another creator's character on their behalf still OWNS the row —
+   they made the page, they maintain it — and without this every such upload
+   quietly claimed that creator's name for the uploader's account:
+   /author?a=Moll 302'd to the uploader's profile, and Moll's other pages were
+   gathered onto it.
+
+   **The tick is a statement about the NAME, not about the one page it was
+   made on**, and that is the whole of the rule: an account that has ticked it
+   on ANY page it owns under a credit cannot claim that credit at all, however
+   many other pages it owns under the same one. It was per-page first and that
+   was useless in practice — four characters credited to "Kinky Clocktower",
+   the box ticked on one, and the other three went on proving ownership, so
+   the name still resolved to the uploader. Nobody ticks it meaning "this one
+   Kinky Clocktower page isn't mine but those three are"; somebody who really
+   is credited alongside a name on some pages and not others writes a
+   different credit, which is what the credit string is for.
+
+   So `CREDIT_UNLINKED_SQL` is a per-row test and `CREDIT_DISOWNED_COUNT` is
+   what the ownership queries actually group by: an owner whose count is above
+   zero is out of the running for that name entirely. Untick it everywhere and
+   the name links back — nothing is stored per name, so there is no second
+   record to keep in step.
 
    The flag lives in the JSON blob, and the test is a substring of it rather
    than json_extract(). JSON.stringify spells the pair `"creditUnlinked":true`
@@ -2080,8 +2095,11 @@ function creditMatchSQL(col) {
    the sequence can only ever be the real key. json_extract() would be tidier
    and throws on a row whose `data` is not valid JSON, taking the whole query
    with it; the same reasoning as the LIKE '%"related"%' narrowing in
-   /api/page. */
-const CREDIT_LINKED_SQL = `(data IS NULL OR instr(data, '"creditUnlinked":true') = 0)`;
+   /api/page. `data IS NOT NULL` first keeps a NULL blob out of instr()
+   rather than letting it make the whole clause NULL. */
+const CREDIT_UNLINKED_SQL = `(data IS NOT NULL AND instr(data, '"creditUnlinked":true') > 0)`;
+const CREDIT_LINKED_SQL = `(NOT ${CREDIT_UNLINKED_SQL})`;
+const CREDIT_DISOWNED_COUNT = `SUM(CASE WHEN ${CREDIT_UNLINKED_SQL} THEN 1 ELSE 0 END)`;
 
 // The same test against a list of names: one bind per name.
 function creditAnySQL(col, n) {
@@ -2129,23 +2147,40 @@ async function resolveCreatorAccount(env, name) {
   // so counting drafts would let anyone claim any name by saving an unpublished
   // page credited to it. Ties break on the lowest user id; an admin alias is
   // how you settle a genuine clash between two people using the same handle.
+  // An account that has DISOWNED the name is skipped whatever its count — see
+  // CREDIT_UNLINKED_SQL. Both tables are read together rather than characters
+  // first and scripts only on a miss, because a disown recorded on a script
+  // has to reach a decision the characters would otherwise settle on their
+  // own; the whole answer is behind cachedCreatorAccount either way.
   try {
-    const hit = await env.DB.prepare(
-      `SELECT owner_id, COUNT(*) AS n FROM characters
-        WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
-          AND ${CREDIT_LINKED_SQL}
-        GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
-    ).bind(key).first();
-    let ownerId = hit && hit.owner_id;
-    if (!ownerId) {
-      const s = await env.DB.prepare(
-        `SELECT owner_id, COUNT(*) AS n FROM scripts
+    const [chars, scripts] = await Promise.all([
+      env.DB.prepare(
+        `SELECT owner_id, COUNT(*) AS n, ${CREDIT_DISOWNED_COUNT} AS dis FROM characters
+          WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
+          GROUP BY owner_id`
+      ).bind(key).all(),
+      env.DB.prepare(
+        `SELECT owner_id, COUNT(*) AS n, ${CREDIT_DISOWNED_COUNT} AS dis FROM scripts
           WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('author')}
-            AND ${CREDIT_LINKED_SQL}
-          GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
-      ).bind(key).first();
-      ownerId = s && s.owner_id;
+          GROUP BY owner_id`
+      ).bind(key).all()
+    ]);
+    const charRows = chars.results || [], scriptRows = scripts.results || [];
+    // One disown anywhere takes the account out of the running for this name.
+    const disowned = new Set();
+    for (const r of [...charRows, ...scriptRows]) {
+      if (Number(r.dis) > 0) disowned.add(Number(r.owner_id));
     }
+    const pick = rows => {
+      let best = null;
+      for (const r of rows) {
+        if (disowned.has(Number(r.owner_id))) continue;
+        if (!best || r.n > best.n || (r.n === best.n && r.owner_id < best.owner_id)) best = r;
+      }
+      return best ? best.owner_id : null;
+    };
+    // Characters still win over scripts, exactly as they did before.
+    const ownerId = pick(charRows) || pick(scriptRows);
     if (!ownerId) return null;
     return await env.DB.prepare(
       'SELECT id, username, display_name, bio, avatar_url, created_at FROM users WHERE id=?'
@@ -2175,22 +2210,28 @@ async function cachedCreatorAccount(env, ctx, name) {
 
 // An account -> every creator name it has published under (proof by ownership),
 // plus any name an admin has pointed at it. Lower-cased for comparison; the
-// display spelling comes off the pages themselves.
+// display spelling comes off the pages themselves. `disowned` is the other
+// half of the same read: the names this account has ticked "not mine" on, which
+// /api/user needs to keep those pages off the account's own creator page.
 async function creatorNamesFor(env, userId, username) {
   const names = new Set();
+  const disowned = new Set();
   try {
     // Published only, for the same reason resolveCreatorAccount insists on it:
-    // a draft nobody else can see must not be able to claim a name. And an
-    // unlinked credit claims nothing either — see CREDIT_LINKED_SQL.
+    // a draft nobody else can see must not be able to claim a name. Not
+    // DISTINCT any more: the disown flag is per row, and one ticked page is
+    // enough to give up the name (see CREDIT_UNLINKED_SQL).
     const [chars, scripts] = await Promise.all([
-      env.DB.prepare(`SELECT DISTINCT creator AS n FROM characters WHERE owner_id=? AND status='published' AND ${CREDIT_LINKED_SQL}`).bind(userId).all(),
-      env.DB.prepare(`SELECT DISTINCT author AS n FROM scripts WHERE owner_id=? AND status='published' AND ${CREDIT_LINKED_SQL}`).bind(userId).all()
+      env.DB.prepare(`SELECT creator AS n, ${CREDIT_UNLINKED_SQL} AS dis FROM characters WHERE owner_id=? AND status='published'`).bind(userId).all(),
+      env.DB.prepare(`SELECT author AS n, ${CREDIT_UNLINKED_SQL} AS dis FROM scripts WHERE owner_id=? AND status='published'`).bind(userId).all()
     ]);
     // Split each credit: co-authoring a page claims the name you were credited
     // under, not the whole "Taiyi (太一), Saki" string.
     for (const r of [...(chars.results || []), ...(scripts.results || [])]) {
-      for (const n of creditNames(r.n)) names.add(n);
+      for (const n of creditNames(r.n)) (Number(r.dis) ? disowned : names).add(n);
     }
+    // A disown beats any number of pages that did not tick it.
+    for (const n of disowned) names.delete(n);
   } catch { /* leave whatever we got */ }
   try {
     const { results } = await env.DB.prepare(
@@ -2204,11 +2245,13 @@ async function creatorNamesFor(env, userId, username) {
       // empty value ("nobody") and a different username both un-link it here,
       // even from an account that owns published pages under it. Without this,
       // reassigning a shared handle would leave it claimed twice.
-      if (normCreator(r.value) === normCreator(username)) names.add(n);
+      // An admin alias is still the last word, so it re-grants a name the
+      // account disowned as readily as one it never proved.
+      if (normCreator(r.value) === normCreator(username)) { names.add(n); disowned.delete(n); }
       else names.delete(n);
     }
   } catch { /* no aliases set */ }
-  return [...names];
+  return { names: [...names], disowned: [...disowned] };
 }
 
 // ---- page-view counter (analytics; bots filtered, 180-day retention) ----
@@ -5768,8 +5811,12 @@ export default {
         }
       }
 
-      // Every creator name this page covers, lower-cased for matching.
-      const names = u ? await creatorNamesFor(env, u.id, u.username) : [];
+      // Every creator name this page covers, lower-cased for matching, plus
+      // the names this account has ticked "not mine" — those pages come off
+      // its own creator page even though it still owns them.
+      const claims = u ? await creatorNamesFor(env, u.id, u.username) : { names: [], disowned: [] };
+      const names = claims.names;
+      const disowned = claims.disowned;
       if (aname && !names.includes(normCreator(aname))) names.push(normCreator(aname));
 
       // Drafts are for the people who can do something about them: the owner
@@ -5782,19 +5829,27 @@ export default {
       // account owns but credited to somebody else, and one credited to this
       // name but owned by nobody (the bulk-imported case).
       //
-      // The owner half skips a page whose credit its owner unlinked: "this is
+      // The owner half skips a page whose credit its owner disowned: "this is
       // not my work" has to mean it off their creator page too, or the pages
       // would go on being listed as theirs while the credit line beside them
-      // pointed somewhere else. It is still listed on the creator page for the
-      // name it credits (the second clause finds it there), and still on its
-      // owner's account page, which is where they manage it.
+      // pointed somewhere else. Two tests, because they catch different rows:
+      // the NAME test takes the whole credit off (the three siblings nobody
+      // ticked), and the per-row one still catches a ticked DRAFT, whose
+      // credit is not disowned because drafts prove nothing either way.
+      // Each page is still listed on the creator page for the name it credits
+      // (the second clause finds it there), and still on its owner's account
+      // page, which is where they manage it.
       function whereFor(nameCol) {
         const clauses = [];
-        if (u) clauses.push(`(owner_id=? AND ${CREDIT_LINKED_SQL})`);
+        if (u) {
+          clauses.push(disowned.length
+            ? `(owner_id=? AND ${CREDIT_LINKED_SQL} AND NOT ${creditAnySQL(nameCol, disowned.length)})`
+            : `(owner_id=? AND ${CREDIT_LINKED_SQL})`);
+        }
         if (names.length) clauses.push(creditAnySQL(nameCol, names.length));
         if (!clauses.length) return null;
         return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
-                 binds: [...(u ? [u.id] : []), ...names] };
+                 binds: [...(u ? [u.id, ...disowned] : []), ...names] };
       }
       // The PK slug comes off the row, not out of the JSON: legacy rows do not
       // all carry `slug` in their data blob, and a card with no slug is a
@@ -5829,9 +5884,11 @@ export default {
         ).all();
         collRows = (results || []).filter(r => {
           const d = parseData(r);
-          // Unlinked credit: owning it is not enough to list it here, exactly
-          // as in whereFor above.
-          if (u && r.owner_id === u.id && !d.creditUnlinked) return true;
+          // Disowned credit: owning it is not enough to list it here, exactly
+          // as in whereFor above — the row's own tick, or the credit having
+          // been disowned on any of this account's pages.
+          if (u && r.owner_id === u.id && !d.creditUnlinked &&
+              !creditNames(d.author).some(n => disowned.includes(n))) return true;
           if (!names.length) return false;
           // A collection can be co-credited too.
           return creditNames(d.author).some(n => names.includes(n));
@@ -6106,22 +6163,31 @@ export default {
       const owners = new Map();
       try {
         const { results } = await env.DB.prepare(
-          `SELECT creator AS n, owner_id, COUNT(*) AS c FROM characters
+          `SELECT creator AS n, owner_id, COUNT(*) AS c, ${CREDIT_DISOWNED_COUNT} AS dis
+             FROM characters
             WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
-              AND ${CREDIT_LINKED_SQL}
             GROUP BY creator, owner_id`
         ).all();
         const perName = new Map();   // name -> Map(owner_id -> count)
+        const off = new Map();       // name -> Set(owner_id that disowned it)
         for (const r of results || []) {
           for (const key of creditNames(r.n)) {
+            if (Number(r.dis) > 0) {
+              if (!off.has(key)) off.set(key, new Set());
+              off.get(key).add(r.owner_id);
+            }
             if (!perName.has(key)) perName.set(key, new Map());
             const m = perName.get(key);
             m.set(r.owner_id, (m.get(r.owner_id) || 0) + r.c);
           }
         }
         for (const [key, m] of perName) {
+          // Same rule as resolveCreatorAccount, or the index would show an
+          // account beside a name whose page no longer links to it.
+          const dis = off.get(key);
           let best = null, bestN = 0;
           for (const [ownerId, n] of m) {
+            if (dis && dis.has(ownerId)) continue;
             if (n > bestN || (n === bestN && best != null && ownerId < best)) { best = ownerId; bestN = n; }
           }
           if (best != null) owners.set(key, best);
@@ -8772,7 +8838,7 @@ export default {
         // grant is — a suggestion can neither add it nor take it off.
         if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
         // Whose work the page is said to be is the owner's answer too, so a
-        // suggestion carries the stored one — see CREDIT_LINKED_SQL.
+        // suggestion carries the stored one — see CREDIT_UNLINKED_SQL.
         if (storedNow.creditUnlinked) data.creditUnlinked = true; else delete data.creditUnlinked;
         delete data.status;
         delete data.renameFrom;
@@ -9503,7 +9569,7 @@ export default {
         if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
-        // The owner's "this credit isn't mine" tick — see CREDIT_LINKED_SQL.
+        // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
@@ -9612,7 +9678,7 @@ export default {
         if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.curata = existing ? !!parseData(existing).curata : false;
-        // The owner's "this credit isn't mine" tick — see CREDIT_LINKED_SQL.
+        // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(s, storedScript, perm);
         /* An admin's "why this went to drafts" note survives an ordinary
            save and is cleared only by going live. The creator opens the
