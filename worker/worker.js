@@ -2064,6 +2064,25 @@ function normCreator(s) { return String(s == null ? '' : s).trim().toLowerCase()
 function creditMatchSQL(col) {
   return `instr(',' || replace(replace(lower(trim(${col})), ' ,', ','), ', ', ',') || ',', ',' || ? || ',') > 0`;
 }
+/* A page whose owner ticked "this credit isn't mine" (`creditUnlinked` on its
+   data) proves nothing about who the credited name is. Somebody uploading
+   another creator's character on their behalf still OWNS the row — they made
+   it, they maintain it — and without this every such upload quietly claimed
+   that creator's name for the uploader's account: /author?a=Moll 302'd to the
+   uploader's profile, and Moll's other pages were gathered onto it. So every
+   ownership query below skips those rows, and the name renders its own
+   accountless creator page exactly as a bulk-imported one does.
+
+   The flag lives in the JSON blob, and the test is a substring of it rather
+   than json_extract(). JSON.stringify spells the pair `"creditUnlinked":true`
+   and nothing else — no spaces, one casing — and a writer who types that
+   sequence into an ability has their quotes escaped to \" on the way in, so
+   the sequence can only ever be the real key. json_extract() would be tidier
+   and throws on a row whose `data` is not valid JSON, taking the whole query
+   with it; the same reasoning as the LIKE '%"related"%' narrowing in
+   /api/page. */
+const CREDIT_LINKED_SQL = `(data IS NULL OR instr(data, '"creditUnlinked":true') = 0)`;
+
 // The same test against a list of names: one bind per name.
 function creditAnySQL(col, n) {
   const one = creditMatchSQL(col);
@@ -2114,6 +2133,7 @@ async function resolveCreatorAccount(env, name) {
     const hit = await env.DB.prepare(
       `SELECT owner_id, COUNT(*) AS n FROM characters
         WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('creator')}
+          AND ${CREDIT_LINKED_SQL}
         GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
     ).bind(key).first();
     let ownerId = hit && hit.owner_id;
@@ -2121,6 +2141,7 @@ async function resolveCreatorAccount(env, name) {
       const s = await env.DB.prepare(
         `SELECT owner_id, COUNT(*) AS n FROM scripts
           WHERE owner_id IS NOT NULL AND status='published' AND ${creditMatchSQL('author')}
+            AND ${CREDIT_LINKED_SQL}
           GROUP BY owner_id ORDER BY n DESC, owner_id ASC LIMIT 1`
       ).bind(key).first();
       ownerId = s && s.owner_id;
@@ -2159,10 +2180,11 @@ async function creatorNamesFor(env, userId, username) {
   const names = new Set();
   try {
     // Published only, for the same reason resolveCreatorAccount insists on it:
-    // a draft nobody else can see must not be able to claim a name.
+    // a draft nobody else can see must not be able to claim a name. And an
+    // unlinked credit claims nothing either — see CREDIT_LINKED_SQL.
     const [chars, scripts] = await Promise.all([
-      env.DB.prepare(`SELECT DISTINCT creator AS n FROM characters WHERE owner_id=? AND status='published'`).bind(userId).all(),
-      env.DB.prepare(`SELECT DISTINCT author AS n FROM scripts WHERE owner_id=? AND status='published'`).bind(userId).all()
+      env.DB.prepare(`SELECT DISTINCT creator AS n FROM characters WHERE owner_id=? AND status='published' AND ${CREDIT_LINKED_SQL}`).bind(userId).all(),
+      env.DB.prepare(`SELECT DISTINCT author AS n FROM scripts WHERE owner_id=? AND status='published' AND ${CREDIT_LINKED_SQL}`).bind(userId).all()
     ]);
     // Split each credit: co-authoring a page claims the name you were credited
     // under, not the whole "Taiyi (太一), Saki" string.
@@ -2743,6 +2765,18 @@ function carryDraftNote(next, existing, status) {
   if (status === 'published') { delete next._draftNote; return; }
   if (stored && stored._draftNote) next._draftNote = stored._draftNote;
   else delete next._draftNote;
+}
+
+/* The "don't link this credit to my account" tick, on all three content
+   types. Whose work a page is said to be is the owner's answer and nobody
+   else's, so — exactly as `curata` is admin-only and `curataOptOut` is the
+   owner's — it is read off the form only for an owner save and carried
+   forward from the stored row for a public, approved or suggested edit.
+   Stored only when true, so the 1,800 pages nobody ticks it on grow no key.
+   `stored` is the row's parsed data, or null when the page is being created. */
+function setCreditUnlinked(next, stored, perm) {
+  const on = perm === 'owner' ? !!next.creditUnlinked : !!(stored && stored.creditUnlinked);
+  if (on) next.creditUnlinked = true; else delete next.creditUnlinked;
 }
 
 async function notifyDrafted(env, opts) {
@@ -3713,7 +3747,7 @@ async function bumpContentVersion(env) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy'
+  'related', 'tagsBy', 'creditUnlinked'
 ]);
 
 // ---- the GRID feed: only what a card needs ----
@@ -5747,9 +5781,16 @@ export default {
       // owner_id OR credited-name, so a page counts either way round: one the
       // account owns but credited to somebody else, and one credited to this
       // name but owned by nobody (the bulk-imported case).
+      //
+      // The owner half skips a page whose credit its owner unlinked: "this is
+      // not my work" has to mean it off their creator page too, or the pages
+      // would go on being listed as theirs while the credit line beside them
+      // pointed somewhere else. It is still listed on the creator page for the
+      // name it credits (the second clause finds it there), and still on its
+      // owner's account page, which is where they manage it.
       function whereFor(nameCol) {
         const clauses = [];
-        if (u) clauses.push('owner_id=?');
+        if (u) clauses.push(`(owner_id=? AND ${CREDIT_LINKED_SQL})`);
         if (names.length) clauses.push(creditAnySQL(nameCol, names.length));
         if (!clauses.length) return null;
         return { sql: `(${clauses.join(' OR ')}) AND status IN ${statusIn}`,
@@ -5769,7 +5810,7 @@ export default {
         } catch {
           // status/updated_at not migrated on this row set — legacy fallback
           const { results } = await env.DB.prepare(
-            `SELECT slug, data FROM ${table} WHERE owner_id=?`
+            `SELECT slug, data FROM ${table} WHERE owner_id=? AND ${CREDIT_LINKED_SQL}`
           ).bind(u ? u.id : -1).all().catch(() => ({ results: [] }));
           return results || [];
         }
@@ -5787,9 +5828,11 @@ export default {
           `SELECT slug, data, status, owner_id FROM collections WHERE status IN ${statusIn}`
         ).all();
         collRows = (results || []).filter(r => {
-          if (u && r.owner_id === u.id) return true;
-          if (!names.length) return false;
           const d = parseData(r);
+          // Unlinked credit: owning it is not enough to list it here, exactly
+          // as in whereFor above.
+          if (u && r.owner_id === u.id && !d.creditUnlinked) return true;
+          if (!names.length) return false;
           // A collection can be co-credited too.
           return creditNames(d.author).some(n => names.includes(n));
         });
@@ -6065,6 +6108,7 @@ export default {
         const { results } = await env.DB.prepare(
           `SELECT creator AS n, owner_id, COUNT(*) AS c FROM characters
             WHERE owner_id IS NOT NULL AND creator IS NOT NULL AND status='published'
+              AND ${CREDIT_LINKED_SQL}
             GROUP BY creator, owner_id`
         ).all();
         const perName = new Map();   // name -> Map(owner_id -> count)
@@ -8727,6 +8771,9 @@ export default {
         // Declining Curata is the owner's, so it is re-pinned exactly as the
         // grant is — a suggestion can neither add it nor take it off.
         if (storedNow.curataOptOut) data.curataOptOut = true; else delete data.curataOptOut;
+        // Whose work the page is said to be is the owner's answer too, so a
+        // suggestion carries the stored one — see CREDIT_LINKED_SQL.
+        if (storedNow.creditUnlinked) data.creditUnlinked = true; else delete data.creditUnlinked;
         delete data.status;
         delete data.renameFrom;
         delete data.appearsInFrom;
@@ -8822,6 +8869,7 @@ export default {
         d.publicEdit = now.publicEdit;
         d.curata = !!now.curata;
         if (now.curataOptOut) d.curataOptOut = true; else delete d.curataOptOut;
+        if (now.creditUnlinked) d.creditUnlinked = true; else delete d.creditUnlinked;
         delete d._deleted;
         await saveRevision(env, sess, sug.entity_type, row);   // the approval is undoable
         try { await applyRollback(env, sug.entity_type, row, d); }
@@ -9180,6 +9228,12 @@ export default {
         } else {
           delete c.curataOptOut;
         }
+        /* "This credit isn't mine" — the page is somebody else's character
+           uploaded on their behalf, so the credited name must not resolve to
+           the uploader's account. Owner-only for the same reason curataOptOut
+           is: it decides whose work the page is said to be, and a guest
+           editing an opened page has no say in that. See CREDIT_LINKED_SQL. */
+        setCreditUnlinked(c, stored, perm);
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
@@ -9449,6 +9503,8 @@ export default {
         if (!c.editors || !c.editors.length) delete c.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         c.curata = existing ? !!parseData(existing).curata : false;
+        // The owner's "this credit isn't mine" tick — see CREDIT_LINKED_SQL.
+        setCreditUnlinked(c, storedColl, perm);
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
@@ -9556,6 +9612,8 @@ export default {
         if (!s.editors || !s.editors.length) delete s.editors;
         // Admin-only flag: keep whatever is stored, ignore the client.
         s.curata = existing ? !!parseData(existing).curata : false;
+        // The owner's "this credit isn't mine" tick — see CREDIT_LINKED_SQL.
+        setCreditUnlinked(s, storedScript, perm);
         /* An admin's "why this went to drafts" note survives an ordinary
            save and is cleared only by going live. The creator opens the
            editor BECAUSE of the note, and fixing one field is not

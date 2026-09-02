@@ -1668,6 +1668,52 @@ under teobius and dashieswag92. `DJ_DJ_DJ` is deliberately left resolving to
 `admin`. **Any future bulk import owned by one account needs the same pass**, or
 it quietly swallows every name it is credited to.
 
+### "This credit isn't mine" (`creditUnlinked`)
+
+The per-page answer to the same problem, in the creator's own hands rather than
+an admin's. Uploading somebody else's character or script on their behalf makes
+you the row's **owner** — you made the page, you maintain it — and proof by
+ownership then read that as "the credited name is this account": `/author?a=Moll`
+302'd to the uploader's profile, and every other page credited to Moll was
+gathered onto it. There was nothing the uploader could do about it short of
+asking an admin for a `creator_alias:` row.
+
+So all three content types take **`creditUnlinked: true`** on their `data`, a
+tick beside the Creator / Author field in all four editors (`create.html`,
+`edit.html`, `publish-script.html`, `publish-collection.html`). Ticked, the page
+proves nothing: the name renders its own accountless creator page exactly as a
+bulk-imported one does, and the page is listed there rather than on the
+uploader's profile. Unticking it links the name back. Nothing else changes —
+the row keeps its owner, the credit line still points at `/author?a={name}`,
+and the page is still on its owner's account page and in `/drafts`, which is
+where they manage it.
+
+- **`CREDIT_LINKED_SQL` in worker.js is the guard**, and every ownership query
+  carries it: both halves of `resolveCreatorAccount()`, both halves of
+  `creatorNamesFor()`, the `owners` tally in `/api/creators`, and the
+  `owner_id` half of `/api/user`'s listing (its collections are filtered in JS,
+  same rule). Miss one and the name half-resolves.
+- **The test is a substring of the JSON blob**, not `json_extract()`.
+  `JSON.stringify` spells the pair `"creditUnlinked":true` and nothing else —
+  no spaces, one casing — and a writer who types that sequence into an ability
+  has their quotes escaped to `\"` on the way in, so it can only ever match the
+  real key. `json_extract()` would be tidier and **throws** on a row whose
+  `data` is not valid JSON, taking the whole query with it. Same reasoning as
+  the `LIKE '%"related"%'` narrowing in `/api/page`.
+- **It is the owner's field**, like `curataOptOut`: `setCreditUnlinked()` reads
+  it off the form only for `perm === 'owner'` and carries the stored answer
+  forward for a public, approved or suggested edit, so a guest can neither
+  disown somebody's page nor claim it. `/api/suggest` re-pins it on the way in
+  and `/api/suggestion`'s approve re-pins it again. All four editors hide the
+  tick for a guest rather than showing a control the save would ignore.
+- Stored **only when true**, so the pages nobody ticks it on grow no key, and
+  it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
+- The **admin `creator_alias:` override still wins**, in both directions: it is
+  checked before proof by ownership, so an admin can link a name whose pages
+  all disown it.
+- The two bulk importers (`mass-upload.html`, `/bloodstar`) do **not** offer the
+  tick yet, so an imported page is ticked afterwards in its own editor.
+
 ## Jinxes
 
 A jinx is a rule about a **pair** of characters, but it is stored on one side

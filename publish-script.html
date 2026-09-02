@@ -21,6 +21,19 @@
 .sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
 .sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
 .sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+/* "This credit isn't mine": the tick that keeps a page's credit from being
+   read as proof that the credited name is this account. Sits with the
+   Author field because that is the field it is about. Scoped through
+   `.sb-fld label` — that rule is (0,1,1) and uppercases every label in
+   the form, so a bare .credit-unlink would lose to it. */
+.sb-fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+  margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+  color:#5b4632; cursor:pointer; }
+.sb-fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+.sb-fld .credit-unlink-hint { display:block; margin-top:4px;
+  font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+  letter-spacing:0; font-weight:400; }
 .sb-fld { margin-bottom:12px; }
 .sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
@@ -185,6 +198,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-fld">
         <label for="sb-author">Author <span class="req">*</span></label>
         <input type="text" id="sb-author" placeholder="Your name">
+          <label class="credit-unlink" for="sb-credit-unlinked"><input type="checkbox" id="sb-credit-unlinked"> This credit isn’t mine</label>
+          <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s script. Their name gets its own creator page instead of pointing at your account, and the page stays off yours. Untick it to link it back.</span>
       </div>
       <div class="sb-fld">
         <label for="sb-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
@@ -572,6 +587,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if ($('sb-hidetitle').checked) m.hideTitle = true; else delete m.hideTitle;
       setMeta(m);
     });
+    /* "This credit isn't mine" persists like every other setting on this
+       page: the meta in localStorage is what survives a reload before the
+       script has been saved, and primeFields reads it back. */
+    $('sb-credit-unlinked').addEventListener('change', function(){
+      var m = getMeta();
+      if ($('sb-credit-unlinked').checked) m.creditUnlinked = true; else delete m.creditUnlinked;
+      setMeta(m);
+    });
     // Who else may edit this page. Stored on the row, enforced by the Worker.
     var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
     /* The named-account list that goes with "Approved editing". Mounted
@@ -750,6 +773,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     function primeFields(m){
       if (m.name)        $('sb-name').value = m.name;
       if (m.author)      $('sb-author').value = m.author;
+      $('sb-credit-unlinked').checked = !!m.creditUnlinked;
       if (m.description) $('sb-desc').value = m.description;
       if (m.tagline)     $('sb-tagline').value = m.tagline;
       if (m.version)     $('sb-version').value = m.version;
@@ -982,6 +1006,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           bootlegger: gatherBoot(),
           almanac: $('sb-almanac').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
+          creditUnlinked: !!$('sb-credit-unlinked').checked,
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : []
         };
@@ -1136,6 +1161,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
     // What the Worker said this account may do here, so updateButtons() can
     // label itself honestly however many times it re-runs.
     var editRole = 'owner';
+    // The credit tick is the owner's, so a guest editor never sees it.
+    function hideCreditTick(){
+      var cu = $('sb-credit-unlinked');
+      var lab = cu && cu.closest('.credit-unlink');
+      if (lab) lab.style.display = 'none';
+      var hint = lab && lab.nextElementSibling;
+      if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
+    }
     function applyEditMode(mode, isOwner){
       editRole = mode || '';
       renderEditStatus();
@@ -1145,6 +1178,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // stored setting AND the stored editor list forward whatever a guest
       // posts, so leaving them on screen would be a promise the save breaks.
       $('sb-open-sec').style.display = 'none';
+      // And the credit tick with it: whose work the page is said to be is the
+      // creator's answer, and the Worker pins it from the stored row whatever
+      // a guest posts.
+      hideCreditTick();
       if (mode === 'approved'){
         // An editor the creator named. The text is theirs to change and it
         // saves straight to the script; what stays with the creator is
@@ -1194,6 +1231,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
             hideTitle: !!entry.hideTitle,
+            creditUnlinked: !!entry.creditUnlinked,
             publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
             editors: entry.editors || [],
             theme: entry.theme || {}
