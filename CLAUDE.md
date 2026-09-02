@@ -2427,21 +2427,27 @@ their art (the moon and sun are the teensy template's; the info steps use
   the top, one icon per waking character (and the info steps), the sun at
   the bottom — with names beside the icons when `nightNames` is on (the
   strip widens to a fifth of the page) and a parchment panel behind each
-  when `nightBacking` is on (the labels go dark ink on parchment, white with
-  a shadow on the bare damask). Both strips start at one height, the taller
+  when `nightBacking` is on — flat, a thin stroke, hugging the icons by a
+  few pixels (the labels go dark ink on parchment, white with a shadow on
+  the bare damask). Both strips start at one height, the taller
   one centred in the band from 7% to 96%; a night too long for the band
   closes up evenly through `fitNightSizes()`. The title stack re-seeds to a
   narrower band (`seedBackTexts`'s fourth argument, 0.62 of the width) when
   the strips come on, so a wide word does not land on them.
 - **The player count box is the official setup table** (`setupTable()` in
   panels.js, `SETUP_TABLE` for the numbers): players 5 to 15+ across,
-  townsfolk / outsiders / minions / demons down, drawn to the reference —
-  right-aligned small-cap labels, the players row and the evil rows in the
-  evil ink, the good rows in the good ink, faint rules between the columns,
-  and a scorched frame (`panelFrame`'s `burnt`). It is sized from its width
-  alone (the reference is ~2.9:1). **Zeros are set as the face's round
-  capital O**: OptimusPrinceps draws its digit zero slashed, which at table
-  size reads as a theta.
+  townsfolk / outsiders / minions / demons down — right-aligned labels, the
+  players row and the evil rows in the evil ink, the good rows in the good
+  ink, faint rules between the columns. It is FLAT (`panelFrame`'s `flat`:
+  a thin stroke, no shadow — the owner asked for the scorched frame and
+  shadows to go), set in **Dumbledor2** (the wiki's display face, at the
+  owner's request), with the type sized to fill its cells, and sized from
+  its width alone (~2.9:1). The inks are the sheet's NAME inks: the
+  good/evil pickers on the classic sheet, and the fixed `TEAM_INK` on the
+  teensy sheet, whose pickers colour headings while its names are black.
+  **Zeros are set as the face's round capital O**: both OptimusPrinceps and
+  Dumbledor2 draw their digit zero slashed, which at table size reads as a
+  theta.
 - **Team boxes** (`teamRows()`; `backTeams()` is what `groupByTeam()` leaves
   out of the front sheet) stack under the table in the centre column, which
   narrows to clear the strips. Over the page they scale down together.

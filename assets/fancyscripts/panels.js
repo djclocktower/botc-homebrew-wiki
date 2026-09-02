@@ -294,9 +294,14 @@ export function fitNightSizes(lists, sizes, availH, minIcon) {
    The frame the back cover draws its boxes in. `parchment` is the sheet's
    own parchment art (the classic garland sheet, the teensy engraved one),
    shown from its top so the garland never lands inside a box. */
-export function panelFrame({ title, fonts, parchment, scale, headingPx, width, left, top, height, burnt, pad }) {
+export function panelFrame({ title, fonts, parchment, scale, headingPx, width, left, top, height, burnt, flat, pad }) {
   const padX = pad != null ? pad : 18 * scale;
   const padY = pad != null ? pad : 10 * scale;
+  // `flat`: a thin stroke and no shadow at all — the strip backing and the
+  // setup table read better as plain parchment than as a raised box
+  const shadow = flat ? 'none' : burnt
+    ? `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(80 * scale)} ${px(18 * scale)} rgba(34, 19, 7, 0.86), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.65)`
+    : `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.18)`;
   const root = el('div', {
     position: 'absolute',
     left: px(left),
@@ -311,13 +316,9 @@ export function panelFrame({ title, fonts, parchment, scale, headingPx, width, l
     // a tall strip backing never repeats a garland through its middle
     backgroundSize: 'cover',
     backgroundPosition: '50% 40%',
-    border: `${px(Math.max(2, 3 * scale))} solid ${FRAME}`,
-    borderRadius: px(6 * scale),
-    // `burnt`: the official setup table's scorched edges — a heavy dark
-    // vignette inside the frame instead of the light one
-    boxShadow: burnt
-      ? `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(80 * scale)} ${px(18 * scale)} rgba(34, 19, 7, 0.86), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.65)`
-      : `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.18)`,
+    border: flat ? `${px(Math.max(1, 1.6 * scale))} solid ${FRAME}` : `${px(Math.max(2, 3 * scale))} solid ${FRAME}`,
+    borderRadius: px((flat ? 3 : 6) * scale),
+    boxShadow: shadow,
     padding: `${px(padY)} ${px(padX)} ${px(pad != null ? pad : 14 * scale)}`,
     color: INK,
     overflow: 'hidden',
@@ -362,56 +363,60 @@ export function setupTableHeight(width) {
   return width * 0.345;
 }
 
-export function setupTable({ fonts, parchment, width, left, top, scale, good, evil }) {
+/* the wiki's display face — the numerals and labels in the official table
+   are a Trajan-like face, and the owner asked for the sheet's own */
+const FONT_TABLE = '"Dumbledor2", "Dumbledor", "OptimusPrinceps", serif';
+
+export function setupTable({ parchment, width, left, top, good, evil }) {
   const u = width / 900; // the reference's own pixel space
   const height = setupTableHeight(width);
   const { root, body } = panelFrame({
-    title: '', fonts, parchment, scale: u * 1.4, headingPx: 0,
-    width, left, top, height, burnt: true, pad: 14 * u,
+    title: '', fonts: null, parchment, scale: u * 1.4, headingPx: 0,
+    width, left, top, height, flat: true, pad: 6 * u,
   });
   const cols = SETUP_TABLE.players.length;
+  const rowH = 56 * u;
   const grid = el('div', {
     display: 'grid',
-    gridTemplateColumns: `${px(150 * u)} repeat(${cols}, 1fr)`,
-    gridAutoRows: px(52 * u),
+    gridTemplateColumns: `${px(196 * u)} repeat(${cols}, 1fr)`,
+    gridAutoRows: px(rowH),
     alignItems: 'center',
-    padding: `${px(8 * u)} ${px(18 * u)} ${px(2 * u)} ${px(6 * u)}`,
+    padding: `${px(6 * u)} ${px(10 * u)} ${px(2 * u)} ${px(4 * u)}`,
     boxSizing: 'border-box',
   });
   const label = (text, color) => el('div', {
-    fontFamily: fonts.heading,
-    fontSize: px(19 * u),
-    letterSpacing: '0.06em',
+    fontFamily: FONT_TABLE,
+    fontSize: px(31 * u),
+    letterSpacing: '0.04em',
     textTransform: 'uppercase',
     color,
     textAlign: 'right',
-    paddingRight: px(20 * u),
+    paddingRight: px(16 * u),
     lineHeight: '1',
+    whiteSpace: 'nowrap',
   }, text);
   const cell = (text, color, big, first) => {
     const c = el('div', {
-      fontFamily: fonts.heading,
-      fontSize: px((big ? 38 : 34) * u),
+      fontFamily: FONT_TABLE,
+      fontSize: px((big ? 60 : 55) * u),
       lineHeight: '1',
       color,
       textAlign: 'center',
-      height: px(52 * u),
+      height: px(rowH),
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       borderLeft: first ? 'none' : `${px(Math.max(1, 1.2 * u))} solid rgba(90, 68, 40, 0.32)`,
-      letterSpacing: '-0.01em',
     });
-    // OptimusPrinceps draws its zero slashed (it reads as a theta at this
-    // size), so a 0 is set as the face's round capital O — which is what
-    // the reference table's zeros look like
-    const digits = String(text).replace(/0/g, 'O');
-    if (digits.endsWith('+')) {
-      c.append(digits.slice(0, -1), el('span', {
+    // Dumbledor2 draws its zero slashed as well; its round capital O is
+    // what the reference table's zeros look like
+    const t = String(text).replace(/0/g, 'O');
+    if (t.endsWith('+')) {
+      c.append(t.slice(0, -1), el('span', {
         fontSize: '0.5em', verticalAlign: 'top', position: 'relative', top: '-0.55em', marginLeft: '0.05em',
       }, '+'));
     } else {
-      c.textContent = digits;
+      c.textContent = t;
     }
     return c;
   };

@@ -303,11 +303,11 @@ function renderPanels(root, script, options, requestRender, size) {
     const ns = base * clamp(Number(back.nightScale) || 1, 0.4, 2.2);
     const names = !!back.nightNames;
     const backing = !!back.nightBacking;
-    const pad = backing ? 12 * ns : 0;
+    const pad = backing ? 7 * ns : 0;
     const bandTop = H * 0.07, bandBottom = H * 0.96;
     const natural = { iconPx: 60 * ns, pitchPx: 72 * ns, moonPx: 70 * ns, sunPx: 58 * ns, labelPx: 22 * ns, hasLabel: true };
     const fit = fitNightSizes([lists.first, lists.other], natural, bandBottom - bandTop - 2 * pad, 16 * ns);
-    const colW = names ? Math.max(W * 0.2, fit.iconPx * 4.2) : Math.max(fit.moonPx, fit.iconPx) + 26 * ns;
+    const colW = names ? Math.max(W * 0.2, fit.iconPx * 4.2) : Math.max(fit.moonPx, fit.iconPx) + 10 * ns;
     stripW = colW + 2 * pad;
     const sides = [
       [lists.first, 'First\nnight', edge + pad],
@@ -322,7 +322,7 @@ function renderPanels(root, script, options, requestRender, size) {
       if (backing) {
         const { root: box } = panelFrame({
           title: '', fonts: F, parchment, scale: ns, headingPx: 0,
-          width: colW + 2 * pad, left: x - pad, top: top - pad, height: h + 2 * pad, pad: 0,
+          width: colW + 2 * pad, left: x - pad, top: top - pad, height: h + 2 * pad, pad: 0, flat: true,
         });
         root.append(box);
       }
@@ -382,9 +382,14 @@ function renderPanels(root, script, options, requestRender, size) {
 
   let y = top;
   if (back.playersBox) {
+    // the sheet's NAME inks: the classic pickers colour names directly; on
+    // the teensy sheet names are black and the pickers colour the headings,
+    // so the table takes the fixed name inks there
+    const teensy = options.mode === 'teensy';
     root.append(setupTable({
-      fonts: F, parchment, width: tableW, left: left + (width - tableW) / 2, top: y,
-      scale: base, good: options.goodColor, evil: options.evilColor,
+      parchment, width: tableW, left: left + (width - tableW) / 2, top: y,
+      good: teensy ? TEAM_INK.townsfolk : options.goodColor,
+      evil: teensy ? TEAM_INK.minion : options.evilColor,
     }));
     y += tableH + gapAfterTable;
   }
