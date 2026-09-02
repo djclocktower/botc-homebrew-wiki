@@ -1680,19 +1680,40 @@ asking an admin for a `creator_alias:` row.
 
 So all three content types take **`creditUnlinked: true`** on their `data`, a
 tick beside the Creator / Author field in all four editors (`create.html`,
-`edit.html`, `publish-script.html`, `publish-collection.html`). Ticked, the page
-proves nothing: the name renders its own accountless creator page exactly as a
-bulk-imported one does, and the page is listed there rather than on the
-uploader's profile. Unticking it links the name back. Nothing else changes —
-the row keeps its owner, the credit line still points at `/author?a={name}`,
-and the page is still on its owner's account page and in `/drafts`, which is
-where they manage it.
+`edit.html`, `publish-script.html`, `publish-collection.html`). Ticked, the
+name renders its own accountless creator page exactly as a bulk-imported one
+does, and the pages are listed there rather than on the uploader's profile.
+Unticking it links the name back. Nothing else changes — the row keeps its
+owner, the credit line still points at `/author?a={name}`, and the page is
+still on its owner's account page and in `/drafts`, which is where they
+manage it.
 
-- **`CREDIT_LINKED_SQL` in worker.js is the guard**, and every ownership query
-  carries it: both halves of `resolveCreatorAccount()`, both halves of
-  `creatorNamesFor()`, the `owners` tally in `/api/creators`, and the
-  `owner_id` half of `/api/user`'s listing (its collections are filtered in JS,
-  same rule). Miss one and the name half-resolves.
+**The tick is a statement about the NAME, not about the one page it was made
+on**, and that is the whole of the rule: an account that has ticked it on ANY
+page it owns under a credit cannot claim that credit at all, however many
+other pages it owns under the same one. It was per-page first and that was
+useless in practice — four characters credited to "Kinky Clocktower", the box
+ticked on one, and the other three went on proving ownership, so
+`/author?a=Kinky Clocktower` still 302'd to `/u/cute-mage` and the feature
+looked broken. Nobody ticks it meaning "this one page isn't mine but those
+three are"; somebody genuinely credited alongside a name on some pages and not
+others writes a different credit, which is what the credit string is for.
+
+- **`CREDIT_UNLINKED_SQL` is the per-row test and `CREDIT_DISOWNED_COUNT` is
+  what the ownership queries group by** — an owner whose count is above zero
+  is skipped for that name. Every one of them carries it:
+  `resolveCreatorAccount()` (which now reads **both** tables together and
+  unions their disowns, rather than characters-first-scripts-on-a-miss, so a
+  disown recorded on a script reaches a decision the characters would
+  otherwise settle alone), `creatorNamesFor()` (which returns
+  `{names, disowned}` — the second half is what keeps those pages off the
+  account's own creator page), the `owners` tally in `/api/creators`, and the
+  `owner_id` half of `/api/user`'s listing (its collections are filtered in
+  JS, same rule). Miss one and the name half-resolves.
+- **`/api/user` tests twice and both are needed**: the NAME test takes the
+  whole credit off the uploader's profile (the siblings nobody ticked), and
+  the per-row `CREDIT_LINKED_SQL` still catches a ticked **draft**, whose
+  credit is not disowned because drafts prove nothing either way.
 - **The test is a substring of the JSON blob**, not `json_extract()`.
   `JSON.stringify` spells the pair `"creditUnlinked":true` and nothing else —
   no spaces, one casing — and a writer who types that sequence into an ability
@@ -1709,8 +1730,10 @@ where they manage it.
 - Stored **only when true**, so the pages nobody ticks it on grow no key, and
   it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
 - The **admin `creator_alias:` override still wins**, in both directions: it is
-  checked before proof by ownership, so an admin can link a name whose pages
-  all disown it.
+  checked before proof by ownership, so an admin can link a name every page of
+  which disowns it. `creatorNamesFor()` clears the name out of `disowned` when
+  an alias grants it, or the pages would stay off the profile the alias just
+  pointed them at.
 - The two bulk importers (`mass-upload.html`, `/bloodstar`) do **not** offer the
   tick yet, so an imported page is ticked afterwards in its own editor.
 
