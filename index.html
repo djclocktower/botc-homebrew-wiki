@@ -310,7 +310,7 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
@@ -612,7 +612,7 @@
           // box instead of being clipped. Same trick as the /c/ page title.
           var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
           var headerHTML = sc.header || sc.logo
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header || sc.logo) + PageRender.artVer(sc) + '" alt="' + esc(sc.name) + '"></div>'
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo)) + PageRender.artVer(sc) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +

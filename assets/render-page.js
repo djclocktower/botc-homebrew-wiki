@@ -231,6 +231,17 @@
     if (/^https?:/i.test(p)) return p;
     return root + p.replace(/\.html$/, '');
   }
+  /* A script or collection image (the header banner, the logo) is usually a
+     relative path into /assets/ — an R2 upload — but a bulk import stores art
+     hosted elsewhere as an absolute URL, the same convention character art
+     has always had (artSrc above). One resolver, or a remote logo comes out
+     as "assets/https://…" and draws as a broken image on every tile while
+     the page's own onerror quietly hides it. */
+  function imgSrc(root, p) {
+    p = String(p || '');
+    if (!p) return '';
+    return /^https?:\/\//i.test(p) ? p : root + 'assets/' + p;
+  }
   /* An official character has no page here, so its name links to the official
      wiki: another site, so a new tab, and a mark saying so. */
   function offsite(c) {
@@ -639,7 +650,7 @@
     rows += '<dt>Total:</dt><dd>' + opts.entries.length + ' character' + (opts.entries.length === 1 ? '' : 's') + '</dd>';
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
-      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(root) + 'assets/' + esc(opts.logoPath) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath)) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
       (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
@@ -805,7 +816,11 @@
     opts = opts || {};
     var meta = { id: '_meta', name: name || 'Homebrew Script' };
     if (author) meta.author = author;
-    if (headerPath) meta.logo = 'https://botchomebrew.wiki/assets/' + headerPath;
+    if (headerPath) {
+      meta.logo = /^https?:\/\//i.test(headerPath)
+        ? headerPath
+        : 'https://botchomebrew.wiki/assets/' + headerPath;
+    }
     var bg = sc.theme && sc.theme.background;
     if (bg) meta.background = 'https://botchomebrew.wiki/assets/' + bg;
     if (sc.hideTitle) meta.hideTitle = true;
@@ -872,8 +887,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -931,8 +946,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(root) + 'assets/' + esc(cfg.header) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(root) + 'assets/' + esc(cfg.logo) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -1061,6 +1076,7 @@
     artSrc: artSrc,
     thumbSrc: thumbSrc,
     artVer: artVer,
+    imgSrc: imgSrc,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL
   };
   if (typeof window !== 'undefined') { window.PageRender = api; }
