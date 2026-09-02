@@ -2417,22 +2417,43 @@ their art (the moon and sun are the teensy template's; the info steps use
 
 ### The back cover's boxes
 
-`options.back` carries `playersBox`, `nightOrder` (+ `nightNames`),
-`travellers`, `fabled`, `loric`, `panelScale` and `panelTop`.
-`renderPanels()` in back.js stacks parchment panels (`panelFrame()` in
-panels.js, the sheet's own parchment scaled past the box so its dark frame
-edge never lands inside — it did, and hid the heading) from `panelTop` down:
-the player count, then each team moved off the front as icon/name/ability
-rows (`teamRows()`; `backTeams()` is what `groupByTeam()` leaves out of the
-front sheet), then the night order as two strips of icons, moon at the top
-and sun at the bottom the way the teensy template runs them down its
-ribbons, names beside them when asked. **The night panel gives first**: it
-takes whatever height is left, a long night splits each list into two
-side-by-side columns, then the pitch closes up; only when the FIXED panels
-plus a floor for the night still do not fit does everything scale down
-together. Ticking the first box re-stacks the back title compactly in the
-top band (`seedBackTexts(title, size, compact)`), unticking the last puts it
-back; in between the title stays wherever it was dragged.
+`options.back` carries `playersBox`, `nightOrder` (+ `nightNames`,
+`nightBacking`), `travellers`, `fabled`, `loric`, and one size per element —
+`nightScale`, `playersScale`, `panelScale` — plus `panelTop`.
+`renderPanels()` in back.js lays the back out like the reference sheets:
+
+- **The night order runs DOWN BOTH EDGES**, first night on the left and
+  other nights on the right, as `panels.js`'s `nightColumn()` — the moon at
+  the top, one icon per waking character (and the info steps), the sun at
+  the bottom — with names beside the icons when `nightNames` is on (the
+  strip widens to a fifth of the page) and a parchment panel behind each
+  when `nightBacking` is on (the labels go dark ink on parchment, white with
+  a shadow on the bare damask). Both strips start at one height, the taller
+  one centred in the band from 7% to 96%; a night too long for the band
+  closes up evenly through `fitNightSizes()`. The title stack re-seeds to a
+  narrower band (`seedBackTexts`'s fourth argument, 0.62 of the width) when
+  the strips come on, so a wide word does not land on them.
+- **The player count box is the official setup table** (`setupTable()` in
+  panels.js, `SETUP_TABLE` for the numbers): players 5 to 15+ across,
+  townsfolk / outsiders / minions / demons down, drawn to the reference —
+  right-aligned small-cap labels, the players row and the evil rows in the
+  evil ink, the good rows in the good ink, faint rules between the columns,
+  and a scorched frame (`panelFrame`'s `burnt`). It is sized from its width
+  alone (the reference is ~2.9:1). **Zeros are set as the face's round
+  capital O**: OptimusPrinceps draws its digit zero slashed, which at table
+  size reads as a theta.
+- **Team boxes** (`teamRows()`; `backTeams()` is what `groupByTeam()` leaves
+  out of the front sheet) stack under the table in the centre column, which
+  narrows to clear the strips. Over the page they scale down together.
+- **Panel textures are `art/parchment-panel.jpg` and
+  `teensy-parchment-panel.jpg`** — garland-free interior crops of the sheet
+  parchments, `cover`-fitted. The full sheets were used at first at 150%
+  width, and a tall strip backing then tiled the classic garland through
+  its middle.
+
+Ticking the first box re-stacks the back title compactly in the top band
+(`seedBackTexts(title, size, compact)`), unticking the last puts it back; in
+between the title stays wherever it was dragged.
 
 **`players`** is free text; blank means `playersGuess()` — "5–6 players"
 for a teensyville roster (6/2/2/1 or fewer), "7–15 players" otherwise. It

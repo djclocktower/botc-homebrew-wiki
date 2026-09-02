@@ -294,7 +294,9 @@ export function fitNightSizes(lists, sizes, availH, minIcon) {
    The frame the back cover draws its boxes in. `parchment` is the sheet's
    own parchment art (the classic garland sheet, the teensy engraved one),
    shown from its top so the garland never lands inside a box. */
-export function panelFrame({ title, fonts, parchment, scale, headingPx, width, left, top, height }) {
+export function panelFrame({ title, fonts, parchment, scale, headingPx, width, left, top, height, burnt, pad }) {
+  const padX = pad != null ? pad : 18 * scale;
+  const padY = pad != null ? pad : 10 * scale;
   const root = el('div', {
     position: 'absolute',
     left: px(left),
@@ -304,14 +306,19 @@ export function panelFrame({ title, fonts, parchment, scale, headingPx, width, l
     boxSizing: 'border-box',
     backgroundColor: '#e7dcc3',
     backgroundImage: `url(${parchment})`,
-    // scaled past the panel so the sheet art's own dark frame edge (and
-    // the classic garland) never lands inside a box
-    backgroundSize: '150% auto',
-    backgroundPosition: '50% 28%',
+    // the panel textures are garland-free interior crops of the sheet
+    // parchments (art/parchment-panel.jpg, teensy-parchment-panel.jpg), so
+    // a tall strip backing never repeats a garland through its middle
+    backgroundSize: 'cover',
+    backgroundPosition: '50% 40%',
     border: `${px(Math.max(2, 3 * scale))} solid ${FRAME}`,
     borderRadius: px(6 * scale),
-    boxShadow: `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.18)`,
-    padding: `${px(10 * scale)} ${px(18 * scale)} ${px(14 * scale)}`,
+    // `burnt`: the official setup table's scorched edges — a heavy dark
+    // vignette inside the frame instead of the light one
+    boxShadow: burnt
+      ? `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(80 * scale)} ${px(18 * scale)} rgba(34, 19, 7, 0.86), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.65)`
+      : `0 ${px(6 * scale)} ${px(18 * scale)} rgba(0,0,0,0.55), inset 0 0 ${px(30 * scale)} rgba(70, 40, 10, 0.18)`,
+    padding: `${px(padY)} ${px(padX)} ${px(pad != null ? pad : 14 * scale)}`,
     color: INK,
     overflow: 'hidden',
   });
@@ -332,6 +339,91 @@ export function panelFrame({ title, fonts, parchment, scale, headingPx, width, l
   const body = el('div', { position: 'relative' });
   root.append(body);
   return { root, body };
+}
+
+/* ── the official setup table ───────────────────────────────────────────
+   Players 5 to 15+ across, townsfolk / outsiders / minions / demons down,
+   the counts the rulebook gives: the back-of-the-box table. Drawn to the
+   reference: right-aligned small-cap labels, the players row and the evil
+   rows in dark red, the good rows in blue, faint rules between the
+   columns, and a scorched parchment frame. `width` decides everything
+   else (the reference is ~2.9:1). */
+export const SETUP_TABLE = {
+  players: ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15+'],
+  rows: [
+    ['Townsfolk', [3, 3, 5, 5, 5, 7, 7, 7, 9, 9, 9], 'good'],
+    ['Outsiders', [0, 1, 0, 1, 2, 0, 1, 2, 0, 1, 2], 'good'],
+    ['Minions', [1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3], 'evil'],
+    ['Demons', [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], 'evil'],
+  ],
+};
+
+export function setupTableHeight(width) {
+  return width * 0.345;
+}
+
+export function setupTable({ fonts, parchment, width, left, top, scale, good, evil }) {
+  const u = width / 900; // the reference's own pixel space
+  const height = setupTableHeight(width);
+  const { root, body } = panelFrame({
+    title: '', fonts, parchment, scale: u * 1.4, headingPx: 0,
+    width, left, top, height, burnt: true, pad: 14 * u,
+  });
+  const cols = SETUP_TABLE.players.length;
+  const grid = el('div', {
+    display: 'grid',
+    gridTemplateColumns: `${px(150 * u)} repeat(${cols}, 1fr)`,
+    gridAutoRows: px(52 * u),
+    alignItems: 'center',
+    padding: `${px(8 * u)} ${px(18 * u)} ${px(2 * u)} ${px(6 * u)}`,
+    boxSizing: 'border-box',
+  });
+  const label = (text, color) => el('div', {
+    fontFamily: fonts.heading,
+    fontSize: px(19 * u),
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    color,
+    textAlign: 'right',
+    paddingRight: px(20 * u),
+    lineHeight: '1',
+  }, text);
+  const cell = (text, color, big, first) => {
+    const c = el('div', {
+      fontFamily: fonts.heading,
+      fontSize: px((big ? 38 : 34) * u),
+      lineHeight: '1',
+      color,
+      textAlign: 'center',
+      height: px(52 * u),
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderLeft: first ? 'none' : `${px(Math.max(1, 1.2 * u))} solid rgba(90, 68, 40, 0.32)`,
+      letterSpacing: '-0.01em',
+    });
+    // OptimusPrinceps draws its zero slashed (it reads as a theta at this
+    // size), so a 0 is set as the face's round capital O — which is what
+    // the reference table's zeros look like
+    const digits = String(text).replace(/0/g, 'O');
+    if (digits.endsWith('+')) {
+      c.append(digits.slice(0, -1), el('span', {
+        fontSize: '0.5em', verticalAlign: 'top', position: 'relative', top: '-0.55em', marginLeft: '0.05em',
+      }, '+'));
+    } else {
+      c.textContent = digits;
+    }
+    return c;
+  };
+  grid.append(label('Players', evil));
+  SETUP_TABLE.players.forEach((p, i) => grid.append(cell(p, evil, true, i === 0)));
+  for (const [name, counts, side] of SETUP_TABLE.rows) {
+    const color = side === 'good' ? good : evil;
+    grid.append(label(name, color));
+    counts.forEach((n, i) => grid.append(cell(n, color, false, i === 0)));
+  }
+  body.append(grid);
+  return root;
 }
 
 /* ── a team's characters as rows inside a panel ─────────────────────────

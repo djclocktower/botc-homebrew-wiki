@@ -39,11 +39,11 @@
  */
 
 import {
-  BACK_BASE, sheetSize, nightLists, playersText, TEAM_LABELS, TEAM_INK,
+  BACK_BASE, sheetSize, nightLists, TEAM_LABELS, TEAM_INK,
 } from './script.js';
 import {
   el, px, clamp, panelFrame, nightColumn, nightColumnHeight, fitNightSizes,
-  teamRowGeometry, teamRowsHeight, teamRows, fontsFor,
+  setupTable, setupTableHeight, teamRowGeometry, teamRowsHeight, teamRows, fontsFor,
 } from './panels.js';
 import { iconFit, normalizeIcons } from './sheet.js';
 
@@ -272,31 +272,85 @@ export function backReady(back, size) {
 }
 
 /* ── the panels ──────────────────────────────────────────────────────────
-   Parchment boxes on the damask, stacked from `panelTop` down: the player
-   count, then any team moved off the front (travellers, fabled, loric as
-   icon/name/ability rows), then the night order — two strips of icons,
-   first night and other nights, moon at the top and sun at the bottom the
-   way the teensy template runs them down its ribbons, with names beside
-   them when asked. The night panel takes whatever height is left and
-   closes its icon pitch up to fit; when even the fixed panels overflow,
-   everything scales down together (never up past `panelScale`). */
+   What the back carries besides its title, laid out like the reference
+   sheets: the night order runs DOWN BOTH EDGES as strips of icons — first
+   night on the left, other nights on the right, the moon at the top and
+   the sun at the bottom, names beside them when asked, a parchment panel
+   behind each when asked — and the centre column under the title stacks
+   the official setup table (players 5..15+ × team counts) and any team
+   moved off the front sheet (travellers, fabled, loric as icon/name/ability
+   rows). Each element has its own size (nightScale, playersScale,
+   panelScale); a strip too tall for the page closes up evenly, and centre
+   boxes that overflow scale down together. */
 function renderPanels(root, script, options, requestRender, size) {
   const back = options.back;
   const W = size.w, H = size.h;
   const F = fontsFor(options.mode);
-  const parchment = ART + (options.mode === 'teensy' ? 'teensy-parchment.jpg' : 'parchment.jpg');
+  const parchment = ART + (options.mode === 'teensy' ? 'teensy-parchment-panel.jpg' : 'parchment-panel.jpg');
   const ornament = options.mode !== 'teensy';
-  const left = W * 0.06, width = W * 0.88;
-  const top = H * (clamp(Number(back.panelTop) || 30, 5, 80) / 100);
-  const bottom = H * 0.965;
-  const wantNight = !!back.nightOrder;
-  const lists = wantNight ? nightLists(script, options.nightInfoSteps) : null;
+  const base = W / 1242; // px per classic-sheet px
+  const stripsOn = !!back.nightOrder;
+  const lists = stripsOn ? nightLists(script, options.nightInfoSteps) : null;
   const teams = ['traveller', 'fabled', 'loric'].filter((t) => back[t === 'traveller' ? 'travellers' : t]);
   const teamChars = (t) => script.characters.filter((c) => c.team === t);
 
   normalizeIcons(script.characters.map((c) => c.icon), requestRender);
 
-  // one pass at a given unit (px per template px) → panel list with heights
+  /* ── the night strips, one down each edge ── */
+  let stripW = 0;
+  const edge = W * 0.028;
+  if (stripsOn) {
+    const ns = base * clamp(Number(back.nightScale) || 1, 0.4, 2.2);
+    const names = !!back.nightNames;
+    const backing = !!back.nightBacking;
+    const pad = backing ? 12 * ns : 0;
+    const bandTop = H * 0.07, bandBottom = H * 0.96;
+    const natural = { iconPx: 60 * ns, pitchPx: 72 * ns, moonPx: 70 * ns, sunPx: 58 * ns, labelPx: 22 * ns, hasLabel: true };
+    const fit = fitNightSizes([lists.first, lists.other], natural, bandBottom - bandTop - 2 * pad, 16 * ns);
+    const colW = names ? Math.max(W * 0.2, fit.iconPx * 4.2) : Math.max(fit.moonPx, fit.iconPx) + 26 * ns;
+    stripW = colW + 2 * pad;
+    const sides = [
+      [lists.first, 'First\nnight', edge + pad],
+      [lists.other, 'Other\nnights', W - edge - pad - colW],
+    ];
+    // both strips start at one height (the taller one, centred in the band)
+    const tallest = Math.max(...sides.map(([items]) => nightColumnHeight(items, fit)));
+    const stripTop = bandTop + pad + Math.max(0, (bandBottom - bandTop - 2 * pad - tallest) / 2);
+    for (const [items, label, x] of sides) {
+      const h = nightColumnHeight(items, fit);
+      const top = stripTop;
+      if (backing) {
+        const { root: box } = panelFrame({
+          title: '', fonts: F, parchment, scale: ns, headingPx: 0,
+          width: colW + 2 * pad, left: x - pad, top: top - pad, height: h + 2 * pad, pad: 0,
+        });
+        root.append(box);
+      }
+      const col = nightColumn({
+        items, label, fonts: F,
+        iconPx: fit.iconPx, pitchPx: fit.pitchPx, moonPx: fit.moonPx, sunPx: fit.sunPx,
+        names, width: colW, labelPx: fit.labelPx,
+        labelColor: backing ? '#2a1b10' : '#ffffff', labelShadow: !backing,
+        nameColor: backing ? '#222222' : '#f3e9d2',
+        namePx: Math.min(24 * ns, fit.iconPx * 0.42), iconFit,
+      });
+      Object.assign(col.style, { position: 'absolute', left: px(x), top: px(top) });
+      if (!backing && names) col.style.textShadow = '0 1px 3px rgba(0,0,0,0.9)';
+      root.append(col);
+    }
+  }
+
+  /* ── the centre column: the setup table, then the team boxes ── */
+  const left = stripsOn ? edge + stripW + W * 0.025 : W * 0.06;
+  const width = W - 2 * left;
+  const top = H * (clamp(Number(back.panelTop) || 30, 5, 80) / 100);
+  const bottom = H * 0.965;
+  const avail = bottom - top;
+
+  const tableW = Math.min(width, width * clamp(Number(back.playersScale) || 1, 0.4, 1.6));
+  const tableH = back.playersBox ? setupTableHeight(tableW) : 0;
+
+  // the team boxes at a given unit (px per classic px) → their plan
   const plan = (unit) => {
     const pad = 18 * unit, border = 3 * unit;
     const bodyW = width - 2 * pad - 2 * border;
@@ -304,130 +358,43 @@ function renderPanels(root, script, options, requestRender, size) {
     const headingH = headingPx * 1.1 + 12 * unit + 4 * unit + 1.5 * unit;
     const gap = 16 * unit;
     const out = [];
-    if (back.playersBox) {
-      out.push({ kind: 'players', h: 82 * unit, w: Math.min(width, Math.max(width * 0.42, 420 * unit)) });
-    }
     for (const t of teams) {
       const chars = teamChars(t);
       if (!chars.length) continue;
       const cols = chars.length > 4 ? 2 : 1;
       const g = teamRowGeometry(unit, cols, 25 * unit, 19 * unit, 64 * unit, bodyW);
       const rows = teamRowsHeight(chars, g, F, cols);
-      out.push({ kind: 'team', team: t, chars, cols, g, rows, h: rows.total + headingH + 10 * unit + 14 * unit + 2 * border });
-    }
-    let night = null;
-    if (wantNight) {
-      const iconPx = 56 * unit, pitch = 66 * unit, moon = 64 * unit, sun = 52 * unit, labelPx = 20 * unit;
-      const sizes = { iconPx, pitchPx: pitch, moonPx: moon, sunPx: sun, labelPx, hasLabel: true };
-      const halves = (l) => { const cut = Math.ceil(l.length / 2); return [l.slice(0, cut), l.slice(cut)]; };
-      // the panel's height at natural sizes: one column per night, or two
-      // (each night split in half) when the lists are long
-      const natural = Math.max(...[lists.first, lists.other].map((l) => nightColumnHeight(l, sizes)));
-      const naturalSplit = Math.max(...[...halves(lists.first), ...halves(lists.other)].map((l) => nightColumnHeight(l, sizes)));
-      const chrome = headingH + 10 * unit + 14 * unit + 2 * border + 6 * unit;
-      night = { kind: 'night', iconPx, pitch, moon, sun, labelPx, natural, naturalSplit, chrome, split: false, h: natural + chrome };
-      out.push(night);
+      out.push({ team: t, chars, cols, g, rows, h: rows.total + headingH + 10 * unit + 14 * unit + 2 * border });
     }
     const used = out.reduce((n, p) => n + p.h, 0) + Math.max(0, out.length - 1) * gap;
-    return { out, used, gap, pad, border, bodyW, headingPx, headingH, night };
+    return { out, used, gap, headingPx };
   };
 
-  let unit = (W / 1242) * clamp(Number(back.panelScale) || 1, 0.4, 2);
+  let unit = base * clamp(Number(back.panelScale) || 1, 0.4, 2);
   let p = plan(unit);
-  const avail = bottom - top;
-  /* Over the page: the night panel gives first — a long list splits each
-     night into two side-by-side columns, then closes its pitch up — and
-     only when the FIXED panels (plus a floor for the night) still do not
-     fit does everything scale down together (twice, because the ability
-     text re-wraps at the smaller size). */
-  // the night panel's floor: a fair share of the page, so three full-size
-  // team boxes cannot squeeze it to a smear — the boxes scale instead
-  const nightFloor = () => (p.night ? Math.min(p.night.h, Math.max(300 * unit, 0.42 * avail)) : 0);
-  for (let iter = 0; iter < 2; iter++) {
-    const fixed = p.used - (p.night ? p.night.h : 0) + nightFloor();
-    if (fixed <= avail) break;
-    unit *= clamp(avail / fixed, 0.4, 1);
+  const gapAfterTable = tableH ? 16 * base : 0;
+  // over the page: the team boxes scale down together (twice, because the
+  // ability text re-wraps at the smaller size)
+  for (let iter = 0; iter < 2 && p.out.length && tableH + gapAfterTable + p.used > avail; iter++) {
+    unit *= clamp((avail - tableH - gapAfterTable) / p.used, 0.4, 1);
     p = plan(unit);
-  }
-  // the night panel sizes itself to its content: one column per night if
-  // that fits what is left, two per night if THAT fits, and otherwise the
-  // leftover height (never under its floor) with the pitch closed up
-  if (p.night) {
-    const n = p.night;
-    const remaining = avail - (p.used - n.h);
-    const canSplit = lists.first.length > 6 || lists.other.length > 6;
-    if (n.natural + n.chrome <= remaining) {
-      n.h = n.natural + n.chrome;
-    } else if (canSplit && n.naturalSplit + n.chrome <= remaining) {
-      n.h = n.naturalSplit + n.chrome;
-      n.split = true;
-    } else {
-      n.h = Math.max(nightFloor(), remaining);
-      n.split = canSplit;
-    }
   }
 
   let y = top;
+  if (back.playersBox) {
+    root.append(setupTable({
+      fonts: F, parchment, width: tableW, left: left + (width - tableW) / 2, top: y,
+      scale: base, good: options.goodColor, evil: options.evilColor,
+    }));
+    y += tableH + gapAfterTable;
+  }
   for (const panel of p.out) {
-    if (panel.kind === 'players') {
-      const { root: box, body } = panelFrame({
-        title: '', fonts: F, parchment, scale: unit, headingPx: p.headingPx,
-        width: panel.w, left: left + (width - panel.w) / 2, top: y, height: panel.h,
-      });
-      body.append(el('div', {
-        fontFamily: F.heading,
-        fontSize: px(38 * unit),
-        lineHeight: '1',
-        textAlign: 'center',
-        textTransform: 'uppercase',
-        letterSpacing: '0.1em',
-        color: '#2a1b10',
-        paddingTop: px(8 * unit),
-      }, playersText(script, options)));
-      root.append(box);
-    } else if (panel.kind === 'team') {
-      const { root: box, body } = panelFrame({
-        title: TEAM_LABELS[panel.team], fonts: F, parchment, scale: unit, headingPx: p.headingPx,
-        width, left, top: y, height: panel.h,
-      });
-      body.append(teamRows(panel.chars, panel.g, F, panel.cols, (t) => TEAM_INK[t] || '#7a5230', ornament));
-      root.append(box);
-    } else if (panel.kind === 'night') {
-      const { root: box, body } = panelFrame({
-        title: 'Night order', fonts: F, parchment, scale: unit, headingPx: p.headingPx,
-        width, left, top: y, height: panel.h,
-      });
-      const colAvail = panel.h - p.headingH - 10 * unit - 14 * unit - 2 * p.border - 6 * unit;
-      const halfW = p.bodyW / 2 - 8 * unit;
-      const row = el('div', { display: 'flex', justifyContent: 'space-between', gap: px(16 * unit) });
-      const sizes = { iconPx: panel.iconPx, pitchPx: panel.pitch, moonPx: panel.moon, sunPx: panel.sun, labelPx: panel.labelPx, hasLabel: true };
-      // a night too long for its half splits into two columns, read down
-      // the first and then the second (dusk top-left, dawn bottom-right);
-      // if either night needs it, both split, so the halves match
-      const splitting = !!panel.split;
-      for (const [items, label] of [[lists.first, 'First night'], [lists.other, 'Other nights']]) {
-        let parts = [items];
-        if (splitting && items.length > 3) {
-          const cut = Math.ceil(items.length / 2);
-          parts = [items.slice(0, cut), items.slice(cut)];
-        }
-        const fit = fitNightSizes(parts, sizes, colAvail, 16 * unit);
-        const half = el('div', { display: 'flex', width: px(halfW), gap: px(8 * unit), alignItems: 'flex-start' });
-        parts.forEach((list, pi) => {
-          half.append(nightColumn({
-            items: list, label: pi === 0 ? label : ' \n ', fonts: F,
-            iconPx: fit.iconPx, pitchPx: fit.pitchPx, moonPx: fit.moonPx, sunPx: fit.sunPx,
-            names: !!back.nightNames, width: parts.length > 1 ? (halfW - 8 * unit) / 2 : halfW,
-            labelPx: panel.labelPx,
-            labelColor: '#2a1b10', labelShadow: false, nameColor: '#222222',
-            namePx: Math.min(24 * unit, fit.iconPx * 0.42), iconFit,
-          }));
-        });
-        row.append(half);
-      }
-      body.append(row);
-      root.append(box);
-    }
+    const { root: box, body } = panelFrame({
+      title: TEAM_LABELS[panel.team], fonts: F, parchment, scale: unit, headingPx: p.headingPx,
+      width, left, top: y, height: panel.h,
+    });
+    body.append(teamRows(panel.chars, panel.g, F, panel.cols, (t) => TEAM_INK[t] || '#7a5230', ornament));
+    root.append(box);
     y += panel.h + p.gap;
   }
 }

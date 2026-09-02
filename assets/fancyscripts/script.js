@@ -301,14 +301,19 @@ export const DEFAULT_BACK = {
   // the damask (see back.js): the player count, the night order as icon
   // strips (moon → icons → sun, like the template's ribbons), and whole
   // teams moved off the front sheet
-  playersBox: false,
-  nightOrder: false,
+  playersBox: false, // the official setup table (players 5..15+ × team counts)
+  nightOrder: false, // the night order down BOTH edges, like the reference sheets
   nightNames: false, // names beside the night-order icons
+  nightBacking: false, // a parchment panel behind each night strip
   travellers: false,
   fabled: false,
   loric: false,
-  panelScale: 1, // the panels' text and icon size
-  panelTop: 30, // % of height where the panels start (the title sits above)
+  // one size slider per element, so a strip, the table and the team boxes
+  // can each be tuned without moving the others
+  nightScale: 1,
+  playersScale: 1,
+  panelScale: 1, // the team boxes' text and icon size
+  panelTop: 30, // % of height where the centre boxes start (the title sits above)
 };
 
 export function backHasPanels(back) {
@@ -324,9 +329,12 @@ const BACK_SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'in', 'on', 'to
    `size` is the sheet the back is drawn at ({w, h}); `compact` stacks the
    title in the top band instead of the middle, for a back that carries
    panels under it. */
-export function seedBackTexts(title, size, compact) {
+export function seedBackTexts(title, size, compact, widthFrac) {
   const W = (size && size.w) || 1242;
   const H = (size && size.h) || 1656;
+  // how much of the width the stack may take: less when night strips run
+  // down the edges, so a wide word does not land on them
+  const band = widthFrac || 0.88;
   const words = String(title || '').trim().split(/\s+/).filter(Boolean).slice(0, 8);
   if (!words.length) words.push('Untitled');
   const rows = words.map((w) => ({ text: w, small: BACK_SMALL_WORDS.has(w.toLowerCase()) }));
@@ -337,7 +345,7 @@ export function seedBackTexts(title, size, compact) {
   const sizeOf = (r) => Math.min(
     r.small ? big * 0.58 : big,
     // LHF Unlovable advances ≈ 0.43 em — keep every word inside the page
-    (W * 0.88) / (0.43 * Math.max(2, r.text.length)),
+    (W * band) / (0.43 * Math.max(2, r.text.length)),
   );
   // overlapping stack like the template (pitch ≈ 0.62 of the glyph size)
   let total = rows.reduce((n, r) => n + sizeOf(r) * 0.62, 0);

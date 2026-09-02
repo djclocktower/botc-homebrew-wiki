@@ -232,7 +232,9 @@ function applyMode(from) {
 
 /* ── loading scripts ── */
 function reseedBackTexts() {
-  options.back.texts = seedBackTexts(backTitleNow(), backSize(options), backHasPanels(options.back));
+  const b = options.back;
+  // the strips down the edges take the outer sixth of the width each side
+  options.back.texts = seedBackTexts(backTitleNow(), backSize(options), backHasPanels(b), b.nightOrder ? 0.62 : 0.88);
   backSel = options.back.texts.length ? 0 : -1; // the panel stays open
   buildBackChips();
   buildBackElementPanel();
@@ -847,13 +849,15 @@ function buildBackControls() {
   buildBackPanelControls();
 }
 
-/* The boxes on the back. Ticking the first one re-stacks the title into
-   the top band to make room (and unticking the last one puts it back);
-   in between, the title is left wherever it was dragged. */
+/* The elements on the back. Ticking the first one re-stacks the title into
+   the top band to make room (and unticking the last one puts it back); in
+   between, the title is left wherever it was dragged. Each element has its
+   own size slider, shown only while it is on. */
 const BACK_PANELS = [
-  ['playersBox', 'Player count box'],
-  ['nightOrder', 'Night order (icons in order, first night / other nights)'],
+  ['playersBox', 'Player count table (players 5–15+ and the team counts)'],
+  ['nightOrder', 'Night order down both sides (first night left, other nights right)'],
   ['nightNames', 'Character names beside the night-order icons'],
+  ['nightBacking', 'Parchment backing behind the night order'],
   ['travellers', 'Travellers in a box on the back (off the front)'],
   ['fabled', 'Fabled in a box on the back (off the front)'],
   ['loric', 'Loric in a box on the back (off the front)'],
@@ -873,19 +877,31 @@ function buildBackPanelControls() {
       const had = backHasPanels(b);
       b[key] = input.checked;
       const has = backHasPanels(b);
-      if (had !== has) reseedBackTexts();
+      // the title stack re-seeds when boxes first appear or all go, and
+      // when the strips come and go (they narrow the band it may use)
+      if (had !== has || key === 'nightOrder') reseedBackTexts();
       buildBackPanelControls();
       requestRender();
     });
     const span = document.createElement('span');
     span.textContent = label;
     lab.append(input, span);
-    if (key === 'nightNames') lab.hidden = !b.nightOrder;
+    if (key === 'nightNames' || key === 'nightBacking') lab.hidden = !b.nightOrder;
     box.append(lab);
   }
-  if (backHasPanels(b)) {
-    makeSlider(box, 'Box text & icon size', 0.5, 1.6, 0.02, pct,
+  if (b.nightOrder) {
+    makeSlider(box, 'Night order size', 0.5, 2, 0.02, pct,
+      () => b.nightScale ?? 1, (v) => { b.nightScale = v; });
+  }
+  if (b.playersBox) {
+    makeSlider(box, 'Player table size', 0.4, 1.4, 0.02, pct,
+      () => b.playersScale ?? 1, (v) => { b.playersScale = v; });
+  }
+  if (b.travellers || b.fabled || b.loric) {
+    makeSlider(box, 'Team box size', 0.5, 1.6, 0.02, pct,
       () => b.panelScale ?? 1, (v) => { b.panelScale = v; });
+  }
+  if (b.playersBox || b.travellers || b.fabled || b.loric) {
     makeSlider(box, 'Boxes start (down the page)', 8, 60, 1, (v) => Math.round(v) + '%',
       () => b.panelTop ?? 30, (v) => { b.panelTop = v; });
   }
