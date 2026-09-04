@@ -580,8 +580,27 @@ const fmtDeg = (v) => (v > 0 ? '+' : '') + Math.round(v) + '°';
 const fmtEm = (v) => Number(v).toFixed(2) + 'em';
 const fmtNum = (dp) => (v) => Number(v).toFixed(dp);
 
+let cardPaths = null; // the option paths a card binds, for its reset button
 function bindPath(path) {
+  if (cardPaths) cardPaths.add(path);
   return { get: () => getPath(path), set: (v) => setPath(path, v) };
+}
+
+/* a card's "back to the defaults" button: every path the card bound is
+   put back to what a fresh design has, nothing else moves */
+function beginCard() { cardPaths = new Set(); }
+function endCard(box, label) {
+  const paths = [...(cardPaths || [])];
+  cardPaths = null;
+  const row = makeRow(box);
+  row.style.marginTop = '10px';
+  makeButton(row, label || 'Reset this card', () => {
+    const fresh = normalizeOptions({});
+    for (const path of paths) setPath(path, clone(path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), fresh)));
+    commit();
+    syncControls();
+    toast('Back to the defaults');
+  });
 }
 
 function makeSlider(parent, label, min, max, step, format, b, extra) {
@@ -1091,6 +1110,7 @@ function applyPreset(key) {
 
 function buildTitleCard() {
   const box = $('fs-title-box');
+  beginCard();
   makeText(box, 'Title (blank = the script’s own)', bindPath('titleOverride'), {
     onInput: (v) => { /* the back cover's words follow a retitle only via Reset layout */ },
   });
@@ -1111,10 +1131,12 @@ function buildTitleCard() {
   makeSlider(box, 'Offset shadow strength', 0, 3, 0.05, fmtNum(2), bindPath('titleShadow'), { reset: 1 });
   makeFont(box, 'Title font', bindPath('fontTitle'));
   makeText(box, 'Footnote text (blank = “*Not the first night”)', bindPath('footnoteText'));
+  endCard(box);
 }
 
 function buildLayoutCard() {
   const box = $('fs-layout-box');
+  beginCard();
   makeSelect(box, 'Character order', [['script', 'As in the script'], ['official', 'Official style'],
     ['sao', 'Steven Approved Order'], ['alpha', 'Alphabetical']], bindPath('sortMode'));
   makeSelect(box, 'Columns', [['even', 'Two, even (official)'], ['shared', 'Two, classic (col 2 under the title)'], ['single', 'One wide column']],
@@ -1125,7 +1147,8 @@ function buildLayoutCard() {
   makeToggle(box, 'Page numbers on a multi-sheet script', bindPath('showPageNumbers'));
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
-  makeToggle(box, 'Team labels on the ribbon', bindPath('showLabels'));
+  makeToggle(box, 'Team labels', bindPath('showLabels'));
+  makeSelect(box, 'Team labels as', [['ribbon', 'Ribbon labels (official)'], ['heading', 'Headings over each team'], ['both', 'Both']], bindPath('labelStyle'));
   makeToggle(box, 'Character counts in the team labels', bindPath('labelCounts'));
   makeToggle(box, 'Section dividers', bindPath('showDividers'));
   makeToggle(box, 'Even out icon sizes (ink normalisation)', bindPath('normalizeIcons'));
@@ -1156,13 +1179,15 @@ function buildLayoutCard() {
   makeSelect(box, 'Setup notes [+2 Outsiders]', [['plain', 'Plain'], ['italic', 'Italic'], ['bold', 'Bold'], ['muted', 'Muted']], bindPath('bracketStyle'));
   makeLabel(box, 'Hide a whole team');
   const hide = makeRow(box, 'fs-colors');
-  for (const t of TEAM_ORDER) makeToggle(hide, TEAM_NAMES[t], { get: () => options.hideTeams[t], set: (v) => { options.hideTeams[t] = v; } });
+  for (const t of TEAM_ORDER) makeToggle(hide, TEAM_NAMES[t], bindPath('hideTeams.' + t));
   makeLabel(box, 'Team labels (blank = the official wording)');
-  for (const t of TEAM_ORDER) makeText(box, TEAM_NAMES[t], { get: () => options.teamLabels[t], set: (v) => { options.teamLabels[t] = v; } });
+  for (const t of TEAM_ORDER) makeText(box, TEAM_NAMES[t], bindPath('teamLabels.' + t));
+  endCard(box);
 }
 
 function buildColorsCard() {
   const box = $('fs-colors-box');
+  beginCard();
   const main = makeRow(box, 'fs-colors');
   makeColor(main, 'Good names', bindPath('goodColor'));
   makeColor(main, 'Evil names', bindPath('evilColor'));
@@ -1170,11 +1195,12 @@ function buildColorsCard() {
   makeColor(main, 'Ability text', bindPath('inkColor'));
   makeColor(main, 'Author', bindPath('authorColor'));
   makeColor(main, 'Team labels', bindPath('labelColor'));
+  makeColor(main, 'Team headings', bindPath('headingColor'), { clearable: true, fallback: () => options.goodColor });
   makeColor(main, 'Footnote', bindPath('footnoteColor'));
   makeLabel(box, 'Per team (× = follow good/evil)');
   const teams = makeRow(box, 'fs-colors');
   for (const t of TEAM_ORDER) {
-    makeColor(teams, TEAM_NAMES[t], { get: () => options.teamColors[t], set: (v) => { options.teamColors[t] = v; } },
+    makeColor(teams, TEAM_NAMES[t], bindPath('teamColors.' + t),
       { clearable: true, fallback: () => (t === 'minion' || t === 'demon' ? options.evilColor : t === 'townsfolk' || t === 'outsider' ? options.goodColor : options.neutralColor) });
   }
   makeLabel(box, 'Sidebar ribbon');
@@ -1185,10 +1211,12 @@ function buildColorsCard() {
   const up = makeRow(box);
   makeUpload(up, 'Upload ribbon art', 'image/*', (url) => { elSet(options, 'sidebar', { src: addAsset(url) }); commit(); });
   makeButton(up, 'Built-in art', () => { elSet(options, 'sidebar', { src: '' }); commit(); });
+  endCard(box);
 }
 
 function buildFontsCard() {
   const box = $('fs-fonts-box');
+  beginCard();
   makeFont(box, 'Character names', bindPath('fontName'));
   makeFont(box, 'Ability text', bindPath('fontAbility'));
   makeFont(box, 'Team labels', bindPath('fontLabel'));
@@ -1204,6 +1232,7 @@ function buildFontsCard() {
     scheduleAutosave();
   });
   makeHint(box, 'An uploaded font appears in every font menu on every page, and is embedded in the exports.');
+  endCard(box);
 }
 
 function bgControls(box, path, page) {
@@ -1225,19 +1254,24 @@ function bgControls(box, path, page) {
 }
 
 function buildBgCard() {
+  beginCard();
   bgControls($('fs-bg-box'), 'bg', 'front');
+  endCard($('fs-bg-box'));
 }
 
 function buildNightCard() {
   const box = $('fs-night-box');
+  beginCard();
   makeText(box, 'First night title', bindPath('night.titleFirst'));
   makeText(box, 'Other nights title', bindPath('night.titleOther'));
   makeToggle(box, 'Split one night over two columns', bindPath('night.twoColumns'));
   makeToggle(box, 'Dusk, Minion Info, Demon Info and Dawn', bindPath('night.showMeta'));
   const stepRow = makeRow(box, 'fs-colors');
   for (const [k, label] of [['dusk', 'Hide Dusk'], ['minioninfo', 'Hide Minion Info'], ['demoninfo', 'Hide Demon Info'], ['dawn', 'Hide Dawn']]) {
-    makeToggle(stepRow, label, { get: () => options.night.hideSteps[k], set: (v) => { options.night.hideSteps[k] = v; } });
+    makeToggle(stepRow, label, bindPath('night.hideSteps.' + k));
   }
+  makeToggle(box, 'Hairline under every step', bindPath('night.rowLines'));
+  makeToggle(box, 'Faint band behind every other step', bindPath('night.zebra'));
   makeToggle(box, 'Reminder text under each name', bindPath('night.showReminders'));
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   const ord = makeRow(box);
@@ -1284,10 +1318,12 @@ function buildNightCard() {
   makeText(box, 'Footer line 2', bindPath('night.footer2'));
   makeLabel(box, 'Background');
   bgControls(box, 'night.bg', 'list');
+  endCard(box);
 }
 
 function buildJinxCard() {
   const box = $('fs-jinx-box');
+  beginCard();
   makeText(box, 'Page title', bindPath('jinxPage.title'));
   makeToggle(box, 'House rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
   makeText(box, 'House rules heading', bindPath('jinxPage.houseTitle'));
@@ -1312,10 +1348,12 @@ function buildJinxCard() {
   makeFont(box, 'Text', bindPath('jinxPage.fontText'));
   makeLabel(box, 'Background');
   bgControls(box, 'jinxPage.bg', 'list');
+  endCard(box);
 }
 
 function buildExportCard() {
   const box = $('fs-export-box');
+  beginCard();
   makeSelect(box, 'PDF page size', Object.entries(PAGE_FORMATS).map(([k, v]) => [k, v.label]), bindPath('exportOpts.pageSize'));
   const row = makeRow(box, 'fs-colors');
   makeColor(row, 'Paper around the sheet (A4 / Letter)', bindPath('exportOpts.marginColor'));
@@ -1330,6 +1368,7 @@ function buildExportCard() {
   makeToggle(box, 'Night order sheets', bindPath('exportOpts.pages.night'));
   makeToggle(box, 'Jinx page', bindPath('exportOpts.pages.jinx'));
   makeHint(box, 'Share Image and Print PNG download the page you are looking at; “All pages” downloads each one; Print PDF is every ticked page in order.');
+  endCard(box);
 }
 
 /* ── the Elements panel ───────────────────────────────────────────────
@@ -1464,6 +1503,7 @@ function buildElementPanel() {
       track(makeSlider(box, 'Opacity', 0, 1, 0.01, pct, { get: () => get().opacity, set: (v) => { get().opacity = v; } }, { reset: 1 }));
       track(makeSlider(box, 'Shadow', 0, 3, 0.05, fmtNum(2), { get: () => get().shadow, set: (v) => { get().shadow = v; } }, { reset: 0 }));
       track(makeSlider(box, 'Rounded corners', 0, 50, 1, (v) => v + '%', { get: () => get().round, set: (v) => { get().round = v; } }, { reset: 0 }));
+      track(makeToggle(box, 'Lock in place (no dragging)', { get: () => get().locked, set: (v) => { get().locked = v; } }));
       track(makeToggle(box, 'Flip horizontally', { get: () => get().flip, set: (v) => { get().flip = v; } }));
       track(makeToggle(box, 'Behind the sheet’s own content', { get: () => get().behind, set: (v) => { get().behind = v; } }));
       track(makeSelect(box, 'Blend', [['normal', 'Normal'], ['multiply', 'Multiply (ink on paper)']], { get: () => get().blend || 'normal', set: (v) => { get().blend = v; } }));
@@ -1513,6 +1553,7 @@ function textStickerControls(box, get, track) {
   track(makeSlider(box, 'Line spacing', 0.7, 2, 0.02, fmtNum(2), { get: () => get().lineHeight || 1, set: (v) => { get().lineHeight = v; } }, { reset: 1 }));
   track(makeSlider(box, 'Opacity', 0, 1, 0.01, pct, { get: () => get().opacity == null ? 1 : get().opacity, set: (v) => { get().opacity = v; } }, { reset: 1 }));
   track(makeSelect(box, 'Anchor', [['center', 'Centre'], ['left', 'Left'], ['right', 'Right']], { get: () => get().align || 'center', set: (v) => { get().align = v; } }));
+  track(makeToggle(box, 'Lock in place (no dragging)', { get: () => get().locked, set: (v) => { get().locked = v; } }));
   track(makeSelect(box, 'Blend', [['normal', 'Normal'], ['multiply', 'Multiply (ink on paper)']], { get: () => get().blend || 'normal', set: (v) => { get().blend = v; } }));
   track(makeSlider(box, 'Stroke width', 0, 8, 0.25, (v) => Number(v).toFixed(2) + 'px', { get: () => get().strokeW || 0, set: (v) => { get().strokeW = v; } }, { reset: 0 }));
   track(makeSlider(box, 'Shadow across', -25, 25, 1, fmtPx, { get: () => get().shadowX || 0, set: (v) => { get().shadowX = v; } }, { reset: 0 }));

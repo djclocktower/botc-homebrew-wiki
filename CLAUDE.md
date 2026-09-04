@@ -2228,7 +2228,12 @@ autosave is localStorage; a design file is a download).
   night sheet's reminders mix Trade Gothic with bold-condensed info tokens,
   so a row is measured as runs in two fonts) cache per font+width+text and
   are dropped when the fonts arrive (`fontsChanged()`). A slider drag
-  re-measures the same 25 abilities sixty times a second otherwise.
+  re-measures the same 25 abilities sixty times a second otherwise. The
+  icon-ink measurements ask for ONE re-render per burst (`normalizeIcons`
+  debounces the callback): one per image, a frame apart, rebuilt a fresh
+  script's page twenty times and the re-created `<img>` nodes painted
+  blank while they decoded again — which is also why the renderers' icon
+  images decode synchronously.
 - **`app.js`** is the controller: page tabs, the schema-driven control
   cards, the Elements / Characters / Back panels (rebuilt around the
   selection), the drag wiring, uploads, fonts, undo/redo, autosave, design

@@ -384,6 +384,10 @@ export function layoutSheet(script, options, requestRender) {
 
   const layoutEven = options.columnLayout !== 'shared';
   const sum = (a) => a.reduce((x, y) => x + y, 0);
+  // team names as horizontal headings over each section (instead of, or
+  // as well as, the ribbon labels) take a band at the top of the section
+  const headEm = options.showLabels && (options.labelStyle === 'heading' || options.labelStyle === 'both')
+    ? 2.35 * (options.labelSize || 1) : 0;
 
   /* Two column layouts:
 
@@ -404,7 +408,7 @@ export function layoutSheet(script, options, requestRender) {
     if (layoutEven) {
       const leftNeeds = left.map((ch) => rowHeightEm(ch, density));
       const rightNeeds = right.map((ch) => rowHeightEm(ch, density));
-      return { left, right, leftNeeds, rightNeeds, need: Math.max(sum(leftNeeds), sum(rightNeeds)) };
+      return { left, right, leftNeeds, rightNeeds, head: headEm, need: Math.max(sum(leftNeeds), sum(rightNeeds)) + headEm };
     }
     const rows = Math.max(left.length, right.length + shift);
     const rowHeights = [];
@@ -414,7 +418,7 @@ export function layoutSheet(script, options, requestRender) {
         rowHeightEm(right[i - shift], density),
       ));
     }
-    return { left, right, rowHeights, need: sum(rowHeights), shift };
+    return { left, right, rowHeights, head: headEm, need: sum(rowHeights) + headEm, shift };
   };
 
   const headerExtra = headerExtraEm(script, options);
@@ -558,11 +562,14 @@ export function layoutSheet(script, options, requestRender) {
       cursorPx += heightPx + ed(SHEET.sectionGap);
       m.topPx = topPx;
       m.heightPx = heightPx;
-      m.leftHeights = layoutEven ? dealEven(m.leftNeeds, m.need) : m.rowHeights;
+      m.headPx = ed(m.head || 0);
+      const rowsNeed = m.need - (m.head || 0);
+      m.leftHeights = layoutEven ? dealEven(m.leftNeeds, rowsNeed) : m.rowHeights;
       m.rightHeights = layoutEven
-        ? dealEven(m.rightNeeds, m.need)
+        ? dealEven(m.rightNeeds, rowsNeed)
         : m.rowHeights.slice(m.shift ? 1 : 0);
-      m.rightTopPx = (!layoutEven && m.shift) ? topPx + ed(m.rowHeights[0] || 0) : topPx;
+      m.rowsTopPx = topPx + m.headPx;
+      m.rightTopPx = ((!layoutEven && m.shift) ? topPx + ed(m.rowHeights[0] || 0) : topPx) + m.headPx;
       m.first = i === 0;
     });
   });
@@ -802,6 +809,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
 
   page.sections.forEach((sec, si) => {
     const { team, chars, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx } = sec;
+    const rowsTopPx = sec.rowsTopPx != null ? sec.rowsTopPx : topPx;
     const wrap = el('div');
 
     // divider above every section except the first, plus the cap on the
@@ -828,13 +836,31 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       }));
     }
 
+    // the team's name as a heading over the section (labelStyle heading/both)
+    const labelText = ((options.teamLabels && options.teamLabels[team] || '').trim() ||
+      (sec.total === 1 ? TEAM_LABELS_SINGULAR[team] : TEAM_LABELS[team])).toUpperCase() +
+      (options.labelCounts ? ' · ' + sec.total : '');
+    const labelStyle = options.labelStyle || 'ribbon';
+    if (options.showLabels && sec.head && !lT.hidden) {
+      wrap.append(el('div', {
+        position: 'absolute',
+        left: (SHEET.col1IconX + c1T.dx) + '%',
+        top: px(topPx + ed(0.35)),
+        fontFamily: fonts.label,
+        fontSize: px(ed(1.55) * (options.labelSize || 1) * lT.scale),
+        lineHeight: '1',
+        letterSpacing: '0.14em',
+        color: options.headingColor || teamColor(options, team),
+        opacity: String(lT.opacity),
+        mixBlendMode: 'multiply',
+        whiteSpace: 'nowrap',
+      }, labelText));
+    }
+
     // sidebar label, centred on the section span including the trailing gap
     // (last section: down to 87.5 em); singular when the section holds one
-    if (options.showLabels && !lT.hidden) {
-      const custom = (options.teamLabels && options.teamLabels[team] || '').trim();
-      const label = (custom || (sec.total === 1
-        ? TEAM_LABELS_SINGULAR[team]
-        : TEAM_LABELS[team])).toUpperCase() + (options.labelCounts ? ' · ' + sec.total : '');
+    if (options.showLabels && !lT.hidden && labelStyle !== 'heading') {
+      const label = labelText;
       const baseFs = e(SHEET.labelSize) * (options.labelSize || 1) * lT.scale;
       const isLast = si === page.sections.length - 1;
       /* The band a label is centred on and shrinks to fit: its own section
@@ -875,7 +901,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     const colL = el('div', {
       position: 'absolute',
       left: (SHEET.col1IconX + c1T.dx) + '%',
-      top: px(topPx + e(c1T.dy)),
+      top: px(rowsTopPx + e(c1T.dy)),
       width: colWPct + '%',
       opacity: String(c1T.opacity),
       display: c1T.hidden ? 'none' : 'block',

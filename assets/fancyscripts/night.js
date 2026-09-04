@@ -377,12 +377,24 @@ function reminderNodes(row, cfg, fonts, ed) {
   return out;
 }
 
-function rowNode(u, ci, layout, cfg, options, ed, e, mark) {
+function rowNode(u, ci, layout, cfg, options, ed, e, mark, rowIndex) {
   const { m, fonts, cols, textXOff } = layout;
   const row = u.row;
   const h = u.hEm;
   const node = el('div', { position: 'relative', height: px(ed(h)) });
   node.dataset.fsRow = row.id;
+  if (cfg.zebra && rowIndex % 2 === 1) {
+    node.append(el('div', {
+      position: 'absolute', left: px(-ed(0.6)), right: px(-ed(0.4)), top: px(-ed(0.25)), bottom: px(ed(0.35)),
+      background: 'rgba(40, 25, 10, 0.055)', borderRadius: px(ed(0.5)), mixBlendMode: 'multiply',
+    }));
+  }
+  if (cfg.rowLines) {
+    node.append(el('div', {
+      position: 'absolute', left: '0', right: '0', bottom: px(ed(0.3)), height: px(Math.max(1, ed(0.05))),
+      background: cfg.textColor || '#2b2b2b', opacity: '0.22',
+    }));
+  }
   if (mark && row.list) mark(node, 'nrow:' + row.list + ':' + row.id); // drag to reorder the night
   const extra = ed(layout.extraLeftEm(row));
   const textW = ((cols[ci].x1 - cols[ci].x0 - textXOff) / 100) * SHEET_W - extra;
@@ -565,6 +577,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
       }, spec.columns[ci].heading));
     }
     let y = 0;
+    let rowIndex = 0;
     for (const u of pc.units) {
       if (u.type === 'heading') {
         const hd = el('div', {
@@ -574,7 +587,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         }, u.text);
         col.append(hd);
       } else {
-        const rn = rowNode(u, ci, layout, cfg, options, ed, e, mark);
+        const rn = rowNode(u, ci, layout, cfg, options, ed, e, mark, rowIndex++);
         rn.style.position = 'absolute';
         rn.style.left = '0';
         rn.style.right = '0';

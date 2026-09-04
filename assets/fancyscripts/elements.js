@@ -251,8 +251,8 @@ export function renderStickers(stickers, selectedId, behind) {
   return (stickers || [])
     .filter((st) => behind === undefined || !!st.behind === behind)
     .map((st) => (st.type === 'image'
-      ? renderImageElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)
-      : renderTextElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)));
+      ? renderImageElement(st, st.locked ? '' : 'custom:' + st.id, selectedId === 'custom:' + st.id)
+      : renderTextElement(st, st.locked ? '' : 'custom:' + st.id, selectedId === 'custom:' + st.id)));
 }
 
 /* apply an element's transform (offsets in % of width / em, rotation,

@@ -302,6 +302,8 @@ export const DEFAULT_NIGHT = {
   footer2: 'Pressed with Fancy Scripts · botchomebrew.wiki',
   showBadge: true,
   iconShadow: 1,
+  rowLines: false, // a hairline under every step
+  zebra: false, // a faint band behind every other step
   stepIcons: { dusk: '', minion: '', demon: '', dawn: '' }, // uploads replacing the built-in step icons
   hideSteps: { dusk: false, minioninfo: false, demoninfo: false, dawn: false },
   order: { first: null, other: null }, // a hand-arranged sequence of ids (drag a row on the sheet)
@@ -392,6 +394,8 @@ export const DEFAULT_OPTIONS = {
   labelSize: 1,
   labelSpacing: -0.15, // em (Chromium ignores line-height in upright vertical text)
   showLabels: true,
+  labelStyle: 'ribbon', // ribbon | heading | both — where the team names go
+  headingColor: '', // headings: '' = each team's own ink
   labelCounts: false, // "TOWNSFOLK · 13"
   showDividers: true,
   dividerOpacity: 1,
