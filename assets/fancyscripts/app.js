@@ -27,7 +27,7 @@ import {
   DEFAULT_OPTIONS, DEFAULT_BACK, DEFAULT_NIGHT, DEFAULT_JINX, DEFAULT_BG, PAGE_FORMATS, SHEET, SHEET_W, SHEET_H, U,
   FONTS, PRESETS, ELEMENTS, ELEMENT_BY_KEY, EL_DEFAULT, TEAM_ORDER, TEAM_NAMES,
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
-  pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel,
+  pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage } from './night.js';
@@ -300,6 +300,7 @@ function renderPageNode(p, ctx) {
 }
 
 let lastTabsSig = '';
+let backBuildToast = false;
 function render() {
   computeLayouts();
   if (!pages.some((p) => pageKey(p) === currentKey)) {
@@ -312,7 +313,13 @@ function render() {
   const sig = pages.map((p) => pageKey(p) + '=' + p.label).join('|') + '#' + currentKey;
   if (sig !== lastTabsSig) { buildTabs(); lastTabsSig = sig; showCardsFor(currentPage().kind); }
   const p = currentPage();
-  if (p.kind === 'back') seedBackColor();
+  if (p.kind === 'back') {
+    seedBackColor();
+    if (!backReady(options.back) && !backBuildToast) {
+      backBuildToast = true;
+      toast('Building the back cover pattern…');
+    } else if (backReady(options.back)) backBuildToast = false;
+  }
   const wrap = $('fs-sheet-wrap');
   wrap.textContent = '';
   const node = renderPageNode(p, {});
@@ -415,6 +422,7 @@ function loadJson(json, label, slug, keepDesign) {
     options.titleOverride = '';
     options.authorOverride = '';
     options.chars = {};
+    options.night.order = { first: null, other: null }; // ids belong to the old script
     options.back.texts = seedBackTexts(parsed.meta.name);
     backColorSeeded = false;
   }
@@ -651,6 +659,8 @@ function makeSelect(parent, label, choices, b, extra) {
     for (const [v, text] of (typeof choices === 'function' ? choices() : choices)) {
       const o = document.createElement('option');
       o.value = v; o.textContent = text;
+      // a font menu shows each face in itself (where the browser's menu allows)
+      if (extra && extra.styleFonts) o.style.fontFamily = fontFamily(v);
       sel.append(o);
     }
   };
@@ -695,7 +705,13 @@ function makeText(parent, label, b, extra) {
 function makeColor(parent, label, b, extra) {
   const row = document.createElement('div');
   row.className = 'fs-color';
-  const picker = createColorPicker(b.get() || (extra && extra.fallback) || '#000000', (hex) => {
+  // the fallback may be a function, so a "follow the sheet" swatch shows
+  // the sheet's CURRENT colour rather than the one at build time
+  const fallback = () => {
+    const f = extra && extra.fallback;
+    return (typeof f === 'function' ? f() : f) || '#000000';
+  };
+  const picker = createColorPicker(b.get() || fallback(), (hex) => {
     b.set(hex);
     requestRender();
   }, () => pushHistory());
@@ -708,11 +724,11 @@ function makeColor(parent, label, b, extra) {
     x.className = 'fs-mini';
     x.textContent = '×';
     x.title = 'Use the default colour';
-    x.addEventListener('click', () => { b.set(''); picker.set(extra.fallback || '#000000'); commit(); });
+    x.addEventListener('click', () => { b.set(''); picker.set(fallback()); commit(); });
     row.append(x);
   }
   parent.append(row);
-  const refresh = () => { picker.set(String(b.get() || (extra && extra.fallback) || '#000000')); };
+  const refresh = () => { picker.set(String(b.get() || fallback())); };
   const binding = { refresh, el: row };
   bindings.add(binding);
   return binding;
@@ -759,7 +775,7 @@ function fontChoices() {
   return out;
 }
 function makeFont(parent, label, b) {
-  const binding = makeSelect(parent, label, fontChoices, b, { dynamic: true });
+  const binding = makeSelect(parent, label, fontChoices, b, { dynamic: true, styleFonts: true });
   fontSelects.add(binding);
   return binding;
 }
@@ -1010,7 +1026,9 @@ function buildPagesCard() {
   const box = $('fs-pages-box');
   makeToggle(box, 'First Night sheet', bindPath('night.first'));
   makeToggle(box, 'Other Nights sheet', bindPath('night.other'));
-  makeToggle(box, 'Both nights on one page (two columns)', bindPath('night.combined'));
+  makeToggle(box, 'Both nights on one page (two columns)', bindPath('night.combined'), {
+    onChange: (on) => { if (on && !options.night.first && !options.night.other) { options.night.first = true; options.night.other = true; syncControls(); } },
+  });
   makeToggle(box, 'Jinxes & house rules page', bindPath('jinxPage.enabled'));
   makeToggle(box, 'Back cover', { get: () => options.exportOpts.pages.back, set: (v) => { options.exportOpts.pages.back = v; options.includeBackCover = v; } });
   makeHint(box, 'Ticked pages get a tab above the preview and a page in the PDF.');
@@ -1157,7 +1175,7 @@ function buildColorsCard() {
   const teams = makeRow(box, 'fs-colors');
   for (const t of TEAM_ORDER) {
     makeColor(teams, TEAM_NAMES[t], { get: () => options.teamColors[t], set: (v) => { options.teamColors[t] = v; } },
-      { clearable: true, fallback: t === 'minion' || t === 'demon' ? options.evilColor : t === 'townsfolk' || t === 'outsider' ? options.goodColor : options.neutralColor });
+      { clearable: true, fallback: () => (t === 'minion' || t === 'demon' ? options.evilColor : t === 'townsfolk' || t === 'outsider' ? options.goodColor : options.neutralColor) });
   }
   makeLabel(box, 'Sidebar ribbon');
   makeSelect(box, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('sidebarMode'));
@@ -1244,9 +1262,9 @@ function buildNightCard() {
   makeSelect(box, 'Info tokens (YOU ARE)', [['caps', 'Bold condensed caps'], ['bold', 'Bold'], ['plain', 'Plain']], bindPath('night.tokenStyle'));
   makeLabel(box, 'Colours (× = follow the sheet)');
   const colors = makeRow(box, 'fs-colors');
-  makeColor(colors, 'Good names', bindPath('night.goodColor'), { clearable: true, fallback: options.goodColor });
-  makeColor(colors, 'Evil names', bindPath('night.evilColor'), { clearable: true, fallback: options.evilColor });
-  makeColor(colors, 'Travellers / Fabled', bindPath('night.neutralColor'), { clearable: true, fallback: options.neutralColor });
+  makeColor(colors, 'Good names', bindPath('night.goodColor'), { clearable: true, fallback: () => options.goodColor });
+  makeColor(colors, 'Evil names', bindPath('night.evilColor'), { clearable: true, fallback: () => options.evilColor });
+  makeColor(colors, 'Travellers / Fabled', bindPath('night.neutralColor'), { clearable: true, fallback: () => options.neutralColor });
   makeColor(colors, 'Dusk / Info / Dawn', bindPath('night.metaColor'));
   makeColor(colors, 'Reminder text', bindPath('night.textColor'));
   makeColor(colors, 'Page title', bindPath('night.titleColor'));
@@ -1306,6 +1324,7 @@ function buildExportCard() {
   makeSelect(box, 'Share image size', [['1', '1× (1242 px)'], ['1.5', '1.5× (1863 px)'], ['2', '2× (2484 px)']],
     { get: () => String(options.exportOpts.shareScale), set: (v) => { options.exportOpts.shareScale = Number(v); } });
   makeSlider(box, 'JPEG quality', 0.6, 1, 0.01, pct, bindPath('exportOpts.jpegQuality'), { reset: 0.92 });
+  if (IOS) makeHint(box, 'On an iPhone or iPad the print resolution is capped at 2.8× — Safari cannot make a larger image and would hand back a blank one.');
   makeLabel(box, 'Pages in the PDF');
   makeToggle(box, 'Script sheet(s)', bindPath('exportOpts.pages.front'));
   makeToggle(box, 'Night order sheets', bindPath('exportOpts.pages.night'));
@@ -1955,6 +1974,19 @@ async function withExport(btn, fn) {
              raw pixels where the JPEG lands under 10
    - 'share' JPEG at the share scale (1863 px wide, ~1 MB) — crisp on any
              screen and small enough for Discord */
+/* Safari on iPhone/iPad refuses a canvas over ~16.7 million pixels and
+   hands back a blank image instead of an error; a 3× sheet is 18.5 MP.
+   The print scale is capped there so an export from a phone still comes
+   out — 2.8× is the most that fits (3477 px wide, still print quality). */
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IOS_MAX_PX = 16777216;
+function printScale() {
+  let k = Number(options.exportOpts.printScale) || 3;
+  if (IOS) k = Math.min(k, Math.floor(Math.sqrt(IOS_MAX_PX / (SHEET_W * SHEET_H)) * 100) / 100);
+  return k;
+}
+
 async function captureNode(node, kind) {
   await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
   await document.fonts.ready;
@@ -1962,12 +1994,12 @@ async function captureNode(node, kind) {
   const x = options.exportOpts;
   const q = clamp(Number(x.jpegQuality) || 0.92, 0.5, 1);
   if (kind === 'jpeg') {
-    return window.htmlToImage.toJpeg(node, { pixelRatio: x.printScale || 3, cacheBust: false, quality: q });
+    return window.htmlToImage.toJpeg(node, { pixelRatio: printScale(), cacheBust: false, quality: q });
   }
   if (kind === 'share') {
     return window.htmlToImage.toJpeg(node, { pixelRatio: x.shareScale || 1.5, cacheBust: false, quality: Math.min(q, 0.9) });
   }
-  return window.htmlToImage.toPng(node, { pixelRatio: x.printScale || 3, cacheBust: false });
+  return window.htmlToImage.toPng(node, { pixelRatio: printScale(), cacheBust: false });
 }
 
 /* Exports render every page OFFSCREEN in a laid-out but invisible holder —
@@ -2068,14 +2100,26 @@ async function exportShare() {
 
 /* the share image straight to the clipboard (PNG — the clipboard takes
    no JPEG), for pasting into Discord without a file in between */
-async function copyImage() {
-  if (!navigator.clipboard || !window.ClipboardItem) throw new Error('This browser cannot copy images.');
+function copyImage() {
+  if (!navigator.clipboard || !window.ClipboardItem) return Promise.reject(new Error('This browser cannot copy images.'));
   const p = currentPage();
-  await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
-  const url = await withPageNode(p, (n) => window.htmlToImage.toPng(n, { pixelRatio: options.exportOpts.shareScale || 1.5, cacheBust: false }));
-  const blob = dataUrlToBlob(url);
-  await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
-  toast('Copied — paste it anywhere');
+  // Safari only honours a clipboard write issued INSIDE the click, so the
+  // write goes out now with a promise for the bytes; the render happens
+  // while the browser waits on it
+  const bytes = (async () => {
+    await loadScriptOnce('assets/fancyscripts/vendor/html-to-image.min.js', () => window.htmlToImage);
+    const url = await withPageNode(p, (n) => window.htmlToImage.toPng(n, { pixelRatio: options.exportOpts.shareScale || 1.5, cacheBust: false }));
+    return dataUrlToBlob(url);
+  })();
+  let item;
+  try {
+    item = new window.ClipboardItem({ 'image/png': bytes });
+  } catch {
+    // a browser that wants a Blob, not a promise: wait, then write
+    return bytes.then((blob) => navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]))
+      .then(() => toast('Copied — paste it anywhere'));
+  }
+  return navigator.clipboard.write([item]).then(() => toast('Copied — paste it anywhere'));
 }
 
 function exportPages() {

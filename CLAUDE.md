@@ -2506,6 +2506,13 @@ The footnote sits on the last page (or every page), and pages get a
   page is rendered offscreen for export (`withPageNode`) and waits for its
   images rather than a fixed delay. Downloads go through a Blob + object
   URL, not a data: href — a 30 MB data URL download fails on some phones.
+  **On iPhone/iPad the print scale is capped at 2.8×** (`printScale()`):
+  Safari refuses a canvas over ~16.7 million pixels and hands back a BLANK
+  image rather than an error, and a 3× sheet is 18.5 MP — the export
+  settings card says so there. **Copy issues its clipboard write inside
+  the click**, with a promise for the bytes (`ClipboardItem` accepts one):
+  Safari only honours a write made in the user gesture, and the render
+  takes longer than that.
   The PDF pages are embedded as **JPEG, not PNG** — jsPDF stores RGBA PNGs
   this size as raw pixels and the PDF came out 90 MB; as JPEG five pages
   land under 10.

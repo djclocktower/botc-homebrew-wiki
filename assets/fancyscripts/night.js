@@ -278,7 +278,8 @@ export function layoutList(spec, options, requestRender) {
       if (Math.abs(f - fit) < 0.002) { fit = f; break; }
       fit = f;
     }
-    if (fit >= minFit || !spec.paginate) d = fit;
+    // two-column specs never paginate, so they shrink as far as they must
+    if (fit >= minFit || !spec.paginate || two) d = fit;
     else {
       const need1 = needAt(0, 1);
       pagesN = Math.max(1, Math.ceil(need1 / availEm));
@@ -449,6 +450,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   sheet.dataset.fsDensity = d.toFixed(3);
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(cfg.bg, 'list', { scriptBg })) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
 
   // page title, top left
   const tT = elGet(options, P + 'Title');
@@ -607,7 +609,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
     sheet.append(mark(badge, 'el:' + P + 'Badge'));
   }
 
-  for (const n of renderStickers(ctx.stickers, selected)) sheet.append(n);
+  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
   return sheet;
 }
 

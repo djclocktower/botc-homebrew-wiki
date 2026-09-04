@@ -230,10 +230,11 @@ export function renderBack(script, options, requestRender, ui) {
     }
   }
 
+  for (const n of renderStickers(ui && ui.stickers, selected, true)) root.append(n);
   (back.texts || []).forEach((t, i) => {
     root.append(renderTextElement(t, 'back:' + i, selected === 'back:' + i));
   });
-  for (const n of renderStickers(ui && ui.stickers, selected)) root.append(n);
+  for (const n of renderStickers(ui && ui.stickers, selected, false)) root.append(n);
 
   return root;
 }

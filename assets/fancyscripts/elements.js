@@ -204,7 +204,7 @@ export function renderImageElement(t, drag, selected) {
     cursor: drag ? 'grab' : 'default',
     touchAction: 'none',
     lineHeight: '0',
-    zIndex: t.behind ? '1' : '3',
+    zIndex: t.behind ? '0' : '2',
   });
   if (src) {
     const im = img(src, {
@@ -244,11 +244,15 @@ export function markSelected(node) {
 }
 
 /* every sticker that belongs on this page, rendered in order. `stickers`
-   is the already-filtered list for the page. */
-export function renderStickers(stickers, selectedId) {
-  return (stickers || []).map((st) => (st.type === 'image'
-    ? renderImageElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)
-    : renderTextElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)));
+   is the already-filtered list for the page; `behind` picks the ones
+   marked to sit under the page's own content (true), the rest (false),
+   or all of them (undefined). */
+export function renderStickers(stickers, selectedId, behind) {
+  return (stickers || [])
+    .filter((st) => behind === undefined || !!st.behind === behind)
+    .map((st) => (st.type === 'image'
+      ? renderImageElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)
+      : renderTextElement(st, 'custom:' + st.id, selectedId === 'custom:' + st.id)));
 }
 
 /* apply an element's transform (offsets in % of width / em, rotation,

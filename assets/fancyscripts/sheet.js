@@ -595,6 +595,9 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   // background: the baked parchment (texture + garland), or what was chosen
   const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
   for (const n of renderBackground(options.bg, 'front', { scriptBg })) sheet.append(n);
+  // stickers marked "behind" sit under the sheet's own content: painting
+  // order is DOM order among positioned elements, so they go in here
+  for (const n of renderStickers(ctx.stickers, selected, true)) sheet.append(n);
 
   /* ── the ribbon ──
      The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
@@ -955,9 +958,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     sheet.append(mark(pn, 'el:pageno'));
   }
 
-  // stickers last, over everything (an image marked `behind` sits under
-  // the content via z-index — the content wrap has none)
-  for (const n of renderStickers(ctx.stickers, selected)) sheet.append(n);
+  // the rest of the stickers last, over everything
+  for (const n of renderStickers(ctx.stickers, selected, false)) sheet.append(n);
 
   return sheet;
 }
