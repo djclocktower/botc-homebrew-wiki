@@ -2352,6 +2352,7 @@ async function boot() {
   $('fs-zoom-in').addEventListener('click', () => setZoom(Math.min(3, (zoom === 'fit' ? lastScale : zoom) * 1.25)));
   $('fs-zoom-out').addEventListener('click', () => setZoom(Math.max(0.15, (zoom === 'fit' ? lastScale : zoom) / 1.25)));
   $('fs-zoom-fit').addEventListener('click', () => setZoom('fit'));
+  $('fs-zoom-width').addEventListener('click', () => setZoom(Math.min(1, ($('fs-preview').clientWidth - 12) / SHEET_W)));
   $('fs-zoom-100').addEventListener('click', () => setZoom(1));
   // ctrl+wheel and pinch zoom the preview
   $('fs-preview').addEventListener('wheel', (ev) => {
@@ -2442,6 +2443,14 @@ async function boot() {
     note('Restored your last design from this browser. Pick a script or a sample to start fresh.', 'ok');
   }
   if (rawJson == null) loadJson(SAMPLE_TROUBLE_BREWING);
+
+  // the back cover's pattern is a 1.4 MB tile plus a worker pass; fetch
+  // and build it once the page is idle, so the first tab switch (and the
+  // PDF, which always needs it) does not wait on it
+  setTimeout(() => {
+    const warm = () => { if (options.exportOpts.pages.back) { seedBackColor(); backCanvas(options.back, requestRender); } };
+    if (window.requestIdleCallback) window.requestIdleCallback(warm, { timeout: 4000 }); else warm();
+  }, 3500);
 }
 
 /* a small handle for the console and the render harness: read or patch

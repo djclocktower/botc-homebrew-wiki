@@ -2167,9 +2167,12 @@ autosave is localStorage; a design file is a download).
 ### How the modules fit
 
 - **`script.js` is the engine and the option model**, and it is pure: no
-  DOM, `node --input-type=module --check`-able, unit-testable with plain
-  node (the night order is tested that way — the "Blending In" roster in
-  app.js's samples is the owner's reference sheet, line for line).
+  DOM, `node --input-type=module --check`-able, unit-tested with plain
+  node: **`node migration/fancyscripts-test.mjs`** checks the night order
+  of the owner's reference sheets line for line (the "Blending In" roster
+  in app.js's samples), the `_meta` sequences, reminder marks, the option
+  model's legacy folding, page lists and per-character overrides — run it
+  after touching script.js.
   `DEFAULT_OPTIONS` (+ `DEFAULT_NIGHT`, `DEFAULT_JINX`, `DEFAULT_BG`,
   `DEFAULT_EXPORT`, `DEFAULT_BACK`) is the whole state of a design;
   `normalizeOptions()` deep-merges anything loaded (an autosave, a design
