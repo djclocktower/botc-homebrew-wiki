@@ -1318,17 +1318,7 @@ Two fields that DO take marks still leave, and both go through
 - `buildSchema()` in render.js — `flavor` (the quote) and a jinx's `reason`,
   for the official-schema JSON box. The app renders no markup.
 - The `<meta name="description">` on the `/c/` page, which falls back to the
-  `lede`. That description is also the **link unfurl** — what Discord prints
-  under the title — so it opens with `charMetaLine()` in worker.js: team,
-  `by {creator}`, the set (`charSetName()`, the same two fields and the same
-  order as the page's own "Appears in" row) and the page's class when it has
-  one, joined with ` · `, then the ability on the next line. It goes in the
-  description rather than in tags of its own because Discord renders the
-  title, the description and the image and nothing else — a
-  `twitter:label`/`data` pair or an oEmbed author line would be invisible on
-  the one surface it is for — and it goes FIRST so a long ability cannot push
-  it past the truncation. Every part is optional and Standard says nothing,
-  because the absence of a class is what Standard is.
+  `lede`. See "The character link unfurl" below for what else that carries.
 - The **Featured Character** card on `index.html`, which `esc()`s the `lede`
   into a strip of markup with no engine behind it. It had no `plainText()`
   call for a year and printed `{{red|Imp}}`'s braces on the homepage — the one
@@ -1342,6 +1332,64 @@ marks (create.html and edit.html are the same form — change one, change both),
 and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
+
+## The character link unfurl (what Discord shows)
+
+A `/c/` link posted in Discord used to unfurl as the name, the icon and the
+ability — the one thing the picture already tells you. What places the
+character (what it is, who made it, what set, whether the wiki has marked it)
+was missing, so three pieces of `pageShell()` carry it. **The split between
+them is Discord's, not ours:**
+
+- A scraped link embed draws exactly three pieces of text — title,
+  description, site name — and **the title is the only one that is a link**,
+  so it is the only place a word can be blue.
+- **`og:description` is rendered as PLAIN TEXT.** Markdown in it is not
+  parsed: `**bold**` stays literal and `[label](url)` never becomes a link.
+  There is no second way to colour or link anything (the only known trick is
+  spoofing a Mastodon API, which is not something this wiki is going to do).
+  It is also capped around 300 characters; the title is not.
+- `twitter:label1`/`data1` pairs are a Twitter/Discourse thing and Discord
+  ignores them. An **oEmbed** `author_name` does render, above the title, but
+  bold white rather than blue — and it would need a route of its own that
+  Discord fetches through undocumented behaviour. Neither is worth it.
+
+So:
+
+| what | where | why |
+|---|---|---|
+| name + team + Curata/Partial | **`og:title`** (`charTitle()`) | the statuses classify the page, and this is the only blue, untruncatable line |
+| `by {creator}` + the set | first line of the **description** (`charCreditLine()`) | the long strings, where a set name is not competing with the name for the top line |
+| the ability | second line of the description | unchanged |
+| the team's colour | **`theme-color`** (`Render.TEAM_COLOR`) | the bar down the side of the embed |
+
+Things worth knowing:
+
+- **`og:title` and `<title>` are two fields now.** `pageShell()` takes an
+  optional `ogTitle` defaulting to `title`, because the browser tab and the
+  Google result want the page's own name and nothing else, while the unfurl's
+  title is the one line that can carry more.
+- **Every part is optional and a missing one leaves no gap.** An uncredited
+  character from no set with no team unfurls exactly as it did before any of
+  this. **Standard adds nothing**, because the absence of a class is what
+  Standard is — the same reason `classBadgeHTML()` draws no mark for it.
+- **The set comes from `charSetName()`**, which reads the same two fields in
+  the same order as the page's own "Appears in" row (`appearsInRow` in
+  render.js): the typed `appearsIn` first, then the collections that list the
+  character by hand. The preview cannot claim a set the page does not show.
+- **`Render.TEAM_COLOR` sits beside `TEAM_LABEL`** in render.js and mirrors
+  the `:root` team vars in styles.css. Traveller is the wiki's one gradient,
+  so it takes the same solid blue `.wiki-traveller` already falls back to.
+  It is an eighth place the team list is re-declared by hand — see
+  "Frontend conventions".
+- **`theme-color` is a real browser tag too**: Chrome and Safari on a phone
+  tint their toolbar with it, so a `/c/` page now tints and every other page
+  on the wiki does not. That is the cost of the coloured bar; only the
+  character route passes it (a script or collection has a theme kit of its
+  own and no team).
+- Changing any of this means **bumping `SSR_RENDER_V`** — see "Caching".
+- Discord caches an unfurl per URL, so a link already posted keeps its old
+  card. Post it with a query string appended to see a change.
 
 ## A character's three icons (and traveller good/evil art)
 
@@ -2711,8 +2759,9 @@ seeded with whole collections whose characters all arrived unowned.
   `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
-  and `TEAM_COLORS` in `dashboard.html`. **Adding a team means editing every
-  one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
+  and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
+  one solid colour per team, for the `theme-color` on a `/c/` page — see "The
+  character link unfurl"). **Adding a team means editing every one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
   (drives the blue `.good` class) — Traveller/Fabled/Loric are in neither.
   `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
