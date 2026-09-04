@@ -4280,13 +4280,60 @@ async function serveProfileShell(env, request, url) {
   });
 }
 
+/* Which set a character page says it is from, in the same order — and from
+   the same two fields — as the page's own "Appears in" row
+   (appearsInRow in render.js): the creator's typed line first, then the
+   collections that list the character by hand. `appearsInFrom` is filled in
+   on read by applyCollectionAppearsIn, which the /c/ route has already run
+   by the time this is asked, so a character nobody typed a set for still
+   names the collection it was included in. */
+function charSetName(d) {
+  const own = String((d && d.appearsIn) || '').trim();
+  if (own) return own;
+  const from = Array.isArray(d && d.appearsInFrom) ? d.appearsInFrom : [];
+  return from.map(c => c && c.name).filter(Boolean).join(', ');
+}
+
+/* The line a link unfurl (Discord, Slack, iMessage, a search result) shows
+   above the ability: "Townsfolk · by wyrdvora · Odyssey · Curata" — the same
+   four things a card in a browse grid tells you at a glance.
+
+   It rides on the FRONT of og:description rather than in tags of its own
+   because og:description is the only field every unfurler is guaranteed to
+   render: Discord shows title, description and image and nothing else, so a
+   twitter:label/data pair or an oEmbed author line would be invisible on the
+   one surface this is for. Being first is what keeps it out of the
+   truncation a long ability runs into.
+
+   Every part is optional and a missing one leaves no gap — a character with
+   no creator and no set is just its team. Standard says nothing, because
+   the absence of a class IS Standard (see classify.js). */
+function charMetaLine(d) {
+  const bits = [];
+  const team = Render.TEAM_LABEL[String((d && d.team) || '').toLowerCase()];
+  if (team) bits.push(team);
+  // A credit can name several people ("Taiyi (太一), Saki"); splitCreators is
+  // the one place that is taken apart, and it also tidies the spacing.
+  const who = Creators.splitCreators(d && d.creator).join(', ');
+  if (who) bits.push('by ' + who);
+  const set = charSetName(d);
+  if (set) bits.push(set);
+  const cls = Classify.classifyCharacter(d);
+  if (cls && cls !== 'standard') bits.push(Classify.CLASS_LABELS[cls] || cls);
+  return bits.join(' · ');
+}
+
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   const name = d.name || 'Character';
   // The lede takes the wiki's link and colour marks now, and a search result
   // or a Discord unfurl has nowhere to render one — so the description is the
   // same sentence with the syntax taken back out. (The ability is escaped on
   // the page and carries no marks, so this costs it nothing.)
-  const desc = WikiRender.plainText((d.ability || d.lede || '').trim());
+  // The meta line first, then the ability, on two lines: Discord (and every
+  // other unfurler) renders the description as one block of text, and this is
+  // the only field it is guaranteed to show.
+  const desc = [charMetaLine(d), WikiRender.plainText((d.ability || d.lede || '').trim())]
+    .filter(Boolean).join('\n');
   // d.page is the address the /c/ route resolved; d.slug is the identity and
   // is only the address for a row the backfill has not reached.
   const pageUrl = origin + '/' + String(d.page || ('c/' + d.slug)).replace(/^\//, '');
@@ -5104,6 +5151,16 @@ function dropThumbFor(env, ctx, key) {
      - a logged-in reader always gets a fresh render, as they did before.
        Their edit button, draft access and notices are untouched. */
 const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
+
+/* The version of the RENDERED page, salted into the SSR cache key the same way
+   CREDIT_RULE_V is salted into the creator keys, and for the same reason: that
+   key rolls on content_version, content_version moves when CONTENT moves, a
+   deploy does not touch it, and caches.default outlives a deploy. So a change
+   to the shell or to a renderer goes live and every page already in the edge
+   cache keeps serving last week's HTML for the full s-maxage (a week) unless
+   somebody happens to save a page. Bump this whenever a deploy changes what
+   these routes render and the stale copies die with it. */
+const SSR_RENDER_V = 2;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
@@ -5142,7 +5199,7 @@ async function ssrRoute(env, ctx, request, url, build) {
     const version = await contentVersion(env);
     cacheReq = new Request(
       'https://ssr.internal' + url.pathname + '?v=' + encodeURIComponent(version) +
-      '&o=' + encodeURIComponent(url.origin), { method: 'GET' });
+      '&o=' + encodeURIComponent(url.origin) + '&r=' + SSR_RENDER_V, { method: 'GET' });
     const hit = await caches.default.match(cacheReq);
     if (hit) {
       const view = hit.headers.get(VIEW_HEADER) || '';

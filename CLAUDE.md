@@ -1318,7 +1318,17 @@ Two fields that DO take marks still leave, and both go through
 - `buildSchema()` in render.js — `flavor` (the quote) and a jinx's `reason`,
   for the official-schema JSON box. The app renders no markup.
 - The `<meta name="description">` on the `/c/` page, which falls back to the
-  `lede`.
+  `lede`. That description is also the **link unfurl** — what Discord prints
+  under the title — so it opens with `charMetaLine()` in worker.js: team,
+  `by {creator}`, the set (`charSetName()`, the same two fields and the same
+  order as the page's own "Appears in" row) and the page's class when it has
+  one, joined with ` · `, then the ability on the next line. It goes in the
+  description rather than in tags of its own because Discord renders the
+  title, the description and the image and nothing else — a
+  `twitter:label`/`data` pair or an oEmbed author line would be invisible on
+  the one surface it is for — and it goes FIRST so a long ability cannot push
+  it past the truncation. Every part is optional and Standard says nothing,
+  because the absence of a class is what Standard is.
 - The **Featured Character** card on `index.html`, which `esc()`s the `lede`
   into a strip of markup with no engine behind it. It had no `plainText()`
   call for a year and printed `{{red|Imp}}`'s braces on the homepage — the one
@@ -2822,6 +2832,13 @@ with no D1 read — a `/c/` page was 6–10 queries and ~1.4 s of TTFB. Only a
 stored; the header is `type|slug`, and a cache hit counts the view from it
 and strips it, so `page_views` keep counting. The browser still gets
 `no-store`. A logged-in reader always gets a fresh render.
+**`SSR_RENDER_V` is salted into that key**, for the same reason
+`CREDIT_RULE_V` is salted into the creator ones: the key rolls on
+`content_version`, a deploy does not touch it, and `caches.default` outlives
+a deploy — so a change to `pageShell()` or to a renderer goes live and every
+page already cached keeps serving last week's HTML for the full week of
+`s-maxage` unless somebody happens to save a page. Bump it in the same commit
+as any deploy that changes what these routes render.
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route
