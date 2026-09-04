@@ -1101,7 +1101,8 @@
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
         label: '⬇ Download JSON' },
-      { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
+      { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' },
+      { href: root + 'fancyscripts?c=' + encodeURIComponent(coll.id || coll.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderCollectionBody({
       root: root, name: name, header: coll.header, logo: coll.logo,

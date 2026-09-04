@@ -23,7 +23,7 @@
 
 import {
   NIGHT, SHEET_W, SHEET_H, U, PLACEHOLDER_ICON, STEP_ICONS,
-  nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters,
+  nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
 } from './script.js';
 import {
   el, img, px, clamp, wrappedRunLineCount, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY,
@@ -53,11 +53,12 @@ function rowColor(item, options, cfg) {
   return cfg.goodColor || teamColor(options, t);
 }
 
-function nightRows(items, options, cfg) {
+function nightRows(items, options, cfg, list) {
   return items.map((it, i) => ({
     icons: [it.icon],
     kind: it.kind,
     id: it.id,
+    list,
     name: it.name,
     color: rowColor(it, options, cfg),
     number: i + 1,
@@ -71,11 +72,11 @@ export function buildNightSpec(script, options, which) {
   const lists = nightLists(script, cfg);
   const columns = [];
   if (which === 'both') {
-    columns.push({ heading: cfg.titleFirst || 'First Night', blocks: [{ rows: nightRows(lists.first, options, cfg) }] });
-    columns.push({ heading: cfg.titleOther || 'Other Nights', blocks: [{ rows: nightRows(lists.other, options, cfg) }] });
+    columns.push({ heading: cfg.titleFirst || 'First Night', blocks: [{ rows: nightRows(lists.first, options, cfg, 'first') }] });
+    columns.push({ heading: cfg.titleOther || 'Other Nights', blocks: [{ rows: nightRows(lists.other, options, cfg, 'other') }] });
   } else {
     const items = which === 'first' ? lists.first : lists.other;
-    const rows = nightRows(items, options, cfg);
+    const rows = nightRows(items, options, cfg, which);
     if (cfg.twoColumns && rows.length > 3) {
       // split where the weight (a row plus its text) reaches half
       const weight = (r) => 1 + (r.text ? r.text.length / 170 : 0);
@@ -366,12 +367,13 @@ function reminderNodes(row, cfg, fonts, ed) {
   return out;
 }
 
-function rowNode(u, ci, layout, cfg, options, ed, e) {
+function rowNode(u, ci, layout, cfg, options, ed, e, mark) {
   const { m, fonts, cols, textXOff } = layout;
   const row = u.row;
   const h = u.hEm;
   const node = el('div', { position: 'relative', height: px(ed(h)) });
   node.dataset.fsRow = row.id;
+  if (mark && row.list) mark(node, 'nrow:' + row.list + ':' + row.id); // drag to reorder the night
   const extra = ed(layout.extraLeftEm(row));
   const textW = ((cols[ci].x1 - cols[ci].x0 - textXOff) / 100) * SHEET_W - extra;
   const textLeft = px((textXOff / 100) * SHEET_W + extra);
@@ -445,7 +447,8 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   const sheet = pageFrame(SHEET_W, SHEET_H, U, spec.kind === 'jinx' ? 'script-jinx' : 'script-night');
   sheet.dataset.fsPage = String(pageIndex);
   sheet.dataset.fsDensity = d.toFixed(3);
-  for (const n of renderBackground(cfg.bg, 'list')) sheet.append(n);
+  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  for (const n of renderBackground(cfg.bg, 'list', { scriptBg })) sheet.append(n);
 
   // page title, top left
   const tT = elGet(options, P + 'Title');
@@ -511,6 +514,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         wordSpacing: (options.fontTitle || 'unlovable') === 'unlovable' ? '-0.21em' : '0',
         mixBlendMode: 'multiply',
       }, title);
+      nameEl.dataset.fsFitName = String(e(3.4) * lT.scale);
       sheet.append(mark(nameEl, 'el:' + P + 'Logo'));
     }
   }
@@ -528,7 +532,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
     listWrap.style.transformOrigin = '0 0';
     listWrap.style.transform += ` scale(${listT.scale})`;
   }
-  mark(listWrap, 'el:' + P + 'List');
+  listWrap.dataset.fsEl = P + 'List';
   page.columns.forEach((pc, ci) => {
     const col = el('div', {
       position: 'absolute',
@@ -554,7 +558,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         }, u.text);
         col.append(hd);
       } else {
-        const rn = rowNode(u, ci, layout, cfg, options, ed, e);
+        const rn = rowNode(u, ci, layout, cfg, options, ed, e, mark);
         rn.style.position = 'absolute';
         rn.style.left = '0';
         rn.style.right = '0';
@@ -605,4 +609,18 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
 
   for (const n of renderStickers(ctx.stickers, selected)) sheet.append(n);
   return sheet;
+}
+
+/* after the page is in the document: a long script name at the top right
+   shrinks to its band instead of being cut short */
+export function fitListPage(sheet) {
+  const nameEl = sheet.querySelector('[data-fs-fit-name]');
+  if (!nameEl) return;
+  const natural = Number(nameEl.dataset.fsFitName);
+  nameEl.style.fontSize = px(natural);
+  nameEl.style.overflow = 'visible';
+  nameEl.style.textOverflow = 'clip';
+  const maxW = nameEl.clientWidth || (SHEET_W * 0.42);
+  const w = nameEl.scrollWidth;
+  if (w > maxW + 1) nameEl.style.fontSize = px(Math.max(natural * 0.35, natural * (maxW / w)));
 }

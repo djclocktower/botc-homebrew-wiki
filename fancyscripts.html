@@ -237,8 +237,11 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 @media (max-width: 940px) { #fs-preview { max-height: none; overflow: visible; } }
 #fs-scale-box { margin: 0 auto; box-shadow: 0 12px 34px rgba(0,0,0,.5); position: relative; }
 #fs-sheet-wrap { transform-origin: top left; will-change: transform; }
-#fs-sheet-wrap [data-fs-drag] { cursor: grab; }
+#fs-sheet-wrap [data-fs-drag] { cursor: grab; touch-action: none; }
 #fs-sheet-wrap [data-fs-drag]:active { cursor: grabbing; }
+/* a finger on a character row scrolls the page (the rows fill the sheet);
+   rows are reordered by mouse, or by the Characters card on a phone */
+#fs-sheet-wrap [data-fs-drag^="crow:"], #fs-sheet-wrap [data-fs-drag^="nrow:"] { touch-action: pan-y; }
 .fs-preview-hint { font-size: .8rem; color: rgba(236,225,200,.62); text-align: center; margin: 8px 0 0; }
 #fs-sel-info { font-size: .8rem; color: rgba(236,225,200,.85); text-align: center; margin: 6px 0 0; min-height: 1.1em; }
 #fs-progress { font-size: .84rem; color: #f3e9d2; text-align: center; margin: 6px 0 0; background: rgba(91,31,33,.55); border-radius: 4px; padding: 5px 8px; }

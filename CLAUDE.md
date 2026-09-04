@@ -2200,7 +2200,18 @@ autosave is localStorage; a design file is a download).
   node gets a CSS `translate`, the model is patched live (so the panel's
   sliders follow), and the full re-render happens on release. A click with
   no movement selects and commits nothing. Arrow keys nudge the selection,
-  Delete removes a sticker, Escape deselects.
+  Delete removes a sticker, Escape deselects. Three drag kinds are not
+  moves: a character's ICON (`char:`) nudges that character's icon
+  (`chars[id].iconDX/iconDY`); a script-sheet ROW (`crow:`) dropped
+  elsewhere in its team reorders the team (`reorderFront()` renumbers
+  `chars[*].order` from the layout the page was drawn with, and switches
+  the sort to "As in the script", the only order a hand arrangement shows
+  under); a night-sheet ROW (`nrow:`) dropped elsewhere rewrites
+  `night.order[list]` as an id sequence, which `nightLists()` follows above
+  the file's own. Rows keep `touch-action: pan-y` so a finger on the sheet
+  still scrolls a phone; they reorder by mouse, or from the Characters
+  card. The character grid and the night list are therefore NOT grabbed
+  through their rows any more — they move from the Elements card.
 - **`pixel.js` / `pixel-worker.js` / `jobs.js`**: the two per-pixel passes
   (the ribbon tint, the back-cover colorize — millions of HSL conversions
   each) run in a **module Web Worker**. The maths lives in pixel.js, which
@@ -2270,9 +2281,10 @@ id; a custom character's own `firstNight`/`otherNight` numbers and
 reminders win over the official ones (the wiki's night-order picker writes
 numbers on the official scale, e.g. 33.5691 for "after the Poisoner").
 `nightLists()` puts a character on a list when its number is above zero,
-follows the file's `_meta.firstNight`/`otherNight` sequence when there is
-one (that is what the wiki writes for an arranged script) and the option is
-on, and otherwise sorts by number with each step slotted in front of the
+follows a sequence arranged by hand on the sheet (`night.order[list]`,
+written by dragging a row) or else the file's `_meta.firstNight`/
+`otherNight` sequence when there is one (that is what the wiki writes for
+an arranged script) and the option is on, and otherwise sorts by number with each step slotted in front of the
 first character that acts after it — the same rule render-page.js uses to
 write those sequences. `reminderParts()` tokenises a reminder into text,
 `*token*` runs (bold condensed caps, `tokenStyle`) and dots (`dotStyle`:
@@ -2413,10 +2425,15 @@ The footnote sits on the last page (or every page), and pages get a
   declaring character when the partner is also on the script; partners are
   matched by id AND by slugified name, because wiki exports write whichever
   the jinx row stored.
-- **Wiki integration is read-only**: the picker lists `/scripts.json`, and
-  `?s={slug}` (the "Fancy Sheet" action on `/s/` pages, render-page.js)
-  fetches `/api/page-json` — the same export the Download JSON button saves,
-  so the sheet can never disagree with the page. The Script Builder's credits
+- **Wiki integration is read-only**: the picker lists `/scripts.json` and
+  `/collections.json` (two optgroups, values `script:{slug}` /
+  `collection:{id}`), and `?s={slug}` / `?c={id}` (the "Fancy Sheet" action
+  on `/s/` and `/collection/` pages, render-page.js) fetch `/api/page-json`
+  — the same export the Download JSON button saves, so the sheet can never
+  disagree with the page. The Script Builder's "✨ Fancy Sheet" button
+  (script.html) hands its roster over through localStorage
+  (`botc_fancy_incoming`, the same JSON its Export button saves) and opens
+  `/fancyscripts?from=builder`, which reads the key once and clears it. The Script Builder's credits
   Fabled (`botchomebrewwiki`) is skipped like every other importer skips it.
   Off-site images are routed through a resizing CORS proxy (weserv) so the
   canvas capture is never tainted; the wiki's own art is deliberately NOT

@@ -304,6 +304,7 @@ export const DEFAULT_NIGHT = {
   iconShadow: 1,
   stepIcons: { dusk: '', minion: '', demon: '', dawn: '' }, // uploads replacing the built-in step icons
   hideSteps: { dusk: false, minioninfo: false, demoninfo: false, dawn: false },
+  order: { first: null, other: null }, // a hand-arranged sequence of ids (drag a row on the sheet)
   bg: { ...DEFAULT_BG, mode: 'light', vignette: 0.28 },
 };
 
@@ -1023,8 +1024,10 @@ export function nightLists(script, night) {
           text: s.text, n: pos });
       }
     }
-    const seq = script.meta && script.meta[field];
-    if (opts.useScriptOrder !== false && Array.isArray(seq) && seq.length) {
+    // a sequence arranged by hand on the sheet beats the file's own
+    const own = opts.order && Array.isArray(opts.order[which]) && opts.order[which].length ? opts.order[which] : null;
+    const seq = own || (opts.useScriptOrder !== false ? (script.meta && script.meta[field]) : null);
+    if (Array.isArray(seq) && seq.length) {
       const byId = new Map();
       for (const it of items) byId.set(it.id, it);
       for (const st of steps) byId.set(st.id, st);

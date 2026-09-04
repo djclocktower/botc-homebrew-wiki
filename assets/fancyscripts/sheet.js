@@ -194,7 +194,7 @@ function swashTitle(text, options, shadowDX, shadowDY) {
 }
 
 /* one character row: icon, name (+ jinx partner icons), ability */
-function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul) {
+function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul, mark) {
   const { textSize, nameSize } = options;
   const colW = SHEET.textOffsetX + SHEET.textWidth * widthMul; // column width in % of sheet
   const textLeftPct = (SHEET.textOffsetX / colW) * 100;
@@ -205,6 +205,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul)
 
   const row = el('div', { position: 'relative', height: px(ed(heightEm)) });
   row.dataset.fsChar = char.id;
+  if (mark) mark(row, 'crow:' + char.id); // drag a row to reorder it within its team
 
   const iconPx = ed(iconEm) * (char.iconScale || 1);
   const iconLeft = ((char.iconDX || 0) / 100) * SHEET_W;
@@ -235,6 +236,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul)
     filter: iconFilter(options.iconEffect, options.iconShadow, ed),
   });
   if (options.iconEffect === 'engraved') icon.style.mixBlendMode = 'multiply';
+  if (mark) mark(icon, 'char:' + char.id); // drag an icon to nudge it
   row.append(icon);
 
   const nameRow = el('div', {
@@ -591,7 +593,8 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
   };
 
   // background: the baked parchment (texture + garland), or what was chosen
-  for (const n of renderBackground(options.bg, 'front')) sheet.append(n);
+  const scriptBg = script.meta.background ? proxied(script.meta.background, options.proxyIcons) : '';
+  for (const n of renderBackground(options.bg, 'front', { scriptBg })) sheet.append(n);
 
   /* ── the ribbon ──
      The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
@@ -778,7 +781,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     contentWrap.style.transformOrigin = '50% 0';
     contentWrap.style.transform = (contentWrap.style.transform || '') + ` scale(${cT.scale})`;
   }
-  mark(contentWrap, 'el:content');
+  contentWrap.dataset.fsEl = 'content';
   contentWrap.style.pointerEvents = 'none'; // only the rows themselves grab the pointer
 
   page.sections.forEach((sec, si) => {
@@ -863,7 +866,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       pointerEvents: 'auto',
     });
     left.forEach((c, i) => colL.append(
-      characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul),
+      characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul, mark),
     ));
     wrap.append(colL);
 
@@ -879,7 +882,7 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
       pointerEvents: 'auto',
     });
     right.forEach((c, i) => colR.append(
-      characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul),
+      characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul, mark),
     ));
     wrap.append(colR);
 

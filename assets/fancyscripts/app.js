@@ -24,13 +24,13 @@
  */
 
 import {
-  DEFAULT_OPTIONS, DEFAULT_BACK, DEFAULT_NIGHT, DEFAULT_JINX, DEFAULT_BG, PAGE_FORMATS, SHEET_W, SHEET_H,
+  DEFAULT_OPTIONS, DEFAULT_BACK, DEFAULT_NIGHT, DEFAULT_JINX, DEFAULT_BG, PAGE_FORMATS, SHEET, SHEET_W, SHEET_H, U,
   FONTS, PRESETS, ELEMENTS, ELEMENT_BY_KEY, EL_DEFAULT, TEAM_ORDER, TEAM_NAMES,
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle } from './sheet.js';
-import { buildNightSpec, buildJinxSpec, layoutList, renderListPage } from './night.js';
+import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage } from './night.js';
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
@@ -318,6 +318,7 @@ function render() {
   const node = renderPageNode(p, {});
   wrap.append(node);
   if (p.kind === 'front') fitTitle(node, options);
+  else if (p.kind !== 'back') fitListPage(node);
   showSolvedDensity(node, p);
   fitPreview();
   updateSelectionInfo();
@@ -372,9 +373,15 @@ function fitPreview() {
   const wrap = $('fs-sheet-wrap');
   let fitScale = Math.min(1, (box.clientWidth - 12) / SHEET_W);
   // on desktop the preview column is sticky and scrolls inside itself, so
-  // "fit" means the whole page in view; on a phone the page scrolls anyway
+  // "fit" means the whole page in view once the column is stuck: the box
+  // then sits at the column's sticky top plus the tabs and toolbar above
+  // it. Measured that way (never from the box's current place on screen)
+  // so the answer is the same before and after the reader scrolls.
   if (window.innerWidth > 940) {
-    const maxH = Math.max(320, window.innerHeight - box.getBoundingClientRect().top - 60);
+    const col = box.closest('.fs-preview-col');
+    const within = col ? box.getBoundingClientRect().top - col.getBoundingClientRect().top : 0;
+    const stuckTop = 70 + within;
+    const maxH = Math.max(320, window.innerHeight - stuckTop - 44);
     fitScale = Math.min(fitScale, maxH / SHEET_H);
   }
   const scale = zoom === 'fit' ? fitScale : clamp(Number(zoom), 0.1, 3);
@@ -437,30 +444,53 @@ function loadFile(file) {
   reader.readAsText(file);
 }
 
-async function loadWikiScript(slug, keepDesign) {
-  note('Loading script…');
+/* a published script (type 'script', by slug) or collection (type
+   'collection', by its kebab id) — both come through /api/page-json, the
+   same export their Download JSON buttons save */
+async function loadWikiScript(slug, keepDesign, type) {
+  const t = type === 'collection' ? 'collection' : 'script';
+  note('Loading ' + t + '…');
   try {
-    const r = await fetch('/api/page-json?type=script&slug=' + encodeURIComponent(slug));
-    if (!r.ok) throw new Error('Could not load that script (HTTP ' + r.status + ').');
-    loadJson(await r.json(), 'the script from this wiki', slug, keepDesign);
+    const r = await fetch('/api/page-json?type=' + t + '&slug=' + encodeURIComponent(slug));
+    if (!r.ok) throw new Error('Could not load that ' + t + ' (HTTP ' + r.status + ').');
+    loadJson(await r.json(), 'the ' + t + ' from this wiki', (t === 'collection' ? 'c:' : '') + slug, keepDesign);
   } catch (e) {
-    note(e && e.message ? e.message : 'Could not load that script.', 'err');
+    note(e && e.message ? e.message : 'Could not load that ' + t + '.', 'err');
   }
 }
 
-/* the picker: every published script on the wiki, by name */
+/* the picker: every published script and collection on the wiki, by name */
 async function fillScriptPicker(preselect) {
   const sel = $('fs-wiki-script');
+  const group = (label) => {
+    const g = document.createElement('optgroup');
+    g.label = label;
+    sel.append(g);
+    return g;
+  };
   try {
-    const r = await fetch('/scripts.json');
-    const rows = await r.json();
-    rows.sort((a, b) => String(a.name || a.slug).localeCompare(String(b.name || b.slug)));
-    for (const s of rows) {
+    const [scripts, colls] = await Promise.all([
+      fetch('/scripts.json').then((r) => r.json()).catch(() => []),
+      fetch('/collections.json').then((r) => r.json()).catch(() => []),
+    ]);
+    scripts.sort((a, b) => String(a.name || a.slug).localeCompare(String(b.name || b.slug)));
+    const gs = group('Scripts');
+    for (const s of scripts) {
       if (!s.slug) continue;
       const o = document.createElement('option');
-      o.value = s.slug;
+      o.value = 'script:' + s.slug;
       o.textContent = (s.name || s.slug) + (s.author ? ' — ' + s.author : '');
-      sel.append(o);
+      gs.append(o);
+    }
+    colls.sort((a, b) => String(a.displayName || a.id).localeCompare(String(b.displayName || b.id)));
+    const gc = group('Collections');
+    for (const c of colls) {
+      const key = c.id || c.slug;
+      if (!key) continue;
+      const o = document.createElement('option');
+      o.value = 'collection:' + key;
+      o.textContent = (c.displayName || key) + (c.author ? ' — ' + c.author : '');
+      gc.append(o);
     }
     if (preselect) sel.value = preselect;
   } catch {
@@ -1160,8 +1190,8 @@ function buildFontsCard() {
 
 function bgControls(box, path, page) {
   makeSelect(box, 'Background', page === 'front'
-    ? [['parchment', 'Aged parchment (with garland)'], ['light', 'Light parchment'], ['plain', 'Plain colour'], ['custom', 'Your own image']]
-    : [['parchment', 'Aged parchment'], ['light', 'Light parchment'], ['plain', 'Plain colour'], ['custom', 'Your own image']],
+    ? [['parchment', 'Aged parchment (with garland)'], ['light', 'Light parchment'], ['plain', 'Plain colour'], ['custom', 'Your own image'], ['script', 'The script’s own background image']]
+    : [['parchment', 'Aged parchment'], ['light', 'Light parchment'], ['plain', 'Plain colour'], ['custom', 'Your own image'], ['script', 'The script’s own background image']],
   bindPath(path + '.mode'));
   const row = makeRow(box, 'fs-colors');
   makeColor(row, 'Paper colour', bindPath(path + '.color'));
@@ -1192,6 +1222,9 @@ function buildNightCard() {
   }
   makeToggle(box, 'Reminder text under each name', bindPath('night.showReminders'));
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
+  const ord = makeRow(box);
+  makeButton(ord, 'Reset the night order', () => { options.night.order = { first: null, other: null }; commit(); toast('Night order reset'); });
+  makeHint(box, 'Drag any step on the night sheet up or down to reorder it; this puts the official order back.');
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));
   makeToggle(box, 'Script logo at the top right', bindPath('night.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('night.showName'));
@@ -1346,7 +1379,16 @@ function buildElementPanel() {
 
   const it = list.find((x) => x.id === selectedId);
   if (!it) {
-    makeHint(box, 'Tap anything on the preview to select it, then drag to move. Arrow keys nudge the selection (Shift for bigger steps); Delete removes a sticker.');
+    if (selectedId.startsWith('char:')) {
+      const c = parsed.characters.find((x) => x.id === selectedId.slice(5));
+      makeHint(box, 'Icon of ' + (c ? c.name : 'a character') + ' — drag it to nudge it into place (arrow keys too). Its size, art and colour are in the Characters card below.');
+    } else if (selectedId.startsWith('crow:')) {
+      makeHint(box, 'A character row — drag it up or down (or across the columns) to reorder the team.');
+    } else if (selectedId.startsWith('nrow:')) {
+      makeHint(box, 'A night-order step — drag it up or down to reorder the night. “Reset the night order” in the night sheet card puts the official order back.');
+    } else {
+      makeHint(box, 'Tap anything on the preview to select it, then drag to move: decor, text, stickers, character icons (to nudge) and rows (to reorder). Arrow keys nudge the selection (Shift for bigger steps); Delete removes a sticker.');
+    }
     return;
   }
   const tools = makeRow(box);
@@ -1426,6 +1468,15 @@ function buildElementPanel() {
     al.style.marginTop = '8px';
     makeButton(al, 'Centre ↔', () => { get().x = 50; commit(); syncControls(); });
     makeButton(al, 'Centre ↕', () => { get().y = 50; commit(); syncControls(); });
+    const swap = (dir) => {
+      const i = options.custom.indexOf(get());
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= options.custom.length) return;
+      [options.custom[i], options.custom[j]] = [options.custom[j], options.custom[i]];
+      commit();
+    };
+    makeButton(al, 'Bring forward', () => swap(1));
+    makeButton(al, 'Send back', () => swap(-1));
   }
 }
 
@@ -1527,7 +1578,118 @@ function elementModel(id) {
     if (!st) return null;
     return { get: () => ({ x: st.x, y: st.y }), set: (x, y) => { st.x = x; st.y = y; }, snapX: [50], snapY: [50], guide: true };
   }
+  if (id.startsWith('char:')) {
+    // an icon nudge: the per-character iconDX (% width) / iconDY (em)
+    const cid = id.slice(5);
+    const ov = () => (options.chars[cid] = options.chars[cid] || {});
+    return {
+      get: () => ({ x: Number(ov().iconDX) || 0, y: Number(ov().iconDY) || 0 }),
+      set: (x, y) => { ov().iconDX = x; ov().iconDY = y; },
+      snapX: [0], snapY: [0], guide: false,
+    };
+  }
+  if (id.startsWith('crow:') || id.startsWith('nrow:')) {
+    // a row: it moves with the pointer and is REORDERED on release
+    return { get: () => ({ x: 0, y: 0 }), set: () => {}, snapX: [], snapY: [], guide: false, reorder: true };
+  }
   return null;
+}
+
+/* ── reordering by drag ──
+   A script-sheet row dropped somewhere else in its team takes that slot
+   (the whole team is renumbered through options.chars[id].order, which
+   deriveScript sorts by); a night-sheet row dropped elsewhere in its list
+   rewrites options.night.order[list] as an id sequence, which nightLists
+   follows above the file's own. Both work from the layout the page was
+   drawn with, so the drop lands where the row was let go. */
+function reorderFront(cid, d) {
+  const p = currentPage();
+  const layout = layouts.front;
+  const page = layout.pages[p.index];
+  if (!page) return;
+  const ed = (em) => em * U * layout.d;
+  for (const sec of page.sections) {
+    const li = sec.left.findIndex((c) => c.id === cid);
+    const ri = sec.right.findIndex((c) => c.id === cid);
+    if (li < 0 && ri < 0) continue;
+    const inLeft = li >= 0;
+    const idx = inLeft ? li : ri;
+    const heights = inLeft ? sec.leftHeights : sec.rightHeights;
+    const top = inLeft ? sec.topPx : sec.rightTopPx;
+    let y0 = top;
+    for (let i = 0; i < idx; i++) y0 += ed(heights[i]);
+    const cy = y0 + ed(heights[idx]) / 2 + (d.dy / 100) * SHEET_H;
+    const cx = ((inLeft ? SHEET.col1IconX : SHEET.col2IconX) + d.dx) / 100 * SHEET_W;
+    const single = options.columnLayout === 'single';
+    const toLeft = single || cx < ((SHEET.col1IconX + SHEET.col2IconX) / 2 / 100) * SHEET_W;
+    const tHeights = toLeft ? sec.leftHeights : sec.rightHeights;
+    const tTop = toLeft ? sec.topPx : sec.rightTopPx;
+    const tList = toLeft ? sec.left : sec.right;
+    // the slot: how many rows of the target column (the moved one aside)
+    // have their centre above the drop point
+    let y = tTop, slot = 0;
+    for (let i = 0; i < tList.length; i++) {
+      const h = ed(tHeights[i]);
+      if (tList[i].id !== cid && y + h / 2 < cy) slot++;
+      y += h;
+    }
+    // team-wide order for this page's portion of the team
+    const portion = sec.chars.filter((c) => c.id !== cid);
+    const insertAt = toLeft ? slot : sec.left.filter((c) => c.id !== cid).length + slot;
+    portion.splice(Math.min(insertAt, portion.length), 0, sec.chars.find((c) => c.id === cid));
+    // renumber the whole derived list, with this portion in its new order
+    const team = derived.characters.filter((c) => c.team === sec.team);
+    const start = team.findIndex((c) => c.id === sec.chars[0].id);
+    const before = team.slice(0, Math.max(0, start));
+    const after = team.slice(Math.max(0, start) + sec.chars.length);
+    const newTeam = [...before, ...portion, ...after];
+    const others = derived.characters.filter((c) => c.team !== sec.team);
+    const all = [...others, ...newTeam];
+    // keep every other team where it was; teams are grouped anyway
+    all.forEach((c, i) => { options.chars[c.id] = options.chars[c.id] || {}; options.chars[c.id].order = (i + 1) * 10; });
+    if (options.sortMode !== 'script') { options.sortMode = 'script'; syncControls(); toast('Character order set to “As in the script”'); }
+    return;
+  }
+}
+
+function reorderNight(list, rid, d) {
+  const p = currentPage();
+  const which = p.which === 'both' ? 'both' : p.which;
+  const lay = layouts[which];
+  if (!lay) return;
+  const page = lay.pages[p.index];
+  const ed = (em) => em * U * lay.d;
+  for (const pc of page.columns) {
+    const units = pc.units.filter((u) => u.type === 'row');
+    const idx = pc.units.findIndex((u) => u.type === 'row' && u.row.id === rid && u.row.list === list);
+    if (idx < 0) continue;
+    let y = lay.listTop * U, y0 = 0, h0 = 0;
+    const centres = [];
+    pc.units.forEach((u, i) => {
+      const h = ed(u.hEm);
+      if (i === idx) { y0 = y; h0 = h; }
+      if (u.type === 'row') centres.push({ id: u.row.id, c: y + h / 2 });
+      y += h;
+    });
+    const cy = y0 + h0 / 2 + (d.dy / 100) * SHEET_H;
+    let slot = 0;
+    for (const c of centres) if (c.id !== rid && c.c < cy) slot++;
+    // the full sequence of this list (every page), in its current order
+    const spec = lay === layouts.both ? layouts.bothSpec : layouts[which + 'Spec'];
+    const seq = [];
+    spec.columns.forEach((col) => col.blocks.forEach((b) => b.rows.forEach((r) => { if (r.list === list) seq.push(r.id); })));
+    // the slot counted within this page's column; pages before it carry
+    // their own rows, so offset by how many of the list came earlier
+    let offset = 0;
+    for (let pi = 0; pi < p.index; pi++) {
+      lay.pages[pi].columns.forEach((c2) => c2.units.forEach((u) => { if (u.type === 'row' && u.row.list === list) offset++; }));
+    }
+    const without = seq.filter((id) => id !== rid);
+    without.splice(Math.min(offset + slot, without.length), 0, rid);
+    options.night.order = options.night.order || { first: null, other: null };
+    options.night.order[list] = without;
+    return;
+  }
 }
 
 function mountPreviewDrag() {
@@ -1537,6 +1699,13 @@ function mountPreviewDrag() {
     onSelect: (id) => {
       const m = elementModel(id);
       dragStart = m ? { id, ...m.get(), m } : null;
+      if (id.startsWith('char:')) {
+        // an icon: the Characters card follows it
+        charSel = id.slice(5);
+        buildCharPanel();
+        const card = $('fs-chars-box') && $('fs-chars-box').closest('details');
+        if (card) card.open = true;
+      }
       if (selectedId !== id) setSelected(id);
     },
     onMove: (id, d) => {
@@ -1553,7 +1722,16 @@ function mountPreviewDrag() {
       syncElementPanel();
       return { dx: x - dragStart.x, dy: y - dragStart.y, guideX, guideY };
     },
-    onCommit: () => { dragStart = null; commit(); },
+    onCommit: (id, d) => {
+      const m = dragStart && dragStart.m;
+      dragStart = null;
+      if (m && m.reorder) {
+        if (id.startsWith('crow:')) reorderFront(id.slice(5), d);
+        else { const parts = id.split(':'); reorderNight(parts[1], parts.slice(2).join(':'), d); }
+        selectedId = '';
+      }
+      commit();
+    },
     onResize: (id, d, done) => {
       const st = findSticker(id);
       if (!st) return null;
@@ -1579,10 +1757,11 @@ function onKey(ev) {
     if (ev.key === 'z' && !ev.shiftKey) { ev.preventDefault(); undo(); return; }
     if (ev.key === 'y' || (ev.key === 'z' && ev.shiftKey)) { ev.preventDefault(); redo(); return; }
   }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); saveDesign(); return; }
   if (typing) return;
   if (!selectedId) return;
   const m = elementModel(selectedId);
-  if (!m) return;
+  if (!m || m.reorder) return;
   const step = ev.shiftKey ? 1 : 0.2;
   const cur = m.get();
   if (ev.key === 'ArrowLeft') { m.set(cur.x - step, cur.y); }
@@ -1834,6 +2013,7 @@ async function withPageNode(p, fn) {
     const node = renderPageNode(p, { forExport: true });
     holder.append(node);
     if (p.kind === 'front') fitTitle(node, options);
+    else if (p.kind !== 'back') fitListPage(node);
     await waitImages(node);
     if (p.kind === 'front') fitTitle(node, options); // the logo's width is known now
     return await fn(node);
@@ -1993,7 +2173,10 @@ async function boot() {
     }
   });
   $('fs-wiki-script').addEventListener('change', (e) => {
-    if (e.target.value) loadWikiScript(e.target.value);
+    const v = e.target.value;
+    if (!v) return;
+    const i = v.indexOf(':');
+    loadWikiScript(v.slice(i + 1), false, v.slice(0, i));
   });
   $('fs-sample-tb').addEventListener('click', () => loadJson(SAMPLE_TROUBLE_BREWING, 'Trouble Brewing'));
   $('fs-sample-hh').addEventListener('click', () => loadJson(SAMPLE_HAROLD_HOLT, "Harold Holt's Revenge"));
@@ -2035,6 +2218,7 @@ async function boot() {
   $('fs-preview').addEventListener('touchend', () => { pinch = null; }, { passive: true });
 
   new ResizeObserver(fitPreview).observe($('fs-preview'));
+  window.addEventListener('resize', fitPreview);
   // wraps and the title width both change once the real fonts arrive
   document.fonts.ready.then(() => { fontsChanged(); reparse(); requestRender(); });
   // and warm the sheet's faces so the first render already measures right
@@ -2042,14 +2226,29 @@ async function boot() {
     document.fonts.load(`16px "${f}"`).catch(() => {});
   }
 
-  // ?s={slug} deep link — the "Fancy Sheet" button on /s/ pages
-  const slug = new URLSearchParams(location.search).get('s');
-  fillScriptPicker(slug || '');
+  // ?s={slug} / ?c={id} deep links — the "Fancy Sheet" buttons on /s/ and
+  // /collection/ pages — and ?from=builder, the Script Builder's hand-off
+  // (the roster waits in localStorage, written by script.html)
+  const params = new URLSearchParams(location.search);
+  const slug = params.get('s');
+  const coll = params.get('c');
+  const wikiKey = slug ? 'wiki:' + slug : coll ? 'wiki:c:' + coll : '';
+  fillScriptPicker(slug ? 'script:' + slug : coll ? 'collection:' + coll : '');
   const saved = readAutosave();
-  if (slug) {
-    if (saved && saved.key === 'wiki:' + slug) applyDesignData(saved);
-    await loadWikiScript(slug, !!(saved && saved.key === 'wiki:' + slug));
-    if (saved && saved.key === 'wiki:' + slug) { buildFontSelects(); toast('Your last design for this script is back'); }
+  let incoming = null;
+  if (params.get('from') === 'builder') {
+    try {
+      const raw = localStorage.getItem('botc_fancy_incoming');
+      if (raw) { incoming = JSON.parse(raw); localStorage.removeItem('botc_fancy_incoming'); }
+    } catch { incoming = null; }
+  }
+  if (incoming) {
+    loadJson(incoming, 'your Script Builder roster');
+  } else if (wikiKey) {
+    const same = !!(saved && saved.key === wikiKey);
+    if (same) applyDesignData(saved);
+    await loadWikiScript(slug || coll, same, slug ? 'script' : 'collection');
+    if (same) { buildFontSelects(); toast('Your last design for this ' + (slug ? 'script' : 'collection') + ' is back'); }
   } else if (saved && saved.script) {
     applyDesignData(saved);
     loadJson(saved.script, saved.sourceLabel || 'your last session', saved.key && saved.key.startsWith('wiki:') ? saved.key.slice(5) : '', true);

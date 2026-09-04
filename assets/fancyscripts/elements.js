@@ -58,10 +58,13 @@ export function pageFrame(w, h, unit, className) {
    art with its frame and garland) or 'list' (a night/jinx page, which
    wants a clean parchment — the same art zoomed to its interior so the
    frame and garland fall outside the page). */
-export function renderBackground(bg, page) {
+export function renderBackground(bg, page, extra) {
   const b = bg || {};
   const nodes = [];
-  const mode = b.mode || 'parchment';
+  let mode = b.mode || 'parchment';
+  // 'script': the background image the script itself carries (_meta.background)
+  const scriptBg = extra && extra.scriptBg;
+  if (mode === 'script' && !scriptBg) mode = page === 'list' ? 'light' : 'parchment';
   const filter = [];
   if (b.brightness != null && Number(b.brightness) !== 1) filter.push(`brightness(${Number(b.brightness)})`);
   if (b.contrast != null && Number(b.contrast) !== 1) filter.push(`contrast(${Number(b.contrast)})`);
@@ -72,6 +75,11 @@ export function renderBackground(bg, page) {
   const full = { position: 'absolute', inset: '0', width: '100%', height: '100%' };
   if (mode === 'plain') {
     nodes.push(el('div', { ...full, background: b.color || '#ece2c8' }));
+  } else if (mode === 'script') {
+    nodes.push(el('div', { ...full, background: b.color || '#ece2c8' }));
+    const im = img(scriptBg, { ...full, objectFit: 'cover', objectPosition: 'center', filter: f || undefined });
+    im.crossOrigin = 'anonymous';
+    nodes.push(im);
   } else if (mode === 'custom' && resolveSrc(b.src)) {
     const fit = b.fit === 'contain' ? 'contain' : b.fit === 'stretch' ? 'fill' : 'cover';
     nodes.push(el('div', { ...full, background: b.color || '#ece2c8' }));
