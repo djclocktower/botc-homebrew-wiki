@@ -35,11 +35,15 @@ const BADGE = '/assets/ccc-parchment.png';
 function iconImg(src, style, alt) {
   const n = img(src, style, alt);
   n.crossOrigin = 'anonymous';
+  n.decoding = 'sync';
   n.addEventListener('error', () => {
     if (n.src !== PLACEHOLDER_ICON) n.src = PLACEHOLDER_ICON;
   });
   return n;
 }
+
+/* a logo that failed to load: the page shows the script's name instead */
+const failedArt = new Set();
 
 /* ── specs ─────────────────────────────────────────────────────────────── */
 
@@ -483,10 +487,11 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
   const lT = elGet(options, P + 'Logo');
   if (!lT.hidden) {
     const custom = resolveSrc(lT.src);
-    const logoSrc = custom || (cfg.showLogo !== false && script.meta.logo && options.useLogo
-      ? script.meta.logo : '');
+    let logoSrc = custom || (cfg.showLogo !== false && script.meta.logo && options.useLogo
+      ? proxied(script.meta.logo, options.proxyIcons) : '');
+    if (logoSrc && failedArt.has(logoSrc)) logoSrc = '';
     if (logoSrc) {
-      const logoEl = iconImg(custom ? custom : logoSrc, {
+      const logoEl = img(logoSrc, {
         position: 'absolute',
         right: (NIGHT.logoRight - lT.dx) + '%',
         top: px(e(NIGHT.logoCY + lT.dy)),
@@ -498,7 +503,11 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         opacity: String(lT.opacity),
         filter: `drop-shadow(${e(0.06)}px ${e(0.1)}px ${e(0.1)}px rgba(40, 26, 10, 0.35))`,
       }, script.meta.name);
-      if (!custom) logoEl.src = logoSrc.startsWith('data:') ? logoSrc : logoSrc;
+      logoEl.crossOrigin = 'anonymous';
+      logoEl.addEventListener('error', () => {
+        failedArt.add(logoSrc);
+        if (ctx.requestRender) ctx.requestRender();
+      });
       sheet.append(mark(logoEl, 'el:' + P + 'Logo'));
     } else if (cfg.showName !== false) {
       const title = (options.titleOverride || '').trim() || script.meta.name;

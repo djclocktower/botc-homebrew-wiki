@@ -233,6 +233,11 @@ function measureInk(image) {
   return { s, dx: -cx * s, dy: -cy * s };
 }
 
+/* measurements land one per image load, each a frame apart, and a page
+   rebuilt twenty times in a row re-creates twenty sets of <img> nodes
+   (which then have to decode again — the blank flash). So the re-render
+   is asked for ONCE, shortly after the last measurement of a burst. */
+let inkNotifyTimer = null;
 export function normalizeIcons(urls, requestRender) {
   for (const u of urls) {
     if (!u || iconInkCache.has(u) || iconInkPending.has(u)) continue;
@@ -242,7 +247,10 @@ export function normalizeIcons(urls, requestRender) {
     const done = (fit) => {
       iconInkPending.delete(u);
       iconInkCache.set(u, fit);
-      if (requestRender) requestRender();
+      if (requestRender) {
+        clearTimeout(inkNotifyTimer);
+        inkNotifyTimer = setTimeout(requestRender, iconInkPending.size ? 80 : 0);
+      }
     };
     image.onload = () => {
       try { done(measureInk(image)); } catch { done(ICON_IDENTITY); }

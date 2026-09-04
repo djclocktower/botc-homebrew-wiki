@@ -48,15 +48,22 @@ import {
 } from './elements.js';
 import { runPixelJob } from './jobs.js';
 
-/* an icon <img> that falls back to the placeholder when its art 404s */
+/* an icon <img> that falls back to the placeholder when its art 404s.
+   Decoded synchronously: the preview rebuilds these nodes on every change
+   and an async decode paints them blank for a frame or two first. */
 function iconImg(src, style, alt) {
   const n = img(src, style, alt);
   n.crossOrigin = 'anonymous';
+  n.decoding = 'sync';
   n.addEventListener('error', () => {
     if (n.src !== PLACEHOLDER_ICON) n.src = PLACEHOLDER_ICON;
   });
   return n;
 }
+
+/* title art that failed to load (a dead _meta.logo URL): the sheet falls
+   back to the swash text title instead of an empty band */
+const failedArt = new Set();
 
 /* ability text with typographic punctuation and the ornamental asterisk of
    the official sheets */
@@ -711,9 +718,10 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
     // title: an uploaded title image, else the script's logo when provided,
     // else the swash text title
     if (!tT.hidden) {
-      const titleArt = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+      let titleArt = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+      if (titleArt && failedArt.has(titleArt)) titleArt = '';
       if (titleArt) {
-        const logoEl = iconImg(titleArt, {
+        const logoEl = img(titleArt, {
           position: 'absolute',
           left: (SHEET.titleCX + tT.dx) + '%',
           top: px(e(SHEET.titleCY + tT.dy)),
@@ -725,8 +733,13 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
           filter: `drop-shadow(${e(0.09)}px ${e(0.13)}px ${e(0.11)}px rgba(40, 26, 10, 0.45))`,
         }, title);
         logoEl.dataset.fsTbox = '1';
+        logoEl.crossOrigin = 'anonymous';
         // the logo's width is only known once it loads — re-hug the decor then
         logoEl.addEventListener('load', () => fitTitle(sheet, options));
+        logoEl.addEventListener('error', () => {
+          failedArt.add(titleArt);
+          if (requestRender) requestRender();
+        });
         sheet.append(mark(logoEl, 'el:title'));
       } else {
         const titleEl = el('div', {
