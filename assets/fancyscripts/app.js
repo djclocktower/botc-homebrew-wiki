@@ -1496,6 +1496,9 @@ function buildElementPanel() {
     };
     makeButton(al, 'Bring forward', () => swap(1));
     makeButton(al, 'Send back', () => swap(-1));
+    if (st.type === 'image') {
+      makeButton(al, 'Fill the page', () => { Object.assign(get(), { x: 50, y: 50, w: 100, rotate: 0 }); commit(); syncControls(); });
+    }
   }
 }
 
@@ -1777,6 +1780,28 @@ function onKey(ev) {
     if (ev.key === 'y' || (ev.key === 'z' && ev.shiftKey)) { ev.preventDefault(); redo(); return; }
   }
   if ((ev.ctrlKey || ev.metaKey) && ev.key === 's') { ev.preventDefault(); saveDesign(); return; }
+  if ((ev.ctrlKey || ev.metaKey) && ev.key === 'd' && !typing && selectedId) {
+    if (selectedId.startsWith('custom:')) {
+      const st = findSticker(selectedId);
+      if (st) {
+        ev.preventDefault();
+        const copy = { ...clone(st), id: newId(), y: Math.min(95, st.y + 6) };
+        options.custom.push(copy);
+        setSelected('custom:' + copy.id);
+        commit();
+      }
+    } else if (selectedId.startsWith('back:')) {
+      ev.preventDefault();
+      const idx = Number(selectedId.slice(5));
+      const t = options.back.texts[idx];
+      if (t) {
+        options.back.texts.splice(idx + 1, 0, { ...clone(t), y: Math.min(95, t.y + 6) });
+        setSelected('back:' + (idx + 1));
+        commit();
+      }
+    }
+    return;
+  }
   if (typing) return;
   if (!selectedId) return;
   const m = elementModel(selectedId);
@@ -2263,6 +2288,38 @@ async function boot() {
 
   new ResizeObserver(fitPreview).observe($('fs-preview'));
   window.addEventListener('resize', fitPreview);
+
+  // drop a file anywhere: a script or design JSON loads, an image becomes
+  // a sticker on the page being shown, a font joins the font menus
+  document.addEventListener('dragover', (ev) => { ev.preventDefault(); });
+  document.addEventListener('drop', async (ev) => {
+    ev.preventDefault();
+    const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (!f) return;
+    try {
+      if (/json$/i.test(f.name) || /json/i.test(f.type)) loadFile(f);
+      else if (/^image\//.test(f.type)) addSticker('image', await readImageFile(f), f.name);
+      else if (/\.(ttf|otf|woff2?)$/i.test(f.name) || /font/i.test(f.type)) {
+        const fam = f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/[^\w \-]/g, '').trim() || 'Uploaded font';
+        registerFont(fam, await readAsDataURL(f));
+        buildFontSelects();
+        toast('Font “' + fam + '” added to every font list');
+        scheduleAutosave();
+      } else note('Drop a script or design .json, an image, or a font file.', 'err');
+    } catch { note('Could not read that file.', 'err'); }
+  });
+  // double-click a text sticker or a back-cover word to edit its words
+  $('fs-sheet-wrap').addEventListener('dblclick', (ev) => {
+    const node = ev.target.closest && ev.target.closest('[data-fs-drag]');
+    if (!node) return;
+    const id = node.dataset.fsDrag;
+    if (!(id.startsWith('back:') || (id.startsWith('custom:') && findSticker(id) && findSticker(id).type === 'text'))) return;
+    setSelected(id);
+    const card = $('fs-elements-box').closest('details');
+    if (card) card.open = true;
+    const field = $('fs-elements-box').querySelector('textarea');
+    if (field) { field.focus(); field.select(); field.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+  });
   // wraps and the title width both change once the real fonts arrive
   document.fonts.ready.then(() => { fontsChanged(); reparse(); requestRender(); });
   // and warm the sheet's faces so the first render already measures right
