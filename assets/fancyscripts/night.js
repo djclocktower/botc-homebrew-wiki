@@ -281,8 +281,11 @@ export function layoutList(spec, options, requestRender) {
     // two-column specs never paginate, so they shrink as far as they must
     if (fit >= minFit || !spec.paginate || two) d = fit;
     else {
+      // the fewest pages that hold the list at a density still above
+      // minFit, then the density that fills those pages evenly (never
+      // above 1 — the reference pitch is the cap)
       const need1 = needAt(0, 1);
-      pagesN = Math.max(1, Math.ceil(need1 / availEm));
+      pagesN = Math.max(1, Math.ceil((need1 * minFit) / availEm));
       d = clamp((pagesN * availEm) / need1, minFit, 1);
     }
   }
@@ -292,7 +295,9 @@ export function layoutList(spec, options, requestRender) {
     const pages = [];
     let page = { columns: cols.map(() => ({ units: [], used: 0 })) };
     colUnits.forEach((units, ci) => {
-      const cap = availEm;
+      // units are measured in layout em and drawn at `dd` of that, so a
+      // page holds availEm / dd of them
+      const cap = availEm / dd;
       for (const u of units) {
         const h = unitH(u, ci, dd);
         const pc = page.columns[ci];
