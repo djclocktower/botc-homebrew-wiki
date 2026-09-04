@@ -235,13 +235,15 @@ function requestRender() {
 }
 
 function reparse() {
-  if (rawJson == null) return;
+  if (rawJson == null) return false;
   try {
     parsed = parseScript(rawJson, options.proxyIcons);
     note('');
     showWarnings(parsed.warnings);
+    return true;
   } catch (e) {
     note(e && e.message ? e.message : 'Could not parse that JSON.', 'err');
+    return false;
   }
 }
 
@@ -413,10 +415,15 @@ function keyFor(json, slug) {
 }
 
 function loadJson(json, label, slug, keepDesign) {
+  const prev = { rawJson, sourceLabel, scriptKey };
   rawJson = json;
   sourceLabel = label || '';
   scriptKey = keyFor(json, slug);
-  reparse();
+  if (!reparse()) {
+    // not a script: keep what was loaded, the error note says why
+    rawJson = prev.rawJson; sourceLabel = prev.sourceLabel; scriptKey = prev.scriptKey;
+    return;
+  }
   if (!keepDesign) {
     // a fresh script gets fresh overrides — the old title would stick otherwise
     options.titleOverride = '';
@@ -1367,6 +1374,7 @@ function buildExportCard() {
   makeToggle(box, 'Script sheet(s)', bindPath('exportOpts.pages.front'));
   makeToggle(box, 'Night order sheets', bindPath('exportOpts.pages.night'));
   makeToggle(box, 'Jinx page', bindPath('exportOpts.pages.jinx'));
+  makeToggle(box, 'Back cover right after the script sheet (double-sided printing)', bindPath('exportOpts.duplex'));
   makeHint(box, 'Share Image and Print PNG download the page you are looking at; “All pages” downloads each one; Print PDF is every ticked page in order.');
   endCard(box);
 }
@@ -2190,8 +2198,17 @@ function copyImage() {
 
 function exportPages() {
   const x = options.exportOpts.pages;
-  return pages.filter((p) => (p.kind === 'front' ? x.front !== false : p.kind === 'night' ? x.night !== false
+  const list = pages.filter((p) => (p.kind === 'front' ? x.front !== false : p.kind === 'night' ? x.night !== false
     : p.kind === 'jinx' ? x.jinx !== false : true));
+  if (options.exportOpts.duplex) {
+    // double-sided printing: the back cover on the reverse of the last
+    // script sheet, then the night sheets and the jinx page
+    const back = list.filter((p) => p.kind === 'back');
+    const fronts = list.filter((p) => p.kind === 'front');
+    const rest = list.filter((p) => p.kind !== 'back' && p.kind !== 'front');
+    return [...fronts, ...back, ...rest];
+  }
+  return list;
 }
 
 async function exportAll() {

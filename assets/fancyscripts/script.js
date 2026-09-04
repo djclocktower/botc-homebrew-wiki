@@ -341,6 +341,7 @@ export const DEFAULT_EXPORT = {
   printScale: 3, // pixelRatio of the print exports (3 = 3726 px wide)
   shareScale: 1.5,
   jpegQuality: 0.92,
+  duplex: false, // back cover straight after the sheet(s), for double-sided printing
   pages: { front: true, jinx: true, night: true, back: true }, // what the PDF carries
 };
 
