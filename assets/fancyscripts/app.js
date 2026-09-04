@@ -52,6 +52,7 @@ let selectedId = ''; // the selected draggable ('el:title', 'custom:x', 'back:2'
 let lastScale = 1; // preview scale, for mapping drag pointer px to sheet px
 let zoom = 'fit'; // 'fit' | number
 let charSel = ''; // the character the Characters panel edits
+let charFilter = ''; // the Characters card's search text
 let dragStart = null; // model values captured when a drag begins
 
 /* the asset store */
@@ -1883,20 +1884,46 @@ function buildCharPanel() {
   box.textContent = '';
   const chars = parsed.characters;
   if (!chars.length) { makeHint(box, 'Load a script first.'); return; }
+  // a long roster gets a filter box over the list
+  if (chars.length > 12) {
+    const filter = document.createElement('input');
+    filter.type = 'search';
+    filter.className = 'fs-field';
+    filter.placeholder = 'Find a character…';
+    filter.value = charFilter;
+    filter.addEventListener('input', () => {
+      charFilter = filter.value;
+      fillCharSelect();
+    });
+    box.append(filter);
+  }
   const sel = document.createElement('select');
   sel.className = 'fs-select';
-  const none = document.createElement('option');
-  none.value = ''; none.textContent = 'Pick a character…';
-  sel.append(none);
-  for (const c of chars) {
-    const ov = options.chars[c.id] || {};
-    const o = document.createElement('option');
-    o.value = c.id;
-    o.textContent = (ov.hidden ? '(hidden) ' : '') + (ov.name || c.name) + ' — ' + TEAM_NAMES[ov.team || c.team];
-    sel.append(o);
-  }
-  sel.value = chars.some((c) => c.id === charSel) ? charSel : '';
-  sel.addEventListener('change', () => { charSel = sel.value; buildCharPanel(); });
+  sel.style.marginTop = '6px';
+  const fillCharSelect = () => {
+    sel.textContent = '';
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = 'Pick a character…';
+    sel.append(none);
+    const q = charFilter.trim().toLowerCase();
+    for (const c of chars) {
+      const ov = options.chars[c.id] || {};
+      const shown = (ov.name || c.name);
+      if (q && !(shown.toLowerCase().includes(q) || c.id.includes(q))) continue;
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = (ov.hidden ? '(hidden) ' : '') + shown + ' — ' + TEAM_NAMES[ov.team || c.team];
+      sel.append(o);
+    }
+    sel.value = chars.some((c) => c.id === charSel) ? charSel : '';
+  };
+  fillCharSelect();
+  sel.addEventListener('change', () => {
+    charSel = sel.value;
+    buildCharPanel();
+    // the character's icon lights up on the sheet, where its row is
+    if (charSel && currentPage().kind === 'front') setSelected('char:' + charSel);
+  });
   box.append(sel);
   const c = chars.find((x) => x.id === charSel);
   const track = (bnd) => { charPanelBindings.push(bnd); return bnd; };

@@ -2359,7 +2359,12 @@ The footnote sits on the last page (or every page), and pages get a
   one surface the owner reviews from. The density sliders are never
   disabled — under auto-fit they display the solved density ("auto · 96%")
   and dragging one unticks auto-fit; a disabled slider just read as broken.
-  Double-clicking a slider's label resets it.
+  Double-clicking a slider's label resets it, and every settings card ends
+  in a "Reset this card" that puts back only the option paths that card
+  bound (`beginCard()` / `endCard()` in app.js collect them through
+  `bindPath`). Team names can be ribbon labels (the official look),
+  headings over each section in the team's ink (`labelStyle`, a band the
+  layout reserves per section), or both.
 - **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
   LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
   400 file on purpose, because the reference used Chromium's synthetic bold),
