@@ -17,6 +17,19 @@
     townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
     demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
   };
+  /* The same seven teams as one solid colour each, mirroring the :root vars
+     in styles.css that the {{townsfolk|…}} family of marks paints with
+     (--good, --outsider, --minion, --evil, --fabled, --loric). It exists for
+     the surfaces that get ONE colour and no stylesheet — today the
+     `theme-color` the Worker sends on a /c/ page, which is what tints the bar
+     down the side of a Discord link preview.
+     Traveller is the wiki's one gradient, so it takes the same solid blue
+     .wiki-traveller falls back to where `background-clip: text` is missing —
+     the answer this file already gives when the split cannot be drawn. */
+  var TEAM_COLOR = {
+    townsfolk: '#2C7BD0', outsider: '#1a6a80', minion: '#b5441a',
+    demon: '#9A0D12', traveller: '#2C7BD0', fabled: '#8f6d1a', loric: '#2f6b3f'
+  };
 
   /* ── a character's icons ────────────────────────────────────────────
      The official script schema (ThePandemoniumInstitute/botc-release) gives
@@ -1671,6 +1684,7 @@
     window.SPECIAL_TIMES = SPECIAL_TIMES;
     window.slugId = slugId;
     window.TEAM_LABEL = TEAM_LABEL;
+    window.TEAM_COLOR = TEAM_COLOR;
     window.artVersions = artVersions;
     window.artVersion = artVersion;
     window.mountEmblemGallery = mountEmblemGallery;
@@ -1703,7 +1717,7 @@
       CREDITS_FABLED_ID: CREDITS_FABLED_ID,
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
-      slugId: slugId, TEAM_LABEL: TEAM_LABEL,
+      slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
       artVersions: artVersions, artVersion: artVersion,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,

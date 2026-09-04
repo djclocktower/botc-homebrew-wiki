@@ -4127,9 +4127,17 @@ function attr(s) {
 // Shared HTML shell for every server-rendered page (/c/, /s/, /collection/).
 // The topbar/nav markup mirrors the static pages (scripts.html is canonical).
 function pageShell(o) {
-  // o: {title, desc, canonicalUrl, ogImage, ogCard, body, bodyClass,
-  //     bodyStyle, mainClass, mainStyle, bootstrap, scripts[], draftBanner,
-  //     noindex, root}
+  // o: {title, ogTitle, desc, canonicalUrl, ogImage, ogCard, themeColor, body,
+  //     bodyClass, bodyStyle, mainClass, mainStyle, bootstrap, scripts[],
+  //     draftBanner, noindex, root}
+  // `ogTitle` is the headline a LINK UNFURL shows and defaults to `title`.
+  // They are split because the two are read in different places: <title> is
+  // the browser tab and the Google result, where anything past the page's own
+  // name is noise, while the unfurl's title is the only blue text Discord
+  // draws and is the one line that can carry more (see charTitle below).
+  // `themeColor` paints the bar down the side of that unfurl. It is a real
+  // browser tag as well — Chrome and Safari on a phone tint their toolbar
+  // with it — so it is passed only by a page that means it.
   // `root` is how far up the site root is from this page's URL. Every path in
   // the shell is relative, and all of /s/, /collection/, /news/ and /p/ sit
   // one level deep, so it defaults to '../'. Character addresses are nested
@@ -4141,6 +4149,7 @@ function pageShell(o) {
   // site.js appends Tools + the Account/Login button, and moves the
   // Edit button to the end of the row on editable pages.
   const R = o.root || '../';
+  const ogTitle = o.ogTitle || o.title;
   const bodyAttrs = (o.bodyClass ? ' class="' + attr(o.bodyClass) + '"' : '') +
     (o.bodyStyle ? ' style="' + attr(o.bodyStyle) + '"' : '');
   const mainAttrs = ' class="wrap' + (o.mainClass ? ' ' + attr(o.mainClass) : '') + '"' +
@@ -4152,15 +4161,15 @@ function pageShell(o) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${attr(o.title)} — BOTC HomeBrew Wiki</title>
 <meta name="description" content="${attr(o.desc)}">
-${o.noindex ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link rel="canonical" href="${attr(o.canonicalUrl)}">
+${o.themeColor ? '<meta name="theme-color" content="' + attr(o.themeColor) + '">\n' : ''}${o.noindex ? '<meta name="robots" content="noindex, nofollow">\n' : ''}<link rel="canonical" href="${attr(o.canonicalUrl)}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
-<meta property="og:title" content="${attr(o.title)}">
+<meta property="og:title" content="${attr(ogTitle)}">
 <meta property="og:description" content="${attr(o.desc)}">
 <meta property="og:image" content="${attr(o.ogImage)}">
 <meta property="og:url" content="${attr(o.canonicalUrl)}">
 <meta name="twitter:card" content="${attr(o.ogCard || 'summary')}">
-<meta name="twitter:title" content="${attr(o.title)}">
+<meta name="twitter:title" content="${attr(ogTitle)}">
 <meta name="twitter:description" content="${attr(o.desc)}">
 <meta name="twitter:image" content="${attr(o.ogImage)}">
 <link rel="icon" type="image/png" sizes="64x64" href="${R}assets/favicon.png">
@@ -4280,6 +4289,27 @@ async function serveProfileShell(env, request, url) {
   });
 }
 
+/* ── what a link unfurl says about a character ──────────────────────────
+   A character posted in Discord used to unfurl as its name, its icon and its
+   ability, which is the one thing the picture already tells you. These put
+   the rest of the card back: what it is, who made it, what set it is from,
+   and whether the wiki has marked it.
+
+   The split between the two is Discord's, not ours. A scraped link embed
+   draws exactly three pieces of text — the title, the description and the
+   site name — and **the title is the only one that is a link**, so it is the
+   only place a word can be blue. og:description is rendered as PLAIN TEXT:
+   markdown in it does not become bold, and `[label](url)` in it stays
+   literal, so there is no second way to colour anything. The description is
+   also capped around 300 characters, and the title is not.
+
+   So the page's STATUSES — the two things that classify it, its team and its
+   Curata/Partial mark — ride on the title beside the name, where they are
+   blue and cannot be truncated. Its ATTRIBUTION — who made it and what it is
+   from — opens the description, where the length belongs and where a set
+   called "Tales from Tir-Far's Archive" is not competing with the name for
+   the top line. */
+
 /* Which set a character page says it is from, in the same order — and from
    the same two fields — as the page's own "Appears in" row
    (appearsInRow in render.js): the creator's typed line first, then the
@@ -4294,33 +4324,33 @@ function charSetName(d) {
   return from.map(c => c && c.name).filter(Boolean).join(', ');
 }
 
-/* The line a link unfurl (Discord, Slack, iMessage, a search result) shows
-   above the ability: "Townsfolk · by wyrdvora · Odyssey · Curata" — the same
-   four things a card in a browse grid tells you at a glance.
-
-   It rides on the FRONT of og:description rather than in tags of its own
-   because og:description is the only field every unfurler is guaranteed to
-   render: Discord shows title, description and image and nothing else, so a
-   twitter:label/data pair or an oEmbed author line would be invisible on the
-   one surface this is for. Being first is what keeps it out of the
-   truncation a long ability runs into.
-
-   Every part is optional and a missing one leaves no gap — a character with
-   no creator and no set is just its team. Standard says nothing, because
-   the absence of a class IS Standard (see classify.js). */
-function charMetaLine(d) {
-  const bits = [];
+/* The unfurl's headline: "Admiral · Townsfolk · Curata". Both extra bits are
+   optional and a missing one leaves no gap, so a page with no team is just
+   its name. Standard adds nothing, because the absence of a class IS
+   Standard (see classify.js) — the same reason classBadgeHTML draws no mark
+   for it. This is og:title only; the browser tab keeps the bare name. */
+function charTitle(d, name) {
+  const bits = [name];
   const team = Render.TEAM_LABEL[String((d && d.team) || '').toLowerCase()];
   if (team) bits.push(team);
+  const cls = Classify.classifyCharacter(d);
+  if (cls && cls !== 'standard') bits.push(Classify.CLASS_LABELS[cls] || cls);
+  return bits.join(' \u00b7 ');
+}
+
+/* The attribution line above the ability: "by Tir-Far-Thóinn · Tales from
+   Tir-Far's Archive". Either half may be missing and an uncredited character
+   from no set contributes nothing at all, leaving the description exactly the
+   ability it was before any of this. */
+function charCreditLine(d) {
+  const bits = [];
   // A credit can name several people ("Taiyi (太一), Saki"); splitCreators is
   // the one place that is taken apart, and it also tidies the spacing.
   const who = Creators.splitCreators(d && d.creator).join(', ');
   if (who) bits.push('by ' + who);
   const set = charSetName(d);
   if (set) bits.push(set);
-  const cls = Classify.classifyCharacter(d);
-  if (cls && cls !== 'standard') bits.push(Classify.CLASS_LABELS[cls] || cls);
-  return bits.join(' · ');
+  return bits.join(' \u00b7 ');
 }
 
 function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
@@ -4329,10 +4359,9 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   // or a Discord unfurl has nowhere to render one — so the description is the
   // same sentence with the syntax taken back out. (The ability is escaped on
   // the page and carries no marks, so this costs it nothing.)
-  // The meta line first, then the ability, on two lines: Discord (and every
-  // other unfurler) renders the description as one block of text, and this is
-  // the only field it is guaranteed to show.
-  const desc = [charMetaLine(d), WikiRender.plainText((d.ability || d.lede || '').trim())]
+  // The credit line first, then the ability, on two lines: an unfurler renders
+  // the description as one block of text and nothing in it can be marked up.
+  const desc = [charCreditLine(d), WikiRender.plainText((d.ability || d.lede || '').trim())]
     .filter(Boolean).join('\n');
   // d.page is the address the /c/ route resolved; d.slug is the identity and
   // is only the address for a row the backfill has not reached.
@@ -4359,7 +4388,10 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
       draftNoteHTML(d)
     : '') + (showPartialNotice ? partialNoticeHTML(d, root) : '');
   return pageShell({
-    title: name, desc, canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
+    title: name, ogTitle: charTitle(d, name), desc,
+    canonicalUrl: pageUrl, ogImage: img, ogCard: 'summary',
+    // The bar down the side of a Discord unfurl, in the team's own colour.
+    themeColor: Render.TEAM_COLOR[String(d.team || '').toLowerCase()] || '',
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
@@ -5160,7 +5192,7 @@ const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
    cache keeps serving last week's HTML for the full s-maxage (a week) unless
    somebody happens to save a page. Bump this whenever a deploy changes what
    these routes render and the stale copies die with it. */
-const SSR_RENDER_V = 2;
+const SSR_RENDER_V = 3;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
