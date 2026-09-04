@@ -1,19 +1,32 @@
 /* Fancy Scripts — the sheet renderer.
  *
  * Vanilla-DOM port of the handoff's ScriptSheet component: builds one
- * .script-sheet element (1242×1656 CSS px, the 3:4 reference trim) from a
- * parsed script + options. Everything is inline-styled with the calibrated
- * values from script.js's SHEET — this element is also what the PNG/PDF
- * export captures, so its pixels ARE the product; nothing about it may
- * depend on the page's stylesheet.
+ * .script-sheet element (1242×1656 CSS px, the 3:4 reference trim) per
+ * PAGE from a parsed script + options. Everything is inline-styled with
+ * the calibrated values from script.js's SHEET — this element is also what
+ * the PNG/PDF export captures, so its pixels ARE the product; nothing about
+ * it may depend on the page's stylesheet.
+ *
+ * Two passes:
+ *   layoutSheet()     — measures every row (word-wrap in the real fonts),
+ *                       solves the density, and PACKS the sections onto
+ *                       pages. A script that would have to shrink below
+ *                       options.minFit continues onto a second sheet (a
+ *                       team is split across the break and its label is
+ *                       repeated) instead of becoming unreadable.
+ *   renderSheetPage() — draws one of those pages: background, ribbon,
+ *                       header band, sections, footnote, page number,
+ *                       stickers. Every movable piece carries
+ *                       data-fs-drag so drag.js can pick it up.
  *
  * Two async loops feed back into rendering, and both go through the caller's
  * requestRender callback instead of touching the DOM they built:
  *   - icon ink normalization: every icon's alpha bounding box is measured
  *     once (cached per url) and the artwork scaled/recentred so all icons
  *     carry the same visual weight, like the hand-laid official sheets;
- *   - fonts: ability word-wrap and the title width are measured with canvas/
- *     layout, so the caller re-renders once document.fonts.ready resolves.
+ *   - the sidebar recolour and the fonts: word-wrap and the title width are
+ *     measured with canvas/layout, so the caller re-renders once
+ *     document.fonts.ready resolves.
  *
  * fitTitle(el) must be called after the element is in the document: the
  * swash title shrinks to the band between the skull and the right flourish,
@@ -24,45 +37,16 @@
 import {
   SHEET, SHEET_W, SHEET_H, U, SIDEBAR_BASE,
   TEAM_LABELS, TEAM_LABELS_SINGULAR, PLACEHOLDER_ICON,
-  groupByTeam, splitColumns, proxied, smartTypography,
+  groupByTeam, splitColumns, proxied, smartTypography, teamColor, fontFamily, elGet,
 } from './script.js';
-
-const ART = '/assets/fancyscripts/art/';
-
-const FONT_TITLE = '"LHF Unlovable", "Goudy Text MT", serif';
-const FONT_SIDEBAR = '"Dumbledor", "Hallowen", "Pirata One", serif';
-const FONT_NAME = '"Goudy Old Style", "Goudy Bookletter 1911", serif';
-const FONT_ABILITY = '"Trade Gothic", "Archivo Narrow", sans-serif';
-
-const EVIL_TEAMS = ['minion', 'demon'];
-const NEUTRAL_TEAMS = ['traveller', 'fabled', 'loric'];
-
-/* warm printer's ink for body text — multiplied into the parchment grain */
-const INK = '#222222';
-
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-
-const px = (v) => v + 'px';
-
-/* tiny element builder: tag, style object, then children (nodes/strings) */
-function el(tag, style, ...children) {
-  const n = document.createElement(tag);
-  if (style) Object.assign(n.style, style);
-  for (const c of children) {
-    if (c == null) continue;
-    n.append(c);
-  }
-  return n;
-}
-
-function img(src, style, alt) {
-  const n = document.createElement('img');
-  n.src = src;
-  n.alt = alt || '';
-  n.draggable = false;
-  if (style) Object.assign(n.style, style);
-  return n;
-}
+import {
+  el, img, px, clamp, hexHsl, shade, wrappedLineCount,
+  normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY,
+} from './util.js';
+import {
+  ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected,
+} from './elements.js';
+import { runPixelJob } from './jobs.js';
 
 /* an icon <img> that falls back to the placeholder when its art 404s */
 function iconImg(src, style, alt) {
@@ -74,80 +58,30 @@ function iconImg(src, style, alt) {
   return n;
 }
 
-/* ── icon ink normalization ─────────────────────────────────────────────
-   Source icon files have wildly inconsistent transparent padding (official
-   and homebrew alike). Measure each icon's alpha bounding box once and
-   scale/recentre so every icon's INK occupies the same visual size. */
-const ICON_IDENTITY = { s: 1, dx: 0, dy: 0 };
-const iconInkCache = new Map();
-const iconInkPending = new Set();
-
-function iconFit(url) {
-  return iconInkCache.get(url) || ICON_IDENTITY;
-}
-
-function measureInk(image) {
-  const nw = image.naturalWidth, nh = image.naturalHeight;
-  if (!nw || !nh) return ICON_IDENTITY;
-  const w = Math.max(8, Math.min(nw, 140));
-  const h = Math.max(8, Math.min(nh, 140));
-  const c = document.createElement('canvas');
-  c.width = w;
-  c.height = h;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return ICON_IDENTITY;
-  ctx.drawImage(image, 0, 0, w, h);
-  const d = ctx.getImageData(0, 0, w, h).data;
-  let x0 = w, y0 = h, x1 = -1, y1 = -1;
-  for (let y = 0; y < h; y++)
-    for (let x = 0; x < w; x++)
-      if (d[(y * w + x) * 4 + 3] > 26) {
-        if (x < x0) x0 = x;
-        if (x > x1) x1 = x;
-        if (y < y0) y0 = y;
-        if (y > y1) y1 = y;
-      }
-  if (x1 < 0) return ICON_IDENTITY;
-  const maxDim = Math.max(nw, nh);
-  const rw = nw / maxDim, rh = nh / maxDim; // object-fit: contain content box
-  const fx = ((x1 - x0 + 1) / w) * rw;
-  const fy = ((y1 - y0 + 1) / h) * rh;
-  const span = Math.max(fx, fy);
-  const s = clamp(0.88 / span, 0.85, 1.35);
-  const cx = ((x0 + x1 + 1) / 2 / w - 0.5) * rw;
-  const cy = ((y0 + y1 + 1) / 2 / h - 0.5) * rh;
-  return { s, dx: -cx * s, dy: -cy * s };
-}
-
-function normalizeIcons(urls, requestRender) {
-  for (const u of urls) {
-    if (!u || iconInkCache.has(u) || iconInkPending.has(u)) continue;
-    iconInkPending.add(u);
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    const done = (fit) => {
-      iconInkPending.delete(u);
-      iconInkCache.set(u, fit);
-      if (requestRender) requestRender();
-    };
-    image.onload = () => {
-      try { done(measureInk(image)); } catch { done(ICON_IDENTITY); }
-    };
-    image.onerror = () => done(ICON_IDENTITY);
-    image.src = u;
-  }
-}
-
-const inkTransform = (f) =>
-  `translate(${(f.dx * 100).toFixed(2)}%, ${(f.dy * 100).toFixed(2)}%) scale(${f.s.toFixed(3)})`;
-
 /* ability text with typographic punctuation and the ornamental asterisk of
    the official sheets */
-function abilityNodes(text) {
+function abilityNodes(text, bracketStyle) {
   const parts = smartTypography(text).split('*');
   const out = [];
+  const bracketed = (s) => {
+    // "[+2 Outsiders]" setup notes, styled apart from the rule when asked
+    if (!bracketStyle || bracketStyle === 'plain') return [document.createTextNode(s)];
+    const nodes = [];
+    const re = /\[[^\]\n]{1,60}\]/g;
+    let last = 0, m;
+    while ((m = re.exec(s))) {
+      if (m.index > last) nodes.push(document.createTextNode(s.slice(last, m.index)));
+      const span = el('span', bracketStyle === 'italic' ? { fontStyle: 'italic' }
+        : bracketStyle === 'bold' ? { fontWeight: '700' }
+          : { opacity: '0.72', fontStyle: 'italic' }, m[0]);
+      nodes.push(span);
+      last = m.index + m[0].length;
+    }
+    if (last < s.length) nodes.push(document.createTextNode(s.slice(last)));
+    return nodes;
+  };
   parts.forEach((p, i) => {
-    out.push(document.createTextNode(p));
+    for (const n of bracketed(p)) out.push(n);
     if (i < parts.length - 1) {
       out.push(img(ART + 'asterisk.png', {
         display: 'inline-block',
@@ -161,128 +95,18 @@ function abilityNodes(text) {
   return out;
 }
 
-/* HSL lightness shift for building embossed title gradients from any colour */
-function shade(hex, dl) {
-  const m = /^#?([\da-f]{6})$/i.exec(hex);
-  if (!m) return hex;
-  const n = parseInt(m[1], 16);
-  const rr = ((n >> 16) & 255) / 255, gg = ((n >> 8) & 255) / 255, bb = (n & 255) / 255;
-  const mx = Math.max(rr, gg, bb), mn = Math.min(rr, gg, bb);
-  const l = (mx + mn) / 2;
-  const d = mx - mn;
-  let hDeg = 0, sat = 0;
-  if (d) {
-    sat = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-    hDeg = mx === rr ? (gg - bb) / d + (gg < bb ? 6 : 0) : mx === gg ? (bb - rr) / d + 2 : (rr - gg) / d + 4;
-    hDeg /= 6;
-  }
-  const nl = clamp(l + dl, 0, 1);
-  const hue2rgb = (p, q, tt) => {
-    if (tt < 0) tt += 1;
-    if (tt > 1) tt -= 1;
-    if (tt < 1 / 6) return p + (q - p) * 6 * tt;
-    if (tt < 1 / 2) return q;
-    if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
-    return p;
-  };
-  let r2, g2, b2;
-  if (!sat) r2 = g2 = b2 = nl;
-  else {
-    const q = nl < 0.5 ? nl * (1 + sat) : nl + sat - nl * sat;
-    const p = 2 * nl - q;
-    r2 = hue2rgb(p, q, hDeg + 1 / 3);
-    g2 = hue2rgb(p, q, hDeg);
-    b2 = hue2rgb(p, q, hDeg - 1 / 3);
-  }
-  const to = (v) => Math.round(v * 255).toString(16).padStart(2, '0');
-  return '#' + to(r2) + to(g2) + to(b2);
-}
-
-/* hex → {h (deg), s, l} for the sidebar recolour ratios */
-function hexHsl(hex) {
-  const m = /^#?([\da-f]{6})$/i.exec(hex);
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-  const l = (mx + mn) / 2;
-  const d = mx - mn;
-  let h = 0, s = 0;
-  if (d) {
-    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
-    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    h *= 60;
-  }
-  return { h, s, l };
-}
-
 /* ── sidebar ribbon recolour ────────────────────────────────────────────
-   Re-tint the navy damask strip toward any picked colour — in a CANVAS,
-   pixel by pixel in real HSL, not with a CSS hue-rotate filter. The filter
-   was tried first and failed exactly where the art is darkest: hue-rotate
-   is a linear matrix approximation, and it maps the strip's near-black
-   navy (the shadowed edges at the top, bottom and left) to neutral mud,
-   so a red ribbon showed un-tinted "missing" bands along those edges.
-
-   Per pixel: hue is ROTATED by the picked colour's offset from the art's
-   measured base (SIDEBAR_BASE), and saturation/lightness are scaled by
-   ratio against that base — so the damask keeps its own shading and its
-   darkest shadow ends up the darkest shade of the picked colour. The
-   recolour runs once per picked colour (~2.5M px, cached), asynchronously:
-   renderSheet() shows the newest canvas it has and asks for a re-render
-   when a fresh one lands, exactly like the icon-ink measurements. */
+   Re-tint the navy damask strip toward any picked colour — per pixel in
+   real HSL (see pixel.js for why a CSS hue-rotate was not good enough).
+   The recolour runs once per picked colour, in the pixel worker, and is
+   cached: renderSheetPage() shows the newest canvas it has and asks for a
+   re-render when a fresh one lands, exactly like the icon-ink
+   measurements. */
 const sidebarTint = {
   img: null, imgReady: false,
   color: '', canvas: null, // the newest finished recolour
   busy: false, want: '', notify: null,
 };
-
-function recolorSidebar(color) {
-  const t = hexHsl(color);
-  const src = sidebarTint.img;
-  const c = document.createElement('canvas');
-  c.width = src.naturalWidth;
-  c.height = src.naturalHeight;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(src, 0, 0);
-  const im = ctx.getImageData(0, 0, c.width, c.height);
-  const d = im.data;
-  const dH = t.h - SIDEBAR_BASE.h;
-  const sRatio = t.s < 0.06 ? 0 : t.s / SIDEBAR_BASE.s;
-  const lRatio = t.l / SIDEBAR_BASE.l;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i] / 255, g = d[i + 1] / 255, b = d[i + 2] / 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    let l = (mx + mn) / 2;
-    const df = mx - mn;
-    let h = 0, s = 0;
-    if (df) {
-      s = l > 0.5 ? df / (2 - mx - mn) : df / (mx + mn);
-      h = mx === r ? (g - b) / df + (g < b ? 6 : 0) : mx === g ? (b - r) / df + 2 : (r - g) / df + 4;
-      h *= 60;
-    }
-    h = (((h + dH) % 360) + 360) % 360;
-    s = Math.min(1, s * sRatio);
-    l = Math.min(1, l * lRatio);
-    // hsl -> rgb
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-    const p = 2 * l - q;
-    const hh = h / 360;
-    const chan = (tt) => {
-      if (tt < 0) tt += 1;
-      if (tt > 1) tt -= 1;
-      if (tt < 1 / 6) return p + (q - p) * 6 * tt;
-      if (tt < 1 / 2) return q;
-      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6;
-      return p;
-    };
-    d[i] = Math.round(chan(hh + 1 / 3) * 255);
-    d[i + 1] = Math.round(chan(hh) * 255);
-    d[i + 2] = Math.round(chan(hh - 1 / 3) * 255);
-  }
-  ctx.putImageData(im, 0, 0);
-  return c;
-}
 
 /* newest recoloured canvas for `color`, or the best stale one while the
    fresh one is computed off this frame (null = show the plain navy art) */
@@ -304,93 +128,114 @@ function sidebarTintCanvas(color, requestRender) {
 function pumpSidebarTint() {
   const st = sidebarTint;
   if (st.busy || !st.imgReady || !st.want || st.want === st.color) return;
-  st.busy = true;
   const color = st.want;
-  // off the current frame, so a drag on the picker stays responsive
-  setTimeout(() => {
-    try {
-      st.canvas = recolorSidebar(color);
-      st.color = color;
-    } catch { st.want = st.color; }
+  const t = hexHsl(color);
+  if (!t) { st.want = st.color; return; }
+  st.busy = true;
+  const src = st.img;
+  const c = document.createElement('canvas');
+  c.width = src.naturalWidth;
+  c.height = src.naturalHeight;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(src, 0, 0);
+  const im = ctx.getImageData(0, 0, c.width, c.height);
+  const job = {
+    type: 'tint', buf: im.data.buffer,
+    dH: t.h - SIDEBAR_BASE.h,
+    sRatio: t.s < 0.06 ? 0 : t.s / SIDEBAR_BASE.s,
+    lRatio: t.l / SIDEBAR_BASE.l,
+  };
+  runPixelJob(job, [im.data.buffer]).then((buf) => {
+    ctx.putImageData(new ImageData(new Uint8ClampedArray(buf), c.width, c.height), 0, 0);
+    st.canvas = c;
+    st.color = color;
+  }).catch(() => { st.want = st.color; }).then(() => {
     st.busy = false;
     if (st.notify) st.notify();
     pumpSidebarTint(); // the wanted colour may have moved on meanwhile
-  }, 0);
+  });
 }
 
-/* shared canvas context for word-wrap measurement of ability text */
-let measureCtx = null;
-function wrappedLineCount(text, fontPx, maxW) {
-  if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d');
-  if (!measureCtx || !text.trim()) return 1;
-  measureCtx.font = `400 ${fontPx}px ${FONT_ABILITY}`;
-  const words = text.split(/\s+/).filter(Boolean);
-  let lines = 1;
-  let line = '';
-  for (const w of words) {
-    const trial = line ? line + ' ' + w : w;
-    if (line && measureCtx.measureText(trial).width > maxW) {
-      lines++;
-      line = w;
-    } else {
-      line = trial;
-    }
-  }
-  return lines;
-}
-
-/* title in LHF Unlovable: indigo→near-black gradient fill over a bronze
-   offset duplicate. The default colour keeps the reference's exact ramp;
-   any other colour gets a two-stop emboss built from itself. */
-function swashTitle(text, color, shadowDX, shadowDY) {
-  const isDefault = color.toLowerCase() === '#10102e';
-  const gradient = isDefault
-    ? 'linear-gradient(180deg, #3d3e88 0%, #2c2a70 34%, #141244 55%, #0e0e20 74%, #10102e 100%)'
-    : `linear-gradient(-20deg, ${shade(color, 0.18)} 50%, ${shade(color, -0.14)})`;
+/* title in the swash face: the default keeps the reference's exact
+   indigo→near-black ramp over a bronze offset duplicate; other styles
+   build the same two layers from the picked colour(s) */
+function swashTitle(text, options, shadowDX, shadowDY) {
+  const color = options.titleColor || '#10102e';
+  const style = options.titleStyle || 'classic';
+  let gradient;
+  if (style === 'flat') gradient = null;
+  else if (style === 'gradient') gradient = `linear-gradient(180deg, ${options.titleColor2 || '#3d3e88'} 0%, ${color} 100%)`;
+  else if (style === 'classic' && color.toLowerCase() === '#10102e') {
+    gradient = 'linear-gradient(180deg, #3d3e88 0%, #2c2a70 34%, #141244 55%, #0e0e20 74%, #10102e 100%)';
+  } else gradient = `linear-gradient(-20deg, ${shade(color, 0.18)} 50%, ${shade(color, -0.14)})`;
   const wrap = el('span', { position: 'relative', display: 'inline-block' });
-  const back = el('span', {
-    position: 'absolute',
-    left: '0',
-    top: '0',
-    color: '#ad9069',
-    transform: `translate(${shadowDX}px, ${shadowDY}px)`,
-    zIndex: '0',
-  }, text);
-  back.setAttribute('aria-hidden', 'true');
-  const front = el('span', {
-    position: 'relative',
-    zIndex: '1',
-    background: gradient,
-    webkitBackgroundClip: 'text',
-    backgroundClip: 'text',
-    color: 'transparent',
-  }, text);
-  front.style.setProperty('-webkit-background-clip', 'text');
-  wrap.append(back, front);
+  const sh = clamp(Number(options.titleShadow == null ? 1 : options.titleShadow), 0, 3);
+  if (sh > 0) {
+    const back = el('span', {
+      position: 'absolute',
+      left: '0',
+      top: '0',
+      color: options.titleShadowColor || '#ad9069',
+      transform: `translate(${shadowDX * sh}px, ${shadowDY * sh}px)`,
+      zIndex: '0',
+    }, text);
+    back.setAttribute('aria-hidden', 'true');
+    wrap.append(back);
+  }
+  const front = el('span', { position: 'relative', zIndex: '1' }, text);
+  if (gradient) {
+    Object.assign(front.style, { background: gradient, backgroundClip: 'text', color: 'transparent' });
+    front.style.setProperty('-webkit-background-clip', 'text');
+  } else {
+    front.style.color = color;
+  }
+  wrap.append(front);
   return wrap;
 }
 
 /* one character row: icon, name (+ jinx partner icons), ability */
-function characterEntry(char, color, showJinxes, heightEm, iconEm, textSize, nameSize, ed) {
-  const colW = SHEET.textOffsetX + SHEET.textWidth; // column width in % of sheet
+function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul) {
+  const { textSize, nameSize } = options;
+  const colW = SHEET.textOffsetX + SHEET.textWidth * widthMul; // column width in % of sheet
   const textLeftPct = (SHEET.textOffsetX / colW) * 100;
-  const textWidthPct = (SHEET.textWidth / colW) * 100;
+  const textWidthPct = ((SHEET.textWidth * widthMul) / colW) * 100;
   const abilityTopEff = SHEET.nameTop + (SHEET.abilityTop - SHEET.nameTop) * nameSize;
-  const fit = iconFit(char.icon);
+  const fit = options.normalizeIcons ? iconFit(char.icon) : ICON_IDENTITY;
+  const color = char.color || teamColor(options, char.team);
 
   const row = el('div', { position: 'relative', height: px(ed(heightEm)) });
+  row.dataset.fsChar = char.id;
 
-  row.append(iconImg(char.icon, {
+  const iconPx = ed(iconEm) * (char.iconScale || 1);
+  const iconLeft = ((char.iconDX || 0) / 100) * SHEET_W;
+  const iconTop = ed((heightEm - iconEm) / 2 + 0.5) - (iconPx - ed(iconEm)) / 2 + e(char.iconDY || 0);
+  if (options.iconFrame && options.iconFrame !== 'none') {
+    // a token-style backing: a parchment disc, or just its ring
+    const pad = iconPx * 0.1;
+    row.append(el('div', {
+      position: 'absolute',
+      left: px(iconLeft - pad), top: px(iconTop - pad),
+      width: px(iconPx + pad * 2), height: px(iconPx + pad * 2),
+      borderRadius: '50%',
+      background: options.iconFrame === 'disc' ? 'rgba(248, 242, 226, 0.92)' : 'transparent',
+      border: `${Math.max(1, ed(0.09))}px solid rgba(90, 70, 40, 0.55)`,
+      boxSizing: 'border-box',
+      boxShadow: options.iconFrame === 'disc' ? `0 ${ed(0.1)}px ${ed(0.25)}px rgba(32,20,8,0.35)` : 'none',
+    }));
+  }
+  const icon = iconImg(char.icon, {
     position: 'absolute',
-    left: '0',
-    top: px(ed((heightEm - iconEm) / 2 + 0.5)),
-    width: px(ed(iconEm)),
-    height: px(ed(iconEm)),
+    left: px(iconLeft),
+    top: px(iconTop),
+    width: px(iconPx),
+    height: px(iconPx),
     objectFit: 'contain',
     transform: inkTransform(fit),
     transformOrigin: 'center',
-    filter: `drop-shadow(${ed(0.05)}px ${ed(0.13)}px ${ed(0.2)}px rgba(32, 20, 8, 0.42))`,
-  }));
+    filter: iconFilter(options.iconEffect, options.iconShadow, ed),
+  });
+  if (options.iconEffect === 'engraved') icon.style.mixBlendMode = 'multiply';
+  row.append(icon);
 
   const nameRow = el('div', {
     position: 'absolute',
@@ -400,18 +245,20 @@ function characterEntry(char, color, showJinxes, heightEm, iconEm, textSize, nam
     display: 'flex',
     alignItems: 'center',
     gap: px(ed(0.14)),
-    fontFamily: FONT_NAME,
+    fontFamily: fonts.name,
     fontWeight: '700',
     fontSize: px(ed(SHEET.nameSize * nameSize)),
     lineHeight: '1',
     color,
-    letterSpacing: '0.02em',
+    letterSpacing: (options.nameSpacing == null ? 0.02 : options.nameSpacing) + 'em',
     whiteSpace: 'nowrap',
+    textTransform: options.nameCase === 'upper' ? 'uppercase' : 'none',
+    fontVariant: options.nameCase === 'smallcaps' ? 'small-caps' : 'normal',
   }, el('span', null, smartTypography(char.name)));
 
-  if (showJinxes) {
+  if (options.showJinxes) {
     for (const j of char.jinxIcons) {
-      const jf = iconFit(j.icon);
+      const jf = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
       const ji = iconImg(j.icon, {
         height: px(ed(SHEET.jinxSize * nameSize) * 0.72),
         width: px(ed(SHEET.jinxSize * nameSize) * 0.72),
@@ -419,7 +266,7 @@ function characterEntry(char, color, showJinxes, heightEm, iconEm, textSize, nam
         flexShrink: '0',
         transform: inkTransform(jf),
         transformOrigin: 'center',
-        filter: `drop-shadow(${ed(0.03)}px ${ed(0.08)}px ${ed(0.14)}px rgba(32, 20, 8, 0.38))`,
+        filter: iconFilter(options.iconEffect, options.iconShadow * 0.7, ed),
       }, j.name);
       ji.title = 'Jinxed: ' + j.name + (j.reason ? ' — ' + j.reason : '');
       nameRow.append(ji);
@@ -432,59 +279,101 @@ function characterEntry(char, color, showJinxes, heightEm, iconEm, textSize, nam
     left: textLeftPct + '%',
     top: px(ed(abilityTopEff)),
     width: textWidthPct + '%',
-    fontFamily: FONT_ABILITY,
+    fontFamily: fonts.ability,
     fontWeight: '400',
     fontSize: px(ed(SHEET.abilitySize * textSize)),
-    lineHeight: String(SHEET.abilityLine / SHEET.abilitySize),
-    color: INK,
+    lineHeight: String((SHEET.abilityLine / SHEET.abilitySize) * (options.abilityLine || 1)),
+    color: options.inkColor || '#222222',
     mixBlendMode: 'multiply',
-  }, ...abilityNodes(char.ability)));
+    textAlign: options.abilityAlign === 'justify' ? 'justify' : 'left',
+  }, ...abilityNodes(char.ability, options.bracketStyle)));
 
   return row;
 }
 
-/* ── the sheet ──────────────────────────────────────────────────────────
-   renderSheet(script, options, requestRender) → the .script-sheet element.
-   requestRender is invoked (any number of times) when an async measurement
-   lands and the sheet is worth rebuilding. */
-export function renderSheet(script, options, requestRender) {
+/* the fonts every text role uses, resolved once per render */
+function fontsOf(options) {
+  return {
+    title: fontFamily(options.fontTitle),
+    name: fontFamily(options.fontName),
+    ability: fontFamily(options.fontAbility),
+    label: fontFamily(options.fontLabel),
+    author: fontFamily(options.fontAuthor),
+    footnote: fontFamily(options.fontFootnote),
+  };
+}
+
+/* the band the title/logo and author occupy, in em below contentTop —
+   the first section starts under it (even layout; fixed, because the
+   title does not scale with density) */
+function headerExtraEm(script, options) {
+  if (!options.showHeader) return 0;
+  const t = elGet(options, 'title');
+  const a = elGet(options, 'author');
+  const bottoms = [];
+  if (!t.hidden) {
+    if (script.meta.logo && options.useLogo) {
+      bottoms.push(SHEET.titleCY + t.dy + (9.4 * t.scale) / 2);
+    } else {
+      // the swash title's ink reaches ~3.05 em below its centre at size 1
+      bottoms.push(SHEET.titleCY + t.dy + 3.05 * t.scale);
+    }
+  }
+  const author0 = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
+  if (options.showAuthor && author0 && !a.hidden) bottoms.push(10.8 + t.dy + a.dy + 0.75 * a.scale);
+  if (!bottoms.length) return 0;
+  return Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
+}
+
+/* ── layout ─────────────────────────────────────────────────────────────
+   layoutSheet(script, options, requestRender) → {pages, d, iconEm, ...}
+   Measured layout: rows grow to fit wrapped ability text. Constant row
+   pitch like the reference — up to 3 ability lines fit inside one pitch;
+   only genuine spill grows a row. fitToContent solves for the density
+   that fills contentTop..contentBottom (3 iterations converge). */
+export function layoutSheet(script, options, requestRender) {
   const groups = groupByTeam(script.characters, options.sortMode);
   const { iconSize, textSize, nameSize } = options;
+  const fonts = fontsOf(options);
 
   // kick off icon ink measurement for anything new
-  const urls = new Set();
-  script.characters.forEach((c) => {
-    urls.add(c.icon);
-    c.jinxIcons.forEach((j) => urls.add(j.icon));
-  });
-  normalizeIcons([...urls], requestRender);
+  if (options.normalizeIcons) {
+    const urls = new Set();
+    script.characters.forEach((c) => {
+      urls.add(c.icon);
+      c.jinxIcons.forEach((j) => urls.add(j.icon));
+    });
+    normalizeIcons([...urls], requestRender);
+  }
 
-  /* ── measured layout: rows grow to fit wrapped ability text ──
-     Constant row pitch like the reference — up to 3 ability lines fit inside
-     one pitch; only genuine spill grows a row. fitToContent solves for the
-     density that fills contentTop..contentBottom (3 iterations converge). */
   const abilityTopEff = SHEET.nameTop + (SHEET.abilityTop - SHEET.nameTop) * nameSize;
-  const maxTextW = (SHEET.textWidth / 100) * SHEET_W;
+  /* 'single' puts every character in one column that runs the width of
+     both — the second column's icon x plus its text width, over the first
+     column's text width */
+  const single = options.columnLayout === 'single';
+  const widthMul = (options.columnWidth || 1) *
+    (single ? (SHEET.col2IconX - SHEET.col1IconX + SHEET.textWidth) / SHEET.textWidth : 1);
+  const maxTextW = ((SHEET.textWidth * widthMul) / 100) * SHEET_W;
   const availableEm = SHEET.contentBottom - SHEET.contentTop;
+  const bareAvailEm = SHEET.contentBottom - SHEET.bareTop;
   // the icon must never spill into the text gutter, whatever the density
   const gutterEm = ((SHEET.textOffsetX - 0.05) / 100) * (SHEET_W / U);
   const iconEmFor = (density) => Math.min(SHEET.rowIcon * iconSize, gutterEm / density);
+  const lineMul = options.abilityLine || 1;
 
   const rowHeightEm = (char, density) => {
-    let need = Math.max(SHEET.rowPitch, iconEmFor(density) + 0.2);
+    let need = Math.max(SHEET.rowPitch, iconEmFor(density) * (char ? (char.iconScale || 1) : 1) + 0.2);
     if (char) {
       const fontPx = SHEET.abilitySize * textSize * U * density;
-      const lines = wrappedLineCount(smartTypography(char.ability), fontPx, maxTextW);
+      const lines = wrappedLineCount(smartTypography(char.ability), `400 ${fontPx}px ${fonts.ability}`, maxTextW);
       // 0.7 margin keeps 3-line rows inside one pitch (1.0 broke it)
-      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize + 0.7);
+      need = Math.max(need, abilityTopEff + (lines - 1) * SHEET.abilityLine * textSize * lineMul + 0.7);
     }
     return need;
   };
 
-  const cols = groups.map((g) => {
-    const [left, right] = splitColumns(g.characters);
-    return { g, left, right };
-  });
+  const layoutEven = options.columnLayout !== 'shared';
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
 
   /* Two column layouts:
 
@@ -499,61 +388,147 @@ export function renderSheet(script, options, requestRender) {
      7/6 townsfolk split gives the 6-row column a slightly wider pitch
      instead of a hole at the bottom. The title no longer takes a column
      slot, so the first section starts below the title/author ink instead
-     (firstExtraEm — fixed, because the title does not scale with density). */
-  const layoutEven = options.columnLayout !== 'shared';
+     (headerExtra — fixed, because the title does not scale with density). */
+  const measureSection = (chars, density, shift) => {
+    const [left, right] = single ? [chars, []] : splitColumns(chars);
+    if (layoutEven) {
+      const leftNeeds = left.map((ch) => rowHeightEm(ch, density));
+      const rightNeeds = right.map((ch) => rowHeightEm(ch, density));
+      return { left, right, leftNeeds, rightNeeds, need: Math.max(sum(leftNeeds), sum(rightNeeds)) };
+    }
+    const rows = Math.max(left.length, right.length + shift);
+    const rowHeights = [];
+    for (let i = 0; i < rows; i++) {
+      rowHeights.push(Math.max(
+        rowHeightEm(left[i], density),
+        rowHeightEm(right[i - shift], density),
+      ));
+    }
+    return { left, right, rowHeights, need: sum(rowHeights), shift };
+  };
 
-  const sum = (a) => a.reduce((x, y) => x + y, 0);
-  const measure = (density) =>
-    cols.map((c, ci) => {
-      if (layoutEven) {
-        const leftNeeds = c.left.map((ch) => rowHeightEm(ch, density));
-        const rightNeeds = c.right.map((ch) => rowHeightEm(ch, density));
-        return { leftNeeds, rightNeeds, need: Math.max(sum(leftNeeds), sum(rightNeeds)) };
+  const headerExtra = headerExtraEm(script, options);
+  const pageHasHeader = (i) => options.showHeader && (i === 0 || options.repeatHeader);
+  const availFor = (i) => (pageHasHeader(i)
+    ? availableEm - (layoutEven ? headerExtra : 0)
+    : bareAvailEm);
+  const topFor = (i) => (pageHasHeader(i) ? SHEET.contentTop + (layoutEven ? headerExtra : 0) : SHEET.bareTop);
+
+  /* pack every section onto pages at density d. A team that does not fit
+     the room left on a page is split: as many of its characters as fit
+     stay, the rest open the next page under a repeated label. */
+  const pack = (d, single) => {
+    const pages = [];
+    let page = { sections: [], used: 0, index: 0 };
+    // sections are measured in layout em and drawn at `d` of that, so a
+    // page holds availFor / d of them
+    const avail = () => availFor(page.index) / d;
+    const gapEm = SHEET.sectionGap;
+    const pushSection = (team, chars, cont, total) => {
+      const shift = (!layoutEven && page.index === 0 && page.sections.length === 0 && pageHasHeader(0)) ? 1 : 0;
+      const m = measureSection(chars, d, shift);
+      page.sections.push({ team, chars, cont, total, ...m });
+      page.used += m.need + (page.sections.length > 1 ? gapEm : 0);
+    };
+    const newPage = () => { pages.push(page); page = { sections: [], used: 0, index: pages.length }; };
+    for (const g of groups) {
+      let chars = g.characters;
+      let cont = false;
+      while (chars.length) {
+        const gap = page.sections.length ? gapEm : 0;
+        const room = avail() - page.used - gap;
+        const shift = (!layoutEven && page.index === 0 && page.sections.length === 0 && pageHasHeader(0)) ? 1 : 0;
+        const whole = measureSection(chars, d, shift).need;
+        if (single || whole <= room + 0.001) {
+          pushSection(g.team, chars, cont, g.characters.length);
+          chars = [];
+          break;
+        }
+        // split: the largest prefix that fits the room left
+        let n = 0;
+        if (room > avail() * 0.22 || page.sections.length === 0) {
+          for (let k = chars.length - 1; k >= 1; k--) {
+            if (measureSection(chars.slice(0, k), d, shift).need <= room + 0.001) { n = k; break; }
+          }
+        }
+        if (n === 0) {
+          if (page.sections.length === 0) {
+            // a single team taller than an empty page: force the biggest
+            // prefix that fits, or one character, so we always make progress
+            for (let k = chars.length - 1; k >= 1; k--) {
+              if (measureSection(chars.slice(0, k), d, shift).need <= room + 0.001) { n = k; break; }
+            }
+            if (n === 0) n = 1;
+          } else {
+            newPage();
+            continue;
+          }
+        }
+        pushSection(g.team, chars.slice(0, n), cont, g.characters.length);
+        chars = chars.slice(n);
+        cont = true;
+        newPage();
       }
-      const shift = ci === 0 ? 1 : 0;
-      const rows = Math.max(c.left.length, c.right.length + shift);
-      const rowHeights = [];
-      for (let i = 0; i < rows; i++) {
-        rowHeights.push(Math.max(
-          rowHeightEm(c.left[i], density),
-          rowHeightEm(c.right[i - shift], density),
-        ));
-      }
-      return { rowHeights, need: sum(rowHeights) };
+    }
+    if (page.sections.length || !pages.length) pages.push(page);
+    return pages;
+  };
+
+  // ── solve the density ──
+  const totalNeedAt = (d) => {
+    let need = 0;
+    groups.forEach((g, i) => {
+      need += measureSection(g.characters, d, (!layoutEven && i === 0 && pageHasHeader(0)) ? 1 : 0).need;
     });
+    return need + Math.max(0, groups.length - 1) * SHEET.sectionGap;
+  };
 
-  // even layout: clear the title band (title or logo, plus the author line)
-  let firstExtraEm = 0;
-  if (layoutEven) {
-    const bottoms = [];
-    if (script.meta.logo && options.useLogo) {
-      bottoms.push(SHEET.titleCY + options.titleDY + (9.4 * options.titleSize) / 2);
-    } else {
-      // the swash title's ink reaches ~3.05 em below its centre at size 1
-      bottoms.push(SHEET.titleCY + options.titleDY + 3.05 * options.titleSize);
-    }
-    const author0 = (options.authorOverride.trim() || script.meta.author || '').trim();
-    if (options.showAuthor && author0) bottoms.push(10.8 + options.titleDY + 0.75);
-    firstExtraEm = Math.max(0, Math.max(...bottoms) - SHEET.contentTop + 0.35);
-  }
-  const availEm = availableEm - firstExtraEm;
-
-  let d = options.fitToContent ? 1 : options.density;
-  let measured = measure(d);
+  let d = options.fitToContent ? 1 : clamp(Number(options.density) || 1, 0.3, 2);
+  let pages;
+  const minFit = clamp(Number(options.minFit) || 0.62, 0.3, 1);
   if (options.fitToContent) {
+    // single-page fit first, as the original tool did
+    let fit = 1;
     for (let iter = 0; iter < 3; iter++) {
-      const neededEm =
-        measured.reduce((n, m) => n + m.need, 0) +
-        Math.max(0, groups.length - 1) * SHEET.sectionGap;
-      const fit = clamp(availEm / neededEm, 0.42, 1.55);
-      if (Math.abs(fit - d) < 0.002) { d = fit; break; }
-      d = fit;
-      measured = measure(d);
+      const neededEm = totalNeedAt(fit);
+      const f = clamp(availFor(0) / neededEm, 0.42, 1.55);
+      if (Math.abs(f - fit) < 0.002) { fit = f; break; }
+      fit = f;
     }
+    if (fit >= minFit || !options.paginate || groups.length === 0) {
+      d = fit;
+      pages = pack(d, true);
+    } else {
+      // continue onto more sheets: pack at 1, then relax the density so the
+      // pages fill evenly (never above 1 — the reference pitch is the cap)
+      d = 1;
+      pages = pack(d, false);
+      // if one sheet fewer would hold it at a density still above minFit,
+      // take that: a last sheet carrying three characters is a waste of
+      // paper and reads as a mistake. The density is solved for the smaller
+      // page count (rows wrap more as they shrink, so it iterates), then
+      // stepped down a little at a time to cover the space the splits waste
+      for (let iter = 0; iter < 4 && pages.length > 1; iter++) {
+        const n = pages.length - 1;
+        let avail = 0;
+        for (let i = 0; i < n; i++) avail += availFor(i);
+        let d2 = d;
+        for (let k = 0; k < 3; k++) d2 = clamp(avail / (totalNeedAt(d2) + (n - 1) * SHEET.sectionGap * 0.5), minFit, 1);
+        let found = null;
+        for (let tries = 0; tries < 8 && d2 >= minFit - 1e-9; tries++, d2 -= 0.025) {
+          const p2 = pack(d2, false);
+          if (p2.length <= n) { found = { d: d2, pages: p2 }; break; }
+        }
+        if (!found) break;
+        d = found.d;
+        pages = found.pages;
+      }
+    }
+  } else {
+    pages = pack(d, !options.paginate);
   }
 
   const ed = (em) => em * U * d; // density-scaled px
-  const e = (em) => em * U; // fixed px
   const iconEm = iconEmFor(d);
 
   // deal a section's leftover height evenly between one column's rows
@@ -563,73 +538,69 @@ export function renderSheet(script, options, requestRender) {
     return needs.map((n) => n + per);
   };
 
-  let cursorPx = (SHEET.contentTop + firstExtraEm) * U;
-  const sections = cols.map((c, i) => {
-    const m = measured[i];
-    const topPx = cursorPx;
-    const heightPx = ed(m.need);
-    cursorPx += heightPx + ed(SHEET.sectionGap);
-    const leftHeights = layoutEven ? dealEven(m.leftNeeds, m.need) : m.rowHeights;
-    const rightHeights = layoutEven
-      ? dealEven(m.rightNeeds, m.need)
-      : m.rowHeights.slice(i === 0 ? 1 : 0);
-    return { ...c, leftHeights, rightHeights, rightTopPx: (!layoutEven && i === 0) ? topPx + ed(m.rowHeights[0] || 0) : topPx, topPx, heightPx };
+  pages.forEach((page) => {
+    let cursorPx = topFor(page.index) * U;
+    page.header = pageHasHeader(page.index);
+    page.topEm = topFor(page.index);
+    page.sections.forEach((m, i) => {
+      const topPx = cursorPx;
+      const heightPx = ed(m.need);
+      cursorPx += heightPx + ed(SHEET.sectionGap);
+      m.topPx = topPx;
+      m.heightPx = heightPx;
+      m.leftHeights = layoutEven ? dealEven(m.leftNeeds, m.need) : m.rowHeights;
+      m.rightHeights = layoutEven
+        ? dealEven(m.rightNeeds, m.need)
+        : m.rowHeights.slice(m.shift ? 1 : 0);
+      m.rightTopPx = (!layoutEven && m.shift) ? topPx + ed(m.rowHeights[0] || 0) : topPx;
+      m.first = i === 0;
+    });
   });
 
-  const nameColor = (team) =>
-    EVIL_TEAMS.includes(team) ? options.evilColor
-      : NEUTRAL_TEAMS.includes(team) ? '#7a5230'
-        : options.goodColor;
+  return { pages, d, iconEm, layoutEven, fonts, groups, widthMul };
+}
 
-  const title = options.titleOverride.trim() || script.meta.name;
-  const author = (options.authorOverride.trim() || script.meta.author || '').trim();
+/* ── one page ─────────────────────────────────────────────────────────── */
+export function renderSheetPage(script, options, layout, pageIndex, ctx) {
+  ctx = ctx || {};
+  const requestRender = ctx.requestRender;
+  const selected = ctx.selected || '';
+  const page = layout.pages[Math.min(pageIndex, layout.pages.length - 1)];
+  const { d, iconEm, fonts } = layout;
+  const ed = (em) => em * U * d; // density-scaled px
+  const e = (em) => em * U; // fixed px
+  const isLastPage = pageIndex === layout.pages.length - 1;
+
+  const title = (options.titleOverride || '').trim() || script.meta.name;
+  const author = ((options.authorOverride || '').trim() || script.meta.author || '').trim();
   const hasNightStar = script.characters.some((c) => c.ability.includes('night*'));
-  const colWPct = SHEET.textOffsetX + SHEET.textWidth;
+  const widthMul = layout.widthMul || options.columnWidth || 1;
+  const colWPct = SHEET.textOffsetX + SHEET.textWidth * widthMul;
 
-  /* header decor geometry (movable / scalable). Verticals are settled here;
-     the HORIZONTAL positions set below are only the calibrated full-width
-     fallback — fitTitle() re-places the skull and flourishes against the
-     title's measured width so they come in to meet a short name (see the
-     hug pass there). */
-  const skullW = SHEET.skullW * options.skullScale;
-  const skullLeft = SHEET.skullX + (SHEET.skullW - skullW) / 2 + options.skullDX;
-  const skullTop = SHEET.skullY + (SHEET.skullH * (1 - options.skullScale)) / 2 + options.skullDY;
-  const flLW = SHEET.flLW * options.flourishScale;
-  const flLLeft = SHEET.flLX + SHEET.flLW - flLW - options.flourishSpread;
-  const flLTop = SHEET.flLY + (SHEET.flLH * (1 - options.flourishScale)) / 2 + options.flourishDY;
-  const flRW = SHEET.flRW * options.flourishScale;
-  const flRLeft = SHEET.flRX + options.flourishSpread;
-  const flRTop = SHEET.flRY + (SHEET.flRH * (1 - options.flourishScale)) / 2 + options.flourishDY;
-
-  const sheet = el('div', {
-    position: 'relative',
-    width: px(SHEET_W),
-    height: px(SHEET_H),
-    fontSize: px(U),
-    overflow: 'hidden',
-    background: '#d8cdb2',
-    userSelect: 'none',
-    textRendering: 'optimizeLegibility',
-    fontKerning: 'normal',
-    fontFeatureSettings: '"kern" 1, "liga" 1',
-  });
-  sheet.className = 'script-sheet';
+  const sheet = pageFrame(SHEET_W, SHEET_H, U, 'script-sheet');
+  sheet.dataset.fsPage = String(pageIndex);
   // the density auto-fit actually solved for — the page reads this to show
   // it on the (always live) density slider
   sheet.dataset.fsDensity = d.toFixed(3);
 
-  // baked parchment (texture + garland) and the damask sidebar strip
-  sheet.append(img(ART + 'parchment.jpg', {
-    position: 'absolute', inset: '0', width: '100%', height: '100%',
-  }));
-  /* The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
+  const mark = (node, id) => {
+    node.dataset.fsDrag = id;
+    if (id === selected) markSelected(node);
+    return node;
+  };
+
+  // background: the baked parchment (texture + garland), or what was chosen
+  for (const n of renderBackground(options.bg, 'front')) sheet.append(n);
+
+  /* ── the ribbon ──
+     The ribbon art is FULL-BLEED: it spans from the sheet's left edge to
      the strip's right edge (sidebarX + sidebarW) over the full height. It
      used to be drawn inset at sidebarX/sidebarY like the handoff, which
      left the parchment's black frame showing as a bare gap along the top,
      left and bottom — invisible against the navy art, glaring the moment
      the ribbon was recoloured. sidebarX/sidebarW still position the LABELS.
 
-     The art is now FLAT damask, and the parchment frame's shading is a
+     The art is FLAT damask, and the parchment frame's shading is a
      SEPARATE overlay (sidebar-shade.png: black, alpha = 1 - the parchment
      column's normalized luminance) drawn over it at `sidebarShade`. Baking
      that shading into the ribbon put a hard left-to-right lightness ramp
@@ -637,6 +608,7 @@ export function renderSheet(script, options, requestRender) {
      colour — so the default is 0 (a solid, even ribbon) and the slider
      dials the old blend back in; at 1 it reproduces the baked composite
      exactly, because opacity over black IS the multiply that baked it. */
+  const sbT = elGet(options, 'sidebar');
   const sidebarStyle = {
     position: 'absolute',
     left: '0',
@@ -644,93 +616,172 @@ export function renderSheet(script, options, requestRender) {
     width: (SHEET.sidebarX + SHEET.sidebarW) + '%',
     height: '100%',
   };
-  const wantsTint = options.sidebarColor &&
-    options.sidebarColor.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(options.sidebarColor);
-  const tinted = wantsTint ? sidebarTintCanvas(options.sidebarColor, requestRender) : null;
-  if (tinted) {
-    // the singleton canvas is adopted by each new sheet; the old sheet is
-    // already detached, so moving it is safe
-    Object.assign(tinted.style, sidebarStyle);
-    sheet.append(tinted);
-  } else {
-    sheet.append(img(ART + 'sidebar-flat.png', sidebarStyle));
-  }
-  // only fetched when it is actually asked for — it is a 1.6 MB overlay
-  const shade = clamp(Number(options.sidebarShade) || 0, 0, 1);
-  if (shade > 0) {
-    sheet.append(img(ART + 'sidebar-shade.png',
-      { ...sidebarStyle, opacity: String(shade) }));
+  const sidebarMode = options.sidebarMode || 'damask';
+  if (sidebarMode !== 'none' && !sbT.hidden) {
+    const customArt = resolveSrc(sbT.src);
+    if (customArt) {
+      sheet.append(img(customArt, { ...sidebarStyle, objectFit: 'cover', opacity: String(sbT.opacity) }));
+    } else if (sidebarMode === 'flat') {
+      sheet.append(el('div', { ...sidebarStyle, background: options.sidebarColor || SIDEBAR_BASE.hex, opacity: String(sbT.opacity) }));
+    } else {
+      const wantsTint = options.sidebarColor &&
+        options.sidebarColor.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(options.sidebarColor);
+      const tinted = wantsTint ? sidebarTintCanvas(options.sidebarColor, requestRender) : null;
+      if (tinted) {
+        // the singleton canvas is adopted by each new sheet; the old sheet is
+        // already detached, so moving it is safe. An export render that runs
+        // while the preview is up gets a COPY, so the preview keeps its ribbon.
+        let node = tinted;
+        if (tinted.parentNode && ctx.forExport) {
+          node = document.createElement('canvas');
+          node.width = tinted.width; node.height = tinted.height;
+          node.getContext('2d').drawImage(tinted, 0, 0);
+        }
+        Object.assign(node.style, sidebarStyle, { opacity: String(sbT.opacity) });
+        sheet.append(node);
+      } else {
+        sheet.append(img(ART + 'sidebar-flat.png', { ...sidebarStyle, opacity: String(sbT.opacity) }));
+      }
+    }
+    // only fetched when it is actually asked for — it is a 1.6 MB overlay
+    const shadeAmt = clamp(Number(options.sidebarShade) || 0, 0, 1);
+    if (shadeAmt > 0 && sidebarMode === 'damask') {
+      sheet.append(img(ART + 'sidebar-shade.png',
+        { ...sidebarStyle, opacity: String(shadeAmt) }));
+    }
   }
 
-  // movable header decor: skull + flourishes (fitTitle slides them in
-  // against the rendered title — these lefts are the widest-title fallback)
-  const skullEl = img(ART + 'skull.png', {
-    position: 'absolute', left: skullLeft + '%', top: px(e(skullTop)), width: skullW + '%',
+  /* ── header band ── */
+  if (page.header) {
+    const skT = elGet(options, 'skull');
+    const flLT = elGet(options, 'fll');
+    const flRT = elGet(options, 'flr');
+    const tT = elGet(options, 'title');
+    const aT = elGet(options, 'author');
+    /* header decor geometry (movable / scalable). Verticals are settled
+       here; the HORIZONTAL positions set below are only the calibrated
+       full-width fallback — fitTitle() re-places the skull and flourishes
+       against the title's measured width so they come in to meet a short
+       name (see the hug pass there). */
+    const skullW = SHEET.skullW * skT.scale;
+    const skullLeft = SHEET.skullX + (SHEET.skullW - skullW) / 2 + skT.dx;
+    const skullTop = SHEET.skullY + (SHEET.skullH * (1 - skT.scale)) / 2 + skT.dy;
+    const flLW = SHEET.flLW * flLT.scale;
+    const flLLeft = SHEET.flLX + SHEET.flLW - flLW + flLT.dx;
+    const flLTop = SHEET.flLY + (SHEET.flLH * (1 - flLT.scale)) / 2 + flLT.dy;
+    const flRW = SHEET.flRW * flRT.scale;
+    const flRLeft = SHEET.flRX + flRT.dx;
+    const flRTop = SHEET.flRY + (SHEET.flRH * (1 - flRT.scale)) / 2 + flRT.dy;
+
+    if (options.showSkull && !skT.hidden) {
+      const skullEl = img(resolveSrc(skT.src) || ART + 'skull.png', {
+        position: 'absolute', left: skullLeft + '%', top: px(e(skullTop)), width: skullW + '%',
+        opacity: String(skT.opacity), transform: skT.rot ? `rotate(${skT.rot}deg)` : '',
+      });
+      skullEl.dataset.fsDecor = 'skull';
+      if (resolveSrc(skT.src)) skullEl.crossOrigin = 'anonymous';
+      sheet.append(mark(skullEl, 'el:skull'));
+    }
+    if (options.showFlourishes) {
+      if (!flLT.hidden) {
+        const flLEl = img(resolveSrc(flLT.src) || ART + 'flourish-left.png', {
+          position: 'absolute', left: flLLeft + '%', top: px(e(flLTop)), width: flLW + '%',
+          opacity: String(flLT.opacity), transform: flLT.rot ? `rotate(${flLT.rot}deg)` : '',
+        });
+        flLEl.dataset.fsDecor = 'fll';
+        sheet.append(mark(flLEl, 'el:fll'));
+      }
+      if (!flRT.hidden) {
+        const flREl = img(resolveSrc(flRT.src) || ART + 'flourish-right.png', {
+          position: 'absolute', left: flRLeft + '%', top: px(e(flRTop)), width: flRW + '%',
+          opacity: String(flRT.opacity), transform: flRT.rot ? `rotate(${flRT.rot}deg)` : '',
+        });
+        flREl.dataset.fsDecor = 'flr';
+        sheet.append(mark(flREl, 'el:flr'));
+      }
+    }
+
+    // title: an uploaded title image, else the script's logo when provided,
+    // else the swash text title
+    if (!tT.hidden) {
+      const titleArt = resolveSrc(tT.src) || (script.meta.logo && options.useLogo ? proxied(script.meta.logo, options.proxyIcons) : '');
+      if (titleArt) {
+        const logoEl = iconImg(titleArt, {
+          position: 'absolute',
+          left: (SHEET.titleCX + tT.dx) + '%',
+          top: px(e(SHEET.titleCY + tT.dy)),
+          transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
+          maxWidth: px(0.4911 * SHEET_W * tT.scale),
+          maxHeight: px(e(9.4) * tT.scale),
+          objectFit: 'contain',
+          opacity: String(tT.opacity),
+          filter: `drop-shadow(${e(0.09)}px ${e(0.13)}px ${e(0.11)}px rgba(40, 26, 10, 0.45))`,
+        }, title);
+        logoEl.dataset.fsTbox = '1';
+        // the logo's width is only known once it loads — re-hug the decor then
+        logoEl.addEventListener('load', () => fitTitle(sheet, options));
+        sheet.append(mark(logoEl, 'el:title'));
+      } else {
+        const titleEl = el('div', {
+          position: 'absolute',
+          left: (SHEET.titleCX + tT.dx) + '%',
+          top: px(e(SHEET.titleCY + tT.dy)),
+          transform: `translate(-50%, -50%)${tT.rot ? ` rotate(${tT.rot}deg)` : ''}`,
+          fontFamily: fonts.title,
+          fontSize: px(e(8.35) * tT.scale),
+          lineHeight: '1',
+          whiteSpace: 'nowrap',
+          wordSpacing: (options.fontTitle || 'unlovable') === 'unlovable' ? '-0.21em' : '0',
+          opacity: String(tT.opacity),
+          mixBlendMode: 'multiply',
+        }, swashTitle(title, options, e(0.11), e(0.13)));
+        titleEl.dataset.fsTitle = String(e(8.35) * tT.scale);
+        titleEl.dataset.fsTbox = '1';
+        sheet.append(mark(titleEl, 'el:title'));
+      }
+    }
+
+    // author credit, hand-set beneath the title
+    if (options.showAuthor && author && !aT.hidden) {
+      const authorEl = el('div', {
+        position: 'absolute',
+        left: (SHEET.titleCX + tT.dx + aT.dx) + '%',
+        top: px(e(10.8 + tT.dy + aT.dy)),
+        transform: `translate(-50%, -50%)${aT.rot ? ` rotate(${aT.rot}deg)` : ''}`,
+        fontFamily: fonts.author,
+        fontStyle: 'italic',
+        fontSize: px(e(1.42) * aT.scale),
+        letterSpacing: '0.05em',
+        color: options.authorColor || '#5a4632',
+        opacity: String(aT.opacity),
+        mixBlendMode: 'multiply',
+        whiteSpace: 'nowrap',
+      }, (options.authorPrefix == null ? 'by ' : options.authorPrefix) + smartTypography(author));
+      sheet.append(mark(authorEl, 'el:author'));
+    }
+  }
+
+  /* ── team sections ── */
+  const cT = elGet(options, 'content');
+  const c1T = elGet(options, 'col1');
+  const c2T = elGet(options, 'col2');
+  const lT = elGet(options, 'labels');
+  const dvT = elGet(options, 'dividers');
+  const contentWrap = el('div', {
+    position: 'absolute', inset: '0',
+    opacity: String(cT.opacity),
+    display: cT.hidden ? 'none' : 'block',
   });
-  skullEl.dataset.fsDecor = 'skull';
-  const flLEl = img(ART + 'flourish-left.png', {
-    position: 'absolute', left: flLLeft + '%', top: px(e(flLTop)), width: flLW + '%',
-  });
-  flLEl.dataset.fsDecor = 'fll';
-  const flREl = img(ART + 'flourish-right.png', {
-    position: 'absolute', left: flRLeft + '%', top: px(e(flRTop)), width: flRW + '%',
-  });
-  flREl.dataset.fsDecor = 'flr';
-  sheet.append(skullEl, flLEl, flREl);
-
-  // title: homebrew logo image when provided, else the swash text title
-  if (script.meta.logo && options.useLogo) {
-    const logoEl = iconImg(proxied(script.meta.logo, options.proxyIcons), {
-      position: 'absolute',
-      left: (SHEET.titleCX + options.titleDX) + '%',
-      top: px(e(SHEET.titleCY + options.titleDY)),
-      transform: 'translate(-50%, -50%)',
-      maxWidth: px(0.4911 * SHEET_W * options.titleSize),
-      maxHeight: px(e(9.4) * options.titleSize),
-      objectFit: 'contain',
-      filter: `drop-shadow(${e(0.09)}px ${e(0.13)}px ${e(0.11)}px rgba(40, 26, 10, 0.45))`,
-    }, title);
-    logoEl.dataset.fsTbox = '1';
-    // the logo's width is only known once it loads — re-hug the decor then
-    logoEl.addEventListener('load', () => fitTitle(sheet, options));
-    sheet.append(logoEl);
-  } else {
-    const titleEl = el('div', {
-      position: 'absolute',
-      left: (SHEET.titleCX + options.titleDX) + '%',
-      top: px(e(SHEET.titleCY + options.titleDY)),
-      transform: 'translate(-50%, -50%)',
-      fontFamily: FONT_TITLE,
-      fontSize: px(e(8.35) * options.titleSize),
-      lineHeight: '1',
-      whiteSpace: 'nowrap',
-      wordSpacing: '-0.21em',
-      mixBlendMode: 'multiply',
-    }, swashTitle(title, options.titleColor, e(0.11), e(0.13)));
-    titleEl.dataset.fsTitle = String(e(8.35) * options.titleSize);
-    titleEl.dataset.fsTbox = '1';
-    sheet.append(titleEl);
+  applyEl(contentWrap, { ...cT, opacity: 1, hidden: false, scale: 1 }, '', U, SHEET_W);
+  if (cT.scale !== 1) {
+    contentWrap.style.transformOrigin = '50% 0';
+    contentWrap.style.transform = (contentWrap.style.transform || '') + ` scale(${cT.scale})`;
   }
+  mark(contentWrap, 'el:content');
+  contentWrap.style.pointerEvents = 'none'; // only the rows themselves grab the pointer
 
-  // author credit, hand-set beneath the title
-  if (options.showAuthor && author) {
-    sheet.append(el('div', {
-      position: 'absolute',
-      left: (SHEET.titleCX + options.titleDX) + '%',
-      top: px(e(10.8 + options.titleDY)),
-      transform: 'translate(-50%, -50%)',
-      fontFamily: FONT_NAME,
-      fontStyle: 'italic',
-      fontSize: px(e(1.42)),
-      letterSpacing: '0.05em',
-      color: '#5a4632',
-      mixBlendMode: 'multiply',
-      whiteSpace: 'nowrap',
-    }, 'by ' + smartTypography(author)));
-  }
-
-  // team sections
-  sections.forEach(({ g, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx }, si) => {
+  page.sections.forEach((sec, si) => {
+    const { team, chars, left, right, leftHeights, rightHeights, rightTopPx, topPx, heightPx } = sec;
     const wrap = el('div');
 
     // divider above every section except the first, plus the cap on the
@@ -740,69 +791,78 @@ export function renderSheet(script, options, requestRender) {
     // spindle art was thin at both ends and fat in the middle, which is
     // not how the print rules them). One multiply pass; the colour and the
     // fade are baked into the art's alpha.
-    if (si > 0) {
-      const divH = 0.5;
-      const divTop = topPx - ed(SHEET.sectionGap) + ed(0.7962 - divH / 2);
-      wrap.append(img(ART + 'divider-taper.png', {
-        position: 'absolute', left: '8.3%', top: px(divTop),
+    if (si > 0 && options.showDividers && !dvT.hidden) {
+      const divH = 0.5 * dvT.scale;
+      const divTop = topPx - ed(SHEET.sectionGap) + ed(0.7962 - divH / 2) + e(dvT.dy);
+      const op = String(clamp((options.dividerOpacity == null ? 1 : options.dividerOpacity) * dvT.opacity, 0, 1));
+      wrap.append(img(resolveSrc(dvT.src) || ART + 'divider-taper.png', {
+        position: 'absolute', left: (8.3 + dvT.dx) + '%', top: px(divTop),
         width: '89.35%', height: px(ed(divH)),
-        objectFit: 'fill', mixBlendMode: 'multiply',
+        objectFit: 'fill', mixBlendMode: 'multiply', opacity: op,
       }));
       wrap.append(img(ART + 'divider-cap.png', {
-        position: 'absolute', left: '2.337%', top: px(divTop),
+        position: 'absolute', left: (2.337 + dvT.dx) + '%', top: px(divTop),
         width: '6.26%', height: px(ed(divH * 0.56)),
-        objectFit: 'fill',
+        objectFit: 'fill', opacity: op,
         marginTop: px(ed(divH * 0.22)),
       }));
     }
 
     // sidebar label, centred on the section span including the trailing gap
     // (last section: down to 87.5 em); singular when the section holds one
-    const label = (g.characters.length === 1
-      ? TEAM_LABELS_SINGULAR[g.team]
-      : TEAM_LABELS[g.team]).toUpperCase();
-    const baseFs = e(SHEET.labelSize); // official labels: one fixed size
-    const isLast = si === sections.length - 1;
-    /* The band a label is centred on and shrinks to fit: its own section
-       plus the trailing gap. The LAST section owns the ribbon on down to
-       the garland — but only ever as a BONUS. Taking that run as the band
-       outright measured it from a fixed bottom (87.5 em) against a top that
-       moves with the density, so the last label shrank as the sheet filled
-       and the span went NEGATIVE once the rows reached past 87.5 em (any
-       density above the auto fit) — flooring the last label at the minimum
-       whatever it said. It is positional, not a long-word problem: a
-       five-letter LORIC collapsed exactly like TRAVELLERS did. */
-    const ownH = heightPx + ed(SHEET.sectionGap);
-    const spanH = isLast ? Math.max(ownH, 87.5 * U - topPx) : ownH;
-    // upright vertical letters advance ≈ font-size (Chromium ignores
-    // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
-    const fitFs = (spanH - e(0.2)) / (label.length * 0.85);
-    wrap.append(el('div', {
-      position: 'absolute',
-      left: (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3) + '%',
-      top: px(topPx + spanH / 2),
-      transform: 'translate(-50%, -50%)',
-      writingMode: 'vertical-rl',
-      textOrientation: 'upright',
-      fontFamily: FONT_SIDEBAR,
-      fontSize: px(clamp(fitFs, e(SHEET.labelSizeMin), baseFs)),
-      lineHeight: '1',
-      letterSpacing: '-0.15em',
-      color: '#eeeeee',
-      filter:
-        'drop-shadow(0.6px 0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px 0.6px 1.8px rgba(34,34,34,0.53)) drop-shadow(0.6px -0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px -0.6px 1.8px rgba(34,34,34,0.66))',
-      whiteSpace: 'nowrap',
-    }, label));
+    if (options.showLabels && !lT.hidden) {
+      const custom = (options.teamLabels && options.teamLabels[team] || '').trim();
+      const label = (custom || (sec.total === 1
+        ? TEAM_LABELS_SINGULAR[team]
+        : TEAM_LABELS[team])).toUpperCase() + (options.labelCounts ? ' · ' + sec.total : '');
+      const baseFs = e(SHEET.labelSize) * (options.labelSize || 1) * lT.scale;
+      const isLast = si === page.sections.length - 1;
+      /* The band a label is centred on and shrinks to fit: its own section
+         plus the trailing gap. The LAST section owns the ribbon on down to
+         the garland — but only ever as a BONUS. Taking that run as the band
+         outright measured it from a fixed bottom (87.5 em) against a top
+         that moves with the density, so the last label shrank as the sheet
+         filled and the span went NEGATIVE once the rows reached past 87.5
+         em (any density above the auto fit) — flooring the last label at
+         the minimum whatever it said. It is positional, not a long-word
+         problem: a five-letter LORIC collapsed exactly like TRAVELLERS did. */
+      const ownH = heightPx + ed(SHEET.sectionGap);
+      const spanH = isLast ? Math.max(ownH, 87.5 * U - topPx) : ownH;
+      // upright vertical letters advance ≈ font-size (Chromium ignores
+      // line-height in vertical-rl/upright) — shrink-to-fit uses 0.85/letter
+      const fitFs = (spanH - e(0.2)) / (label.length * 0.85);
+      const labelEl = el('div', {
+        position: 'absolute',
+        left: (SHEET.sidebarX + SHEET.sidebarW / 2 + 0.3 + lT.dx) + '%',
+        top: px(topPx + spanH / 2 + e(lT.dy)),
+        transform: 'translate(-50%, -50%)',
+        writingMode: 'vertical-rl',
+        textOrientation: 'upright',
+        fontFamily: fonts.label,
+        fontSize: px(clamp(fitFs, e(SHEET.labelSizeMin), baseFs)),
+        lineHeight: '1',
+        letterSpacing: (options.labelSpacing == null ? -0.15 : options.labelSpacing) + 'em',
+        color: options.labelColor || '#eeeeee',
+        opacity: String(lT.opacity),
+        filter:
+          'drop-shadow(0.6px 0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px 0.6px 1.8px rgba(34,34,34,0.53)) drop-shadow(0.6px -0.6px 1.8px rgba(34,34,34,0.66)) drop-shadow(-0.6px -0.6px 1.8px rgba(34,34,34,0.66))',
+        whiteSpace: 'nowrap',
+      }, label);
+      wrap.append(labelEl);
+    }
 
     // columns
     const colL = el('div', {
       position: 'absolute',
-      left: SHEET.col1IconX + '%',
-      top: px(topPx),
+      left: (SHEET.col1IconX + c1T.dx) + '%',
+      top: px(topPx + e(c1T.dy)),
       width: colWPct + '%',
+      opacity: String(c1T.opacity),
+      display: c1T.hidden ? 'none' : 'block',
+      pointerEvents: 'auto',
     });
     left.forEach((c, i) => colL.append(
-      characterEntry(c, nameColor(c.team), options.showJinxes, leftHeights[i], iconEm, textSize, nameSize, ed),
+      characterEntry(c, options, leftHeights[i], iconEm, ed, e, fonts, widthMul),
     ));
     wrap.append(colL);
 
@@ -810,21 +870,27 @@ export function renderSheet(script, options, requestRender) {
     // where the title takes the second column's first row slot
     const colR = el('div', {
       position: 'absolute',
-      left: SHEET.col2IconX + '%',
-      top: px(rightTopPx),
+      left: (SHEET.col2IconX + c2T.dx) + '%',
+      top: px(rightTopPx + e(c2T.dy)),
       width: colWPct + '%',
+      opacity: String(c2T.opacity),
+      display: c2T.hidden ? 'none' : 'block',
+      pointerEvents: 'auto',
     });
     right.forEach((c, i) => colR.append(
-      characterEntry(c, nameColor(c.team), options.showJinxes,
-        rightHeights[i], iconEm, textSize, nameSize, ed),
+      characterEntry(c, options, rightHeights[i], iconEm, ed, e, fonts, widthMul),
     ));
     wrap.append(colR);
 
-    sheet.append(wrap);
+    contentWrap.append(wrap);
   });
+  sheet.append(contentWrap);
 
   // "*Not the first night" footnote inside the garland circle
-  if (options.showFootnote && hasNightStar) {
+  const fT = elGet(options, 'footnote');
+  if (options.showFootnote && (hasNightStar || (options.footnoteText || '').trim()) &&
+      !fT.hidden && (isLastPage || options.footnoteEveryPage)) {
+    const custom = (options.footnoteText || '').trim();
     const star = el('span', {
       display: 'inline-block',
       width: px(e(0.819)),
@@ -840,24 +906,62 @@ export function renderSheet(script, options, requestRender) {
       height: px(e(0.705)),
       width: px(e(0.743)),
     }, '*'));
-    sheet.append(el('div', {
+    const foot = el('div', {
       position: 'absolute',
-      left: SHEET.footnoteCX + '%',
-      top: px(e(SHEET.footnoteTop)),
-      transform: 'translateX(-50%)',
+      left: (SHEET.footnoteCX + fT.dx) + '%',
+      top: px(e(SHEET.footnoteTop + fT.dy)),
+      transform: `translateX(-50%)${fT.rot ? ` rotate(${fT.rot}deg)` : ''}${fT.scale !== 1 ? ` scale(${fT.scale})` : ''}`,
+      transformOrigin: '50% 0',
       textAlign: 'center',
-      fontFamily: FONT_NAME,
-      color: '#786254',
+      fontFamily: fonts.footnote,
+      color: options.footnoteColor || '#786254',
+      opacity: String(fT.opacity),
       mixBlendMode: 'multiply',
       fontSize: px(e(1.1964)),
       lineHeight: px(e(SHEET.footnoteLine)),
-    },
-      el('div', null, star, 'Not the'),
-      el('div', null, 'first night'),
-    ));
+      whiteSpace: 'nowrap',
+    });
+    if (custom) {
+      const lines = custom.split('\n');
+      lines.forEach((ln, i) => {
+        const withStar = i === 0 && ln.startsWith('*');
+        foot.append(el('div', null, withStar ? star : null, withStar ? ln.slice(1) : ln));
+      });
+    } else {
+      foot.append(el('div', null, star, 'Not the'), el('div', null, 'first night'));
+    }
+    sheet.append(mark(foot, 'el:footnote'));
   }
 
+  // page number, when the script runs to more than one sheet
+  const pT = elGet(options, 'pageno');
+  if (layout.pages.length > 1 && options.showPageNumbers && !pT.hidden) {
+    const pn = el('div', {
+      position: 'absolute',
+      right: (3.0 - pT.dx) + '%',
+      top: px(e(96.2 + pT.dy)),
+      fontFamily: fonts.author,
+      fontStyle: 'italic',
+      fontSize: px(e(1.05) * pT.scale),
+      color: options.footnoteColor || '#786254',
+      opacity: String(pT.opacity),
+      mixBlendMode: 'multiply',
+      whiteSpace: 'nowrap',
+    }, (pageIndex + 1) + ' / ' + layout.pages.length);
+    sheet.append(mark(pn, 'el:pageno'));
+  }
+
+  // stickers last, over everything (an image marked `behind` sits under
+  // the content via z-index — the content wrap has none)
+  for (const n of renderStickers(ctx.stickers, selected)) sheet.append(n);
+
   return sheet;
+}
+
+/* convenience: layout + first page, for callers that only want one sheet */
+export function renderSheet(script, options, requestRender, ctx) {
+  const layout = layoutSheet(script, options, requestRender);
+  return renderSheetPage(script, options, layout, (ctx && ctx.pageIndex) || 0, { ...(ctx || {}), requestRender });
 }
 
 /* Two jobs that both need real layout, so the caller runs this AFTER the
@@ -875,7 +979,9 @@ export function renderSheet(script, options, requestRender) {
       from the calibration itself (skull overlaps the title box's left
       bearing by 1.49%, the left flourish tucks 1.24% under the skull, the
       right flourish starts 0.58% inside the title box), so a title at the
-      full band width reproduces the reference positions exactly. */
+      full band width reproduces the reference positions exactly. Switched
+      off by options.hugDecor, every piece stays at its calibrated place
+      (plus whatever it was dragged by). */
 export function fitTitle(sheet, options) {
   const titleEl = sheet.querySelector('[data-fs-title]');
   if (titleEl) {
@@ -885,29 +991,34 @@ export function fitTitle(sheet, options) {
     const trueW = titleEl.scrollWidth;
     if (trueW > bandW) titleEl.style.fontSize = px(naturalFs * (bandW / trueW));
   }
+  if (!options || options.hugDecor === false) return;
 
   const tbox = sheet.querySelector('[data-fs-tbox]');
   const skullEl = sheet.querySelector('[data-fs-decor="skull"]');
   const flLEl = sheet.querySelector('[data-fs-decor="fll"]');
   const flREl = sheet.querySelector('[data-fs-decor="flr"]');
-  if (!options || !tbox || !skullEl || !flLEl || !flREl) return;
+  if (!tbox) return;
   const sheetRect = sheet.getBoundingClientRect();
   const tRect = tbox.getBoundingClientRect();
   if (!sheetRect.width || !tRect.width) return; // logo not loaded yet
+  const tT = elGet(options, 'title');
+  const skT = elGet(options, 'skull');
+  const flLT = elGet(options, 'fll');
+  const flRT = elGet(options, 'flr');
   // rects survive the preview's scale transform because both are scaled alike
   const wPct = (tRect.width / sheetRect.width) * 100;
-  const centerPct = SHEET.titleCX + options.titleDX;
+  const centerPct = SHEET.titleCX + tT.dx;
   const leftPct = centerPct - wPct / 2;
   const rightPct = centerPct + wPct / 2;
 
-  const skullW = SHEET.skullW * options.skullScale;
-  const flLW = SHEET.flLW * options.flourishScale;
-  const flRW = SHEET.flRW * options.flourishScale;
+  const skullW = SHEET.skullW * skT.scale;
+  const flLW = SHEET.flLW * flLT.scale;
+  const flRW = SHEET.flRW * flRT.scale;
   // never ride onto the ribbon, however long the name gets
-  const skullLeft = Math.max(9.2, leftPct + 1.49 - skullW + options.skullDX);
-  const flLLeft = skullLeft + 1.24 - flLW - options.flourishSpread;
-  const flRLeft = Math.min(97.65 - flRW, rightPct - 0.58 + options.flourishSpread);
-  skullEl.style.left = skullLeft + '%';
-  flLEl.style.left = flLLeft + '%';
-  flREl.style.left = flRLeft + '%';
+  const skullLeft = Math.max(9.2, leftPct + 1.49 - skullW + skT.dx);
+  const flLLeft = skullLeft - skT.dx + 1.24 - flLW + flLT.dx;
+  const flRLeft = Math.min(97.65 - flRW, rightPct - 0.58 + flRT.dx);
+  if (skullEl) skullEl.style.left = skullLeft + '%';
+  if (flLEl) flLEl.style.left = flLLeft + '%';
+  if (flREl) flREl.style.left = flRLeft + '%';
 }
