@@ -302,7 +302,13 @@ function renderPageNode(p, ctx) {
 let lastTabsSig = '';
 function render() {
   computeLayouts();
-  if (!pages.some((p) => pageKey(p) === currentKey)) currentKey = pageKey(pages[0]);
+  if (!pages.some((p) => pageKey(p) === currentKey)) {
+    // the page being shown went away (a night sheet unticked, a script
+    // that now fits one sheet): fall back and rebuild the panel for it
+    currentKey = pageKey(pages[0]);
+    selectedId = '';
+    buildElementPanel();
+  }
   const sig = pages.map((p) => pageKey(p) + '=' + p.label).join('|') + '#' + currentKey;
   if (sig !== lastTabsSig) { buildTabs(); lastTabsSig = sig; showCardsFor(currentPage().kind); }
   const p = currentPage();
@@ -1086,6 +1092,7 @@ function buildLayoutCard() {
   makeSlider(box, 'Icon size', 0.6, 1.6, 0.01, pct, bindPath('iconSize'), { reset: 1 });
   makeSlider(box, 'Text size', 0.7, 1.4, 0.01, pct, bindPath('textSize'), { reset: 1 });
   makeSlider(box, 'Name size', 0.6, 1.5, 0.01, pct, bindPath('nameSize'), { reset: 1 });
+  makeSlider(box, 'Jinx icon size', 0.5, 2, 0.01, pct, bindPath('jinxIconSize'), { reset: 1 });
   makeSlider(box, 'Ability line spacing', 0.8, 1.5, 0.01, pct, bindPath('abilityLine'), { reset: 1 });
   makeSlider(box, 'Name letter spacing', -0.05, 0.2, 0.005, fmtEm, bindPath('nameSpacing'), { reset: 0.02 });
   makeSlider(box, 'Column text width', 0.7, 1.15, 0.01, pct, bindPath('columnWidth'), { reset: 1 });
@@ -1179,6 +1186,10 @@ function buildNightCard() {
   makeText(box, 'Other nights title', bindPath('night.titleOther'));
   makeToggle(box, 'Split one night over two columns', bindPath('night.twoColumns'));
   makeToggle(box, 'Dusk, Minion Info, Demon Info and Dawn', bindPath('night.showMeta'));
+  const stepRow = makeRow(box, 'fs-colors');
+  for (const [k, label] of [['dusk', 'Hide Dusk'], ['minioninfo', 'Hide Minion Info'], ['demoninfo', 'Hide Demon Info'], ['dawn', 'Hide Dawn']]) {
+    makeToggle(stepRow, label, { get: () => options.night.hideSteps[k], set: (v) => { options.night.hideSteps[k] = v; } });
+  }
   makeToggle(box, 'Reminder text under each name', bindPath('night.showReminders'));
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));

@@ -459,13 +459,22 @@ assets/
                        and <script src>.
   fancyscripts/        Fancy Scripts (/fancyscripts) — the whole tool, as ES
                        modules. script.js is the engine (parsing, sorting, the
-                       calibrated SHEET geometry, the back-cover model — pure,
-                       no DOM); sheet.js the front-sheet renderer and back.js
-                       the back-cover renderer (both captured by the export);
-                       app.js the page controller. art/, fonts/ and icons/ (the REAL official
-                       painted icons — see the section below) are the sealed
-                       payload, vendor/ the export libraries. See "Fancy
-                       Scripts" below before touching ANY number in script.js.
+                       night order, the calibrated SHEET + NIGHT geometry, the
+                       OPTION MODEL every page shares, presets, fonts, the
+                       element registry — pure, no DOM, node-testable);
+                       sheet.js renders the script sheet(s), night.js the
+                       night-order and jinx pages, back.js the back cover —
+                       all three captured by the export; elements.js is what
+                       they share (page frame + backgrounds, text/image
+                       stickers, the asset resolver); util.js the DOM/colour/
+                       measure helpers; drag.js the one pointer layer that
+                       moves anything marked data-fs-drag; pixel.js the
+                       per-pixel passes, run in pixel-worker.js through
+                       jobs.js; app.js the page controller. art/, fonts/ and
+                       icons/ (the REAL official painted icons — see the
+                       section below) are the sealed payload, vendor/ the
+                       export libraries. See "Fancy Scripts" below before
+                       touching ANY number in script.js.
   iconforge/           Icon Forge (/iconforge) — the whole tool, as ES modules.
                        engine.js is the handoff's iconEngine.ts with the types
                        stripped; app.js is the wiki's own UI controller (the
@@ -606,16 +615,18 @@ grimforge.html         Grimoire Forge (/grimforge) — ability syntax checker.
                        membership rule.
 fancyscripts.html      Fancy Scripts (/fancyscripts) — turns a script into an
                        official-style print sheet (parchment, engraved
-                       dividers, gold-leaf title), exported as PNG or a
-                       print-ready PDF. Same treatment as the two Forges: the
-                       handoff was a React + Tailwind app ("The Grimoire
+                       dividers, gold-leaf title), with matching night order
+                       sheets, a jinx page and a back cover, exported as PNG
+                       or a print-ready PDF. Same treatment as the two Forges:
+                       the handoff was a React + Tailwind app ("The Grimoire
                        Press"), rebuilt in vanilla ES modules on the wiki's
                        styling — do not reintroduce a framework. The page owns
-                       only the chrome; the tool lives in assets/fancyscripts/.
-                       Takes a script published here (the picker, or ?s={slug}
-                       — the "Fancy Sheet" action on /s/ pages), an uploaded/
-                       pasted script-tool JSON, or a sample. See "Fancy
-                       Scripts" below.
+                       only the chrome (cards with data-fs-for saying which
+                       preview tab they belong to); the tool lives in
+                       assets/fancyscripts/. Takes a script published here
+                       (the picker, or ?s={slug} — the "Fancy Sheet" action
+                       on /s/ pages), an uploaded/pasted script-tool JSON, a
+                       design file, or a sample. See "Fancy Scripts" below.
 iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        photo into an official-style character icon. Same
                        treatment as Grimoire Forge: the handoff shipped a React
@@ -2142,10 +2153,162 @@ uploaded — except for the one opt-in save described below.
 
 ## Fancy Scripts (`/fancyscripts`)
 
-Official script-tool JSON in, an official-style print sheet out — the classic
-parchment sheet with the damask sidebar, engraved dividers and the gold-leaf
-swash title, downloadable as a print-resolution PNG or a two-page PDF (sheet +
-damask back cover). Client-side only: no Worker route, no D1, nothing stored.
+Official script-tool JSON in, a set of official-style print pages out: the
+classic parchment script sheet (or sheets — a long script continues onto a
+second one) with the damask sidebar, engraved dividers and the gold-leaf
+swash title; **First Night / Other Nights** sheets in the official night-order
+style; an optional **jinx & house-rules page**; and the damask **back cover**.
+Every element on every page can be moved, sized, turned, faded, hidden or
+replaced with an upload, and free text/image stickers go anywhere.
+Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
+Client-side only: no Worker route, no D1, nothing stored server-side (the
+autosave is localStorage; a design file is a download).
+
+### How the modules fit
+
+- **`script.js` is the engine and the option model**, and it is pure: no
+  DOM, `node --input-type=module --check`-able, unit-testable with plain
+  node (the night order is tested that way — the "Blending In" roster in
+  app.js's samples is the owner's reference sheet, line for line).
+  `DEFAULT_OPTIONS` (+ `DEFAULT_NIGHT`, `DEFAULT_JINX`, `DEFAULT_BG`,
+  `DEFAULT_EXPORT`, `DEFAULT_BACK`) is the whole state of a design;
+  `normalizeOptions()` deep-merges anything loaded (an autosave, a design
+  file, an older version's options — the first version's `titleDX`/
+  `skullScale`/`flourishSpread` sliders fold into element offsets) over the
+  defaults so every key exists. Renderers read `options`, controls write it,
+  undo snapshots it, autosave and the design file serialise it. **Add a new
+  setting by adding a default** — nothing else has to know.
+- **`sheet.js`** draws the script sheet in two passes: `layoutSheet()`
+  measures every row (word-wrap in the real fonts), solves the density and
+  PACKS the sections onto pages; `renderSheetPage()` draws one page.
+  **`night.js`** is the night-order renderer, written as a general
+  LIST-PAGE renderer (columns → blocks → rows of icon(s) + name + text), so
+  the jinx page is the same code with a different spec (`buildNightSpec` /
+  `buildJinxSpec`, `layoutList`, `renderListPage`). **`back.js`** is the
+  back cover. All three are inline-styled and export-captured.
+- **`elements.js`** is what they share: `pageFrame()` + `renderBackground()`
+  (the baked parchment, the site's light parchment, a plain colour or an
+  upload, with a CSS-filter adjustment and a vignette), the sticker
+  renderers (`renderTextElement` / `renderImageElement` — the back cover's
+  title words ARE text stickers), `applyEl()` and the **asset resolver**.
+- **`drag.js`** is the one pointer layer. Anything a renderer marks
+  `data-fs-drag="<kind>:<id>"` can be picked up; a child marked
+  `data-fs-handle` resizes it. It reports deltas in sheet units (dx in % of
+  width, dy in % of height — which is the same thing as em) and knows
+  nothing about the model; app.js's `elementModel()` maps an id to its
+  getters/setters and snap targets. **Dragging never rebuilds**: the moving
+  node gets a CSS `translate`, the model is patched live (so the panel's
+  sliders follow), and the full re-render happens on release. A click with
+  no movement selects and commits nothing. Arrow keys nudge the selection,
+  Delete removes a sticker, Escape deselects.
+- **`pixel.js` / `pixel-worker.js` / `jobs.js`**: the two per-pixel passes
+  (the ribbon tint, the back-cover colorize — millions of HSL conversions
+  each) run in a **module Web Worker**. The maths lives in pixel.js, which
+  both the worker and the main-thread fallback import, so they cannot
+  disagree by a rounding. jobs.js starts the worker on the first job and,
+  if the browser cannot run module workers or the worker dies, runs every
+  job inline off the current frame instead; callers never know which
+  happened. The main thread still does the canvas work (tiling the pattern,
+  stretching the vignette, `getImageData`) and hands the buffers over as
+  transferables. The old inline passes froze the page for a third of a
+  second on every colour change — that is the whole reason for the worker.
+- **`util.js`** holds the DOM builders, colour maths and the MEMOISED
+  word-wrap measurer: `wrappedLineCount()` and `wrappedRunLineCount()` (the
+  night sheet's reminders mix Trade Gothic with bold-condensed info tokens,
+  so a row is measured as runs in two fonts) cache per font+width+text and
+  are dropped when the fonts arrive (`fontsChanged()`). A slider drag
+  re-measures the same 25 abilities sixty times a second otherwise.
+- **`app.js`** is the controller: page tabs, the schema-driven control
+  cards, the Elements / Characters / Back panels (rebuilt around the
+  selection), the drag wiring, uploads, fonts, undo/redo, autosave, design
+  files, zoom, export. `window.FancyScripts` is a small console/harness
+  handle (`options()`, `patch()`, `load()`, `page()`, `select()`,
+  `render()`, `layouts()`, `workerActive()`).
+
+### The element model
+
+`options.el[key]` is a partial `EL_DEFAULT` (`dx` % width, `dy` em, `scale`,
+`rot`, `opacity`, `hidden`, `src`) for every movable piece in `ELEMENTS`
+(title, author, skull, both flourishes, ribbon, team labels, character grid
+and its two columns, dividers, footnote, page number; the night/jinx pages'
+title, logo, list, footer and badge). `elGet()` gives the effective
+transform; renderers add the offsets to the CALIBRATED position, so a
+design with an empty `el` is the reference sheet exactly, and "Reset this
+element" is `delete options.el[key]`. `src` is an upload that replaces the
+built-in art (skull, flourishes, ribbon, dividers, the CCC badge, the step
+icons) — or, for the title, an image drawn instead of the text. Stickers
+(`options.custom[]`, `newTextElement()` / `newImageElement()`) carry their
+own x/y in % and a `page` scope (`'all'`, a page kind, or an exact
+`pageKey`). Per-character overrides live in `options.chars[id]` (hide,
+rename, ability, team, colour, icon, icon scale/nudge, night positions and
+reminders, hand-arranged `order`) and `deriveScript()` applies them to a
+parse without touching it — clearing an override is a re-derive, never a
+re-parse. `hideTeams` is applied there too, so a hidden team leaves every
+page.
+
+**Uploads never live in the options.** `addAsset()` stores the data URL in
+the app's asset store and the options reference it as `'asset:<id>'`;
+`elements.js`'s `resolveSrc()` turns the reference back. So an undo snapshot
+is a few KB of JSON rather than a megabyte of PNG, and the design file and
+the autosave carry the store alongside (the autosave falls back to a slim
+copy without the files when localStorage's quota refuses it). Images are
+shrunk to 2000 px on the long side before storing. **Uploaded fonts are
+registered as `@font-face` rules with data: URLs in a `<style>`** — not as
+`FontFace` objects — because html-to-image embeds fonts by reading the
+document's stylesheets and a FontFace added by script is invisible to it;
+they are offered as `upload:<family>` in every font menu.
+
+### The night order sheets
+
+Data: `roles.json` carries the official reminder TEXT
+(`firstNightReminder` / `otherNightReminder`, with `*INFO TOKEN*` marks and
+`:reminder:` placements) and `assets/night-order.json` the wake POSITIONS
+plus the non-character steps' positions (`meta`: dusk, minioninfo,
+demoninfo, dawn — their wording is `NIGHT_STEPS` in script.js, the official
+app's own). `setOfficialRoster(roles, jinxes, nightOrder)` merges them per
+id; a custom character's own `firstNight`/`otherNight` numbers and
+reminders win over the official ones (the wiki's night-order picker writes
+numbers on the official scale, e.g. 33.5691 for "after the Poisoner").
+`nightLists()` puts a character on a list when its number is above zero,
+follows the file's `_meta.firstNight`/`otherNight` sequence when there is
+one (that is what the wiki writes for an arranged script) and the option is
+on, and otherwise sorts by number with each step slotted in front of the
+first character that acts after it — the same rule render-page.js uses to
+write those sequences. `reminderParts()` tokenises a reminder into text,
+`*token*` runs (bold condensed caps, `tokenStyle`) and dots (`dotStyle`:
+a dot, a little token carrying the character's icon, or nothing).
+
+Geometry is `NIGHT` in script.js, measured off the owner's reference
+sheets ("Blending In", 903×1225) in the same units as `SHEET`. The pages
+are ticked on in the Pages card (`night.first` / `night.other`;
+`night.combined` puts both nights on one page in two columns;
+`night.twoColumns` splits one night over two columns by weight). Each
+carries its own colours, fonts, footer, badge and background; `''` for a
+night colour means "follow the sheet". The list auto-fits down to
+`night.minFit` and then continues onto a second page (two-column specs
+shrink instead). The step icons are inline SVG data URLs (`STEP_ICONS`),
+drawn as letter paths so no font is needed; `night.stepIcons` replaces
+them with uploads.
+
+### Long scripts continue onto more sheets
+
+`layoutSheet()` first solves the single-page fit exactly as the original
+tool did. If that fit would fall below `options.minFit` (0.62) and
+`paginate` is on, it packs the sections onto pages at density 1 instead —
+a team that does not fit the room left on a page is split, as many of its
+characters as fit stay, and the rest open the next page under a repeated
+label — then relaxes the density so one sheet fewer holds it whenever
+that stays above minFit (solved to a fixed point, since rows wrap more as
+they shrink, and stepped down a little to cover the space the splits
+waste). **Sections are measured in layout em and drawn at `d` of that, so
+a page holds `availFor(i) / d` of them** — the pack step compared them
+unscaled at first and density had no effect on it. Only page 0 carries the
+title band unless `repeatHeader`; a bare page starts at `SHEET.bareTop`.
+The footnote sits on the last page (or every page), and pages get a
+"1 / 2" number. `columnLayout: 'single'` is one column the width of both
+(`widthMul`).
+
+### Everything else worth knowing
 
 - **Every number in `script.js`'s `SHEET` is calibration, not layout
   preference.** The geometry was reverse-measured from a reference render of
@@ -2157,27 +2320,29 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   0.7 row-growth margin is what keeps 3-line abilities inside one row pitch,
   and rows deliberately do NOT grow for 1–3-line abilities (constant pitch,
   like the reference). Change one constant at a time against a known render.
-  Two column layouts (`columnLayout`): **'even'** (default — both columns of
-  a section start together and END together, each column dealing the
-  section's leftover height evenly between its rows, like the official
+  Two two-column layouts (`columnLayout`): **'even'** (default — both
+  columns of a section start together and END together, each column dealing
+  the section's leftover height evenly between its rows, like the official
   printed sheets; the first section clears the title/author ink instead of
   giving the title a column slot) and **'shared'** (the classic reference
   layout — one shared row grid, col 2 staggered one row under the title).
-  The sidebar ribbon can be recoloured (`sidebarColor`) — **in a canvas,
-  per pixel in real HSL, never with a CSS hue-rotate filter**: hue-rotate
-  is a linear approximation that maps the art's near-black navy (the
-  shadowed edges at the strip's top, bottom and left) to neutral mud, so a
-  red ribbon showed un-tinted bands there. The recolour rotates hue by the
-  offset from the art's measured base (`SIDEBAR_BASE` in script.js) and
-  scales sat/lightness by ratio, runs once per colour (~2.5M px, cached,
-  async — renderSheet shows the newest canvas and re-renders when a fresh
-  one lands, like the icon-ink pass), and the default colour bypasses it
-  entirely. The colour controls are a HAND-ROLLED picker (SV square + hue
-  slider + hex box in app.js), because `<input type="color">` on Android
-  Chrome is a grid of ~20 preset swatches with no free choice — the one
-  surface the owner reviews from. The density slider is never disabled —
-  under auto-fit it displays the solved density ("auto · 96%") and
-  dragging it unticks auto-fit; a disabled slider just read as broken.
+  The sidebar ribbon can be recoloured (`sidebarColor`) — **per pixel in
+  real HSL, never with a CSS hue-rotate filter**: hue-rotate is a linear
+  approximation that maps the art's near-black navy (the shadowed edges at
+  the strip's top, bottom and left) to neutral mud, so a red ribbon showed
+  un-tinted bands there. The recolour rotates hue by the offset from the
+  art's measured base (`SIDEBAR_BASE` in script.js) and scales sat/lightness
+  by ratio, runs once per colour in the pixel worker (cached —
+  renderSheetPage shows the newest canvas and re-renders when a fresh one
+  lands, like the icon-ink pass), and the default colour bypasses it
+  entirely. `sidebarMode` swaps the damask for a flat colour or nothing.
+  The colour controls are a HAND-ROLLED picker (SV square + hue slider +
+  hex box + recent swatches in app.js), because `<input type="color">` on
+  Android Chrome is a grid of ~20 preset swatches with no free choice — the
+  one surface the owner reviews from. The density sliders are never
+  disabled — under auto-fit they display the solved density ("auto · 96%")
+  and dragging one unticks auto-fit; a disabled slider just read as broken.
+  Double-clicking a slider's label resets it.
 - **The sheet fonts are the reference's own** (`assets/fancyscripts/fonts/`):
   LHF Unlovable (title), Goudy Old Style (names — its 700 weight maps to the
   400 file on purpose, because the reference used Chromium's synthetic bold),
@@ -2200,8 +2365,8 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   because the fault is positional, not a long-word problem. A long label in a
   one-row band is still smaller than its neighbours (TRAVELLERS cannot be
   10 letters at 4mm in one row) — that part is the band, not a bug.
-- **`sheet.js` styles itself entirely inline** and must keep doing so: the
-  element is what html-to-image captures for export, and page CSS the capture
+- **Every renderer styles itself entirely inline** and must keep doing so:
+  the element is what html-to-image captures for export, and page CSS the capture
   library has to chase is a source of export-only bugs. The parchment,
   sidebar, skull, flourishes and dividers in `art/` are the sealed payload
   (immutable-cached in `_headers`) — the skull is a feathered opaque patch
@@ -2296,38 +2461,52 @@ damask back cover). Client-side only: no Worker route, no D1, nothing stored.
   the source crops those assets were built from are in git history
   (commit b7c592a, `back-flat.jpg`/`back-shaded.jpg`), and the PSD itself
   is on the owner's Google Drive as "Clockback copy.psd".
-  Title text is one DRAGGABLE element per word (`seedBackTexts()` builds
-  the stacked official arrangement from the title — connector words small
-  and offset, like the template's Axiom/of/Logic), each with text, font,
-  size, rotation, letter-spacing, fill — solid or a two-colour
-  **gradient fill** (background-clip:text; the span gets `padding:.45em;
-  margin:-.45em` because a background only paints inside the box and LHF's
-  swashes overhang it — without that the overhang showed the stroke layer
-  as bare black) — an outside stroke (a doubled centred
-  `-webkit-text-stroke` on a transparent span UNDER the fill span — that
-  lower span also casts the drop shadow, so the shadow silhouette includes
-  the stroke, matching the PSD's layer styles) and a drop shadow. The
-  template's own treatment (gold #bea881, 1.5px black stroke, soft
-  downward shadow) is the seed. **Dragging never rebuilds**: pointermove
-  writes the live element's left/top and the model, and the full re-render
-  happens on release — the first cut re-rendered per move, which destroyed
-  the element (and its pointer capture) one frame into every drag.
-  Selection is therefore also ring-only until release, and one element is
-  ALWAYS selected (`backSel` defaults to 0) so the editing panel never
-  shows an empty state. The selection ring lives only on the preview
-  render: every export re-renders the back offscreen with no selection,
-  and waits for the background canvas (`backReady`) so a recolour in
-  flight can never export stale.
+  Title text is one DRAGGABLE text sticker per word (`seedBackTexts()`
+  builds the stacked official arrangement from the title — connector words
+  small and offset, like the template's Axiom/of/Logic), rendered by the
+  shared `renderTextElement()`: text, font, size, rotation, letter-spacing,
+  fill — solid or a two-colour **gradient fill** (background-clip:text; the
+  span gets `padding:.45em; margin:-.45em` because a background only paints
+  inside the box and LHF's swashes overhang it — without that the overhang
+  showed the stroke layer as bare black) — an outside stroke (a doubled
+  centred `-webkit-text-stroke` on a transparent span UNDER the fill span —
+  that lower span also casts the drop shadow, so the shadow silhouette
+  includes the stroke, matching the PSD's layer styles) and a drop shadow.
+  The template's own treatment (gold #bea881, 1.5px black stroke, soft
+  downward shadow) is the seed. The words are edited from the Elements card
+  like any sticker; `back.bgMode` swaps the built pattern for a plain colour
+  or an uploaded image. Every export re-renders the back offscreen with no
+  selection, and waits for the background canvas (`backReady`) so a
+  recolour in flight can never export stale.
 - **Export**: vendored `html-to-image` + `jspdf` (assets/fancyscripts/
-  vendor/, lazy-loaded on first export). Three grades: Share Image (JPEG at
-  pixelRatio 1.5, ~1 MB — the print PNG is ~30 MB, which no one can post to
-  Discord), Print PNG (lossless, pixelRatio 3) and Print PDF. Share and
-  Print PNG export **the side the preview shows** (`_back` suffix on the
-  filename); the PDF is always front + back (behind the "Back cover page"
-  toggle), each side rendered offscreen when it is not the one on screen.
-  The PDF pages are embedded as
-  **JPEG, not PNG** — jsPDF stores RGBA PNGs this size as raw pixels and the
-  PDF came out 90 MB; as JPEG the two pages land around 7.
+  vendor/, lazy-loaded on first export). Grades: Share Image (JPEG at the
+  share scale, 1.5× by default, ~1 MB — the print PNG is ~30 MB, which no
+  one can post to Discord), Copy (the same as a PNG on the clipboard),
+  Print PNG (lossless at the print scale, 3× by default), All pages (one
+  PNG per page, in order) and Print PDF (every ticked page — sheets, night
+  sheets, jinx page, back — laid on the chosen paper: the sheet's own 3:4
+  trim, A4, Letter or A3, centred with the margin colour around it). Each
+  page is rendered offscreen for export (`withPageNode`) and waits for its
+  images rather than a fixed delay. Downloads go through a Blob + object
+  URL, not a data: href — a 30 MB data URL download fails on some phones.
+  The PDF pages are embedded as **JPEG, not PNG** — jsPDF stores RGBA PNGs
+  this size as raw pixels and the PDF came out 90 MB; as JPEG five pages
+  land under 10.
+- **Undo/redo, autosave, design files.** Every discrete change (a slider's
+  `change`, a toggle, a drag's release, a text field 500 ms after typing
+  stops) pushes a JSON snapshot of `options` (80 kept); Ctrl+Z / Ctrl+Y and
+  the toolbar buttons walk it. The autosave (`botc_fancy_v2` in
+  localStorage) keeps the script, the options, the asset store and the
+  uploaded fonts under a key for the script (`wiki:{slug}` or the name);
+  on load, a `?s=` deep link restores a saved design for the same slug and
+  a plain visit restores the last session outright. "Save design file"
+  downloads the same object as `{name}.fancy.json`; "Load design file" (or
+  dropping one on the script uploader — it is recognised by `app:
+  'fancyscripts'`) restores it, script included.
+- **Presets** (`PRESETS` in script.js) are patches deep-merged over the
+  current options: they change colours, backgrounds and title style and
+  leave layout, uploads and character edits alone. "Ink Saver" is the
+  plain-paper look. "Shuffle" rolls one hue for the ribbon, title and back.
 
 ## Featured Character (the homepage slot)
 

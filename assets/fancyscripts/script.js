@@ -303,6 +303,7 @@ export const DEFAULT_NIGHT = {
   showBadge: true,
   iconShadow: 1,
   stepIcons: { dusk: '', minion: '', demon: '', dawn: '' }, // uploads replacing the built-in step icons
+  hideSteps: { dusk: false, minioninfo: false, demoninfo: false, dawn: false },
   bg: { ...DEFAULT_BG, mode: 'light', vignette: 0.28 },
 };
 
@@ -345,6 +346,7 @@ export const DEFAULT_OPTIONS = {
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
   showJinxes: true,
+  jinxIconSize: 1, // the partner icons beside a name
   showFootnote: true,
   footnoteText: '', // blank = "*Not the first night"
   titleOverride: '',
@@ -1012,6 +1014,7 @@ export function nightLists(script, night) {
     const steps = [];
     if (opts.showMeta !== false) {
       for (const s of Object.values(NIGHT_STEPS)) {
+        if (opts.hideSteps && opts.hideSteps[s.id]) continue;
         const meta = (nightMeta || []).find((m) => m.id === s.id);
         const pos = meta && meta[field] != null ? num(meta[field]) : s[field];
         if (pos == null || !isFinite(pos)) continue;

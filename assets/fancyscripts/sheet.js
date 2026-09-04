@@ -259,9 +259,10 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul)
   if (options.showJinxes) {
     for (const j of char.jinxIcons) {
       const jf = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
+      const jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
       const ji = iconImg(j.icon, {
-        height: px(ed(SHEET.jinxSize * nameSize) * 0.72),
-        width: px(ed(SHEET.jinxSize * nameSize) * 0.72),
+        height: px(jsz),
+        width: px(jsz),
         objectFit: 'contain',
         flexShrink: '0',
         transform: inkTransform(jf),
