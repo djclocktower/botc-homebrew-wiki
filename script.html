@@ -132,6 +132,12 @@
           <div class="sbx-menu-wrap">
             <button type="button" class="sbx-b" id="sbx-more" aria-haspopup="true" aria-expanded="false">&#8943; More</button>
             <div class="sbx-menu" id="sbx-menu" role="menu">
+              <button type="button" data-do="random" role="menuitem" class="sbx-menu-bar">&#9860; Random script</button>
+              <button type="button" data-do="sort" role="menuitem" class="sbx-menu-bar">&#8645; Steven Approved Order</button>
+              <button type="button" data-do="undo" role="menuitem" class="sbx-menu-bar">&#8630; Undo</button>
+              <button type="button" data-do="redo" role="menuitem" class="sbx-menu-bar">&#8631; Redo</button>
+              <button type="button" data-do="publish" role="menuitem" class="sbx-menu-bar">&#9733; Publish to the wiki</button>
+              <hr class="sbx-menu-sep sbx-menu-bar">
               <button type="button" data-do="export" role="menuitem">&#11015; Download JSON</button>
               <button type="button" data-do="copy" role="menuitem">&#10697; Copy JSON</button>
               <button type="button" data-do="import" role="menuitem">&#11014; Import a JSON file</button>
@@ -274,6 +280,7 @@
                 <label class="sbx-check"><input type="checkbox" id="sb-print-jinxes" checked> Jinxes</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-print-rules" checked> House rules</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-print-notes"> Notes</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-charnotes" checked> Character notes</label>
                 <select id="sb-print-cols" aria-label="Columns"><option value="2">Two columns</option><option value="1">One column</option></select>
                 <select id="sb-print-size" aria-label="Text size"><option value="small">Small text</option><option value="normal" selected>Normal text</option><option value="large">Large text</option></select>
               </div>

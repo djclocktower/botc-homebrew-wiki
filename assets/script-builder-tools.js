@@ -321,7 +321,8 @@
       } else {
         group.forEach(function (c) {
           var ab = opts.abilities !== false && c.ability ? (md ? ' — ' : ': ') + c.ability : '';
-          lines.push((md ? '• ' : '- ') + b(c.name) + ab);
+          var note = opts.charNotes && opts.charNotes[c.slug] ? (md ? ' _(' : ' (') + String(opts.charNotes[c.slug]).trim() + (md ? ')_' : ')') : '';
+          lines.push((md ? '• ' : '- ') + b(c.name) + ab + note);
         });
       }
       lines.push('');

@@ -65,6 +65,10 @@
     var grid = el(opts.grid), bar = el(opts.bar), toggle = el(opts.toggle);
     var countEl = el(opts.count);
     if (!grid || !bar || !toggle) return false;
+    // Mounting again over the same grid (the Script Builder rebuilds its
+    // panel under a different grouping) first takes the old box down, or
+    // the toggle and the search box would answer to two sets of listeners.
+    if (typeof grid._cfDestroy === 'function') grid._cfDestroy();
 
     var SEL = {
       section: opts.sectionSel || '.coll-team',
@@ -207,11 +211,14 @@
     bar.hidden = false;
 
     // ── collapse/expand (collapsed by default, works on every screen size) ──
-    toggle.addEventListener('click', function () {
+    function onToggle() {
       var open = bar.classList.toggle('open');
       toggle.classList.toggle('open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+    }
+    toggle.addEventListener('click', onToggle);
+    // A re-mount keeps the box open if it was open.
+    bar.classList.toggle('open', toggle.classList.contains('open'));
 
     // ── 3-state chip helper (unset → include → exclude → unset) ──
     // The arrays are read through a getter because Reset swaps STATE wholesale.
@@ -259,12 +266,17 @@
       sortSel.value = STATE.sort;
       apply();
     });
-    if (searchEl) {
-      searchEl.addEventListener('input', function () {
-        STATE.q = searchEl.value.trim().toLowerCase();
-        apply();
-      });
+    function onSearch() {
+      STATE.q = searchEl.value.trim().toLowerCase();
+      apply();
     }
+    if (searchEl) searchEl.addEventListener('input', onSearch);
+    grid._cfDestroy = function () {
+      toggle.removeEventListener('click', onToggle);
+      if (searchEl) searchEl.removeEventListener('input', onSearch);
+      bar.innerHTML = '';
+      grid._cfDestroy = null;
+    };
 
     function cardVisible(card) {
       // Partial pages are unfinished and stay out of the listing until the
@@ -286,7 +298,22 @@
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
       // A filter on one name matches any card that credits them.
       if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
-      if (STATE.q && (card.getAttribute('data-name') || '').toLowerCase().indexOf(STATE.q) === -1) return false;
+      if (STATE.q) {
+        // The lower-cased name is kept on the card: a keystroke reads it for
+        // every card in the list, and 1,900 toLowerCase calls a letter add up.
+        if (card._cfName == null) card._cfName = (card.getAttribute('data-name') || '').toLowerCase();
+        if (card._cfName.indexOf(STATE.q) === -1) {
+          // opts.searchAbility (a boolean, or a function answering one at the
+          // time of asking) lets the box match the ability text as well.
+          var sa = typeof opts.searchAbility === 'function' ? opts.searchAbility() : !!opts.searchAbility;
+          if (!sa) return false;
+          if (card._cfAb == null) {
+            var abEl = card.querySelector(SEL.ability);
+            card._cfAb = abEl ? abEl.textContent.toLowerCase() : '';
+          }
+          if (card._cfAb.indexOf(STATE.q) === -1) return false;
+        }
+      }
       return true;
     }
 
@@ -363,7 +390,10 @@
     }
 
     apply();
-    return true;
+    // Truthy, like the `true` it used to return, and a handle for a host that
+    // wants to re-apply after changing something the box reads on the fly
+    // (searchAbility), or take the box down before rebuilding its grid.
+    return { apply: apply, destroy: grid._cfDestroy, state: function () { return STATE; } };
   }
 
   if (typeof window !== 'undefined') window.mountCardFilters = mountCardFilters;

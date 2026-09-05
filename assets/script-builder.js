@@ -216,6 +216,19 @@
     paintShape();
     if (activeTab === 'analyse') ensurePane();
   }
+  function charNotes() {
+    var m = getMeta();
+    return (m.charNotes && typeof m.charNotes === 'object') ? m.charNotes : {};
+  }
+  function setCharNote(slug, text) {
+    text = String(text || '').trim().slice(0, 500);
+    patchMeta(function (m) {
+      var n = (m.charNotes && typeof m.charNotes === 'object') ? m.charNotes : {};
+      if (text) n[slug] = text; else delete n[slug];
+      if (Object.keys(n).length) m.charNotes = n; else delete m.charNotes;
+    }, 'typed');
+    paintRoster();
+  }
   function locks() {
     var m = getMeta();
     return Array.isArray(m.locks) ? m.locks.filter(function (x) { return sel[x]; }) : [];
@@ -369,8 +382,31 @@
   var settle = debounce(function () {
     paintJinxCount();
     paintCredits();
+    paintJinxHints();
     syncLibrary();
   }, 200);
+
+  /* ⚯ on the panel rows of characters jinxed with someone on the script but
+     not on it themselves — the same list the Analyse tab offers to add. Only
+     the rows whose mark changed are touched. */
+  var hinted = {};
+  function paintJinxHints() {
+    var T = window.SBTools;
+    if (!T || !rosterChars) return;
+    var next = {};
+    if (order.length) {
+      try {
+        T.analyse(rosterChars(), { allBySlug: bySlug }).suggest.forEach(function (sg) { next[sg.to.slug] = 1; });
+      } catch (e) { next = {}; }
+    }
+    Object.keys(hinted).forEach(function (slug) {
+      if (!next[slug] && rowBySlug[slug]) rowBySlug[slug].classList.remove('jx');
+    });
+    Object.keys(next).forEach(function (slug) {
+      if (rowBySlug[slug]) rowBySlug[slug].classList.add('jx');
+    });
+    hinted = next;
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   //  The roster (the "Script" tab)
@@ -465,6 +501,7 @@
   }
 
   var lockSet = {};   // the locks, as a set, for the length of one paintRoster()
+  var noteMap = {};   // the script's own notes, likewise
 
   /* slug -> the names it is jinxed with on this script, for the row marks. */
   function jinxMarks() {
@@ -496,6 +533,7 @@
       marks += '<span class="sbx-ch-jx" title="Jinxed with ' + esc(jinxedWith.join(', ')) + '">&#9903;' + jinxedWith.length + '</span>';
     }
     var locked = lockSet[c.slug] === 1;
+    var note = (v.showNotes !== false && noteMap[c.slug]) ? '<span class="sbx-ch-note">' + esc(noteMap[c.slug]) + '</span>' : '';
     // Name and ability are ONE paragraph, the way the character sheet
     // prints them — not a name stacked over its ability in a box.
     var arrange = v.arrange
@@ -519,7 +557,7 @@
         (c.official ? '<span class="sbx-off">official &#8599;</span> ' : '') +
         marks +
         '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
-        (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') +
+        (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') + note +
       '</p>' + moves +
       '<button type="button" class="sbx-ch-lock' + (locked ? ' on' : '') + '" data-slug="' + esc(c.slug) +
         '" aria-pressed="' + (locked ? 'true' : 'false') + '" title="' +
@@ -550,6 +588,7 @@
     var sh = shape();
     lockSet = {};
     locks().forEach(function (x) { lockSet[x] = 1; });
+    noteMap = charNotes();
     var html = '';
     TEAMS.forEach(function (t) {
       var group = chars.filter(function (c) { return c.team === t[0]; });
@@ -821,15 +860,58 @@
       (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
     '</div>';
   }
+  /* Which group a character files under, for the panel's "Grouped by". */
+  function titleWords(s) {
+    return String(s || '').replace(/[-_]+/g, ' ').replace(/\b[a-z]/g, function (m) { return m.toUpperCase(); });
+  }
+  function groupKeyOf(c, how) {
+    if (how === 'creator') {
+      if (c.official) return 'Official';
+      var names = window.splitCreators ? window.splitCreators(c.creator || '') : String(c.creator || '').split(',');
+      var n = (names[0] || '').trim();
+      return n || 'Uncredited';
+    }
+    if (how === 'set') {
+      if (c.official) return 'Official';
+      var set = String(c.appearsIn || '').trim();
+      if (!set && Array.isArray(c.appearsInFrom) && c.appearsInFrom[0]) set = String(c.appearsInFrom[0].name || '');
+      if (!set && typeof c.page === 'string') {
+        var m = /^c\/([^/]+)\/[^/]+$/.exec(c.page);
+        if (m) set = titleWords(m[1]);
+      }
+      return set || 'No set';
+    }
+    if (how === 'name') {
+      var ch = String(c.name || '').trim().charAt(0).toUpperCase();
+      return /[A-Z]/.test(ch) ? ch : '#';
+    }
+    return c.team;
+  }
   function buildAddList(done) {
     var run = ++buildRun;
     var browsable = allChars.concat(officialChars);
     var groups = [];
-    TEAMS.forEach(function (t) {
-      var group = browsable.filter(function (c) { return c.team === t[0]; })
-        .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      if (group.length) groups.push({ team: t, chars: group, rowsEl: null, at: 0 });
-    });
+    var how = (view && view.panelGroup) || 'team';
+    function byName(a, b) { return (a.name || '').localeCompare(b.name || ''); }
+    if (how === 'team') {
+      TEAMS.forEach(function (t) {
+        var group = browsable.filter(function (c) { return c.team === t[0]; }).sort(byName);
+        if (group.length) groups.push({ team: t, key: t[0], label: t[1], chars: group, rowsEl: null, at: 0 });
+      });
+    } else {
+      var buckets = {};
+      browsable.forEach(function (c) {
+        var k = groupKeyOf(c, how);
+        (buckets[k] = buckets[k] || []).push(c);
+      });
+      Object.keys(buckets).sort(function (a, b) {
+        // Official and the catch-alls sink to the end; the rest alphabetical.
+        var tail = { 'Official': 2, 'Uncredited': 1, 'No set': 1, '#': 1 };
+        return (tail[a] || 0) - (tail[b] || 0) || a.localeCompare(b);
+      }).forEach(function (k) {
+        groups.push({ team: null, key: how + ':' + k, label: k, chars: buckets[k].sort(byName), rowsEl: null, at: 0 });
+      });
+    }
     var list = $('sb-add-list');
     rowBySlug = {};
     if (!groups.length) {
@@ -846,9 +928,10 @@
         var g = groups[gi];
         if (!g.rowsEl) {
           var wrap = document.createElement('div');
-          wrap.className = 'sbx-add-group' + (prefs.collapsed && prefs.collapsed[g.team[0]] ? ' collapsed' : '');
-          wrap.setAttribute('data-team', g.team[0]);
-          wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this team away">' + esc(g.team[1]) +
+          wrap.className = 'sbx-add-group' + (prefs.collapsed && prefs.collapsed[g.key] ? ' collapsed' : '');
+          wrap.setAttribute('data-group', g.key);
+          if (g.team) wrap.setAttribute('data-team', g.team[0]);
+          wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
             ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-fold" aria-hidden="true">&#9662;</span></h3>' +
             '<div class="sbx-add-rows"></div>';
           list.appendChild(wrap);
@@ -876,14 +959,15 @@
 
   function mountAddFilters() {
     if (!window.mountCardFilters) return;
-    window.mountCardFilters({
+    filterAPI = window.mountCardFilters({
       grid: 'sb-add-list', bar: 'sb-filter-bar', toggle: 'sb-filter-toggle',
       count: 'sb-add-count', search: 'sb-filter',
       sectionSel: '.sbx-add-group', innerSel: '.sbx-add-rows', cardSel: '.sbx-add-row',
       sectionCountSel: '.sbx-add-groupcount', abilitySel: '.sbx-add-ab',
       label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
-      sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']]
-    });
+      sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']],
+      searchAbility: function () { return !!(view && view.panelSearchAbility); }
+    }) || null;
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1130,12 +1214,18 @@
     view = window.SBView.normalize(prefs.view);
     window.SBView.apply($('sbx'), view);
   }
+  var filterAPI = null;
   function setView(v, key) {
+    var beforeGroup = view && view.panelGroup;
     prefs.view = v;
     savePrefs();
     applyView();
     var rp = key ? window.SBView.repaintFor(key) : 'roster';
     if (rp === 'roster') paintRoster();
+    if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
+      if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); });
+    }
+    if (key === 'panelSearchAbility' && filterAPI && filterAPI.apply) filterAPI.apply();
     if (key === 'side' || !key) {
       // The panel moved to the other edge, so the grip's arithmetic changes
       // (wireResize reads view.side) and the drawer should shut in case it
@@ -1316,6 +1406,7 @@
     var chars = rosterChars();
     return T.textExport(chars, getMeta(), {
       format: o.format, abilities: o.abilities, jinxes: o.jinxes, night: o.night, rules: o.rules, notes: o.notes,
+      charNotes: o.notes ? charNotes() : null,
       jinxList: o.jinxes ? scriptJinxes() : [],
       nightItems: (o.night && PR && PR.nightItems) ? PR.nightItems(chars, getNightOrder()) : null
     });
@@ -1438,6 +1529,7 @@
       '<p class="sbx-peek-ab">' + esc(c.ability || '(no ability text)') + '</p>' +
       (tags.length ? '<p class="sbx-peek-facts" style="margin-top:6px">' + tags.map(function (t) { return '<span class="sbx-tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
       '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
+      (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script — a bluff to suggest, a ruling, a reminder for you.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? '&#10005; Remove from script' : '&#43; Add to script') + '</button>' +
         (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">&#9860; Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
@@ -1470,6 +1562,8 @@
     if (peekTimer) { clearTimeout(peekTimer); peekTimer = null; }
     var pop = $('sbx-peek');
     if (!pop || pop.hidden) { peekSlug = ''; return; }
+    var ta = pop.querySelector('[data-peek-note]');
+    if (ta && ta.value.trim() !== (charNotes()[ta.getAttribute('data-peek-note')] || '')) setCharNote(ta.getAttribute('data-peek-note'), ta.value);
     pop.hidden = true;
     peekSlug = '';
     if (!openPopId) {
@@ -1624,7 +1718,7 @@
   function encodeShare() {
     var m = getMeta();
     var extra = {};
-    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes'].forEach(function (k) {
+    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes'].forEach(function (k) {
       if (m[k] != null && m[k] !== '' && m[k] !== false) extra[k] = m[k];
     });
     var payload = { n: m.name || '', a: m.author || '', c: order.slice() };
@@ -1657,7 +1751,7 @@
     var o = prefs.print || {};
     return {
       icons: o.icons !== false, colour: o.colour !== false, night: o.night !== false,
-      roster: o.roster !== false,
+      roster: o.roster !== false, charNotes: o.charNotes !== false,
       jinxes: o.jinxes !== false, rules: o.rules !== false, notes: !!o.notes,
       cols: o.cols === '1' ? 1 : 2, size: o.size || 'normal'
     };
@@ -1677,6 +1771,7 @@
     var night = (PR && PR.nightItems) ? PR.nightItems(chars, getNightOrder()) : { first: [], other: [] };
     var jinxes = scriptJinxes();
     var pt = po.size === 'small' ? 9.5 : (po.size === 'large' ? 13 : 11);
+    var pn = charNotes();
 
     function icon(c, px) {
       return po.icons ? '<img src="' + esc(absUrl(artOf(c))) + '" alt="" width="' + px + '" height="' + px + '" onerror="this.style.visibility=\'hidden\'">' : '';
@@ -1687,7 +1782,8 @@
       if (!group.length) return;
       out += '<section class="team ' + esc(t[0]) + '"><h2>' + esc(t[1]) + '</h2><div class="rows">';
       group.forEach(function (c) {
-        out += '<div class="ch">' + icon(c, 34) + '<p><b class="nm">' + esc(c.name) + '</b> ' + esc(c.ability || '') + '</p></div>';
+        var nt = po.charNotes && pn[c.slug] ? '<span class="note">' + esc(pn[c.slug]) + '</span>' : '';
+        out += '<div class="ch">' + icon(c, 34) + '<p><b class="nm">' + esc(c.name) + '</b> ' + esc(c.ability || '') + nt + '</p></div>';
       });
       out += '</div></section>';
     });
@@ -1731,6 +1827,7 @@
       '.ch img{width:34px;height:34px;object-fit:contain;flex:none;}.jinx .ch img{width:26px;height:26px;}' +
       '.ch p{margin:0;}.nm{text-transform:uppercase;letter-spacing:.03em;font-size:.95em;margin-right:4px;}' +
       'ul{margin:0;padding-left:18px;}li{margin:3px 0;}.notes{white-space:normal;}' +
+      '.note{display:block;font-style:italic;color:#555;font-size:.9em;margin-top:2px;}' +
       '.pb{break-before:page;}.nights{display:flex;gap:26px;}.nc{flex:1;min-width:0;}' +
       '.nrow{display:flex;gap:8px;align-items:flex-start;break-inside:avoid;padding:3px 0;border-bottom:1px solid #eee;}' +
       '.nrow .n{width:22px;flex:none;color:#888;text-align:right;}.nrow img{width:26px;height:26px;object-fit:contain;flex:none;}' +
@@ -2247,10 +2344,10 @@
       var head = e.target.closest('.sbx-add-grouphead');
       if (head) {
         var grp = head.parentNode;
-        var team = grp.getAttribute('data-team');
-        var open = grp.classList.toggle('collapsed');
+        var gk = grp.getAttribute('data-group') || grp.getAttribute('data-team');
+        var folded = grp.classList.toggle('collapsed');
         prefs.collapsed = prefs.collapsed || {};
-        if (open) prefs.collapsed[team] = true; else delete prefs.collapsed[team];
+        if (folded) prefs.collapsed[gk] = true; else delete prefs.collapsed[gk];
         savePrefs();
         return;
       }
@@ -2411,7 +2508,15 @@
         hidePeek();
       }
     });
-    $('sbx-peek').addEventListener('mouseleave', function () { if (FINE.matches) hidePeek(); });
+    $('sbx-peek').addEventListener('mouseleave', function () {
+      // Not while a note is being written.
+      if (FINE.matches && !(document.activeElement && document.activeElement.hasAttribute('data-peek-note'))) hidePeek();
+    });
+    $('sbx-peek').addEventListener('input', debounce(function () {
+      var ta = $('sbx-peek').querySelector('[data-peek-note]');
+      if (ta) setCharNote(ta.getAttribute('data-peek-note'), ta.value);
+    }, 400));
+    $('sbx-peek').addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.stopPropagation(); hidePeek(); } });
 
     // ── abilities inline instead of behind a chevron ──
     var abil = $('sbx-abilities');
@@ -2619,7 +2724,7 @@
     $('sb-json-details').addEventListener('toggle', paintJsonPreview);
     var pio = printOpts();
     [['roster', 'sb-print-roster'], ['icons', 'sb-print-icons'], ['colour', 'sb-print-colour'], ['night', 'sb-print-night'],
-     ['jinxes', 'sb-print-jinxes'], ['rules', 'sb-print-rules'], ['notes', 'sb-print-notes']].forEach(function (pair) {
+     ['jinxes', 'sb-print-jinxes'], ['rules', 'sb-print-rules'], ['notes', 'sb-print-notes'], ['charNotes', 'sb-print-charnotes']].forEach(function (pair) {
       $(pair[1]).checked = !!pio[pair[0]];
       $(pair[1]).addEventListener('change', function () {
         prefs.print = prefs.print || {};
@@ -2657,6 +2762,11 @@
   }
 
   var ACTIONS = {
+    random: function () { randomize(); },
+    sort: function () { if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug)); },
+    undo: function () { undo(); },
+    redo: function () { redo(); },
+    publish: function () { location.href = $('sb-publish-link').getAttribute('href') || 'publish-script'; },
     'export': function () { doExport(); },
     copy: function (btn) { doCopy(btn); },
     share: function (btn) { doShare(btn); },
@@ -2806,6 +2916,7 @@
           buildAddList(function () {
             perfMark('panel-done');
             mountAddFilters();
+            paintJinxHints();
             perfMark('filters');
           });
         }, 0);
@@ -2872,9 +2983,10 @@
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
         if (sh.m && typeof sh.m === 'object') {
-          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes'].forEach(function (k) {
+          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes', 'charNotes'].forEach(function (k) {
             if (sh.m[k] != null) m[k] = sh.m[k];
           });
+          if (m.charNotes && typeof m.charNotes !== 'object') delete m.charNotes;
           if (typeof m.notes === 'string') m.notes = m.notes.slice(0, 4000); else delete m.notes;
         }
         setMeta(m);

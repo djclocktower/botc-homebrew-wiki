@@ -255,7 +255,13 @@ assets/
                        Also renderRosterCards() + filterBoxHTML(), reused by the
                        creator page so its cards match a collection page's.
   card-filters.js      The collapsed filter box (3-state team/tag chips, Show
-                       Partial, Curata only, creator, sort). apply() runs on
+                       Partial, Curata only, creator, sort). Mounting again
+                       over the same grid takes the old box down first
+                       (grid._cfDestroy), returns {apply, destroy, state},
+                       and `searchAbility` (a boolean or a function) lets
+                       the search box match ability text too — all for the
+                       Script Builder, which rebuilds its panel under a
+                       different grouping. apply() runs on
                        every keystroke, so it walks a cached card list, only
                        writes a style that actually changed, and re-sorts
                        ONLY when the sort itself changed — re-appending 1,900
@@ -1059,6 +1065,28 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   draws the team again, ✕ takes the team off — locks survive both.
 - **The empty roster** offers the three ways in: open the panel, a random
   script, or a script published on the wiki.
+- **Grouped by** (View → Character panel): team, creator (the first name on
+  the credit), set (`appearsIn`, else the derived `appearsInFrom`, else the
+  address's set segment) or A to Z. A regrouping REBUILDS the panel and
+  re-mounts the filter box, which is why `mountCardFilters()` is idempotent
+  now: it takes the old box down (`grid._cfDestroy`) before building the
+  new one, or the toggle and the search box would answer to two sets of
+  listeners. Folding is remembered per group key. **Show** narrows the panel
+  to everyone, those not on the script, or those on it (pure CSS off
+  `data-panelscope`), and **Search abilities too** makes the search box
+  match ability text (`opts.searchAbility`, a function the box asks at
+  each keystroke, so the toggle applies at once through `filterAPI.apply()`).
+- **⚯ on a panel row** marks a character jinxed with someone on the script
+  but not on it — the Analyse tab's suggestions, painted onto the rows in the
+  settle pass (`paintJinxHints`, touching only the rows whose mark changed).
+- **Notes on a character** (`meta.charNotes[slug]`): typed on the peek card
+  of a character on the script, shown under its row (View → Your notes),
+  carried into the print sheet and Copy as text, and along share links.
+  Never in the export.
+- **The bar** is configurable (View → The bar): Undo/redo, Random, Sort and
+  Publish can each be taken off it; whatever is off appears in the More
+  menu instead (`.sbx-menu-bar` items, shown by the `sbx-bar-no-*` classes),
+  so nothing is ever unreachable — which is most of the point on a phone.
 
 ### Peek, notes, copy as text, loading from the wiki
 

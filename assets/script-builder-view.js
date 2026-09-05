@@ -44,16 +44,20 @@
     showTags: false,
     showNight: false,
     showJinx: true,
+    showNotes: true,      // the script's own note under a character
     showOfficial: true,
     showCounts: true,
     removeHover: false,   // the ✕ only on hover
     side: 'left',         // left | right
     panelIcon: 26,        // px
     panelCompact: false,
-    panelHideOn: false,   // hide characters already on the script
+    panelScope: 'all',    // all | off (not on the script) | on
+    panelGroup: 'team',   // team | creator | set | name
+    panelSearchAbility: false,
     panelCreator: false,  // a creator line under each panel name
     panelText: 100,       // %
     quickPicks: true,     // the pinned + recent strip above the list
+    barUndo: true, barRandom: true, barSort: true, barPublish: true,
     motion: true
   };
 
@@ -95,6 +99,7 @@
     { group: 'Show on each character', key: 'showTags', label: 'Tags', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showNight', label: 'Night marks (F / O)', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showJinx', label: 'Jinx marks', type: 'check', repaint: 'roster' },
+    { group: 'Show on each character', key: 'showNotes', label: 'Your notes', type: 'check', repaint: 'roster' },
     { group: 'Show on each character', key: 'showOfficial', label: 'Official badge', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'removeHover', label: 'Remove button only on hover', type: 'check', repaint: '' },
     { group: 'Show on each character', key: 'showCounts', label: 'Team counts in the bar', type: 'check', repaint: '' },
@@ -103,10 +108,21 @@
       options: [['left', 'Left'], ['right', 'Right']] },
     { group: 'Character panel', key: 'panelIcon', label: 'Panel icon size', type: 'range', min: 16, max: 56, step: 2, unit: 'px', repaint: '' },
     { group: 'Character panel', key: 'panelText', label: 'Panel text size', type: 'range', min: 75, max: 130, step: 5, unit: '%', repaint: '' },
+    { group: 'Character panel', key: 'panelGroup', label: 'Grouped by', type: 'seg', repaint: 'panel',
+      options: [['team', 'Team'], ['creator', 'Creator'], ['set', 'Set'], ['name', 'A to Z']],
+      hint: 'Set is the script or collection a character is filed under.' },
+    { group: 'Character panel', key: 'panelScope', label: 'Show', type: 'seg', repaint: '',
+      options: [['all', 'Everyone'], ['off', 'Not on the script'], ['on', 'On the script']] },
+    { group: 'Character panel', key: 'panelSearchAbility', label: 'Search abilities too', type: 'check', repaint: '' },
     { group: 'Character panel', key: 'panelCompact', label: 'Tighter rows', type: 'check', repaint: '' },
-    { group: 'Character panel', key: 'panelHideOn', label: 'Hide characters already on the script', type: 'check', repaint: '' },
     { group: 'Character panel', key: 'panelCreator', label: 'Creator under each name', type: 'check', repaint: '' },
     { group: 'Character panel', key: 'quickPicks', label: 'Pinned and recent strip', type: 'check', repaint: '' },
+
+    { group: 'The bar', key: 'barUndo', label: 'Undo and redo', type: 'check', repaint: '' },
+    { group: 'The bar', key: 'barRandom', label: 'Random', type: 'check', repaint: '' },
+    { group: 'The bar', key: 'barSort', label: 'Sort', type: 'check', repaint: '' },
+    { group: 'The bar', key: 'barPublish', label: 'Publish', type: 'check', repaint: '',
+      hint: 'Anything taken off the bar is still in the More menu.' },
 
     { group: 'Motion', key: 'motion', label: 'Animations', type: 'check', repaint: '' }
   ];
@@ -173,6 +189,7 @@
     root.setAttribute('data-side', v.side);
     root.setAttribute('data-teamlabel', v.teamLabel);
     root.setAttribute('data-tone', v.tone);
+    root.setAttribute('data-panelscope', v.panelScope);
     root.style.setProperty('--sbx-icon', v.icon + 'px');
     root.style.setProperty('--sbx-text', String(v.text / 100));
     root.style.setProperty('--sbx-panel-icon', v.panelIcon + 'px');
@@ -185,8 +202,11 @@
       'sbx-no-accent': !v.accent,
       'sbx-no-motion': !v.motion,
       'sbx-panel-compact': v.panelCompact,
-      'sbx-panel-hide-on': v.panelHideOn,
       'sbx-panel-creator': v.panelCreator,
+      'sbx-bar-no-undo': !v.barUndo,
+      'sbx-bar-no-random': !v.barRandom,
+      'sbx-bar-no-sort': !v.barSort,
+      'sbx-bar-no-publish': !v.barPublish,
       'sbx-no-picks': !v.quickPicks,
       'sbx-row-stripe': v.rowStripe,
       'sbx-sticky-heads': v.stickyHeads

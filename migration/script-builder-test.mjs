@@ -101,6 +101,10 @@ const night = T.textExport(script.slice(0, 2), meta, { format: 'plain', night: t
 ok(/FIRST NIGHT\n1\. a: wake/.test(night), 'night order rides along with reminders');
 ok(!/OTHER NIGHTS/.test(night), 'an empty night list is left out');
 eq(T.summary(script), '2 Townsfolk, 1 Outsider, 2 Minion, 1 Demon', 'summary line');
+const noted = T.textExport(script.slice(0, 2), meta, { format: 'plain', charNotes: { a: 'bluff this' } });
+ok(/- a: x \(bluff this\)/.test(noted), 'a character note rides on its line');
+const notedMd = T.textExport(script.slice(0, 2), meta, { format: 'markdown', charNotes: { a: 'bluff this' } });
+ok(/\*\*a\*\* — x _\(bluff this\)_/.test(notedMd), 'markdown italicises the note');
 
 // ── view normaliser ──
 const v = V.normalize({ layout: 'bogus', icon: 1000, text: '90', showAbility: 0, extra: 1 });

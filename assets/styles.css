@@ -5032,6 +5032,31 @@ button.sbx-counts:empty { display: none; }
   .sbx-sticky-heads .sbx-team-head { top: calc(var(--sbx-top, 56px) + 34px); }
 }
 
+/* ── round 7: panel scope and grouping, the bar's own settings, notes ── */
+.sbx[data-panelscope="off"] .sbx-add-row.on { display: none; }
+.sbx[data-panelscope="on"] .sbx-add-row:not(.on) { display: none; }
+.sbx-add-item.jx .sbx-add-name::after { content: ' \26AF'; color: #8a3d3d; font-size: .8em; }
+/* buttons taken off the bar live on in the More menu */
+.sbx-bar-no-undo #sbx-undo, .sbx-bar-no-undo #sbx-redo { display: none; }
+.sbx-bar-no-random #sb-randomize { display: none; }
+.sbx-bar-no-sort #sb-sort { display: none; }
+.sbx-bar-no-publish #sb-publish-link { display: none; }
+.sbx-menu-bar { display: none; }
+.sbx-bar-no-undo .sbx-menu-bar[data-do="undo"], .sbx-bar-no-undo .sbx-menu-bar[data-do="redo"],
+.sbx-bar-no-random .sbx-menu-bar[data-do="random"], .sbx-bar-no-sort .sbx-menu-bar[data-do="sort"],
+.sbx-bar-no-publish .sbx-menu-bar[data-do="publish"] { display: block; }
+.sbx-bar-no-undo hr.sbx-menu-bar, .sbx-bar-no-random hr.sbx-menu-bar, .sbx-bar-no-sort hr.sbx-menu-bar,
+.sbx-bar-no-publish hr.sbx-menu-bar { display: block; }
+/* a note of your own under a character */
+.sbx-ch-note {
+  display: block; margin-top: 3px; font-size: .86em; line-height: 1.35; color: #5a4a3a;
+  border-left: 2px solid rgba(180,160,120,.7); padding-left: 6px; font-style: italic;
+}
+.sbx-ch-note::before { content: '\270E '; font-style: normal; opacity: .6; }
+.sbx[data-tone="dark"] .sbx-ch-note { color: rgba(232,220,196,.75); border-left-color: rgba(232,220,196,.3); }
+.sbx[data-layout="list"] .sbx-ch-note, .sbx[data-layout="icons"] .sbx-ch-note { display: none; }
+.sbx-peek-note { width: 100%; margin-top: 8px; font-family: 'Libre Franklin', sans-serif; font-size: .8rem; color: var(--ink); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; resize: vertical; min-height: 44px; box-sizing: border-box; }
+
 /* ── toasts ── */
 .sbx-toast {
   position: fixed; left: 50%; bottom: 22px; z-index: 90;
