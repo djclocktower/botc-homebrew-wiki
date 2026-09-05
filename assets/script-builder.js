@@ -64,7 +64,7 @@
   var rosterCache = null;   // rosterChars(), invalidated on every change
 
   var nightUI = null, jinxUI = null;
-  var nightDirty = true, jinxDirty = true;
+  var nightDirty = true, jinxDirty = true, analyseDirty = true;
   var activeTab = 'script';
 
   // How the roster is drawn (assets/script-builder-view.js). Never part of
@@ -193,7 +193,44 @@
       if (e && ((e.off && e.off.length) || (e.add && e.add.length))) m.jinxEdits = e;
       else delete m.jinxEdits;
     });
+    analyseDirty = true;
     paintRoster();
+  }
+
+  // ── the script's shape and its locks (script-builder-tools.js) ──────────
+  /* `shape` is how many of each team the script is aiming for; the default
+     (13 / 4 / 4 / 4) is stored as nothing. `locks` are the characters
+     Random keeps and Clear leaves alone. Both live on the meta, so they
+     travel with the script into My Scripts and a share link. */
+  function shape() {
+    return window.SBTools ? window.SBTools.shapeOf(getMeta()) : null;
+  }
+  function setShape(sh) {
+    if (!window.SBTools) return;
+    patchMeta(function (m) {
+      var st = window.SBTools.shapeStore(sh);
+      if (st) m.shape = st; else delete m.shape;
+    });
+    analyseDirty = true;
+    paintCounts();
+    paintShape();
+    if (activeTab === 'analyse') ensurePane();
+  }
+  function locks() {
+    var m = getMeta();
+    return Array.isArray(m.locks) ? m.locks.filter(function (x) { return sel[x]; }) : [];
+  }
+  function isLocked(slug) { return locks().indexOf(slug) !== -1; }
+  function toggleLock(slug) {
+    if (!sel[slug]) return;
+    patchMeta(function (m) {
+      var L = Array.isArray(m.locks) ? m.locks.slice() : [];
+      var i = L.indexOf(slug);
+      if (i === -1) L.push(slug); else L.splice(i, 1);
+      if (L.length) m.locks = L; else delete m.locks;
+    });
+    paintRoster();
+    toast(isLocked(slug) ? bySlug[slug].name + ' is locked: Random keeps it.' : bySlug[slug].name + ' unlocked.');
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -258,8 +295,9 @@
   function afterChange() {
     paintCounts();
     paintRoster();
-    nightDirty = jinxDirty = true;
-    if (activeTab === 'night' || activeTab === 'jinx') ensurePane();
+    nightDirty = jinxDirty = analyseDirty = true;
+    if (activeTab === 'night' || activeTab === 'jinx' || activeTab === 'analyse') ensurePane();
+    if (!$('sbx-shape').hidden) paintShape();
     settle();
   }
 
@@ -279,12 +317,65 @@
       total++;
     });
     var miss = missingSlugs().length;
-    var html = '<span class="sbx-cnt sbx-cnt-total">' + (total + miss) + ' character' +
-      ((total + miss) === 1 ? '' : 's') + '</span>';
+    var all = total + miss;
+    var sh = shape();
+    var want = sh && window.SBTools ? window.SBTools.shapeTotal(sh) : 0;
+    function state(h, w) { return w ? (h === w ? ' ok' : (h > w ? ' over' : ' under')) : ''; }
+    var html = '<span class="sbx-cnt sbx-cnt-total' + state(all, want) + '">' + all + (want ? '/' + want : '') +
+      ' character' + (all === 1 && !want ? '' : 's') + '</span>';
     TEAMS.forEach(function (t) {
-      if (counts[t[0]]) html += '<span class="sbx-cnt">' + counts[t[0]] + ' ' + esc(t[1]) + '</span>';
+      var h = counts[t[0]] || 0, w = sh ? sh[t[0]] : 0;
+      if (!h && !w) return;
+      html += '<span class="sbx-cnt' + state(h, w) + '">' + h + (w ? '/' + w : '') + ' ' + esc(t[1]) + '</span>';
     });
     $('sbx-counts').innerHTML = html;
+  }
+
+  /* The Shape popover: presets, a number per team, and Fill. */
+  function paintShape() {
+    var host = $('sbx-shape-body');
+    var T = window.SBTools;
+    if (!host || !T) return;
+    var sh = shape(), key = T.shapeKey(sh), have = T.countTeams(rosterChars());
+    var html = '<div class="sbx-view-presets" role="group" aria-label="Shapes">' + T.SHAPES.map(function (p) {
+      return '<button type="button" class="sbx-view-preset' + (p.key === key ? ' on' : '') + '" data-shape="' +
+        esc(p.key) + '" title="' + esc(p.hint) + '">' + esc(p.label) + '</button>';
+    }).join('') + '</div>';
+    html += '<div class="sbx-shape-grid">' + TEAMS.map(function (t) {
+      var w = sh[t[0]], h = have[t[0]] || 0;
+      var pct = w ? Math.min(100, Math.round(100 * h / w)) : 0;
+      return '<label class="sbx-shape-row">' +
+        '<span class="sbx-shape-label">' + esc(t[1]) + '</span>' +
+        '<input type="number" min="0" max="99" inputmode="numeric" value="' + w + '" data-team="' + esc(t[0]) + '" aria-label="' + esc(t[1]) + ' target">' +
+        '<span class="sbx-shape-bar"><span class="' + (w && h > w ? 'over' : (w && h === w ? 'ok' : '')) + '" style="width:' + pct + '%"></span></span>' +
+        '<span class="sbx-shape-have">' + h + ' on it</span>' +
+      '</label>';
+    }).join('') + '</div>';
+    html += '<div class="sbx-view-foot">' +
+      '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape and keeps the locked characters. Fill only adds what is missing, from whatever the panel is showing.</span>' +
+      '<button type="button" class="sbx-b-sm" id="sbx-fill">&#9860; Fill the gaps</button>' +
+      '</div>';
+    host.innerHTML = html;
+  }
+  function readShapeInputs() {
+    var out = {};
+    [].slice.call($('sbx-shape-body').querySelectorAll('input[data-team]')).forEach(function (i) {
+      out[i.getAttribute('data-team')] = Number(i.value);
+    });
+    return out;
+  }
+  function fillGaps() {
+    var T = window.SBTools;
+    if (!T) return;
+    var plan = T.fillPlan(visibleSidebarChars(), rosterChars(), shape());
+    var shortBits = Object.keys(plan.short).map(function (t) { return plan.short[t] + ' ' + T.TEAM_LABEL[t]; });
+    if (!plan.add.length) {
+      toast(shortBits.length ? 'Nothing in the panel fits the gaps (' + shortBits.join(', ') + ').' : 'Every team is already at its target.');
+      return;
+    }
+    replaceOrder(order.concat(plan.add));
+    toast('Added ' + plan.add.length + ' character' + (plan.add.length === 1 ? '' : 's') +
+      (shortBits.length ? '. Short of ' + shortBits.join(', ') + ' in the panel.' : '.'));
   }
 
   /* The roster as the VIEW shows it. `order` (and so rosterChars(), the
@@ -305,6 +396,8 @@
     else if (o === 'night') arr.sort(function (a, b) { return ti(a) - ti(b) || nightKey(a) - nightKey(b); });
     return arr;
   }
+
+  var lockSet = {};   // the locks, as a set, for the length of one paintRoster()
 
   /* slug -> the names it is jinxed with on this script, for the row marks. */
   function jinxMarks() {
@@ -335,9 +428,10 @@
     if (jinxedWith && jinxedWith.length) {
       marks += '<span class="sbx-ch-jx" title="Jinxed with ' + esc(jinxedWith.join(', ')) + '">&#9903;' + jinxedWith.length + '</span>';
     }
+    var locked = lockSet[c.slug] === 1;
     // Name and ability are ONE paragraph, the way the character sheet
     // prints them — not a name stacked over its ability in a box.
-    return '<div class="sbx-ch" data-slug="' + esc(c.slug) + '">' +
+    return '<div class="sbx-ch' + (locked ? ' locked' : '') + '" data-slug="' + esc(c.slug) + '">' +
       '<img class="sbx-ch-img" loading="lazy" decoding="async" src="' +
         esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
       '<p class="sbx-ch-txt">' +
@@ -349,6 +443,10 @@
         '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
         (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') +
       '</p>' +
+      '<button type="button" class="sbx-ch-lock' + (locked ? ' on' : '') + '" data-slug="' + esc(c.slug) +
+        '" aria-pressed="' + (locked ? 'true' : 'false') + '" title="' +
+        (locked ? 'Locked: Random and Clear keep this character' : 'Lock: keep this character when the script is randomised') +
+        '" aria-label="' + (locked ? 'Unlock ' : 'Lock ') + esc(c.name) + '">' + (locked ? '&#128274;' : '&#128275;') + '</button>' +
       '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
         '" aria-label="Remove ' + esc(c.name) + '">&#10005;</button>' +
     '</div>';
@@ -364,6 +462,8 @@
       return;
     }
     var jx = jinxMarks();
+    lockSet = {};
+    locks().forEach(function (x) { lockSet[x] = 1; });
     var html = '';
     TEAMS.forEach(function (t) {
       var group = chars.filter(function (c) { return c.team === t[0]; });
@@ -536,10 +636,96 @@
         jinxUI.render();
         jinxDirty = false;
       }
+    } else if (activeTab === 'analyse') {
+      if (analyseDirty) { paintAnalysis(); analyseDirty = false; }
     } else if (activeTab === 'meta') {
       paintCredits();
       paintEditNote();
+      paintTextPreview();
     }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  The Analyse tab (the reading is SBTools.analyse; this only draws it)
+  // ══════════════════════════════════════════════════════════════════════
+  function paintAnalysis() {
+    var host = $('sbx-analyse-body');
+    var T = window.SBTools;
+    if (!host || !T) return;
+    var chars = rosterChars();
+    if (!chars.length) {
+      host.innerHTML = '<p class="sbx-empty-in">Add characters and this tab will tell you about the script.</p>';
+      $('sbx-tab-an-n').textContent = '';
+      return;
+    }
+    var a = T.analyse(chars, { shape: shape(), jinxes: scriptJinxes(), allBySlug: bySlug });
+    var bad = a.warnings.filter(function (w) { return w.level !== 'note'; }).length;
+    $('sbx-tab-an-n').textContent = bad ? '(' + bad + ')' : '';
+
+    function chip(n, label) { return '<span class="sbx-an-chip"><b>' + n + '</b>' + esc(label) + '</span>'; }
+    var html = '<div class="sbx-an">';
+
+    // shape
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Shape</h3>';
+    a.teams.forEach(function (t) {
+      if (!t.have && !t.want) return;
+      var pct = t.want ? Math.min(100, Math.round(100 * t.have / t.want)) : (t.have ? 100 : 0);
+      html += '<div class="sbx-an-row"><span class="sbx-shape-label">' + esc(t.label) + '</span>' +
+        '<span class="sbx-shape-bar"><span class="' + (t.want && t.have > t.want ? 'over' : (t.want && t.have === t.want ? 'ok' : '')) +
+        '" style="width:' + pct + '%"></span></span>' +
+        '<span class="sbx-shape-have">' + t.have + (t.want ? ' / ' + t.want : '') + '</span></div>';
+    });
+    html += '<p class="sbx-an-fact" style="margin-top:6px"><b>' + a.total + '</b> character' + (a.total === 1 ? '' : 's') +
+      (a.shapeTotal ? ' of ' + a.shapeTotal : '') + ' &middot; ' + a.homebrew + ' homebrew, ' + a.official + ' official</p>';
+    html += '</div>';
+
+    // warnings
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Worth a look</h3>';
+    if (!a.warnings.length) html += '<p class="sbx-an-empty">Nothing to flag.</p>';
+    else {
+      html += '<ul class="sbx-an-list">' + a.warnings.map(function (w) {
+        return '<li class="' + esc(w.level) + '">' + esc(w.text) + (w.list ? '<small>' + esc(w.list.join(', ')) + '</small>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    html += '</div>';
+
+    // at a glance
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">At a glance</h3><div class="sbx-an-chips">' +
+      chip(a.night.first, 'act on the first night') + chip(a.night.other, 'act on other nights') + chip(a.night.never, 'never wake') +
+      chip(a.info, 'learn things') + chip(a.misinfo, 'cause false info') + chip(a.killers, 'kill') + chip(a.protect, 'protect') +
+      chip(a.jinxes, 'jinx' + (a.jinxes === 1 ? '' : 'es')) +
+      '</div>';
+    if (a.setup.length) html += '<p class="sbx-an-fact" style="margin-top:8px"><b>Change the setup:</b> ' + esc(a.setup.join(', ')) + '</p>';
+    if (a.outsiderMods.length) html += '<p class="sbx-an-fact"><b>Change the Outsider count:</b> ' + esc(a.outsiderMods.join(', ')) + '</p>';
+    html += '</div>';
+
+    // tags
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Tags</h3>';
+    if (!a.tags.length) html += '<p class="sbx-an-empty">No tags on these characters yet.</p>';
+    else html += '<div class="sbx-an-chips">' + a.tags.slice(0, 18).map(function (t) { return chip(t.n, t.tag); }).join('') +
+      (a.tags.length > 18 ? '<span class="sbx-an-chip">&hellip; ' + (a.tags.length - 18) + ' more</span>' : '') + '</div>';
+    html += '</div>';
+
+    // creators
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Creators</h3>';
+    if (!a.creators.length) html += '<p class="sbx-an-empty">No credits yet.</p>';
+    else html += '<div class="sbx-an-chips">' + a.creators.slice(0, 24).map(function (c) { return chip(c.n, c.name); }).join('') + '</div>';
+    html += '</div>';
+
+    // jinx suggestions
+    if (a.suggest.length) {
+      html += '<div class="sbx-an-sec wide"><h3 class="sbx-an-head">Jinxed with someone not on this script</h3>';
+      a.suggest.slice(0, 12).forEach(function (sg) {
+        html += '<div class="sbx-an-sug">' +
+          '<img loading="lazy" decoding="async" src="' + esc(artOf(sg.to)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+          '<span class="t"><strong>' + esc(sg.to.name) + '</strong> with ' + esc(sg.from.name) +
+          (sg.text ? '<small>' + esc(sg.text) + '</small>' : '') + '</span>' +
+          '<button type="button" class="sbx-b-sm" data-add="' + esc(sg.to.slug) + '">&#43; Add</button></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    host.innerHTML = html;
   }
 
   function scriptJinxes() {
@@ -698,7 +884,10 @@
     if (!$('sbx-side').classList.contains('on')) document.documentElement.classList.remove('sbx-locked');
   }
   function togglePop(id, anchor) {
-    if (openPopId === id) closePops(); else openPop(id, anchor);
+    hidePeek();
+    if (openPopId === id) { closePops(); return; }
+    if (id === 'sbx-shape') paintShape();
+    openPop(id, anchor);
   }
 
   function focusSearch() {
@@ -723,6 +912,224 @@
       out.push(row);
     });
     return out;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Copy as text
+  // ══════════════════════════════════════════════════════════════════════
+  var TEXT_OPTS = ['abilities', 'jinxes', 'night', 'rules', 'notes'];
+  function textOpts() {
+    var o = prefs.text || {};
+    return {
+      format: o.format || 'plain',
+      abilities: o.abilities !== false, jinxes: !!o.jinxes, night: !!o.night, rules: !!o.rules, notes: !!o.notes
+    };
+  }
+  function buildText() {
+    var T = window.SBTools, PR = window.PageRender;
+    if (!T) return '';
+    var o = textOpts();
+    var chars = rosterChars();
+    return T.textExport(chars, getMeta(), {
+      format: o.format, abilities: o.abilities, jinxes: o.jinxes, night: o.night, rules: o.rules, notes: o.notes,
+      jinxList: o.jinxes ? scriptJinxes() : [],
+      nightItems: (o.night && PR && PR.nightItems) ? PR.nightItems(chars, getNightOrder()) : null
+    });
+  }
+  function paintTextPreview() {
+    var box = $('sb-text-preview');
+    if (!box) return;
+    var o = textOpts();
+    $('sb-text-fmt').value = o.format;
+    TEXT_OPTS.forEach(function (k) { $('sb-text-' + k).checked = !!o[k]; });
+    box.value = order.length ? buildText() : '';
+    box.placeholder = order.length ? '' : 'Add characters and the script appears here as text.';
+  }
+  function copyText(btn) {
+    if (!notEmpty()) return;
+    var text = buildText();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
+        function () { window.prompt('Copy the script:', text); });
+    } else { window.prompt('Copy the script:', text); }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Loading a page published on this wiki
+  // ══════════════════════════════════════════════════════════════════════
+  /* The picker fills itself the first time it is opened — two small feeds
+     nobody should pay for on a page they came to for the panel. A pick
+     fetches /api/page-json, the same export the page's own Download JSON
+     button saves, and hands it to the ordinary importer. */
+  var wikiPickLoaded = false;
+  function loadWikiPick() {
+    if (wikiPickLoaded) return Promise.resolve();
+    wikiPickLoaded = true;
+    var sel2 = $('sb-wiki-pick');
+    return Promise.all([
+      fetch('scripts.json').then(function (r) { return r.json(); }).catch(function () { return []; }),
+      fetch('collections.json').then(function (r) { return r.json(); }).catch(function () { return []; })
+    ]).then(function (both) {
+      function group(label, rows, type, keyOf, nameOf) {
+        rows = (rows || []).filter(function (r) { return r && keyOf(r); })
+          .sort(function (a, b) { return String(nameOf(a)).localeCompare(String(nameOf(b))); });
+        if (!rows.length) return '';
+        return '<optgroup label="' + esc(label) + '">' + rows.map(function (r) {
+          return '<option value="' + esc(type + ':' + keyOf(r)) + '">' + esc(nameOf(r)) + '</option>';
+        }).join('') + '</optgroup>';
+      }
+      sel2.innerHTML = '<option value="">Pick a published script or collection…</option>' +
+        group('Scripts', both[0], 'script', function (r) { return r.slug; }, function (r) { return r.name || r.slug; }) +
+        group('Collections', both[1], 'collection', function (r) { return r.id || r.slug; }, function (r) { return r.displayName || r.name || r.id || r.slug; });
+    });
+  }
+  function loadFromWiki(type, key, btn) {
+    if (!type || !key) return;
+    if (btn) flash(btn, 'Loading…');
+    fetch('api/page-json?type=' + encodeURIComponent(type) + '&slug=' + encodeURIComponent(key))
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function (text) { importScript(text); })
+      .catch(function () { alert('That page could not be loaded. It may be a draft, or the wiki may be unreachable.'); });
+  }
+  /* A pasted link to a script or collection page on this wiki. */
+  function wikiLinkIn(text) {
+    var m = /\/s\/([a-z0-9-]+)/i.exec(text);
+    if (m) return { type: 'script', key: m[1] };
+    m = /\/collection\/([a-z0-9-]+)/i.exec(text);
+    if (m) return { type: 'collection', key: m[1] };
+    m = /[?&]s=([a-z0-9-]+)/i.exec(text);
+    if (m) return { type: 'script', key: m[1] };
+    return null;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  The peek card: a character at a glance
+  // ══════════════════════════════════════════════════════════════════════
+  /* Hover a row for half a second (a mouse), or hold a finger on it (a
+     phone), and the character is shown whole: the icon at a readable size,
+     the ability, tags, when it acts, who it is jinxed with. A click still
+     adds or removes — the card never gets in the way of that. */
+  var peekTimer = null, peekSlug = '', peekPress = null;
+  var FINE = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : { matches: true };
+
+  function peekHTML(c) {
+    var PR = window.PageRender;
+    var schema = null;
+    try { if (window.buildSchema) schema = window.buildSchema(c); } catch (e) { schema = null; }
+    var tags = window.SBTools ? window.SBTools.tagsOf(c) : [];
+    var facts = [];
+    var fn = schema ? schema.firstNight : Number(c.firstNight) || 0;
+    var on = schema ? schema.otherNight : Number(c.otherNight) || 0;
+    if (fn > 0 || on > 0) {
+      facts.push('<b>Acts</b> ' + (fn > 0 ? 'first night' : '') + (fn > 0 && on > 0 ? ' and ' : '') + (on > 0 ? 'other nights' : ''));
+    } else facts.push('<b>Never wakes</b>');
+    if (schema && schema.firstNightReminder) facts.push('<b>First night:</b> ' + esc(schema.firstNightReminder));
+    if (schema && schema.otherNightReminder) facts.push('<b>Other nights:</b> ' + esc(schema.otherNightReminder));
+    var rem = [].concat(c.reminders || [], c.remindersGlobal || []).filter(Boolean);
+    if (rem.length) facts.push('<b>Reminders:</b> ' + esc(rem.join(', ')));
+    var jx = [];
+    (sel[c.slug] ? scriptJinxes() : []).forEach(function (j) {
+      if (j.a.slug === c.slug) jx.push(j.b.name); else if (j.b.slug === c.slug) jx.push(j.a.name);
+    });
+    if (!jx.length && Array.isArray(c.jinxes) && c.jinxes.length && window.resolveJinxTarget) {
+      c.jinxes.forEach(function (j) {
+        try { var t = window.resolveJinxTarget(j, '', c); if (t && t.name) jx.push(t.name); } catch (e) { /* skip */ }
+      });
+    }
+    if (jx.length) facts.push('<b>Jinxed with:</b> ' + esc(jx.join(', ')));
+    var cls = (!c.official && window.isPartial && window.isPartial(c)) ? 'Partial page' : ((window.isCurata && window.isCurata(c)) ? 'Curata' : '');
+    var isOn = !!sel[c.slug];
+    return '<button type="button" class="sbx-pop-x sbx-peek-close" data-peek-close aria-label="Close">&#10005;</button>' +
+      '<div class="sbx-peek-top">' +
+        '<img class="sbx-peek-img" src="' + esc(artFull(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+        '<div style="min-width:0;flex:1">' +
+          '<p class="sbx-peek-name">' + esc(c.name) + '</p>' +
+          '<span class="sbx-peek-team ' + esc(c.team || '') + '">' + esc(c.team || '') + '</span>' +
+          (c.official ? '<span class="sbx-peek-team">official</span>' : '') +
+          (cls ? '<span class="sbx-peek-team">' + esc(cls) + '</span>' : '') +
+          (!c.official && c.creator ? '<p class="sbx-peek-by">by ' + esc(c.creator) + '</p>' : '') +
+        '</div>' +
+      '</div>' +
+      '<p class="sbx-peek-ab">' + esc(c.ability || '(no ability text)') + '</p>' +
+      (tags.length ? '<p class="sbx-peek-facts" style="margin-top:6px">' + tags.map(function (t) { return '<span class="sbx-tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
+      '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
+      '<div class="sbx-peek-acts">' +
+        '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? '&#10005; Remove from script' : '&#43; Add to script') + '</button>' +
+        (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page &#8599;</a>' : '') +
+      '</div>';
+  }
+  function showPeek(slug, x, y) {
+    var c = bySlug[slug];
+    var pop = $('sbx-peek');
+    if (!c || !pop || openPopId) return;
+    peekSlug = slug;
+    pop.innerHTML = peekHTML(c);
+    pop.hidden = false;
+    var mobile = window.innerWidth <= 900;
+    if (mobile) {
+      pop.style.top = pop.style.left = '';
+      $('sbx-popscrim').classList.add('on');
+      document.documentElement.classList.add('sbx-locked');
+      return;
+    }
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    var left = x + 18, top = y + 14;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, x - w - 18);
+    if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
+    pop.style.left = Math.round(left) + 'px';
+    pop.style.top = Math.round(top) + 'px';
+  }
+  function hidePeek() {
+    if (peekTimer) { clearTimeout(peekTimer); peekTimer = null; }
+    var pop = $('sbx-peek');
+    if (!pop || pop.hidden) { peekSlug = ''; return; }
+    pop.hidden = true;
+    peekSlug = '';
+    if (!openPopId) {
+      $('sbx-popscrim').classList.remove('on');
+      if (!$('sbx-side').classList.contains('on')) document.documentElement.classList.remove('sbx-locked');
+    }
+  }
+  function slugUnder(target) {
+    var el = target && target.closest ? (target.closest('.sbx-add-item') || target.closest('.sbx-ch')) : null;
+    return el ? el.getAttribute('data-slug') : '';
+  }
+  function wirePeek(list) {
+    // hover, with a mouse
+    list.addEventListener('mouseover', function (e) {
+      if (!FINE.matches) return;
+      var slug = slugUnder(e.target);
+      if (!slug || slug === peekSlug) return;
+      if (peekTimer) clearTimeout(peekTimer);
+      var x = e.clientX, y = e.clientY;
+      peekTimer = setTimeout(function () { peekTimer = null; showPeek(slug, x, y); }, 520);
+    });
+    list.addEventListener('mouseout', function (e) {
+      if (!FINE.matches) return;
+      var to = e.relatedTarget;
+      if (to && to.closest && (to.closest('#sbx-peek') || slugUnder(to) === peekSlug)) return;
+      hidePeek();
+    });
+    // a long press, with a finger
+    list.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'touch') return;
+      var slug = slugUnder(e.target);
+      if (!slug) return;
+      peekPress = { slug: slug, x: e.clientX, y: e.clientY, t: setTimeout(function () {
+        peekPress = null;
+        showPeek(slug, e.clientX, e.clientY);
+      }, 550) };
+    });
+    function cancelPress(e) {
+      if (!peekPress) return;
+      if (e.type === 'pointermove' && Math.hypot(e.clientX - peekPress.x, e.clientY - peekPress.y) < 10) return;
+      clearTimeout(peekPress.t);
+      peekPress = null;
+    }
+    list.addEventListener('pointermove', cancelPress);
+    list.addEventListener('pointerup', cancelPress);
+    list.addEventListener('pointercancel', cancelPress);
+    list.addEventListener('scroll', hidePeek, { passive: true });
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -762,8 +1169,8 @@
       .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
     return (n || 'homebrew-script') + '.json';
   }
-  function download(name, text) {
-    var url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  function download(name, text, mime) {
+    var url = URL.createObjectURL(new Blob([text], { type: mime || 'application/json' }));
     var a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -797,7 +1204,7 @@
   function encodeShare() {
     var m = getMeta();
     var extra = {};
-    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits'].forEach(function (k) {
+    ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes'].forEach(function (k) {
       if (m[k] != null && m[k] !== '' && m[k] !== false) extra[k] = m[k];
     });
     var payload = { n: m.name || '', a: m.author || '', c: order.slice() };
@@ -1176,6 +1583,7 @@
     $('sb-author2').value = m.author || '';
     $('sb-hidetitle').checked = !!m.hideTitle;
     $('sb-almanac').value = m.almanac || '';
+    $('sb-notes').value = m.notes || '';
     $('sb-boot-list').innerHTML = '';
     (m.bootlegger || []).forEach(addBootRow);
     document.title = ((m.name || '').trim() || 'Script Builder') + ' — BOTC HomeBrew Wiki';
@@ -1332,8 +1740,79 @@
 
     $('sb-script').addEventListener('click', function (e) {
       var x = e.target.closest('.sbx-ch-x');
-      if (x) removeSlug(x.getAttribute('data-slug'));
+      if (x) { removeSlug(x.getAttribute('data-slug')); return; }
+      var lk = e.target.closest('.sbx-ch-lock');
+      if (lk) toggleLock(lk.getAttribute('data-slug'));
     });
+    $('sbx-analyse-body').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-add]');
+      if (!b) return;
+      var slug = b.getAttribute('data-add');
+      if (bySlug[slug] && !sel[slug]) { toggle(slug); toast('Added ' + bySlug[slug].name); }
+    });
+    // the shape popover
+    $('sbx-shape-body').addEventListener('click', function (e) {
+      var p = e.target.closest('button[data-shape]');
+      if (p && window.SBTools) {
+        var key = p.getAttribute('data-shape');
+        window.SBTools.SHAPES.forEach(function (x) { if (x.key === key) setShape(x.shape); });
+        return;
+      }
+      if (e.target.closest('#sbx-fill')) fillGaps();
+    });
+    $('sbx-shape-body').addEventListener('change', function (e) {
+      if (e.target.matches && e.target.matches('input[data-team]')) setShape(readShapeInputs());
+    });
+    // notes
+    $('sb-notes').addEventListener('input', debounce(function () {
+      var v = $('sb-notes').value.slice(0, 4000);
+      patchMeta(function (m) { if (v.trim()) m.notes = v; else delete m.notes; }, 'typed');
+    }, 350));
+    // copy as text
+    $('sb-text-fmt').addEventListener('change', function () {
+      prefs.text = prefs.text || {};
+      prefs.text.format = this.value;
+      savePrefs();
+      paintTextPreview();
+    });
+    TEXT_OPTS.forEach(function (k) {
+      $('sb-text-' + k).addEventListener('change', function () {
+        prefs.text = prefs.text || {};
+        prefs.text[k] = this.checked;
+        savePrefs();
+        paintTextPreview();
+      });
+    });
+    $('sb-text-copy').addEventListener('click', function () { copyText(this); });
+    $('sb-text-dl').addEventListener('click', function () {
+      if (!notEmpty()) return;
+      download(fileName().replace(/\.json$/, '.txt'), buildText(), 'text/plain');
+    });
+    // from this wiki
+    var pick = $('sb-wiki-pick');
+    ['focus', 'pointerdown', 'touchstart'].forEach(function (ev) {
+      pick.addEventListener(ev, function () { loadWikiPick(); }, { passive: true, once: true });
+    });
+    $('sb-wiki-load').addEventListener('click', function () {
+      var v = pick.value;
+      if (!v) { loadWikiPick(); toast('Pick a script or collection first.'); return; }
+      var i = v.indexOf(':');
+      loadFromWiki(v.slice(0, i), v.slice(i + 1), this);
+    });
+    // the peek card
+    wirePeek($('sb-add-list'));
+    wirePeek($('sb-script'));
+    $('sbx-peek').addEventListener('click', function (e) {
+      if (e.target.closest('[data-peek-close]')) { hidePeek(); return; }
+      var tg = e.target.closest('button[data-peek-toggle]');
+      if (tg) {
+        var slug = tg.getAttribute('data-peek-toggle');
+        toggle(slug);
+        toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
+        hidePeek();
+      }
+    });
+    $('sbx-peek').addEventListener('mouseleave', function () { if (FINE.matches) hidePeek(); });
 
     // ── abilities inline instead of behind a chevron ──
     var abil = $('sbx-abilities');
@@ -1414,7 +1893,7 @@
     [].slice.call(document.querySelectorAll('[data-pop-close]')).forEach(function (b) {
       b.addEventListener('click', closePops);
     });
-    $('sbx-popscrim').addEventListener('click', closePops);
+    $('sbx-popscrim').addEventListener('click', function () { closePops(); hidePeek(); });
     window.addEventListener('resize', placePop);
     $('sbx-undo').addEventListener('click', undo);
     $('sbx-redo').addEventListener('click', redo);
@@ -1424,6 +1903,7 @@
       var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
       var mod = e.ctrlKey || e.metaKey;
       if (e.key === 'Escape') {
+        if (peekSlug) { hidePeek(); return; }
         if (openPopId) { closePops(); return; }
         closeMenu();
         if (typing && t.id === 'sb-filter' && t.value) { t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })); return; }
@@ -1455,8 +1935,9 @@
     });
     $('sb-paste-go').addEventListener('click', function () {
       var t = $('sb-paste').value.trim();
-      if (!t) { alert('Paste a script JSON into the box first.'); return; }
-      importScript(t);
+      if (!t) { alert('Paste a script JSON, or a link to a page on this wiki, into the box first.'); return; }
+      var link = t.charAt(0) !== '[' && t.charAt(0) !== '{' ? wikiLinkIn(t) : null;
+      if (link) loadFromWiki(link.type, link.key, this); else importScript(t);
       $('sb-paste').value = '';
     });
     $('sb-import-file').addEventListener('change', function (e) {
@@ -1518,8 +1999,11 @@
     'new': function () { newScript(); },
     clear: function () {
       if (!order.length) return;
-      if (!confirm('Remove every character from this script?\n\nThe name and the details are kept.')) return;
-      replaceOrder([]);
+      var L = locks();
+      if (!confirm('Remove every character from this script?' +
+        (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : '') +
+        '\n\nThe name and the details are kept.')) return;
+      replaceOrder(L);
     }
   };
 
@@ -1544,32 +2028,19 @@
   /* Homebrew only, deliberately: 180-odd official characters in the pool
      would swamp a random homebrew script. Add officials by hand. (Official
      rows never carry data-source="homebrew", so visibleSidebarChars()
-     leaves them out whatever the Source chip says.) */
+     leaves them out whatever the Source chip says.) The draw goes to the
+     script's SHAPE and keeps its locked characters — see SBTools.randomPlan. */
   function randomize() {
-    if (!allChars.length) return;
+    if (!allChars.length || !window.SBTools) return;
     var pool = visibleSidebarChars();
     if (!pool.length) { alert('No homebrew characters match your current filters.'); return; }
-    if (order.length && !confirm('Replace this script with a random one?')) return;
-    var COUNTS = { townsfolk: 13, outsider: 4, minion: 4, demon: 4 };
-    function shuffle(arr) {
-      for (var i = arr.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
-      }
-      return arr;
-    }
-    var byTeam = {};
-    pool.forEach(function (c) {
-      if (!byTeam[c.team]) byTeam[c.team] = [];
-      byTeam[c.team].push(c);
-    });
-    var picked = [];
-    Object.keys(COUNTS).forEach(function (team) {
-      var pool = shuffle((byTeam[team] || []).slice());
-      picked = picked.concat(pool.slice(0, Math.min(COUNTS[team], pool.length))
-        .map(function (c) { return c.slug; }));
-    });
-    replaceOrder(picked);
+    var L = locks();
+    if (order.length > L.length && !confirm('Replace this script with a random one?' +
+      (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : ''))) return;
+    var plan = window.SBTools.randomPlan(pool, rosterChars(), shape(), L);
+    replaceOrder(plan.slugs);
+    var shortBits = Object.keys(plan.short).map(function (t) { return plan.short[t] + ' ' + window.SBTools.TEAM_LABEL[t]; });
+    if (shortBits.length) toast('The panel is short of ' + shortBits.join(', ') + ' for this shape.', 3200);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1584,6 +2055,22 @@
         officialChars.push(c);
         bySlug[c.slug] = c;
       });
+      // The official half of the jinx registries: a jinx naming an official
+      // character resolves to it (icon, name, the official wiki) before any
+      // homebrew page sharing the name — the same order every page uses.
+      if (window.slugId && window.setOfficialIconUrls && window.setOfficialNames) {
+        var icons = {}, names = {};
+        (both[0] || []).forEach(function (r) {
+          if (!r || !r.id) return;
+          if (r.image && /^https?:\/\//.test(r.image)) {
+            icons[window.slugId(r.id)] = r.image;
+            if (r.name) icons[window.slugId(r.name)] = r.image;
+          }
+          if (r.name) { names[window.slugId(r.id)] = r.name; names[window.slugId(r.name)] = r.name; }
+        });
+        window.setOfficialIconUrls(icons);
+        window.setOfficialNames(names);
+      }
       // Dusk, the minion and demon info steps, and dawn — without them the
       // export writes no night sequence at all rather than an incomplete one.
       if (window.PageRender && both[1]) window.PageRender.setNightMeta(both[1].meta);
@@ -1599,6 +2086,13 @@
     ]).then(function (both) {
       allChars = both[1] || [];
       allChars.forEach(function (c) { bySlug[c.slug] = c; });
+      // The jinx resolver's wiki registry — one keying rule for every jinx
+      // lookup, shared with the Worker's own index (window.jinxCharIndex
+      // owns the order) — so a jinx typed as a name finds its page, and the
+      // peek card and the Analyse tab can say who it is with.
+      if (window.setWikiChars && window.jinxCharIndex) {
+        try { window.setWikiChars(window.jinxCharIndex(allChars).byKey); } catch (e) { /* fine */ }
+      }
 
       var params = new URLSearchParams(location.search);
       // Legacy edit links (script?s={slug}) live on the publish page now.
@@ -1649,9 +2143,10 @@
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
         if (sh.m && typeof sh.m === 'object') {
-          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits'].forEach(function (k) {
+          ['hideTitle', 'almanac', 'bootlegger', 'nightOrder', 'jinxEdits', 'shape', 'notes'].forEach(function (k) {
             if (sh.m[k] != null) m[k] = sh.m[k];
           });
+          if (typeof m.notes === 'string') m.notes = m.notes.slice(0, 4000); else delete m.notes;
         }
         setMeta(m);
         primeForm();

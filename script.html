@@ -108,7 +108,7 @@
           <input class="sbx-title" id="sb-name" type="text" placeholder="Untitled Script" maxlength="90" aria-label="Script name" spellcheck="false">
           <input class="sbx-author" id="sb-author" type="text" placeholder="by you" maxlength="70" aria-label="Script author" spellcheck="false">
         </div>
-        <div class="sbx-counts" id="sbx-counts"></div>
+        <button type="button" class="sbx-counts" id="sbx-counts" data-pop="sbx-shape" aria-haspopup="dialog" aria-expanded="false" title="The shape this script is aiming for"></button>
         <div class="sbx-acts">
           <button type="button" class="sbx-b sbx-b-icon" id="sbx-undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>&#8630;</button>
           <button type="button" class="sbx-b sbx-b-icon" id="sbx-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>&#8631;</button>
@@ -139,6 +139,7 @@
         <button type="button" class="sbx-tab on" data-tab="script" role="tab" aria-selected="true">Script</button>
         <button type="button" class="sbx-tab" data-tab="night" role="tab" aria-selected="false">Night Order</button>
         <button type="button" class="sbx-tab" data-tab="jinx" role="tab" aria-selected="false">Jinxes <span class="sbx-tab-n" id="sbx-tab-jinx-n"></span></button>
+        <button type="button" class="sbx-tab" data-tab="analyse" role="tab" aria-selected="false">Analyse <span class="sbx-tab-n" id="sbx-tab-an-n"></span></button>
         <button type="button" class="sbx-tab" data-tab="meta" role="tab" aria-selected="false">Details &amp; Export</button>
       </nav>
 
@@ -168,6 +169,15 @@
           </div>
         </section>
 
+        <!-- ── analysis ── -->
+        <section class="sbx-pane" data-tab="analyse">
+          <div class="sbx-panel">
+            <h2 class="sbx-panel-head">Analysis</h2>
+            <p class="sbx-panel-sub">What this script is made of: the shape against its targets, who acts when, what the tags add up to, and anything worth a second look. Nothing here is stored &mdash; it is read off the roster as it stands.</p>
+            <div id="sbx-analyse-body"></div>
+          </div>
+        </section>
+
         <!-- ── details + export ── -->
         <section class="sbx-pane" data-tab="meta">
 
@@ -185,6 +195,10 @@
                 <label for="sb-author2">Author</label>
                 <input type="text" id="sb-author2" maxlength="70" placeholder="Your name">
               </div>
+            </div>
+            <div class="sbx-field" style="margin-top:10px">
+              <label for="sb-notes">Storyteller notes</label>
+              <textarea id="sb-notes" rows="3" maxlength="4000" placeholder="Anything you want to remember about running this script. Kept with the script in this browser and in share links; never in the exported JSON."></textarea>
             </div>
           </div>
 
@@ -217,6 +231,27 @@
               <button type="button" class="sbx-b-sm" id="sb-print">&#128424; Print / PDF</button>
               <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style print sheet of this script in Fancy Scripts">&#10024; Fancy Sheet</button>
             </div>
+            <div class="sbx-field sbx-text-box">
+              <label for="sb-text-fmt">Copy as text</label>
+              <div class="sbx-tool-row">
+                <select id="sb-text-fmt" aria-label="Text format">
+                  <option value="plain">Plain text</option>
+                  <option value="discord">Discord</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="names">Names only</option>
+                </select>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-abilities" checked> Abilities</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-jinxes"> Jinxes</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-night"> Night order</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-rules"> House rules</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-text-notes"> Notes</label>
+              </div>
+              <textarea id="sb-text-preview" rows="7" readonly spellcheck="false" aria-label="The script as text"></textarea>
+              <div class="sbx-tool-row">
+                <button type="button" class="sbx-b-sm" id="sb-text-copy">&#10697; Copy text</button>
+                <button type="button" class="sbx-b-sm" id="sb-text-dl">&#11015; Download .txt</button>
+              </div>
+            </div>
             <div class="sbx-credits">
               <img class="sbx-credits-skull" src="assets/logo_skull.webp" alt="" width="18" height="18">
               <span>Your export carries a <strong>botchomebrew.wiki</strong> Fabled crediting everyone whose characters are on it.</span>
@@ -232,9 +267,17 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Import</h2>
-            <p class="sbx-panel-sub">Load a script from a file, or paste the JSON straight in. Characters this wiki has are matched by id; anything it does not have is listed back to you.</p>
+            <p class="sbx-panel-sub">Load a script from a file, paste the JSON straight in, or pick a page published on this wiki. Characters this wiki has are matched by id; anything it does not have is listed back to you.</p>
             <div class="sbx-field" style="margin-bottom:10px">
-              <textarea id="sb-paste" rows="4" placeholder="Paste a script JSON here…" spellcheck="false"></textarea>
+              <label for="sb-wiki-pick">From this wiki</label>
+              <div class="sbx-tool-row">
+                <select id="sb-wiki-pick" style="flex:1 1 220px;min-width:0"><option value="">Pick a published script or collection…</option></select>
+                <button type="button" class="sbx-b-sm" id="sb-wiki-load">Load</button>
+              </div>
+            </div>
+            <div class="sbx-field" style="margin-bottom:10px">
+              <label for="sb-paste">Paste</label>
+              <textarea id="sb-paste" rows="4" placeholder="Paste a script JSON here — or a link to a script or collection page on this wiki." spellcheck="false"></textarea>
             </div>
             <div class="sbx-tool-row">
               <button type="button" class="sbx-b-sm" id="sb-paste-go">Import pasted JSON</button>
@@ -263,6 +306,15 @@
     <div class="sbx-pop-body" id="sbx-view-body"></div>
     <p class="sbx-keys"><strong>Keys</strong> &nbsp; <kbd>/</kbd> search &nbsp; <kbd>Enter</kbd> add the first match &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo &nbsp; <kbd>Esc</kbd> close</p>
   </div>
+  <div class="sbx-pop" id="sbx-shape" role="dialog" aria-label="Script shape" hidden>
+    <div class="sbx-pop-head">
+      <span class="sbx-pop-title">Script shape</span>
+      <span class="sbx-pop-sub">How many of each team this script is aiming for. Random and Fill draw to it, and the counts in the bar show how close you are.</span>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+    </div>
+    <div class="sbx-pop-body" id="sbx-shape-body"></div>
+  </div>
+  <div class="sbx-pop sbx-peek" id="sbx-peek" role="dialog" aria-label="Character" hidden></div>
   <div class="sbx-toast" id="sbx-toast" role="status" aria-live="polite"></div>
 
   <!-- creators.js first: render.js reads the credit-mark registry off it, so
@@ -279,6 +331,7 @@
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
   <script src="assets/script-builder-view.js"></script>
+  <script src="assets/script-builder-tools.js"></script>
   <script src="assets/script-builder.js"></script>
   <script src="assets/site.js"></script>
 </body>
