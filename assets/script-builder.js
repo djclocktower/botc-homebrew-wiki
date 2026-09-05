@@ -491,58 +491,99 @@
      attributes the browse cards do. Rebuilding it on every add would throw
      away whatever the reader had filtered to — and cost far more than the
      one class toggle a click actually needs. */
-  function buildAddList() {
+  /* The list is built in slices of a few hundred rows, one slice per
+     frame: the first slice is on screen within a frame of the data
+     arriving and the rest fill in below the fold while the reader is
+     already looking at their script. One innerHTML of 1,900 rows was a
+     single 300–500 ms block on a phone, and nothing could paint until it
+     ended. `done` runs after the last slice (the filter box mounts then —
+     it walks the whole list once). */
+  var CHUNK = 220;
+  var buildRun = 0;
+  function rowMarkup(c, i) {
+    var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
+    var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
+    return '<div class="sbx-add-row' + (sel[c.slug] ? ' on' : '') + '" data-team="' + esc(c.team || '') + '"' +
+      ' data-tags="' + esc(c.tags || '') + '"' +
+      ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
+      ' data-name="' + esc(c.name || '') + '"' +
+      ' data-order="' + i + '"' +
+      ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
+      ' data-partial="' + partial + '" data-curata="' + star + '">' +
+      '<div class="sbx-add-head-row">' +
+        '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') +
+          '" data-slug="' + esc(c.slug) + '" aria-pressed="' + (sel[c.slug] ? 'true' : 'false') + '">' +
+          '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' +
+            esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+          // The badge sits OUTSIDE the name, which is ellipsised: inside
+          // it, a long name would cut the one word saying whose character
+          // this is.
+          '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+          (c.official ? '<span class="sbx-off">official</span>' : '') +
+          '<span class="sbx-add-tick" aria-hidden="true">&#10003;</span>' +
+        '</button>' +
+        (c.ability
+          ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' +
+              esc(c.name) + '">&#9662;</button>'
+          : '') +
+      '</div>' +
+      // The filter box reads SAO's sort key off this element, so a
+      // character with no ability must have no element rather than one
+      // holding a stand-in sentence.
+      (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
+    '</div>';
+  }
+  function buildAddList(done) {
+    var run = ++buildRun;
     var browsable = allChars.concat(officialChars);
-    var html = '';
+    var groups = [];
     TEAMS.forEach(function (t) {
       var group = browsable.filter(function (c) { return c.team === t[0]; })
         .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
-      if (!group.length) return;
-      html += '<div class="sbx-add-group" data-team="' + esc(t[0]) + '">' +
-        '<h3 class="sbx-add-grouphead">' + esc(t[1]) +
-        ' <span class="sbx-add-groupcount">(' + group.length + ')</span></h3>' +
-        '<div class="sbx-add-rows">';
-      group.forEach(function (c, i) {
-        var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
-        var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
-        html += '<div class="sbx-add-row' + (sel[c.slug] ? ' on' : '') + '" data-team="' + esc(c.team || '') + '"' +
-          ' data-tags="' + esc(c.tags || '') + '"' +
-          ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
-          ' data-name="' + esc(c.name || '') + '"' +
-          ' data-order="' + i + '"' +
-          ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
-          ' data-partial="' + partial + '" data-curata="' + star + '">' +
-          '<div class="sbx-add-head-row">' +
-            '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') +
-              '" data-slug="' + esc(c.slug) + '" aria-pressed="' + (sel[c.slug] ? 'true' : 'false') + '">' +
-              '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' +
-                esc(artOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-              // The badge sits OUTSIDE the name, which is ellipsised: inside
-              // it, a long name would cut the one word saying whose character
-              // this is.
-              '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
-              (c.official ? '<span class="sbx-off">official</span>' : '') +
-              '<span class="sbx-add-tick" aria-hidden="true">&#10003;</span>' +
-            '</button>' +
-            (c.ability
-              ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' +
-                  esc(c.name) + '">&#9662;</button>'
-              : '') +
-          '</div>' +
-          // The filter box reads SAO's sort key off this element, so a
-          // character with no ability must have no element rather than one
-          // holding a stand-in sentence.
-          (c.ability ? '<div class="sbx-add-ab">' + esc(c.ability) + '</div>' : '') +
-        '</div>';
-      });
-      html += '</div></div>';
+      if (group.length) groups.push({ team: t, chars: group, rowsEl: null, at: 0 });
     });
     var list = $('sb-add-list');
-    list.innerHTML = html || '<p class="sbx-note">No characters found.</p>';
     rowBySlug = {};
-    [].slice.call(list.querySelectorAll('.sbx-add-item')).forEach(function (btn) {
-      rowBySlug[btn.getAttribute('data-slug')] = btn;
-    });
+    if (!groups.length) {
+      list.innerHTML = '<p class="sbx-note">No characters found.</p>';
+      if (done) done();
+      return;
+    }
+    list.innerHTML = '';
+    var gi = 0;
+    function slice() {
+      if (run !== buildRun) return;   // a newer build replaced this one
+      var budget = CHUNK;
+      while (budget > 0 && gi < groups.length) {
+        var g = groups[gi];
+        if (!g.rowsEl) {
+          var wrap = document.createElement('div');
+          wrap.className = 'sbx-add-group';
+          wrap.setAttribute('data-team', g.team[0]);
+          wrap.innerHTML = '<h3 class="sbx-add-grouphead">' + esc(g.team[1]) +
+            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span></h3>' +
+            '<div class="sbx-add-rows"></div>';
+          list.appendChild(wrap);
+          g.rowsEl = wrap.lastChild;
+        }
+        var to = Math.min(g.chars.length, g.at + budget);
+        var html = '';
+        for (var i = g.at; i < to; i++) html += rowMarkup(g.chars[i], i);
+        var before = g.rowsEl.childElementCount;
+        g.rowsEl.insertAdjacentHTML('beforeend', html);
+        var kids = g.rowsEl.children;
+        for (var k = before; k < kids.length; k++) {
+          var btn = kids[k].querySelector('.sbx-add-item');
+          if (btn) rowBySlug[btn.getAttribute('data-slug')] = btn;
+        }
+        budget -= (to - g.at);
+        g.at = to;
+        if (g.at >= g.chars.length) gi++;
+      }
+      if (gi < groups.length) requestAnimationFrame(slice);
+      else if (done) done();
+    }
+    slice();
   }
 
   function mountAddFilters() {
@@ -947,6 +988,7 @@
   }
   function copyText(btn) {
     if (!notEmpty()) return;
+    if (!cardReady) { withCards(function () { copyText(btn); }); return; }
     var text = buildText();
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
@@ -1188,9 +1230,10 @@
     return false;
   }
 
-  function doExport() { if (notEmpty()) download(fileName(), buildExport()); }
+  function doExport() { if (notEmpty()) withCards(function () { download(fileName(), buildExport()); }); }
   function doCopy(btn) {
     if (!notEmpty()) return;
+    if (!cardReady) { withCards(function () { doCopy(btn); }); return; }
     var text = buildExport();
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
@@ -1233,6 +1276,7 @@
      the character sheet, then the night order. */
   function doPrint() {
     if (!notEmpty()) return;
+    if (!cardReady) { withCards(doPrint); return; }
     var m = getMeta();
     var chars = rosterChars();
     var PR = window.PageRender;
@@ -1304,6 +1348,7 @@
      button saves — and the tool reads the key once and clears it. */
   function doFancy() {
     if (!notEmpty()) return;
+    if (!cardReady) { withCards(doFancy); return; }
     try { localStorage.setItem('botc_fancy_incoming', buildExport()); }
     catch (e) { alert('Could not hand the script over — your browser blocked storage.'); return; }
     window.open('fancyscripts?from=builder', '_blank');
@@ -2077,29 +2122,41 @@
     }).catch(function () { /* officials just will not resolve */ });
   }
 
+  /* Two feeds, in parallel, and whichever lands first draws the page:
+       ?fields=grid  what a row needs to be drawn — a third of the bytes
+       ?fields=card  the same characters with the schema fields the export,
+                     the night order and the jinxes need
+     Both are edge-cached, so on a good connection the card feed is often
+     first and the grid is never used; on a phone the grid can be on
+     screen a second or two before the card arrives. The card rows are
+     merged INTO the objects already on the page (Object.assign), so the
+     panel's rows and the roster keep pointing at the same characters. */
+  var cardReady = false, cardWaiters = [];
+  function withCards(fn) {
+    if (cardReady) { fn(); return; }
+    toast('Still loading the character details…');
+    cardWaiters.push(fn);
+  }
+  function perfMark(name) { try { performance.mark('sb:' + name); } catch (e) { /* fine */ } }
+
   function start() {
-    // The two fetches are independent, so they go together. They used to be
-    // chained, which cost a whole round trip before the list could be drawn.
-    Promise.all([
-      loadOfficial(),
-      fetch('characters.json?fields=card').then(function (r) { return r.json(); })
-    ]).then(function (both) {
-      allChars = both[1] || [];
+    var official = loadOfficial();
+    var gridP = fetch('characters.json?fields=grid').then(function (r) { return r.json(); }).catch(function () { return null; });
+    var cardP = fetch('characters.json?fields=card').then(function (r) { return r.json(); });
+    var painted = false;
+
+    function firstPaint(list) {
+      painted = true;
+      allChars = list || [];
       allChars.forEach(function (c) { bySlug[c.slug] = c; });
-      // The jinx resolver's wiki registry — one keying rule for every jinx
-      // lookup, shared with the Worker's own index (window.jinxCharIndex
-      // owns the order) — so a jinx typed as a name finds its page, and the
-      // peek card and the Analyse tab can say who it is with.
-      if (window.setWikiChars && window.jinxCharIndex) {
-        try { window.setWikiChars(window.jinxCharIndex(allChars).byKey); } catch (e) { /* fine */ }
-      }
+      registries();
 
       var params = new URLSearchParams(location.search);
       // Legacy edit links (script?s={slug}) live on the publish page now.
       var editSlug = params.get('s');
       if (editSlug) {
         location.replace('publish-script?s=' + encodeURIComponent(editSlug));
-        return;
+        return false;
       }
       var shareRaw = params.get('share');
       if (shareRaw) applyShare(shareRaw);
@@ -2108,25 +2165,73 @@
       paintCounts();
       paintRoster();
       paintLibrary();
-      paintJinxCount();
+      perfMark('roster');
       // Either pane may already have been mounted against an empty
       // roster while the fetch was in flight.
-      nightDirty = jinxDirty = true;
+      nightDirty = jinxDirty = analyseDirty = true;
       ensurePane();
       settle();
-      /* The panel is ~1,800 rows and takes a beat to build, so it is left
+      /* The panel is ~1,900 rows and takes a beat to build, so it is left
          until after the browser has painted: what the reader came back for
          is their script, and it is on screen before the list starts. rAF
          then setTimeout, because an rAF callback alone still runs before
          that paint. */
       requestAnimationFrame(function () {
         setTimeout(function () {
-          buildAddList();
-          mountAddFilters();
+          perfMark('panel-start');
+          buildAddList(function () {
+            perfMark('panel-done');
+            mountAddFilters();
+            perfMark('filters');
+          });
         }, 0);
       });
+      return true;
+    }
+    function registries() {
+      // The jinx resolver's wiki registry — one keying rule for every jinx
+      // lookup, shared with the Worker's own index (window.jinxCharIndex
+      // owns the order) — so a jinx typed as a name finds its page, and the
+      // peek card and the Analyse tab can say who it is with.
+      if (window.setWikiChars && window.jinxCharIndex) {
+        try { window.setWikiChars(window.jinxCharIndex(allChars).byKey); } catch (e) { /* fine */ }
+      }
+    }
+    function upgrade(list) {
+      // The card rows, merged into the objects the page already holds.
+      var known = {};
+      allChars.forEach(function (c) { known[c.slug] = c; });
+      (list || []).forEach(function (row) {
+        if (!row || !row.slug) return;
+        var have = known[row.slug];
+        if (have) { Object.assign(have, row); return; }
+        // Published since the grid was cached: a new character.
+        allChars.push(row);
+        bySlug[row.slug] = row;
+        known[row.slug] = row;
+      });
+      registries();
+      rosterCache = null;
+      paintRoster();
+      nightDirty = jinxDirty = analyseDirty = true;
+      ensurePane();
+      settle();
+    }
+
+    Promise.all([official, gridP]).then(function (both) {
+      perfMark('feed-grid');
+      if (!painted && both[1] && both[1].length) firstPaint(both[1]);
+    }).catch(function () { /* the card feed is still coming */ });
+    Promise.all([official, cardP]).then(function (both) {
+      perfMark('feed-card');
+      var list = both[1] || [];
+      if (!painted) { if (firstPaint(list) === false) return; }
+      else upgrade(list);
+      cardReady = true;
+      var w = cardWaiters; cardWaiters = [];
+      w.forEach(function (fn) { try { fn(); } catch (e) { /* one waiter must not stop the rest */ } });
     }).catch(function () {
-      $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>';
+      if (!painted) $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>';
     });
   }
 
@@ -2175,6 +2280,16 @@
   wire();
   mountView();
   paintHistory();
+  // A small console / test-harness handle (the same idea as
+  // window.FancyScripts): read the state, drive the undo stack, no DOM.
+  window.ScriptBuilder = {
+    order: function () { return order.slice(); },
+    meta: getMeta,
+    view: function () { return view; },
+    undo: undo, redo: redo,
+    history: function () { return { undo: hist.undo.length, redo: hist.redo.length }; },
+    ready: function () { return cardReady; }
+  };
   syncTopbarHeight();
   window.addEventListener('resize', syncTopbarHeight);
   // The bar's height depends on two images; measure again once they are in.
