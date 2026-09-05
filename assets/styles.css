@@ -3324,6 +3324,9 @@ a:hover .curata-mark { opacity: .9; }
 .sv-info-author,
 .wiki-title, .wiki-pagelink-title, .wiki-pagelink-blurb,
 .news-card-title,
+/* The Script Builder's roster cards and its saved-script list: the name, the
+   ability and a saved script's own title are all text somebody typed. */
+.sbx-ch-name, .sbx-ch-ab, .sbx-lib-name,
 .cmt-who {
   overflow-wrap: anywhere; word-break: break-word;
 }
@@ -4035,3 +4038,520 @@ html.textedit-on .te-live-hit {
   cursor: not-allowed;
   background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(0,0,0,.035) 8px 10px);
 }
+
+/* ════════════════════════════════════════════════════════════════
+   SCRIPT BUILDER — the app shell (.sbx-*, script.html)
+   ════════════════════════════════════════════════════════════════
+
+   The OLD builder styles are the .sb-* block further up. They are still
+   there because tokens.html (the Token Tool) reuses the whole of that
+   layout — .sb-layout, .sb-add-sidebar, .sb-script-item and the rest. Do
+   not fold the two together: this namespace belongs to the builder alone.
+
+   The shell is a FIXED-HEIGHT app, not a scrolling page. The old builder
+   was a normal document with a `height: calc(100vh - 56px)` sticky
+   sidebar, so on any script long enough to scroll, the sidebar ended and
+   left a tall band of empty page background beside the roster. Here the
+   document does not scroll at all: the top bar, the builder bar and the
+   tab strip are fixed, and the two panes scroll independently. Nothing
+   can run out from under anything else.
+
+   Height comes from a flex column on <body> rather than
+   `calc(100vh - 56px)`, so it follows the top bar's real height instead of
+   a number that has to be kept in step with it. */
+html.sbx-page, html.sbx-page body { height: 100%; }
+html.sbx-page body {
+  display: flex; flex-direction: column;
+  height: 100dvh; min-height: 0; overflow: hidden;
+}
+html.sbx-page .topbar { flex: 0 0 auto; }
+html.sbx-page .nav-dropdown { z-index: 80; }
+
+.sbx {
+  --sbx-side: 330px;
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: var(--sbx-side) minmax(0, 1fr);
+}
+
+/* ── the left panel: characters to add, or your saved scripts ── */
+.sbx-side {
+  position: relative; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border-right: 3px solid var(--parch-frame);
+}
+/* Drag anywhere on this strip to set the panel's width. It sits half over
+   the border so there is something to aim at without a visible gutter. */
+.sbx-grip {
+  position: absolute; top: 0; right: -5px; bottom: 0; width: 10px;
+  cursor: col-resize; z-index: 8; touch-action: none;
+}
+.sbx-grip::after {
+  content: ""; position: absolute; top: 50%; left: 3px;
+  width: 4px; height: 42px; margin-top: -21px; border-radius: 2px;
+  background: var(--parch-frame); opacity: 0; transition: opacity .15s;
+}
+.sbx-grip:hover::after, .sbx-resizing .sbx-grip::after { opacity: .9; }
+.sbx-resizing { cursor: col-resize; user-select: none; }
+
+.sbx-side-head { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 9px 6px; }
+.sbx-segs { flex: 1; min-width: 0; display: flex; border: 1px solid var(--parch-frame); background: #fffdf8; }
+.sbx-seg {
+  flex: 1; min-width: 0; cursor: pointer; border: none; background: none;
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--maroon); padding: 6px 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background .12s, color .12s;
+}
+.sbx-seg + .sbx-seg { border-left: 1px solid var(--parch-frame); }
+.sbx-seg:hover { background: rgba(91,31,33,.08); }
+.sbx-seg.on { background: var(--maroon); color: var(--parch); }
+.sbx-seg-n { opacity: .7; font-size: .92em; }
+.sbx-icon {
+  flex: none; width: 28px; height: 28px; cursor: pointer;
+  background: #fffdf8; border: 1px solid var(--parch-frame); color: var(--maroon);
+  font-size: .9rem; line-height: 1; padding: 0;
+}
+.sbx-icon:hover { background: rgba(91,31,33,.09); }
+.sbx-icon.on { background: var(--maroon); color: var(--parch); }
+.sbx-close-mob { display: none; }
+
+.sbx-side-pane { flex: 1; min-height: 0; display: none; flex-direction: column; }
+.sbx-side-pane.on { display: flex; }
+.sbx-side-tools { flex: none; padding: 0 9px 6px; display: flex; flex-direction: column; gap: 6px; }
+.sbx-search {
+  width: 100%; font-family: 'TradeGothicLT', sans-serif; font-size: .88rem;
+  padding: 6px 9px; border: 1px solid var(--parch-frame);
+  background: #fffdf8; color: var(--ink);
+}
+.sbx-tool-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sbx-tool-row .filter-toggle {
+  display: block; flex: 1; min-width: 0; margin: 0; text-align: left;
+  cursor: pointer; background: #fffdf8; color: var(--maroon);
+  border: 1px solid var(--parch-frame); padding: 5px 9px;
+  font-family: 'Oswald', sans-serif; font-size: .74rem;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.sbx-tool-row .filter-toggle-arrow { float: right; transition: transform .18s; }
+.sbx-tool-row .filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+.sbx-check {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--maroon); user-select: none;
+  border: 1px solid var(--parch-frame); background: #fffdf8; padding: 5px 8px;
+}
+.sbx-check input { width: 13px; height: 13px; accent-color: var(--maroon); cursor: pointer; margin: 0; }
+.sbx-side-count {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em;
+  color: #6b5d49; margin: 0; padding: 0 9px 5px;
+}
+.sbx-side-count:empty { display: none; }
+
+/* ONE scrollbar in the panel, and the filter box scrolls with the list.
+   It used to be its own `max-height: 46vh; overflow-y: auto` box, so the
+   panel had a scrollbar inside a scrollbar and neither of them told you
+   how much was left. */
+.sbx-side-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 9px 14px;
+  scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
+}
+.sbx-side-scroll::-webkit-scrollbar { width: 9px; }
+.sbx-side-scroll::-webkit-scrollbar-track { background: transparent; }
+.sbx-side-scroll::-webkit-scrollbar-thumb {
+  background: var(--parch-frame); border-radius: 5px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.sbx-side-scroll .filter-bar {
+  display: none; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: 9px; padding: 9px 10px; margin: 0 0 8px;
+}
+.sbx-side-scroll .filter-bar.open { display: flex; }
+.sbx-side-scroll .filter-chip { font-size: .72rem; padding: 3px 8px; }
+.sbx-side-scroll .filter-select { font-size: .8rem; padding: 4px 7px; width: 100%; }
+
+/* ── the character rows ── */
+.sbx-add-group { margin-bottom: 10px; }
+.sbx-add-grouphead {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .78rem; letter-spacing: .08em; color: var(--evil);
+  margin: 0 0 3px; padding-bottom: 2px; border-bottom: 1px solid var(--parch-frame);
+}
+/* The filter box rewrites this as it narrows the list, so it reads as a
+   running total rather than part of the heading. */
+.sbx-add-groupcount { color: #6b5d49; font-size: .92em; }
+/* Widen the panel and the roster flows into columns rather than staying a
+   single 900px-long line of names. */
+.sbx-add-rows {
+  display: grid; gap: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+/* ~1,900 rows live in this list. content-visibility lets the browser skip
+   layout and paint for the ones nobody is looking at, which is what makes
+   scrolling and filtering it cheap; `auto` in contain-intrinsic-size means
+   each row remembers its real height once it has been measured, so the
+   scrollbar does not jump. */
+.sbx-add-row {
+  border-bottom: 1px solid rgba(180,160,120,.22);
+  content-visibility: auto;
+  /* Plain first, `auto` second: a browser too old for the `auto` keyword
+     drops that declaration as invalid and keeps the placeholder height, so
+     it never falls back to a zero-height row (which would make the
+     scrollbar jump about while the list is scrolled). */
+  contain-intrinsic-size: 0 36px;
+  contain-intrinsic-size: auto 36px;
+}
+.sbx-add-list.abil .sbx-add-row {
+  contain-intrinsic-size: 0 78px;
+  contain-intrinsic-size: auto 78px;
+}
+.sbx-add-head-row { display: flex; align-items: stretch; }
+.sbx-add-item {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer; text-align: left;
+  padding: 4px 6px; color: var(--maroon);
+  font-family: 'TradeGothicLT', sans-serif;
+  transition: background .1s;
+}
+.sbx-add-item:hover { background: rgba(91,31,33,.07); }
+.sbx-add-item.on { background: rgba(91,31,33,.12); box-shadow: inset 3px 0 0 var(--maroon); }
+.sbx-add-item.on .sbx-add-name { font-weight: 600; }
+.sbx-add-thumb { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.sbx-add-name {
+  flex: 1; min-width: 0; font-size: .84rem; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sbx-add-tick { flex: none; width: 14px; text-align: center; color: var(--maroon); opacity: 0; font-size: .8rem; }
+.sbx-add-item.on .sbx-add-tick { opacity: 1; }
+.sbx-add-chev {
+  flex: none; width: 26px; cursor: pointer; background: none;
+  border: none; border-left: 1px solid rgba(180,160,120,.22);
+  color: rgba(91,31,33,.5); font-size: .72rem; line-height: 1;
+  transition: color .12s, transform .16s;
+}
+.sbx-add-chev:hover { color: var(--maroon); }
+.sbx-add-row.open .sbx-add-chev { color: var(--maroon); transform: rotate(180deg); }
+.sbx-add-ab {
+  display: none; padding: 0 8px 6px 42px;
+  font-size: .77rem; line-height: 1.38; color: #4a3f2f; font-style: italic;
+}
+.sbx-add-row.open .sbx-add-ab, .sbx-add-list.abil .sbx-add-ab { display: block; }
+.sbx-add-list.abil .sbx-add-chev { display: none; }
+.sbx-off {
+  flex: none;
+  font-family: 'Oswald', sans-serif; font-size: .58rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: #6b5d49;
+  border: 1px solid rgba(180,160,120,.6); padding: 0 3px;
+  margin-left: 3px; vertical-align: 1px; white-space: nowrap;
+}
+.sbx-note { color: #6b5d49; font-size: .86rem; text-align: center; padding: 16px 8px; margin: 0; }
+
+/* ── the saved-script library ── */
+.sbx-lib-item {
+  display: flex; align-items: stretch; gap: 0; margin-bottom: 5px;
+  border: 1px solid var(--parch-frame); background: #fffdf8;
+}
+.sbx-lib-item.on { border-color: var(--maroon); box-shadow: inset 3px 0 0 var(--maroon); }
+.sbx-lib-open {
+  flex: 1; min-width: 0; text-align: left; cursor: pointer;
+  background: none; border: none; padding: 6px 8px; color: var(--maroon);
+  font-family: 'TradeGothicLT', sans-serif;
+}
+.sbx-lib-open:hover { background: rgba(91,31,33,.07); }
+.sbx-lib-name { display: block; font-size: .88rem; font-weight: 600; line-height: 1.2; }
+.sbx-lib-meta { display: block; font-size: .72rem; color: #6b5d49; margin-top: 1px; }
+.sbx-lib-acts { display: flex; flex: none; align-items: stretch; }
+.sbx-lib-acts button {
+  width: 26px; cursor: pointer; background: none; color: #6b5d49;
+  border: none; border-left: 1px solid rgba(180,160,120,.35); font-size: .82rem;
+}
+.sbx-lib-acts button:hover { background: rgba(91,31,33,.09); color: var(--maroon); }
+.sbx-lib-full { color: var(--evil); font-size: .76rem; padding: 0 9px 6px; margin: 0; }
+
+/* ── the main column ── */
+.sbx-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.sbx-bar {
+  flex: none; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 7px clamp(9px, 2vw, 18px);
+  background: rgba(26,10,31,.5);
+  border-bottom: 1px solid rgba(214,196,150,.2);
+}
+.sbx-names { display: flex; align-items: baseline; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.sbx-title, .sbx-author {
+  background: transparent; color: var(--parch); border: none;
+  border-bottom: 1px dashed rgba(214,196,150,.35); padding: 3px 3px 2px;
+  min-width: 0; font-family: 'Dumbledor2', serif;
+}
+.sbx-title { flex: 2 1 150px; font-size: 1.12rem; letter-spacing: .02em; }
+.sbx-author { flex: 1 1 100px; font-size: .84rem; color: rgba(236,225,200,.82); font-family: 'Libre Franklin', sans-serif; font-style: italic; }
+.sbx-title::placeholder, .sbx-author::placeholder { color: rgba(236,225,200,.38); }
+.sbx-title:focus, .sbx-author:focus {
+  outline: none; border-bottom-color: var(--parch); background: rgba(255,255,255,.07);
+}
+.sbx-counts { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.sbx-cnt {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.82); border: 1px solid rgba(214,196,150,.3);
+  padding: 1px 6px; white-space: nowrap;
+}
+.sbx-cnt-total { color: var(--parch); border-color: rgba(214,196,150,.6); }
+.sbx-acts { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.sbx-b {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  cursor: pointer; color: var(--parch); padding: 5px 9px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(214,196,150,.3);
+  white-space: nowrap;
+}
+.sbx-b:hover { background: rgba(255,255,255,.15); }
+.sbx-b-go { background: linear-gradient(180deg,#b07d1a,#7a5310); border-color: rgba(214,196,150,.5); text-decoration: none; display: inline-flex; align-items: center; }
+.sbx-b-open { display: none; }
+.sbx-menu-wrap { position: relative; }
+.sbx-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 5px);
+  min-width: 210px; z-index: 45;
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.sbx-menu.on { display: block; }
+.sbx-menu button {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: none; padding: 7px 12px; color: var(--maroon);
+  font-family: 'Libre Franklin', sans-serif; font-size: .84rem;
+}
+.sbx-menu button:hover { background: rgba(91,31,33,.09); }
+.sbx-menu-sep { border: none; border-top: 1px solid rgba(180,160,120,.45); margin: 4px 0; }
+
+.sbx-tabs {
+  flex: none; display: flex; overflow-x: auto; padding: 0 clamp(9px, 2vw, 18px);
+  border-bottom: 1px solid rgba(214,196,150,.2);
+  scrollbar-width: none;
+}
+.sbx-tabs::-webkit-scrollbar { display: none; }
+.sbx-tab {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em;
+  font-size: .88rem; cursor: pointer; white-space: nowrap;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  color: rgba(236,225,200,.55); padding: 7px 13px;
+}
+.sbx-tab:hover { color: rgba(236,225,200,.85); }
+.sbx-tab.on { color: var(--parch); border-bottom-color: var(--rule); }
+.sbx-tab-n { font-family: 'Oswald', sans-serif; font-size: .72rem; opacity: .7; }
+
+.sbx-scroll {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 12px clamp(9px, 2vw, 18px) 28px;
+  scrollbar-width: thin; scrollbar-color: rgba(214,196,150,.4) transparent;
+}
+.sbx-scroll::-webkit-scrollbar { width: 10px; }
+.sbx-scroll::-webkit-scrollbar-track { background: transparent; }
+.sbx-scroll::-webkit-scrollbar-thumb {
+  background: rgba(214,196,150,.35); border-radius: 5px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.sbx-pane { display: none; }
+.sbx-pane.on { display: block; }
+
+/* The night arranger caps its two lists at 380px and scrolls them, which is
+   right on the publish page (a long form around them) and wrong here, where
+   the tab itself scrolls: it put a scrollbar inside a scrollbar. */
+.sbx-pane .no-list { max-height: none; }
+
+/* ── the roster ── */
+.sbx-team { margin-bottom: 16px; }
+.sbx-team-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-size: 1rem; color: var(--parch); margin: 0 0 7px;
+  padding-bottom: 4px; border-bottom: 2px solid rgba(183,156,111,.5);
+}
+.sbx-team-head span { color: rgba(236,225,200,.5); font-size: .8rem; }
+
+/* The roster is drawn as the game's own character SHEET: one parchment per
+   team, two columns of rows, each row the icon with the name and the ability
+   running on from it as one line of prose. It was a grid of separately
+   bordered cards with the name stacked over the ability, which reads as a
+   spreadsheet — a box per character, a rule round every box — and looks
+   nothing like the sheet anybody actually plays off.
+
+   Two columns, not `auto-fill`: a sheet has a column count, and auto-fill
+   gave three on a wide window and one the moment the character panel was
+   dragged wider. It is a CONTAINER query rather than a media query for that
+   second reason — the panel's width is the reader's to set, so the main
+   column's own width is the only thing that can answer "is there room for
+   two". The container is #sb-script and not .sbx-scroll on purpose: size
+   containment re-anchors `position: fixed` descendants, and the night-order
+   drag lifts its row with exactly that. */
+#sb-script { container-type: inline-size; }
+.sbx-sheet {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  background-color: var(--card); background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 2px solid var(--parch-frame);
+}
+@container (min-width: 680px) {
+  .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* The gutter rule between the two columns. Only the left column draws it,
+     and only while there IS a left column. */
+  .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+}
+/* Browsers without container queries still get two columns on a wide window;
+   they just cannot follow the panel being dragged. */
+@supports not (container-type: inline-size) {
+  @media (min-width: 1100px) {
+    .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+  }
+}
+.sbx-ch {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(180,160,120,.35);
+}
+.sbx-ch-img { width: 40px; height: 40px; object-fit: contain; flex: none; }
+/* A paragraph, not a stack: the name opens the line and the ability runs on
+   from it, the way the sheet prints it. */
+.sbx-ch-txt {
+  flex: 1; min-width: 0; margin: 0;
+  font-size: .8rem; line-height: 1.4; color: var(--ink);
+}
+.sbx-ch-name {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .95rem; color: var(--maroon); text-decoration: none;
+  margin-right: 5px;
+}
+.sbx-ch-name:hover { color: var(--evil); }
+.sbx-ch-ab { color: var(--ink); }
+.sbx-ch-x {
+  flex: none; width: 20px; height: 20px; cursor: pointer; line-height: 1;
+  background: none; border: none; color: rgba(154,13,18,.45);
+  font-size: .82rem; padding: 0; transition: color .12s;
+}
+.sbx-ch-x:hover { color: var(--evil); }
+.sbx-empty {
+  color: rgba(236,225,200,.6); text-align: center; padding: 40px 16px; font-size: .95rem;
+}
+.sbx-missing { color: rgba(236,225,200,.55); font-size: .82rem; margin: 8px 0 0; }
+
+/* ── panels inside the tabs ── */
+.sbx-panel {
+  background-color: var(--parch); background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 2px solid var(--parch-frame); padding: 12px 14px; margin-bottom: 14px;
+}
+.sbx-panel-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em;
+  font-size: 1rem; color: var(--maroon); margin: 0 0 3px;
+}
+.sbx-panel-sub { font-size: .8rem; color: #6b5d49; margin: 0 0 10px; line-height: 1.4; }
+.sbx-fields { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.sbx-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sbx-field > label {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon);
+}
+.sbx-field input[type=text], .sbx-field input[type=url], .sbx-field textarea {
+  font-family: 'Libre Franklin', sans-serif; font-size: .88rem; color: var(--ink);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 6px 8px;
+  width: 100%; min-width: 0;
+}
+.sbx-field textarea { resize: vertical; min-height: 60px; }
+.sbx-boot-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.sbx-boot-row input { flex: 1; min-width: 0; }
+.sbx-b-sm {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; cursor: pointer;
+  background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame);
+  padding: 5px 10px;
+}
+.sbx-b-sm:hover { background: rgba(91,31,33,.08); }
+
+/* The credits Fabled. It is a footnote about the export, so it is sized
+   like one: the skull is 18px and CANNOT grow (the old one had no height
+   and a flex container to grow in, and rendered at its natural size right
+   through the text beside it), and the exact ability line is behind a
+   disclosure rather than printed in full above the whole page. */
+.sbx-credits { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--ink); }
+.sbx-credits-skull { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.sbx-credits strong { color: var(--maroon); }
+.sbx-credits-line { flex-basis: 100%; margin: 0; }
+.sbx-credits-line > summary {
+  cursor: pointer; list-style: none; font-family: 'Oswald', sans-serif;
+  font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--good-name);
+}
+.sbx-credits-line > summary::-webkit-details-marker { display: none; }
+.sbx-credits-text {
+  margin: 6px 0 0; font-size: .78rem; font-style: italic; line-height: 1.45;
+  color: var(--ink); background: rgba(255,253,248,.6);
+  border: 1px solid rgba(180,160,120,.4); padding: 7px 9px;
+}
+.sbx-edit-note {
+  font-size: .82rem; color: var(--maroon); background: rgba(255,240,200,.75);
+  border: 1px solid var(--parch-frame); padding: 7px 10px; margin: 0 0 12px;
+}
+.sbx-edit-note a { color: var(--good-name); }
+
+.sbx-foot {
+  flex: none; text-align: center; padding: 3px 10px;
+  font-size: .66rem; letter-spacing: .03em; color: rgba(236,225,200,.4);
+  border-top: 1px solid rgba(214,196,150,.13);
+}
+.sbx-scrim {
+  display: none; position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.5);
+}
+.sbx-scrim.on { display: block; }
+
+/* ── phone / narrow: the panel becomes a drawer ── */
+@media (max-width: 900px) {
+  .sbx { grid-template-columns: minmax(0, 1fr); }
+  .sbx-side {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+    /* Leaves a strip of scrim wide enough to actually tap: at 93% there
+       were 27px of it beside the drawer on a 390px phone, and tapping
+       outside to dismiss is the first thing anyone tries. */
+    width: min(88%, 380px); border-right-width: 2px;
+    transform: translateX(-100%); transition: transform .2s ease;
+  }
+  .sbx-side.on { transform: none; box-shadow: 6px 0 26px rgba(0,0,0,.55); }
+  .sbx-grip { display: none; }
+  /* Nothing to widen: the drawer's width is the screen's. */
+  #sbx-wide { display: none; }
+  .sbx-close-mob { display: block; }
+  .sbx-b-open { display: inline-flex; }
+  .sbx-add-rows { grid-template-columns: minmax(0, 1fr); }
+  /* Share the first row with the drawer button rather than taking one of
+     its own: on a phone the bar is four wrapped rows before the script
+     even starts. */
+  .sbx-names { flex: 1 1 150px; }
+  .sbx-title { font-size: 1rem; }
+
+  /* ── and the shell stops being a shell ──
+     Two panes scrolling inside a fixed frame is a desktop idea. On a phone
+     that frame ate the screen: the top bar, the builder bar, the tab strip
+     and the footer were all pinned, and the roster was left a window a few
+     rows tall to scroll inside — most of the display given over to chrome
+     that never moves. So below this width the document scrolls like any
+     other page on the wiki and the roster runs its full length.
+
+     The tab strip is the one thing that stays, stuck under the top bar, so
+     the other three tabs are reachable from half way down a long script
+     instead of only from the top. It needs an opaque background for that:
+     the page background is a fixed image and the rows would otherwise scroll
+     through it. */
+  html.sbx-page, html.sbx-page body { height: auto; }
+  html.sbx-page body { display: block; min-height: 100dvh; overflow: visible; }
+  .sbx { display: block; min-height: 0; }
+  .sbx-main { display: block; min-height: 0; }
+  .sbx-scroll { overflow: visible; min-height: 0; }
+  .sbx-tabs {
+    position: sticky; top: var(--sbx-top, 56px); z-index: 20;
+    background: linear-gradient(180deg, rgba(26,10,31,.97), rgba(26,10,31,.93));
+    backdrop-filter: blur(8px);
+  }
+  /* The drawer is fixed over a page that now scrolls, so hold the page still
+     while it is open — otherwise a finger on the scrim drags the script
+     about behind it. */
+  html.sbx-locked, html.sbx-locked body { overflow: hidden; }
+}
+/* Only the desktop shell is short of room on a short screen — below 900px
+   the document scrolls and the footer simply sits at the end of it. */
+@media (min-width: 901px) and (max-height: 560px) { .sbx-foot { display: none; } }
