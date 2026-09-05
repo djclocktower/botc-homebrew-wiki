@@ -4555,3 +4555,219 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 /* Only the desktop shell is short of room on a short screen — below 900px
    the document scrolls and the footer simply sits at the end of it. */
 @media (min-width: 901px) and (max-height: 560px) { .sbx-foot { display: none; } }
+
+/* ── the VIEW: how the roster is drawn (assets/script-builder-view.js) ──
+   SBView.apply() writes the reader's settings onto #sbx as custom
+   properties, data-attributes and classes; everything below only reads
+   them. A setting CSS can honour costs no re-render — that is the reason
+   the sizes are variables and the layouts are attributes rather than
+   separate markup. The defaults here are the same as the widget's, so a
+   browser that never ran the script draws the ordinary sheet. */
+.sbx { --sbx-icon: 40px; --sbx-text: 1; --sbx-panel-icon: 26px; }
+.sbx-ch-img { width: var(--sbx-icon); height: var(--sbx-icon); }
+.sbx-ch-txt { font-size: calc(.8rem * var(--sbx-text)); }
+.sbx-ch-name { font-size: calc(.95rem * var(--sbx-text)); }
+.sbx-add-thumb { width: var(--sbx-panel-icon); height: var(--sbx-panel-icon); }
+
+/* spacing */
+.sbx[data-density="compact"] .sbx-ch { padding: 3px 8px; gap: 6px; }
+.sbx[data-density="compact"] .sbx-ch-txt { line-height: 1.3; }
+.sbx[data-density="compact"] .sbx-team { margin-bottom: 10px; }
+.sbx[data-density="roomy"] .sbx-ch { padding: 12px 14px; gap: 13px; }
+.sbx[data-density="roomy"] .sbx-ch-txt { line-height: 1.5; }
+.sbx[data-density="roomy"] .sbx-team { margin-bottom: 24px; }
+
+/* columns: a number here overrides the container query's own answer */
+.sbx[data-cols="1"] .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
+.sbx[data-cols="1"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="2"] .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sbx[data-cols="2"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="2"] .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+.sbx[data-cols="3"] .sbx-sheet { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sbx[data-cols="3"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="3"] .sbx-sheet > .sbx-ch:not(:nth-child(3n)) { border-right: 1px solid rgba(180,160,120,.45); }
+
+/* type */
+.sbx[data-font="plain"] .sbx-ch-name { font-family: 'Libre Franklin', sans-serif; text-transform: none; font-weight: 700; letter-spacing: 0; }
+.sbx[data-font="plain"] .sbx-ch-txt, .sbx[data-font="plain"] .sbx-team-head { font-family: 'Libre Franklin', sans-serif; }
+.sbx[data-font="plain"] .sbx-team-head { text-transform: none; letter-spacing: 0; font-weight: 700; }
+.sbx[data-font="print"] .sbx-ch-name { font-family: Georgia, 'Times New Roman', serif; text-transform: none; font-weight: 700; font-variant: small-caps; letter-spacing: .02em; }
+.sbx[data-font="print"] .sbx-ch-txt { font-family: Georgia, 'Times New Roman', serif; }
+.sbx[data-font="print"] .sbx-team-head { font-family: Georgia, 'Times New Roman', serif; font-variant: small-caps; text-transform: none; }
+
+/* show / hide */
+.sbx-no-ability .sbx-ch-ab { display: none; }
+.sbx-no-official #sb-script .sbx-off { display: none; }
+.sbx-no-counts .sbx-counts .sbx-cnt:not(.sbx-cnt-total) { display: none; }
+.sbx-remove-hover .sbx-ch-x { opacity: 0; transition: opacity .12s; }
+.sbx-remove-hover .sbx-ch:hover .sbx-ch-x, .sbx-remove-hover .sbx-ch-x:focus-visible { opacity: 1; }
+@media (hover: none) { .sbx-remove-hover .sbx-ch-x { opacity: 1; } }
+
+/* the extra marks a row can carry */
+.sbx-ch-meta { display: block; font-size: .86em; color: #6b5d49; margin-top: 2px; line-height: 1.35; }
+.sbx-ch-by { margin-right: 6px; font-style: italic; }
+.sbx-ch-tags { display: inline; }
+.sbx-tag {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .04em;
+  text-transform: uppercase; font-style: normal; color: #6b5d49;
+  border: 1px solid rgba(180,160,120,.6); padding: 0 4px; margin: 1px 3px 1px 0; line-height: 1.4;
+}
+.sbx-ch-n, .sbx-ch-jx {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .62rem; font-weight: 600;
+  letter-spacing: .04em; line-height: 1.35; vertical-align: 1px; margin-right: 4px;
+  padding: 0 4px; border: 1px solid; white-space: nowrap; cursor: help;
+}
+.sbx-ch-n { color: #3d5a8a; border-color: rgba(61,90,138,.45); background: rgba(61,90,138,.08); }
+.sbx-ch-jx { color: #8a3d3d; border-color: rgba(138,61,61,.45); background: rgba(138,61,61,.08); }
+
+/* team colours on the headings — light enough to read on the purple */
+.sbx-team-head { transition: color .12s, border-color .12s; }
+.sbx-team[data-team="townsfolk"] .sbx-team-head { color: #7fb4ee; border-bottom-color: rgba(127,180,238,.55); }
+.sbx-team[data-team="outsider"] .sbx-team-head { color: #7fd0e2; border-bottom-color: rgba(127,208,226,.5); }
+.sbx-team[data-team="minion"] .sbx-team-head { color: #f0a070; border-bottom-color: rgba(240,160,112,.5); }
+.sbx-team[data-team="demon"] .sbx-team-head { color: #ef6b6b; border-bottom-color: rgba(239,107,107,.55); }
+.sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; border-bottom-color: rgba(201,160,230,.5); }
+.sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; border-bottom-color: rgba(230,199,102,.5); }
+.sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; border-bottom-color: rgba(143,212,158,.5); }
+.sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); border-bottom-color: rgba(183,156,111,.5); }
+
+/* ── layouts ── */
+/* Cards: the browse grid's tiles, one to a character. */
+.sbx[data-layout="cards"] .sbx-sheet {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--sbx-icon) * 2.2 + 110px)), 1fr));
+  gap: 8px; padding: 8px; background: none; border: none;
+}
+.sbx[data-layout="cards"] .sbx-sheet > .sbx-ch {
+  flex-direction: column; align-items: center; text-align: center; position: relative;
+  border: 1px solid var(--parch-frame); border-right: 1px solid var(--parch-frame);
+  background-color: var(--card); background-image: url('parchment.jpg'); background-size: cover;
+  padding: 12px 10px 10px;
+}
+.sbx[data-layout="cards"] .sbx-ch-img { width: calc(var(--sbx-icon) * 1.6); height: calc(var(--sbx-icon) * 1.6); }
+.sbx[data-layout="cards"] .sbx-ch-name { display: block; margin: 4px 0 2px; }
+.sbx[data-layout="cards"] .sbx-ch-x { position: absolute; top: 4px; right: 4px; }
+/* List: one line each, the ability trailing off. */
+.sbx[data-layout="list"] .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
+.sbx[data-layout="list"] .sbx-sheet > .sbx-ch { align-items: center; padding-top: 3px; padding-bottom: 3px; border-right: none; }
+.sbx[data-layout="list"] .sbx-ch-txt { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+.sbx[data-layout="list"] .sbx-ch-name { flex: none; margin: 0; }
+.sbx[data-layout="list"] .sbx-ch-ab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sbx[data-layout="list"] .sbx-ch-meta { display: inline; margin: 0; flex: none; }
+.sbx[data-layout="list"] .sbx-ch-tags { display: none; }
+/* Icons: a wall of art, names under, the ability on hover. */
+.sbx[data-layout="icons"] .sbx-sheet {
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--sbx-icon) + 34px), 1fr));
+  gap: 2px; padding: 8px 6px;
+}
+.sbx[data-layout="icons"] .sbx-sheet > .sbx-ch {
+  flex-direction: column; align-items: center; text-align: center; position: relative;
+  padding: 6px 2px 5px; gap: 3px; border: none;
+}
+.sbx[data-layout="icons"] .sbx-ch-txt { font-size: calc(.66rem * var(--sbx-text)); line-height: 1.15; }
+.sbx[data-layout="icons"] .sbx-ch-name { display: block; font-size: calc(.72rem * var(--sbx-text)); margin: 0; overflow-wrap: anywhere; }
+.sbx[data-layout="icons"] .sbx-ch-ab, .sbx[data-layout="icons"] .sbx-ch-meta, .sbx[data-layout="icons"] .sbx-off { display: none; }
+.sbx[data-layout="icons"] .sbx-ch-x { position: absolute; top: 0; right: 0; }
+.sbx[data-layout="icons"] .sbx-ch:hover { background: rgba(91,31,33,.06); }
+
+/* ── the panel's own settings ── */
+.sbx[data-side="right"] { grid-template-columns: minmax(0, 1fr) var(--sbx-side); }
+.sbx[data-side="right"] .sbx-side { order: 2; border-right: none; border-left: 3px solid var(--parch-frame); }
+.sbx[data-side="right"] .sbx-grip { right: auto; left: -5px; }
+.sbx-panel-compact .sbx-add-item { padding: 2px 6px; gap: 6px; }
+.sbx-panel-compact .sbx-add-name { font-size: .8rem; }
+.sbx-panel-compact .sbx-add-row { contain-intrinsic-size: 0 28px; contain-intrinsic-size: auto 28px; }
+.sbx-panel-hide-on .sbx-add-row.on { display: none; }
+
+/* ── motion off ── */
+html.sbx-no-motion .sbx *, html.sbx-no-motion .sbx-pop, html.sbx-no-motion .sbx-toast,
+html.sbx-no-motion .sbx-side { transition: none !important; animation: none !important; }
+
+/* ── the bar's small buttons, and their disabled state ── */
+.sbx-b-icon { padding: 5px 8px; font-size: .9rem; line-height: 1; }
+.sbx-b:disabled { opacity: .35; cursor: default; }
+.sbx-b:disabled:hover { background: rgba(255,255,255,.07); }
+
+/* ── popovers ──
+   One open at a time, hung off its button by script-builder.js (top/left
+   inline). Below 900px the inline position is ignored and it is a bottom
+   sheet over a scrim, which is the only shape a phone can use. */
+.sbx-pop {
+  position: fixed; z-index: 70; width: min(440px, calc(100vw - 16px));
+  max-height: 80vh; overflow-y: auto; overscroll-behavior: contain;
+  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); box-shadow: 0 12px 34px rgba(0,0,0,.5);
+  padding: 10px 12px 12px; color: var(--ink);
+  scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
+}
+.sbx-pop[hidden] { display: none; }
+.sbx-pop-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; padding-right: 26px; position: relative; }
+.sbx-pop-title { font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; color: var(--maroon); }
+.sbx-pop-sub { font-size: .74rem; color: #6b5d49; flex-basis: 100%; line-height: 1.35; }
+.sbx-pop-x {
+  position: absolute; top: -2px; right: -4px; width: 26px; height: 26px; cursor: pointer;
+  background: none; border: 1px solid transparent; color: var(--maroon); font-size: .9rem; line-height: 1; padding: 0;
+}
+.sbx-pop-x:hover { border-color: var(--parch-frame); background: #fffdf8; }
+.sbx-pop-scrim { display: none; position: fixed; inset: 0; z-index: 65; background: rgba(0,0,0,.45); }
+
+.sbx-view-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.sbx-view-preset {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em; text-transform: uppercase;
+  cursor: pointer; background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame); padding: 4px 9px;
+}
+.sbx-view-preset:hover { background: rgba(91,31,33,.09); }
+.sbx-view-group { border: 1px solid rgba(180,160,120,.55); padding: 4px 9px 8px; margin: 0 0 8px; min-width: 0; }
+.sbx-view-group legend {
+  font-family: 'Oswald', sans-serif; font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--maroon); padding: 0 4px;
+}
+.sbx-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin: 5px 0; }
+.sbx-view-label { font-size: .8rem; color: var(--ink); flex: 1 1 120px; }
+.sbx-view-seg { display: inline-flex; border: 1px solid var(--parch-frame); background: #fffdf8; }
+.sbx-view-seg button {
+  border: none; background: none; padding: 4px 9px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; color: var(--maroon);
+}
+.sbx-view-seg button + button { border-left: 1px solid var(--parch-frame); }
+.sbx-view-seg button:hover { background: rgba(91,31,33,.08); }
+.sbx-view-seg button.on { background: var(--maroon); color: var(--parch); }
+.sbx-view-row select {
+  font-family: 'Libre Franklin', sans-serif; font-size: .8rem; padding: 3px 6px; max-width: 100%;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+.sbx-view-range { display: inline-flex; align-items: center; gap: 7px; flex: 1 1 170px; min-width: 0; }
+.sbx-view-range input { flex: 1; min-width: 80px; accent-color: var(--maroon); margin: 0; }
+.sbx-view-range output { font-family: 'Oswald', sans-serif; font-size: .7rem; min-width: 40px; text-align: right; color: var(--maroon); }
+.sbx-view-hint { flex-basis: 100%; margin: 0; font-size: .72rem; color: #6b5d49; line-height: 1.35; }
+.sbx-view-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1px 10px; margin-top: 3px; }
+.sbx-view-check { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--ink); cursor: pointer; padding: 2px 0; }
+.sbx-view-check input { accent-color: var(--maroon); margin: 0; flex: none; }
+.sbx-view-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sbx-keys { font-size: .72rem; color: #6b5d49; margin: 9px 0 0; line-height: 1.7; }
+.sbx-keys kbd {
+  font-family: inherit; font-size: .68rem; border: 1px solid var(--parch-frame); border-bottom-width: 2px;
+  background: #fffdf8; padding: 0 5px; border-radius: 3px; color: var(--maroon);
+}
+
+/* ── toasts ── */
+.sbx-toast {
+  position: fixed; left: 50%; bottom: 22px; z-index: 90;
+  transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  background: var(--parch); color: var(--maroon); border: 2px solid var(--parch-frame);
+  padding: 7px 14px; font-size: .84rem; max-width: min(92vw, 460px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45); transition: opacity .15s, transform .15s;
+}
+.sbx-toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 900px) {
+  .sbx[data-side="right"] .sbx-side { left: auto; right: 0; transform: translateX(100%); border-left-width: 2px; }
+  .sbx[data-side="right"] .sbx-side.on { transform: none; box-shadow: -6px 0 26px rgba(0,0,0,.55); }
+  .sbx-pop {
+    top: auto !important; left: 0 !important; right: 0; bottom: 0; width: 100%;
+    max-height: 82vh !important; border-width: 2px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .sbx-pop-scrim.on { display: block; }
+  .sbx-toast { bottom: 14px; }
+  .sbx-keys { display: none; }
+}

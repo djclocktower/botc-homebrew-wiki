@@ -110,6 +110,9 @@
         </div>
         <div class="sbx-counts" id="sbx-counts"></div>
         <div class="sbx-acts">
+          <button type="button" class="sbx-b sbx-b-icon" id="sbx-undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>&#8630;</button>
+          <button type="button" class="sbx-b sbx-b-icon" id="sbx-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>&#8631;</button>
+          <button type="button" class="sbx-b" id="sbx-view-btn" data-pop="sbx-view" aria-haspopup="dialog" aria-expanded="false" title="How the script is drawn">&#9881; View</button>
           <button type="button" class="sbx-b" id="sb-randomize" title="Fill a Trouble Brewing-sized script at random">&#9860; Random</button>
           <button type="button" class="sbx-b" id="sb-sort" title="Steven Approved Order">&#8645; Sort</button>
           <div class="sbx-menu-wrap">
@@ -248,6 +251,20 @@
 
   <div class="sbx-scrim" id="sbx-scrim"></div>
 
+  <!-- Popovers live outside the grid so a transformed drawer cannot become
+       their containing block. One is open at a time (script-builder.js). -->
+  <div class="sbx-pop-scrim" id="sbx-popscrim"></div>
+  <div class="sbx-pop" id="sbx-view" role="dialog" aria-label="View settings" hidden>
+    <div class="sbx-pop-head">
+      <span class="sbx-pop-title">View</span>
+      <span class="sbx-pop-sub">Only how this page draws the script &mdash; the export and the published page never change.</span>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+    </div>
+    <div class="sbx-pop-body" id="sbx-view-body"></div>
+    <p class="sbx-keys"><strong>Keys</strong> &nbsp; <kbd>/</kbd> search &nbsp; <kbd>Enter</kbd> add the first match &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo &nbsp; <kbd>Esc</kbd> close</p>
+  </div>
+  <div class="sbx-toast" id="sbx-toast" role="status" aria-live="polite"></div>
+
   <!-- creators.js first: render.js reads the credit-mark registry off it, so
        the detailed credits list "Cheerleader", not "Cheerleader ∇". -->
   <script src="assets/creators.js"></script>
@@ -261,6 +278,7 @@
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
+  <script src="assets/script-builder-view.js"></script>
   <script src="assets/script-builder.js"></script>
   <script src="assets/site.js"></script>
 </body>

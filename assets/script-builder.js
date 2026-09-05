@@ -67,13 +67,31 @@
   var nightDirty = true, jinxDirty = true;
   var activeTab = 'script';
 
+  // How the roster is drawn (assets/script-builder-view.js). Never part of
+  // the script: the same roster exports and publishes identically under
+  // every view, so it lives with the browser's other preferences.
+  var view = null;
+
   // ── tiny helpers ───────────────────────────────────────────────────────
   function $(id) { return document.getElementById(id); }
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
       .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  /* The 192px WebP thumbnail beside the art (PageRender.thumbSrc): ~8 KB
+     against the original's ~150 KB, and this list draws 1,900 of them. The
+     Worker serves the original at the thumbnail URL when none exists yet. */
   function artOf(c) {
+    var PR = window.PageRender;
+    if (PR && PR.thumbSrc) return PR.thumbSrc(c, '');
+    if (c.art) return 'assets/' + c.art;
+    if (typeof c.image === 'string' && c.image) return c.image;
+    return 'assets/favicon.png';
+  }
+  /* The full-size icon, for anywhere it is shown large. */
+  function artFull(c) {
+    var PR = window.PageRender;
+    if (PR && PR.artSrc) return PR.artSrc(c, '');
     if (c.art) return 'assets/' + c.art;
     if (typeof c.image === 'string' && c.image) return c.image;
     return 'assets/favicon.png';
@@ -128,7 +146,13 @@
   }
   function getMeta() { return readJSON(META_KEY, {}) || {}; }
   function setMeta(m) { writeJSON(META_KEY, m || {}); }
-  function patchMeta(fn) { var m = getMeta(); fn(m); setMeta(m); settle(); }
+  /* `how` says what kind of change this is for the undo stack: the default
+     is one step; 'typed' coalesces a run of keystrokes into one; 'silent'
+     records nothing (a restore, or bookkeeping such as libId). */
+  function patchMeta(fn, how) {
+    if (how === 'typed') markTyped(); else if (how !== 'silent') mark();
+    var m = getMeta(); fn(m); setMeta(m); settle();
+  }
 
   /* The roster in the order the script page draws it: team by team, keeping
      the stored order inside each team (Array.sort is stable). Slugs this wiki
@@ -177,9 +201,17 @@
   // ══════════════════════════════════════════════════════════════════════
   function paintRow(slug) {
     var btn = rowBySlug[slug];
-    if (btn) btn.classList.toggle('on', !!sel[slug]);
+    if (!btn) return;
+    var on = !!sel[slug];
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    // The row carries it as well, for the "hide what is already on the
+    // script" view setting, which is one CSS rule off this class.
+    var row = btn.parentNode && btn.parentNode.parentNode;
+    if (row && row.classList.contains('sbx-add-row')) row.classList.toggle('on', on);
   }
   function toggle(slug) {
+    mark();
     if (sel[slug]) {
       delete sel[slug];
       var i = order.indexOf(slug);
@@ -194,6 +226,7 @@
   }
   function removeSlug(slug) {
     if (!sel[slug]) return;
+    mark();
     delete sel[slug];
     var i = order.indexOf(slug);
     if (i !== -1) order.splice(i, 1);
@@ -201,7 +234,8 @@
     paintRow(slug);
     afterChange();
   }
-  function replaceOrder(list) {
+  function replaceOrder(list, quiet) {
+    if (!quiet) mark();
     var before = order.slice();
     order = list.slice();
     sel = {};
@@ -253,37 +287,92 @@
     $('sbx-counts').innerHTML = html;
   }
 
-  function paintRoster() {
+  /* The roster as the VIEW shows it. `order` (and so rosterChars(), the
+     export and the published page) keeps the arranged sequence; a view sort
+     is only how this page lays it out. Team grouping always wins. */
+  function displayChars() {
     var chars = rosterChars();
+    var o = view ? view.order : 'added';
+    if (o === 'added') return chars;
+    function ti(c) { return TEAM_INDEX[c.team] != null ? TEAM_INDEX[c.team] : 99; }
+    function nightKey(c) {
+      var f = Number(c.firstNight) || 0, n = Number(c.otherNight) || 0;
+      return (f > 0 ? f : 1e6) * 1e4 + (n > 0 ? n : 1e3);
+    }
+    var arr = chars.slice();
+    if (o === 'name') arr.sort(function (a, b) { return ti(a) - ti(b) || (a.name || '').localeCompare(b.name || ''); });
+    else if (o === 'sao' && window.saoCompare) arr.sort(function (a, b) { return ti(a) - ti(b) || window.saoCompare(a, b); });
+    else if (o === 'night') arr.sort(function (a, b) { return ti(a) - ti(b) || nightKey(a) - nightKey(b); });
+    return arr;
+  }
+
+  /* slug -> the names it is jinxed with on this script, for the row marks. */
+  function jinxMarks() {
+    var map = {};
+    if (view && !view.showJinx) return map;
+    scriptJinxes().forEach(function (j) {
+      (map[j.a.slug] = map[j.a.slug] || []).push(j.b.name);
+      (map[j.b.slug] = map[j.b.slug] || []).push(j.a.name);
+    });
+    return map;
+  }
+
+  function rowHTML(c, jinxedWith) {
+    var v = view || {};
+    var meta = '';
+    if (v.showCreator && !c.official && c.creator) meta += '<span class="sbx-ch-by">by ' + esc(c.creator) + '</span>';
+    if (v.showTags && c.tags) {
+      meta += '<span class="sbx-ch-tags">' + String(c.tags).split(',').map(function (t) {
+        t = t.trim();
+        return t ? '<span class="sbx-tag">' + esc(t) + '</span>' : '';
+      }).join('') + '</span>';
+    }
+    var marks = '';
+    if (v.showNight) {
+      if (Number(c.firstNight) > 0) marks += '<span class="sbx-ch-n" title="Acts on the first night">F</span>';
+      if (Number(c.otherNight) > 0) marks += '<span class="sbx-ch-n" title="Acts on other nights">O</span>';
+    }
+    if (jinxedWith && jinxedWith.length) {
+      marks += '<span class="sbx-ch-jx" title="Jinxed with ' + esc(jinxedWith.join(', ')) + '">&#9903;' + jinxedWith.length + '</span>';
+    }
+    // Name and ability are ONE paragraph, the way the character sheet
+    // prints them — not a name stacked over its ability in a box.
+    return '<div class="sbx-ch" data-slug="' + esc(c.slug) + '">' +
+      '<img class="sbx-ch-img" loading="lazy" decoding="async" src="' +
+        esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+      '<p class="sbx-ch-txt">' +
+        '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
+          (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
+          esc(c.name) + '</a>' +
+        (c.official ? '<span class="sbx-off">official &#8599;</span> ' : '') +
+        marks +
+        '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
+        (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') +
+      '</p>' +
+      '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
+        '" aria-label="Remove ' + esc(c.name) + '">&#10005;</button>' +
+    '</div>';
+  }
+
+  function paintRoster() {
+    var chars = displayChars();
     var box = $('sb-script');
     var miss = missingSlugs();
     if (!chars.length && !miss.length) {
-      box.innerHTML = '<p class="sbx-empty">Nothing on this script yet. Pick characters from the panel on the left.</p>';
+      box.innerHTML = '<p class="sbx-empty">Nothing on this script yet. Pick characters from the panel' +
+        (view && view.side === 'right' ? ' on the right' : ' on the left') + '.</p>';
       return;
     }
+    var jx = jinxMarks();
     var html = '';
     TEAMS.forEach(function (t) {
       var group = chars.filter(function (c) { return c.team === t[0]; });
       if (!group.length) return;
-      html += '<div class="sbx-team"><h3 class="sbx-team-head">' + esc(t[1]) +
-        ' <span>(' + group.length + ')</span></h3><div class="sbx-sheet">';
-      group.forEach(function (c) {
-        // Name and ability are ONE paragraph, the way the character sheet
-        // prints them — not a name stacked over its ability in a box.
-        html += '<div class="sbx-ch">' +
-          '<img class="sbx-ch-img" loading="lazy" decoding="async" width="40" height="40" src="' +
-            esc(artOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
-          '<p class="sbx-ch-txt">' +
-            '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
-              (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
-              esc(c.name) + '</a>' +
-            (c.official ? '<span class="sbx-off">official &#8599;</span> ' : '') +
-            '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
-          '</p>' +
-          '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
-            '" aria-label="Remove ' + esc(c.name) + '">&#10005;</button>' +
-        '</div>';
-      });
+      var head = window.SBView ? window.SBView.teamHeading(t[0], t[1], view) : t[1];
+      html += '<div class="sbx-team" data-team="' + esc(t[0]) + '">' +
+        (head ? '<h3 class="sbx-team-head">' + esc(head) + ' <span>(' + group.length + ')</span></h3>' : '') +
+        '<div class="sbx-sheet">';
+      group.forEach(function (c) { html += rowHTML(c, jx[c.slug]); });
       html += '</div></div>';
     });
     if (miss.length) {
@@ -316,7 +405,7 @@
       group.forEach(function (c, i) {
         var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
         var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
-        html += '<div class="sbx-add-row" data-team="' + esc(c.team || '') + '"' +
+        html += '<div class="sbx-add-row' + (sel[c.slug] ? ' on' : '') + '" data-team="' + esc(c.team || '') + '"' +
           ' data-tags="' + esc(c.tags || '') + '"' +
           ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
           ' data-name="' + esc(c.name || '') + '"' +
@@ -326,7 +415,7 @@
           '<div class="sbx-add-head-row">' +
             '<button type="button" class="sbx-add-item' + (sel[c.slug] ? ' on' : '') +
               '" data-slug="' + esc(c.slug) + '" aria-pressed="' + (sel[c.slug] ? 'true' : 'false') + '">' +
-              '<img class="sbx-add-thumb" loading="lazy" decoding="async" width="26" height="26" src="' +
+              '<img class="sbx-add-thumb" loading="lazy" decoding="async" src="' +
                 esc(artOf(c)) + '" alt="" onerror="this.src=\'assets/favicon.png\'">' +
               // The badge sits OUTSIDE the name, which is ellipsised: inside
               // it, a long name would cut the one word saying whose character
@@ -461,6 +550,179 @@
   function paintJinxCount() {
     var n = scriptJinxes().length;
     $('sbx-tab-jinx-n').textContent = n ? '(' + n + ')' : '';
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  The view: how the roster is drawn (script-builder-view.js)
+  // ══════════════════════════════════════════════════════════════════════
+  function applyView() {
+    if (!window.SBView) return;
+    view = window.SBView.normalize(prefs.view);
+    window.SBView.apply($('sbx'), view);
+  }
+  function setView(v, key) {
+    prefs.view = v;
+    savePrefs();
+    applyView();
+    var rp = key ? window.SBView.repaintFor(key) : 'roster';
+    if (rp === 'roster') paintRoster();
+    if (key === 'side' || !key) {
+      // The panel moved to the other edge, so the grip's arithmetic changes
+      // (wireResize reads view.side) and the drawer should shut in case it
+      // was open on the old side.
+      if (window.innerWidth <= 900) closeSide();
+    }
+  }
+  function mountView() {
+    if (!window.SBView) return;
+    window.SBView.mount($('sbx-view-body'), {
+      get: function () { return view; },
+      set: setView
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Undo / redo — the roster and the details, as one stack
+  // ══════════════════════════════════════════════════════════════════════
+  /* Every change records the state it replaced: a click, a sort, an import,
+     a library switch. A run of typing in one field is one step (markTyped),
+     so Ctrl+Z takes back the sentence and not the last letter. Snapshots
+     are a few hundred bytes of JSON; 80 are kept. */
+  var hist = { undo: [], redo: [], last: null };
+  var HIST_MAX = 80;
+  var typingUntil = 0;
+
+  function snap() { return JSON.stringify({ o: order, m: getMeta() }); }
+  function mark() {
+    var s = snap();
+    if (s === hist.last) return;
+    hist.undo.push(s);
+    if (hist.undo.length > HIST_MAX) hist.undo.shift();
+    hist.redo.length = 0;
+    hist.last = s;
+    typingUntil = 0;
+    paintHistory();
+  }
+  function markTyped() {
+    var now = Date.now();
+    if (now > typingUntil) mark();
+    typingUntil = now + 900;
+  }
+  function restore(s) {
+    var st;
+    try { st = JSON.parse(s); } catch (e) { return; }
+    setMeta(st && st.m ? st.m : {});
+    primeForm();
+    replaceOrder(Array.isArray(st && st.o) ? st.o : [], true);
+    paintLibrary();
+    hist.last = s;
+    typingUntil = 0;
+    paintHistory();
+  }
+  function undo() {
+    if (!hist.undo.length) return;
+    var cur = snap();
+    var s = hist.undo.pop();
+    if (s === cur && hist.undo.length) s = hist.undo.pop();
+    hist.redo.push(cur);
+    restore(s);
+    toast('Undone');
+  }
+  function redo() {
+    if (!hist.redo.length) return;
+    var cur = snap();
+    var s = hist.redo.pop();
+    hist.undo.push(cur);
+    restore(s);
+    toast('Redone');
+  }
+  function paintHistory() {
+    var u = $('sbx-undo'), r = $('sbx-redo');
+    if (u) u.disabled = !hist.undo.length;
+    if (r) r.disabled = !hist.redo.length;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Toasts, popovers, keyboard
+  // ══════════════════════════════════════════════════════════════════════
+  var toastTimer = null;
+  function toast(msg, ms) {
+    var el = $('sbx-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('on');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('on'); }, ms || 2200);
+  }
+
+  /* One popover open at a time. On a wide screen it hangs off its button;
+     below 900px it is a bottom sheet over a scrim (the CSS ignores the
+     inline position there). */
+  var openPopId = '', openAnchor = null;
+  function openPop(id, anchor) {
+    if (openPopId && openPopId !== id) closePops();
+    var pop = $(id);
+    if (!pop) return;
+    pop.hidden = false;
+    openPopId = id;
+    openAnchor = anchor || null;
+    placePop();
+    var mobile = window.innerWidth <= 900;
+    $('sbx-popscrim').classList.toggle('on', mobile);
+    if (mobile) document.documentElement.classList.add('sbx-locked');
+    if (anchor) anchor.setAttribute('aria-expanded', 'true');
+  }
+  function placePop() {
+    var pop = openPopId && $(openPopId);
+    if (!pop) return;
+    if (window.innerWidth <= 900 || !openAnchor) {
+      pop.style.top = pop.style.left = pop.style.maxHeight = '';
+      return;
+    }
+    var r = openAnchor.getBoundingClientRect();
+    var top = Math.round(r.bottom + 6);
+    pop.style.top = top + 'px';
+    pop.style.maxHeight = Math.max(180, window.innerHeight - top - 12) + 'px';
+    var w = pop.offsetWidth;
+    pop.style.left = Math.round(Math.min(Math.max(8, r.right - w), window.innerWidth - w - 8)) + 'px';
+  }
+  function closePops() {
+    if (!openPopId) return;
+    var pop = $(openPopId);
+    if (pop) pop.hidden = true;
+    var btn = document.querySelector('[data-pop="' + openPopId + '"]');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+    openPopId = '';
+    openAnchor = null;
+    $('sbx-popscrim').classList.remove('on');
+    if (!$('sbx-side').classList.contains('on')) document.documentElement.classList.remove('sbx-locked');
+  }
+  function togglePop(id, anchor) {
+    if (openPopId === id) closePops(); else openPop(id, anchor);
+  }
+
+  function focusSearch() {
+    if (window.innerWidth <= 900) showSide('chars');
+    else if (prefs.side !== 'chars') showSide('chars');
+    var f = $('sb-filter');
+    f.focus();
+    f.select();
+  }
+
+  /* The panel rows the filter box is currently showing, in list order.
+     Read straight off the DOM the filter box maintains (card-filters.js
+     toggles each row's inline display), so this can never disagree with
+     what the panel shows. */
+  function visibleRows(homebrewOnly) {
+    var q = '#sb-add-list .sbx-add-row' + (homebrewOnly ? '[data-source="homebrew"]' : '');
+    var out = [];
+    [].slice.call(document.querySelectorAll(q)).forEach(function (row) {
+      if (row.style.display === 'none') return;
+      var group = row.closest('.sbx-add-group');
+      if (group && group.style.display === 'none') return;
+      out.push(row);
+    });
+    return out;
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -686,6 +948,7 @@
     var next = replace ? [] : order.slice();
     slugs.forEach(function (s) { if (next.indexOf(s) === -1) next.push(s); });
 
+    mark();
     if (replace) {
       // Whatever is being replaced goes to its saved copy first: the import
       // clears libId below, so nothing after this point can write over it.
@@ -704,7 +967,7 @@
       setMeta(m);
       primeForm();
     }
-    replaceOrder(next);
+    replaceOrder(next, true);
 
     var offCount = slugs.filter(function (s) { return s.indexOf('off-') === 0; }).length;
     var msg = 'Imported ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') +
@@ -712,8 +975,10 @@
     if (missing.length) {
       msg += '\n\nNot on this wiki (' + missing.length + '): ' +
         missing.slice(0, 10).join(', ') + (missing.length > 10 ? '…' : '');
+      alert(msg);
+    } else {
+      toast(msg);
     }
-    alert(msg);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -755,6 +1020,9 @@
     var id = uid();
     m.libId = id;
     setMeta(m);
+    // Bookkeeping, not a step: the snapshot on the stack has no libId and
+    // would otherwise look like a change to undo.
+    if (hist.last) { try { var st = JSON.parse(hist.last); st.m.libId = id; hist.last = JSON.stringify(st); } catch (e) { /* fine */ } }
     lib.unshift(snapshot(id));
     setLib(lib);
     paintLibrary();
@@ -782,11 +1050,12 @@
       return;
     }
     syncLibrary();                       // keep whatever is open
+    mark();
     var m = e.meta && typeof e.meta === 'object' ? e.meta : {};
     m.libId = e.id;
     setMeta(m);
     primeForm();
-    replaceOrder(Array.isArray(e.chars) ? e.chars : []);
+    replaceOrder(Array.isArray(e.chars) ? e.chars : [], true);
     paintLibrary();
     if (window.innerWidth <= 900) closeSide();
   }
@@ -796,9 +1065,10 @@
       if (!confirm('Start a new, empty script?\n\nWhat you have open is kept in My Scripts.')) return;
       syncLibrary();
     }
+    mark();
     setMeta({});
     primeForm();
-    replaceOrder([]);
+    replaceOrder([], true);
     paintLibrary();
     if (window.innerWidth > 900) $('sb-name').focus();
   }
@@ -809,7 +1079,7 @@
     var name = (e.meta && e.meta.name) || 'this script';
     if (!confirm('Delete "' + name + '" from My Scripts?\n\nThis cannot be undone.')) return;
     setLib(getLib().filter(function (x) { return x.id !== id; }));
-    if (getMeta().libId === id) patchMeta(function (m) { delete m.libId; });
+    if (getMeta().libId === id) patchMeta(function (m) { delete m.libId; }, 'silent');
     paintLibrary();
   }
   function renameEntry(id) {
@@ -957,7 +1227,7 @@
       .map(function (i) { return i.value.trim(); }).filter(Boolean);
     patchMeta(function (m) {
       if (vals.length) m.bootlegger = vals; else delete m.bootlegger;
-    });
+    }, 'typed');
   }
   var saveBootSoon = debounce(saveBoot, 350);
 
@@ -1014,8 +1284,8 @@
     });
     grip.addEventListener('pointermove', function (e) {
       if (!dragging) return;
-      var left = $('sbx').getBoundingClientRect().left;
-      setSideWidth(e.clientX - left, false);
+      var box = $('sbx').getBoundingClientRect();
+      setSideWidth(view && view.side === 'right' ? box.right - e.clientX : e.clientX - box.left, false);
       e.preventDefault();
     });
     function stop() {
@@ -1044,9 +1314,20 @@
       }
       var item = e.target.closest('.sbx-add-item');
       if (!item) return;
-      var slug = item.getAttribute('data-slug');
+      toggle(item.getAttribute('data-slug'));
+    });
+    // Enter in the search box adds the first character it is showing, so a
+    // script can be typed in: name, Enter, name, Enter.
+    $('sb-filter').addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      var rows = visibleRows(false);
+      if (!rows.length) { toast('Nothing matches that.'); return; }
+      var btn = rows[0].querySelector('.sbx-add-item');
+      var slug = btn && btn.getAttribute('data-slug');
+      if (!slug || !bySlug[slug]) return;
       toggle(slug);
-      item.setAttribute('aria-pressed', sel[slug] ? 'true' : 'false');
+      toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
     });
 
     $('sb-script').addEventListener('click', function (e) {
@@ -1086,7 +1367,7 @@
         patchMeta(function (m) {
           var t = v.slice(0, max);
           if (t) m[key] = t; else delete m[key];
-        });
+        }, 'typed');
         if (key === 'name') {
           document.title = (v.trim() || 'Script Builder') + ' — BOTC HomeBrew Wiki';
           paintLibrary();
@@ -1105,7 +1386,7 @@
     });
     $('sb-almanac').addEventListener('input', debounce(function () {
       var v = $('sb-almanac').value.trim().slice(0, 300);
-      patchMeta(function (m) { if (v) m.almanac = v; else delete m.almanac; });
+      patchMeta(function (m) { if (v) m.almanac = v; else delete m.almanac; }, 'typed');
     }, 350));
     $('sb-boot-add').addEventListener('click', function () { addBootRow(''); });
 
@@ -1117,8 +1398,44 @@
       var on = menu.classList.toggle('on');
       more.setAttribute('aria-expanded', on ? 'true' : 'false');
     });
-    document.addEventListener('click', closeMenu);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeMenu(); closeSide(); } });
+    document.addEventListener('click', function (e) {
+      closeMenu();
+      if (!openPopId) return;
+      // A target no longer in the document was re-rendered by its own
+      // handler (a preset button inside the popover); that is never a click
+      // outside, whatever closest() says about a detached node.
+      if (e.target && e.target.isConnected === false) return;
+      if (!(e.target.closest && (e.target.closest('.sbx-pop') || e.target.closest('[data-pop]')))) closePops();
+    });
+    // Popover buttons: each names the popover it opens.
+    [].slice.call(document.querySelectorAll('[data-pop]')).forEach(function (b) {
+      b.addEventListener('click', function () { togglePop(b.getAttribute('data-pop'), b); });
+    });
+    [].slice.call(document.querySelectorAll('[data-pop-close]')).forEach(function (b) {
+      b.addEventListener('click', closePops);
+    });
+    $('sbx-popscrim').addEventListener('click', closePops);
+    window.addEventListener('resize', placePop);
+    $('sbx-undo').addEventListener('click', undo);
+    $('sbx-redo').addEventListener('click', redo);
+
+    document.addEventListener('keydown', function (e) {
+      var t = e.target;
+      var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable);
+      var mod = e.ctrlKey || e.metaKey;
+      if (e.key === 'Escape') {
+        if (openPopId) { closePops(); return; }
+        closeMenu();
+        if (typing && t.id === 'sb-filter' && t.value) { t.value = ''; t.dispatchEvent(new Event('input', { bubbles: true })); return; }
+        closeSide();
+        return;
+      }
+      // Inside a text box the browser's own undo is the one expected.
+      if (mod && !typing && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+      if (mod && !typing && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
+      if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); focusSearch(); return; }
+      if (!typing && !mod && !e.altKey && e.key === '/') { e.preventDefault(); focusSearch(); }
+    });
     menu.addEventListener('click', function (e) {
       var b = e.target.closest('button[data-do]');
       if (!b) return;
@@ -1214,13 +1531,9 @@
      disagree with what the panel is showing. Before the panel is built,
      every homebrew character is the pool. */
   function visibleSidebarChars() {
-    var rows = document.querySelectorAll('#sb-add-list .sbx-add-row[data-source="homebrew"]');
-    if (!rows.length) return allChars.slice();
+    if (!document.querySelector('#sb-add-list .sbx-add-row')) return allChars.slice();
     var out = [];
-    [].slice.call(rows).forEach(function (row) {
-      if (row.style.display === 'none') return;
-      var group = row.closest('.sbx-add-group');
-      if (group && group.style.display === 'none') return;
+    visibleRows(true).forEach(function (row) {
       var btn = row.querySelector('.sbx-add-item');
       var c = btn && bySlug[btn.getAttribute('data-slug')];
       if (c) out.push(c);
@@ -1331,6 +1644,7 @@
           (!order.length ||
            confirm('Load the shared script (' + incoming.length + ' characters)?\n\nThis replaces what you have open — it is kept in My Scripts.'))) {
         if (order.length) syncLibrary();
+        mark();
         var m = {};
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);
@@ -1361,8 +1675,11 @@
   }
 
   loadCurrent();
+  applyView();
   primeForm();
   wire();
+  mountView();
+  paintHistory();
   syncTopbarHeight();
   window.addEventListener('resize', syncTopbarHeight);
   // The bar's height depends on two images; measure again once they are in.
