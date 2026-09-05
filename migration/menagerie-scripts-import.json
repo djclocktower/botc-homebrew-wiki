@@ -1,0 +1,233 @@
+{
+ "scrapedAt": "2026-09-01T22:19:48.412Z",
+ "scriptsIntro": [
+  "Example scripts using characters from The Menagerie."
+ ],
+ "scripts": [
+  {
+   "name": "Game Changer",
+   "description": [
+    "A goofy script centered around the Chatterpox and the Arbiter - where the only way to learn is by playing, the only way to win is by learning, and the only way to stay alive is by following the rules. Or is it?",
+    "This script is for: People who enjoy the fun kind of chaos, and not taking the game too seriously while still having a puzzle to solve."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Game%20Changer.json"
+  },
+  {
+   "name": "Balance in All Things",
+   "description": [
+    "A script designed around the Yin and Yang. Find the Demon while keeping an eye on its good counterpart, lest it become evil - or worse.",
+    "This script is for: People who don't mind living with the constant feeling that you're about to turn evil at a moment's notice. People who love a boss fight."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Balance%20in%20All%20Things.json"
+  },
+  {
+   "name": "Belly Up",
+   "description": [
+    "A script designed to showcase the Polterghast. Maybe the Demon is dead - but maybe it's just playing.",
+    "This script is for: People who like the idea of the Zombuul, but want games to last for less than 15 days. Zombuul enjoyers, assemble."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Belly%20Up.json"
+  },
+  {
+   "name": "Sweet Nothings",
+   "description": [
+    "A script designed around the Baku, Lost Lovers, and Mentalist. Get out there and talk to as many people as you can to help solve the game, but just know that you might be face to face with the Demon, keen to turn your information upside down.",
+    "This script is for: Talkers, yappers, and everyone inbetween. This script encourages interaction and conversation, as well as tracking who speaks to whom."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Sweet%20Nothings.json"
+  },
+  {
+   "name": "Are We... the Bad Guys?",
+   "description": [
+    "A script where good is just a state of mind. You can never be sure if you're good or evil - but if you are, you certainly can't let anyone know it. Not yet, anyway.",
+    "This script is for: People who don't mind suddenly playing for evil, and people who don't mind selling out their evil team - maybe."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Are%20We...%20The%20Bad%20Guys_.json"
+  },
+  {
+   "name": "Resident, Evil",
+   "description": [
+    "A script designed around Patient Zero and the Doppelganger. The Demon kills and poisons next to executees, but how do you know who's sober, who's an Outsider, who's evil - and importantly, who's who?",
+    "This script is for: People who don't mind being in an Evil Twin pair. Kinda."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Resident%2C%20Evil.json"
+  },
+  {
+   "name": "Shadow of the Colossus",
+   "description": [
+    "A script where the mighty Colossus takes over the town. Literally. Players next to the Colossus aren't safe from the unfortunate title of Outsider - not even sober, healthy Townsfolk.",
+    "This script is for: People who love to puzzle out who the No Dashii has touched, and people who don't mind seeing: \"You are the evil Fang Gu\"."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Shadow%20of%20the%20Colossus.json"
+  },
+  {
+   "name": "In Death - Is Life",
+   "description": [
+    "A script designed around death: who caused it, who prevented it, and who saw it coming. Features the Martyr, Necromancer, Guardian and Prophet.",
+    "This script is for: People who are happy to embody the phrase: \"death is not the end\"; people who like a good snipe."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/In%20Death%20-%20Is%20Life.json"
+  },
+  {
+   "name": "Tag, You're It",
+   "description": [
+    "A script designed around the terrifying Umbra, a hyper-mobile Demon who can swap place with evil Minions, and refresh their abilities in the process.",
+    "This script is for: Demon-hunters who don't mind chasing rabbits down holes. Players who enjoy playing as evil, but don't love the burden of playing a Demon that has to tough it out all game."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Tag%2C%20You%27re%20It.json"
+  },
+  {
+   "name": "When the Music Stops",
+   "description": [
+    "A script designed around the Loric character, the Pyro. Nominations? Who needs 'em? Turn your eyes to the skies and point at the pretty fireworks instead. But beware, because at the end of each day, someone's liable to go boom.",
+    "This script is for: People who hate accusations, defense, pertinent statements, and putting hands up."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/When%20The%20Music%20Stops%281%29.json"
+  },
+  {
+   "name": "Tick Tock",
+   "description": [
+    "A script where information has the potential to go topsy-turvy every other night. Figure out whether information is correct or wrong to pin down the Demon and win the game.",
+    "This script is for: People who enjoy hearing \"is this a Vortox game?\" but don't enjoy it when people are able to confirm it."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Tick%20Tock.json"
+  },
+  {
+   "name": "True Colours",
+   "description": [
+    "A script designed around the Chameleon, whose powers change each night. With so many combinations and pairs of abilities, you'll may never truly know whether you're hurting or helping.",
+    "This script is for: Lovers of the Philosopher, and people who love to solve a puzzle, as long as they are the puzzle themselves."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/True%20Colours.json"
+  },
+  {
+   "name": "Way of the Samurai",
+   "description": [
+    "A script designed around the Ronin, who grows in power when their allied player is slain by the Demon. With some nights of no deaths, and some nights of many deaths, the Ronin is tasked with navigating many sources of death to win in the end.",
+    "This script is for: People who like \"swingy\" games, and those who don't mind a bit of poisoning."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Way%20of%20the%20Samurai.json"
+  },
+  {
+   "name": "Choose Your Own Adventure",
+   "description": [
+    "The Smith makes it debut in this script, able to craft an ability of their own choosing. But unfortunately, the Smith isn't the only one who can make the rules, with the Wizard, Mechanical Man and others causing chaos around it.",
+    "This script is for: \"Chaos\" players who don't mind not knowing what's going on, and people who want something different."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Choose%20Your%20Own%20Adventure.json"
+  },
+  {
+   "name": "Firestarter",
+   "description": [
+    "Bomb! This script is centered around the Firebug, the explosive Minion who passes a killer hot potato around town in an attempt to take town down as quickly as possible.",
+    "This script is for: Quick games, people who like hidden mechanics, and lovers of Pass the Parcel."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Firestarter.json"
+  },
+  {
+   "name": "The Fix Is Sin",
+   "description": [
+    "Pick a side, any side. The Fixer is an Outsider who plays only for themselves, and for their chosen players. Good and evil is all relative, really.",
+    "This script is for: Competitive horse racers, gamblers, and people who don't mind going turncoat in an instant."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/The%20Fix%20is%20Sin.json"
+  },
+  {
+   "name": "Secret Ballot",
+   "description": [
+    "Designed around the Crook, this script keeps nominations hidden, turning a regular game of Clocktower on its head. Who knows who's on the block today? Probably the Crook.",
+    "This script is for: Fans of big mechanical changes, Organ Grinder enjoyers, and Bishop defenders."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Secret%20Ballot.json"
+  },
+  {
+   "name": "Who Do You Think You Are?",
+   "description": [
+    "It's THE EGOTIST! This conceited Outsider drunks anyone who would dare accuse them of evil, and wouldn't dare have themselves executed for another's crimes. But they may just end up being the one who did it.",
+    "This script is for: People who love a bit of drama, and hate self-nominations."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Who%20Do%20You%20Think%20You%20Are_.json"
+  },
+  {
+   "name": "Wispr In The Wind",
+   "description": [
+    "A script designed around the Wispr, who can change the physical makeup of the Grimoire by secretly seating itself between others. Do you know who your neighbours are?",
+    "This script is for: People who like to solve a tricky puzzle, or people who enjoy playing chill Minions."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Wispr%20in%20the%20Wind.json"
+  },
+  {
+   "name": "The Imperial Palace",
+   "description": [
+    "Turn Clocktower on its head with an outed Demon who kills indiscriminately! The Shogun doesn't know its Minions, and kills during the day. Outpace the Shogun, eliminate its Minions, and sprint to the finish, but beware executing the Shogun until you're certain!",
+    "This script is for: People who want a fast, swingy game with plenty of chaos, and people who don't mind playing a stressful Demon."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/The%20Imperial%20Palace.json"
+  },
+  {
+   "name": "Stayin' Alive",
+   "description": [
+    "Who's alive? Who's dead? There's no way to truly know with the Embalmer in play. Confirm deaths through other means - but with the Demon poisoning, corrupting information or just slaughtering en masse, if you aren't careful, it may already be too late. You want the Barrow-Fog? We have a Barrow-Fog at home.",
+    "This script is for: Lovers of the Barrow-Fog, or haters of the Barrow-Fog."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Stayin%27%20Alive.json"
+  },
+  {
+   "name": "Switcheroo",
+   "description": [
+    "You feel a square token in the bag. Do you take it? The Eccentric is the Outsider nobody dares speak of, but many know of. Combined with the Counterfeiter, who can snoop at the Grimoire and change the state of the game, this script results in weird, wonderful game states where nothing is as it seems.",
+    "This script is for: Chaos goblins, rule breakers, and risk-takers."
+   ],
+   "json": "http://menagerie.towerrangers.net/repo/Switcheroo.json"
+  }
+ ],
+ "home": [
+  "A homebrew almanac for the board game Blood on the Clocktower",
+  "A homebrew almanac for the board game Blood on the Clocktower",
+  "The Menagerie is an almanac for a collection of homebrew characters for Blood on the Clocktower designed to be adapted to scripts containing standard Clocktower characters. Think of it as an \"expansion pack\"!",
+  "Please contact me on Discord (@Goodpart) if something isn't working, or if you have any feedback. Although tested for balance, these characters have not been run with every given permutation of scripts, and so your comments are absolutely welcome - especially around jinxes, if there are any interactions that feel particularly fun/awful.",
+  "Thanks to all the players who were patient with me while testing, thanks to friends who talked through concepts and got these characters working in the first place, and of course, thanks to The Pandemonium Institute for making such a wonderful game.",
+  "DOWNLOADS",
+  "DOWNLOAD THE MENAGERIE (v.1.17)",
+  "...and import it into the updated Blood on the Clocktower Script Tool. If kept in the list of scripts, characters from The Menagerie should be freely available for any future scripts.",
+  "BROWSE SCRIPTS",
+  "...featuring characters from The Menagerie.",
+  "COMMUNITY SCRIPTS",
+  "...featuring characters from The Menagerie.",
+  "EXPLORE CHARACTERS BY TYPE",
+  "Need help?",
+  "Learn more about basic JSON editing, including how to insert custom characters into your script.",
+  "Development Log",
+  "\"Why did you do this?\" and other questions answered. Maybe.",
+  "Newest Characters: the Barfly, Eccentric and Counterfeiter!",
+  "UPDATES:",
+  "04/08/26: 1.17: Reworked \"Medicine Man\" and \"Cartographer\". Tweaks to \"Ronin\", \"Arbiter\", \"Crook\", \"Firebug\", \"Necromancer\" and \"Shogun\". Added the Development Log and Community Scripts sections.",
+  "16/07/26: 1.15: Happy Clocktower Con AU! Added \"Barfly\" (thanks Twindels), \"Eccentric\" and \"Counterfeiter\" (thanks George). Updated all scripts and links to match the new domain: please re-download The Menagerie and all scripts for full functionality!",
+  "09/06/26: 1.14: Added \"Embalmer\". Added script \"Stayin' Alive\". Slight changes to \"Hypnox\".",
+  "03/05/26: 1.13: Added \"Astrologer\". Consistency corrections for a number of characters (thanks Fafa). Changed \"Banker\".",
+  "26/03/26: 1.12: Added script \"The Imperial Palace\". Fixes for \"Shogun\" and \"Ein\".",
+  "20/03/26: 1.11: Added \"Shogun\".",
+  "19/03/26: 1.10: Night order changes. Amended all current scripts. Added several new scripts.",
+  "17/03/26: 1.09: Added \"Firebug\".",
+  "08/03/26: 1.08: Added \"Tactician\" and \"Mad Scientist\".",
+  "04/03/26: 1.071: Added a jinx for \"Ein\". Wording fixes for \"Cleric\".",
+  "03/03/26: 1.07: Added \"Smith\". Rework of \"Baku\". Added a jinx for \"Zwei\".",
+  "01/03/26: 1.061: Disambiguations/updates for \"Cleric\", \"Daredevil\", \"Ein\" and \"Zwei\".",
+  "27/02/26: 1.06: Updated \"Cleric\", \"Daredevil\", \"Crook\", \"Ein\" and \"Zwei\".",
+  "26/02/26: 1.05: Various wording tweaks. Added \"Fixer\", \"Cleric\", \"Daredevil\", \"Snoop\", \"Crook\", \"Ein\" and \"Zwei\".",
+  "28/11/25: 1.04: Various night order fixes. Re-uploaded sample scripts to fix old Script Tool night order bug, and to amend flavour text. Added \"Ronin\". Minor changes to \"Hypnox\", \"Thrall\", \"Missionary\", \"Banker\". Added new script \"Way of the Samurai\". Added \"Egotist\".",
+  "16/11/25: 1.03: Updated \"Muckraker\", \"Record Keeper\", \"Medicine Man\", \"Sleeper\". Updated wording for \"Gerrymanderer\". Added \"Parasitoid\". Added a secret thing.",
+  "06/11/25: 1.02: Added \"Chameleon\". Added 13 new scripts featuring Menagerie characters.",
+  "05/11/25: 1.01: Updated image links for the \"Arbiter\". Adjusted night order for a number of roles for better compatibility with existing characters.",
+  "03/11/25: Added the Loric section. Added \"Pyro\". Published The Menagerie 1.0.",
+  "02/11/25: Added \"Mime\".",
+  "20/10/25: Added \"Thrall\", \"Banker\" and \"Cartographer\".",
+  "03/10/25: Added \"Colossus\", \"Shinkan\", and \"Houndmaster\".",
+  "24/07/25: Site created. All existing homebrew characters added.",
+  "Blood on the Clocktower and any associated characters are trademark of Steven Medway and The Pandemonium Institute.",
+  "This almanac is unofficial fan content for Blood on the Clocktower, and is not affiliated with, nor endorsed by The Pandemonium Institute.",
+  "These characters are provided \"as-is\", freely available to anyone who wishes to use them. If you wish to retool these characters, please ask me prior to any edits. While I don't claim ownership over character ideas, I've noticed several instances of close copies of my work being posted publicly.",
+  "This is strictly a hobby of mine, and don't expect payment: but if you'd like to tip me as thanks, you can buy me a coffee.",
+  "is it me you're looking for?"
+ ]
+}

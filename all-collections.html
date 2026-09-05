@@ -11,6 +11,12 @@
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The feeds this page draws from start downloading here, while the
+     stylesheet and scripts are still on their way, instead of after the
+     scripts at the end of the body have run. `crossorigin` has to be there
+     for the preload to match a plain fetch(). -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -18,10 +24,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -106,8 +112,8 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -128,7 +134,7 @@
 
     Promise.all([
       fetch('collections.json').then(function(r){ return r.json(); }).catch(function(){ return []; }),
-      fetch('characters.json?fields=card').then(function(r){ return r.json(); })
+      fetch('characters.json?fields=grid').then(function(r){ return r.json(); })
     ]).then(function(res){
       var collData = res[0] || [], list = res[1] || [];
       var COLLECTIONS = collData.map(function(c){

@@ -12,6 +12,13 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The three feeds this page draws from start downloading here, while the
+     stylesheet and scripts are still on their way, instead of after the
+     scripts at the end of the body have run. `crossorigin` has to be there
+     for the preload to match a plain fetch(). -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="scripts.json" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -19,10 +26,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -93,10 +100,22 @@
       return String(s == null ? '' : s).replace(/&/g, '&amp;')
         .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    // A card's picture: the 192px WebP thumbnail beside the art
+    // (thumb/{file}.webp — the Worker serves the original where there is none
+    // yet), versioned by the row's `v` so it caches for a year. Same order as
+    // PageRender.thumbSrc(); a remote `image` or a missing icon falls back.
+    function thumb(c){
+      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
+      if (c.art && /^art\/[^/]+$/.test(c.art)) return 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
+      if (c.art) return 'assets/' + c.art + ver;
+      if (typeof c.image === 'string' && c.image) return c.image;
+      if (Array.isArray(c.image) && c.image[0]) return c.image[0];
+      return 'assets/favicon.png';
+    }
     function card(c) {
       var typeClass = GOOD[c.team] ? ' good' : '';
       return '<a class="char-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
+        '<img loading="lazy" decoding="async" class="char-card-thumb" src="' + esc(thumb(c)) + '" alt="' + esc(c.name) + ' art" onerror="this.src=\'assets/favicon.png\'">' +
         '<div class="char-card-info">' +
         '<div class="char-card-name">' + esc(c.name) +
           window.classBadgeHTML(window.classifyCharacter(c), { from: c.curataFrom }) + '</div>' +
@@ -494,22 +513,43 @@
         panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
-      var html = '';
-      // Always group by team; applyFilters() already ordered each group.
+      // Draw in two steps, so the first paint is not held behind 1,800 cards:
+      // every section's shell and the first screenful of cards go in at once,
+      // and the rest of each grid is appended a slice per animation frame.
+      // A filter change while that is still running invalidates the run
+      // (renderToken) instead of racing it. Always grouped by team;
+      // applyFilters() already ordered each group.
+      var token = ++renderToken;
+      var FIRST = 72, SLICE = 160, drawn = 0;
+      var html = '', pending = [];
       TEAMS.forEach(function (t) {
           var key = t[0], label = t[1];
           var chars = list.filter(function (c) { return c.team === key; });
           if (!chars.length) return;
+          var now = Math.max(0, Math.min(chars.length, FIRST - drawn));
+          drawn += now;
           html += '<section class="type-section" id="' + key + '">' +
             '<h2 class="type-header"><a href="team?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
-            '<div class="char-grid">' + chars.map(card).join('') + '</div></section>';
+            '<div class="char-grid" data-team="' + key + '">' + chars.slice(0, now).map(card).join('') + '</div></section>';
+          if (now < chars.length) pending.push({ key: key, rest: chars.slice(now) });
       });
       panel.innerHTML = html;
+      function more(){
+        if (token !== renderToken || !pending.length) return;
+        var job = pending[0];
+        var grid = panel.querySelector('.char-grid[data-team="' + job.key + '"]');
+        var slice = job.rest.splice(0, SLICE);
+        if (grid) grid.insertAdjacentHTML('beforeend', slice.map(card).join(''));
+        if (!job.rest.length) pending.shift();
+        requestAnimationFrame(more);
+      }
+      if (pending.length) requestAnimationFrame(more);
     }
+    var renderToken = 0;
 
     Promise.all([
       fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?fields=card').then(function(r){return r.json();}),
+      fetch('characters.json?fields=grid').then(function(r){return r.json();}),
       fetch('scripts.json').then(function(r){return r.json();}).catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
@@ -564,36 +604,67 @@
             if (activeCollection.id && !activeCollection.standalone) {
               inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
             }
-            // Full collection JSON (official script-tool schema, every character)
+            // Full collection JSON (official script-tool schema, every character).
+            // This page draws from the GRID feed, which has none of the schema
+            // fields (reminders, night order, jinx text…), so the JSON is built
+            // from the CARD feed — fetched once, and only when somebody actually
+            // reaches for the box (opens it, hovers it, copies or downloads).
+            // Building it eagerly meant every collection view paid for 400 KB
+            // of data to fill a box most readers never open.
             var collJsonText = '';
-            if (window.buildSchema && list.length) {
+            var collJsonLoad = null;
+            function buildCollJson(cards) {
+              var want = {}; list.forEach(function (c) { want[c.slug] = true; });
+              var rows = cards.filter(function (c) { return want[c.slug]; });
               var meta = { id: '_meta', name: displayName };
               var teamOrder = {}; TEAMS.forEach(function (t, i) { teamOrder[t[0]] = i; });
-              var ordered = list.slice().sort(function (a, b) {
+              rows.sort(function (a, b) {
                 var ta = teamOrder[a.team] != null ? teamOrder[a.team] : 99;
                 var tb = teamOrder[b.team] != null ? teamOrder[b.team] : 99;
                 return ta !== tb ? ta - tb : (a.name || '').localeCompare(b.name || '');
               });
               // Qualified by THIS collection, and by its own id settings, so
               // the box here writes the same ids as the collection's page —
-              // `ordered.map(buildSchema)` used to hand Array.map's index in
-              // as the options object, which only worked by accident.
+              // a bare `rows.map(buildSchema)` would hand Array.map's index in
+              // as the options object, which only works by accident.
               var collOpts = {
                 mode: (activeCollection.exportIds && activeCollection.exportIds.mode) || 'full',
                 prefix: (activeCollection.exportIds && activeCollection.exportIds.prefix) || '',
                 suffix: (activeCollection.exportIds && activeCollection.exportIds.suffix) || '',
                 set: activeCollection.id || activeCollection.slug || undefined
               };
-              collJsonText = JSON.stringify([meta].concat(ordered.map(function (c) {
+              return JSON.stringify([meta].concat(rows.map(function (c) {
                 return window.buildSchema(c, collOpts);
               })), null, 2);
+            }
+            function ensureCollJson() {
+              if (collJsonLoad) return collJsonLoad;
+              collJsonLoad = fetch('characters.json?fields=card').then(function (r) { return r.json(); })
+                .then(function (cards) {
+                  collJsonText = buildCollJson(cards || []);
+                  var code = stack.querySelector('.collection-json code');
+                  if (code) code.textContent = collJsonText;
+                  var cdl2 = stack.querySelector('#coll-json-download');
+                  if (cdl2) cdl2.href = URL.createObjectURL(new Blob([collJsonText], { type: 'application/json' }));
+                  var cp = stack.querySelector('.collection-json .json-copy');
+                  if (cp) { cp.disabled = false; cp.textContent = 'Copy JSON'; }
+                  return collJsonText;
+                })
+                .catch(function () {
+                  collJsonLoad = null;
+                  var code = stack.querySelector('.collection-json code');
+                  if (code) code.textContent = 'The character data could not be loaded. Please try again.';
+                });
+              return collJsonLoad;
+            }
+            if (window.buildSchema && list.length) {
               inner += '<div class="collection-json">' +
                 '<div class="json-box">' +
                   '<div class="json-bar">' +
                     '<span class="json-bar-toggle" role="button" tabindex="0" aria-expanded="false">Collection JSON (all ' + list.length + ' characters) <span class="json-arrow">&#9662;</span></span>' +
-                    '<button type="button" class="json-copy">Copy JSON</button>' +
+                    '<button type="button" class="json-copy" disabled>Copy JSON</button>' +
                   '</div>' +
-                  '<pre class="json-body" hidden><code>' + esc(collJsonText) + '</code></pre>' +
+                  '<pre class="json-body" hidden><code>Loading the full character data…</code></pre>' +
                 '</div>' +
                 '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">⬇ Download JSON</a>' +
               '</div>';
@@ -604,8 +675,25 @@
             // instead and the tap just jumps to the top of the page. Same fix
             // as the SSR collection pages (assets/pageview.js).
             var cdl = stack.querySelector('#coll-json-download');
+            var cjBox = stack.querySelector('.collection-json');
+            if (cjBox) {
+              // Start the load as soon as the reader shows interest in the box;
+              // opening it, or copying, also starts it.
+              ['pointerenter', 'touchstart', 'focusin'].forEach(function (ev) {
+                cjBox.addEventListener(ev, function () { ensureCollJson(); }, { passive: true, once: true });
+              });
+              cjBox.addEventListener('click', function (e) {
+                if (e.target.closest && e.target.closest('.json-bar-toggle, .json-copy')) ensureCollJson();
+              }, true);
+            }
             if (cdl) {
-              cdl.href = URL.createObjectURL(new Blob([collJsonText], { type: 'application/json' }));
+              // The download waits for the data: a click before it is here
+              // loads it and then downloads, rather than saving a placeholder.
+              cdl.addEventListener('click', function (e) {
+                if (collJsonText) return;
+                e.preventDefault();
+                ensureCollJson().then(function (txt) { if (txt) cdl.click(); });
+              });
               cdl.setAttribute('download', (activeCollection.id || norm(displayName) || 'collection') + '.json');
               if (!('download' in document.createElement('a'))) {
                 cdl.target = '_blank'; cdl.rel = 'noopener';

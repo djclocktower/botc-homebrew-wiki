@@ -85,6 +85,19 @@
   details.help { margin-top:8px; font-size:.84rem; color:#5b4632; }
   details.help summary { cursor:pointer; font-weight:600; }
   details.help ol { margin:8px 0 0; padding-left:20px; line-height:1.5; }
+  /* "This credit isn't mine": the tick that keeps a page's credit from being
+     read as proof that the credited name is this account. Sits with the
+     Creator field because that is the field it is about. Scoped through
+     `.fld label` — that rule is (0,1,1) and uppercases every label in
+     the form, so a bare .credit-unlink would lose to it. */
+  .fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+    margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+    color:#5b4632; cursor:pointer; }
+  .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  .fld .credit-unlink-hint { display:block; margin-top:4px;
+    font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+    letter-spacing:0; font-weight:400; }
   .ck { display:flex; align-items:center; gap:8px; }
   .ck input { width:auto; }
   #ability-count { font-size:.78rem; color:#726348; float:right; margin-top:3px; }
@@ -111,10 +124,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -178,6 +191,8 @@
         <div class="fld">
           <label for="creator">Creator</label>
           <input type="text" id="creator" placeholder="Your name or handle">
+          <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
         </div>
       </div>
       <div class="fld">
@@ -405,10 +420,12 @@
         <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
-            <option value="">Only me (and the wiki admins)</option>
+            <option value="">Default: tags open to anyone until I tag the page myself</option>
+            <option value="closed">Only me (and the wiki admins)</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
+            <option value="all-but-ability">Anyone with an account can edit this page, except the ability</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -448,6 +465,7 @@
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-thumb.js"></script>
   <script src="assets/art-adjust.js"></script>
   <script src="assets/token-auto.js"></script>
   <script src="assets/classify.js"></script>
@@ -713,6 +731,7 @@
         name: $('name').value.trim(),
         team: $('team').value,
         creator: $('creator').value.trim(),
+        creditUnlinked: $('creditUnlinked').checked,
         ability: $('ability').value.trim(),
         lede: $('lede').value.trim(),
         summaryBullets: lines('bullets'),
@@ -1008,6 +1027,9 @@
         credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
       }).then(function (r) { return r.json(); }).then(function (j) {
         if (!j || j.error) throw new Error((j && j.error) || 'Image upload failed.');
+        // The card thumbnail rides along with every art upload — made here,
+        // never awaited (assets/art-thumb.js).
+        if (window.ArtThumb) ArtThumb.upload(key, dataUrl);
         return j;
       });
     }
@@ -1183,6 +1205,10 @@
           var entry = {
             slug: slug, name: d.name, team: d.team, ability: d.ability,
             art: d.art, image: d.image, creator: d.creator,
+            // "This credit isn't mine": the page's credit does not point at
+            // this account. Posted explicitly like everything else here —
+            // this entry is rebuilt field by field, not spread from gather().
+            creditUnlinked: d.creditUnlinked,
             lede: d.lede, summaryBullets: d.summaryBullets, howToRun: d.howToRun,
             callout: d.callout, examples: d.examples, tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote,
             appearsIn: d.appearsIn, tags: d.tags,

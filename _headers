@@ -1,10 +1,32 @@
 # Cache rules for Cloudflare Workers static assets.
-# Order matters: later, more specific rules override earlier ones.
-# NOTE: /assets/art/*, /assets/collections/*, /assets/scripts/* and
-# /assets/tokens/* are served by the Worker (R2 first), which sets its own
-# Cache-Control — rules here only apply to files served from the repo.
+#
+# HOW THESE RULES COMBINE — read before editing. Every rule whose pattern
+# matches a request is applied, and when two rules set the SAME header the
+# values are JOINED with a comma, not overridden. `/assets/*.png` and
+# `/assets/icons/*` both match an official icon, so for a year those icons
+# went out as "no-cache, must-revalidate, public, max-age=31536000, immutable"
+# and the browser, seeing no-cache, revalidated them on every page. A rule
+# that means to REPLACE an earlier header has to detach it first with a
+# `! Header-Name` line — that is what every immutable block below does.
+#
+# NOTE: /assets/art/*, /assets/thumb/*, /assets/collections/*,
+# /assets/scripts/* and /assets/tokens/* are served by the Worker (R2 first),
+# which sets its own Cache-Control — rules here only apply to files served
+# from the repo, and never to a Worker response.
 
-# HTML / CSS / JS: always revalidate so edits show on a normal refresh
+# Everything under /assets/ is public, and outside tools read it cross-origin:
+# the official script tool (script.bloodontheclocktower.com) fetch()es a
+# script's character icons to embed them in its print preview and PNG/PDF
+# sheet exports, which the browser refuses without this header — wiki-hosted
+# characters printed as generic placeholders while looking fine on screen.
+# The Worker sets the same header on the R2-served image prefixes; this rule
+# covers the committed copies (assets/icons/, assets/art/, logo_skull.png …).
+/assets/*
+  Access-Control-Allow-Origin: *
+
+# HTML / CSS / JS: always revalidate so edits show on a normal refresh.
+# (Clean URLs like /all-characters do not match /*.html, and get the assets
+# platform's identical default — public, max-age=0, must-revalidate.)
 /*.html
   Cache-Control: no-cache, must-revalidate
 /assets/*.css
@@ -18,26 +40,60 @@
 /assets/*.jpg
   Cache-Control: no-cache, must-revalidate
 /assets/art/*
+  ! Cache-Control
   Cache-Control: no-cache, must-revalidate
 
-# Official role icons never change — cache long
+# ---- Early Hints / preload for the pages ----
+# The stylesheet is the one thing every page blocks on, and the two faces the
+# top bar and body text render in are the next. Announcing them in a Link
+# header lets the browser start those downloads while it is still receiving
+# the HTML — and with Early Hints switched on for the zone (Cloudflare
+# dashboard → Speed → Content Optimization) Cloudflare replays these as a 103
+# response before the page is even fetched. `/` and `/:page` between them
+# match every static page's clean URL and nothing under /assets/. Fonts need
+# `crossorigin` even on the same origin or the preload is fetched twice.
+# Server-rendered pages (/c/, /s/, …) get the same header from pageShell().
+/
+  Link: </assets/styles.css>; rel=preload; as=style, </assets/header-redesign.css>; rel=preload; as=style, </assets/fonts/trade-gothic-lt-std.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, </assets/fonts/dumbledor2.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
+/:page
+  Link: </assets/styles.css>; rel=preload; as=style, </assets/header-redesign.css>; rel=preload; as=style, </assets/fonts/trade-gothic-lt-std.woff2>; rel=preload; as=font; type=font/woff2; crossorigin, </assets/fonts/dumbledor2.woff2>; rel=preload; as=font; type=font/woff2; crossorigin
+
+# ---- Long-cached, never-changing files ----
+# Each block detaches the generic rule's header first (see the note at the
+# top). Anything in these folders is replaced by adding a NEW filename, never
+# by overwriting — a year-long immutable cache cannot be told about an edit.
+
+# Official role icons never change
 /assets/icons/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
-# Fonts rarely change and are large — cache long
+# Fonts rarely change and are large. The woff2 files are self-hosted copies
+# of the Google faces the site used to @import (see assets/fonts/README.md).
 /assets/fonts/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
+# The WebP versions of the page furniture (background, parchment texture,
+# top-bar badge and skull). Generated from the originals beside them —
+# see migration/optimize-images.js. A changed picture gets a new filename.
+/assets/*.webp
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # Pyodide runtime + wheels (Token Tool): pinned version, contents never change
 /assets/pyodide/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # Token toolkit files: fetched with a ?v= from the manifest, safe to cache long
 /assets/tokens/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # The token manifest must always be fresh (it carries the version)
 /assets/tokens/manifest.json
+  ! Cache-Control
   Cache-Control: no-cache, must-revalidate
 
 # Bundled official-character dataset (import resolution): revalidate so a
@@ -61,8 +117,10 @@
 # would strand anyone who already has the old copy if that patch ever
 # changes. They are ~220 KB and only load for Smart remove.
 /assets/iconforge/textures/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 /assets/iconforge/minipaint/*
+  ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
 
 # Fancy Scripts' fixed payload: the sheet artwork (parchment, sidebar, skull,

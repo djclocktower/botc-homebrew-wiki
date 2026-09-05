@@ -1,0 +1,161 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+    "name": "Wispr In The Wind",
+        "hideTitle": true,
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+        "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+        "logo": "http://menagerie.towerrangers.net/images/logo/wislogo.png",
+        "almanac": "https://menagerie.towerrangers.net",
+    "firstNight": [
+      "dusk",
+      "lordoftyphon",
+      "thief",
+      "wispr",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "preacher",
+      "fearmonger",
+      "harpy",
+      "pukka",
+      "lostlover",
+      "investigator",
+      "empath",
+      "fortuneteller",
+      "shugenja",
+      "cultleader",
+      "highpriestess",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "thief",
+      "bonecollector",
+      "preacher",
+      "wispr",
+      "fearmonger",
+      "harpy",
+      "imp",
+      "pukka",
+      "nodashii",
+      "lordoftyphon",
+      "lostlover",
+      "barber",
+      "plaguedoctor",
+      "sage",
+      "empath",
+      "fortuneteller",
+      "undertaker",
+      "cultleader",
+      "highpriestess",
+      "dawn"
+    ]
+  },
+  "investigator",
+  "shugenja",
+  "empath",
+  "highpriestess",
+  "preacher",
+  "fortuneteller",
+  "cultleader",
+  "undertaker",
+  {
+    "id": "lostlover",
+    "name": "Lost Lover",
+    "image": [
+      "http://menagerie.towerrangers.net/images/losg.png",
+      "http://menagerie.towerrangers.net/images/lose.png"
+    ],
+    "team": "townsfolk",
+    "ability": "Once per game, at night, choose a living player (not yourself): if either chooses the Lost Lover, 1 learns the in-play Demon; the other, in-play Minions. If either guesses wrong, both get false info. [+Lost Lover]",
+    "flavor": "And she as much in love, her means much less / To meet her new belovèd anywhere / But passion lends them power, time means, to meet / Temp’ring extremities with extreme sweet.",
+    "firstNight": 46,
+    "otherNight": 57.5,
+    "firstNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "otherNightReminder": "Wake the Lost Lover marked 'First'. Ask them if they wish to use their ability. If they select the other Lost Lover, they receive the info noted in the Lost Lover's ability, or false info if not. Wake the other and do the same if the first Lost Lover declines.",
+    "reminders": [
+      "First",
+      "Wrong Info",
+      "Wrong Info",
+      "Lost Love Found"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "philosopher",
+        "reason": "If the Philosopher gains the Lost Lover ability, one Lost Lover is drunk, not both. If no other Lost Lover is in play, learn either an in-play Demon, or one in-play Minion."
+      },
+      {
+        "id": "pixie",
+        "reason": "If the Pixie is mad as the Lost Lover, they gain the ability if one Lost Lover dies."
+      }
+    ],
+    "special": [
+      {
+        "type": "selection",
+        "name": "bag-duplicate"
+      }
+    ]
+  },
+  "fisherman",
+  "sage",
+  "tealady",
+  "virgin",
+  "plaguedoctor",
+  "barber",
+  "zealot",
+  "puzzlemaster",
+  "harpy",
+  "fearmonger",
+  "marionette",
+  {
+    "id": "wispr",
+    "name": "Wispr",
+    "image": [
+      "http://menagerie.towerrangers.net/images/wise.png",
+      "http://menagerie.towerrangers.net/images/wisg.png"
+    ],
+    "team": "minion",
+    "ability": "You register as adjacent to different players for good abilities. Once per game, at night, you may become drunk: a good player learns this.",
+    "flavor": "They start to bob and weave as if they're excited you've come to join 'em, and it's not until you've walked a ways that you notice they don't seem to be growing much closer.",
+    "firstNight": 16,
+    "otherNight": 16,
+    "firstNightReminder": "Place the 'Neighbour' tokens on two adjacent players (not including the Wispr) :reminder:. The Wispr may choose to make themselves drunk. If they do, remove the 'Neighbour' tokens; choose a good player and show them the Wispr token.",
+    "otherNightReminder": "The Wispr may choose to make themselves drunk. If they do, remove the 'Neighbour' tokens; choose a good player and show them the Wispr token.",
+    "reminders": [
+      "Drunk",
+      "Knows",
+      "Neighbour",
+      "Neighbour"
+    ],
+    "jinxes": [
+      {
+        "id": "preacher",
+        "reason": "If the Wispr is targeted by the Preacher's ability, a good player (not the Preacher) sees the Wispr's token."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller gains the Wispr's ability, that ability is given to a living Minion instead."
+      },
+      {
+        "id": "alchemist",
+        "reason": "If the Alchemist gains the Wispr's ability, they learn the name of one of their new neighbours."
+      }
+    ]
+  },
+  "pukka",
+  "nodashii",
+  "imp",
+  "lordoftyphon",
+  "thief",
+  "bonecollector",
+  "judge",
+  "beggar",
+  "bishop",
+  "spiritofivory"
+]

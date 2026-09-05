@@ -141,8 +141,16 @@ Classification depends on mode:
 **Stage C — `buildBorder(union, width, edge)`**
 Stamps the silhouette around a circle to grow the ring, then blurs for edge softness.
 
-**Stage D — texture fields (`textureField` + `adjustField`)**
-Each texture PNG is tiled (mirror-tiled, so joins are seamless) over a W×W canvas under a DOMMatrix transform (`texScale`, `texRotation`, `texOffsetX/Y`). `adjustField` then applies per-pixel saturation / brightness / vibrance / vertical-gradient grading. One field per texture means border/body/details line up like crops of one sheet — this is the core fidelity trick; don't replace it with per-region tiling.
+**Stage D — texture fields (`grainSheet` + `textureField` + `adjustField`)**
+Each texture PNG is first grown once, by `grainSheet`, into a 2× mosaic that repeats with no symmetry: a 2×2 mirrored block (seamless, so the mosaic wraps like a torus) with random crops of the source stamped over it, wrapped at the edges. That mosaic is then tiled — plainly, no flipping — over a W×W canvas under a DOMMatrix transform (`texScale`, `texRotation`, `texOffsetX/Y`), **centred** on the canvas. `adjustField` then applies per-pixel saturation / brightness / vibrance / vertical-gradient grading. One field per texture means border/body/details line up like crops of one sheet — this is the core fidelity trick; don't replace it with per-region tiling.
+
+Three things here are load-bearing, and the first two were the mirroring bug:
+
+- **The field is centred, not laid out from the centre.** It used to translate to `W/2` and draw the tile from there, which put the texture's top-left *corner* at the middle of the icon — so four mirrored tiles met exactly on both centre lines of every icon rendered. On anything with a large unbroken area that read as a kaleidoscope.
+- **Tiles are never mirrored.** Mirroring joins seamlessly but the eye finds the axes instantly. The mosaic wraps, so plain tiles join just as well with nothing to see.
+- **The crop size is a fraction of the SOURCE texture, not of the grown sheet.** Off the sheet it lands at ~90% of the source, so every crop is the whole texture over again and the mosaic decorrelates nothing.
+
+`grainSheet` is seeded and cached per image (a `WeakMap`), so a texture always grows the same mosaic and the live preview and the export cannot disagree. Building it is a few ms against a ~750 ms pipeline.
 
 **Stage E — composite (in draw order)**
 1. Drop shadow: silhouette (union ∪ border) filled black, blurred, offset.

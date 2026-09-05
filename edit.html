@@ -84,6 +84,19 @@
     background:#ece3d2;border:1px solid #c9b78f;border-radius:4px;padding:2px 8px;color:#5b4632}
   .loading-msg{position:relative;z-index:5;text-align:center;
     color:rgba(236,225,200,.7);padding:60px 20px;font-size:1.1rem}
+  /* "This credit isn't mine": the tick that keeps a page's credit from being
+     read as proof that the credited name is this account. Sits with the
+     Creator field because that is the field it is about. Scoped through
+     `.fld label` — that rule is (0,1,1) and uppercases every label in
+     the form, so a bare .credit-unlink would lose to it. */
+  .fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+    margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+    color:#5b4632; cursor:pointer; }
+  .fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+  .fld .credit-unlink-hint { display:block; margin-top:4px;
+    font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+    letter-spacing:0; font-weight:400; }
   .ck{display:flex;align-items:center;gap:8px}
   .ck input{width:auto}
   #ability-count { font-size:.78rem; color:#726348; float:right; margin-top:3px; }
@@ -110,10 +123,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -169,6 +182,8 @@
         <div class="fld">
           <label for="creator">Creator</label>
           <input type="text" id="creator">
+          <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
         </div>
       </div>
       <div class="fld">
@@ -403,13 +418,15 @@
 
       <fieldset>
         <legend>Who can edit this page</legend>
-        <p class="sub" style="margin:0 0 10px">Yours alone unless you say otherwise. Every change is listed in the page's history, and you can put any earlier version back.</p>
+        <p class="sub" style="margin:0 0 10px">Until you tag the page or choose otherwise, anyone with an account can add tags and nothing else. Every change is listed in the page's history, and you can put any earlier version back.</p>
         <div class="fld" style="margin-bottom:0">
           <select id="publicEdit">
-            <option value="">Only me (and the wiki admins)</option>
+            <option value="">Default: tags open to anyone until I tag the page myself</option>
+            <option value="closed">Only me (and the wiki admins)</option>
             <option value="approved">Approved editing: only the people I name below</option>
             <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
             <option value="tags">Tags only: anyone with an account can change the tags</option>
+            <option value="all-but-ability">Anyone with an account can edit this page, except the ability</option>
             <option value="all">Anyone with an account can edit this page</option>
           </select>
         </div>
@@ -455,6 +472,7 @@
   <script src="assets/tags.js"></script>
   <script src="assets/char-preview.js"></script>
   <script src="assets/art-normalize.js"></script>
+  <script src="assets/art-thumb.js"></script>
   <script src="assets/art-adjust.js"></script>
   <script src="assets/token-auto.js"></script>
   <script src="assets/classify.js"></script>
@@ -708,6 +726,7 @@
       return {
         name: $('name').value.trim(), team: $('team').value,
         creator: $('creator').value.trim(), ability: $('ability').value.trim(),
+        creditUnlinked: $('creditUnlinked').checked,
         lede: $('lede').value.trim(), summaryBullets: lines('bullets'),
         howToRun: lines('howto'), callout: $('callout').value.trim(),
         examples: lines('examples'), tips: lines('tips'),
@@ -942,7 +961,7 @@
                  firstNight: d.firstNight, otherNight: d.otherNight,
                  reminders: d.reminders, remindersGlobal: d.remindersGlobal };
       },
-      allowed: function(){ return EDIT_MODE === 'owner' || EDIT_MODE === 'approved'; },
+      allowed: canUploadArt,
       art: function(){
         return artDataURL || (originalEntry && originalEntry.art ? SITE_ROOT + 'assets/' + originalEntry.art : null);
       },
@@ -1021,8 +1040,24 @@
     }
 
     // What this account may do to this page, as the Worker answered it:
-    // 'owner' | 'approved' | 'all' | 'tags' | 'suggest' | false.
+    // 'owner' | 'approved' | 'all' | 'all-but-ability' | 'tags' | 'suggest' | false.
     var EDIT_MODE = 'owner';
+    // True when 'tags' came from the default (the owner chose nothing and the
+    // page has no tags of their own) rather than from the owner opening them.
+    var EDIT_DEFAULT = false;
+
+    /* The modes that may write this page's IMAGE slots — the same answer
+       canEditPageArt() gives in the Worker. A page opened to everyone is
+       opened to its art as well: the save already carries whatever `art`
+       points at, so a guest could always repoint the icon and was refused
+       only when uploading the tidy version of it. 'tags' shows no art fields
+       at all, and 'suggest' leaves them disabled on purpose — a suggestion is
+       stored rather than applied, so it must not land in the live page's
+       slot before anyone has approved it. */
+    function canUploadArt() {
+      return EDIT_MODE === 'owner' || EDIT_MODE === 'approved' ||
+             EDIT_MODE === 'all' || EDIT_MODE === 'all-but-ability';
+    }
 
     /* Sending a suggestion. The art is deliberately not uploaded: it would
        write into the page's own R2 slot, which is the one thing a suggestion
@@ -1202,6 +1237,15 @@
       if (!bar) return;
       var sel = $('publicEdit');
       var mode = sel ? sel.value : '';
+      // Nothing chosen is the default, and the default is "tags open" only
+      // while the page has no tags of the owner's own — the same rule the
+      // Worker applies (defaultTagsOpen), read off the form so the bar says
+      // what the NEXT save will leave in force.
+      if (!mode) {
+        var tagsNow = ($('tags').value || '').trim();
+        var guestTagged = !!(originalEntry && originalEntry.tagsBy === 'guest');
+        if (!tagsNow || (guestTagged && tagsNow === String(originalEntry.tags || '').trim())) mode = 'default';
+      }
       var links = [];
       if (mode === 'suggest') {
         links.push({ href: 'suggestions?type=character&slug=' + encodeURIComponent(originalSlug),
@@ -1234,6 +1278,32 @@
         'Your username and every field you change are recorded in ' + histLink(entry) +
         ', and the creator can put an earlier version back.');
     }
+    /* Open except the ability. The form is the guest form above with the
+       rule itself locked: the Worker re-pins `ability` (and the custom JSON,
+       which could rewrite it in the export) from the stored row whatever is
+       posted, so the boxes are closed rather than left open to be ignored. */
+    function abilityLockedMode(entry) {
+      var nm = $('name');
+      nm.readOnly = true;
+      nm.title = 'Only the page\u2019s creator can rename it.';
+      hideOwnerOnly();
+      var ab = $('ability');
+      if (ab) {
+        ab.readOnly = true;
+        ab.title = 'The ability stays with the page\u2019s creator.';
+        ab.classList.add('is-locked');
+      }
+      var cj = $('customJson');
+      if (cj) {
+        cj.readOnly = true;
+        cj.title = 'The custom JSON stays with the page\u2019s creator: it can rewrite the ability in the export.';
+      }
+      guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
+        'opened for anyone with an account to edit \u2014 <strong>everything except the ability</strong>. ' +
+        'The name and the ability text stay with the creator; the rest of the page is yours to improve. ' +
+        'Your username and every field you change are recorded in ' + histLink(entry) +
+        ', and the creator can put an earlier version back.');
+    }
     // Controls that only mean something to the page's owner. The Worker carries
     // the stored value forward whatever a guest posts, so leaving these on
     // screen would just be a promise the save does not keep.
@@ -1245,6 +1315,16 @@
       // stored answer forward whatever a guest posts.
       var cur = $('curata-fld');
       if (cur) cur.style.display = 'none';
+      // So is whether the credit points at the owner's account: whose work a
+      // page is said to be is not a guest's answer, and the Worker pins it
+      // from the stored row whatever gets posted.
+      var cu = $('creditUnlinked');
+      if (cu) {
+        var lab = cu.closest('.credit-unlink');
+        if (lab) lab.style.display = 'none';
+        var hint = lab && lab.nextElementSibling;
+        if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
+      }
     }
     /* Tags only. The save is filtered server-side whatever gets posted, so the
        point of hiding the rest is honesty: a form you can type into but whose
@@ -1271,6 +1351,16 @@
       });
       $('save-publish').style.display = 'none';
       $('save').textContent = 'Save tags';
+      if (EDIT_DEFAULT) {
+        // Open because nobody has tagged it yet, not because the creator
+        // opened it — say so, or the banner credits them with a choice they
+        // never made.
+        guestBanner('<strong>Tags only.</strong> This page has no tags yet, so anyone with an ' +
+          'account can add them until ' + esc(entry.creator || 'the creator') + ' tags it or ' +
+          'chooses otherwise. Pick or unpick them below and save. Nothing else on the page can ' +
+          'be changed from here, and your change is recorded in ' + histLink(entry) + '.');
+        return;
+      }
       guestBanner('<strong>Tags only.</strong> ' + esc(entry.creator || 'The creator') +
         ' has opened this page\u2019s tags to anyone with an account. Pick or unpick them below ' +
         'and save. Nothing else on the page can be changed from here, and your change is ' +
@@ -1321,7 +1411,7 @@
     // ── populate form from entry ──
     // The modes the <select> offers. Anything else stored on the page reads
     // as closed, and an unknown mode is never silently re-saved as one.
-    var PUBLIC_EDIT_MODES = { all: 1, tags: 1, suggest: 1, approved: 1 };
+    var PUBLIC_EDIT_MODES = { all: 1, 'all-but-ability': 1, tags: 1, suggest: 1, approved: 1, closed: 1 };
 
     /* The named-editor list, mounted once and shown only while "Approved
        editing" is the chosen mode. It is mounted whatever the mode is, so
@@ -1367,6 +1457,12 @@
     }
     $('publicEdit').addEventListener('change', syncEditorsBox);
     $('publicEdit').addEventListener('change', renderEditStatus);
+    // The default depends on the tags too, so the bar follows the tag picker.
+    // Delegated and deferred so the picker's own click handler has written
+    // the hidden #tags value first.
+    document.addEventListener('click', function (e) {
+      if (e.target && e.target.closest && e.target.closest('#tag-picker')) setTimeout(renderEditStatus, 0);
+    });
 
     /* Relations are one-way — nothing shows on this page because somebody
        else linked it — but the owner deserves to know, so /api/page names
@@ -1439,6 +1535,7 @@
       $('customJson').value      = entry.customJson || '';
       $('publicEdit').value      = PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '';
       $('curataOptOut').checked  = !!entry.curataOptOut;
+      $('creditUnlinked').checked = !!entry.creditUnlinked;
       if (editorsUI) editorsUI.set(entry.editors || []);
       syncEditorsBox();
       ALT_SLOTS.forEach(function (slot) {
@@ -1566,6 +1663,9 @@
         credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
       }).then(function (r) { return r.json(); }).then(function (j) {
         if (!j || j.error) throw new Error((j && j.error) || 'Image upload failed.');
+        // The card thumbnail rides along with every art upload — made here,
+        // never awaited (assets/art-thumb.js).
+        if (window.ArtThumb) ArtThumb.upload(key, dataUrl);
         return j;
       });
     }
@@ -1662,6 +1762,9 @@
           // Explicit for the same reason publicEdit is: unticking the box has
           // to reach the save, and Object.assign would keep the loaded value.
           curataOptOut: d.curataOptOut,
+          // Same again: unticking "this credit isn't mine" has to reach the
+          // save, or the credit would stay unlinked for good.
+          creditUnlinked: d.creditUnlinked,
           status: saveStatus,
           baseUpdatedAt: loadedUpdatedAt
         });
@@ -1839,6 +1942,7 @@
              into fields that would be thrown away. */
           var mode = res.editMode || (res.canEdit ? 'owner' : false);
           EDIT_MODE = mode;
+          EDIT_DEFAULT = !!res.editDefault;
           isDraftPage = (res.status || 'published') === 'draft';
           if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
@@ -1860,6 +1964,7 @@
           if (mode === 'tags') tagsOnlyMode(entry);
           else if (mode === 'approved') approvedNotice(entry, res.editVia);
           else if (mode === 'all') guestNotice(entry);
+          else if (mode === 'all-but-ability') abilityLockedMode(entry);
           else if (mode === 'suggest') suggestMode(entry);
           // The owner (and an admin, who reaches this page the same way) is the
           // only one who can roll a version back, so the panel is theirs.

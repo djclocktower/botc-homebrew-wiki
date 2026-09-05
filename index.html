@@ -8,6 +8,13 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<!-- The three feeds the homepage draws from start downloading here, while
+     the stylesheet and scripts are still on their way, instead of after the
+     scripts at the end of the body have run. `crossorigin` has to be there
+     for the preload to match a plain fetch(). -->
+<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="scripts.json" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -15,10 +22,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -303,8 +310,8 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="assets/' + esc(banner) + '" alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
         '<h3 class="collection-name">' + esc(name) + '</h3>' +
@@ -324,7 +331,7 @@
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
       return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
+        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
         '<div class="recent-name">' + esc(c.name) + '</div>' +
         '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
       '</a>';
@@ -437,7 +444,7 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" alt="' + esc(c.name) + '">' +
+        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
@@ -455,7 +462,7 @@
 
     Promise.all([
       fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?fields=card').then(function(r){ return r.json(); }),
+      fetch('characters.json?fields=grid').then(function(r){ return r.json(); }),
       fetch('scripts.json').then(function(r){ return r.json(); }).catch(function(){return[];})
     ]).then(function(mainRes){
       var collData=mainRes[0]||[], list=mainRes[1], scriptData=mainRes[2]||[];
@@ -470,7 +477,7 @@
         // card while its own page showed the logo.
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],tagline:c.tagline||'',description:c.description||'',
-                header:c.header||'',logo:c.logo||'',include:c.include||[],exclude:c.exclude||[],
+                header:c.header||'',logo:c.logo||'',v:c.v||'',include:c.include||[],exclude:c.exclude||[],
                 author:c.author||'',curata:!!c.curata};
       });
         // ── Stats ─────────────────────────────────────────────
@@ -523,7 +530,7 @@
         var allIcons = pickIcons(list, 4);
         html += '<a class="collection-tile" href="all-collections">' +
           '<div class="collection-icons">' + allIcons.map(function(c){
-            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(c.art ? 'assets/' + c.art : (typeof c.image === 'string' && c.image ? c.image : 'assets/favicon.png')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
+            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
           }).join('') + '</div>' +
           '<h3 class="collection-name">All Collections</h3>' +
           '<div class="collection-footer">' +
@@ -552,7 +559,7 @@
         // Jinx count: characters carrying at least one. The card feed keeps
         // `jinxes` (see CARD_DROP_FIELDS in worker.js), so this needs no
         // second request.
-        var nJinxed = list.filter(function(c){ return c.jinxes && c.jinxes.length; }).length;
+        var nJinxed = list.filter(function(c){ return c.jinxCount || (c.jinxes && c.jinxes.length); }).length;
         document.getElementById('bc-jinx').textContent =
           nJinxed ? nJinxed + ' jinxed characters' : 'See the map';
 
@@ -605,7 +612,7 @@
           // box instead of being clipped. Same trick as the /c/ page title.
           var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
           var headerHTML = sc.header || sc.logo
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="assets/' + esc(sc.header || sc.logo) + '" alt="' + esc(sc.name) + '"></div>'
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo)) + PageRender.artVer(sc) + '" alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
             headerHTML +

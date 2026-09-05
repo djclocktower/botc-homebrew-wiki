@@ -20,6 +20,19 @@
 .sb-details { background:var(--parch); border:2px solid var(--parch-frame); padding:18px 20px; margin-bottom:18px; }
 .sb-details h2 { font-family:'Dumbledor2',serif; font-weight:400; color:var(--maroon); margin:0 0 4px; font-size:1.3rem; }
 .sb-details .sub { font-size:.84rem; color:#6b5d49; margin:0 0 14px; }
+/* "This credit isn't mine": the tick that keeps a page's credit from being
+   read as proof that the credited name is this account. Sits with the
+   Author field because that is the field it is about. Scoped through
+   `.sb-fld label` — that rule is (0,1,1) and uppercases every label in
+   the form, so a bare .credit-unlink would lose to it. */
+.sb-fld label.credit-unlink { display:flex; align-items:center; gap:8px;
+  margin:7px 0 0; font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  font-weight:400; font-size:.88rem; letter-spacing:0; text-transform:none;
+  color:#5b4632; cursor:pointer; }
+.sb-fld label.credit-unlink input { width:auto; flex:none; margin:0; }
+.sb-fld .credit-unlink-hint { display:block; margin-top:4px;
+  font-size:.78rem; color:#726348; line-height:1.45; text-transform:none;
+  letter-spacing:0; font-weight:400; }
 .sb-fld { margin-bottom:12px; }
 .sb-fld label { display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:.78rem; letter-spacing:.04em; text-transform:uppercase; color:#5b4632; margin-bottom:4px; }
 .sb-fld .req { color:var(--evil); }
@@ -116,10 +129,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -171,6 +184,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       <div class="sb-fld">
         <label for="pc-author">Author / curator</label>
         <input type="text" id="pc-author" placeholder="Your name">
+        <label class="credit-unlink" for="pc-credit-unlinked"><input type="checkbox" id="pc-credit-unlinked"> This credit isn’t mine</label>
+        <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s collection. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
       </div>
       <div class="sb-fld">
         <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
@@ -502,6 +517,14 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // setting and the stored editor list forward whatever a guest posts, so
       // leaving them editable would be a promise the save breaks.
       $('sb-open-sec').style.display = 'none';
+      // And the credit tick with it: whose work the page is said to be is the
+      // creator's answer, and the Worker pins it from the stored row whatever
+      // a guest posts.
+      var cu = $('pc-credit-unlinked');
+      var lab = cu && cu.closest('.credit-unlink');
+      if (lab) lab.style.display = 'none';
+      var hint = lab && lab.nextElementSibling;
+      if (hint && hint.classList.contains('credit-unlink-hint')) hint.style.display = 'none';
       if (mode === 'approved'){
         pubStatus('ok', currentStatus === 'draft'
           ? 'The creator made you an editor of this collection. It is still a draft, so only they can put it live \u2014 everything else here is yours to change.'
@@ -873,6 +896,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           slug: EDIT_PK || id,
           displayName: name,
           author: $('pc-author').value.trim(),
+          creditUnlinked: !!$('pc-credit-unlinked').checked,
           description: desc,
           tagline: $('pc-tagline').value.trim(),
           version: $('pc-version').value.trim(),
@@ -977,6 +1001,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           document.title = 'Edit ' + (c.displayName || 'Collection') + ' — BOTC HomeBrew Wiki';
           $('pc-name').value = c.displayName || '';
           $('pc-author').value = c.author || '';
+          $('pc-credit-unlinked').checked = !!c.creditUnlinked;
           $('pc-tagline').value = c.tagline || '';
           $('pc-version').value = c.version || '';
           $('pc-difficulty').value = c.difficulty || '';
@@ -1003,20 +1028,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (window.ThemeEditor.prime(theme)) $('sb-appearance').open = true;
           if (c.header){
             existingHeader = c.header;
-            var pv = $('pc-header-prev'); pv.src = 'assets/' + c.header; pv.style.display = 'block';
+            var pv = $('pc-header-prev'); pv.src = PageRender.imgSrc('', c.header); pv.style.display = 'block';
             $('pc-header-note').textContent = 'Current header — choose a file to replace it, or remove it.';
             $('pc-header-remove').style.display = '';
           }
           if (c.logo){
             existingLogo = c.logo;
-            var lv = $('pc-logo-prev'); lv.src = 'assets/' + c.logo; lv.style.display = 'block';
+            var lv = $('pc-logo-prev'); lv.src = PageRender.imgSrc('', c.logo); lv.style.display = 'block';
             $('pc-logo-note').textContent = 'Current logo — choose a file to replace it, or remove it.';
             $('pc-logo-remove').style.display = '';
             $('sb-appearance').open = true;
           }
           if (theme.background){
             existingBg = theme.background;
-            var bv = $('pc-bg-prev'); bv.src = 'assets/' + theme.background; bv.style.display = 'block';
+            var bv = $('pc-bg-prev'); bv.src = PageRender.imgSrc('', theme.background); bv.style.display = 'block';
             $('pc-bg-note').textContent = 'Current background — choose a file to replace it, or remove it.';
             $('pc-bg-remove').style.display = '';
           }

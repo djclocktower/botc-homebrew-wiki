@@ -171,10 +171,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="all-characters">All Characters</a>
@@ -252,7 +252,7 @@
       <!-- Credits Fabled: every export from the builder carries it. -->
       <div class="sb-credits">
         <span class="sb-credits-head">
-          <img class="sb-credits-skull" src="assets/logo_skull.png" alt="">
+          <img class="sb-credits-skull" src="assets/logo_skull.webp" alt="">
           <span>Your exported JSON includes a <strong>botchomebrew.wiki</strong> Fabled crediting everyone whose characters are on the script.</span>
         </span>
         <label class="sb-credits-detail">
@@ -692,8 +692,32 @@
     });
 
     // ── Randomize: shuffle all chars and pick same count (or 5-14 if script empty) ──
+    // Draws from whatever the Add sidebar's own filter box currently shows —
+    // a reader who ticked a tag, a creator or a team chip expects Randomize to
+    // pick from that narrowed pool, not silently reach past it into the whole
+    // roster. Read straight off the DOM the filter box already maintains
+    // (card-filters.js toggles each row's inline display), so this can never
+    // disagree with what the sidebar is showing.
+    function visibleSidebarChars() {
+      var out = [];
+      document.querySelectorAll('#sb-add-list .sb-add-row[data-source="homebrew"]').forEach(function (row) {
+        if (row.style.display === 'none') return;
+        var group = row.closest('.sb-add-group');
+        if (group && group.style.display === 'none') return;
+        var btn = row.querySelector('.sb-add-item');
+        var c = btn && bySlug[btn.getAttribute('data-slug')];
+        if (c) out.push(c);
+      });
+      return out;
+    }
     document.getElementById('sb-randomize').addEventListener('click', function () {
       if (!allChars.length) return;
+      // Homebrew only, deliberately: 180-odd official characters in the pool
+      // would swamp a random homebrew script. Add officials by hand from the
+      // sidebar. (Official rows never carry data-source="homebrew", so
+      // visibleSidebarChars() excludes them regardless of the Source chip.)
+      var pool = visibleSidebarChars();
+      if (!pool.length) { alert('No homebrew characters match your current filters.'); return; }
       // Standard Trouble Brewing-sized script: 13 TF, 4 Outsider, 4 Minion, 4 Demon
       var COUNTS = { townsfolk: 13, outsider: 4, minion: 4, demon: 4 };
       function shuffle(arr) {
@@ -703,18 +727,15 @@
         }
         return arr;
       }
-      // Homebrew only, deliberately: 180-odd official characters in the pool
-      // would swamp a random homebrew script. Add officials by hand from the
-      // sidebar.
       var byTeam = {};
-      allChars.forEach(function (c) {
+      pool.forEach(function (c) {
         if (!byTeam[c.team]) byTeam[c.team] = [];
         byTeam[c.team].push(c);
       });
       var picked = [];
       Object.keys(COUNTS).forEach(function (team) {
-        var pool = shuffle((byTeam[team] || []).slice());
-        picked = picked.concat(pool.slice(0, Math.min(COUNTS[team], pool.length)).map(function (c) { return c.slug; }));
+        var teamPool = shuffle((byTeam[team] || []).slice());
+        picked = picked.concat(teamPool.slice(0, Math.min(COUNTS[team], teamPool.length)).map(function (c) { return c.slug; }));
       });
       setScript(picked);
       if (window.updateScriptBadge) window.updateScriptBadge();

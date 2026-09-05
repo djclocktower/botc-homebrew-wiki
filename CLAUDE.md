@@ -21,7 +21,15 @@ framework — plain HTML/CSS/JS everywhere.
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
-  live from D1** (published rows only). Adding **`?drafts=1`** includes draft
+  live from D1** (published rows only). Characters come in **three tiers**:
+  `?fields=grid` (what a card needs and nothing else — the browse pages, the
+  homepage, the top-bar search; ~35% of the card feed), `?fields=card` (the
+  tools: Script Builder, editors, Token Tool, importers — everything
+  `buildSchema()` needs to export a script) and the bare URL (the whole
+  almanac, for `/api/seed` and a few admin tools). See "Caching" for which
+  page uses which and why. Every row carries **`v`**, the row's version
+  (base-36 `updated_at`), which the card renderers append to image URLs as
+  `?v=` — see "Caching". Adding **`?drafts=1`** includes draft
   rows and stamps each row's `status` — but **only for a logged-in admin**;
   anyone else asking for it silently gets the normal published-only feed, so
   the site never reveals that unpublished pages exist. The repo copies of these files are
@@ -67,6 +75,11 @@ Key dynamic behavior:
   every character/script/collection/news/wiki page),
   **message images** (`/api/attachment` — one image for a comment or a modmail
   message; the KEY IS MINTED SERVER-SIDE, unlike `/api/upload`),
+  **`GET /api/boot`** (the one call `site.js` makes on every page: the
+  system-text overrides AND the announcement together — they were two
+  requests per page view; `/api/site-text` and `/api/announcement` stay for
+  the editors), **`GET /api/admin/thumb-missing`** (the dashboard's "Card
+  thumbnails" scan, see "Caching"),
   **wiki pages** (`/api/wiki-page`, `/api/wiki-pages`), **news** (`/api/news*`,
   `/api/admin/news`), **jinxes** (`GET /api/jinxes` for the whole edge list,
   `POST /api/jinx` to add/edit/remove one), **Bloodstar import**
@@ -127,7 +140,10 @@ worker/bloodstar.js    Reading a Bloodstar project (script.json + almanac.html)
                        DOMParser, so the almanac is scanned rather than parsed.
                        See "Importing from Bloodstar" below.
 wrangler.toml          Worker config: D1/KV/R2 bindings, run_worker_first, cron
-_headers               Cache rules for static assets (order matters; later wins)
+_headers               Cache rules for static assets. Matching rules COMBINE
+                       (same header -> values joined with a comma), so an
+                       immutable rule must `! Cache-Control` first — see
+                       Gotcha 14. Also the Link preload header for the pages.
 .assetsignore          Files excluded from asset upload — CRITICAL, see Gotchas
 assets/
   styles.css           ALL shared CSS (no per-page stylesheets)
@@ -155,6 +171,19 @@ assets/
                        (see script.html below) — and artVersions(), the single
                        answer to "what icons does this character have" (see
                        "A character's three icons" below).
+  art-thumb.js         Card thumbnails, browser side: ArtThumb.upload(artKey,
+                       src) makes the 192px WebP twin of a character's art and
+                       uploads it to thumb/{file}.webp right after the art
+                       itself. Mounted by every page that uploads art
+                       (create, edit, mass-upload, bloodstar, normalize-icons,
+                       iconforge) and by the dashboard's backfill card. Fire
+                       and forget; WebP or nothing. See "Caching".
+  thumb/               The committed thumbnails of the committed art
+                       (assets/art/x.png -> assets/thumb/x.png.webp) plus
+                       manifest.json. Generated, never hand-edited:
+                       `node migration/optimize-images.js thumbs`.
+  fonts/README.md      Which fonts are self-hosted and why there is no Google
+                       Fonts @import any more; how to refresh the woff2 files.
   art-labels.js        Names the three art slots for the team being written:
                        a traveller's are its unaligned, good and evil tokens,
                        and slot three is drawn for a traveller alone. Mounted
@@ -728,7 +757,11 @@ messages.html         Direct messages (/messages): conversation list + thread UI
 character.html         Legacy ?c=slug redirect → /c/{slug} (keep; old links)
 characters/*.html      3 legacy redirect stubs → /c/{slug} (keep; old links)
 migration/             D1 schema reference (schema.sql, accounts_migration.sql,
-                       schema_explanation.md, ACCOUNTS_SETUP.md)
+                       schema_explanation.md, ACCOUNTS_SETUP.md), plus the
+                       two image/font maintenance scripts: optimize-images.js
+                       (the WebP page furniture and the committed thumbnails)
+                       and fetch-google-fonts.js (refreshes assets/fonts/*.woff2
+                       and prints the @font-face block for styles.css).
 ```
 
 ## Database (D1, SQLite)
@@ -942,17 +975,75 @@ A page belongs to whoever made it. Its creator may open it to other people,
 stored on the page's `data` as `publicEdit`:
 
 - **`'all'`**: anyone with an account may edit the page.
+- **`'all-but-ability'`**: the same, except the **ability text**. Characters
+  only. The save handler re-pins `ability` from the stored row for this
+  mode, and `customJson` with it (a custom JSON replaces the page's JSON box
+  outright, so it would be a second way to rewrite the ability). The editor
+  locks both boxes and says so. On a script or collection
+  `sanitizePublicEdit(v, type)` stores it as `'all'`.
 - **`'tags'`**: anyone with an account may change the tags and nothing else.
   Characters only; on a script or collection it is treated as closed.
+- **`'closed'`** (`PUBLIC_EDIT_CLOSED`): the owner chose "Only me". Stored as
+  a word rather than as nothing so the choice is remembered — see the
+  default below. Reads as closed everywhere (`publicEditMode()` returns `''`
+  for it). Characters only; a script or collection stores nothing.
 - **`'suggest'`**: anyone with an account may PROPOSE a version for the creator
   to approve. Not write access: every save handler asks `permCanWrite()`, and
   'suggest' is not a writing mode, so it can never be mistaken for an edit.
 - **`'approved'`**: only the accounts the creator NAMED may edit — see below.
 
 `editPermission(env, sess, type, row)` is the single answer to "what may this
-session do to this row": `'owner'`, `'approved'`, `'all'`, `'tags'` or `''`.
-Never open whatever the setting says: a **draft** (except approved editing), an
-**admin-protected** page, and a page whose creator never opted in.
+session do to this row": `'owner'`, `'approved'`, `'all'`,
+`'all-but-ability'`, `'tags'` or `''`.
+Never open whatever the setting says: a **draft** (except approved editing) and
+an **admin-protected** page.
+
+### The default: tags open until the owner tags the page
+
+A **character** whose owner chose nothing is not closed. Its tags are open to
+anyone with an account (`'tags'`, exactly as if the owner had picked it) for
+as long as the page has no tags of the owner's own. `defaultTagsOpen(type, d)`
+in worker.js is the whole rule and nothing is stored for it:
+
+- no stored mode, and not `'closed'`;
+- and the page has no tags, **or** its tags are marked `tagsBy: 'guest'`.
+
+It ends the moment the owner acts: an owner save **with tags** (the save
+handler deletes `tagsBy` on any owner save, so tags the owner saved are the
+owner's), or any explicit choice in the "Who can edit" select, "Only me"
+included (that is what `'closed'` exists for). A broader mode (`'all'`,
+`'all-but-ability'`) already includes the tags. Tags supplied by a guest —
+under the default or under `'tags'` — are stamped `tagsBy: 'guest'` so a
+stranger tagging the page does not shut it behind themselves; an admin saving
+somebody else's page counts as a guest there. A page carrying tags and no
+mark is taken as tagged by its owner, which is every page tagged before the
+rule existed. `tagsBy` is in `CARD_DROP_FIELDS`.
+
+`effectivePublicEdit(type, d)` is the mode in force (stored, or the default),
+which is what `/api/page-history` reports and history.html prints. `/api/page`
+adds `editDefault: true` when a guest's `'tags'` came from the default, so
+edit.html's banner says the page has no tags yet rather than crediting the
+creator with a choice. The owner's editor draws the status bar from the
+select **and the tag picker**: nothing chosen with an empty tag box is
+`'default'` in `EDIT_STATUS`; nothing chosen with tags of the owner's own is
+`''`. The select's first option is the default, and "Only me" posts
+`'closed'`. The dashboard's "Open tag editing" card predates the default and
+now mostly finds nothing to do; it treats `'closed'` as a chosen mode.
+
+### Opening the pages nobody looks after
+
+`POST /api/admin/open-editing` ({dryRun:true} first; dashboard card "Open
+editing on unowned pages") sets every character with **no owner, or owned by
+the import account** (`username`, default `admin` — deliberately not every
+admin account) to `'all-but-ability'`. The members of the collections in
+`except[]` (default `ravenswood-chronicle`, resolved through
+`rosterCharacterSlugs()` / `resolveCollectionMembers()`) are left exactly as
+they are. A page already on the mode is skipped, so it is re-runnable; a page
+on any other mode, `'all'` included, is moved onto it — these pages have
+nobody whose choice that was. Logs `open-editing`, which is in
+`FEED_CHANGING_ACTIONS` (so is `tags-open`) because `publicEdit` rides the
+feeds. Rows whose JSON cannot be parsed are reported and skipped
+(`readRowDataStrict()`, shared with the tags-open card).
 `canEditRow()` still means ownership, and everything belonging to the creator
 goes through it: renaming, publishing, unpublishing, deleting, rolling back, and
 the setting itself. `/api/publish` and `/api/delete` are deliberately left on
@@ -971,6 +1062,23 @@ The save handlers enforce the rest:
 - A non-owner payload over `PUBLIC_EDIT_MAX_BYTES` is refused (413).
 - The editor makes the **name read-only** for a guest: renaming moves the URL,
   and that stays with the creator.
+- **An open page is open to its art too.** Image uploads go through
+  `canEditPageArt()` — ownership, an approved editor, **or** a guest on a page
+  whose mode is `'all'` / `'all-but-ability'`. They used to go through
+  `canEditPage()`, which is ownership or an approved editor and nothing else,
+  and the mismatch showed: the editor offered a guest the art pickers, took
+  their icon, and the upload came back *"the art slot for X already belongs to
+  a character on another account — give your character a different name"*, on
+  somebody else's page they cannot rename. The save handler had already
+  settled it the other way, since a guest's save carries `art`/`image` and the
+  alternates straight through — they could always repoint a page at an image
+  hosted anywhere, and were refused only when uploading into the slot named
+  after the page itself, so the block protected nothing. `'tags'` and the
+  tags-open default stay out (that editor shows nothing but the tag picker),
+  and so does `'suggest'`: a suggestion is stored rather than applied, so it
+  must never land in the live page's R2 slot — which is why edit.html disables
+  the art inputs there. `canUploadArt()` in edit.html is the same answer on the
+  browser side, and it is what gates the automatic printable token.
 - Every public edit notifies the owner (`notifyPageEdit`) through the same `dms`
   row comments use, so it rides the unread count and the mail flag.
 
@@ -1253,7 +1361,7 @@ Two fields that DO take marks still leave, and both go through
 - `buildSchema()` in render.js — `flavor` (the quote) and a jinx's `reason`,
   for the official-schema JSON box. The app renders no markup.
 - The `<meta name="description">` on the `/c/` page, which falls back to the
-  `lede`.
+  `lede`. See "The character link unfurl" below for what else that carries.
 - The **Featured Character** card on `index.html`, which `esc()`s the `lede`
   into a strip of markup with no engine behind it. It had no `plainText()`
   call for a year and printed `{{red|Imp}}`'s braces on the homepage — the one
@@ -1267,6 +1375,64 @@ marks (create.html and edit.html are the same form — change one, change both),
 and they feed `WikiRender.setCharLinks()` off the `characters.json`
 fetch they already make, so `[[Name]]` links in the live preview exactly as it
 will on the published page.
+
+## The character link unfurl (what Discord shows)
+
+A `/c/` link posted in Discord used to unfurl as the name, the icon and the
+ability — the one thing the picture already tells you. What places the
+character (what it is, who made it, what set, whether the wiki has marked it)
+was missing, so three pieces of `pageShell()` carry it. **The split between
+them is Discord's, not ours:**
+
+- A scraped link embed draws exactly three pieces of text — title,
+  description, site name — and **the title is the only one that is a link**,
+  so it is the only place a word can be blue.
+- **`og:description` is rendered as PLAIN TEXT.** Markdown in it is not
+  parsed: `**bold**` stays literal and `[label](url)` never becomes a link.
+  There is no second way to colour or link anything (the only known trick is
+  spoofing a Mastodon API, which is not something this wiki is going to do).
+  It is also capped around 300 characters; the title is not.
+- `twitter:label1`/`data1` pairs are a Twitter/Discourse thing and Discord
+  ignores them. An **oEmbed** `author_name` does render, above the title, but
+  bold white rather than blue — and it would need a route of its own that
+  Discord fetches through undocumented behaviour. Neither is worth it.
+
+So:
+
+| what | where | why |
+|---|---|---|
+| name + team + Curata/Partial | **`og:title`** (`charTitle()`) | the statuses classify the page, and this is the only blue, untruncatable line |
+| `by {creator}` + the set | first line of the **description** (`charCreditLine()`) | the long strings, where a set name is not competing with the name for the top line |
+| the ability | second line of the description | unchanged |
+| the team's colour | **`theme-color`** (`Render.TEAM_COLOR`) | the bar down the side of the embed |
+
+Things worth knowing:
+
+- **`og:title` and `<title>` are two fields now.** `pageShell()` takes an
+  optional `ogTitle` defaulting to `title`, because the browser tab and the
+  Google result want the page's own name and nothing else, while the unfurl's
+  title is the one line that can carry more.
+- **Every part is optional and a missing one leaves no gap.** An uncredited
+  character from no set with no team unfurls exactly as it did before any of
+  this. **Standard adds nothing**, because the absence of a class is what
+  Standard is — the same reason `classBadgeHTML()` draws no mark for it.
+- **The set comes from `charSetName()`**, which reads the same two fields in
+  the same order as the page's own "Appears in" row (`appearsInRow` in
+  render.js): the typed `appearsIn` first, then the collections that list the
+  character by hand. The preview cannot claim a set the page does not show.
+- **`Render.TEAM_COLOR` sits beside `TEAM_LABEL`** in render.js and mirrors
+  the `:root` team vars in styles.css. Traveller is the wiki's one gradient,
+  so it takes the same solid blue `.wiki-traveller` already falls back to.
+  It is an eighth place the team list is re-declared by hand — see
+  "Frontend conventions".
+- **`theme-color` is a real browser tag too**: Chrome and Safari on a phone
+  tint their toolbar with it, so a `/c/` page now tints and every other page
+  on the wiki does not. That is the cost of the coloured bar; only the
+  character route passes it (a script or collection has a theme kit of its
+  own and no team).
+- Changing any of this means **bumping `SSR_RENDER_V`** — see "Caching".
+- Discord caches an unfurl per URL, so a link already posted keeps its old
+  card. Post it with a query string appended to see a change.
 
 ## A character's three icons (and traveller good/evil art)
 
@@ -1322,9 +1488,55 @@ Things worth knowing before touching any of it:
   active one never brightens out of it; the pip's visible dot is its
   `::before`, so a 6px mark can sit inside a 19px touch target; and the
   buttons are **empty elements**, so nothing here needs escaping but the
-  attributes. Clicking the emblem still walks through the versions and a pip
-  jumps straight to one, both through `emblemShow()` so the picture and the
-  pips cannot disagree.
+  attributes. Tapping the picture walks through the versions, a swipe or a
+  drag dissolves it into the next, a pip jumps straight to one and the arrow
+  keys work from the pips — all four through `emShow()`, so the picture and
+  the pips cannot disagree.
+- **Every version is its own `<img>`, stacked in the same place; switching
+  is a fade and never a new `src`.** It used to be one `<img>` whose `src`
+  was rewritten, and R2 serves art `no-cache, must-revalidate` — so every
+  switch, back to a picture already seen included, cost a round trip to
+  revalidate before anything could be painted, and the `<img>` sat empty in
+  the meantime. Half a second a click, a second for the printable token, and
+  a blink of the card's background each time. Three things hold the
+  replacement up:
+  - **Only the version on screen carries a `src`**; the rest arrive as
+    `data-src` and are fetched on idle (`hydrateEmblems`), or on first touch,
+    whichever comes first — so the picture everybody wants is never held up
+    by three they may not ask for. The idle fetch is skipped on a metered or
+    2g connection; the first tap still works, it just pays for itself.
+  - **`mountEmblemGallery(doc)` takes a document** rather than assuming
+    `document`, because the editors' live preview is an iframe with one of
+    its own. That copy used to be hand-duplicated inside a string in
+    `char-preview.js`; the frame calls this instead, and `__cpEmb` re-runs it
+    after each repaint.
+  - **Nothing ever moves sideways, and nothing is ever clipped.** A drag did
+    carry the pictures across and clip them at the edge of the stack, the way
+    a carousel does — but a carousel is cut off by something a reader can
+    see, a screen edge or the side of a card, and this icon floats in the
+    middle of a parchment panel with no edge anywhere near it. A picture
+    sliced off in open space does not read as "there is more this way", it
+    reads as a page drawn wrong. So a swipe dissolves one picture into the
+    next: the one leaving fades and shrinks by `EM_DIP`, the one arriving
+    grows into place, both centred and whole. `emPaint()` is the whole of it
+    — how solid each picture is *is* the state, and the shrink is derived
+    from that rather than tracked beside it. It also costs the ring nothing:
+    with no left and right there is no shortest-way-round, no side to get
+    right when there are exactly two versions, and no picture having to swap
+    ends mid-step (which, when it was animated, sent it straight through the
+    middle of the frame behind the version arriving).
+- **A flick commits, however short it was.** Dragging past `EM_COMMIT` of
+  the way through keeps the change, but a thumb flicked across a phone
+  covers nowhere near a quarter of the icon before it lifts, so a speed past
+  `EM_FLICK` counts too — measured from the last move rather than averaged
+  over the drag, or a slow hunt ending in a flick would not register.
+- **The stack sets `touch-action: pan-y`**, so a sideways drag is ours and an
+  up-and-down one is still the page scrolling; a vertical drag that starts on
+  the icon is handed back and its click swallowed. A transparent
+  `-webkit-tap-highlight-color` (on the stack and on the pips) is what stops
+  a phone flashing a blue rectangle over the whole icon on every switch, and
+  `user-select: none` + `draggable="false"` stop a drag selecting the card's
+  text or picking the picture up.
 - **`uploadSlotDenied()` strips a trailing `-alt` / `-alt2`** when the key
   matched no row, so the alternates inherit the character's own permission
   check. Without it those slots had no row behind them and only the R2
@@ -1659,6 +1871,88 @@ fragments under christoph-ehm ("idea by Lins", "based on TPI"), plus one each
 under teobius and dashieswag92. `DJ_DJ_DJ` is deliberately left resolving to
 `admin`. **Any future bulk import owned by one account needs the same pass**, or
 it quietly swallows every name it is credited to.
+
+### "This credit isn't mine" (`creditUnlinked`)
+
+The per-page answer to the same problem, in the creator's own hands rather than
+an admin's. Uploading somebody else's character or script on their behalf makes
+you the row's **owner** — you made the page, you maintain it — and proof by
+ownership then read that as "the credited name is this account": `/author?a=Moll`
+302'd to the uploader's profile, and every other page credited to Moll was
+gathered onto it. There was nothing the uploader could do about it short of
+asking an admin for a `creator_alias:` row.
+
+So all three content types take **`creditUnlinked: true`** on their `data`, a
+tick beside the Creator / Author field in all four editors (`create.html`,
+`edit.html`, `publish-script.html`, `publish-collection.html`). Ticked, the
+name renders its own accountless creator page exactly as a bulk-imported one
+does, and the pages are listed there rather than on the uploader's profile.
+Unticking it links the name back. Nothing else changes — the row keeps its
+owner, the credit line still points at `/author?a={name}`, and the page is
+still on its owner's account page and in `/drafts`, which is where they
+manage it.
+
+**The tick is a statement about the NAME, not about the one page it was made
+on**, and that is the whole of the rule: an account that has ticked it on ANY
+page it owns under a credit cannot claim that credit at all, however many
+other pages it owns under the same one. It was per-page first and that was
+useless in practice — four characters credited to "Kinky Clocktower", the box
+ticked on one, and the other three went on proving ownership, so
+`/author?a=Kinky Clocktower` still 302'd to `/u/cute-mage` and the feature
+looked broken. Nobody ticks it meaning "this one page isn't mine but those
+three are"; somebody genuinely credited alongside a name on some pages and not
+others writes a different credit, which is what the credit string is for.
+
+- **`CREDIT_UNLINKED_SQL` is the per-row test and `CREDIT_DISOWNED_COUNT` is
+  what the ownership queries group by** — an owner whose count is above zero
+  is skipped for that name. Every one of them carries it:
+  `resolveCreatorAccount()` (which now reads **both** tables together and
+  unions their disowns, rather than characters-first-scripts-on-a-miss, so a
+  disown recorded on a script reaches a decision the characters would
+  otherwise settle alone), `creatorNamesFor()` (which returns
+  `{names, disowned}` — the second half is what keeps those pages off the
+  account's own creator page), the `owners` tally in `/api/creators`, and the
+  `owner_id` half of `/api/user`'s listing (its collections are filtered in
+  JS, same rule). Miss one and the name half-resolves.
+- **`/api/user` tests twice and both are needed**: the NAME test takes the
+  whole credit off the uploader's profile (the siblings nobody ticked), and
+  the per-row `CREDIT_LINKED_SQL` still catches a ticked **draft**, whose
+  credit is not disowned because drafts prove nothing either way.
+- **`CREDIT_RULE_V` is salted into the three edge-cache keys that carry an
+  answer to "who owns this name"** — `cachedCreatorAccount`, the anonymous
+  `/api/user` body and `/api/creators`. Those keys roll on `content_version`,
+  which moves when CONTENT moves; a deploy does not touch it and
+  `caches.default` outlives a deploy, so the per-name fix went live and kept
+  serving the old rule's cached answer for the full 30-minute `PEOPLE` ttl —
+  `/author?a=Kinky Clocktower` still 302'd after the merge and the fix
+  looked broken twice over. **Bump it whenever the rule changes** and the
+  stale answers die with the deploy. Also worth knowing while testing any of
+  this: Cloudflare's build queue on this account has taken **16 minutes**
+  from merge to live (#130), so "still redirects" five minutes after a merge
+  means the old Worker is still up — `workers_list`'s `modified_on`, or the
+  editor's hint text, says which code is actually serving.
+- **The test is a substring of the JSON blob**, not `json_extract()`.
+  `JSON.stringify` spells the pair `"creditUnlinked":true` and nothing else —
+  no spaces, one casing — and a writer who types that sequence into an ability
+  has their quotes escaped to `\"` on the way in, so it can only ever match the
+  real key. `json_extract()` would be tidier and **throws** on a row whose
+  `data` is not valid JSON, taking the whole query with it. Same reasoning as
+  the `LIKE '%"related"%'` narrowing in `/api/page`.
+- **It is the owner's field**, like `curataOptOut`: `setCreditUnlinked()` reads
+  it off the form only for `perm === 'owner'` and carries the stored answer
+  forward for a public, approved or suggested edit, so a guest can neither
+  disown somebody's page nor claim it. `/api/suggest` re-pins it on the way in
+  and `/api/suggestion`'s approve re-pins it again. All four editors hide the
+  tick for a guest rather than showing a control the save would ignore.
+- Stored **only when true**, so the pages nobody ticks it on grow no key, and
+  it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
+- The **admin `creator_alias:` override still wins**, in both directions: it is
+  checked before proof by ownership, so an admin can link a name every page of
+  which disowns it. `creatorNamesFor()` clears the name out of `disowned` when
+  an alias grants it, or the pages would stay off the profile the alias just
+  pointed them at.
+- The two bulk importers (`mass-upload.html`, `/bloodstar`) do **not** offer the
+  tick yet, so an imported page is ticked afterwards in its own editor.
 
 ## Jinxes
 
@@ -2095,7 +2389,15 @@ uploaded — except for the one opt-in save described below.
   1. Any new option read by `prepSource`/`buildMasks`/`buildLighting`/
      `buildBevel` **must be added to `MASK_OPTS`**, or the mask cache goes
      stale and the control appears to do nothing intermittently.
-  2. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
+  2. The texture field is **centred** on the icon and its tiles are
+     **never mirrored**. Both were once the other way round, and together
+     they kaleidoscoped every icon with a large unbroken area: the tile was
+     laid out from the canvas centre as its top-left corner, so four
+     mirrored tiles met on both centre lines. `grainSheet()` is what makes
+     plain tiling possible — it grows each sheet once into a seamless,
+     symmetry-free 2× mosaic (see the guide's Stage D). Its crop size is a
+     fraction of the SOURCE texture, never of the grown sheet.
+  3. `clipToMask()` and `adjustField()` **mutate their input canvas**. Cached
      stages are `cloneCanvas()`d before being fed to them — keep the clones.
      Also: any helper that sets a canvas transform resets it before returning.
   The full reasoning is in `migration/icon-forge-guide.md` (§2, §3, §7), which
@@ -2997,8 +3299,9 @@ seeded with whole collections whose characters all arrived unowned.
   `token-tool.js`, and inline in `all-characters/team/index/author/tag/profile/
   script/publish-script/script-view.html`, plus the `<select id="team">` in
   `create.html`/`edit.html`/`grimforge.html`, the `normTeam()` whitelist in `mass-upload.html`
-  and `TEAM_COLORS` in `dashboard.html`. **Adding a team means editing every
-  one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
+  and `TEAM_COLORS` in `dashboard.html`, plus `TEAM_COLOR` in `render.js` (the
+  one solid colour per team, for the `theme-color` on a `/c/` page — see "The
+  character link unfurl"). **Adding a team means editing every one of them.** `GOOD`/`GOOD_TEAMS` maps hold only `townsfolk`+`outsider`
   (drives the blue `.good` class) — Traveller/Fabled/Loric are in neither.
   `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
@@ -3029,13 +3332,126 @@ seeded with whole collections whose characters all arrived unowned.
   while `/api/user`'s card builder never put `logo` on the wire, so the second
   half could never fire. Pin cards on the creator page fall back the same way.
 
-## Caching
+## Caching (and why the site is fast on a phone)
 
-- `_headers`: HTML/CSS/JS/art revalidate on every load (edits show on normal
-  refresh); icons, fonts, pyodide, token assets are immutable long-cache.
-  Later rules override earlier ones — keep the generic rules at the top.
-- Worker responses: JSON endpoints and SSR pages send `no-store`; R2 images
-  send `no-cache, must-revalidate` (+ ETag) so replaced art shows immediately.
+Four layers, each keyed so that freshness never depends on a timer:
+
+**1. Static files (`_headers`).** HTML/CSS/JS/art revalidate on every load
+(edits show on a normal refresh); icons, fonts, pyodide, token assets, the
+committed `*.webp` furniture and Icon Forge's payload are immutable for a
+year. **Matching rules COMBINE** — see Gotcha 14 — so every immutable block
+detaches the generic header first. Anything served immutable is replaced by
+a NEW filename, never by overwriting. The `/` and `/:page` rules add a
+`Link: rel=preload` header for the stylesheet and the two above-the-fold
+faces, and `pageShell()` sends the same header on the server-rendered pages
+(`PAGE_LINK_HEADER`). **Early Hints has to be switched on for the zone**
+(Cloudflare dashboard → Speed → Content Optimization → Early Hints) for
+Cloudflare to replay those as a 103 before the page is fetched; without the
+toggle the header still gets the preloads going as soon as the response
+headers land. The browse pages also carry `<link rel="preload" as="fetch">`
+for the feeds they draw from, so the feed download starts while the
+stylesheet is still loading rather than after the scripts at the end of the
+body have run; `crossorigin` on those is what makes the preload match a
+plain `fetch()`.
+
+**2. The JSON feeds.** `Cache-Control: private, max-age=0, must-revalidate`
+with an ETag of `W/"{table}-{fields}-v{version}"`, answered with an empty 304
+when it matches. **`private` is load-bearing**: with `public` Cloudflare
+stored the feed at the edge, revalidated it with the Worker on every
+request, and served the browser its own copy under an ETag of its own
+making (a hash of the compressed body) — so the browser's If-None-Match
+never matched the Worker's and every browse page re-downloaded the whole
+feed. The bodies themselves are still built once per content version and
+kept in `caches.default` under synthetic `https://feed.internal/...?v=`
+URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
+from `content_version` in the key — every content write bumps it and rolls
+every key — never from expiry, so do not shorten those TTLs back to minutes;
+the D1 free tier allows 5M `rows_read` a day and the site once burned
+through it on rebuilds alone. The jinx index, the card-character cache, the
+`[[Name]]` link map and the sitemap share that plumbing (`cachedFeedBody()`).
+Creator lookups (`/author?a=`, anonymous `/api/user`, `/api/creators`) are
+capped at 30 minutes (`PEOPLE_CACHE_CONTROL`) because avatar/bio edits bump
+no version; logged-in `/api/user` responses are never cached.
+**The `grid` tier** (`GRID_FIELDS`, an include list) exists because the card
+feed carried night reminders, jinx text, quotes and custom JSON to pages that
+draw 64px thumbnails — 413 KB compressed on every browse page view. A page
+that only DRAWS characters (index, All Characters, team, tag, tags,
+All Collections, the 404 page, the top-bar search) asks for `grid`; anything
+that exports or edits stays on `card`. All Characters' "Collection JSON" box
+fetches the card feed lazily, the first time somebody reaches for it. If a
+grid page needs a new field, add it to `GRID_FIELDS`; `jinxCount` and the
+lede-less `quote` are the two derived stamps.
+
+**3. Images.** Every row carries `v` (`rowVersion()`, base-36 `updated_at`),
+and every card renderer appends it: `assets/art/x.png?v=abc`. **A versioned
+image URL is served `public, max-age=31536000, immutable` and kept in the
+colo's edge cache** (`serveR2Image`), so an unchanged icon costs a returning
+reader nothing and the Worker nothing past the cache lookup; a save is a new
+version is a new URL, which is how replaced art still shows at once. The
+bare URL keeps `no-cache, must-revalidate` + ETag exactly as before — and now
+actually answers a matching If-None-Match with a 304 (`onlyIf` on the R2
+read) instead of the whole file, which it never did. **Cards draw
+thumbnails**: `thumb/{file}.webp` is the 192px WebP twin of `art/{file}` (8 KB
+against 150–700 KB), reached through `PageRender.thumbSrc(c, root)` (the
+same order as `artSrc()`; site.js, render.js and the inline `thumb()` in the
+browse pages mirror it). The Worker's `serveThumb` falls back R2 thumbnail →
+R2 original → committed thumbnail → committed original, so a missing
+thumbnail is never a broken image, and an original standing in at the
+thumbnail URL is cached an hour, not a year. Writing `art/{file}` deletes its
+thumbnail (`dropThumbFor`, in `/api/upload` and `/api/bloodstar-art`), and the
+uploading page makes a fresh one (`assets/art-thumb.js`); the dashboard's
+**"Card thumbnails"** card (Maintenance tab, `/api/admin/thumb-missing`)
+backfills whatever is left, from the admin's browser — the Worker cannot
+resize an image. Only `art/` keys have thumbnails; `uploadSlotDenied()` maps
+`thumb/` back to `art/` so the permission is the art's. Things that show the
+icon LARGE (the `/c/` emblem, the featured card) keep `artSrc()`.
+The page furniture is WebP beside its originals (`bg.webp` + the phone-sized
+`bg-m.webp`, `parchment.webp`, `ccc-parchment.webp`, `logo_skull.webp`, all
+from `migration/optimize-images.js`), immutable; the `.png`/`.jpg` originals
+stay because OG images and the credits Fabled point at them.
+
+**4. Server-rendered pages.** `/c/`, `/s/`, `/collection/`, `/news/` and
+`/p/` go through `ssrRoute()`. For a reader with no session cookie a
+published page is identical for everybody (edit button, draft bar and
+Partial notice are all decided from the session; the comment widget asks
+the API itself), so the HTML is kept in `caches.default` under a key of
+content version + origin + path and served from there on the next request
+with no D1 read — a `/c/` page was 6–10 queries and ~1.4 s of TTFB. Only a
+200 marked `X-Botc-View` (which the routes set ONLY for a published page) is
+stored; the header is `type|slug`, and a cache hit counts the view from it
+and strips it, so `page_views` keep counting. The browser still gets
+`no-store`. A logged-in reader always gets a fresh render.
+**`SSR_RENDER_V` is salted into that key**, for the same reason
+`CREDIT_RULE_V` is salted into the creator ones: the key rolls on
+`content_version`, a deploy does not touch it, and `caches.default` outlives
+a deploy — so a change to `pageShell()` or to a renderer goes live and every
+page already cached keeps serving last week's HTML for the full week of
+`s-maxage` unless somebody happens to save a page. Bump it in the same commit
+as any deploy that changes what these routes render.
+
+Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
+`_headers` blanket rule for committed files, and the Worker's image route
+for uploads. The official script tool fetch()es character icons cross-origin
+to embed them in its print preview and PNG/PDF sheet exports; without the
+header, wiki-hosted characters print as generic placeholders while looking
+fine on screen. Keep both halves in step.
+
+Two things that are NOT done, deliberately: Cloudflare's **Workers Cache**
+(`[cache] enabled = true` in wrangler.toml) would serve cached Worker
+responses without invoking the Worker at all, but it also caches any
+response with NO Cache-Control header for two hours by heuristic — one
+per-user API route missing its `no-store` would leak across accounts, so it
+needs a full audit first. And `stale-while-revalidate` on CSS/JS was
+rejected: the owner reviews edits on the live site, and a load that shows
+new HTML with last deploy's script is worse than the revalidation costs.
+
+Fonts: there is **no Google Fonts `@import`** any more (it put two more
+origins in the render-blocking path of every page). The seven families are
+self-hosted woff2 subsets in `assets/fonts/` with `unicode-range`, declared
+in styles.css; the wiki's own faces have woff2 twins too. See
+`assets/fonts/README.md`. All Characters draws its 1,800 cards in slices per
+animation frame (`renderToken`) and `.type-section` has
+`content-visibility: auto`, so off-screen sections cost no layout.
 
 ## Verifying changes (no local server needed)
 
@@ -3198,3 +3614,12 @@ seeded with whole collections whose characters all arrived unowned.
    `INSERT INTO settings (key,value) VALUES ('content_version','1') ON CONFLICT
    (key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
    after the write is the whole fix.
+14. **`_headers` rules do not override each other — they COMBINE.** Every
+   rule whose pattern matches is applied, and a header two rules both set is
+   sent with the values joined by a comma. `/assets/*.png` (no-cache) and
+   `/assets/icons/*` (immutable) both match an official icon, so for a year
+   the icons went out as `no-cache, must-revalidate, public, max-age=31536000,
+   immutable` and browsers, seeing `no-cache`, revalidated them on every page.
+   A rule that means to REPLACE a header detaches it first with a
+   `! Cache-Control` line. And `_headers` never applies to a response the
+   Worker generated — those set their own.

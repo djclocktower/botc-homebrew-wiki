@@ -1,0 +1,188 @@
+[
+  {
+    "id": "_meta",
+    "author": "Goodpart",
+        "hideTitle": true,
+    "name": "Belly Up",
+    "logo": "http://menagerie.towerrangers.net/images/logo/bellogo.png",
+    "background": "http://menagerie.towerrangers.net/images/menbg.jpg",
+    "bootlegger":
+        [
+            "View running notes and homebrew almanac at menagerie.towerrangers.net"
+        ],
+    "firstNight": [
+      "dusk",
+      "wraith",
+      "minioninfo",
+      "demoninfo",
+      "marionette",
+      "ladylace",
+      "cerenovus",
+      "washerwoman",
+      "investigator",
+      "dreamer",
+      "shugenja",
+      "chambermaid",
+      "dawn"
+    ],
+    "otherNight": [
+      "dusk",
+      "wraith",
+      "bonecollector",
+      "ladylace",
+      "gambler",
+      "cerenovus",
+      "scarletwoman",
+      "polterghast",
+      "imp",
+      "vigormortis",
+      "gossip",
+      "sage",
+      "tinker",
+      "moonchild",
+      "dreamer",
+      "towncrier",
+      "oracle",
+      "chambermaid",
+      "dawn"
+    ]
+  },
+  "investigator",
+  "washerwoman",
+  "shugenja",
+  "chambermaid",
+  "dreamer",
+  "towncrier",
+  "oracle",
+  "gambler",
+  "gossip",
+  "alsaahir",
+  "fisherman",
+  "sage",
+  "mayor",
+  {
+    "id": "stowaway",
+    "name": "Stowaway",
+    "image": [
+      "http://menagerie.towerrangers.net/images/stog.png",
+      "http://menagerie.towerrangers.net/images/stoe.png"
+    ],
+    "team": "outsider",
+    "ability": "You do not know you are the Stowaway. You think you are an in-play Outsider, but you are not. [+0 or +1 Outsider]",
+    "flavor": "Gods above, this crate is heavy!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "remindersGlobal": [
+      "Is The Stowaway"
+    ],
+    "setup": true,
+    "jinxes": [
+      {
+        "id": "drunk",
+        "reason": "The Drunk cannot be a Stowaway."
+      }
+    ],
+    "special": [
+      {
+        "name": "replace-character",
+        "type": "reveal"
+      },
+      {
+        "name": "bag-disabled",
+        "type": "selection"
+      }
+    ]
+  },
+  "tinker",
+  "moonchild",
+  "saint",
+  "mutant",
+  "cerenovus",
+  {
+    "id": "ladylace",
+    "name": "Lady Lace",
+    "image": [
+      "http://menagerie.towerrangers.net/images/lade.png",
+      "http://menagerie.towerrangers.net/images/ladg.png"
+    ],
+    "team": "minion",
+    "ability": "Each night, choose a player. They are poisoned until you die. Before dawn on the night equal to Minions +1, you die, even if drunk or poisoned.",
+    "flavor": "Pardon the interruption, but this drink comes courtesy of the fair lady in the red dress. She sends her warmest regards.",
+    "firstNight": 29,
+    "otherNight": 15,
+    "firstNightReminder": "Lady Lace chooses a player :reminder:. Mark Lady Lace with the token corresponding to the night equal to Minions +1. :reminder:",
+    "otherNightReminder": "Lady Lace chooses a player :reminder:. If the night number corresponds with the token currently on Lady Lace, they die at the conclusion of the night and all poison effects are removed.",
+    "reminders": [
+      "Dies Night 2",
+      "Dies Night 3",
+      "Dies Night 4",
+      "Poisoned",
+      "Poisoned",
+      "Poisoned",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "preacher",
+        "reason": "Lady Lace still dies if their time expires while under the effects of the Preacher’s ability."
+      },
+      {
+        "id": "plaguedoctor",
+        "reason": "If the Storyteller gains Lady Lace’s ability, they may poison 2 players on subsequent nights: on the 3rd night, all effects are removed."
+      }
+    ]
+  },
+  "marionette",
+  "wraith",
+  "scarletwoman",
+  "imp",
+  "vigormortis",
+  {
+    "id": "polterghast",
+    "name": "Polterghast",
+    "image": [
+      "http://menagerie.towerrangers.net/images/pole.png",
+      "http://menagerie.towerrangers.net/images/polg.png"
+    ],
+    "team": "demon",
+    "ability": "Each night*, choose a player: they die. Once per game, at night*, you may choose to register as dead & poison 1 Townsfolk neighbour.",
+    "flavor": "'Over my dead body', you say? Well, if you insist.",
+    "firstNight": 0,
+    "otherNight": 37,
+    "otherNightReminder": "The Polterghast chooses a player :reminder:. They may also choose to use their ability to feign death. Give them the 'Play Dead' token and announce them as dead in the morning.",
+    "reminders": [
+      "Dead",
+      "Play Dead",
+      "Poisoned"
+    ],
+    "jinxes": [
+      {
+        "id": "scarletwoman",
+        "reason": "If the Polterghast dies while registering as dead, the Scarlet Woman becomes the Polterghast whose ability has already been used."
+      }
+    ]
+  },
+  "butcher",
+  "gunslinger",
+  "bonecollector",
+  "judge",
+  "voudon",
+  "gardener",
+  "bootlegger",
+  {
+    "id": "peanutgallery",
+    "name": "Peanut Gallery",
+    "image": [
+      "http://menagerie.towerrangers.net/images/nut.png"
+    ],
+    "team": "fabled",
+    "ability": "Before characters are drawn, spectators choose one player. They win and lose with that player.",
+    "flavor": "We're #1! We're #1! We're #1!",
+    "firstNight": 0,
+    "otherNight": 0,
+    "reminders": [
+      "Chosen One"
+    ],
+    "setup": true
+  }
+]

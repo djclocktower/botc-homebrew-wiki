@@ -145,10 +145,10 @@
   <header class="topbar">
     <div class="brand-group">
       <a class="brand" href="/">
-        <img class="brand-skull" src="/assets/logo_skull.png" alt="">
+        <img class="brand-skull" src="/assets/logo_skull.webp" alt="">
         <img class="brand-header-text" src="/assets/headertext.png" alt="BOTC HomeBrew Wiki">
       </a>
-      <img class="topbar-badge" src="/assets/ccc-parchment.png" alt="Community Created Content">
+      <img class="topbar-badge" src="/assets/ccc-parchment.webp" alt="Community Created Content">
     </div>
     <nav class="crumb" aria-label="Primary">
       <a href="/all-characters">All Characters</a>
@@ -334,7 +334,7 @@
     // worth matching suggestions against is the LAST segment, not the set.
     if ((m = location.pathname.match(/^\/c\/(?:[^/]+\/)?([^/]+)/))) {
       wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/characters.json?fields=card';
+      feed = '/characters.json?fields=grid';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (c) {
           // The feed's `page` is the character's address (c/{set}/{name}),
