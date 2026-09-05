@@ -85,6 +85,13 @@ eq(seats.rows[0], { players: 5, need: [3, 0, 1, 1], short: ['townsfolk'], ok: fa
 const seatsBig = T.setups(pool.slice(0, 80));
 eq([seatsBig.minOk, seatsBig.maxOk], [5, 15], 'a full pool seats everyone');
 ok(T.setups([]).maxOk === 0, 'an empty script seats nobody');
+const gapPool = pool.map((c, i) => Object.assign({}, c, { tags: i % 2 ? 'Protection' : 'Death' }));
+seed = 3;
+const gaps = T.gapSuggestions(script.filter(c => c.slug !== 'e'), gapPool, rng);
+eq(gaps.map(g => g.key), ['kill'], 'only the family the script has none of (the demon was its one killer)');
+eq(T.gapSuggestions(script, gapPool, rng), [], 'a script with every family covered gets nothing');
+ok(gaps[0].candidates.length === 4 && gaps[0].candidates.every(c => /Death/.test(c.tags)), 'four candidates, all from the family');
+eq(T.gapSuggestions(script.slice(0, 3), gapPool, rng), [], 'a tiny script gets no suggestions');
 
 // ── text ──
 const meta = { name: 'My Script', author: 'Me', bootlegger: ['No Fortune Teller herring'], notes: 'be nice' };

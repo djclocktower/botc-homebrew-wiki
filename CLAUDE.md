@@ -1087,6 +1087,19 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   Publish can each be taken off it; whatever is off appears in the More
   menu instead (`.sbx-menu-bar` items, shown by the `sbx-bar-no-*` classes),
   so nothing is ever unreachable — which is most of the point on a phone.
+- **Each panel group heading has a die** (add one at random from what that
+  group is showing) and, grouped by team, says how many more the shape wants
+  (`paintPanelNeeds`). Roster teams **fold** with a click on the heading
+  (`prefs.rosterFolded`). The keys **1–5** switch tabs when nothing is being
+  typed.
+- **Analyse → "Nobody on this script…"**: the families a script can lack
+  (learns something, makes information false, kills, protects, changes the
+  setup — `SBTools.FAMILIES`) with a few random candidates from the panel
+  for each (`gapSuggestions`, tag-based, deliberately random rather than
+  ranked). The Jinx tab also lists **official-vs-official jinxes** on the
+  script from `assets/official-jinxes.json`, fetched on first need — for
+  information only, since the app applies those itself and the export never
+  carries them.
 
 ### Peek, notes, copy as text, loading from the wiki
 

@@ -214,6 +214,8 @@
     analyseDirty = true;
     paintCounts();
     paintShape();
+    paintPanelNeeds();
+    paintRoster();
     if (activeTab === 'analyse') ensurePane();
   }
   function charNotes() {
@@ -372,6 +374,7 @@
     paintCounts();
     paintRoster();
     paintPicks();
+    paintPanelNeeds();
     nightDirty = jinxDirty = analyseDirty = true;
     if (activeTab === 'night' || activeTab === 'jinx' || activeTab === 'analyse') ensurePane();
     if (activeTab === 'meta') { paintTextPreview(); paintJsonPreview(); if (idsUI) idsUI.refresh(); }
@@ -411,6 +414,19 @@
   // ══════════════════════════════════════════════════════════════════════
   //  The roster (the "Script" tab)
   // ══════════════════════════════════════════════════════════════════════
+  /* "4 more" beside a team's heading in the panel, when the panel is
+     grouped by team and the shape wants more of it than the script has. */
+  function paintPanelNeeds() {
+    var sh = shape();
+    var have = window.SBTools ? window.SBTools.countTeams(rosterChars()) : null;
+    [].slice.call(document.querySelectorAll('#sb-add-list .sbx-add-group[data-team]')).forEach(function (g) {
+      var t = g.getAttribute('data-team');
+      var el = g.querySelector('.sbx-add-groupneed');
+      if (!el) return;
+      var need = sh && have ? sh[t] - (have[t] || 0) : 0;
+      el.textContent = need > 0 ? '· ' + need + ' more' : '';
+    });
+  }
   function paintCounts() {
     var counts = {}, total = 0;
     rosterChars().forEach(function (c) {
@@ -601,9 +617,11 @@
         '<button type="button" data-team-act="reroll" data-team="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again (locked ones stay)">&#9860;</button>' +
         '<button type="button" data-team-act="clear" data-team="' + esc(t[0]) + '" title="Take every ' + esc(t[1]) + ' off the script (locked ones stay)">&#10005;</button>' +
         '</span>';
-      html += '<div class="sbx-team" data-team="' + esc(t[0]) + '">' +
-        (head ? '<h3 class="sbx-team-head"><span>' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
-          '>(' + group.length + (want ? '/' + want : '') + ')</span></span>' + tools + '</h3>' : '') +
+      var folded = !!(prefs.rosterFolded && prefs.rosterFolded[t[0]]);
+      html += '<div class="sbx-team' + (folded ? ' folded' : '') + '" data-team="' + esc(t[0]) + '">' +
+        (head ? '<h3 class="sbx-team-head"><span class="sbx-team-label" data-team-fold="' + esc(t[0]) + '" title="' +
+          (folded ? 'Unfold' : 'Fold this team away') + '">' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
+          '>(' + group.length + (want ? '/' + want : '') + ')</span>' + (folded ? ' <span class="sbx-team-foldmark">&#9656;</span>' : '') + '</span>' + tools + '</h3>' : '') +
         '<div class="sbx-sheet">';
       group.forEach(function (c, i) { html += rowHTML(c, jx[c.slug], i, group.length); });
       html += '</div></div>';
@@ -932,7 +950,9 @@
           wrap.setAttribute('data-group', g.key);
           if (g.team) wrap.setAttribute('data-team', g.team[0]);
           wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
-            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-fold" aria-hidden="true">&#9662;</span></h3>' +
+            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
+            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from what this group is showing" aria-label="Add a random ' + esc(g.label) + '">&#9860;</button>' +
+            '<span class="sbx-add-fold" aria-hidden="true">&#9662;</span></h3>' +
             '<div class="sbx-add-rows"></div>';
           list.appendChild(wrap);
           g.rowsEl = wrap.lastChild;
@@ -1053,6 +1073,7 @@
         jinxUI.render();
         jinxDirty = false;
       }
+      paintOfficialJinxes();
     } else if (activeTab === 'analyse') {
       if (analyseDirty) { paintAnalysis(); analyseDirty = false; }
     } else if (activeTab === 'meta') {
@@ -1062,6 +1083,39 @@
       paintJsonPreview();
       if (idsUI) idsUI.refresh();
     }
+  }
+  /* Jinxes between two OFFICIAL characters on the script. They are not on
+     the character pages (the official roster carries no jinxes here) and
+     the app applies them itself, so they are shown for information and
+     never written into the export. assets/official-jinxes.json is fetched
+     the first time a script with two official characters opens the tab. */
+  var officialJinxes = null, officialJinxesLoading = false;
+  function paintOfficialJinxes() {
+    var host = $('sbx-jinx-official');
+    if (!host) return;
+    var offs = rosterChars().filter(function (c) { return c.official; });
+    if (offs.length < 2) { host.hidden = true; host.innerHTML = ''; return; }
+    if (!officialJinxes) {
+      if (!officialJinxesLoading) {
+        officialJinxesLoading = true;
+        fetch('assets/official-jinxes.json').then(function (r) { return r.json(); }).then(function (d) {
+          officialJinxes = (d && Array.isArray(d.jinxes)) ? d.jinxes : [];
+          if (activeTab === 'jinx') paintOfficialJinxes();
+        }).catch(function () { officialJinxes = []; });
+      }
+      return;
+    }
+    var ids = {};
+    offs.forEach(function (c) { ids[String(c.slug).replace(/^off-/, '')] = c; });
+    var hits = officialJinxes.filter(function (j) { return j && ids[j.a] && ids[j.b]; });
+    if (!hits.length) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = '<p class="sjx-off-head" style="margin-top:14px">Official jinxes on this script</p>' +
+      '<p class="sbx-view-hint" style="margin:0 0 6px">Between two official characters. The app applies these itself, so they are not written into the export.</p>' +
+      '<div class="sjx-list">' + hits.map(function (j) {
+        return '<div class="sjx-row"><div class="sjx-text"><span class="sjx-pair">' + esc(ids[j.a].name) + ' &harr; ' + esc(ids[j.b].name) +
+          '</span><span class="sjx-reason">' + esc(j.text || '') + '</span></div></div>';
+      }).join('') + '</div>';
   }
   function nightView() {
     var o = prefs.night || {};
@@ -1180,6 +1234,21 @@
     else html += '<div class="sbx-an-chips">' + a.creators.slice(0, 24).map(function (c) { return chip(c.n, c.name); }).join('') + '</div>';
     html += '</div>';
 
+    // what is missing, and who could fill it
+    var gaps = T.gapSuggestions(chars, visibleSidebarChars());
+    if (gaps.length) {
+      html += '<div class="sbx-an-sec wide"><h3 class="sbx-an-head">Nobody on this script&hellip;</h3>';
+      gaps.forEach(function (g) {
+        html += '<p class="sbx-an-fact"><b>&hellip;' + esc(g.label) + '.</b> A few from the panel who do:</p><div class="sbx-an-cands">' +
+          g.candidates.map(function (c) {
+            return '<span class="sbx-an-cand"><img loading="lazy" decoding="async" src="' + esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+              '<span class="t"><strong>' + esc(c.name) + '</strong><small>' + esc(c.ability || '') + '</small></span>' +
+              '<button type="button" class="sbx-b-sm" data-add="' + esc(c.slug) + '">&#43; Add</button></span>';
+          }).join('') + '</div>';
+      });
+      html += '<p class="sbx-view-hint">Drawn at random from what the panel is showing; open the tab again for another few.</p></div>';
+    }
+
     // jinx suggestions
     if (a.suggest.length) {
       html += '<div class="sbx-an-sec wide"><h3 class="sbx-an-head">Jinxed with someone not on this script</h3>';
@@ -1223,7 +1292,7 @@
     var rp = key ? window.SBView.repaintFor(key) : 'roster';
     if (rp === 'roster') paintRoster();
     if (rp === 'panel' || (!key && view.panelGroup !== beforeGroup)) {
-      if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); });
+      if (allChars.length) buildAddList(function () { mountAddFilters(); paintJinxHints(); paintPanelNeeds(); });
     }
     if (key === 'panelSearchAbility' && filterAPI && filterAPI.apply) filterAPI.apply();
     if (key === 'side' || !key) {
@@ -2341,6 +2410,19 @@
   function wire() {
     // ── the add list: one delegated listener for ~1,900 rows ──
     $('sb-add-list').addEventListener('click', function (e) {
+      var die = e.target.closest('[data-group-random]');
+      if (die) {
+        var grpEl = die.closest('.sbx-add-group');
+        var cands = [].slice.call(grpEl.querySelectorAll('.sbx-add-row')).filter(function (r) {
+          return r.style.display !== 'none' && !r.classList.contains('on') && getComputedStyle(r).display !== 'none';
+        });
+        if (!cands.length) { toast('Nothing left to draw from in that group.'); return; }
+        var pickRow = cands[Math.floor(Math.random() * cands.length)];
+        var pb = pickRow.querySelector('.sbx-add-item');
+        var ps = pb && pb.getAttribute('data-slug');
+        if (ps && bySlug[ps]) { toggle(ps); toast('Added ' + bySlug[ps].name + '.'); }
+        return;
+      }
       var head = e.target.closest('.sbx-add-grouphead');
       if (head) {
         var grp = head.parentNode;
@@ -2427,6 +2509,15 @@
       }
       var ta = e.target.closest('button[data-team-act]');
       if (ta) { teamAction(ta.getAttribute('data-team-act'), ta.getAttribute('data-team')); return; }
+      var tf = e.target.closest('[data-team-fold]');
+      if (tf) {
+        var team = tf.getAttribute('data-team-fold');
+        prefs.rosterFolded = prefs.rosterFolded || {};
+        if (prefs.rosterFolded[team]) delete prefs.rosterFolded[team]; else prefs.rosterFolded[team] = true;
+        savePrefs();
+        paintRoster();
+        return;
+      }
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
       var lk = e.target.closest('.sbx-ch-lock');
@@ -2618,7 +2709,12 @@
       if (mod && !typing && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if (mod && !typing && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
       if (mod && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); focusSearch(); return; }
-      if (!typing && !mod && !e.altKey && e.key === '/') { e.preventDefault(); focusSearch(); }
+      if (!typing && !mod && !e.altKey && e.key === '/') { e.preventDefault(); focusSearch(); return; }
+      if (!typing && !mod && !e.altKey && /^[1-5]$/.test(e.key)) {
+        var tabs = [].slice.call(document.querySelectorAll('.sbx-tab'));
+        var tb = tabs[Number(e.key) - 1];
+        if (tb) { e.preventDefault(); showTab(tb.getAttribute('data-tab')); }
+      }
     });
     menu.addEventListener('click', function (e) {
       var b = e.target.closest('button[data-do]');
@@ -2917,6 +3013,7 @@
             perfMark('panel-done');
             mountAddFilters();
             paintJinxHints();
+            paintPanelNeeds();
             perfMark('filters');
           });
         }, 0);

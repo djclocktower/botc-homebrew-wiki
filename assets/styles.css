@@ -5057,6 +5057,30 @@ button.sbx-counts:empty { display: none; }
 .sbx[data-layout="list"] .sbx-ch-note, .sbx[data-layout="icons"] .sbx-ch-note { display: none; }
 .sbx-peek-note { width: 100%; margin-top: 8px; font-family: 'Libre Franklin', sans-serif; font-size: .8rem; color: var(--ink); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; resize: vertical; min-height: 44px; box-sizing: border-box; }
 
+/* ── round 8: panel dice and needs, roster folding, gap candidates, focus ── */
+.sbx-add-groupneed { font-family: 'Oswald', sans-serif; font-size: .62rem; letter-spacing: .04em; color: #8a3d3d; margin-left: 4px; text-transform: none; }
+.sbx-add-groupneed:empty { display: none; }
+.sbx-add-die {
+  margin-left: auto; width: 22px; height: 18px; cursor: pointer; line-height: 1; padding: 0; font-size: .78rem;
+  background: none; border: 1px solid transparent; color: rgba(91,31,33,.45);
+}
+.sbx-add-die:hover { color: var(--maroon); border-color: var(--parch-frame); background: #fffdf8; }
+.sbx-add-grouphead .sbx-add-fold { margin-left: 2px; }
+.sbx-team-label { cursor: pointer; user-select: none; }
+.sbx-team-label:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.sbx-team-foldmark { font-size: .8em; opacity: .7; }
+.sbx-team.folded .sbx-sheet { display: none; }
+.sbx-team.folded { margin-bottom: 8px; }
+.sbx-an-cands { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); margin-bottom: 8px; }
+.sbx-an-cand { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink); border: 1px solid rgba(180,160,120,.45); background: rgba(255,253,248,.7); padding: 5px 7px; min-width: 0; }
+.sbx-an-cand img { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.sbx-an-cand .t { flex: 1; min-width: 0; line-height: 1.25; }
+.sbx-an-cand .t small { display: block; color: #6b5d49; font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbx-add-item:focus-visible, .sbx-b:focus-visible, .sbx-b-sm:focus-visible, .sbx-tab:focus-visible,
+.sbx-pick:focus-visible, .sbx-ch-x:focus-visible, .sbx-ch-lock:focus-visible, .sbx-seg:focus-visible {
+  outline: 2px solid #f2c46f; outline-offset: -2px;
+}
+
 /* ── toasts ── */
 .sbx-toast {
   position: fixed; left: 50%; bottom: 22px; z-index: 90;

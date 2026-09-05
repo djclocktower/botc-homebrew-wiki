@@ -293,6 +293,38 @@
     };
   }
 
+  /* ── what a script is missing, and who could fill it ────────────────
+     The families a Storyteller reaches for: a script with nobody who
+     learns anything, or nobody who can be wrong, plays flat. For each
+     family the script has none of, a few candidates from the pool (the
+     characters the panel is showing) are drawn at random. Deliberately a
+     handful, and deliberately random: a ranked list would be an opinion. */
+  var FAMILIES = [
+    { key: 'info', label: 'learns something', tags: ['Information', 'You Start Knowing', 'True Info', 'Binary Info'] },
+    { key: 'misinfo', label: 'makes information false', tags: ['False Info', 'Drunkenness', 'Poison', 'Misregistration'] },
+    { key: 'kill', label: 'kills', tags: ['Death', 'Single-Kill', 'Multi-Kill'] },
+    { key: 'protect', label: 'protects', tags: ['Protection', 'Safety Net', 'Execution Survival', 'Resurrection'] },
+    { key: 'setup', label: 'changes the setup', tags: ['Setup', 'Outsider Modification'] }
+  ];
+  function gapSuggestions(chars, pool, rng, each) {
+    chars = (chars || []).filter(Boolean);
+    each = each || 4;
+    if (chars.length < 5) return [];
+    var on = {};
+    chars.forEach(function (c) { on[c.slug] = 1; });
+    var out = [];
+    FAMILIES.forEach(function (f) {
+      var have = chars.filter(function (c) { return hasTag(c, f.tags) || (f.key === 'setup' && isSetup(c)); }).length;
+      if (have) return;
+      var cands = (pool || []).filter(function (c) {
+        return c && !on[c.slug] && !c.official && (hasTag(c, f.tags) || (f.key === 'setup' && isSetup(c)));
+      });
+      if (!cands.length) return;
+      out.push({ key: f.key, label: f.label, candidates: shuffle(cands.slice(), rng).slice(0, each) });
+    });
+    return out;
+  }
+
   /* ── text formats ─────────────────────────────────────────────────────
      textExport(chars, meta, opts): the script as text, for a Discord post,
      a wiki, a plain note. opts.format: 'plain' | 'markdown' | 'discord' |
@@ -376,6 +408,7 @@
     fillPlan: fillPlan, randomPlan: randomPlan,
     analyse: analyse, isSetup: isSetup, tagsOf: tagsOf,
     PLAYER_TABLE: PLAYER_TABLE, setups: setups,
+    FAMILIES: FAMILIES, gapSuggestions: gapSuggestions,
     textExport: textExport, summary: summary
   };
 })(typeof window !== 'undefined' ? window : this);
