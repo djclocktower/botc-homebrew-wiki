@@ -70,6 +70,30 @@
     return 'custom';
   }
 
+  /* ── the official player-count table ──────────────────────────────────
+     Townsfolk / Outsiders / Minions / Demon for 5 to 15 players, from the
+     official rulebook (Outsider modifiers such as the Baron move the first
+     two; that is noted, not modelled). setups() says, for each count,
+     whether the script can fill every seat — a script with two Minions
+     cannot seat thirteen players. */
+  var PLAYER_TABLE = {
+    5: [3, 0, 1, 1], 6: [3, 1, 1, 1], 7: [5, 0, 1, 1], 8: [5, 1, 1, 1], 9: [5, 2, 1, 1],
+    10: [7, 0, 2, 1], 11: [7, 1, 2, 1], 12: [7, 2, 2, 1], 13: [9, 0, 3, 1], 14: [9, 1, 3, 1], 15: [9, 2, 3, 1]
+  };
+  var SEAT_TEAMS = ['townsfolk', 'outsider', 'minion', 'demon'];
+  function setups(chars) {
+    var have = countTeams(chars);
+    var rows = [], maxOk = 0, minOk = 0;
+    Object.keys(PLAYER_TABLE).map(Number).sort(function (a, b) { return a - b; }).forEach(function (n) {
+      var need = PLAYER_TABLE[n];
+      var short = [];
+      SEAT_TEAMS.forEach(function (t, i) { if (have[t] < need[i]) short.push(t); });
+      rows.push({ players: n, need: need, short: short, ok: !short.length });
+      if (!short.length) { maxOk = n; if (!minOk) minOk = n; }
+    });
+    return { rows: rows, minOk: minOk, maxOk: maxOk };
+  }
+
   /* ── counting ── */
   function countTeams(chars) {
     var c = {};
@@ -249,9 +273,13 @@
     if (total >= 8 && official && official / total > 0.7) warn('note', 'Mostly official characters (' + official + ' of ' + total + ').');
     if (outsiderMods.length > 3) warn('note', outsiderMods.length + ' characters change the Outsider count; setups will vary a lot.');
 
+    var seats = setups(chars);
+    if (total >= 5 && !seats.maxOk) warn('warn', 'No player count can be seated from this script: every table needs at least a Demon, a Minion and three Townsfolk.');
+
     return {
       total: total, official: official, homebrew: total - official,
       teams: teams, shape: shape, shapeTotal: shapeTotal(shape),
+      seats: seats,
       night: { first: first, other: other, never: never },
       tags: tags, creators: creators,
       info: info, misinfo: misinfo, killers: killers, protect: protect,
@@ -346,6 +374,7 @@
     countTeams: countTeams,
     fillPlan: fillPlan, randomPlan: randomPlan,
     analyse: analyse, isSetup: isSetup, tagsOf: tagsOf,
+    PLAYER_TABLE: PLAYER_TABLE, setups: setups,
     textExport: textExport, summary: summary
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -117,6 +117,7 @@
         <div class="sbx-names">
           <input class="sbx-title" id="sb-name" type="text" placeholder="Untitled Script" maxlength="90" aria-label="Script name" spellcheck="false">
           <input class="sbx-author" id="sb-author" type="text" placeholder="by you" maxlength="70" aria-label="Script author" spellcheck="false">
+          <span class="sbx-saved" id="sbx-saved" aria-live="polite"></span>
         </div>
         <button type="button" class="sbx-counts" id="sbx-counts" data-pop="sbx-shape" aria-haspopup="dialog" aria-expanded="false" title="The shape this script is aiming for"></button>
         <div class="sbx-acts">
@@ -263,6 +264,7 @@
             <details class="sbx-details">
               <summary>Print options</summary>
               <div class="sbx-tool-row" style="padding:6px 0 2px">
+                <label class="sbx-check"><input type="checkbox" id="sb-print-roster" checked> Character sheet</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-print-icons" checked> Icons</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-print-colour" checked> Team colours</label>
                 <label class="sbx-check"><input type="checkbox" id="sb-print-night" checked> Night order</label>
@@ -309,7 +311,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Import</h2>
-            <p class="sbx-panel-sub">Load a script from a file, paste the JSON straight in, or pick a page published on this wiki. Characters this wiki has are matched by id; anything it does not have is listed back to you.</p>
+            <p class="sbx-panel-sub">Load a script from a file, paste the JSON straight in, or pick a page published on this wiki. Characters this wiki has are matched by id; anything it does not have is listed back to you. Bringing a whole project over from Bloodstar? <a href="bloodstar">The Bloodstar importer</a> carries the almanac text and the art as well.</p>
             <div class="sbx-field" style="margin-bottom:10px">
               <label for="sb-wiki-pick">From this wiki</label>
               <div class="sbx-tool-row">

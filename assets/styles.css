@@ -4523,6 +4523,10 @@ html.sbx-page .nav-dropdown { z-index: 80; }
      even starts. */
   .sbx-names { flex: 1 1 150px; }
   .sbx-title { font-size: 1rem; }
+  /* The counts strip is one scrolling line on a phone rather than two or
+     three wrapped ones: the bar is already four rows before the script. */
+  .sbx-counts { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 1px; }
+  .sbx-counts::-webkit-scrollbar { display: none; }
 
   /* ── and the shell stops being a shell ──
      Two panes scrolling inside a fixed frame is a desktop idea. On a phone
@@ -4908,6 +4912,32 @@ button.sbx-counts:empty { display: none; }
 .sbx-ids code { font-size: .78rem; background: rgba(0,0,0,.05); padding: 0 3px; }
 .sbx-tool-row select { font-family: 'Libre Franklin', sans-serif; font-size: .78rem; padding: 4px 6px; border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink); }
 .sbx-lib-sort { flex: 1 1 110px; min-width: 0; }
+
+/* ── round-5 furniture: saved mark, dice, seating table, folded panel groups ── */
+.sbx-saved {
+  flex: none; font-family: 'Oswald', sans-serif; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(236,225,200,.55); opacity: 0; transition: opacity .35s; align-self: center; white-space: nowrap;
+}
+.sbx-saved.on { opacity: 1; }
+.sbx-team-head span.over { color: #f0b070; }
+.sbx-shape-row { grid-template-columns: 82px 58px 1fr 64px 26px; }
+.sbx-shape-die {
+  width: 26px; height: 24px; cursor: pointer; line-height: 1; padding: 0; font-size: .9rem;
+  background: #fffdf8; border: 1px solid var(--parch-frame); color: var(--maroon);
+}
+.sbx-shape-die:hover:not(:disabled) { background: rgba(91,31,33,.09); }
+.sbx-shape-die:disabled { opacity: .3; cursor: default; }
+.sbx-an-seats { border-collapse: collapse; font-size: .76rem; margin-top: 6px; }
+.sbx-an-seats th, .sbx-an-seats td { padding: 2px 8px; text-align: center; border-bottom: 1px solid rgba(180,160,120,.35); }
+.sbx-an-seats thead th { font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .06em; text-transform: uppercase; color: var(--maroon); }
+.sbx-an-seats tbody th { font-weight: 600; color: var(--maroon); }
+.sbx-an-seats tr.no { color: #9a8a74; }
+.sbx-an-seats td.short { color: var(--evil); font-weight: 700; background: rgba(154,13,18,.07); }
+.sbx-add-grouphead { cursor: pointer; display: flex; align-items: baseline; gap: 4px; user-select: none; }
+.sbx-add-grouphead:hover { color: var(--maroon); }
+.sbx-add-fold { margin-left: auto; font-size: .7rem; opacity: .6; transition: transform .15s; }
+.sbx-add-group.collapsed .sbx-add-fold { transform: rotate(-90deg); }
+.sbx-add-group.collapsed .sbx-add-rows { display: none; }
 
 /* ── toasts ── */
 .sbx-toast {

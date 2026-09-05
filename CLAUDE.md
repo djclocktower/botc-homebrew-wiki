@@ -297,12 +297,25 @@ assets/
                        every insert and walks the wrong character to the
                        bottom. On a phone the drag starts from the grip so the
                        list can still be scrolled with a finger.
-  script-builder.js    The Script Builder's whole behaviour (script.html is
-                       the markup). Selection, the roster, the saved-script
-                       library, export/import/share/print, the details form
-                       and the panel's width all live here. Its header
-                       explains the performance rules it is built around —
-                       read them before adding anything to a click path.
+  script-builder.js    The Script Builder's controller (script.html is the
+                       markup). Selection, the roster, undo/redo, the shape
+                       and locks, the Analyse tab, the saved-script library,
+                       export/import/share/print, the peek card, the details
+                       form and the panel all live here. Its header explains
+                       the performance rules it is built around — read them
+                       before adding anything to a click path.
+  script-builder-view.js  The builder's VIEW settings: the schema of every
+                       "how it is drawn" setting (layout, columns, sizes, what
+                       a row shows, panel side...), the normaliser, apply()
+                       (settings -> custom properties / attributes / classes
+                       on #sbx, so most cost no re-render) and the popover
+                       the schema builds. A new setting is one schema row
+                       plus the CSS that reads it. See "The Script Builder".
+  script-builder-tools.js  The builder's PURE half: the script's shape and
+                       the random fill that reaches it, the Analyse tab's
+                       reading, the player-count seating table, the text
+                       formats. No DOM, no fetch — node --check-able and
+                       tested by migration/script-builder-test.mjs.
   classify.js          Partial / Standard / Curata rules — SINGLE SOURCE OF
                        TRUTH. hasIcon/hasAlmanac/isPartial/classifyPage, the
                        badge builder, and the Curata weighting used by
@@ -540,11 +553,12 @@ creators.html          The one creator index: every name that has published
                        something, with its symbol, account (if any) and counts,
                        from /api/creators. authors.html is a redirect stub to it.
 create.html, edit.html Character editor (POSTs to /api/character; R2 uploads)
-script.html            Script Builder — the markup only; all of its behaviour
-                       is assets/script-builder.js. A fixed-height app shell
-                       (.sbx-* in styles.css): the document does not scroll,
-                       the character panel and the main column do. See "The
-                       Script Builder" below.
+script.html            Script Builder — the markup only; the behaviour is
+                       assets/script-builder.js (+ -view.js, -tools.js). A
+                       fixed-height app shell (.sbx-* in styles.css): the
+                       document does not scroll, the character panel and the
+                       main column do. Tabs: Script, Night Order, Jinxes,
+                       Analyse, Details & Export. See "The Script Builder".
 publish-script.html    Script publishing page: name/author/tagline/version/
                        difficulty/description + wiki sections (synopsis, gameplay,
                        strategy) + theme kit (logo/background/font/colors), header,
@@ -883,12 +897,14 @@ owner" below).
 
 ## The Script Builder (`/script`)
 
-`script.html` is markup; `assets/script-builder.js` is the whole of it. Read
-that file's header before touching a click path — the rules there are the
-reason adding a character costs well under a millisecond instead of the two
-to three seconds it used to.
+`script.html` is markup; `assets/script-builder.js` is the controller,
+`assets/script-builder-view.js` the view settings and
+`assets/script-builder-tools.js` the pure rules (shape, fills, analysis,
+text). Read the controller's header before touching a click path — the rules
+there are the reason adding a character costs well under a millisecond
+instead of the two to three seconds it used to.
 
-Four things shape it:
+What shapes it:
 
 - **On a wide screen the document does not scroll.** The shell (`.sbx-*` in
   styles.css) is a flex column on `<body>` with `overflow: hidden`; the
@@ -910,14 +926,41 @@ Four things shape it:
   keep in mind: the drawer is fixed over a page that now moves, so opening it
   puts `.sbx-locked` on `<html>`; and `showTab()` has to scroll the WINDOW
   (`scrollPaneTop()`), or tapping a tab from half way down a long roster
-  opens a short pane already scrolled past its end.
+  opens a short pane already scrolled past its end. **Every popover is a
+  bottom sheet there** (`.sbx-pop` ignores its inline position below 900px
+  and sits over `#sbx-popscrim`).
+- **Two feeds, whichever lands first draws the page.** `start()` fetches
+  `characters.json?fields=grid` (what a row needs, a third of the bytes) and
+  `?fields=card` (the schema fields the export, the night order and the
+  jinxes need) together. The grid usually paints first on a phone; the card
+  rows are then merged INTO the same objects (`Object.assign`), so the
+  panel's rows and the roster keep their references. Anything that needs
+  card data — export, copy, print, Fancy Sheet, copy as text — goes through
+  `withCards()`, which toasts and waits rather than writing half a script.
+  The 1,900-row panel is built in slices of 220 rows, one per frame
+  (`buildAddList`), so the first rows paint within a frame of the data.
+  `performance.mark('sb:…')` marks the milestones; `window.ScriptBuilder`
+  is a small console handle (order, meta, view, undo/redo, history, ready).
 - **A click touches one row.** Every sidebar row is kept in `rowBySlug` when
   the list is built, so nothing queries the DOM to repaint a tick. The roster
-  is small and is rebuilt whole. The night arranger and the jinx editor are
-  mounted lazily and only re-rendered for a tab that is on screen; off screen
-  they are marked dirty. The jinx count, the credits line and the library save
-  all happen in one debounced pass 200 ms after the clicking stops. Anything
-  new that a click has to do belongs in that pass unless it must be immediate.
+  is small and is rebuilt whole. The night arranger, the jinx editor and the
+  Analyse tab are mounted lazily and only re-rendered for a tab that is on
+  screen; off screen they are marked dirty. The jinx count, the credits line
+  and the library save all happen in one debounced pass 200 ms after the
+  clicking stops. Anything new that a click has to do belongs in that pass
+  unless it must be immediate. Both lists draw the **192px thumbnails**
+  (`PageRender.thumbSrc`), never the 150 KB originals; only the peek card
+  shows the full icon.
+- **Undo/redo is one stack over the roster and the details** (`hist`, 80
+  steps, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z outside a text box, and the two
+  buttons in the bar). Every mutation calls `mark()` BEFORE it changes
+  anything: `toggle`, `removeSlug`, `replaceOrder`, `patchMeta`, and the
+  whole-script changes (import, library switch, new, a shared link). Typing
+  coalesces through `patchMeta(fn, 'typed')`; bookkeeping such as `libId`
+  passes `'silent'`. **`mark` is the undo stack's name — do not declare
+  another function called that in the file** (a duplicate declaration
+  silently won once and the stack recorded nothing; the perf marks are
+  `perfMark`).
 - **The name and the author are on the page.** They were not, and
   `botc_script_meta` is shared with publish-script.html — so a script edited
   from its published page left its name, its author and its `editSlug` behind,
@@ -926,26 +969,110 @@ Four things shape it:
   will publish over and offers to detach.
 - **Up to 15 scripts, in `botc_script_library`.** Each entry is
   `{id, chars, meta}`; the open one is pointed at by `meta.libId` and is
-  written back as it changes, so switching scripts loses nothing. Nothing
-  outside this page reads that key — `botc_script` and `botc_script_meta` are
-  still the one current script, exactly as publish-script.html and the
-  "+ Add to Script" button on a `/c/` page expect. An import or a shared link
-  saves what was open first and then clears `libId`, so replacing a script
-  never overwrites its saved copy.
+  written back as it changes (the bar flashes *Saved*), so switching scripts
+  loses nothing. Nothing outside this page reads that key — `botc_script` and
+  `botc_script_meta` are still the one current script, exactly as
+  publish-script.html and the "+ Add to Script" button on a `/c/` page
+  expect. An import or a shared link saves what was open first and then
+  clears `libId`, so replacing a script never overwrites its saved copy. The
+  panel's My Scripts side sorts (newest / name / size), backs the lot up to
+  one file and restores from one — a **merge** by id, never an overwrite.
+- **The roster is drawn as the character SHEET** by default, not as cards:
+  one parchment per team, two columns of rows, the name opening the line and
+  the ability running on from it. Two columns comes from a **container
+  query** on `#sb-script`, not a media query — the panel's width is the
+  reader's to set, so only the main column's own width can answer "is there
+  room for two". The container is `#sb-script` and never `.sbx-scroll`: size
+  containment re-anchors `position: fixed` descendants, and the night-order
+  drag lifts its row with exactly that.
 
-- **The roster is drawn as the character SHEET**, not as cards: one parchment
-  per team, two columns of rows, the name opening the line and the ability
-  running on from it. Two columns comes from a **container query** on
-  `#sb-script`, not a media query — the panel's width is the reader's to set,
-  so only the main column's own width can answer "is there room for two". The
-  container is `#sb-script` and never `.sbx-scroll`: size containment
-  re-anchors `position: fixed` descendants, and the night-order drag lifts its
-  row with exactly that.
+### The view (`⚙ View`)
 
-Everything else is the same machinery the rest of the wiki uses: the shared
-filter box over the panel, `NightOrderEditor` and `JinxEditor` in tabs,
-`PageRender.buildPageExport` for the JSON, and `buildCreditsFabled()` for the
-one entry only this page appends — see "The credits Fabled" below.
+Everything about HOW the roster is drawn, and nothing about what is on it:
+the same script exports, publishes and shares identically under every view,
+so it lives in `botc_builder_prefs.view`, never in the meta.
+`SBView.SCHEMA` is the whole list — four layouts (sheet, cards, list, icon
+wall), columns, the order inside a team, team headings, spacing, type, icon
+and text sizes, what a row shows (ability, creator, tags, night marks, jinx
+marks, official badge, remove on hover, counts), team colours, arrange mode,
+the panel's side and icon size, tighter rows, hiding characters already on
+the script, animations. Each row names its `repaint` — `'roster'` when the
+row markup carries it, `''` when CSS alone honours it — and `SBView.apply()`
+writes the view onto `#sbx` as `--sbx-icon` / `--sbx-text` /
+`--sbx-panel-icon`, `data-layout|cols|density|font|side|teamlabel` and a few
+classes; the `.sbx` block in styles.css reads them. **A new setting is one
+schema row plus the CSS that reads it.** Presets are partial views applied
+over the current one, so they never reset a size somebody chose. The view's
+**order** is display only: `displayChars()` sorts what `paintRoster()` draws;
+`rosterChars()` — the export, the publish page, the night order — keeps the
+arranged `order`. Arrange mode forces display order back to the arranged one.
+
+### Shape, locks, Random and Fill
+
+`meta.shape` is how many of each team the script is aiming for (`SBTools`:
+Standard 13/4/4/4, with Travellers, Teensyville, Big, none, or any numbers);
+the default is stored as nothing, exactly as `exportIds` is. The counts strip
+in the bar IS the Shape button and shows `have/want` per team (green at the
+target, dashed under, orange over); the roster headings show the same.
+`meta.locks` are the characters **Random** keeps and **Clear** leaves alone
+(the 🔒 on every row). Random draws to the shape from **whatever the panel is
+showing** (`visibleSidebarChars()` reads the filter box's own DOM state);
+**Fill the gaps** adds only what is missing; the die on each team row in the
+Shape popover draws that one team again; **Swap** on the peek card replaces
+one character with another of its team in the same seat. `SBTools.fillPlan`
+/ `randomPlan` are the pure versions, seedable for the test. Homebrew only,
+deliberately — official rows never carry `data-source="homebrew"`.
+
+### Analyse
+
+`SBTools.analyse(chars, ctx)` reads the roster and the controller draws it:
+the shape against its targets, who acts on which night, information /
+misinformation / kills / protection by tag, setup-changers and Outsider
+modifiers, tags and creators, the official player-count table with the counts
+the script cannot seat (`SBTools.setups`), warnings (no Demon, no Minion,
+duplicate names, unfinished pages, no icon, nothing learns anything…) and
+**the characters jinxed with someone on the script but not on it**, each with
+an Add button. The jinx suggestions need the registries `start()` sets:
+`setWikiChars(jinxCharIndex(allChars).byKey)` and the official name/icon maps
+from roles.json — without them a jinx typed as a name resolves to nothing.
+The tab is lazy like the night and jinx tabs (`analyseDirty`).
+
+### Peek, notes, copy as text, loading from the wiki
+
+- **Peek** (`#sbx-peek`): hover a row for half a second with a mouse, or hold
+  a finger on it, and the character is shown whole — full icon, ability,
+  tags, when it acts, reminders, who it is jinxed with, Add/Remove, Swap,
+  the page link. A click still adds or removes; the card never intercepts it.
+- **Notes** (`meta.notes`): kept with the script in the library and in share
+  links (`shape` rides along too), never in the export.
+- **Copy as text** (`SBTools.textExport`): plain, Discord, Markdown or names
+  only; abilities, jinxes, night order, house rules and notes as options;
+  `.txt` download. The night and jinx tabs have their own copy buttons.
+- **From this wiki**: the Import panel's picker lists `scripts.json` and
+  `collections.json` (fetched on first focus) and loads `/api/page-json` —
+  the same export the page's Download JSON button saves — through the
+  ordinary importer; a pasted `/s/{slug}` or `/collection/{id}` link does the
+  same.
+
+### Arrange, print, export options
+
+- **Arrange** (View → Arrange by hand): every row gets a grip and ▲▼; moves
+  stay inside a team and write straight into `order` (`setTeamOrder`), which
+  is what the export and the published page read. Drag with a mouse anywhere
+  on the row, on a phone from the grip, the same lifted-row-plus-placeholder
+  technique as the night arranger. Undoable like everything else.
+- **Night Order / Jinxes tabs** take `getView` + `artOf` into the shared
+  widgets (reminders, icons, stacked lists; icons on the jinx pairs). The
+  publish page passes neither and gets the plain lists it always had.
+- **Print** writes its own window (the builder is a fixed-height app; a
+  `@media print` rule would have to unpick that). Options in Details &
+  Export: the character sheet, icons, team colours, night order, jinxes,
+  house rules, notes, one or two columns, text size. It waits for the icons
+  before calling `print()`.
+- **Details & Export** also carries a JSON preview, a Minified switch, and
+  the **Character ids** widget (`export-ids-editor.js`, the same one
+  publish-script mounts) writing `meta.exportIds`, which `buildPageExport`
+  already reads. **The credits Fabled is not optional** — see below.
 
 ### The credits Fabled
 

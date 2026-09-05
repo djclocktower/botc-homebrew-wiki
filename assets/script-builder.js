@@ -256,10 +256,72 @@
     } else {
       sel[slug] = 1;
       order.push(slug);
+      warnSameName(slug);
     }
     commitOrder();
     paintRow(slug);
     afterChange();
+  }
+  /* Two pages answering to one name on one script: the ids are qualified,
+     but players will mix them up, so say so the moment it happens. */
+  function warnSameName(slug) {
+    var c = bySlug[slug];
+    if (!c || !c.name) return;
+    var nm = String(c.name).trim().toLowerCase();
+    var twin = null;
+    order.forEach(function (s) {
+      if (s === slug || twin) return;
+      var o = bySlug[s];
+      if (o && String(o.name || '').trim().toLowerCase() === nm) twin = o;
+    });
+    if (twin) toast('Another ' + c.name + ' is already on this script' + (twin.creator ? ' (by ' + twin.creator + ')' : '') + '.', 3200);
+  }
+  /* Swap one character for a random one of the same team, in the same
+     place in the order, from whatever the panel is showing. */
+  function swapChar(slug) {
+    var c = bySlug[slug];
+    if (!c || !sel[slug]) return;
+    var on = {};
+    order.forEach(function (s) { on[s] = 1; });
+    var pool = visibleSidebarChars().filter(function (x) { return x.team === c.team && !on[x.slug]; });
+    if (!pool.length) { toast('The panel has no other ' + c.team + ' to swap in.'); return; }
+    var pick = pool[Math.floor(Math.random() * pool.length)];
+    mark();
+    var i = order.indexOf(slug);
+    order[i === -1 ? order.length : i] = pick.slug;
+    delete sel[slug];
+    sel[pick.slug] = 1;
+    // the lock, if any, moves with the seat
+    var m = getMeta();
+    if (Array.isArray(m.locks) && m.locks.indexOf(slug) !== -1) {
+      m.locks = m.locks.map(function (x) { return x === slug ? pick.slug : x; });
+      setMeta(m);
+    }
+    commitOrder();
+    paintRow(slug);
+    paintRow(pick.slug);
+    afterChange();
+    toast('Swapped ' + c.name + ' for ' + pick.name + '.');
+  }
+  /* Draw one team again: its unlocked characters go and the seats are
+     refilled to the shape (or to the same number, for a team with no
+     target), from what the panel is showing. */
+  function rerollTeam(team) {
+    var T = window.SBTools;
+    if (!T) return;
+    var sh = shape();
+    var cur = T.countTeams(rosterChars());
+    var L = {};
+    locks().forEach(function (x) { L[x] = 1; });
+    var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team || L[s]; });
+    var only = {};
+    TEAMS.forEach(function (t) { only[t[0]] = t[0] === team ? (sh[team] || cur[team]) : 0; });
+    var kept = keep.map(function (s) { return bySlug[s]; }).filter(Boolean);
+    var plan = T.fillPlan(visibleSidebarChars(), kept, only);
+    if (!plan.add.length && keep.length === order.length) { toast('Nothing in the panel to draw from for that team.'); return; }
+    replaceOrder(keep.concat(plan.add));
+    var short = plan.short[team];
+    toast('Drew ' + plan.add.length + ' ' + (T.TEAM_LABEL[team] || team) + (short ? ' — the panel is ' + short + ' short' : '') + '.');
   }
   function removeSlug(slug) {
     if (!sel[slug]) return;
@@ -345,12 +407,14 @@
     html += '<div class="sbx-shape-grid">' + TEAMS.map(function (t) {
       var w = sh[t[0]], h = have[t[0]] || 0;
       var pct = w ? Math.min(100, Math.round(100 * h / w)) : 0;
-      return '<label class="sbx-shape-row">' +
+      return '<div class="sbx-shape-row">' +
         '<span class="sbx-shape-label">' + esc(t[1]) + '</span>' +
         '<input type="number" min="0" max="99" inputmode="numeric" value="' + w + '" data-team="' + esc(t[0]) + '" aria-label="' + esc(t[1]) + ' target">' +
         '<span class="sbx-shape-bar"><span class="' + (w && h > w ? 'over' : (w && h === w ? 'ok' : '')) + '" style="width:' + pct + '%"></span></span>' +
         '<span class="sbx-shape-have">' + h + ' on it</span>' +
-      '</label>';
+        '<button type="button" class="sbx-shape-die" data-reroll="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again (locked ones stay)" aria-label="Draw the ' + esc(t[1]) + ' again"' +
+          (!h && !w ? ' disabled' : '') + '>&#9860;</button>' +
+      '</div>';
     }).join('') + '</div>';
     html += '<div class="sbx-view-foot">' +
       '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape and keeps the locked characters. Fill only adds what is missing, from whatever the panel is showing.</span>' +
@@ -474,6 +538,7 @@
       return;
     }
     var jx = jinxMarks();
+    var sh = shape();
     lockSet = {};
     locks().forEach(function (x) { lockSet[x] = 1; });
     var html = '';
@@ -481,8 +546,10 @@
       var group = chars.filter(function (c) { return c.team === t[0]; });
       if (!group.length) return;
       var head = window.SBView ? window.SBView.teamHeading(t[0], t[1], view) : t[1];
+      var want = sh ? sh[t[0]] : 0;
       html += '<div class="sbx-team" data-team="' + esc(t[0]) + '">' +
-        (head ? '<h3 class="sbx-team-head">' + esc(head) + ' <span>(' + group.length + ')</span></h3>' : '') +
+        (head ? '<h3 class="sbx-team-head">' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
+          '>(' + group.length + (want ? '/' + want : '') + ')</span></h3>' : '') +
         '<div class="sbx-sheet">';
       group.forEach(function (c, i) { html += rowHTML(c, jx[c.slug], i, group.length); });
       html += '</div></div>';
@@ -669,10 +736,10 @@
         var g = groups[gi];
         if (!g.rowsEl) {
           var wrap = document.createElement('div');
-          wrap.className = 'sbx-add-group';
+          wrap.className = 'sbx-add-group' + (prefs.collapsed && prefs.collapsed[g.team[0]] ? ' collapsed' : '');
           wrap.setAttribute('data-team', g.team[0]);
-          wrap.innerHTML = '<h3 class="sbx-add-grouphead">' + esc(g.team[1]) +
-            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span></h3>' +
+          wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this team away">' + esc(g.team[1]) +
+            ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-fold" aria-hidden="true">&#9662;</span></h3>' +
             '<div class="sbx-add-rows"></div>';
           list.appendChild(wrap);
           g.rowsEl = wrap.lastChild;
@@ -885,6 +952,25 @@
       '</div>';
     if (a.setup.length) html += '<p class="sbx-an-fact" style="margin-top:8px"><b>Change the setup:</b> ' + esc(a.setup.join(', ')) + '</p>';
     if (a.outsiderMods.length) html += '<p class="sbx-an-fact"><b>Change the Outsider count:</b> ' + esc(a.outsiderMods.join(', ')) + '</p>';
+    html += '</div>';
+
+    // seating
+    var st = a.seats;
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Players it can seat</h3>';
+    if (st.maxOk) {
+      html += '<p class="sbx-an-fact"><b>' + st.minOk + ' to ' + st.maxOk + ' players</b>' +
+        (st.maxOk < 15 ? ' — more would need ' + st.rows.filter(function (r) { return !r.ok && r.players > st.maxOk; })[0].short.map(function (t) { return 'more ' + T.TEAM_LABEL[t]; }).join(', ') : '') + '</p>';
+    } else {
+      html += '<p class="sbx-an-fact">No player count yet: a table needs a Demon, a Minion and Townsfolk.</p>';
+    }
+    html += '<table class="sbx-an-seats"><thead><tr><th>Players</th><th>TF</th><th>Out</th><th>Min</th><th>Dem</th></tr></thead><tbody>' +
+      st.rows.map(function (r) {
+        return '<tr class="' + (r.ok ? 'ok' : 'no') + '"><th>' + r.players + '</th>' + r.need.map(function (n, i) {
+          var t = ['townsfolk', 'outsider', 'minion', 'demon'][i];
+          return '<td class="' + (r.short.indexOf(t) !== -1 ? 'short' : '') + '">' + n + '</td>';
+        }).join('') + '</tr>';
+      }).join('') + '</tbody></table>' +
+      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count move the first two columns on the night.</p>';
     html += '</div>';
 
     // tags
@@ -1244,6 +1330,7 @@
       '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? '&#10005; Remove from script' : '&#43; Add to script') + '</button>' +
+        (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">&#9860; Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
         (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page &#8599;</a>' : '') +
       '</div>';
   }
@@ -1459,6 +1546,7 @@
     var o = prefs.print || {};
     return {
       icons: o.icons !== false, colour: o.colour !== false, night: o.night !== false,
+      roster: o.roster !== false,
       jinxes: o.jinxes !== false, rules: o.rules !== false, notes: !!o.notes,
       cols: o.cols === '1' ? 1 : 2, size: o.size || 'normal'
     };
@@ -1483,7 +1571,7 @@
       return po.icons ? '<img src="' + esc(absUrl(artOf(c))) + '" alt="" width="' + px + '" height="' + px + '" onerror="this.style.visibility=\'hidden\'">' : '';
     }
     var out = '';
-    TEAMS.forEach(function (t) {
+    if (po.roster) TEAMS.forEach(function (t) {
       var group = chars.filter(function (c) { return c.team === t[0]; });
       if (!group.length) return;
       out += '<section class="team ' + esc(t[0]) + '"><h2>' + esc(t[1]) + '</h2><div class="rows">';
@@ -1514,7 +1602,7 @@
       return '<div class="nc"><h2>' + esc(label) + '</h2>' + rows + '</div>';
     }
     var nightHTML = po.night && (night.first.length || night.other.length)
-      ? '<div class="pb"><h1>Night Order</h1><div class="nights">' + col('First Night', night.first || []) + col('Other Nights', night.other || []) + '</div></div>'
+      ? '<div class="' + (out ? 'pb' : '') + '"><h1>Night Order</h1><div class="nights">' + col('First Night', night.first || []) + col('Other Nights', night.other || []) + '</div></div>'
       : '';
     var colours = po.colour ? Object.keys(TEAM_INK).map(function (t) {
       return '.team.' + t + ' h2{color:' + TEAM_INK[t] + ';border-color:' + TEAM_INK[t] + ';}';
@@ -1679,6 +1767,15 @@
   /* Whatever is open is written back to its saved copy as it changes, so
      switching scripts never loses anything. A script with no characters and
      no name has nothing worth a slot, so it does not take one until it does. */
+  var savedTimer = null;
+  function flashSaved() {
+    var el = $('sbx-saved');
+    if (!el) return;
+    el.textContent = 'Saved';
+    el.classList.add('on');
+    if (savedTimer) clearTimeout(savedTimer);
+    savedTimer = setTimeout(function () { el.classList.remove('on'); }, 1600);
+  }
   function syncLibrary() {
     var m = getMeta();
     var lib = getLib();
@@ -1688,6 +1785,7 @@
           lib[i] = snapshot(m.libId);
           setLib(lib);
           paintLibrary();
+          flashSaved();
           return;
         }
       }
@@ -1704,6 +1802,7 @@
     lib.unshift(snapshot(id));
     setLib(lib);
     paintLibrary();
+    flashSaved();
   }
 
   function saveCurrentToLibrary() {
@@ -2034,6 +2133,16 @@
   function wire() {
     // ── the add list: one delegated listener for ~1,900 rows ──
     $('sb-add-list').addEventListener('click', function (e) {
+      var head = e.target.closest('.sbx-add-grouphead');
+      if (head) {
+        var grp = head.parentNode;
+        var team = grp.getAttribute('data-team');
+        var open = grp.classList.toggle('collapsed');
+        prefs.collapsed = prefs.collapsed || {};
+        if (open) prefs.collapsed[team] = true; else delete prefs.collapsed[team];
+        savePrefs();
+        return;
+      }
       var chev = e.target.closest('.sbx-add-chev');
       if (chev) {
         var row = chev.closest('.sbx-add-row');
@@ -2080,7 +2189,9 @@
         window.SBTools.SHAPES.forEach(function (x) { if (x.key === key) setShape(x.shape); });
         return;
       }
-      if (e.target.closest('#sbx-fill')) fillGaps();
+      if (e.target.closest('#sbx-fill')) { fillGaps(); return; }
+      var die = e.target.closest('button[data-reroll]');
+      if (die) rerollTeam(die.getAttribute('data-reroll'));
     });
     $('sbx-shape-body').addEventListener('change', function (e) {
       if (e.target.matches && e.target.matches('input[data-team]')) setShape(readShapeInputs());
@@ -2126,6 +2237,8 @@
     wirePeek($('sb-script'));
     $('sbx-peek').addEventListener('click', function (e) {
       if (e.target.closest('[data-peek-close]')) { hidePeek(); return; }
+      var sw = e.target.closest('button[data-peek-swap]');
+      if (sw) { swapChar(sw.getAttribute('data-peek-swap')); hidePeek(); return; }
       var tg = e.target.closest('button[data-peek-toggle]');
       if (tg) {
         var slug = tg.getAttribute('data-peek-toggle');
@@ -2341,7 +2454,7 @@
     });
     $('sb-json-details').addEventListener('toggle', paintJsonPreview);
     var pio = printOpts();
-    [['icons', 'sb-print-icons'], ['colour', 'sb-print-colour'], ['night', 'sb-print-night'],
+    [['roster', 'sb-print-roster'], ['icons', 'sb-print-icons'], ['colour', 'sb-print-colour'], ['night', 'sb-print-night'],
      ['jinxes', 'sb-print-jinxes'], ['rules', 'sb-print-rules'], ['notes', 'sb-print-notes']].forEach(function (pair) {
       $(pair[1]).checked = !!pio[pair[0]];
       $(pair[1]).addEventListener('change', function () {

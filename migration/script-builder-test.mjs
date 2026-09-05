@@ -79,6 +79,12 @@ ok(an.warnings.some(w => /unfinished/.test(w.text)), 'warns about a partial page
 const noDemon = T.analyse(script.filter(c => c.team !== 'demon'), {});
 ok(noDemon.warnings.some(w => w.level === 'bad' && /no Demon/.test(w.text)), 'no demon is flagged bad');
 eq(T.analyse([], {}).warnings.length, 0, 'an empty script has nothing to say');
+const seats = T.setups(script);
+eq(seats.rows.length, 11, 'seating covers 5 to 15 players');
+eq(seats.rows[0], { players: 5, need: [3, 0, 1, 1], short: ['townsfolk'], ok: false }, 'two townsfolk cannot seat five');
+const seatsBig = T.setups(pool.slice(0, 80));
+eq([seatsBig.minOk, seatsBig.maxOk], [5, 15], 'a full pool seats everyone');
+ok(T.setups([]).maxOk === 0, 'an empty script seats nobody');
 
 // ── text ──
 const meta = { name: 'My Script', author: 'Me', bootlegger: ['No Fortune Teller herring'], notes: 'be nice' };
