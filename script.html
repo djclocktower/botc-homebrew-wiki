@@ -88,6 +88,16 @@
             <button type="button" class="sbx-b-sm" id="sbx-lib-save" style="flex:1">&#128190; Save current</button>
             <button type="button" class="sbx-b-sm" id="sbx-lib-new">&#43; New</button>
           </div>
+          <div class="sbx-tool-row">
+            <select id="sbx-lib-sort" class="sbx-lib-sort" aria-label="Sort saved scripts">
+              <option value="recent">Newest first</option>
+              <option value="name">By name</option>
+              <option value="size">Most characters</option>
+            </select>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-backup" title="Download every saved script as one file">&#11015; Back up</button>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-restore" title="Load a backup file into My Scripts">&#11014; Restore</button>
+            <input type="file" id="sbx-lib-file" accept=".json,application/json" hidden>
+          </div>
         </div>
         <p class="sbx-side-count" id="sbx-lib-count"></p>
         <p class="sbx-lib-full" id="sbx-lib-full" hidden>That is 15 scripts, which is all this browser keeps. Delete one to save another.</p>
@@ -155,6 +165,12 @@
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Night Order</h2>
             <p class="sbx-panel-sub">Who acts comes from the characters themselves. The order is yours — drag a row, or use &#9650;&#9660;. This is the order your published page and your exported JSON will use.</p>
+            <div class="sbx-tab-opts">
+              <label class="sbx-check"><input type="checkbox" id="sb-night-rem" checked> Reminders</label>
+              <label class="sbx-check"><input type="checkbox" id="sb-night-icons"> Icons</label>
+              <label class="sbx-check"><input type="checkbox" id="sb-night-stack"> One list under the other</label>
+              <button type="button" class="sbx-b-sm" id="sb-night-copy">&#10697; Copy as text</button>
+            </div>
             <div class="no-cols" id="sbx-night-body"></div>
             <button type="button" class="sbx-b-sm" id="sb-night-reset" style="margin-top:12px">&#8634; Back to the standard order</button>
           </div>
@@ -165,6 +181,10 @@
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Jinxes</h2>
             <p class="sbx-panel-sub">Rules between two characters on this script. Switch off one you do not want, or write a rule that only holds here. Nothing is written back to the characters, so every other script keeps what they say.</p>
+            <div class="sbx-tab-opts">
+              <label class="sbx-check"><input type="checkbox" id="sb-jinx-icons" checked> Icons</label>
+              <button type="button" class="sbx-b-sm" id="sb-jinx-copy">&#10697; Copy as text</button>
+            </div>
             <div id="sbx-jinx-body"></div>
           </div>
         </section>
@@ -230,7 +250,29 @@
               <button type="button" class="sbx-b-sm" id="sb-share">&#128279; Copy a share link</button>
               <button type="button" class="sbx-b-sm" id="sb-print">&#128424; Print / PDF</button>
               <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style print sheet of this script in Fancy Scripts">&#10024; Fancy Sheet</button>
+              <label class="sbx-check" title="One line, no spaces — smaller, harder to read"><input type="checkbox" id="sb-json-min"> Minified</label>
             </div>
+            <details class="sbx-details" id="sb-json-details">
+              <summary>Preview the JSON</summary>
+              <textarea id="sb-json-preview" rows="9" readonly spellcheck="false" aria-label="The exported JSON"></textarea>
+            </details>
+            <details class="sbx-details">
+              <summary>Character ids</summary>
+              <div class="sbx-ids" id="sb-ids-body"></div>
+            </details>
+            <details class="sbx-details">
+              <summary>Print options</summary>
+              <div class="sbx-tool-row" style="padding:6px 0 2px">
+                <label class="sbx-check"><input type="checkbox" id="sb-print-icons" checked> Icons</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-colour" checked> Team colours</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-night" checked> Night order</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-jinxes" checked> Jinxes</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-rules" checked> House rules</label>
+                <label class="sbx-check"><input type="checkbox" id="sb-print-notes"> Notes</label>
+                <select id="sb-print-cols" aria-label="Columns"><option value="2">Two columns</option><option value="1">One column</option></select>
+                <select id="sb-print-size" aria-label="Text size"><option value="small">Small text</option><option value="normal" selected>Normal text</option><option value="large">Large text</option></select>
+              </div>
+            </details>
             <div class="sbx-field sbx-text-box">
               <label for="sb-text-fmt">Copy as text</label>
               <div class="sbx-tool-row">
@@ -330,6 +372,7 @@
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
+  <script src="assets/export-ids-editor.js"></script>
   <script src="assets/script-builder-view.js"></script>
   <script src="assets/script-builder-tools.js"></script>
   <script src="assets/script-builder.js"></script>

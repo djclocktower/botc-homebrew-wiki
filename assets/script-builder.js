@@ -297,6 +297,7 @@
     paintRoster();
     nightDirty = jinxDirty = analyseDirty = true;
     if (activeTab === 'night' || activeTab === 'jinx' || activeTab === 'analyse') ensurePane();
+    if (activeTab === 'meta') { paintTextPreview(); paintJsonPreview(); if (idsUI) idsUI.refresh(); }
     if (!$('sbx-shape').hidden) paintShape();
     settle();
   }
@@ -384,7 +385,7 @@
   function displayChars() {
     var chars = rosterChars();
     var o = view ? view.order : 'added';
-    if (o === 'added') return chars;
+    if (o === 'added' || (view && view.arrange)) return chars;
     function ti(c) { return TEAM_INDEX[c.team] != null ? TEAM_INDEX[c.team] : 99; }
     function nightKey(c) {
       var f = Number(c.firstNight) || 0, n = Number(c.otherNight) || 0;
@@ -410,7 +411,7 @@
     return map;
   }
 
-  function rowHTML(c, jinxedWith) {
+  function rowHTML(c, jinxedWith, pos, len) {
     var v = view || {};
     var meta = '';
     if (v.showCreator && !c.official && c.creator) meta += '<span class="sbx-ch-by">by ' + esc(c.creator) + '</span>';
@@ -431,7 +432,18 @@
     var locked = lockSet[c.slug] === 1;
     // Name and ability are ONE paragraph, the way the character sheet
     // prints them — not a name stacked over its ability in a box.
-    return '<div class="sbx-ch' + (locked ? ' locked' : '') + '" data-slug="' + esc(c.slug) + '">' +
+    var arrange = v.arrange
+      ? '<span class="sbx-ch-grip" title="Drag to move" aria-hidden="true">&#10303;</span>'
+      : '';
+    var moves = v.arrange
+      ? '<span class="sbx-ch-moves">' +
+          '<button type="button" data-move="up" data-slug="' + esc(c.slug) + '"' + (pos === 0 ? ' disabled' : '') +
+            ' aria-label="Move ' + esc(c.name) + ' earlier">&#9650;</button>' +
+          '<button type="button" data-move="down" data-slug="' + esc(c.slug) + '"' + (pos === len - 1 ? ' disabled' : '') +
+            ' aria-label="Move ' + esc(c.name) + ' later">&#9660;</button>' +
+        '</span>'
+      : '';
+    return '<div class="sbx-ch' + (locked ? ' locked' : '') + '" data-slug="' + esc(c.slug) + '">' + arrange +
       '<img class="sbx-ch-img" loading="lazy" decoding="async" src="' +
         esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
       '<p class="sbx-ch-txt">' +
@@ -442,7 +454,7 @@
         marks +
         '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
         (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') +
-      '</p>' +
+      '</p>' + moves +
       '<button type="button" class="sbx-ch-lock' + (locked ? ' on' : '') + '" data-slug="' + esc(c.slug) +
         '" aria-pressed="' + (locked ? 'true' : 'false') + '" title="' +
         (locked ? 'Locked: Random and Clear keep this character' : 'Lock: keep this character when the script is randomised') +
@@ -472,7 +484,7 @@
       html += '<div class="sbx-team" data-team="' + esc(t[0]) + '">' +
         (head ? '<h3 class="sbx-team-head">' + esc(head) + ' <span>(' + group.length + ')</span></h3>' : '') +
         '<div class="sbx-sheet">';
-      group.forEach(function (c) { html += rowHTML(c, jx[c.slug]); });
+      group.forEach(function (c, i) { html += rowHTML(c, jx[c.slug], i, group.length); });
       html += '</div></div>';
     });
     if (miss.length) {
@@ -481,6 +493,105 @@
         esc(miss.slice(0, 12).join(', ')) + (miss.length > 12 ? '…' : '') + '</p>';
     }
     box.innerHTML = html;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Arranging the roster by hand (View → Arrange)
+  // ══════════════════════════════════════════════════════════════════════
+  /* Moves stay inside a team — the page draws one section per team — and
+     write straight into `order`, which is what the export and the published
+     page read (rosterChars() is a stable team sort of it). Two ways to
+     move, on purpose: drag a row (pointer events, so mouse and touch are
+     one path; on a phone the drag starts from the grip so the list can
+     still be scrolled with a finger), and ▲▼, which work with a keyboard
+     and a screen reader. */
+  function setTeamOrder(team, slugs) {
+    var cur = order.slice(), next = [], placed = {}, inserted = false;
+    cur.forEach(function (s) {
+      var c = bySlug[s];
+      if (c && c.team === team) {
+        if (!inserted) {
+          inserted = true;
+          slugs.forEach(function (x) { if (!placed[x] && sel[x]) { next.push(x); placed[x] = 1; } });
+        }
+        if (!placed[s]) { next.push(s); placed[s] = 1; }
+        return;
+      }
+      next.push(s);
+    });
+    if (next.join('|') === cur.join('|')) return;
+    replaceOrder(next);
+  }
+  function moveInTeam(slug, dir) {
+    var c = bySlug[slug];
+    if (!c) return;
+    var team = rosterChars().filter(function (x) { return x.team === c.team; }).map(function (x) { return x.slug; });
+    var i = team.indexOf(slug), j = i + (dir === 'up' ? -1 : 1);
+    if (i < 0 || j < 0 || j >= team.length) return;
+    var t = team[i]; team[i] = team[j]; team[j] = t;
+    setTeamOrder(c.team, team);
+  }
+  var rdrag = null;
+  function wireArrange() {
+    var box = $('sb-script');
+    box.addEventListener('pointerdown', function (e) {
+      if (!view || !view.arrange || rdrag) return;
+      var row = e.target.closest && e.target.closest('.sbx-ch');
+      if (!row || !row.getAttribute('data-slug')) return;
+      if (e.target.closest('button, a, input')) return;
+      if (e.pointerType === 'touch' && !e.target.closest('.sbx-ch-grip')) return;
+      var sheet = row.parentNode;
+      var rect = row.getBoundingClientRect();
+      var ph = document.createElement('div');
+      ph.className = 'sbx-ch sbx-ch-placeholder';
+      ph.style.height = rect.height + 'px';
+      sheet.insertBefore(ph, row);
+      rdrag = { row: row, sheet: sheet, ph: ph, dx: e.clientX - rect.left, dy: e.clientY - rect.top, moved: false };
+      row.classList.add('sbx-dragging');
+      row.style.width = rect.width + 'px';
+      row.style.left = rect.left + 'px';
+      row.style.top = rect.top + 'px';
+      box.classList.add('sbx-is-dragging');
+      try { box.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+      e.preventDefault();
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!rdrag) return;
+      rdrag.moved = true;
+      rdrag.row.style.left = (e.clientX - rdrag.dx) + 'px';
+      rdrag.row.style.top = (e.clientY - rdrag.dy) + 'px';
+      var el = document.elementFromPoint(e.clientX, e.clientY);
+      var over = el && el.closest ? el.closest('.sbx-ch') : null;
+      if (over && over.parentNode === rdrag.sheet && over !== rdrag.row && over !== rdrag.ph) {
+        var r = over.getBoundingClientRect();
+        // A grid of rows: past the row's middle — down OR across — goes after.
+        var after = (e.clientY - r.top) / Math.max(1, r.height) + (e.clientX - r.left) / Math.max(1, r.width) > 1;
+        rdrag.sheet.insertBefore(rdrag.ph, after ? over.nextSibling : over);
+      }
+      var sc = $('sbx-scroll');
+      var b = sc.getBoundingClientRect();
+      if (getComputedStyle(sc).overflowY !== 'visible') {
+        if (e.clientY < b.top + 30) sc.scrollTop -= 10;
+        else if (e.clientY > b.bottom - 30) sc.scrollTop += 10;
+      } else if (e.clientY < 60) window.scrollBy(0, -10);
+      else if (e.clientY > window.innerHeight - 40) window.scrollBy(0, 10);
+      e.preventDefault();
+    });
+    function end() {
+      if (!rdrag) return;
+      var d = rdrag;
+      rdrag = null;
+      d.sheet.insertBefore(d.row, d.ph);
+      d.sheet.removeChild(d.ph);
+      d.row.classList.remove('sbx-dragging');
+      d.row.style.width = d.row.style.left = d.row.style.top = '';
+      box.classList.remove('sbx-is-dragging');
+      var team = d.sheet.parentNode.getAttribute('data-team');
+      var slugs = [].slice.call(d.sheet.querySelectorAll('.sbx-ch[data-slug]')).map(function (r) { return r.getAttribute('data-slug'); });
+      setTeamOrder(team, slugs);
+    }
+    box.addEventListener('pointerup', end);
+    box.addEventListener('pointercancel', end);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -658,6 +769,8 @@
           getEntries: rosterChars,
           getOrder: getNightOrder,
           setOrder: setNightOrder,
+          getView: nightView,
+          artOf: artOf,
           onEmpty: function (empty) { $('sb-night-reset').style.display = empty ? 'none' : ''; }
         });
         nightDirty = false;
@@ -670,7 +783,9 @@
         jinxUI = window.JinxEditor.mount($('sbx-jinx-body'), {
           getEntries: rosterChars,
           getEdits: getJinxEdits,
-          setEdits: setJinxEdits
+          setEdits: setJinxEdits,
+          getView: function () { return { icons: !(prefs.jinx && prefs.jinx.icons === false) }; },
+          artOf: artOf
         });
         jinxDirty = false;
       } else if (jinxUI && jinxDirty) {
@@ -683,7 +798,39 @@
       paintCredits();
       paintEditNote();
       paintTextPreview();
+      paintJsonPreview();
+      if (idsUI) idsUI.refresh();
     }
+  }
+  function nightView() {
+    var o = prefs.night || {};
+    return { reminders: o.reminders !== false, icons: !!o.icons, stacked: !!o.stacked };
+  }
+  /* The night order and the jinxes as text, for a Discord post or a
+     storyteller's notes — the lists alone, not the whole script. */
+  function nightText() {
+    var PR = window.PageRender;
+    if (!PR || !PR.nightItems) return '';
+    var L = PR.nightItems(rosterChars(), getNightOrder());
+    var v = nightView(), lines = [];
+    [['first', 'FIRST NIGHT'], ['other', 'OTHER NIGHTS']].forEach(function (col) {
+      var items = L[col[0]] || [];
+      if (!items.length) return;
+      lines.push(col[1]);
+      items.forEach(function (it, i) { lines.push((i + 1) + '. ' + it.c.name + (v.reminders && it.r ? ' — ' + it.r : '')); });
+      lines.push('');
+    });
+    return lines.join('\n').trim();
+  }
+  function jinxText() {
+    return scriptJinxes().map(function (j) { return j.a.name + ' & ' + j.b.name + ': ' + (j.text || ''); }).join('\n');
+  }
+  function copyPlain(text, btn, what) {
+    if (!text) { toast('Nothing to copy: ' + what + '.'); return; }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
+        function () { window.prompt('Copy:', text); });
+    } else { window.prompt('Copy:', text); }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1206,6 +1353,38 @@
       (m.author || '').trim(), m.header || '', rosterChars(), m,
       { credits: creditsFabled() });
   }
+  /* What Download and Copy write: the export, minified on request. */
+  function exportText() {
+    var text = buildExport();
+    if (prefs.json && prefs.json.minified) {
+      try { text = JSON.stringify(JSON.parse(text)); } catch (e) { /* keep it pretty */ }
+    }
+    return text;
+  }
+  function paintJsonPreview() {
+    var d = $('sb-json-details'), box = $('sb-json-preview');
+    if (!d || !box || !d.open) return;
+    box.value = !order.length ? '' : (cardReady ? exportText() : 'Loading the character details…');
+    box.placeholder = order.length ? '' : 'Add characters and the JSON appears here.';
+  }
+  var idsUI = null;
+  function mountIds() {
+    if (!window.ExportIdsEditor) return;
+    idsUI = window.ExportIdsEditor.mount($('sb-ids-body'), {
+      getSample: function () {
+        var r = rosterChars();
+        for (var i = 0; i < r.length; i++) if (!r[i].official) return r[i];
+        return null;
+      },
+      // A published script's ids are qualified by its slug; before that, by
+      // the name, which is what buildPageExport reads off the meta too.
+      getSet: function () { var m = getMeta(); return m.editSlug || (m.name || '').trim(); },
+      onChange: function (v) {
+        patchMeta(function (m) { if (v) m.exportIds = v; else delete m.exportIds; }, 'typed');
+        paintJsonPreview();
+      }
+    });
+  }
   function fileName() {
     var n = (getMeta().name || 'homebrew-script').trim()
       .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
@@ -1230,11 +1409,11 @@
     return false;
   }
 
-  function doExport() { if (notEmpty()) withCards(function () { download(fileName(), buildExport()); }); }
+  function doExport() { if (notEmpty()) withCards(function () { download(fileName(), exportText()); }); }
   function doCopy(btn) {
     if (!notEmpty()) return;
     if (!cardReady) { withCards(function () { doCopy(btn); }); return; }
-    var text = buildExport();
+    var text = exportText();
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
         function () { window.prompt('Copy the script JSON:', text); });
@@ -1272,65 +1451,96 @@
   /* A printable sheet, in its own window rather than a @media print rule on
      this one: the builder is a fixed-height app with two scrolling panes, and
      unpicking that for the printer would take more CSS than simply writing
-     the pages out. Gives the same two sheets the official tool's PDF does —
-     the character sheet, then the night order. */
+     the pages out. The character sheet (icons, two columns, team colours —
+     each a print option), then the night order, the jinxes, the house rules
+     and the notes as asked. Fancy Scripts is the pretty version; this is the
+     one that prints from any browser in a second. */
+  function printOpts() {
+    var o = prefs.print || {};
+    return {
+      icons: o.icons !== false, colour: o.colour !== false, night: o.night !== false,
+      jinxes: o.jinxes !== false, rules: o.rules !== false, notes: !!o.notes,
+      cols: o.cols === '1' ? 1 : 2, size: o.size || 'normal'
+    };
+  }
+  var TEAM_INK = {
+    townsfolk: '#2C7BD0', outsider: '#1a6a80', minion: '#b5441a', demon: '#9A0D12',
+    traveller: '#6a3fa0', fabled: '#8f6d1a', loric: '#2f6b3f'
+  };
+  function absUrl(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
   function doPrint() {
     if (!notEmpty()) return;
     if (!cardReady) { withCards(doPrint); return; }
     var m = getMeta();
     var chars = rosterChars();
+    var po = printOpts();
     var PR = window.PageRender;
     var night = (PR && PR.nightItems) ? PR.nightItems(chars, getNightOrder()) : { first: [], other: [] };
     var jinxes = scriptJinxes();
+    var pt = po.size === 'small' ? 9.5 : (po.size === 'large' ? 13 : 11);
 
+    function icon(c, px) {
+      return po.icons ? '<img src="' + esc(absUrl(artOf(c))) + '" alt="" width="' + px + '" height="' + px + '" onerror="this.style.visibility=\'hidden\'">' : '';
+    }
     var out = '';
     TEAMS.forEach(function (t) {
       var group = chars.filter(function (c) { return c.team === t[0]; });
       if (!group.length) return;
-      out += '<h2>' + esc(t[1]) + '</h2><table>';
+      out += '<section class="team ' + esc(t[0]) + '"><h2>' + esc(t[1]) + '</h2><div class="rows">';
       group.forEach(function (c) {
-        out += '<tr><th>' + esc(c.name) + '</th><td>' + esc(c.ability || '') + '</td></tr>';
+        out += '<div class="ch">' + icon(c, 34) + '<p><b class="nm">' + esc(c.name) + '</b> ' + esc(c.ability || '') + '</p></div>';
       });
-      out += '</table>';
+      out += '</div></section>';
     });
-    if (jinxes.length) {
-      out += '<h2>Jinxes</h2><table>';
+    if (po.jinxes && jinxes.length) {
+      out += '<section class="team jinx"><h2>Jinxes</h2><div class="rows one">';
       jinxes.forEach(function (j) {
-        out += '<tr><th>' + esc(j.a.name) + ' &amp; ' + esc(j.b.name) + '</th><td>' +
-          esc(j.text) + '</td></tr>';
+        out += '<div class="ch">' + icon(j.a, 26) + icon(j.b, 26) + '<p><b class="nm">' + esc(j.a.name) + ' &amp; ' + esc(j.b.name) + '</b> ' + esc(j.text || '') + '</p></div>';
       });
-      out += '</table>';
+      out += '</div></section>';
+    }
+    var boot = (m.bootlegger || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
+    if (po.rules && boot.length) {
+      out += '<section class="team rules"><h2>House rules</h2><ul>' + boot.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></section>';
+    }
+    if (po.notes && (m.notes || '').trim()) {
+      out += '<section class="team notes"><h2>Notes</h2><p class="notes">' + esc(m.notes.trim()).replace(/\n/g, '<br>') + '</p></section>';
     }
     function col(label, items) {
       var rows = items.map(function (it, i) {
-        return '<tr><th>' + (i + 1) + '</th><td>' + esc(it.c.name) +
-          (it.r ? '<br><span class="rem">' + esc(it.r) + '</span>' : '') + '</td></tr>';
-      }).join('') || '<tr><td colspan="2">Nobody acts.</td></tr>';
-      return '<div class="nc"><h2>' + esc(label) + '</h2><table>' + rows + '</table></div>';
+        return '<div class="nrow"><span class="n">' + (i + 1) + '</span>' + icon(it.c, 26) +
+          '<span class="t"><b>' + esc(it.c.name) + '</b>' + (it.r ? '<span class="rem">' + esc(it.r) + '</span>' : '') + '</span></div>';
+      }).join('') || '<p class="none">Nobody acts.</p>';
+      return '<div class="nc"><h2>' + esc(label) + '</h2>' + rows + '</div>';
     }
+    var nightHTML = po.night && (night.first.length || night.other.length)
+      ? '<div class="pb"><h1>Night Order</h1><div class="nights">' + col('First Night', night.first || []) + col('Other Nights', night.other || []) + '</div></div>'
+      : '';
+    var colours = po.colour ? Object.keys(TEAM_INK).map(function (t) {
+      return '.team.' + t + ' h2{color:' + TEAM_INK[t] + ';border-color:' + TEAM_INK[t] + ';}';
+    }).join('') : '';
     var sheet =
       '<!doctype html><html><head><meta charset="utf-8"><title>' +
       esc((m.name || 'Script').trim()) + '</title><style>' +
-      'body{font:12px/1.45 Georgia,serif;color:#111;margin:22px;}' +
-      'h1{font-size:22px;margin:0 0 2px;}' +
-      '.by{font-style:italic;color:#555;margin:0 0 14px;}' +
-      'h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;' +
-      'margin:14px 0 4px;border-bottom:1px solid #999;padding-bottom:2px;}' +
-      'table{width:100%;border-collapse:collapse;}' +
-      'th{text-align:left;vertical-align:top;width:26%;padding:2px 8px 2px 0;font-weight:bold;}' +
-      'td{vertical-align:top;padding:2px 0;}' +
-      'tr{page-break-inside:avoid;}' +
-      '.rem{color:#666;font-size:11px;}' +
-      '.nights{display:flex;gap:26px;}.nc{flex:1;}' +
-      '.pb{page-break-before:always;}' +
-      '.foot{margin-top:18px;font-size:10px;color:#777;}' +
+      '@page{margin:14mm 12mm;}' +
+      'body{font:' + pt + 'pt/1.4 Georgia,"Times New Roman",serif;color:#111;margin:0;}' +
+      'h1{font-size:2.1em;margin:0 0 2px;letter-spacing:.02em;}' +
+      '.by{font-style:italic;color:#555;margin:0 0 12px;}' +
+      'h2{font-size:1em;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 5px;border-bottom:2px solid #333;padding-bottom:2px;break-after:avoid;}' +
+      '.rows{column-count:' + po.cols + ';column-gap:20px;}.rows.one{column-count:1;}' +
+      '.ch{display:flex;gap:8px;align-items:flex-start;break-inside:avoid;padding:4px 0;border-bottom:1px solid #ddd;}' +
+      '.ch img{width:34px;height:34px;object-fit:contain;flex:none;}.jinx .ch img{width:26px;height:26px;}' +
+      '.ch p{margin:0;}.nm{text-transform:uppercase;letter-spacing:.03em;font-size:.95em;margin-right:4px;}' +
+      'ul{margin:0;padding-left:18px;}li{margin:3px 0;}.notes{white-space:normal;}' +
+      '.pb{break-before:page;}.nights{display:flex;gap:26px;}.nc{flex:1;min-width:0;}' +
+      '.nrow{display:flex;gap:8px;align-items:flex-start;break-inside:avoid;padding:3px 0;border-bottom:1px solid #eee;}' +
+      '.nrow .n{width:22px;flex:none;color:#888;text-align:right;}.nrow img{width:26px;height:26px;object-fit:contain;flex:none;}' +
+      '.nrow .t{flex:1;min-width:0;}.rem{display:block;color:#555;font-size:.88em;}.none{color:#777;}' +
+      '.foot{margin-top:18px;font-size:.8em;color:#777;}' + colours +
       '</style></head><body>' +
       '<h1>' + esc((m.name || 'Untitled Script').trim()) + '</h1>' +
       (m.author ? '<p class="by">by ' + esc(m.author) + '</p>' : '') +
-      out +
-      '<div class="pb"><h1>Night Order</h1><div class="nights">' +
-      col('First Night', night.first || []) + col('Other Nights', night.other || []) +
-      '</div></div>' +
+      out + nightHTML +
       '<p class="foot">Built on botchomebrew.wiki &middot; fan-made content for Blood on the Clocktower.</p>' +
       '</body></html>';
 
@@ -1339,8 +1549,24 @@
     w.document.open();
     w.document.write(sheet);
     w.document.close();
-    w.focus();
-    setTimeout(function () { try { w.print(); } catch (e) { /* the reader can print it themselves */ } }, 350);
+    // Print once the icons are in — a sheet printed at 350 ms used to come
+    // out with half its icons blank — and no later than 3.5 s regardless.
+    var imgs = [].slice.call(w.document.images);
+    var pending = imgs.filter(function (i) { return !i.complete; }).length;
+    var printed = false;
+    function go() {
+      if (printed) return;
+      printed = true;
+      try { w.focus(); w.print(); } catch (e) { /* the reader can print it themselves */ }
+    }
+    if (!pending) { setTimeout(go, 250); return; }
+    imgs.forEach(function (i) {
+      if (i.complete) return;
+      var one = function () { if (--pending <= 0) setTimeout(go, 120); };
+      i.addEventListener('load', one);
+      i.addEventListener('error', one);
+    });
+    setTimeout(go, 3500);
   }
 
   /* Fancy Scripts (/fancyscripts) presses an official-style print sheet.
@@ -1577,6 +1803,46 @@
     paintLibrary();
   }
 
+  /* Every saved script as one file, and the way back. A restore MERGES:
+     entries already here (by id) are left alone, new ones are added until
+     the browser's fifteen are full, and it says what it did. */
+  function backupLibrary() {
+    syncLibrary();
+    var lib = getLib();
+    if (!lib.length) { toast('Nothing saved yet.'); return; }
+    download('botc-scripts-backup.json', JSON.stringify({
+      app: 'botc-script-library', v: 1, exported: new Date().toISOString(), scripts: lib
+    }, null, 2));
+  }
+  function restoreLibrary(text) {
+    var data;
+    try { data = JSON.parse(text); } catch (e) { alert('That is not a My Scripts backup file.'); return; }
+    var list = Array.isArray(data) ? data : (data && Array.isArray(data.scripts) ? data.scripts : null);
+    if (!list) { alert('That is not a My Scripts backup file.'); return; }
+    var lib = getLib(), have = {};
+    lib.forEach(function (e) { have[e.id] = 1; });
+    var added = 0, skipped = 0, full = 0;
+    list.forEach(function (e) {
+      if (!e || !Array.isArray(e.chars)) return;
+      if (e.id && have[e.id]) { skipped++; return; }
+      if (lib.length >= LIB_MAX) { full++; return; }
+      var id = e.id || uid();
+      lib.push({
+        id: id,
+        chars: e.chars.filter(function (x) { return typeof x === 'string'; }).slice(0, 200),
+        meta: (e.meta && typeof e.meta === 'object') ? e.meta : {},
+        updated: Number(e.updated) || Date.now()
+      });
+      have[id] = 1;
+      added++;
+    });
+    setLib(lib);
+    paintLibrary();
+    toast('Restored ' + added + ' script' + (added === 1 ? '' : 's') +
+      (skipped ? ', ' + skipped + ' already here' : '') +
+      (full ? ', ' + full + ' left out (this browser keeps ' + LIB_MAX + ')' : '') + '.', 3600);
+  }
+
   function paintLibrary() {
     var lib = getLib();
     var q = ($('sbx-lib-q').value || '').trim().toLowerCase();
@@ -1590,6 +1856,14 @@
       var m = e.meta || {};
       return ((m.name || '') + ' ' + (m.author || '')).toLowerCase().indexOf(q) !== -1;
     });
+    var sort = (prefs.lib && prefs.lib.sort) || 'recent';
+    if (sort === 'name') {
+      shown.sort(function (a, b) { return ((a.meta && a.meta.name) || '').localeCompare((b.meta && b.meta.name) || ''); });
+    } else if (sort === 'size') {
+      shown.sort(function (a, b) { return ((b.chars || []).length - (a.chars || []).length) || ((b.updated || 0) - (a.updated || 0)); });
+    } else {
+      shown.sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); });
+    }
     if (!shown.length) {
       $('sbx-lib-list').innerHTML = '<p class="sbx-note">' +
         (lib.length ? 'No saved script matches that.'
@@ -1629,6 +1903,7 @@
     $('sb-hidetitle').checked = !!m.hideTitle;
     $('sb-almanac').value = m.almanac || '';
     $('sb-notes').value = m.notes || '';
+    if (idsUI) idsUI.set(m.exportIds || null);
     $('sb-boot-list').innerHTML = '';
     (m.bootlegger || []).forEach(addBootRow);
     document.title = ((m.name || '').trim() || 'Script Builder') + ' — BOTC HomeBrew Wiki';
@@ -1787,7 +2062,9 @@
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
       var lk = e.target.closest('.sbx-ch-lock');
-      if (lk) toggleLock(lk.getAttribute('data-slug'));
+      if (lk) { toggleLock(lk.getAttribute('data-slug')); return; }
+      var mv = e.target.closest('button[data-move]');
+      if (mv) moveInTeam(mv.getAttribute('data-slug'), mv.getAttribute('data-move'));
     });
     $('sbx-analyse-body').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-add]');
@@ -2011,6 +2288,75 @@
     $('sbx-lib-q').addEventListener('input', paintLibrary);
     $('sbx-lib-save').addEventListener('click', saveCurrentToLibrary);
     $('sbx-lib-new').addEventListener('click', newScript);
+    $('sbx-lib-sort').value = (prefs.lib && prefs.lib.sort) || 'recent';
+    $('sbx-lib-sort').addEventListener('change', function () {
+      prefs.lib = prefs.lib || {};
+      prefs.lib.sort = this.value;
+      savePrefs();
+      paintLibrary();
+    });
+    $('sbx-lib-backup').addEventListener('click', backupLibrary);
+    $('sbx-lib-restore').addEventListener('click', function () { $('sbx-lib-file').click(); });
+    $('sbx-lib-file').addEventListener('change', function (e) {
+      var f = e.target.files[0];
+      if (!f) return;
+      var fr = new FileReader();
+      fr.onload = function (ev) { restoreLibrary(ev.target.result); };
+      fr.readAsText(f);
+      e.target.value = '';
+    });
+
+    // ── the night and jinx tabs' own options ──
+    var nv = nightView();
+    $('sb-night-rem').checked = nv.reminders;
+    $('sb-night-icons').checked = nv.icons;
+    $('sb-night-stack').checked = nv.stacked;
+    $('sbx-night-body').classList.toggle('stacked', nv.stacked);
+    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-stack', 'stacked']].forEach(function (pair) {
+      $(pair[0]).addEventListener('change', function () {
+        prefs.night = prefs.night || {};
+        prefs.night[pair[1]] = this.checked;
+        savePrefs();
+        $('sbx-night-body').classList.toggle('stacked', !!(prefs.night.stacked));
+        if (nightUI) nightUI.render();
+      });
+    });
+    $('sb-night-copy').addEventListener('click', function () { copyPlain(nightText(), this, 'nobody on this script acts at night'); });
+    $('sb-jinx-icons').checked = !(prefs.jinx && prefs.jinx.icons === false);
+    $('sb-jinx-icons').addEventListener('change', function () {
+      prefs.jinx = prefs.jinx || {};
+      prefs.jinx.icons = this.checked;
+      savePrefs();
+      if (jinxUI) jinxUI.render();
+    });
+    $('sb-jinx-copy').addEventListener('click', function () { copyPlain(jinxText(), this, 'there are no jinxes on this script'); });
+
+    // ── export options ──
+    $('sb-json-min').checked = !!(prefs.json && prefs.json.minified);
+    $('sb-json-min').addEventListener('change', function () {
+      prefs.json = prefs.json || {};
+      prefs.json.minified = this.checked;
+      savePrefs();
+      paintJsonPreview();
+    });
+    $('sb-json-details').addEventListener('toggle', paintJsonPreview);
+    var pio = printOpts();
+    [['icons', 'sb-print-icons'], ['colour', 'sb-print-colour'], ['night', 'sb-print-night'],
+     ['jinxes', 'sb-print-jinxes'], ['rules', 'sb-print-rules'], ['notes', 'sb-print-notes']].forEach(function (pair) {
+      $(pair[1]).checked = !!pio[pair[0]];
+      $(pair[1]).addEventListener('change', function () {
+        prefs.print = prefs.print || {};
+        prefs.print[pair[0]] = this.checked;
+        savePrefs();
+      });
+    });
+    $('sb-print-cols').value = String(pio.cols);
+    $('sb-print-size').value = pio.size;
+    $('sb-print-cols').addEventListener('change', function () { prefs.print = prefs.print || {}; prefs.print.cols = this.value; savePrefs(); });
+    $('sb-print-size').addEventListener('change', function () { prefs.print = prefs.print || {}; prefs.print.size = this.value; savePrefs(); });
+
+    // ── arranging ──
+    wireArrange();
     $('sbx-lib-list').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-act]');
       if (!b) return;
@@ -2279,6 +2625,8 @@
   primeForm();
   wire();
   mountView();
+  mountIds();
+  primeForm();
   paintHistory();
   // A small console / test-harness handle (the same idea as
   // window.FancyScripts): read the state, drive the undo stack, no DOM.

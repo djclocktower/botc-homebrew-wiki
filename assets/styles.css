@@ -4849,6 +4849,66 @@ button.sbx-counts:empty { display: none; }
 .sbx-peek-close { position: absolute; top: 6px; right: 6px; }
 @media (hover: hover) and (pointer: fine) { .sbx-peek-close { display: none; } }
 
+/* ── arranging the roster by hand ── */
+.sbx-ch-grip {
+  flex: none; cursor: grab; color: rgba(91,31,33,.35); font-size: .95rem; line-height: 1;
+  padding: 2px 2px 0 0; user-select: none; touch-action: none; align-self: center;
+}
+.sbx-ch-grip:hover { color: var(--maroon); }
+.sbx-ch-moves { display: flex; flex: none; gap: 2px; align-self: center; }
+.sbx-ch-moves button {
+  width: 20px; height: 18px; cursor: pointer; line-height: 1; padding: 0; font-size: .6rem;
+  background: #fffdf8; border: 1px solid rgba(180,160,120,.7); color: var(--maroon);
+}
+.sbx-ch-moves button:disabled { opacity: .3; cursor: default; }
+.sbx-ch-moves button:hover:not(:disabled) { border-color: var(--maroon); }
+.sbx-ch.sbx-dragging {
+  position: fixed; z-index: 75; pointer-events: none; opacity: .92;
+  box-shadow: 0 10px 26px rgba(0,0,0,.4); background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover; border: 1px solid var(--parch-frame);
+}
+.sbx-ch-placeholder { border: 1px dashed var(--maroon); background: rgba(91,31,33,.06); }
+#sb-script.sbx-is-dragging { cursor: grabbing; user-select: none; }
+.sbx[data-layout="cards"] .sbx-ch-grip, .sbx[data-layout="icons"] .sbx-ch-grip { position: absolute; bottom: 4px; left: 6px; }
+.sbx[data-layout="cards"] .sbx-ch-moves, .sbx[data-layout="icons"] .sbx-ch-moves { position: absolute; bottom: 4px; right: 4px; }
+
+/* ── the option rows above the night and jinx lists ── */
+.sbx-tab-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.no-ico { width: 28px; height: 28px; object-fit: contain; flex: none; margin-right: 4px; }
+.no-cols.stacked { grid-template-columns: 1fr; }
+.sjx-icons { display: flex; flex: none; gap: 2px; margin-right: 8px; align-self: center; }
+.sjx-icons img { width: 26px; height: 26px; object-fit: contain; }
+
+/* ── the export panel's disclosures ── */
+.sbx-details { margin: 0 0 10px; border: 1px solid rgba(180,160,120,.5); background: rgba(255,253,248,.5); padding: 0 10px; }
+.sbx-details > summary {
+  cursor: pointer; list-style: none; padding: 7px 0;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon);
+}
+.sbx-details > summary::-webkit-details-marker { display: none; }
+.sbx-details > summary::before { content: '\25B8'; display: inline-block; width: 12px; transition: transform .15s; }
+.sbx-details[open] > summary::before { transform: rotate(90deg); }
+.sbx-details > :not(summary) { margin-bottom: 10px; }
+#sb-json-preview {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: .72rem; line-height: 1.35;
+  background: rgba(255,253,248,.8); white-space: pre; overflow: auto; width: 100%;
+  border: 1px solid var(--parch-frame); padding: 6px 8px; color: var(--ink);
+  height: 200px; min-height: 120px; resize: vertical; box-sizing: border-box;
+}
+.sbx-ids .sb-fld { margin-bottom: 8px; }
+.sbx-ids label {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon); margin-bottom: 3px;
+}
+.sbx-ids select, .sbx-ids input[type=text] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .84rem; color: var(--ink);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; max-width: 100%;
+}
+.sbx-ids .sub { font-size: .74rem; color: #6b5d49; margin: 3px 0 0; line-height: 1.4; }
+.sbx-ids code { font-size: .78rem; background: rgba(0,0,0,.05); padding: 0 3px; }
+.sbx-tool-row select { font-family: 'Libre Franklin', sans-serif; font-size: .78rem; padding: 4px 6px; border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink); }
+.sbx-lib-sort { flex: 1 1 110px; min-width: 0; }
+
 /* ── toasts ── */
 .sbx-toast {
   position: fixed; left: 50%; bottom: 22px; z-index: 90;

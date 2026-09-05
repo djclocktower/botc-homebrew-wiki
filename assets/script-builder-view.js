@@ -33,6 +33,7 @@
     density: 'comfortable', // compact | comfortable | roomy
     font: 'wiki',         // wiki | plain | print
     accent: true,         // team colours on the headings and rules
+    arrange: false,       // ▲▼ and drag on every row
     icon: 40,             // px
     text: 100,            // %
     showAbility: true,
@@ -72,6 +73,7 @@
     { group: 'Roster', key: 'density', label: 'Spacing', type: 'seg', repaint: '',
       options: [['compact', 'Tight'], ['comfortable', 'Normal'], ['roomy', 'Airy']] },
     { group: 'Roster', key: 'accent', label: 'Team colours on the headings', type: 'check', repaint: '' },
+    { group: 'Roster', key: 'arrange', label: 'Arrange by hand (▲▼ and drag)', type: 'check', repaint: 'roster' },
 
     { group: 'Size', key: 'icon', label: 'Icon size', type: 'range', min: 20, max: 96, step: 2, unit: 'px', repaint: '' },
     { group: 'Size', key: 'text', label: 'Text size', type: 'range', min: 75, max: 140, step: 5, unit: '%', repaint: '' },
