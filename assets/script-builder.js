@@ -262,8 +262,11 @@
     var row = btn.parentNode && btn.parentNode.parentNode;
     if (row && row.classList.contains('sbx-add-row')) row.classList.toggle('on', on);
   }
+  /* Returns true when it has already said something (the duplicate-name
+     warning), so a caller with a toast of its own can hold it. */
   function toggle(slug) {
     mark();
+    var spoke = false;
     if (sel[slug]) {
       delete sel[slug];
       var i = order.indexOf(slug);
@@ -271,12 +274,13 @@
     } else {
       sel[slug] = 1;
       order.push(slug);
-      warnSameName(slug);
+      spoke = warnSameName(slug);
       noteRecent(slug);
     }
     commitOrder();
     paintRow(slug);
     afterChange();
+    return spoke;
   }
   /* Two pages answering to one name on one script: the ids are qualified,
      but players will mix them up, so say so the moment it happens. */
@@ -290,7 +294,8 @@
       var o = bySlug[s];
       if (o && String(o.name || '').trim().toLowerCase() === nm) twin = o;
     });
-    if (twin) toast('Another ' + c.name + ' is already on this script' + (twin.creator ? ' (by ' + twin.creator + ')' : '') + '.', 3200);
+    if (twin) toast('Added ' + c.name + ' — another ' + c.name + ' is already on this script' + (twin.creator ? ' (by ' + twin.creator + ')' : '') + '.', 3600);
+    return !!twin;
   }
   /* Swap one character for a random one of the same team, in the same
      place in the order, from whatever the panel is showing. */
@@ -851,7 +856,7 @@
       ' data-tags="' + esc(c.tags || '') + '"' +
       ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
       ' data-name="' + esc(c.name || '') + '"' +
-      ' data-order="' + i + '"' +
+      ' data-order="' + (c._ord != null ? c._ord : i) + '"' +
       ' data-source="' + (c.official ? 'official' : 'homebrew') + '"' +
       ' data-partial="' + partial + '" data-curata="' + star + '">' +
       '<div class="sbx-add-head-row">' +
@@ -1447,9 +1452,13 @@
      what the panel shows. */
   function visibleRows(homebrewOnly) {
     var q = '#sb-add-list .sbx-add-row' + (homebrewOnly ? '[data-source="homebrew"]' : '');
+    var scope = view ? view.panelScope : 'all';
     var out = [];
     [].slice.call(document.querySelectorAll(q)).forEach(function (row) {
       if (row.style.display === 'none') return;
+      // The Show setting hides rows by CSS rather than inline style.
+      if (scope === 'on' && !row.classList.contains('on')) return;
+      if (scope === 'off' && row.classList.contains('on')) return;
       var group = row.closest('.sbx-add-group');
       if (group && group.style.display === 'none') return;
       out.push(row);
@@ -1555,6 +1564,7 @@
      the ability, tags, when it acts, who it is jinxed with. A click still
      adds or removes — the card never gets in the way of that. */
   var peekTimer = null, peekSlug = '', peekPress = null;
+  var suppressClickUntil = 0;   // the click that follows a long press
   var FINE = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : { matches: true };
 
   function peekHTML(c) {
@@ -1667,10 +1677,15 @@
       if (!slug) return;
       peekPress = { slug: slug, x: e.clientX, y: e.clientY, t: setTimeout(function () {
         peekPress = null;
+        // The click that comes with lifting the finger is not a tap.
+        suppressClickUntil = Infinity;
         showPeek(slug, e.clientX, e.clientY);
       }, 550) };
     });
     function cancelPress(e) {
+      if (suppressClickUntil === Infinity && (e.type === 'pointerup' || e.type === 'pointercancel')) {
+        suppressClickUntil = Date.now() + 350;
+      }
       if (!peekPress) return;
       if (e.type === 'pointermove' && Math.hypot(e.clientX - peekPress.x, e.clientY - peekPress.y) < 10) return;
       clearTimeout(peekPress.t);
@@ -1679,8 +1694,11 @@
     list.addEventListener('pointermove', cancelPress);
     list.addEventListener('pointerup', cancelPress);
     list.addEventListener('pointercancel', cancelPress);
-    list.addEventListener('scroll', hidePeek, { passive: true });
+    // Long-press must not also open the browser's own menu on the row.
+    list.addEventListener('contextmenu', function (e) { if (peekPress || peekSlug) e.preventDefault(); });
   }
+  // Scroll does not bubble, so one capturing listener covers both panes.
+  document.addEventListener('scroll', function () { if (peekSlug && FINE.matches) hidePeek(); }, true);
 
   // ══════════════════════════════════════════════════════════════════════
   //  The credits Fabled
@@ -2410,6 +2428,7 @@
   function wire() {
     // ── the add list: one delegated listener for ~1,900 rows ──
     $('sb-add-list').addEventListener('click', function (e) {
+      if (Date.now() < suppressClickUntil) { e.preventDefault(); return; }
       var die = e.target.closest('[data-group-random]');
       if (die) {
         var grpEl = die.closest('.sbx-add-group');
@@ -2420,7 +2439,7 @@
         var pickRow = cands[Math.floor(Math.random() * cands.length)];
         var pb = pickRow.querySelector('.sbx-add-item');
         var ps = pb && pb.getAttribute('data-slug');
-        if (ps && bySlug[ps]) { toggle(ps); toast('Added ' + bySlug[ps].name + '.'); }
+        if (ps && bySlug[ps] && !toggle(ps)) toast('Added ' + bySlug[ps].name + '.');
         return;
       }
       var head = e.target.closest('.sbx-add-grouphead');
@@ -2455,18 +2474,17 @@
       var btn = row.querySelector('.sbx-add-item');
       var slug = btn && btn.getAttribute('data-slug');
       if (!slug || !bySlug[slug]) return;
-      toggle(slug);
-      toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
+      if (!toggle(slug)) toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
     });
     $('sb-filter').addEventListener('input', function () { highlight(null); });
     $('sb-filter').addEventListener('blur', function () { highlight(null); });
     $('sbx-picks').addEventListener('click', function (e) {
+      if (Date.now() < suppressClickUntil) { e.preventDefault(); return; }
       var b = e.target.closest('.sbx-pick');
       if (!b) return;
       var slug = b.getAttribute('data-slug');
       if (!bySlug[slug]) return;
-      toggle(slug);
-      toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
+      if (!toggle(slug)) toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
     });
     wirePeek($('sbx-picks'));
     // Add or remove everything the panel is showing — a creator's whole set
@@ -2492,6 +2510,7 @@
     });
 
     $('sb-script').addEventListener('click', function (e) {
+      if (Date.now() < suppressClickUntil) { e.preventDefault(); return; }
       var em = e.target.closest('button[data-empty]');
       if (em) {
         var what = em.getAttribute('data-empty');
@@ -2529,7 +2548,7 @@
       var b = e.target.closest('button[data-add]');
       if (!b) return;
       var slug = b.getAttribute('data-add');
-      if (bySlug[slug] && !sel[slug]) { toggle(slug); toast('Added ' + bySlug[slug].name); }
+      if (bySlug[slug] && !sel[slug] && !toggle(slug)) toast('Added ' + bySlug[slug].name);
     });
     // the shape popover
     $('sbx-shape-body').addEventListener('click', function (e) {
@@ -2594,8 +2613,7 @@
       var tg = e.target.closest('button[data-peek-toggle]');
       if (tg) {
         var slug = tg.getAttribute('data-peek-toggle');
-        toggle(slug);
-        toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
+        if (!toggle(slug)) toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
         hidePeek();
       }
     });
@@ -2977,7 +2995,11 @@
     function firstPaint(list) {
       painted = true;
       allChars = list || [];
-      allChars.forEach(function (c) { bySlug[c.slug] = c; });
+      // The feed is in the order the pages were made, oldest first, which is
+      // what the panel's "Recently added" sort reads (data-order, highest
+      // first). The official roster sits under everything homebrew.
+      allChars.forEach(function (c, i) { bySlug[c.slug] = c; c._ord = i + 1; });
+      officialChars.forEach(function (c, i) { c._ord = -1000 + i; });
       registries();
 
       var params = new URLSearchParams(location.search);
@@ -3038,6 +3060,7 @@
         var have = known[row.slug];
         if (have) { Object.assign(have, row); return; }
         // Published since the grid was cached: a new character.
+        row._ord = allChars.length + 1;
         allChars.push(row);
         bySlug[row.slug] = row;
         known[row.slug] = row;
@@ -3064,6 +3087,8 @@
       w.forEach(function (fn) { try { fn(); } catch (e) { /* one waiter must not stop the rest */ } });
     }).catch(function () {
       if (!painted) $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>';
+      else toast('The character details could not be loaded, so exports are off until a reload.', 4000);
+      cardWaiters = [];
     });
   }
 
