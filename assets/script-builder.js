@@ -149,8 +149,8 @@
   /* `how` says what kind of change this is for the undo stack: the default
      is one step; 'typed' coalesces a run of keystrokes into one; 'silent'
      records nothing (a restore, or bookkeeping such as libId). */
-  function patchMeta(fn, how) {
-    if (how === 'typed') markTyped(); else if (how !== 'silent') mark();
+  function patchMeta(fn, how, label) {
+    if (how === 'typed') markTyped(label); else if (how !== 'silent') mark(label);
     var m = getMeta(); fn(m); setMeta(m); settle();
   }
 
@@ -182,7 +182,7 @@
     patchMeta(function (m) {
       if (o && ((o.first && o.first.length) || (o.other && o.other.length))) m.nightOrder = o;
       else delete m.nightOrder;
-    });
+    }, '', o ? 'arrange the night order' : 'reset the night order');
   }
   function getJinxEdits() {
     var m = getMeta();
@@ -192,7 +192,7 @@
     patchMeta(function (m) {
       if (e && ((e.off && e.off.length) || (e.add && e.add.length))) m.jinxEdits = e;
       else delete m.jinxEdits;
-    });
+    }, '', 'edit the jinxes');
     analyseDirty = true;
     paintRoster();
   }
@@ -210,7 +210,7 @@
     patchMeta(function (m) {
       var st = window.SBTools.shapeStore(sh);
       if (st) m.shape = st; else delete m.shape;
-    });
+    }, '', 'change the shape');
     analyseDirty = true;
     paintCounts();
     paintShape();
@@ -243,7 +243,7 @@
       var i = L.indexOf(slug);
       if (i === -1) L.push(slug); else L.splice(i, 1);
       if (L.length) m.locks = L; else delete m.locks;
-    });
+    }, '', (isLocked(slug) ? 'unlock ' : 'lock ') + (bySlug[slug] ? bySlug[slug].name : ''));
     paintRoster();
     toast(isLocked(slug) ? bySlug[slug].name + ' is locked: Random keeps it.' : bySlug[slug].name + ' unlocked.');
   }
@@ -265,7 +265,8 @@
   /* Returns true when it has already said something (the duplicate-name
      warning), so a caller with a toast of its own can hold it. */
   function toggle(slug) {
-    mark();
+    var c = bySlug[slug];
+    mark((sel[slug] ? 'remove ' : 'add ') + (c ? c.name : slug));
     var spoke = false;
     if (sel[slug]) {
       delete sel[slug];
@@ -307,7 +308,7 @@
     var pool = visibleSidebarChars().filter(function (x) { return x.team === c.team && !on[x.slug]; });
     if (!pool.length) { toast('The panel has no other ' + c.team + ' to swap in.'); return; }
     var pick = pool[Math.floor(Math.random() * pool.length)];
-    mark();
+    mark('swap ' + c.name);
     var i = order.indexOf(slug);
     order[i === -1 ? order.length : i] = pick.slug;
     delete sel[slug];
@@ -340,13 +341,13 @@
     var kept = keep.map(function (s) { return bySlug[s]; }).filter(Boolean);
     var plan = T.fillPlan(visibleSidebarChars(), kept, only);
     if (!plan.add.length && keep.length === order.length) { toast('Nothing in the panel to draw from for that team.'); return; }
-    replaceOrder(keep.concat(plan.add));
+    replaceOrder(keep.concat(plan.add), false, 'draw the ' + (T.TEAM_LABEL[team] || team) + ' again');
     var short = plan.short[team];
     toast('Drew ' + plan.add.length + ' ' + (T.TEAM_LABEL[team] || team) + (short ? ' — the panel is ' + short + ' short' : '') + '.');
   }
   function removeSlug(slug) {
     if (!sel[slug]) return;
-    mark();
+    mark('remove ' + (bySlug[slug] ? bySlug[slug].name : slug));
     delete sel[slug];
     var i = order.indexOf(slug);
     if (i !== -1) order.splice(i, 1);
@@ -354,8 +355,8 @@
     paintRow(slug);
     afterChange();
   }
-  function replaceOrder(list, quiet) {
-    if (!quiet) mark();
+  function replaceOrder(list, quiet, label) {
+    if (!quiet) mark(label || 'change the roster');
     var before = order.slice();
     order = list.slice();
     sel = {};
@@ -497,7 +498,7 @@
       toast(shortBits.length ? 'Nothing in the panel fits the gaps (' + shortBits.join(', ') + ').' : 'Every team is already at its target.');
       return;
     }
-    replaceOrder(order.concat(plan.add));
+    replaceOrder(order.concat(plan.add), false, 'fill the gaps');
     toast('Added ' + plan.add.length + ' character' + (plan.add.length === 1 ? '' : 's') +
       (shortBits.length ? '. Short of ' + shortBits.join(', ') + ' in the panel.' : '.'));
   }
@@ -651,7 +652,7 @@
       var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team || L[s]; });
       if (keep.length === order.length) { toast('Nothing to take off.'); return; }
       if (!confirm('Take every ' + label + ' off this script?')) return;
-      replaceOrder(keep);
+      replaceOrder(keep, false, 'clear the ' + label);
       return;
     }
     var members = rosterChars().filter(function (c) { return c.team === team; });
@@ -758,7 +759,7 @@
       next.push(s);
     });
     if (next.join('|') === cur.join('|')) return;
-    replaceOrder(next);
+    replaceOrder(next, false, 'arrange');
   }
   function moveInTeam(slug, dir) {
     var c = bySlug[slug];
@@ -1223,7 +1224,8 @@
           return '<td class="' + (r.short.indexOf(t) !== -1 ? 'short' : '') + '">' + n + '</td>';
         }).join('') + '</tr>';
       }).join('') + '</tbody></table>' +
-      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count move the first two columns on the night.</p>';
+      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count move the first two columns on the night.</p>' +
+      '<p style="margin:8px 0 0"><button type="button" class="sbx-b-sm" data-open-bag data-pop-keep>&#127884; Pick tonight&rsquo;s bag</button></p>';
     html += '</div>';
 
     // tags
@@ -1322,24 +1324,26 @@
      a library switch. A run of typing in one field is one step (markTyped),
      so Ctrl+Z takes back the sentence and not the last letter. Snapshots
      are a few hundred bytes of JSON; 80 are kept. */
-  var hist = { undo: [], redo: [], last: null };
+  var hist = { undo: [], redo: [], last: null };   // entries: {s, label}
   var HIST_MAX = 80;
   var typingUntil = 0;
 
   function snap() { return JSON.stringify({ o: order, m: getMeta() }); }
-  function mark() {
+  /* `label` names the change ABOUT to happen ("add Zhen"), so the undo
+     button can say what it takes back. */
+  function mark(label) {
     var s = snap();
     if (s === hist.last) return;
-    hist.undo.push(s);
+    hist.undo.push({ s: s, label: label || '' });
     if (hist.undo.length > HIST_MAX) hist.undo.shift();
     hist.redo.length = 0;
     hist.last = s;
     typingUntil = 0;
     paintHistory();
   }
-  function markTyped() {
+  function markTyped(label) {
     var now = Date.now();
-    if (now > typingUntil) mark();
+    if (now > typingUntil) mark(label || 'typing');
     typingUntil = now + 900;
   }
   function restore(s) {
@@ -1356,24 +1360,26 @@
   function undo() {
     if (!hist.undo.length) return;
     var cur = snap();
-    var s = hist.undo.pop();
-    if (s === cur && hist.undo.length) s = hist.undo.pop();
-    hist.redo.push(cur);
-    restore(s);
-    toast('Undone');
+    var e = hist.undo.pop();
+    if (e.s === cur && hist.undo.length) e = hist.undo.pop();
+    hist.redo.push({ s: cur, label: e.label });
+    restore(e.s);
+    toast('Undone' + (e.label ? ': ' + e.label : ''));
   }
   function redo() {
     if (!hist.redo.length) return;
     var cur = snap();
-    var s = hist.redo.pop();
-    hist.undo.push(cur);
-    restore(s);
-    toast('Redone');
+    var e = hist.redo.pop();
+    hist.undo.push({ s: cur, label: e.label });
+    restore(e.s);
+    toast('Redone' + (e.label ? ': ' + e.label : ''));
   }
   function paintHistory() {
     var u = $('sbx-undo'), r = $('sbx-redo');
-    if (u) u.disabled = !hist.undo.length;
-    if (r) r.disabled = !hist.redo.length;
+    var lu = hist.undo.length ? hist.undo[hist.undo.length - 1].label : '';
+    var lr = hist.redo.length ? hist.redo[hist.redo.length - 1].label : '';
+    if (u) { u.disabled = !hist.undo.length; u.title = 'Undo' + (lu ? ': ' + lu : '') + ' (Ctrl+Z)'; }
+    if (r) { r.disabled = !hist.redo.length; r.title = 'Redo' + (lr ? ': ' + lr : '') + ' (Ctrl+Y)'; }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -1435,6 +1441,7 @@
     hidePeek();
     if (openPopId === id) { closePops(); return; }
     if (id === 'sbx-shape') paintShape();
+    if (id === 'sbx-bag') paintBag();
     openPop(id, anchor);
   }
 
@@ -1464,6 +1471,113 @@
       out.push(row);
     });
     return out;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Tonight's bag: which characters go in for a player count
+  // ══════════════════════════════════════════════════════════════════════
+  /* The Storyteller's setup for one game, off the official player-count
+     table (SBTools.PLAYER_TABLE), ticked by hand or drawn at random. It is
+     not the script — nothing here reaches the export or the library — so
+     it lives in the browser's prefs (prefs.bag) and its ticks are pruned to
+     whatever is on the roster when it is drawn. */
+  function bagState() {
+    var b = prefs.bag && typeof prefs.bag === 'object' ? prefs.bag : {};
+    var picks = {};
+    Object.keys(b.picks || {}).forEach(function (sl) { if (sel[sl]) picks[sl] = 1; });
+    var T = window.SBTools;
+    var dflt = T ? T.setups(rosterChars()).maxOk || 8 : 8;
+    return {
+      players: Math.min(15, Math.max(5, Number(b.players) || dflt)),
+      travellers: Math.min(5, Math.max(0, Number(b.travellers) || 0)),
+      outMod: Math.min(3, Math.max(-3, Number(b.outMod) || 0)),
+      picks: picks
+    };
+  }
+  function saveBag(b) { prefs.bag = b; savePrefs(); }
+  function bagNeeds(b) {
+    var T = window.SBTools;
+    var row = (T && T.PLAYER_TABLE[b.players]) || [3, 0, 1, 1];
+    var need = { townsfolk: row[0] - b.outMod, outsider: row[1] + b.outMod, minion: row[2], demon: row[3], traveller: b.travellers };
+    if (need.outsider < 0) { need.townsfolk += need.outsider; need.outsider = 0; }
+    if (need.townsfolk < 0) need.townsfolk = 0;
+    return need;
+  }
+  function paintBag() {
+    var host = $('sbx-bag-body');
+    if (!host) return;
+    var chars = rosterChars();
+    if (!chars.length) { host.innerHTML = '<p class="sbx-empty-in">Add characters to the script first.</p>'; return; }
+    var b = bagState();
+    var need = bagNeeds(b);
+    var opts = '';
+    for (var n = 5; n <= 15; n++) opts += '<option value="' + n + '"' + (n === b.players ? ' selected' : '') + '>' + n + ' players</option>';
+    var trav = '';
+    for (var t = 0; t <= 5; t++) trav += '<option value="' + t + '"' + (t === b.travellers ? ' selected' : '') + '>' + t + '</option>';
+    var html = '<div class="sbx-bag-row">' +
+      '<label>Table <select data-bag="players">' + opts + '</select></label>' +
+      '<label>Travellers <select data-bag="travellers">' + trav + '</select></label>' +
+      '<label title="A Baron-like character in play changes the Outsider count: put the change here">Outsiders &plusmn; <input type="number" min="-3" max="3" data-bag="outMod" value="' + b.outMod + '"></label>' +
+      '</div>' +
+      '<p class="sbx-bag-need">Needs ' + need.townsfolk + ' Townsfolk &middot; ' + need.outsider + ' Outsider' + (need.outsider === 1 ? '' : 's') +
+      ' &middot; ' + need.minion + ' Minion' + (need.minion === 1 ? '' : 's') + ' &middot; ' + need.demon + ' Demon' +
+      (need.traveller ? ' &middot; ' + need.traveller + ' Traveller' + (need.traveller === 1 ? '' : 's') : '') + '</p>';
+    TEAMS.forEach(function (tm) {
+      var group = chars.filter(function (c) { return c.team === tm[0]; });
+      if (!group.length) return;
+      var want = need[tm[0]];
+      var have = group.filter(function (c) { return b.picks[c.slug]; }).length;
+      var counted = want != null;
+      var cls = counted ? (have === want ? 'ok' : (have > want || (have < want)) ? 'bad' : '') : '';
+      html += '<div class="sbx-bag-team" data-team="' + esc(tm[0]) + '"><div class="sbx-bag-head">' +
+        '<span class="sbx-shape-label">' + esc(tm[1]) + '</span>' +
+        '<span class="sbx-bag-count ' + cls + '">' + have + (counted ? ' of ' + want : ' (optional)') + '</span>' +
+        (counted ? '<button type="button" class="sbx-shape-die" data-bag-draw="' + esc(tm[0]) + '" title="Draw the ' + esc(tm[1]) + ' at random">&#9860;</button>' : '') +
+        '</div><div class="sbx-bag-list">' +
+        group.map(function (c) {
+          return '<label><input type="checkbox" data-bag-pick="' + esc(c.slug) + '"' + (b.picks[c.slug] ? ' checked' : '') + '>' +
+            '<img loading="lazy" decoding="async" src="' + esc(artOf(c)) + '" alt="" onerror="this.style.visibility=\'hidden\'"><span>' + esc(c.name) + '</span></label>';
+        }).join('') + '</div></div>';
+    });
+    var picked = chars.filter(function (c) { return b.picks[c.slug]; });
+    html += '<div class="sbx-bag-foot">' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="draw">&#9860; Draw the whole bag</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="clear"' + (picked.length ? '' : ' disabled') + '>Clear</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="copy"' + (picked.length ? '' : ' disabled') + '>&#10697; Copy the list</button>' +
+      '</div>';
+    if (picked.length) {
+      var lines = [];
+      TEAMS.forEach(function (tm) {
+        var names = picked.filter(function (c) { return c.team === tm[0]; }).map(function (c) { return c.name; });
+        if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
+      });
+      html += '<div class="sbx-bag-out">' + esc(lines.join('\n')) + '</div>';
+    }
+    host.innerHTML = html;
+  }
+  function bagText() {
+    var b = bagState(), chars = rosterChars(), lines = [];
+    lines.push('Bag for ' + b.players + ' players' + (b.travellers ? ' + ' + b.travellers + ' travellers' : ''));
+    TEAMS.forEach(function (tm) {
+      var names = chars.filter(function (c) { return c.team === tm[0] && b.picks[c.slug]; }).map(function (c) { return c.name; });
+      if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
+    });
+    return lines.join('\n');
+  }
+  function bagDraw(team) {
+    var b = bagState(), need = bagNeeds(b), chars = rosterChars();
+    var teams = team ? [team] : TEAMS.map(function (t) { return t[0]; });
+    teams.forEach(function (tm) {
+      var want = need[tm];
+      if (want == null) return;
+      var group = chars.filter(function (c) { return c.team === tm; });
+      group.forEach(function (c) { delete b.picks[c.slug]; });
+      var pool = group.slice();
+      for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
+      pool.slice(0, want).forEach(function (c) { b.picks[c.slug] = 1; });
+    });
+    saveBag(b);
+    paintBag();
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -2009,7 +2123,7 @@
     var next = replace ? [] : order.slice();
     slugs.forEach(function (s) { if (next.indexOf(s) === -1) next.push(s); });
 
-    mark();
+    mark('import');
     if (replace) {
       // Whatever is being replaced goes to its saved copy first: the import
       // clears libId below, so nothing after this point can write over it.
@@ -2093,7 +2207,14 @@
     setMeta(m);
     // Bookkeeping, not a step: the snapshot on the stack has no libId and
     // would otherwise look like a change to undo.
-    if (hist.last) { try { var st = JSON.parse(hist.last); st.m.libId = id; hist.last = JSON.stringify(st); } catch (e) { /* fine */ } }
+    if (hist.last) {
+      try {
+        var st = JSON.parse(hist.last); st.m.libId = id;
+        var fixed = JSON.stringify(st);
+        if (hist.undo.length && hist.undo[hist.undo.length - 1].s === hist.last) hist.undo[hist.undo.length - 1].s = fixed;
+        hist.last = fixed;
+      } catch (e) { /* fine */ }
+    }
     lib.unshift(snapshot(id));
     setLib(lib);
     paintLibrary();
@@ -2122,7 +2243,7 @@
       return;
     }
     syncLibrary();                       // keep whatever is open
-    mark();
+    mark('open ' + ((e.meta && e.meta.name) || 'a saved script'));
     var m = e.meta && typeof e.meta === 'object' ? e.meta : {};
     m.libId = e.id;
     setMeta(m);
@@ -2137,7 +2258,7 @@
       if (!confirm('Start a new, empty script?\n\nWhat you have open is kept in My Scripts.')) return;
       syncLibrary();
     }
-    mark();
+    mark('new script');
     setMeta({});
     primeForm();
     replaceOrder([], true);
@@ -2494,7 +2615,7 @@
         .filter(function (x) { return x && bySlug[x] && !sel[x]; });
       if (!slugs.length) { toast('Everything shown is already on the script.'); return; }
       if (slugs.length > 30 && !confirm('Add all ' + slugs.length + ' characters the panel is showing?')) return;
-      replaceOrder(order.concat(slugs));
+      replaceOrder(order.concat(slugs), false, 'add all shown');
       slugs.slice(0, 3).forEach(noteRecent);
       toast('Added ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') + '.');
     });
@@ -2505,7 +2626,7 @@
       var n = order.length - keep.length;
       if (!n) { toast('Nothing shown is on the script.'); return; }
       if (n > 30 && !confirm('Take all ' + n + ' shown characters off the script?')) return;
-      replaceOrder(keep);
+      replaceOrder(keep, false, 'remove all shown');
       toast('Removed ' + n + ' character' + (n === 1 ? '' : 's') + '.');
     });
 
@@ -2545,6 +2666,7 @@
       if (mv) moveInTeam(mv.getAttribute('data-slug'), mv.getAttribute('data-move'));
     });
     $('sbx-analyse-body').addEventListener('click', function (e) {
+      if (e.target.closest('button[data-open-bag]')) { togglePop('sbx-bag', $('sbx-more')); return; }
       var b = e.target.closest('button[data-add]');
       if (!b) return;
       var slug = b.getAttribute('data-add');
@@ -2564,6 +2686,33 @@
     });
     $('sbx-shape-body').addEventListener('change', function (e) {
       if (e.target.matches && e.target.matches('input[data-team]')) setShape(readShapeInputs());
+    });
+    // the bag
+    $('sbx-bag-body').addEventListener('change', function (e) {
+      var t = e.target;
+      var b = bagState();
+      if (t.hasAttribute('data-bag')) {
+        b[t.getAttribute('data-bag')] = Number(t.value);
+        saveBag(b);
+        paintBag();
+        return;
+      }
+      if (t.hasAttribute('data-bag-pick')) {
+        var sl = t.getAttribute('data-bag-pick');
+        if (t.checked) b.picks[sl] = 1; else delete b.picks[sl];
+        saveBag(b);
+        paintBag();
+      }
+    });
+    $('sbx-bag-body').addEventListener('click', function (e) {
+      var d = e.target.closest('button[data-bag-draw]');
+      if (d) { bagDraw(d.getAttribute('data-bag-draw')); return; }
+      var a = e.target.closest('button[data-bag-act]');
+      if (!a) return;
+      var act = a.getAttribute('data-bag-act');
+      if (act === 'draw') bagDraw(null);
+      else if (act === 'clear') { var b = bagState(); b.picks = {}; saveBag(b); paintBag(); }
+      else if (act === 'copy') copyPlain(bagText(), a, 'nothing is in the bag');
     });
     // notes
     $('sb-notes').addEventListener('input', debounce(function () {
@@ -2697,7 +2846,9 @@
       // handler (a preset button inside the popover); that is never a click
       // outside, whatever closest() says about a detached node.
       if (e.target && e.target.isConnected === false) return;
-      if (!(e.target.closest && (e.target.closest('.sbx-pop') || e.target.closest('[data-pop]')))) closePops();
+      // [data-pop-keep]: a button that opened a popover from somewhere other
+      // than the bar (a menu item, a button inside a tab).
+      if (!(e.target.closest && (e.target.closest('.sbx-pop') || e.target.closest('[data-pop]') || e.target.closest('[data-pop-keep]')))) closePops();
     });
     // Popover buttons: each names the popover it opens.
     [].slice.call(document.querySelectorAll('[data-pop]')).forEach(function (b) {
@@ -2749,14 +2900,26 @@
     $('sb-import').addEventListener('click', function () { ACTIONS.import(this); });
     $('sb-randomize').addEventListener('click', randomize);
     $('sb-sort').addEventListener('click', function () {
-      if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug));
+      if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug), false, 'sort');
     });
-    $('sb-paste-go').addEventListener('click', function () {
-      var t = $('sb-paste').value.trim();
-      if (!t) { alert('Paste a script JSON, or a link to a page on this wiki, into the box first.'); return; }
+    function importText(t, btn) {
+      t = String(t || '').trim();
+      if (!t) return false;
       var link = t.charAt(0) !== '[' && t.charAt(0) !== '{' ? wikiLinkIn(t) : null;
-      if (link) loadFromWiki(link.type, link.key, this); else importScript(t);
+      if (link) loadFromWiki(link.type, link.key, btn); else importScript(t);
+      return true;
+    }
+    $('sb-paste-go').addEventListener('click', function () {
+      if (!importText($('sb-paste').value, this)) { alert('Paste a script JSON, or a link to a page on this wiki, into the box first.'); return; }
       $('sb-paste').value = '';
+    });
+    // One tap on a phone instead of a long press into the box.
+    $('sb-paste-clip').addEventListener('click', function () {
+      var btn = this;
+      if (!navigator.clipboard || !navigator.clipboard.readText) { toast('This browser cannot read the clipboard — paste into the box instead.', 3200); return; }
+      navigator.clipboard.readText().then(function (t) {
+        if (!importText(t, btn)) toast('The clipboard holds no script JSON or wiki link.', 3200);
+      }, function () { toast('The browser did not allow reading the clipboard — paste into the box instead.', 3600); });
     });
     $('sb-import-file').addEventListener('change', function (e) {
       var f = e.target.files[0];
@@ -2877,7 +3040,7 @@
 
   var ACTIONS = {
     random: function () { randomize(); },
-    sort: function () { if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug)); },
+    sort: function () { if (order.length) replaceOrder(window.sortRosterSAO(order, bySlug), false, 'sort'); },
     undo: function () { undo(); },
     redo: function () { redo(); },
     publish: function () { location.href = $('sb-publish-link').getAttribute('href') || 'publish-script'; },
@@ -2886,6 +3049,7 @@
     share: function (btn) { doShare(btn); },
     print: function () { doPrint(); },
     fancy: function () { doFancy(); },
+    bag: function () { if (notEmpty()) togglePop('sbx-bag', $('sbx-more')); },
     'import': function () { $('sb-import-file').click(); },
     save: function () { saveCurrentToLibrary(); },
     'new': function () { newScript(); },
@@ -2895,7 +3059,7 @@
       if (!confirm('Remove every character from this script?' +
         (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : '') +
         '\n\nThe name and the details are kept.')) return;
-      replaceOrder(L);
+      replaceOrder(L, false, 'clear the script');
     }
   };
 
@@ -2930,7 +3094,7 @@
     if (order.length > L.length && !confirm('Replace this script with a random one?' +
       (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : ''))) return;
     var plan = window.SBTools.randomPlan(pool, rosterChars(), shape(), L);
-    replaceOrder(plan.slugs);
+    replaceOrder(plan.slugs, false, 'random script');
     var shortBits = Object.keys(plan.short).map(function (t) { return plan.short[t] + ' ' + window.SBTools.TEAM_LABEL[t]; });
     if (shortBits.length) toast('The panel is short of ' + shortBits.join(', ') + ' for this shape.', 3200);
   }
@@ -3011,6 +3175,14 @@
       }
       var shareRaw = params.get('share');
       if (shareRaw) applyShare(shareRaw);
+      // Fancy Scripts handing its roster back (the mirror of the Fancy
+      // Sheet button): the JSON waits in localStorage and is read once.
+      if (params.get('from') === 'fancy') {
+        var handed = '';
+        try { handed = localStorage.getItem('botc_builder_incoming') || ''; localStorage.removeItem('botc_builder_incoming'); } catch (e) { handed = ''; }
+        history.replaceState(null, '', location.pathname);
+        if (handed) setTimeout(function () { importScript(handed); }, 0);
+      }
 
       rosterCache = null;
       paintCounts();
@@ -3100,7 +3272,7 @@
           (!order.length ||
            confirm('Load the shared script (' + incoming.length + ' characters)?\n\nThis replaces what you have open — it is kept in My Scripts.'))) {
         if (order.length) syncLibrary();
-        mark();
+        mark('load the shared script');
         var m = {};
         if (sh.n) m.name = String(sh.n).slice(0, 90);
         if (sh.a) m.author = String(sh.a).slice(0, 70);

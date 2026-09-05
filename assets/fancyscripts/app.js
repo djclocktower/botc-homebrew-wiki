@@ -2341,6 +2341,15 @@ async function boot() {
   });
 
   $('fs-export-share').addEventListener('click', (e) => withExport(e.currentTarget, exportShare));
+  // The way back: the roster goes to the Script Builder the same way it
+  // came (localStorage, read once), so the characters can be changed there
+  // and the sheet re-pressed.
+  $('fs-to-builder').addEventListener('click', () => {
+    if (rawJson == null) { note('Load a script first.', 'err'); return; }
+    try { localStorage.setItem('botc_builder_incoming', JSON.stringify(rawJson)); }
+    catch { note('Could not hand the script over — your browser blocked storage.', 'err'); return; }
+    window.open('script?from=fancy', '_blank');
+  });
   $('fs-export-png').addEventListener('click', (e) => withExport(e.currentTarget, exportPNG));
   $('fs-export-pdf').addEventListener('click', (e) => withExport(e.currentTarget, exportPDF));
   $('fs-export-all').addEventListener('click', (e) => withExport(e.currentTarget, exportAll));

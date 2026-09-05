@@ -143,6 +143,7 @@
               <button type="button" data-do="import" role="menuitem">&#11014; Import a JSON file</button>
               <button type="button" data-do="share" role="menuitem">&#128279; Copy a share link</button>
               <button type="button" data-do="print" role="menuitem">&#128424; Print / save as PDF</button>
+              <button type="button" data-do="bag" role="menuitem" data-pop-keep title="Pick tonight'"'"'s characters for a player count">&#127884; Tonight'"'"'s bag</button>
               <button type="button" data-do="fancy" role="menuitem" title="Press a print-style sheet of this script">&#10024; Fancy Sheet</button>
               <hr class="sbx-menu-sep">
               <button type="button" data-do="save" role="menuitem">&#128190; Save to My Scripts</button>
@@ -336,6 +337,7 @@
             </div>
             <div class="sbx-tool-row">
               <button type="button" class="sbx-b-sm" id="sb-paste-go">Import pasted JSON</button>
+              <button type="button" class="sbx-b-sm" id="sb-paste-clip" title="Read the script JSON, or a wiki link, straight from the clipboard">&#128203; Paste from clipboard</button>
               <button type="button" class="sbx-b-sm" id="sb-import">Choose a file…</button>
             </div>
           </div>
@@ -368,6 +370,14 @@
       <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
     </div>
     <div class="sbx-pop-body" id="sbx-shape-body"></div>
+  </div>
+  <div class="sbx-pop" id="sbx-bag" role="dialog" aria-label="Tonight's bag" hidden>
+    <div class="sbx-pop-head">
+      <span class="sbx-pop-title">Tonight&rsquo;s bag</span>
+      <span class="sbx-pop-sub">Pick the characters going into the bag for a player count &mdash; by hand, or at random to the official numbers. Nothing here changes the script.</span>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+    </div>
+    <div class="sbx-pop-body" id="sbx-bag-body"></div>
   </div>
   <div class="sbx-pop sbx-peek" id="sbx-peek" role="dialog" aria-label="Character" hidden></div>
   <div class="sbx-toast" id="sbx-toast" role="status" aria-live="polite"></div>

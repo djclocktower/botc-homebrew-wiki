@@ -5081,6 +5081,29 @@ button.sbx-counts:empty { display: none; }
   outline: 2px solid #f2c46f; outline-offset: -2px;
 }
 
+/* ── tonight's bag ── */
+.sbx-bag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 8px; font-size: .8rem; color: var(--ink); }
+.sbx-bag-row label { display: inline-flex; align-items: center; gap: 5px; }
+.sbx-bag-row select, .sbx-bag-row input[type=number] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .82rem; padding: 3px 6px;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+.sbx-bag-row input[type=number] { width: 54px; text-align: center; }
+.sbx-bag-need { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); margin: 0 0 8px; }
+.sbx-bag-team { border: 1px solid rgba(180,160,120,.55); background: rgba(255,253,248,.55); padding: 6px 9px 7px; margin-bottom: 7px; }
+.sbx-bag-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.sbx-bag-head .sbx-shape-label { flex: 1; }
+.sbx-bag-count { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em; color: #6b5d49; }
+.sbx-bag-count.ok { color: #2f7a3a; }
+.sbx-bag-count.bad { color: var(--evil); }
+.sbx-bag-list { display: grid; gap: 1px 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.sbx-bag-list label { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--ink); cursor: pointer; padding: 2px 0; min-width: 0; }
+.sbx-bag-list label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbx-bag-list input { accent-color: var(--maroon); margin: 0; flex: none; }
+.sbx-bag-list img { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.sbx-bag-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sbx-bag-out { margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .74rem; white-space: pre-wrap; background: rgba(255,253,248,.8); border: 1px solid rgba(180,160,120,.5); padding: 6px 8px; color: var(--ink); max-height: 140px; overflow: auto; }
+
 /* ── toasts ── */
 .sbx-toast {
   position: fixed; left: 50%; bottom: 22px; z-index: 90;

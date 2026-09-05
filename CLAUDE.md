@@ -1092,6 +1092,19 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   (`paintPanelNeeds`). Roster teams **fold** with a click on the heading
   (`prefs.rosterFolded`). The keys **1–5** switch tabs when nothing is being
   typed.
+- **Tonight's bag** (More → Tonight's bag, or the button under the seating
+  table in Analyse): the Storyteller's setup for one game — a player count,
+  travellers, an Outsider ± for a Baron-like in play — with the roster
+  listed per team as ticks, a die per team and for the whole bag, and the
+  list to copy. It is not the script: `prefs.bag` in the browser, ticks
+  pruned to the roster when drawn, nothing in the export or the library.
+- **The undo stack labels its steps** (`mark('add Zhen')`, `replaceOrder(list,
+  quiet, label)`, `patchMeta(fn, how, label)`): the buttons' titles and the
+  Undone/Redone toasts say what moved.
+- **Fancy Scripts hands its roster back** (its "Script Builder" button →
+  `botc_builder_incoming` + `/script?from=fancy`, read once), the mirror of
+  the Fancy Sheet hand-off; the Import panel also reads the clipboard in one
+  tap (`navigator.clipboard.readText`, with the box as the fallback).
 - **Analyse → "Nobody on this script…"**: the families a script can lack
   (learns something, makes information false, kills, protects, changes the
   setup — `SBTools.FAMILIES`) with a few random candidates from the panel
