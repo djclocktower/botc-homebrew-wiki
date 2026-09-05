@@ -5103,3 +5103,10 @@ button.sbx-counts:empty { display: none; }
   .sbx-toast { bottom: 14px; }
   .sbx-keys { display: none; }
 }
+/* On a narrow phone the bar's buttons keep their icon and lose their word,
+   so Publish stays on the same row instead of taking a fourth one. */
+@media (max-width: 480px) {
+  .sbx-b-txt { display: none; }
+  .sbx-b { padding: 5px 9px; font-size: .86rem; }
+  .sbx-b-go { font-size: .76rem; }
+}

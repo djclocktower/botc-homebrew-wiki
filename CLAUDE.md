@@ -3715,6 +3715,20 @@ animation frame (`renderToken`) and `.type-section` has
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
 - D1 is SQLite, so local `sqlite3` is an accurate way to sanity-check SQL.
+- Two node self-tests cover the pure halves of the two big tools and run in
+  a second: `node migration/fancyscripts-test.mjs` (the Fancy Scripts
+  engine) and `node migration/script-builder-test.mjs` (the Script Builder's
+  shapes, fills, analysis, text formats and view normaliser). Run whichever
+  you touched.
+- The static pages can be driven headlessly without the Worker:
+  `python3 -m http.server 8765` in the repo root serves them (`.html` has to
+  be spelled out — there is no clean-URL rewrite — and `?fields=` on
+  `characters.json` is ignored, so both feeds are the stale seed), and the
+  sandbox's Chromium runs under Playwright
+  (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Routes to `/api/*` have
+  to be stubbed; official icons come from release.botc.app and can be
+  aborted. That is how the builder and Fancy Scripts were verified on a
+  desktop and a 390px phone viewport.
 
 ## Gotchas (hard-won — do not repeat)
 
