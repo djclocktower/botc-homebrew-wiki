@@ -257,6 +257,7 @@
       sel[slug] = 1;
       order.push(slug);
       warnSameName(slug);
+      noteRecent(slug);
     }
     commitOrder();
     paintRow(slug);
@@ -357,6 +358,7 @@
   function afterChange() {
     paintCounts();
     paintRoster();
+    paintPicks();
     nightDirty = jinxDirty = analyseDirty = true;
     if (activeTab === 'night' || activeTab === 'jinx' || activeTab === 'analyse') ensurePane();
     if (activeTab === 'meta') { paintTextPreview(); paintJsonPreview(); if (idsUI) idsUI.refresh(); }
@@ -533,8 +535,15 @@
     var box = $('sb-script');
     var miss = missingSlugs();
     if (!chars.length && !miss.length) {
-      box.innerHTML = '<p class="sbx-empty">Nothing on this script yet. Pick characters from the panel' +
-        (view && view.side === 'right' ? ' on the right' : ' on the left') + '.</p>';
+      box.innerHTML = '<div class="sbx-empty-box">' +
+        '<p>Nothing on this script yet.</p>' +
+        '<p>Pick characters from the panel' + (window.innerWidth <= 900 ? '' : (view && view.side === 'right' ? ' on the right' : ' on the left')) +
+          ', draw a script at random, or start from one published on the wiki.</p>' +
+        '<div class="sbx-empty-acts">' +
+          '<button type="button" class="sbx-b" data-empty="panel">&#9776; Open the panel</button>' +
+          '<button type="button" class="sbx-b" data-empty="random">&#9860; Random script</button>' +
+          '<button type="button" class="sbx-b" data-empty="wiki">&#128214; Start from a wiki script</button>' +
+        '</div></div>';
       return;
     }
     var jx = jinxMarks();
@@ -547,9 +556,15 @@
       if (!group.length) return;
       var head = window.SBView ? window.SBView.teamHeading(t[0], t[1], view) : t[1];
       var want = sh ? sh[t[0]] : 0;
+      var tools = '<span class="sbx-team-tools">' +
+        '<button type="button" data-team-act="sao" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' into Steven Approved Order">SAO</button>' +
+        '<button type="button" data-team-act="az" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' A to Z">A&ndash;Z</button>' +
+        '<button type="button" data-team-act="reroll" data-team="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again (locked ones stay)">&#9860;</button>' +
+        '<button type="button" data-team-act="clear" data-team="' + esc(t[0]) + '" title="Take every ' + esc(t[1]) + ' off the script (locked ones stay)">&#10005;</button>' +
+        '</span>';
       html += '<div class="sbx-team" data-team="' + esc(t[0]) + '">' +
-        (head ? '<h3 class="sbx-team-head">' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
-          '>(' + group.length + (want ? '/' + want : '') + ')</span></h3>' : '') +
+        (head ? '<h3 class="sbx-team-head"><span>' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
+          '>(' + group.length + (want ? '/' + want : '') + ')</span></span>' + tools + '</h3>' : '') +
         '<div class="sbx-sheet">';
       group.forEach(function (c, i) { html += rowHTML(c, jx[c.slug], i, group.length); });
       html += '</div></div>';
@@ -560,6 +575,100 @@
         esc(miss.slice(0, 12).join(', ')) + (miss.length > 12 ? '…' : '') + '</p>';
     }
     box.innerHTML = html;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Per-team tools on the roster headings
+  // ══════════════════════════════════════════════════════════════════════
+  function teamAction(act, team) {
+    var label = (window.SBTools && window.SBTools.TEAM_LABEL[team]) || team;
+    if (act === 'reroll') { rerollTeam(team); return; }
+    if (act === 'clear') {
+      var L = {};
+      locks().forEach(function (x) { L[x] = 1; });
+      var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team || L[s]; });
+      if (keep.length === order.length) { toast('Nothing to take off.'); return; }
+      if (!confirm('Take every ' + label + ' off this script?')) return;
+      replaceOrder(keep);
+      return;
+    }
+    var members = rosterChars().filter(function (c) { return c.team === team; });
+    if (members.length < 2) return;
+    if (act === 'sao' && window.saoCompare) members.sort(window.saoCompare);
+    else if (act === 'az') members.sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+    else return;
+    setTeamOrder(team, members.map(function (c) { return c.slug; }));
+    // The result is only visible in the arranged order.
+    if (view && view.order !== 'added' && !view.arrange) {
+      var v = Object.assign({}, view, { order: 'added' });
+      setView(v, 'order');
+    }
+    toast(label + ' arranged ' + (act === 'sao' ? 'into Steven Approved Order' : 'A to Z') + '.');
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  The picks strip: pinned characters, then what was added lately
+  // ══════════════════════════════════════════════════════════════════════
+  var PINS_MAX = 40, RECENT_MAX = 16;
+  function pins() { return Array.isArray(prefs.pins) ? prefs.pins : []; }
+  function isPinned(slug) { return pins().indexOf(slug) !== -1; }
+  function togglePin(slug) {
+    var p = pins().slice();
+    var i = p.indexOf(slug);
+    if (i === -1) { p.unshift(slug); p = p.slice(0, PINS_MAX); } else p.splice(i, 1);
+    prefs.pins = p;
+    savePrefs();
+    paintPicks();
+    toast(i === -1 ? bySlug[slug].name + ' pinned to the panel.' : bySlug[slug].name + ' unpinned.');
+  }
+  function noteRecent(slug) {
+    var r = (Array.isArray(prefs.recent) ? prefs.recent : []).filter(function (x) { return x !== slug; });
+    r.unshift(slug);
+    prefs.recent = r.slice(0, RECENT_MAX);
+    savePrefs();
+  }
+  function paintPicks() {
+    var host = $('sbx-picks');
+    if (!host) return;
+    var seen = {}, html = '';
+    function one(slug, pinned) {
+      var c = bySlug[slug];
+      if (!c || seen[slug]) return;
+      seen[slug] = 1;
+      html += '<button type="button" class="sbx-pick' + (sel[slug] ? ' on' : '') + (pinned ? ' pinned' : '') +
+        '" data-slug="' + esc(slug) + '" title="' + esc(c.name) + (pinned ? ' (pinned)' : '') + '" aria-label="' +
+        esc(c.name) + (sel[slug] ? ', on the script' : '') + '">' +
+        '<img loading="lazy" decoding="async" src="' + esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'"></button>';
+    }
+    var p = pins();
+    p.forEach(function (x) { one(x, true); });
+    var before = html;
+    (Array.isArray(prefs.recent) ? prefs.recent : []).forEach(function (x) { one(x, false); });
+    if (before && html !== before) html = before + '<span class="sbx-pick-sep" aria-hidden="true"></span>' + html.slice(before.length);
+    host.innerHTML = html;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  //  Keyboard navigation in the panel (from the search box)
+  // ══════════════════════════════════════════════════════════════════════
+  var hiRow = null;
+  function highlight(row) {
+    if (hiRow) hiRow.classList.remove('hi');
+    hiRow = row || null;
+    if (hiRow) {
+      hiRow.classList.add('hi');
+      if (hiRow.scrollIntoView) hiRow.scrollIntoView({ block: 'nearest' });
+      $('sb-filter').setAttribute('aria-activedescendant', hiRow.id || '');
+    } else {
+      $('sb-filter').removeAttribute('aria-activedescendant');
+    }
+  }
+  function moveHighlight(dir) {
+    var rows = visibleRows(false);
+    if (!rows.length) return;
+    var i = hiRow ? rows.indexOf(hiRow) : -1;
+    i = i === -1 ? (dir > 0 ? 0 : rows.length - 1) : Math.max(0, Math.min(rows.length - 1, i + dir));
+    highlight(rows[i]);
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -696,7 +805,8 @@
           // The badge sits OUTSIDE the name, which is ellipsised: inside
           // it, a long name would cut the one word saying whose character
           // this is.
-          '<span class="sbx-add-name">' + esc(c.name) + '</span>' +
+          '<span class="sbx-add-txt"><span class="sbx-add-name">' + esc(c.name) + '</span>' +
+            (!c.official && c.creator ? '<span class="sbx-add-by">by ' + esc(c.creator) + '</span>' : '') + '</span>' +
           (c.official ? '<span class="sbx-off">official</span>' : '') +
           '<span class="sbx-add-tick" aria-hidden="true">&#10003;</span>' +
         '</button>' +
@@ -1331,6 +1441,7 @@
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? '&#10005; Remove from script' : '&#43; Add to script') + '</button>' +
         (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">&#9860; Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
+        '<button type="button" class="sbx-b-sm" data-peek-pin="' + esc(c.slug) + '">' + (isPinned(c.slug) ? '&#9733; Unpin' : '&#9734; Pin to the panel') + '</button>' +
         (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page &#8599;</a>' : '') +
       '</div>';
   }
@@ -2154,20 +2265,71 @@
       toggle(item.getAttribute('data-slug'));
     });
     // Enter in the search box adds the first character it is showing, so a
-    // script can be typed in: name, Enter, name, Enter.
+    // script can be typed in: name, Enter, name, Enter. ↑↓ walk the list
+    // first when the first match is not the one wanted.
     $('sb-filter').addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); moveHighlight(e.key === 'ArrowDown' ? 1 : -1); return; }
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      var rows = visibleRows(false);
-      if (!rows.length) { toast('Nothing matches that.'); return; }
-      var btn = rows[0].querySelector('.sbx-add-item');
+      var row = hiRow && hiRow.isConnected && hiRow.style.display !== 'none' ? hiRow : visibleRows(false)[0];
+      if (!row) { toast('Nothing matches that.'); return; }
+      var btn = row.querySelector('.sbx-add-item');
       var slug = btn && btn.getAttribute('data-slug');
       if (!slug || !bySlug[slug]) return;
       toggle(slug);
       toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
     });
+    $('sb-filter').addEventListener('input', function () { highlight(null); });
+    $('sb-filter').addEventListener('blur', function () { highlight(null); });
+    $('sbx-picks').addEventListener('click', function (e) {
+      var b = e.target.closest('.sbx-pick');
+      if (!b) return;
+      var slug = b.getAttribute('data-slug');
+      if (!bySlug[slug]) return;
+      toggle(slug);
+      toast((sel[slug] ? 'Added ' : 'Removed ') + bySlug[slug].name);
+    });
+    wirePeek($('sbx-picks'));
+    // Add or remove everything the panel is showing — a creator's whole set
+    // in one click after filtering to them.
+    $('sb-add-all').addEventListener('click', function () {
+      var slugs = visibleRows(false).map(function (r) { var b = r.querySelector('.sbx-add-item'); return b && b.getAttribute('data-slug'); })
+        .filter(function (x) { return x && bySlug[x] && !sel[x]; });
+      if (!slugs.length) { toast('Everything shown is already on the script.'); return; }
+      if (slugs.length > 30 && !confirm('Add all ' + slugs.length + ' characters the panel is showing?')) return;
+      replaceOrder(order.concat(slugs));
+      slugs.slice(0, 3).forEach(noteRecent);
+      toast('Added ' + slugs.length + ' character' + (slugs.length === 1 ? '' : 's') + '.');
+    });
+    $('sb-remove-all').addEventListener('click', function () {
+      var shown = {};
+      visibleRows(false).forEach(function (r) { var b = r.querySelector('.sbx-add-item'); if (b) shown[b.getAttribute('data-slug')] = 1; });
+      var keep = order.filter(function (x) { return !shown[x]; });
+      var n = order.length - keep.length;
+      if (!n) { toast('Nothing shown is on the script.'); return; }
+      if (n > 30 && !confirm('Take all ' + n + ' shown characters off the script?')) return;
+      replaceOrder(keep);
+      toast('Removed ' + n + ' character' + (n === 1 ? '' : 's') + '.');
+    });
 
     $('sb-script').addEventListener('click', function (e) {
+      var em = e.target.closest('button[data-empty]');
+      if (em) {
+        var what = em.getAttribute('data-empty');
+        if (what === 'random') randomize();
+        else if (what === 'panel') focusSearch();
+        else if (what === 'wiki') {
+          showTab('meta');
+          loadWikiPick().then(function () {
+            var pk = $('sb-wiki-pick');
+            pk.scrollIntoView({ block: 'center' });
+            pk.focus();
+          });
+        }
+        return;
+      }
+      var ta = e.target.closest('button[data-team-act]');
+      if (ta) { teamAction(ta.getAttribute('data-team-act'), ta.getAttribute('data-team')); return; }
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
       var lk = e.target.closest('.sbx-ch-lock');
@@ -2239,6 +2401,8 @@
       if (e.target.closest('[data-peek-close]')) { hidePeek(); return; }
       var sw = e.target.closest('button[data-peek-swap]');
       if (sw) { swapChar(sw.getAttribute('data-peek-swap')); hidePeek(); return; }
+      var pn = e.target.closest('button[data-peek-pin]');
+      if (pn) { togglePin(pn.getAttribute('data-peek-pin')); hidePeek(); return; }
       var tg = e.target.closest('button[data-peek-toggle]');
       if (tg) {
         var slug = tg.getAttribute('data-peek-toggle');
@@ -2623,6 +2787,7 @@
       rosterCache = null;
       paintCounts();
       paintRoster();
+      paintPicks();
       paintLibrary();
       perfMark('roster');
       // Either pane may already have been mounted against an empty

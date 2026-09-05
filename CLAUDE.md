@@ -992,11 +992,13 @@ Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
 `SBView.SCHEMA` is the whole list — four layouts (sheet, cards, list, icon
-wall), columns, the order inside a team, team headings, spacing, type, icon
-and text sizes, what a row shows (ability, creator, tags, night marks, jinx
-marks, official badge, remove on hover, counts), team colours, arrange mode,
-the panel's side and icon size, tighter rows, hiding characters already on
-the script, animations. Each row names its `repaint` — `'roster'` when the
+wall), columns, the order inside a team, team headings, spacing, paper tone
+(parchment, dark, plain), type, icon and text sizes, what a row shows
+(ability, creator, tags, night marks, jinx marks, official badge, remove on
+hover, counts), team colours on the headings and a stripe on the rows,
+sticky headings, arrange mode, the panel's side, icon and text sizes,
+tighter rows, a creator line, hiding characters already on the script, the
+pinned + recent strip, animations. Each row names its `repaint` — `'roster'` when the
 row markup carries it, `''` when CSS alone honours it — and `SBView.apply()`
 writes the view onto `#sbx` as `--sbx-icon` / `--sbx-text` /
 `--sbx-panel-icon`, `data-layout|cols|density|font|side|teamlabel` and a few
@@ -1036,6 +1038,27 @@ an Add button. The jinx suggestions need the registries `start()` sets:
 `setWikiChars(jinxCharIndex(allChars).byKey)` and the official name/icon maps
 from roles.json — without them a jinx typed as a name resolves to nothing.
 The tab is lazy like the night and jinx tabs (`analyseDirty`).
+
+### The panel: picks, keyboard, all shown, team tools
+
+- **The picks strip** above the list (`#sbx-picks`, `paintPicks()`): the
+  characters pinned from the peek card (`prefs.pins`, ★) and then the last
+  sixteen added (`prefs.recent`), one thumbnail each, a tick on the ones on
+  the script. A click adds or removes; a hover peeks. Both lists are the
+  reader's, not the script's.
+- **Keyboard**: `/` or Ctrl+K focus the search box; ↑↓ walk the rows the
+  filter box is showing (`moveHighlight`, `.hi`, `aria-activedescendant`);
+  Enter adds the highlighted row, or the first match; Esc clears the box,
+  then closes things.
+- **+ All shown / − All shown** add or remove everything the filter box is
+  currently showing — filter to a creator or a collection and take the set
+  in one click (a confirm above thirty).
+- **Team tools** on each roster heading (hover, always-on for touch): SAO
+  and A–Z arrange that one team (writing `order`, and switching the view's
+  display order back to "as arranged" so the result can be seen), the die
+  draws the team again, ✕ takes the team off — locks survive both.
+- **The empty roster** offers the three ways in: open the panel, a random
+  script, or a script published on the wiki.
 
 ### Peek, notes, copy as text, loading from the wiki
 

@@ -34,6 +34,9 @@
     font: 'wiki',         // wiki | plain | print
     accent: true,         // team colours on the headings and rules
     arrange: false,       // ▲▼ and drag on every row
+    tone: 'parchment',    // parchment | dark | paper
+    rowStripe: false,     // a team-coloured edge on every row
+    stickyHeads: true,    // team headings stay put while the roster scrolls
     icon: 40,             // px
     text: 100,            // %
     showAbility: true,
@@ -48,6 +51,9 @@
     panelIcon: 26,        // px
     panelCompact: false,
     panelHideOn: false,   // hide characters already on the script
+    panelCreator: false,  // a creator line under each panel name
+    panelText: 100,       // %
+    quickPicks: true,     // the pinned + recent strip above the list
     motion: true
   };
 
@@ -72,7 +78,11 @@
       options: [['full', 'Full'], ['short', 'Short'], ['none', 'None']] },
     { group: 'Roster', key: 'density', label: 'Spacing', type: 'seg', repaint: '',
       options: [['compact', 'Tight'], ['comfortable', 'Normal'], ['roomy', 'Airy']] },
+    { group: 'Roster', key: 'tone', label: 'Paper', type: 'seg', repaint: '',
+      options: [['parchment', 'Parchment'], ['dark', 'Dark'], ['paper', 'Plain']] },
     { group: 'Roster', key: 'accent', label: 'Team colours on the headings', type: 'check', repaint: '' },
+    { group: 'Roster', key: 'rowStripe', label: 'Team colour stripe on each row', type: 'check', repaint: '' },
+    { group: 'Roster', key: 'stickyHeads', label: 'Team headings stay in view', type: 'check', repaint: '' },
     { group: 'Roster', key: 'arrange', label: 'Arrange by hand (▲▼ and drag)', type: 'check', repaint: 'roster' },
 
     { group: 'Size', key: 'icon', label: 'Icon size', type: 'range', min: 20, max: 96, step: 2, unit: 'px', repaint: '' },
@@ -92,8 +102,11 @@
     { group: 'Character panel', key: 'side', label: 'Panel side', type: 'seg', repaint: '',
       options: [['left', 'Left'], ['right', 'Right']] },
     { group: 'Character panel', key: 'panelIcon', label: 'Panel icon size', type: 'range', min: 16, max: 56, step: 2, unit: 'px', repaint: '' },
+    { group: 'Character panel', key: 'panelText', label: 'Panel text size', type: 'range', min: 75, max: 130, step: 5, unit: '%', repaint: '' },
     { group: 'Character panel', key: 'panelCompact', label: 'Tighter rows', type: 'check', repaint: '' },
     { group: 'Character panel', key: 'panelHideOn', label: 'Hide characters already on the script', type: 'check', repaint: '' },
+    { group: 'Character panel', key: 'panelCreator', label: 'Creator under each name', type: 'check', repaint: '' },
+    { group: 'Character panel', key: 'quickPicks', label: 'Pinned and recent strip', type: 'check', repaint: '' },
 
     { group: 'Motion', key: 'motion', label: 'Animations', type: 'check', repaint: '' }
   ];
@@ -159,9 +172,11 @@
     root.setAttribute('data-font', v.font);
     root.setAttribute('data-side', v.side);
     root.setAttribute('data-teamlabel', v.teamLabel);
+    root.setAttribute('data-tone', v.tone);
     root.style.setProperty('--sbx-icon', v.icon + 'px');
     root.style.setProperty('--sbx-text', String(v.text / 100));
     root.style.setProperty('--sbx-panel-icon', v.panelIcon + 'px');
+    root.style.setProperty('--sbx-panel-text', String(v.panelText / 100));
     var cls = {
       'sbx-no-ability': !v.showAbility,
       'sbx-no-official': !v.showOfficial,
@@ -170,7 +185,11 @@
       'sbx-no-accent': !v.accent,
       'sbx-no-motion': !v.motion,
       'sbx-panel-compact': v.panelCompact,
-      'sbx-panel-hide-on': v.panelHideOn
+      'sbx-panel-hide-on': v.panelHideOn,
+      'sbx-panel-creator': v.panelCreator,
+      'sbx-no-picks': !v.quickPicks,
+      'sbx-row-stripe': v.rowStripe,
+      'sbx-sticky-heads': v.stickyHeads
     };
     Object.keys(cls).forEach(function (k) { root.classList.toggle(k, !!cls[k]); });
     // The document root carries the motion flag too, for the drawer and the
