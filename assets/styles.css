@@ -3324,6 +3324,9 @@ a:hover .curata-mark { opacity: .9; }
 .sv-info-author,
 .wiki-title, .wiki-pagelink-title, .wiki-pagelink-blurb,
 .news-card-title,
+/* The Script Builder's roster cards and its saved-script list: the name, the
+   ability and a saved script's own title are all text somebody typed. */
+.sbx-ch-name, .sbx-ch-ab, .sbx-lib-name,
 .cmt-who {
   overflow-wrap: anywhere; word-break: break-word;
 }
@@ -4034,4 +4037,1099 @@ html.textedit-on .te-live-hit {
   opacity: .7;
   cursor: not-allowed;
   background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(0,0,0,.035) 8px 10px);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SCRIPT BUILDER — the app shell (.sbx-*, script.html)
+   ════════════════════════════════════════════════════════════════
+
+   The OLD builder styles are the .sb-* block further up. They are still
+   there because tokens.html (the Token Tool) reuses the whole of that
+   layout — .sb-layout, .sb-add-sidebar, .sb-script-item and the rest. Do
+   not fold the two together: this namespace belongs to the builder alone.
+
+   The shell is a FIXED-HEIGHT app, not a scrolling page. The old builder
+   was a normal document with a `height: calc(100vh - 56px)` sticky
+   sidebar, so on any script long enough to scroll, the sidebar ended and
+   left a tall band of empty page background beside the roster. Here the
+   document does not scroll at all: the top bar, the builder bar and the
+   tab strip are fixed, and the two panes scroll independently. Nothing
+   can run out from under anything else.
+
+   Height comes from a flex column on <body> rather than
+   `calc(100vh - 56px)`, so it follows the top bar's real height instead of
+   a number that has to be kept in step with it. */
+html.sbx-page, html.sbx-page body { height: 100%; }
+html.sbx-page body {
+  display: flex; flex-direction: column;
+  height: 100dvh; min-height: 0; overflow: hidden;
+}
+html.sbx-page .topbar { flex: 0 0 auto; }
+html.sbx-page .nav-dropdown { z-index: 80; }
+
+.sbx {
+  --sbx-side: 330px;
+  flex: 1 1 auto; min-height: 0;
+  display: grid; grid-template-columns: var(--sbx-side) minmax(0, 1fr);
+}
+
+/* ── the left panel: characters to add, or your saved scripts ── */
+.sbx-side {
+  position: relative; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  background-color: var(--parch);
+  background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border-right: 3px solid var(--parch-frame);
+}
+/* Drag anywhere on this strip to set the panel's width. It sits half over
+   the border so there is something to aim at without a visible gutter. */
+.sbx-grip {
+  position: absolute; top: 0; right: -5px; bottom: 0; width: 10px;
+  cursor: col-resize; z-index: 8; touch-action: none;
+}
+.sbx-grip::after {
+  content: ""; position: absolute; top: 50%; left: 3px;
+  width: 4px; height: 42px; margin-top: -21px; border-radius: 2px;
+  background: var(--parch-frame); opacity: 0; transition: opacity .15s;
+}
+.sbx-grip:hover::after, .sbx-resizing .sbx-grip::after { opacity: .9; }
+.sbx-resizing { cursor: col-resize; user-select: none; }
+
+.sbx-side-head { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 9px 6px; }
+.sbx-segs { flex: 1; min-width: 0; display: flex; border: 1px solid var(--parch-frame); background: #fffdf8; }
+.sbx-seg {
+  flex: 1; min-width: 0; cursor: pointer; border: none; background: none;
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--maroon); padding: 6px 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background .12s, color .12s;
+}
+.sbx-seg + .sbx-seg { border-left: 1px solid var(--parch-frame); }
+.sbx-seg:hover { background: rgba(91,31,33,.08); }
+.sbx-seg.on { background: var(--maroon); color: var(--parch); }
+.sbx-seg-n { opacity: .7; font-size: .92em; }
+.sbx-icon {
+  flex: none; width: 28px; height: 28px; cursor: pointer;
+  background: #fffdf8; border: 1px solid var(--parch-frame); color: var(--maroon);
+  font-size: .9rem; line-height: 1; padding: 0;
+}
+.sbx-icon:hover { background: rgba(91,31,33,.09); }
+.sbx-icon.on { background: var(--maroon); color: var(--parch); }
+.sbx-close-mob { display: none; }
+
+.sbx-side-pane { flex: 1; min-height: 0; display: none; flex-direction: column; }
+.sbx-side-pane.on { display: flex; }
+.sbx-side-tools { flex: none; padding: 0 9px 6px; display: flex; flex-direction: column; gap: 6px; }
+.sbx-search {
+  width: 100%; font-family: 'TradeGothicLT', sans-serif; font-size: .88rem;
+  padding: 6px 9px; border: 1px solid var(--parch-frame);
+  background: #fffdf8; color: var(--ink);
+}
+.sbx-tool-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sbx-tool-row .filter-toggle {
+  display: block; flex: 1; min-width: 96px; margin: 0; text-align: left;
+  cursor: pointer; background: #fffdf8; color: var(--maroon);
+  border: 1px solid var(--parch-frame); padding: 5px 9px;
+  font-family: 'Oswald', sans-serif; font-size: .74rem;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.sbx-tool-row .filter-toggle-arrow { float: right; transition: transform .18s; }
+.sbx-tool-row .filter-toggle.open .filter-toggle-arrow { transform: rotate(180deg); }
+.sbx-check {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--maroon); user-select: none;
+  border: 1px solid var(--parch-frame); background: #fffdf8; padding: 5px 8px;
+}
+.sbx-check input { width: 13px; height: 13px; accent-color: var(--maroon); cursor: pointer; margin: 0; }
+.sbx-side-count {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em;
+  color: #6b5d49; margin: 0; padding: 0 9px 5px;
+}
+.sbx-side-count:empty { display: none; }
+
+/* ONE scrollbar in the panel, and the filter box scrolls with the list.
+   It used to be its own `max-height: 46vh; overflow-y: auto` box, so the
+   panel had a scrollbar inside a scrollbar and neither of them told you
+   how much was left. */
+.sbx-side-scroll {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 9px 14px;
+  scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
+}
+.sbx-side-scroll::-webkit-scrollbar { width: 9px; }
+.sbx-side-scroll::-webkit-scrollbar-track { background: transparent; }
+.sbx-side-scroll::-webkit-scrollbar-thumb {
+  background: var(--parch-frame); border-radius: 5px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.sbx-side-scroll .filter-bar {
+  display: none; flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+  gap: 9px; padding: 9px 10px; margin: 0 0 8px;
+}
+.sbx-side-scroll .filter-bar.open { display: flex; }
+.sbx-side-scroll .filter-chip { font-size: .72rem; padding: 3px 8px; }
+.sbx-side-scroll .filter-select { font-size: .8rem; padding: 4px 7px; width: 100%; }
+
+/* ── the character rows ── */
+.sbx-add-group { margin-bottom: 10px; }
+.sbx-add-grouphead {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .78rem; letter-spacing: .08em; color: var(--evil);
+  margin: 0 0 3px; padding-bottom: 2px; border-bottom: 1px solid var(--parch-frame);
+}
+/* The filter box rewrites this as it narrows the list, so it reads as a
+   running total rather than part of the heading. */
+.sbx-add-groupcount { color: #6b5d49; font-size: .92em; }
+/* Widen the panel and the roster flows into columns rather than staying a
+   single 900px-long line of names. */
+.sbx-add-rows {
+  display: grid; gap: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+/* ~1,900 rows live in this list. content-visibility lets the browser skip
+   layout and paint for the ones nobody is looking at, which is what makes
+   scrolling and filtering it cheap; `auto` in contain-intrinsic-size means
+   each row remembers its real height once it has been measured, so the
+   scrollbar does not jump. */
+.sbx-add-row {
+  border-bottom: 1px solid rgba(180,160,120,.22);
+  content-visibility: auto;
+  /* Plain first, `auto` second: a browser too old for the `auto` keyword
+     drops that declaration as invalid and keeps the placeholder height, so
+     it never falls back to a zero-height row (which would make the
+     scrollbar jump about while the list is scrolled). */
+  contain-intrinsic-size: 0 36px;
+  contain-intrinsic-size: auto 36px;
+}
+.sbx-add-list.abil .sbx-add-row {
+  contain-intrinsic-size: 0 78px;
+  contain-intrinsic-size: auto 78px;
+}
+.sbx-add-head-row { display: flex; align-items: stretch; }
+.sbx-add-item {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+  background: none; border: none; cursor: pointer; text-align: left;
+  padding: 4px 6px; color: var(--maroon);
+  font-family: 'TradeGothicLT', sans-serif;
+  transition: background .1s;
+}
+.sbx-add-item:hover { background: rgba(91,31,33,.07); }
+.sbx-add-item.on { background: rgba(91,31,33,.12); box-shadow: inset 3px 0 0 var(--maroon); }
+.sbx-add-item.on .sbx-add-name { font-weight: 600; }
+.sbx-add-thumb { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.sbx-add-name {
+  flex: 1; min-width: 0; font-size: .84rem; line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sbx-add-tick { flex: none; width: 14px; text-align: center; color: var(--maroon); opacity: 0; font-size: .8rem; }
+.sbx-add-item.on .sbx-add-tick { opacity: 1; }
+.sbx-add-chev {
+  flex: none; width: 26px; cursor: pointer; background: none;
+  border: none; border-left: 1px solid rgba(180,160,120,.22);
+  color: rgba(91,31,33,.5); font-size: .72rem; line-height: 1;
+  transition: color .12s, transform .16s;
+}
+.sbx-add-chev:hover { color: var(--maroon); }
+.sbx-add-row.open .sbx-add-chev { color: var(--maroon); transform: rotate(180deg); }
+.sbx-add-ab {
+  display: none; padding: 0 8px 6px 42px;
+  font-size: .77rem; line-height: 1.38; color: #4a3f2f; font-style: italic;
+}
+.sbx-add-row.open .sbx-add-ab, .sbx-add-list.abil .sbx-add-ab { display: block; }
+.sbx-add-list.abil .sbx-add-chev { display: none; }
+.sbx-off {
+  flex: none;
+  font-family: 'Oswald', sans-serif; font-size: .58rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; color: #6b5d49;
+  border: 1px solid rgba(180,160,120,.6); padding: 0 3px;
+  margin-left: 3px; vertical-align: 1px; white-space: nowrap;
+}
+.sbx-note { color: #6b5d49; font-size: .86rem; text-align: center; padding: 16px 8px; margin: 0; }
+
+/* ── the saved-script library ── */
+.sbx-lib-item {
+  display: flex; align-items: stretch; gap: 0; margin-bottom: 5px;
+  border: 1px solid var(--parch-frame); background: #fffdf8;
+}
+.sbx-lib-item.on { border-color: var(--maroon); box-shadow: inset 3px 0 0 var(--maroon); }
+.sbx-lib-open {
+  flex: 1; min-width: 0; text-align: left; cursor: pointer;
+  background: none; border: none; padding: 6px 8px; color: var(--maroon);
+  font-family: 'TradeGothicLT', sans-serif;
+}
+.sbx-lib-open:hover { background: rgba(91,31,33,.07); }
+.sbx-lib-name { display: block; font-size: .88rem; font-weight: 600; line-height: 1.2; }
+.sbx-lib-meta { display: block; font-size: .72rem; color: #6b5d49; margin-top: 1px; }
+.sbx-lib-acts { display: flex; flex: none; align-items: stretch; }
+.sbx-lib-acts button {
+  width: 26px; cursor: pointer; background: none; color: #6b5d49;
+  border: none; border-left: 1px solid rgba(180,160,120,.35); font-size: .82rem;
+}
+.sbx-lib-acts button:hover { background: rgba(91,31,33,.09); color: var(--maroon); }
+.sbx-lib-full { color: var(--evil); font-size: .76rem; padding: 0 9px 6px; margin: 0; }
+
+/* ── the main column ── */
+.sbx-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.sbx-bar {
+  flex: none; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  padding: 7px clamp(9px, 2vw, 18px);
+  background: rgba(26,10,31,.5);
+  border-bottom: 1px solid rgba(214,196,150,.2);
+}
+.sbx-names { display: flex; align-items: baseline; gap: 8px; flex: 1 1 260px; min-width: 0; }
+.sbx-title, .sbx-author {
+  background: transparent; color: var(--parch); border: none;
+  border-bottom: 1px dashed rgba(214,196,150,.35); padding: 3px 3px 2px;
+  min-width: 0; font-family: 'Dumbledor2', serif;
+}
+.sbx-title { flex: 2 1 150px; font-size: 1.12rem; letter-spacing: .02em; }
+.sbx-author { flex: 1 1 100px; font-size: .84rem; color: rgba(236,225,200,.82); font-family: 'Libre Franklin', sans-serif; font-style: italic; }
+.sbx-title::placeholder, .sbx-author::placeholder { color: rgba(236,225,200,.38); }
+.sbx-title:focus, .sbx-author:focus {
+  outline: none; border-bottom-color: var(--parch); background: rgba(255,255,255,.07);
+}
+.sbx-counts { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.sbx-cnt {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .04em;
+  color: rgba(236,225,200,.82); border: 1px solid rgba(214,196,150,.3);
+  padding: 1px 6px; white-space: nowrap;
+}
+.sbx-cnt-total { color: var(--parch); border-color: rgba(214,196,150,.6); }
+.sbx-acts { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+.sbx-b {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  cursor: pointer; color: var(--parch); padding: 5px 9px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(214,196,150,.3);
+  white-space: nowrap;
+}
+.sbx-b:hover { background: rgba(255,255,255,.15); }
+.sbx-b-go { background: linear-gradient(180deg,#b07d1a,#7a5310); border-color: rgba(214,196,150,.5); text-decoration: none; display: inline-flex; align-items: center; }
+.sbx-b-open { display: none; }
+.sbx-menu-wrap { position: relative; }
+.sbx-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 5px);
+  min-width: 210px; z-index: 45;
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.sbx-menu.on { display: block; }
+.sbx-menu button {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: none; padding: 7px 12px; color: var(--maroon);
+  font-family: 'Libre Franklin', sans-serif; font-size: .84rem;
+}
+.sbx-menu button:hover { background: rgba(91,31,33,.09); }
+.sbx-menu-sep { border: none; border-top: 1px solid rgba(180,160,120,.45); margin: 4px 0; }
+
+.sbx-tabs {
+  flex: none; display: flex; overflow-x: auto; padding: 0 clamp(9px, 2vw, 18px);
+  border-bottom: 1px solid rgba(214,196,150,.2);
+  scrollbar-width: none;
+}
+.sbx-tabs::-webkit-scrollbar { display: none; }
+.sbx-tab {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em;
+  font-size: .88rem; cursor: pointer; white-space: nowrap;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  color: rgba(236,225,200,.55); padding: 7px 13px;
+}
+.sbx-tab:hover { color: rgba(236,225,200,.85); }
+.sbx-tab.on { color: var(--parch); border-bottom-color: var(--rule); }
+.sbx-tab-n { font-family: 'Oswald', sans-serif; font-size: .72rem; opacity: .7; }
+
+.sbx-scroll {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 12px clamp(9px, 2vw, 18px) 28px;
+  scrollbar-width: thin; scrollbar-color: rgba(214,196,150,.4) transparent;
+}
+.sbx-scroll::-webkit-scrollbar { width: 10px; }
+.sbx-scroll::-webkit-scrollbar-track { background: transparent; }
+.sbx-scroll::-webkit-scrollbar-thumb {
+  background: rgba(214,196,150,.35); border-radius: 5px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.sbx-pane { display: none; }
+.sbx-pane.on { display: block; }
+
+/* The night arranger caps its two lists at 380px and scrolls them, which is
+   right on the publish page (a long form around them) and wrong here, where
+   the tab itself scrolls: it put a scrollbar inside a scrollbar. */
+.sbx-pane .no-list { max-height: none; }
+
+/* ── the roster ── */
+.sbx-team { margin-bottom: 16px; }
+.sbx-team-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .06em;
+  font-size: 1rem; color: var(--parch); margin: 0 0 7px;
+  padding-bottom: 4px; border-bottom: 2px solid rgba(183,156,111,.5);
+}
+.sbx-team-head span { color: rgba(236,225,200,.5); font-size: .8rem; }
+
+/* The roster is drawn as the game's own character SHEET: one parchment per
+   team, two columns of rows, each row the icon with the name and the ability
+   running on from it as one line of prose. It was a grid of separately
+   bordered cards with the name stacked over the ability, which reads as a
+   spreadsheet — a box per character, a rule round every box — and looks
+   nothing like the sheet anybody actually plays off.
+
+   Two columns, not `auto-fill`: a sheet has a column count, and auto-fill
+   gave three on a wide window and one the moment the character panel was
+   dragged wider. It is a CONTAINER query rather than a media query for that
+   second reason — the panel's width is the reader's to set, so the main
+   column's own width is the only thing that can answer "is there room for
+   two". The container is #sb-script and not .sbx-scroll on purpose: size
+   containment re-anchors `position: fixed` descendants, and the night-order
+   drag lifts its row with exactly that. */
+#sb-script { container-type: inline-size; }
+.sbx-sheet {
+  display: grid; grid-template-columns: minmax(0, 1fr);
+  background-color: var(--card); background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 2px solid var(--parch-frame);
+}
+@container (min-width: 680px) {
+  .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* The gutter rule between the two columns. Only the left column draws it,
+     and only while there IS a left column. */
+  .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+}
+/* Browsers without container queries still get two columns on a wide window;
+   they just cannot follow the panel being dragged. */
+@supports not (container-type: inline-size) {
+  @media (min-width: 1100px) {
+    .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+  }
+}
+.sbx-ch {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(180,160,120,.35);
+}
+.sbx-ch-img { width: 40px; height: 40px; object-fit: contain; flex: none; }
+/* A paragraph, not a stack: the name opens the line and the ability runs on
+   from it, the way the sheet prints it. */
+.sbx-ch-txt {
+  flex: 1; min-width: 0; margin: 0;
+  font-size: .8rem; line-height: 1.4; color: var(--ink);
+}
+.sbx-ch-name {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase;
+  font-size: .95rem; color: var(--maroon); text-decoration: none;
+  margin-right: 5px;
+}
+.sbx-ch-name:hover { color: var(--evil); }
+.sbx-ch-ab { color: var(--ink); }
+.sbx-ch-x {
+  flex: none; width: 20px; height: 20px; cursor: pointer; line-height: 1;
+  background: none; border: none; color: rgba(154,13,18,.45);
+  font-size: .82rem; padding: 0; transition: color .12s;
+}
+.sbx-ch-x:hover { color: var(--evil); }
+.sbx-empty {
+  color: rgba(236,225,200,.6); text-align: center; padding: 40px 16px; font-size: .95rem;
+}
+.sbx-missing { color: rgba(236,225,200,.55); font-size: .82rem; margin: 8px 0 0; }
+
+/* ── panels inside the tabs ── */
+.sbx-panel {
+  background-color: var(--parch); background-image: url('parchment.jpg');
+  background-size: cover; background-repeat: no-repeat;
+  border: 2px solid var(--parch-frame); padding: 12px 14px; margin-bottom: 14px;
+}
+.sbx-panel-head {
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em;
+  font-size: 1rem; color: var(--maroon); margin: 0 0 3px;
+}
+.sbx-panel-sub { font-size: .8rem; color: #6b5d49; margin: 0 0 10px; line-height: 1.4; }
+.sbx-fields { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.sbx-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sbx-field > label {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon);
+}
+.sbx-field input[type=text], .sbx-field input[type=url], .sbx-field textarea {
+  font-family: 'Libre Franklin', sans-serif; font-size: .88rem; color: var(--ink);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 6px 8px;
+  width: 100%; min-width: 0;
+}
+.sbx-field textarea { resize: vertical; min-height: 60px; }
+.sbx-boot-row { display: flex; gap: 6px; margin-bottom: 6px; }
+.sbx-boot-row input { flex: 1; min-width: 0; }
+.sbx-b-sm {
+  font-family: 'Oswald', sans-serif; font-size: .74rem; cursor: pointer;
+  background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame);
+  padding: 5px 10px;
+}
+.sbx-b-sm:hover { background: rgba(91,31,33,.08); }
+
+/* The credits Fabled. It is a footnote about the export, so it is sized
+   like one: the skull is 18px and CANNOT grow (the old one had no height
+   and a flex container to grow in, and rendered at its natural size right
+   through the text beside it), and the exact ability line is behind a
+   disclosure rather than printed in full above the whole page. */
+.sbx-credits { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--ink); }
+.sbx-credits-skull { width: 18px; height: 18px; flex: none; object-fit: contain; }
+.sbx-credits strong { color: var(--maroon); }
+.sbx-credits-line { flex-basis: 100%; margin: 0; }
+.sbx-credits-line > summary {
+  cursor: pointer; list-style: none; font-family: 'Oswald', sans-serif;
+  font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--good-name);
+}
+.sbx-credits-line > summary::-webkit-details-marker { display: none; }
+.sbx-credits-text {
+  margin: 6px 0 0; font-size: .78rem; font-style: italic; line-height: 1.45;
+  color: var(--ink); background: rgba(255,253,248,.6);
+  border: 1px solid rgba(180,160,120,.4); padding: 7px 9px;
+}
+.sbx-edit-note {
+  font-size: .82rem; color: var(--maroon); background: rgba(255,240,200,.75);
+  border: 1px solid var(--parch-frame); padding: 7px 10px; margin: 0 0 12px;
+}
+.sbx-edit-note a { color: var(--good-name); }
+
+.sbx-foot {
+  flex: none; text-align: center; padding: 3px 10px;
+  font-size: .66rem; letter-spacing: .03em; color: rgba(236,225,200,.4);
+  border-top: 1px solid rgba(214,196,150,.13);
+}
+.sbx-scrim {
+  display: none; position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,.5);
+}
+.sbx-scrim.on { display: block; }
+
+/* ── phone / narrow: the panel becomes a drawer ── */
+@media (max-width: 900px) {
+  .sbx { grid-template-columns: minmax(0, 1fr); }
+  .sbx-side {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+    /* Leaves a strip of scrim wide enough to actually tap: at 93% there
+       were 27px of it beside the drawer on a 390px phone, and tapping
+       outside to dismiss is the first thing anyone tries. */
+    width: min(88%, 380px); border-right-width: 2px;
+    transform: translateX(-100%); transition: transform .2s ease;
+  }
+  .sbx-side.on { transform: none; box-shadow: 6px 0 26px rgba(0,0,0,.55); }
+  .sbx-grip { display: none; }
+  /* Nothing to widen: the drawer's width is the screen's. */
+  #sbx-wide { display: none; }
+  .sbx-close-mob { display: block; }
+  .sbx-b-open { display: inline-flex; }
+  .sbx-add-rows { grid-template-columns: minmax(0, 1fr); }
+  /* Share the first row with the drawer button rather than taking one of
+     its own: on a phone the bar is four wrapped rows before the script
+     even starts. */
+  .sbx-names { flex: 1 1 150px; }
+  .sbx-title { font-size: 1rem; }
+  /* The counts strip is one scrolling line on a phone rather than two or
+     three wrapped ones: the bar is already four rows before the script. */
+  .sbx-counts { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; padding-bottom: 1px; }
+  .sbx-counts::-webkit-scrollbar { display: none; }
+
+  /* ── and the shell stops being a shell ──
+     Two panes scrolling inside a fixed frame is a desktop idea. On a phone
+     that frame ate the screen: the top bar, the builder bar, the tab strip
+     and the footer were all pinned, and the roster was left a window a few
+     rows tall to scroll inside — most of the display given over to chrome
+     that never moves. So below this width the document scrolls like any
+     other page on the wiki and the roster runs its full length.
+
+     The tab strip is the one thing that stays, stuck under the top bar, so
+     the other three tabs are reachable from half way down a long script
+     instead of only from the top. It needs an opaque background for that:
+     the page background is a fixed image and the rows would otherwise scroll
+     through it. */
+  html.sbx-page, html.sbx-page body { height: auto; }
+  html.sbx-page body { display: block; min-height: 100dvh; overflow: visible; }
+  .sbx { display: block; min-height: 0; }
+  .sbx-main { display: block; min-height: 0; }
+  .sbx-scroll { overflow: visible; min-height: 0; }
+  .sbx-tabs {
+    position: sticky; top: var(--sbx-top, 56px); z-index: 20;
+    background: linear-gradient(180deg, rgba(26,10,31,.97), rgba(26,10,31,.93));
+    backdrop-filter: blur(8px);
+  }
+  /* The drawer is fixed over a page that now scrolls, so hold the page still
+     while it is open — otherwise a finger on the scrim drags the script
+     about behind it. */
+  html.sbx-locked, html.sbx-locked body { overflow: hidden; }
+}
+/* Only the desktop shell is short of room on a short screen — below 900px
+   the document scrolls and the footer simply sits at the end of it. */
+@media (min-width: 901px) and (max-height: 560px) { .sbx-foot { display: none; } }
+
+/* ── the VIEW: how the roster is drawn (assets/script-builder-view.js) ──
+   SBView.apply() writes the reader's settings onto #sbx as custom
+   properties, data-attributes and classes; everything below only reads
+   them. A setting CSS can honour costs no re-render — that is the reason
+   the sizes are variables and the layouts are attributes rather than
+   separate markup. The defaults here are the same as the widget's, so a
+   browser that never ran the script draws the ordinary sheet. */
+.sbx { --sbx-icon: 40px; --sbx-text: 1; --sbx-panel-icon: 26px; }
+.sbx-ch-img { width: var(--sbx-icon); height: var(--sbx-icon); }
+.sbx-ch-txt { font-size: calc(.8rem * var(--sbx-text)); }
+.sbx-ch-name { font-size: calc(.95rem * var(--sbx-text)); }
+.sbx-add-thumb { width: var(--sbx-panel-icon); height: var(--sbx-panel-icon); }
+
+/* spacing */
+.sbx[data-density="compact"] .sbx-ch { padding: 3px 8px; gap: 6px; }
+.sbx[data-density="compact"] .sbx-ch-txt { line-height: 1.3; }
+.sbx[data-density="compact"] .sbx-team { margin-bottom: 10px; }
+.sbx[data-density="roomy"] .sbx-ch { padding: 12px 14px; gap: 13px; }
+.sbx[data-density="roomy"] .sbx-ch-txt { line-height: 1.5; }
+.sbx[data-density="roomy"] .sbx-team { margin-bottom: 24px; }
+
+/* columns: a number here overrides the container query's own answer */
+.sbx[data-cols="1"] .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
+.sbx[data-cols="1"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="2"] .sbx-sheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sbx[data-cols="2"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="2"] .sbx-sheet > .sbx-ch:nth-child(odd) { border-right: 1px solid rgba(180,160,120,.45); }
+.sbx[data-cols="3"] .sbx-sheet { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sbx[data-cols="3"] .sbx-sheet > .sbx-ch { border-right: none; }
+.sbx[data-cols="3"] .sbx-sheet > .sbx-ch:not(:nth-child(3n)) { border-right: 1px solid rgba(180,160,120,.45); }
+
+/* type */
+.sbx[data-font="plain"] .sbx-ch-name { font-family: 'Libre Franklin', sans-serif; text-transform: none; font-weight: 700; letter-spacing: 0; }
+.sbx[data-font="plain"] .sbx-ch-txt, .sbx[data-font="plain"] .sbx-team-head { font-family: 'Libre Franklin', sans-serif; }
+.sbx[data-font="plain"] .sbx-team-head { text-transform: none; letter-spacing: 0; font-weight: 700; }
+.sbx[data-font="print"] .sbx-ch-name { font-family: Georgia, 'Times New Roman', serif; text-transform: none; font-weight: 700; font-variant: small-caps; letter-spacing: .02em; }
+.sbx[data-font="print"] .sbx-ch-txt { font-family: Georgia, 'Times New Roman', serif; }
+.sbx[data-font="print"] .sbx-team-head { font-family: Georgia, 'Times New Roman', serif; font-variant: small-caps; text-transform: none; }
+
+/* show / hide */
+.sbx-no-ability .sbx-ch-ab { display: none; }
+.sbx-no-official #sb-script .sbx-off { display: none; }
+.sbx-no-counts .sbx-counts .sbx-cnt:not(.sbx-cnt-total) { display: none; }
+.sbx-remove-hover .sbx-ch-x { opacity: 0; transition: opacity .12s; }
+.sbx-remove-hover .sbx-ch:hover .sbx-ch-x, .sbx-remove-hover .sbx-ch-x:focus-visible { opacity: 1; }
+@media (hover: none) { .sbx-remove-hover .sbx-ch-x { opacity: 1; } }
+
+/* the extra marks a row can carry */
+.sbx-ch-meta { display: block; font-size: .86em; color: #6b5d49; margin-top: 2px; line-height: 1.35; }
+.sbx-ch-by { margin-right: 6px; font-style: italic; }
+.sbx-ch-tags { display: inline; }
+.sbx-tag {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .04em;
+  text-transform: uppercase; font-style: normal; color: #6b5d49;
+  border: 1px solid rgba(180,160,120,.6); padding: 0 4px; margin: 1px 3px 1px 0; line-height: 1.4;
+}
+.sbx-ch-n, .sbx-ch-jx {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .62rem; font-weight: 600;
+  letter-spacing: .04em; line-height: 1.35; vertical-align: 1px; margin-right: 4px;
+  padding: 0 4px; border: 1px solid; white-space: nowrap; cursor: help;
+}
+.sbx-ch-n { color: #3d5a8a; border-color: rgba(61,90,138,.45); background: rgba(61,90,138,.08); }
+.sbx-ch-jx { color: #8a3d3d; border-color: rgba(138,61,61,.45); background: rgba(138,61,61,.08); }
+
+/* team colours on the headings — light enough to read on the purple */
+.sbx-team-head { transition: color .12s, border-color .12s; }
+.sbx-team[data-team="townsfolk"] .sbx-team-head { color: #7fb4ee; border-bottom-color: rgba(127,180,238,.55); }
+.sbx-team[data-team="outsider"] .sbx-team-head { color: #7fd0e2; border-bottom-color: rgba(127,208,226,.5); }
+.sbx-team[data-team="minion"] .sbx-team-head { color: #f0a070; border-bottom-color: rgba(240,160,112,.5); }
+.sbx-team[data-team="demon"] .sbx-team-head { color: #ef6b6b; border-bottom-color: rgba(239,107,107,.55); }
+.sbx-team[data-team="traveller"] .sbx-team-head { color: #c9a0e6; border-bottom-color: rgba(201,160,230,.5); }
+.sbx-team[data-team="fabled"] .sbx-team-head { color: #e6c766; border-bottom-color: rgba(230,199,102,.5); }
+.sbx-team[data-team="loric"] .sbx-team-head { color: #8fd49e; border-bottom-color: rgba(143,212,158,.5); }
+.sbx-no-accent .sbx-team .sbx-team-head { color: var(--parch); border-bottom-color: rgba(183,156,111,.5); }
+
+/* ── layouts ── */
+/* Cards: the browse grid's tiles, one to a character. */
+.sbx[data-layout="cards"] .sbx-sheet {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--sbx-icon) * 2.2 + 110px)), 1fr));
+  gap: 8px; padding: 8px; background: none; border: none;
+}
+.sbx[data-layout="cards"] .sbx-sheet > .sbx-ch {
+  flex-direction: column; align-items: center; text-align: center; position: relative;
+  border: 1px solid var(--parch-frame); border-right: 1px solid var(--parch-frame);
+  background-color: var(--card); background-image: url('parchment.jpg'); background-size: cover;
+  padding: 12px 10px 10px;
+}
+.sbx[data-layout="cards"] .sbx-ch-img { width: calc(var(--sbx-icon) * 1.6); height: calc(var(--sbx-icon) * 1.6); }
+.sbx[data-layout="cards"] .sbx-ch-name { display: block; margin: 4px 0 2px; }
+.sbx[data-layout="cards"] .sbx-ch-x { position: absolute; top: 4px; right: 4px; }
+/* List: one line each, the ability trailing off. */
+.sbx[data-layout="list"] .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
+.sbx[data-layout="list"] .sbx-sheet > .sbx-ch { align-items: center; padding-top: 3px; padding-bottom: 3px; border-right: none; }
+.sbx[data-layout="list"] .sbx-ch-txt { display: flex; align-items: baseline; gap: 8px; min-width: 0; white-space: nowrap; }
+.sbx[data-layout="list"] .sbx-ch-name { flex: none; margin: 0; }
+.sbx[data-layout="list"] .sbx-ch-ab { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sbx[data-layout="list"] .sbx-ch-meta { display: inline; margin: 0; flex: none; }
+.sbx[data-layout="list"] .sbx-ch-tags { display: none; }
+/* Icons: a wall of art, names under, the ability on hover. */
+.sbx[data-layout="icons"] .sbx-sheet {
+  grid-template-columns: repeat(auto-fill, minmax(calc(var(--sbx-icon) + 34px), 1fr));
+  gap: 2px; padding: 8px 6px;
+}
+.sbx[data-layout="icons"] .sbx-sheet > .sbx-ch {
+  flex-direction: column; align-items: center; text-align: center; position: relative;
+  padding: 6px 2px 5px; gap: 3px; border: none;
+}
+.sbx[data-layout="icons"] .sbx-ch-txt { font-size: calc(.66rem * var(--sbx-text)); line-height: 1.15; }
+.sbx[data-layout="icons"] .sbx-ch-name { display: block; font-size: calc(.72rem * var(--sbx-text)); margin: 0; overflow-wrap: anywhere; }
+.sbx[data-layout="icons"] .sbx-ch-ab, .sbx[data-layout="icons"] .sbx-ch-meta, .sbx[data-layout="icons"] .sbx-off { display: none; }
+.sbx[data-layout="icons"] .sbx-ch-x { position: absolute; top: 0; right: 0; }
+.sbx[data-layout="icons"] .sbx-ch:hover { background: rgba(91,31,33,.06); }
+
+/* ── the panel's own settings ── */
+.sbx[data-side="right"] { grid-template-columns: minmax(0, 1fr) var(--sbx-side); }
+.sbx[data-side="right"] .sbx-side { order: 2; border-right: none; border-left: 3px solid var(--parch-frame); }
+.sbx[data-side="right"] .sbx-grip { right: auto; left: -5px; }
+.sbx-panel-compact .sbx-add-item { padding: 2px 6px; gap: 6px; }
+.sbx-panel-compact .sbx-add-name { font-size: .8rem; }
+.sbx-panel-compact .sbx-add-row { contain-intrinsic-size: 0 28px; contain-intrinsic-size: auto 28px; }
+.sbx-panel-hide-on .sbx-add-row.on { display: none; }
+
+/* ── motion off ── */
+html.sbx-no-motion .sbx *, html.sbx-no-motion .sbx-pop, html.sbx-no-motion .sbx-toast,
+html.sbx-no-motion .sbx-side { transition: none !important; animation: none !important; }
+
+/* ── the bar's small buttons, and their disabled state ── */
+.sbx-b-icon { padding: 5px 8px; font-size: .9rem; line-height: 1; }
+.sbx-b:disabled { opacity: .35; cursor: default; }
+.sbx-b:disabled:hover { background: rgba(255,255,255,.07); }
+
+/* ── popovers ──
+   One open at a time, hung off its button by script-builder.js (top/left
+   inline). Below 900px the inline position is ignored and it is a bottom
+   sheet over a scrim, which is the only shape a phone can use. */
+.sbx-pop {
+  position: fixed; z-index: 70; width: min(440px, calc(100vw - 16px));
+  max-height: 80vh; overflow-y: auto; overscroll-behavior: contain;
+  background-color: var(--parch); background-image: url('parchment.jpg'); background-size: cover;
+  border: 2px solid var(--parch-frame); box-shadow: 0 12px 34px rgba(0,0,0,.5);
+  padding: 10px 12px 12px; color: var(--ink);
+  scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
+}
+.sbx-pop[hidden] { display: none; }
+.sbx-pop-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; padding-right: 26px; position: relative; }
+.sbx-pop-title { font-family: 'Dumbledor2', serif; text-transform: uppercase; letter-spacing: .05em; font-size: 1rem; color: var(--maroon); }
+.sbx-pop-sub { font-size: .74rem; color: #6b5d49; flex-basis: 100%; line-height: 1.35; }
+.sbx-pop-x {
+  position: absolute; top: -2px; right: -4px; width: 26px; height: 26px; cursor: pointer;
+  background: none; border: 1px solid transparent; color: var(--maroon); font-size: .9rem; line-height: 1; padding: 0;
+}
+.sbx-pop-x:hover { border-color: var(--parch-frame); background: #fffdf8; }
+.sbx-pop-scrim { display: none; position: fixed; inset: 0; z-index: 65; background: rgba(0,0,0,.45); }
+
+.sbx-view-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.sbx-view-preset {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em; text-transform: uppercase;
+  cursor: pointer; background: #fffdf8; color: var(--maroon); border: 1px solid var(--parch-frame); padding: 4px 9px;
+}
+.sbx-view-preset:hover { background: rgba(91,31,33,.09); }
+.sbx-view-group { border: 1px solid rgba(180,160,120,.55); padding: 4px 9px 8px; margin: 0 0 8px; min-width: 0; }
+.sbx-view-group legend {
+  font-family: 'Oswald', sans-serif; font-size: .66rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--maroon); padding: 0 4px;
+}
+.sbx-view-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 10px; margin: 5px 0; }
+.sbx-view-label { font-size: .8rem; color: var(--ink); flex: 1 1 120px; }
+.sbx-view-seg { display: inline-flex; border: 1px solid var(--parch-frame); background: #fffdf8; }
+.sbx-view-seg button {
+  border: none; background: none; padding: 4px 9px; cursor: pointer;
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; color: var(--maroon);
+}
+.sbx-view-seg button + button { border-left: 1px solid var(--parch-frame); }
+.sbx-view-seg button:hover { background: rgba(91,31,33,.08); }
+.sbx-view-seg button.on { background: var(--maroon); color: var(--parch); }
+.sbx-view-row select {
+  font-family: 'Libre Franklin', sans-serif; font-size: .8rem; padding: 3px 6px; max-width: 100%;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+.sbx-view-range { display: inline-flex; align-items: center; gap: 7px; flex: 1 1 170px; min-width: 0; }
+.sbx-view-range input { flex: 1; min-width: 80px; accent-color: var(--maroon); margin: 0; }
+.sbx-view-range output { font-family: 'Oswald', sans-serif; font-size: .7rem; min-width: 40px; text-align: right; color: var(--maroon); }
+.sbx-view-hint { flex-basis: 100%; margin: 0; font-size: .72rem; color: #6b5d49; line-height: 1.35; }
+.sbx-view-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1px 10px; margin-top: 3px; }
+.sbx-view-check { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--ink); cursor: pointer; padding: 2px 0; }
+.sbx-view-check input { accent-color: var(--maroon); margin: 0; flex: none; }
+.sbx-view-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sbx-keys { font-size: .72rem; color: #6b5d49; margin: 9px 0 0; line-height: 1.7; }
+.sbx-keys kbd {
+  font-family: inherit; font-size: .68rem; border: 1px solid var(--parch-frame); border-bottom-width: 2px;
+  background: #fffdf8; padding: 0 5px; border-radius: 3px; color: var(--maroon);
+}
+
+/* ── the counts strip is the Shape button: each team against its target ── */
+button.sbx-counts { background: none; border: none; padding: 0; cursor: pointer; font: inherit; color: inherit; }
+button.sbx-counts:hover .sbx-cnt { border-color: rgba(214,196,150,.6); }
+button.sbx-counts:empty { display: none; }
+.sbx-cnt.ok { color: #9fe0a8; border-color: rgba(159,224,168,.5); }
+.sbx-cnt.under { color: rgba(236,225,200,.7); border-style: dashed; }
+.sbx-cnt.over { color: #f0b070; border-color: rgba(240,176,112,.55); }
+.sbx-cnt-total.ok { color: #9fe0a8; }
+
+/* the lock on a roster row */
+.sbx-ch-lock {
+  flex: none; width: 20px; height: 20px; cursor: pointer; line-height: 1;
+  background: none; border: none; padding: 0; font-size: .78rem;
+  color: rgba(91,31,33,.3); transition: color .12s, opacity .12s;
+}
+.sbx-ch-lock:hover, .sbx-ch-lock.on { color: var(--maroon); }
+.sbx-ch.locked { box-shadow: inset 3px 0 0 rgba(91,31,33,.45); }
+.sbx-remove-hover .sbx-ch-lock:not(.on) { opacity: 0; }
+.sbx-remove-hover .sbx-ch:hover .sbx-ch-lock, .sbx-remove-hover .sbx-ch-lock:focus-visible { opacity: 1; }
+@media (hover: none) { .sbx-remove-hover .sbx-ch-lock { opacity: 1; } }
+.sbx[data-layout="cards"] .sbx-ch-lock, .sbx[data-layout="icons"] .sbx-ch-lock { position: absolute; top: 4px; left: 4px; }
+.sbx[data-layout="icons"] .sbx-ch-lock { top: 0; left: 0; }
+
+/* the shape popover */
+.sbx-view-preset.on { background: var(--maroon); color: var(--parch); }
+.sbx-shape-grid { display: grid; gap: 4px; margin: 4px 0 10px; }
+.sbx-shape-row { display: grid; grid-template-columns: 82px 58px 1fr 64px; align-items: center; gap: 8px; font-size: .8rem; color: var(--ink); }
+.sbx-shape-label { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); }
+.sbx-shape-row input {
+  width: 58px; font-family: 'Libre Franklin', sans-serif; font-size: .84rem; padding: 3px 5px;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink); text-align: center;
+}
+.sbx-shape-bar { display: block; height: 8px; background: rgba(0,0,0,.08); border: 1px solid rgba(180,160,120,.5); overflow: hidden; }
+.sbx-shape-bar > span { display: block; height: 100%; background: #7a8fb8; transition: width .18s; }
+.sbx-shape-bar > span.ok { background: #5e9c6a; }
+.sbx-shape-bar > span.over { background: #c67b3b; }
+.sbx-shape-have { font-size: .72rem; color: #6b5d49; text-align: right; white-space: nowrap; }
+
+/* ── the Analyse tab ── */
+.sbx-an { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); }
+.sbx-an-sec { border: 1px solid rgba(180,160,120,.5); background: rgba(255,253,248,.55); padding: 9px 11px; min-width: 0; }
+.sbx-an-sec.wide { grid-column: 1 / -1; }
+.sbx-an-head {
+  font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--maroon); margin: 0 0 6px;
+}
+.sbx-an-row { display: grid; grid-template-columns: 82px 1fr 56px; align-items: center; gap: 8px; font-size: .78rem; margin: 3px 0; color: var(--ink); }
+.sbx-an-row .sbx-shape-label { font-size: .66rem; }
+.sbx-an-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.sbx-an-chip {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--maroon); border: 1px solid rgba(180,160,120,.6); background: #fffdf8; padding: 2px 7px; white-space: nowrap;
+}
+.sbx-an-chip b { font-weight: 700; color: var(--ink); margin-right: 3px; }
+.sbx-an-list { margin: 0; padding: 0; list-style: none; font-size: .8rem; color: var(--ink); }
+.sbx-an-list li { padding: 4px 0 4px 10px; border-left: 3px solid rgba(180,160,120,.6); margin: 3px 0; line-height: 1.35; }
+.sbx-an-list li.bad { border-left-color: var(--evil); }
+.sbx-an-list li.warn { border-left-color: #c67b3b; }
+.sbx-an-list li.note { border-left-color: #7a8fb8; }
+.sbx-an-list li small { display: block; color: #6b5d49; font-size: .74rem; }
+.sbx-an-empty { font-size: .8rem; color: #6b5d49; margin: 0; }
+.sbx-an-fact { font-size: .8rem; color: var(--ink); margin: 2px 0; line-height: 1.4; }
+.sbx-an-fact b { color: var(--maroon); }
+.sbx-an-sug { display: flex; align-items: center; gap: 8px; font-size: .8rem; margin: 4px 0; color: var(--ink); }
+.sbx-an-sug img { width: 26px; height: 26px; object-fit: contain; flex: none; }
+.sbx-an-sug .t { flex: 1; min-width: 0; line-height: 1.3; }
+.sbx-an-sug .t small { display: block; color: #6b5d49; font-size: .72rem; font-style: italic; }
+.sbx-empty-in { color: #6b5d49; font-size: .86rem; margin: 0; }
+
+/* ── copy as text ── */
+.sbx-text-box { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(180,160,120,.45); }
+.sbx-text-box select {
+  font-family: 'Libre Franklin', sans-serif; font-size: .8rem; padding: 4px 6px;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+#sb-text-preview {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: .74rem; line-height: 1.4;
+  background: rgba(255,253,248,.8); margin-top: 6px; white-space: pre; overflow: auto;
+}
+
+/* ── the peek card: a character at a glance, on hover or a long press ── */
+.sbx-peek { width: min(360px, calc(100vw - 16px)); padding: 10px 12px 12px; }
+.sbx-peek-top { display: flex; gap: 10px; align-items: flex-start; }
+.sbx-peek-img { width: 72px; height: 72px; object-fit: contain; flex: none; }
+.sbx-peek-name { font-family: 'Dumbledor2', serif; text-transform: uppercase; font-size: 1.05rem; color: var(--maroon); margin: 0; line-height: 1.15; }
+.sbx-peek-team {
+  display: inline-block; font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid; padding: 0 5px; margin: 3px 4px 0 0; color: #6b5d49;
+}
+.sbx-peek-team.townsfolk, .sbx-peek-team.outsider { color: var(--good-name); }
+.sbx-peek-team.minion, .sbx-peek-team.demon { color: var(--evil); }
+.sbx-peek-by { font-size: .76rem; color: #6b5d49; font-style: italic; margin: 2px 0 0; }
+.sbx-peek-ab { font-size: .84rem; line-height: 1.4; color: var(--ink); margin: 8px 0 0; }
+.sbx-peek-facts { font-size: .76rem; color: #6b5d49; margin: 6px 0 0; line-height: 1.45; }
+.sbx-peek-facts b { color: var(--maroon); font-weight: 600; }
+.sbx-peek-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+.sbx-peek-acts a { font-family: 'Oswald', sans-serif; font-size: .74rem; color: var(--good-name); text-decoration: none; border: 1px solid var(--parch-frame); background: #fffdf8; padding: 5px 10px; }
+.sbx-peek-close { position: absolute; top: 6px; right: 6px; }
+@media (hover: hover) and (pointer: fine) { .sbx-peek-close { display: none; } }
+
+/* ── arranging the roster by hand ── */
+.sbx-ch-grip {
+  flex: none; cursor: grab; color: rgba(91,31,33,.35); font-size: .95rem; line-height: 1;
+  padding: 2px 2px 0 0; user-select: none; touch-action: none; align-self: center;
+}
+.sbx-ch-grip:hover { color: var(--maroon); }
+.sbx-ch-moves { display: flex; flex: none; gap: 2px; align-self: center; }
+.sbx-ch-moves button {
+  width: 20px; height: 18px; cursor: pointer; line-height: 1; padding: 0; font-size: .6rem;
+  background: #fffdf8; border: 1px solid rgba(180,160,120,.7); color: var(--maroon);
+}
+.sbx-ch-moves button:disabled { opacity: .3; cursor: default; }
+.sbx-ch-moves button:hover:not(:disabled) { border-color: var(--maroon); }
+.sbx-ch.sbx-dragging {
+  position: fixed; z-index: 75; pointer-events: none; opacity: .92;
+  box-shadow: 0 10px 26px rgba(0,0,0,.4); background-color: var(--card);
+  background-image: url('parchment.jpg'); background-size: cover; border: 1px solid var(--parch-frame);
+}
+.sbx-ch-placeholder { border: 1px dashed var(--maroon); background: rgba(91,31,33,.06); }
+#sb-script.sbx-is-dragging { cursor: grabbing; user-select: none; }
+.sbx[data-layout="cards"] .sbx-ch-grip, .sbx[data-layout="icons"] .sbx-ch-grip { position: absolute; bottom: 4px; left: 6px; }
+.sbx[data-layout="cards"] .sbx-ch-moves, .sbx[data-layout="icons"] .sbx-ch-moves { position: absolute; bottom: 4px; right: 4px; }
+
+/* ── the option rows above the night and jinx lists ── */
+.sbx-tab-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+.no-ico { width: 28px; height: 28px; object-fit: contain; flex: none; margin-right: 4px; }
+.no-cols.stacked { grid-template-columns: 1fr; }
+.sjx-icons { display: flex; flex: none; gap: 2px; margin-right: 8px; align-self: center; }
+.sjx-icons img { width: 26px; height: 26px; object-fit: contain; }
+
+/* ── the export panel's disclosures ── */
+.sbx-details { margin: 0 0 10px; border: 1px solid rgba(180,160,120,.5); background: rgba(255,253,248,.5); padding: 0 10px; }
+.sbx-details > summary {
+  cursor: pointer; list-style: none; padding: 7px 0;
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon);
+}
+.sbx-details > summary::-webkit-details-marker { display: none; }
+.sbx-details > summary::before { content: '\25B8'; display: inline-block; width: 12px; transition: transform .15s; }
+.sbx-details[open] > summary::before { transform: rotate(90deg); }
+.sbx-details > :not(summary) { margin-bottom: 10px; }
+#sb-json-preview {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; font-size: .72rem; line-height: 1.35;
+  background: rgba(255,253,248,.8); white-space: pre; overflow: auto; width: 100%;
+  border: 1px solid var(--parch-frame); padding: 6px 8px; color: var(--ink);
+  height: 200px; min-height: 120px; resize: vertical; box-sizing: border-box;
+}
+.sbx-ids .sb-fld { margin-bottom: 8px; }
+.sbx-ids label {
+  display: block; font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon); margin-bottom: 3px;
+}
+.sbx-ids select, .sbx-ids input[type=text] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .84rem; color: var(--ink);
+  background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; max-width: 100%;
+}
+.sbx-ids .sub { font-size: .74rem; color: #6b5d49; margin: 3px 0 0; line-height: 1.4; }
+.sbx-ids code { font-size: .78rem; background: rgba(0,0,0,.05); padding: 0 3px; }
+.sbx-tool-row select { font-family: 'Libre Franklin', sans-serif; font-size: .78rem; padding: 4px 6px; border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink); }
+.sbx-lib-sort { flex: 1 1 110px; min-width: 0; }
+
+/* ── round-5 furniture: saved mark, dice, seating table, folded panel groups ── */
+.sbx-saved {
+  flex: none; font-family: 'Oswald', sans-serif; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase;
+  color: rgba(236,225,200,.55); opacity: 0; transition: opacity .35s; align-self: center; white-space: nowrap;
+}
+.sbx-saved.on { opacity: 1; }
+.sbx-team-head span.over { color: #f0b070; }
+.sbx-shape-row { grid-template-columns: 82px 58px 1fr 64px 26px; }
+.sbx-shape-die {
+  width: 26px; height: 24px; cursor: pointer; line-height: 1; padding: 0; font-size: .9rem;
+  background: #fffdf8; border: 1px solid var(--parch-frame); color: var(--maroon);
+}
+.sbx-shape-die:hover:not(:disabled) { background: rgba(91,31,33,.09); }
+.sbx-shape-die:disabled { opacity: .3; cursor: default; }
+.sbx-an-seats { border-collapse: collapse; font-size: .76rem; margin-top: 6px; }
+.sbx-an-seats th, .sbx-an-seats td { padding: 2px 8px; text-align: center; border-bottom: 1px solid rgba(180,160,120,.35); }
+.sbx-an-seats thead th { font-family: 'Oswald', sans-serif; font-size: .64rem; letter-spacing: .06em; text-transform: uppercase; color: var(--maroon); }
+.sbx-an-seats tbody th { font-weight: 600; color: var(--maroon); }
+.sbx-an-seats tr.no { color: #9a8a74; }
+.sbx-an-seats td.short { color: var(--evil); font-weight: 700; background: rgba(154,13,18,.07); }
+.sbx-add-grouphead { cursor: pointer; display: flex; align-items: baseline; gap: 4px; user-select: none; }
+.sbx-add-grouphead:hover { color: var(--maroon); }
+.sbx-add-fold { margin-left: auto; font-size: .7rem; opacity: .6; transition: transform .15s; }
+.sbx-add-group.collapsed .sbx-add-fold { transform: rotate(-90deg); }
+.sbx-add-group.collapsed .sbx-add-rows { display: none; }
+
+/* ── round 6: paper tones, stripes, sticky headings, the picks strip, team tools ── */
+.sbx { --sbx-panel-text: 1; }
+.sbx-add-name { font-size: calc(.84rem * var(--sbx-panel-text)); }
+.sbx-add-ab { font-size: calc(.77rem * var(--sbx-panel-text)); }
+.sbx-add-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sbx-add-by { display: none; font-size: calc(.64rem * var(--sbx-panel-text)); color: #6b5d49; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-style: italic; }
+.sbx-panel-creator .sbx-add-by { display: block; }
+.sbx-panel-creator .sbx-add-row { contain-intrinsic-size: 0 46px; contain-intrinsic-size: auto 46px; }
+
+/* dark: the sheet on a night table */
+.sbx[data-tone="dark"] .sbx-sheet, .sbx[data-tone="dark"][data-layout="cards"] .sbx-sheet > .sbx-ch {
+  background-color: #241a28; background-image: none; border-color: #4a3550;
+}
+.sbx[data-tone="dark"] .sbx-sheet > .sbx-ch { border-bottom-color: rgba(255,255,255,.08); border-right-color: rgba(255,255,255,.08); }
+.sbx[data-tone="dark"] .sbx-ch-txt, .sbx[data-tone="dark"] .sbx-ch-ab { color: #e8dcc4; }
+.sbx[data-tone="dark"] .sbx-ch-name { color: #f2c46f; }
+.sbx[data-tone="dark"] .sbx-ch-name:hover { color: #fff; }
+.sbx[data-tone="dark"] .sbx-ch-meta, .sbx[data-tone="dark"] .sbx-tag { color: rgba(232,220,196,.6); border-color: rgba(232,220,196,.3); }
+.sbx[data-tone="dark"] .sbx-off { color: rgba(232,220,196,.7); border-color: rgba(232,220,196,.35); }
+.sbx[data-tone="dark"] .sbx-ch-x { color: rgba(255,140,140,.6); }
+.sbx[data-tone="dark"] .sbx-ch-lock { color: rgba(232,220,196,.35); }
+.sbx[data-tone="dark"] .sbx-ch-lock.on, .sbx[data-tone="dark"] .sbx-ch-lock:hover { color: #f2c46f; }
+.sbx[data-tone="dark"] .sbx-ch.locked { box-shadow: inset 3px 0 0 rgba(242,196,111,.5); }
+.sbx[data-tone="dark"] .sbx-ch-moves button { background: #362a3b; color: #e8dcc4; border-color: #4a3550; }
+.sbx[data-tone="dark"] .sbx-ch-grip { color: rgba(232,220,196,.4); }
+.sbx[data-tone="dark"] .sbx-ch-n { color: #9fc0f0; border-color: rgba(159,192,240,.4); background: rgba(159,192,240,.1); }
+.sbx[data-tone="dark"] .sbx-ch-jx { color: #f0a0a0; border-color: rgba(240,160,160,.4); background: rgba(240,160,160,.1); }
+.sbx[data-tone="dark"][data-layout="icons"] .sbx-ch:hover { background: rgba(255,255,255,.06); }
+/* plain: white paper, for a screenshot or a projector */
+.sbx[data-tone="paper"] .sbx-sheet, .sbx[data-tone="paper"][data-layout="cards"] .sbx-sheet > .sbx-ch {
+  background-color: #fff; background-image: none; border-color: #c9c2b6;
+}
+.sbx[data-tone="paper"] .sbx-sheet > .sbx-ch { border-bottom-color: #e6e1d8; border-right-color: #e6e1d8; }
+.sbx[data-tone="paper"] .sbx-ch-txt, .sbx[data-tone="paper"] .sbx-ch-ab { color: #222; }
+.sbx[data-tone="paper"] .sbx-ch-name { color: #333; }
+
+/* a team-coloured edge on every row */
+.sbx-row-stripe .sbx-team[data-team="townsfolk"] .sbx-ch { border-left: 4px solid #2C7BD0; }
+.sbx-row-stripe .sbx-team[data-team="outsider"] .sbx-ch { border-left: 4px solid #1a8aa8; }
+.sbx-row-stripe .sbx-team[data-team="minion"] .sbx-ch { border-left: 4px solid #d4652a; }
+.sbx-row-stripe .sbx-team[data-team="demon"] .sbx-ch { border-left: 4px solid #b8151c; }
+.sbx-row-stripe .sbx-team[data-team="traveller"] .sbx-ch { border-left: 4px solid #8a5bc4; }
+.sbx-row-stripe .sbx-team[data-team="fabled"] .sbx-ch { border-left: 4px solid #c9a227; }
+.sbx-row-stripe .sbx-team[data-team="loric"] .sbx-ch { border-left: 4px solid #3f9a58; }
+.sbx-row-stripe .sbx-ch.locked { box-shadow: none; }
+.sbx-row-stripe .sbx-ch.locked .sbx-ch-lock { color: var(--maroon); }
+
+/* headings that stay put while a long roster scrolls under them */
+.sbx-sticky-heads .sbx-team-head {
+  position: sticky; top: -12px; z-index: 5;
+  background: linear-gradient(180deg, rgba(26,10,31,.97) 70%, rgba(26,10,31,0));
+  padding-top: 8px; margin-top: -8px;
+}
+.sbx-team-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sbx-team-tools { margin-left: auto; display: flex; gap: 3px; opacity: 0; transition: opacity .12s; }
+.sbx-team:hover .sbx-team-tools, .sbx-team-tools:focus-within { opacity: 1; }
+@media (hover: none) { .sbx-team-tools { opacity: .85; } }
+.sbx-team-tools button {
+  font-family: 'Oswald', sans-serif; font-size: .58rem; letter-spacing: .05em; text-transform: uppercase;
+  cursor: pointer; padding: 2px 6px; line-height: 1.4;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(214,196,150,.35); color: rgba(236,225,200,.85);
+}
+.sbx-team-tools button:hover { background: rgba(255,255,255,.16); color: var(--parch); }
+
+/* the empty roster offers a way in */
+.sbx-empty-box { text-align: center; padding: 34px 16px 40px; color: rgba(236,225,200,.7); font-size: .95rem; }
+.sbx-empty-box p { margin: 0 0 4px; }
+.sbx-empty-acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+
+/* the picks strip: pinned first, then what was added lately */
+.sbx-picks {
+  flex: none; display: flex; gap: 4px; overflow-x: auto; padding: 0 9px 6px;
+  scrollbar-width: thin; scrollbar-color: var(--parch-frame) transparent;
+}
+.sbx-picks:empty, .sbx-no-picks .sbx-picks { display: none; }
+.sbx-pick {
+  flex: none; width: 36px; height: 36px; position: relative; cursor: pointer; padding: 2px;
+  border: 1px solid var(--parch-frame); background: #fffdf8;
+}
+.sbx-pick img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sbx-pick:hover { background: rgba(91,31,33,.08); }
+.sbx-pick.on { border-color: var(--maroon); box-shadow: inset 0 0 0 1px var(--maroon); }
+.sbx-pick.on::before { content: '\2713'; position: absolute; right: -1px; bottom: -3px; font-size: .6rem; color: var(--maroon); background: #fffdf8; line-height: 1; padding: 0 1px; }
+.sbx-pick.pinned::after { content: '\2605'; position: absolute; top: -5px; left: -3px; font-size: .58rem; color: #b07d1a; line-height: 1; }
+.sbx-pick-sep { flex: none; width: 1px; background: var(--parch-frame); margin: 4px 3px; }
+
+/* keyboard highlight in the panel */
+.sbx-add-row.hi .sbx-add-item { outline: 2px solid var(--maroon); outline-offset: -2px; background: rgba(91,31,33,.07); }
+
+@media (max-width: 900px) {
+  .sbx-sticky-heads .sbx-team-head { top: calc(var(--sbx-top, 56px) + 34px); }
+}
+
+/* ── round 7: panel scope and grouping, the bar's own settings, notes ── */
+.sbx[data-panelscope="off"] .sbx-add-row.on { display: none; }
+.sbx[data-panelscope="on"] .sbx-add-row:not(.on) { display: none; }
+.sbx-add-item.jx .sbx-add-name::after { content: ' \26AF'; color: #8a3d3d; font-size: .8em; }
+/* buttons taken off the bar live on in the More menu */
+.sbx-bar-no-undo #sbx-undo, .sbx-bar-no-undo #sbx-redo { display: none; }
+.sbx-bar-no-random #sb-randomize { display: none; }
+.sbx-bar-no-sort #sb-sort { display: none; }
+.sbx-bar-no-publish #sb-publish-link { display: none; }
+.sbx-menu-bar { display: none; }
+.sbx-bar-no-undo .sbx-menu-bar[data-do="undo"], .sbx-bar-no-undo .sbx-menu-bar[data-do="redo"],
+.sbx-bar-no-random .sbx-menu-bar[data-do="random"], .sbx-bar-no-sort .sbx-menu-bar[data-do="sort"],
+.sbx-bar-no-publish .sbx-menu-bar[data-do="publish"] { display: block; }
+.sbx-bar-no-undo hr.sbx-menu-bar, .sbx-bar-no-random hr.sbx-menu-bar, .sbx-bar-no-sort hr.sbx-menu-bar,
+.sbx-bar-no-publish hr.sbx-menu-bar { display: block; }
+/* a note of your own under a character */
+.sbx-ch-note {
+  display: block; margin-top: 3px; font-size: .86em; line-height: 1.35; color: #5a4a3a;
+  border-left: 2px solid rgba(180,160,120,.7); padding-left: 6px; font-style: italic;
+}
+.sbx-ch-note::before { content: '\270E '; font-style: normal; opacity: .6; }
+.sbx[data-tone="dark"] .sbx-ch-note { color: rgba(232,220,196,.75); border-left-color: rgba(232,220,196,.3); }
+.sbx[data-layout="list"] .sbx-ch-note, .sbx[data-layout="icons"] .sbx-ch-note { display: none; }
+.sbx-peek-note { width: 100%; margin-top: 8px; font-family: 'Libre Franklin', sans-serif; font-size: .8rem; color: var(--ink); background: #fffdf8; border: 1px solid var(--parch-frame); padding: 5px 7px; resize: vertical; min-height: 44px; box-sizing: border-box; }
+
+/* ── round 8: panel dice and needs, roster folding, gap candidates, focus ── */
+.sbx-add-groupneed { font-family: 'Oswald', sans-serif; font-size: .62rem; letter-spacing: .04em; color: #8a3d3d; margin-left: 4px; text-transform: none; }
+.sbx-add-groupneed:empty { display: none; }
+.sbx-add-die {
+  margin-left: auto; width: 22px; height: 18px; cursor: pointer; line-height: 1; padding: 0; font-size: .78rem;
+  background: none; border: 1px solid transparent; color: rgba(91,31,33,.45);
+}
+.sbx-add-die:hover { color: var(--maroon); border-color: var(--parch-frame); background: #fffdf8; }
+.sbx-add-grouphead .sbx-add-fold { margin-left: 2px; }
+.sbx-team-label { cursor: pointer; user-select: none; }
+.sbx-team-label:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.sbx-team-foldmark { font-size: .8em; opacity: .7; }
+.sbx-team.folded .sbx-sheet { display: none; }
+.sbx-team.folded { margin-bottom: 8px; }
+.sbx-an-cands { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); margin-bottom: 8px; }
+.sbx-an-cand { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink); border: 1px solid rgba(180,160,120,.45); background: rgba(255,253,248,.7); padding: 5px 7px; min-width: 0; }
+.sbx-an-cand img { width: 30px; height: 30px; object-fit: contain; flex: none; }
+.sbx-an-cand .t { flex: 1; min-width: 0; line-height: 1.25; }
+.sbx-an-cand .t small { display: block; color: #6b5d49; font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbx-add-item:focus-visible, .sbx-b:focus-visible, .sbx-b-sm:focus-visible, .sbx-tab:focus-visible,
+.sbx-pick:focus-visible, .sbx-ch-x:focus-visible, .sbx-ch-lock:focus-visible, .sbx-seg:focus-visible {
+  outline: 2px solid #f2c46f; outline-offset: -2px;
+}
+
+/* ── tonight's bag ── */
+.sbx-bag-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 4px 0 8px; font-size: .8rem; color: var(--ink); }
+.sbx-bag-row label { display: inline-flex; align-items: center; gap: 5px; }
+.sbx-bag-row select, .sbx-bag-row input[type=number] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .82rem; padding: 3px 6px;
+  border: 1px solid var(--parch-frame); background: #fffdf8; color: var(--ink);
+}
+.sbx-bag-row input[type=number] { width: 54px; text-align: center; }
+.sbx-bag-need { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--maroon); margin: 0 0 8px; }
+.sbx-bag-team { border: 1px solid rgba(180,160,120,.55); background: rgba(255,253,248,.55); padding: 6px 9px 7px; margin-bottom: 7px; }
+.sbx-bag-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.sbx-bag-head .sbx-shape-label { flex: 1; }
+.sbx-bag-count { font-family: 'Oswald', sans-serif; font-size: .7rem; letter-spacing: .04em; color: #6b5d49; }
+.sbx-bag-count.ok { color: #2f7a3a; }
+.sbx-bag-count.bad { color: var(--evil); }
+.sbx-bag-list { display: grid; gap: 1px 10px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.sbx-bag-list label { display: flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--ink); cursor: pointer; padding: 2px 0; min-width: 0; }
+.sbx-bag-list label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sbx-bag-list input { accent-color: var(--maroon); margin: 0; flex: none; }
+.sbx-bag-list img { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.sbx-bag-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.sbx-bag-out { margin-top: 8px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .74rem; white-space: pre-wrap; background: rgba(255,253,248,.8); border: 1px solid rgba(180,160,120,.5); padding: 6px 8px; color: var(--ink); max-height: 140px; overflow: auto; }
+
+/* ── toasts ── */
+.sbx-toast {
+  position: fixed; left: 50%; bottom: 22px; z-index: 90;
+  transform: translate(-50%, 8px); opacity: 0; pointer-events: none;
+  background: var(--parch); color: var(--maroon); border: 2px solid var(--parch-frame);
+  padding: 7px 14px; font-size: .84rem; max-width: min(92vw, 460px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.45); transition: opacity .15s, transform .15s;
+}
+.sbx-toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 900px) {
+  .sbx[data-side="right"] .sbx-side { left: auto; right: 0; transform: translateX(100%); border-left-width: 2px; }
+  .sbx[data-side="right"] .sbx-side.on { transform: none; box-shadow: -6px 0 26px rgba(0,0,0,.55); }
+  .sbx-pop {
+    top: auto !important; left: 0 !important; right: 0; bottom: 0; width: 100%;
+    max-height: 82vh !important; border-width: 2px 0 0;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+  .sbx-pop-scrim.on { display: block; }
+  .sbx-toast { bottom: 14px; }
+  .sbx-keys { display: none; }
+}
+/* On a narrow phone the bar's buttons keep their icon and lose their word,
+   so Publish stays on the same row instead of taking a fourth one. */
+@media (max-width: 480px) {
+  .sbx-b-txt { display: none; }
+  .sbx-b { padding: 5px 9px; font-size: .86rem; }
+  .sbx-b-go { font-size: .76rem; }
 }

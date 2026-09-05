@@ -28,14 +28,21 @@
     return String(s || '').trim().toLowerCase()
       .replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
   }
+  /* Both of these are read for every card on every apply(), and apply() runs
+     on every keystroke and every chip. Splitting the same attribute string
+     1,900 times a letter (the Script Builder's sidebar) is the kind of work
+     that only shows up as "typing is laggy", so the parse is kept on the
+     element — the attributes never change after the card is built. */
   function cardTags(card) {
-    return (card.getAttribute('data-tags') || '').split(',')
-      .map(function (t) { return titleCase(t); }).filter(Boolean);
+    if (card._cfTags) return card._cfTags;
+    return (card._cfTags = (card.getAttribute('data-tags') || '').split(',')
+      .map(function (t) { return titleCase(t); }).filter(Boolean));
   }
   // data-creator holds the whole credit string, which may name several people.
   function cardCredits(card) {
-    return (card.getAttribute('data-creator') || '').split(',')
-      .map(function (n) { return n.trim(); }).filter(Boolean);
+    if (card._cfCredits) return card._cfCredits;
+    return (card._cfCredits = (card.getAttribute('data-creator') || '').split(',')
+      .map(function (n) { return n.trim(); }).filter(Boolean));
   }
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
@@ -58,6 +65,10 @@
     var grid = el(opts.grid), bar = el(opts.bar), toggle = el(opts.toggle);
     var countEl = el(opts.count);
     if (!grid || !bar || !toggle) return false;
+    // Mounting again over the same grid (the Script Builder rebuilds its
+    // panel under a different grouping) first takes the old box down, or
+    // the toggle and the search box would answer to two sets of listeners.
+    if (typeof grid._cfDestroy === 'function') grid._cfDestroy();
 
     var SEL = {
       section: opts.sectionSel || '.coll-team',
@@ -80,6 +91,11 @@
     sections.forEach(function (sec) {
       var g = sec.querySelector(SEL.inner);
       if (g) sec._origOrder = [].slice.call(g.querySelectorAll(SEL.card));
+      // The same list, kept for apply() to walk. Sorting moves these nodes
+      // around but never adds or removes one, so the array stays complete.
+      // Read off the section rather than the inner grid, so a layout that
+      // puts a card outside it is still filtered rather than silently frozen.
+      sec._cards = [].slice.call(sec.querySelectorAll(SEL.card));
     });
 
     // Where the page itself has an order worth keeping — a collection whose
@@ -195,11 +211,14 @@
     bar.hidden = false;
 
     // ── collapse/expand (collapsed by default, works on every screen size) ──
-    toggle.addEventListener('click', function () {
+    function onToggle() {
       var open = bar.classList.toggle('open');
       toggle.classList.toggle('open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    });
+    }
+    toggle.addEventListener('click', onToggle);
+    // A re-mount keeps the box open if it was open.
+    bar.classList.toggle('open', toggle.classList.contains('open'));
 
     // ── 3-state chip helper (unset → include → exclude → unset) ──
     // The arrays are read through a getter because Reset swaps STATE wholesale.
@@ -247,12 +266,17 @@
       sortSel.value = STATE.sort;
       apply();
     });
-    if (searchEl) {
-      searchEl.addEventListener('input', function () {
-        STATE.q = searchEl.value.trim().toLowerCase();
-        apply();
-      });
+    function onSearch() {
+      STATE.q = searchEl.value.trim().toLowerCase();
+      apply();
     }
+    if (searchEl) searchEl.addEventListener('input', onSearch);
+    grid._cfDestroy = function () {
+      toggle.removeEventListener('click', onToggle);
+      if (searchEl) searchEl.removeEventListener('input', onSearch);
+      bar.innerHTML = '';
+      grid._cfDestroy = null;
+    };
 
     function cardVisible(card) {
       // Partial pages are unfinished and stay out of the listing until the
@@ -274,7 +298,22 @@
       if (STATE.exTags.length && !STATE.exTags.every(function (t) { return ctags.indexOf(t) === -1; })) return false;
       // A filter on one name matches any card that credits them.
       if (STATE.creator && cardCredits(card).indexOf(STATE.creator) === -1) return false;
-      if (STATE.q && (card.getAttribute('data-name') || '').toLowerCase().indexOf(STATE.q) === -1) return false;
+      if (STATE.q) {
+        // The lower-cased name is kept on the card: a keystroke reads it for
+        // every card in the list, and 1,900 toLowerCase calls a letter add up.
+        if (card._cfName == null) card._cfName = (card.getAttribute('data-name') || '').toLowerCase();
+        if (card._cfName.indexOf(STATE.q) === -1) {
+          // opts.searchAbility (a boolean, or a function answering one at the
+          // time of asking) lets the box match the ability text as well.
+          var sa = typeof opts.searchAbility === 'function' ? opts.searchAbility() : !!opts.searchAbility;
+          if (!sa) return false;
+          if (card._cfAb == null) {
+            var abEl = card.querySelector(SEL.ability);
+            card._cfAb = abEl ? abEl.textContent.toLowerCase() : '';
+          }
+          if (card._cfAb.indexOf(STATE.q) === -1) return false;
+        }
+      }
       return true;
     }
 
@@ -285,7 +324,17 @@
       return { ability: ab ? ab.textContent : '', name: card.getAttribute('data-name') || '' };
     }
 
+    // Which sort the DOM is currently in, so sortCards() can tell whether
+    // there is anything to do.
+    var appliedSort = null;
+
     function sortCards() {
+      /* Re-appending every card is the expensive half of apply() — 1,900 DOM
+         moves in the Script Builder's sidebar — and the order only changes
+         when the reader picks a different sort. Typing in the search box, or
+         toggling a chip, changes what is SHOWN and never the order. */
+      if (STATE.sort === appliedSort) return;
+      appliedSort = STATE.sort;
       sections.forEach(function (sec) {
         var g = sec.querySelector(SEL.inner);
         if (!g || !sec._origOrder) return;
@@ -308,12 +357,17 @@
       var shown = 0;
       sections.forEach(function (sec) {
         var secShown = 0;
-        [].slice.call(sec.querySelectorAll(SEL.card)).forEach(function (card) {
+        // Writing a style property re-runs style resolution for that element
+        // even when the value is unchanged, so only the cards that actually
+        // flipped are touched.
+        (sec._cards || []).forEach(function (card) {
           var vis = cardVisible(card);
-          card.style.display = vis ? '' : 'none';
+          var want = vis ? '' : 'none';
+          if (card.style.display !== want) card.style.display = want;
           if (vis) { secShown++; shown++; }
         });
-        sec.style.display = secShown ? '' : 'none';
+        var secWant = secShown ? '' : 'none';
+        if (sec.style.display !== secWant) sec.style.display = secWant;
         var cnt = sec.querySelector(SEL.count);
         if (cnt) cnt.textContent = '(' + secShown + ')';
       });
@@ -336,7 +390,10 @@
     }
 
     apply();
-    return true;
+    // Truthy, like the `true` it used to return, and a handle for a host that
+    // wants to re-apply after changing something the box reads on the fly
+    // (searchAbility), or take the box down before rebuilding its grid.
+    return { apply: apply, destroy: grid._cfDestroy, state: function () { return STATE; } };
   }
 
   if (typeof window !== 'undefined') window.mountCardFilters = mountCardFilters;

@@ -880,6 +880,125 @@
     return out;
   }
 
+  /* ── the id a character exports under ────────────────────────
+     The official schema's `id` is how every tool tells two characters apart,
+     and this wiki has 166 names that more than one page answers to — four
+     Wardens, two Changelings. Squashing the name (`warden`) gave all four the
+     same id, so loading two of the wiki's scripts into one tool made three of
+     them vanish into the first. So an id is qualified:
+
+       {name}_{creator}_{set}      warden_djclocktower_odyssey
+
+     `creator` is the account that uploaded the page (`ownerName`), falling
+     back to the first name on the credit — half the wiki was bulk-imported
+     with a credit string and no account, and that string is the only answer
+     those pages have. `set` is the script or collection the export is FOR
+     (opts.set), or, with no export around it, the set the character's own
+     address files it under. A part that is empty is left out rather than
+     written as a gap, so a page with neither still exports as `warden`.
+
+     Two things never take any of this:
+
+     - An OFFICIAL character keeps its official id (`imp`, `poisoner`). It is
+       the app's own key for a character it already has; qualifying it would
+       hand the app a Fabled it has never heard of instead of the Imp.
+     - The credits Fabled is built whole by buildCreditsFabled() and never
+       comes through here.
+
+     `opts.mode` is the per-script/collection setting (see sanitizeExportIds
+     in worker.js): 'full' (the default, all three parts), 'creator', 'set',
+     or 'name' — the bare id the wiki wrote before this existed, honouring an
+     import's own `jsonId` exactly as it always did. `opts.prefix` /
+     `opts.suffix` are the owner's own text, wrapped around the finished id. */
+  var EXPORT_ID_MAX = 90;
+  /* The modes, in the order the editors offer them. One list, so a mode the
+     Worker accepts and a mode the dropdown shows can never drift apart. */
+  var EXPORT_ID_MODES = [
+    { key: 'full',    label: 'Name + creator + set',
+      hint: 'warden_djclocktower_odyssey — the safest against a clash.' },
+    { key: 'creator', label: 'Name + creator',
+      hint: 'warden_djclocktower — enough unless one account has two of a name.' },
+    { key: 'set',     label: 'Name + set',
+      hint: 'warden_odyssey — shorter, and clashes if two creators share a set.' },
+    { key: 'name',    label: 'Name only (what the wiki used to write)',
+      hint: 'warden — matches older exports, and is what clashes.' }
+  ];
+  function idSegment(s) {
+    return String(s == null ? '' : s).toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+  /* The set a character is filed under, as WRITTEN — charSetKeys() answers
+     the same question for jinx matching and normalises the punctuation away,
+     which is right for a lookup key and wrong for something a person reads. */
+  function characterSet(c) {
+    if (!c) return '';
+    var seg = String(c.page || '').replace(/^\//, '').split('/');
+    if (seg.length >= 3 && seg[0] === 'c' && seg[1]) return seg[1];
+    var ap = c.appearsIn;
+    if (Array.isArray(ap)) ap = ap[0];
+    if (ap) return String(ap);
+    var af = c.appearsInFrom;
+    if (Array.isArray(af) && af.length && af[0]) return String(af[0].name || af[0].id || '');
+    return '';
+  }
+  function exportCreator(c) {
+    if (!c) return '';
+    if (c.ownerName) return String(c.ownerName);
+    var names = splitCreators(c.creator);
+    // The credit mark some names carry (∇, ♊︎) is not part of the name.
+    // idSegment would drop it anyway; taking it off here means the id is
+    // built from the same string every other surface prints.
+    return names.length ? stripCreatorMark(names[0], names[0]) : '';
+  }
+  /* An official character's id, whichever shape the entry carries it in:
+     official-roles.js writes both `id` and `jsonId`, and a roster slug is
+     `off-{id}`. */
+  function officialExportId(c) {
+    return String(c.jsonId || c.id || String(c.slug || '').replace(/^off-/, '') ||
+      slugId(c.name));
+  }
+  function exportId(c, opts) {
+    opts = opts || {};
+    if (!c) return '';
+    if (c.official) return officialExportId(c);
+    var mode = opts.mode || 'full';
+    if (mode === 'name') return c.jsonId || slugId(c.name);
+    var parts = [idSegment(c.name) || idSegment(c.slug)];
+    if (mode === 'full' || mode === 'creator') parts.push(idSegment(exportCreator(c)));
+    if (mode === 'full' || mode === 'set') {
+      parts.push(idSegment(opts.set === undefined ? characterSet(c) : opts.set));
+    }
+    var id = parts.filter(Boolean).join('_');
+    var pre = idSegment(opts.prefix), suf = idSegment(opts.suffix);
+    if (pre) id = pre + '_' + id;
+    if (suf) id = id + '_' + suf;
+    return id.slice(0, EXPORT_ID_MAX).replace(/_+$/, '');
+  }
+
+  /* The id a JINX writes for its target. It has to be the id that target
+     exports under, or the pair no longer meets in the file: the app reads
+     jinxes off the characters and matches them by id, and the stored `j.id`
+     is whatever the writer (or an import) typed years ago.
+
+     `host` is the character whose jinx this is — jinxLookupKeys() uses its
+     sets to settle a name two pages share (gotcha 8). A target this wiki
+     cannot see, and any official character, keeps the raw id: the first
+     because there is nothing better to say, the second because the official
+     id is the one the app already knows. */
+  function schemaJinxId(j, host, opts) {
+    var rawId = j.id || slugId(j.name || '');
+    var iconId = String(rawId).replace(/-/g, '');
+    if (officialName(iconId) || officialName(slugId(j.name || ''))) return rawId;
+    var hit = j.slug ? wikiChar(normJinxId(j.slug)) : null;
+    if (!hit) {
+      var keys = jinxLookupKeys(j, host);
+      for (var i = 0; i < keys.length && !hit; i++) hit = wikiChar(keys[i]);
+    }
+    return hit ? exportId(hit, opts) : rawId;
+  }
+
   /* ── Build official-schema JSON object from character data ── */
   /* The official schema is read by the app and by every script tool, neither
      of which renders markup — so the two fields that leave here and DO take
@@ -887,9 +1006,10 @@
      taken back out. `ability` is escaped on the page as well, so it goes out
      exactly as it was typed. A page nobody has typed a mark into is
      byte-for-byte what it always was. */
-  function buildSchema(d) {
+  function buildSchema(d, opts) {
+    opts = opts || {};
     var o = {
-      id: d.jsonId || slugId(d.name),
+      id: exportId(d, opts),
       name: d.name || '',
       team: d.team || 'townsfolk',
       ability: d.ability || ''
@@ -934,8 +1054,14 @@
     if (d.remindersGlobal && d.remindersGlobal.length) o.remindersGlobal = d.remindersGlobal;
     if (d.setup) o.setup = true;
     if (d.jinxes && d.jinxes.length) {
+      // `opts.jinxId` is passed by a whole-set export, which knows the roster
+      // the jinx has to meet its target inside; on its own, a character page
+      // resolves the target through the wiki registries instead.
+      var jinxIdOf = typeof opts.jinxId === 'function'
+        ? opts.jinxId
+        : function (j) { return schemaJinxId(j, d, opts); };
       var jx = d.jinxes.map(function (j) {
-        return { id: j.id || slugId(j.name), reason: plainText(j.text || j.reason || '') };
+        return { id: jinxIdOf(j), reason: plainText(j.text || j.reason || '') };
       }).filter(function (j) { return j.id; });
       if (jx.length) o.jinxes = jx;
     }
@@ -943,9 +1069,9 @@
     if (sp.length) o.special = sp;
     return o;
   }
-  function schemaJSON(d) {
+  function schemaJSON(d, opts) {
     var meta = { id: '_meta', name: '' };
-    return JSON.stringify([meta, buildSchema(d)], null, 2);
+    return JSON.stringify([meta, buildSchema(d, opts)], null, 2);
   }
 
   /* ── the botchomebrew.wiki credits Fabled ──
@@ -1053,7 +1179,17 @@
     if (jid && jid !== nm && jid !== normJinxId(c.slug)) push(jid);
 
     if (!nm) return out;
-    charSetKeys(c).forEach(function (k) { push(nm + k); });
+    var sets = charSetKeys(c);
+    sets.forEach(function (k) { push(nm + k); });
+    // The ids this character EXPORTS under (see exportId), so a script written
+    // by this wiki and imported back into it — through mass-upload.html, the
+    // Script Builder or /bloodstar — still finds the pages its jinxes name.
+    // Same rule as every key here: strictly extra, and only where free.
+    var who = normJinxId(exportCreator(c));
+    if (who) {
+      push(nm + who);
+      sets.forEach(function (k) { push(nm + who + k); });
+    }
     return out;
   }
 
@@ -1683,6 +1819,10 @@
     window.SPECIAL_TYPES = SPECIAL_TYPES;
     window.SPECIAL_TIMES = SPECIAL_TIMES;
     window.slugId = slugId;
+    window.exportId = exportId;
+    window.idSegment = idSegment;
+    window.characterSet = characterSet;
+    window.EXPORT_ID_MODES = EXPORT_ID_MODES;
     window.TEAM_LABEL = TEAM_LABEL;
     window.TEAM_COLOR = TEAM_COLOR;
     window.artVersions = artVersions;
@@ -1718,6 +1858,8 @@
       sanitizeSpecial: sanitizeSpecial,
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
+      exportId: exportId, idSegment: idSegment, characterSet: characterSet,
+      schemaJinxId: schemaJinxId, EXPORT_ID_MODES: EXPORT_ID_MODES,
       artVersions: artVersions, artVersion: artVersion,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,

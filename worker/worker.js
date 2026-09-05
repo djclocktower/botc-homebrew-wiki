@@ -3646,8 +3646,36 @@ function sanitizePageFields(o, themeBase) {
     const boxes = sanitizeBoxes(o.customBoxes);
     if (boxes.length) o.customBoxes = boxes; else delete o.customBoxes;
   }
+  const ids = sanitizeExportIds(o.exportIds);
+  if (ids) o.exportIds = ids; else delete o.exportIds;
   const theme = PageRender.sanitizeTheme(o.theme, themeBase);
   if (theme) o.theme = theme; else delete o.theme;
+}
+
+// ---- how this script/collection writes the ids in its JSON export ----
+// The official schema's `id` is what every tool pairs characters by, and this
+// wiki has 166 names more than one page answers to, so an export qualifies
+// them: {name}_{creator}_{set} (Render.exportId). This is the owner's say over
+// that — the shape, plus their own text wrapped around it — stored on the
+// page's `data` and read by buildPageExport.
+//
+// The DEFAULT is stored as nothing: an object equal to the default is dropped
+// so a page nobody has touched keeps following the site's rule instead of
+// freezing today's answer into the row, exactly as `logoSize` does.
+const EXPORT_ID_AFFIX_RE = /^[A-Za-z0-9][A-Za-z0-9 _-]*$/;
+function sanitizeExportIds(o) {
+  if (!o || typeof o !== 'object') return null;
+  const modes = Render.EXPORT_ID_MODES.map(m => m.key);
+  const mode = modes.includes(o.mode) ? o.mode : 'full';
+  const affix = v => {
+    const s = String(v == null ? '' : v).trim().slice(0, 24);
+    return EXPORT_ID_AFFIX_RE.test(s) ? s : '';
+  };
+  const out = { mode, prefix: affix(o.prefix), suffix: affix(o.suffix) };
+  if (out.mode === 'full' && !out.prefix && !out.suffix) return null;
+  if (!out.prefix) delete out.prefix;
+  if (!out.suffix) delete out.suffix;
+  return out;
 }
 
 // ---- validation for wiki pages (/p/{slug}) and news articles ----
@@ -3805,6 +3833,29 @@ const CARD_DROP_FIELDS = new Set([
   'related', 'tagsBy', 'creditUnlinked'
 ]);
 
+// ---- owner_id -> username ----
+// The account that uploaded a page, which is the first half of the id its
+// characters export under (Render.exportId). It is a handful of hundreds of
+// rows against 1,600 characters, so it is one query memoised per isolate
+// against the content version — the same shape as curataCollections() — not a
+// join, and never a query per page.
+//
+// It is deliberately NOT the answer to "whose creator page is this": that is
+// resolveCreatorAccount(), which weighs published pages and admin aliases.
+// This is the plain owner column, because an id has to be stable and cheap.
+let _ownerNameCache = null;
+async function ownerNames(env) {
+  const version = await contentVersion(env);
+  if (_ownerNameCache && _ownerNameCache.version === version) return _ownerNameCache.map;
+  const map = {};
+  try {
+    const { results } = await env.DB.prepare('SELECT id, username FROM users').all();
+    for (const r of results || []) if (r && r.username) map[String(r.id)] = String(r.username);
+  } catch { /* no accounts table yet: every id falls back to the credit */ }
+  _ownerNameCache = { version, map };
+  return map;
+}
+
 // ---- the GRID feed: only what a card needs ----
 // `?fields=grid` is the third tier, for the pages that only ever DRAW
 // characters — the homepage, All Characters, the team and tag pages, the
@@ -3877,7 +3928,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   // (what links go to). Twelve pages already link through `page`, which is why
   // this one line is most of the frontend's share of nesting.
   if (chars) await ensureUrlSlugColumn(env);
-  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status') + ', updated_at';
+  const cols = (chars ? 'data, status, slug, url_slug, owner_id' : 'data, status') + ', updated_at';
   let results;
   try {
     ({ results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all());
@@ -3887,6 +3938,10 @@ async function buildPublicJSON(env, table, opts = {}) {
   }
   const type = table === 'characters' ? 'character'
     : table === 'collections' ? 'collection' : 'script';
+  // The uploading account's handle, for the exported id. Half the wiki has no
+  // owner at all, and those rows fall back to the credit string inside
+  // Render.exportId — which for a bulk import is the only name they have.
+  const owners = chars ? await ownerNames(env).catch(() => ({})) : {};
   const out = results.map(r => {
     const d = foldLegacyCurata(JSON.parse(r.data));
     // Only the admin feed carries status; the public one must never imply
@@ -3900,6 +3955,10 @@ async function buildPublicJSON(env, table, opts = {}) {
     // reader's info box and onto its editing page — but the feed is a public
     // API, so dropping a field from it is a separate decision.
     delete d.editors;
+    if (chars) {
+      const who = r.owner_id == null ? '' : owners[String(r.owner_id)];
+      if (who) d.ownerName = who; else delete d.ownerName;
+    }
     if (chars && r.slug) {
       d.slug = String(r.slug);
       // The address, derived on every read. The stored `page` is whatever some
@@ -4572,6 +4631,9 @@ function buildJinxIndex(chars) {
     slug: c.slug, name: c.name || c.slug, team: c.team || '',
     art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
     creator: c.creator || '',
+    // Both halves of the id this character exports under (Render.exportId):
+    // a jinx has to name its target by the id that target actually writes.
+    ownerName: c.ownerName || '',
     // The address. `slug` stays the identity, which is what edges and
     // the mirroring are keyed on; this is only ever used to build a link.
     page: typeof c.page === 'string' ? c.page : ''
@@ -4678,19 +4740,32 @@ async function cachedCharLinkMap(env, ctx) {
 async function charsBySlug(env, slugs) {
   const wanted = [...new Set((slugs || []).map(String).filter(Boolean))];
   if (!wanted.length) return [];
+  await ensureUrlSlugColumn(env);
+  // The uploading account's handle, for the ids this roster exports under
+  // (Render.exportId). One memoised query, not one per character.
+  const owners = await ownerNames(env).catch(() => ({}));
   const out = [];
   for (let i = 0; i < wanted.length; i += 90) {
     const chunk = wanted.slice(i, i + 90);
     const marks = chunk.map(() => '?').join(',');
     try {
       const { results } = await env.DB.prepare(
-        `SELECT data, status FROM characters
+        `SELECT data, status, slug, url_slug, owner_id FROM characters
           WHERE status='published' AND slug IN (${marks})`
       ).bind(...chunk).all();
       for (const r of results || []) {
         try {
           const d = foldLegacyCurata(JSON.parse(r.data));
+          // Identity and address off the ROW, exactly as buildPublicJSON does
+          // it: the stored `page` is whatever an editor wrote there years ago,
+          // and it is what says which set an id is qualified by.
+          if (r.slug) {
+            d.slug = String(r.slug);
+            d.page = 'c/' + (r.url_slug ? String(r.url_slug) : String(r.slug));
+          }
           if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
+          const who = r.owner_id == null ? '' : owners[String(r.owner_id)];
+          if (who) d.ownerName = who; else delete d.ownerName;
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
           out.push(d);
@@ -4756,7 +4831,15 @@ async function pageJsonResponse(env, ctx, request, url) {
   const entries = isScript
     ? (d.characters || []).map(x => chars.find(c => c.slug === x)).filter(Boolean)
     : PageRender.sortCollectionMembers(d, PageRender.resolveCollectionMembers(d, chars));
-  const text = PageRender.buildPageExport(name, d.author, d.header, entries, isScript ? d : undefined);
+  // The official roster, so a jinx naming an official character keeps the
+  // official id — the one id an export must never rewrite (see jinxIdWriter).
+  Render.setOfficialNames(await officialNameMap(env, url.origin).catch(() => ({})));
+  // A collection hands over the same narrow view its own page does, so this
+  // download and the JSON box on /collection/ cannot write different ids.
+  // The whole row would drag a SCRIPT's _meta fields (background, hideTitle,
+  // almanac, the night order) onto a page that has none of them.
+  const text = PageRender.buildPageExport(name, d.author, d.header, entries,
+    isScript ? d : { id: d.id, slug: d.slug, name, exportIds: d.exportIds });
   const file = (isScript ? d.slug : (d.id || d.slug) || 'page').replace(/[^a-z0-9._-]+/gi, '-');
   return new Response(text, {
     headers: {
@@ -4831,6 +4914,11 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   // from `chars` on a script page — it derives from the shared card cache,
   // which is already warm on a collection page and one edge read on a script.
   await setWikiTextRegistries(env, url.origin, await cachedCharLinkMap(env, ctx));
+  // The official roster, so a jinx naming an official character is recognised
+  // as one. The page's JSON box needs it: an official id is the app's own key
+  // for a character it already ships, and is the one id an export must leave
+  // exactly as it found it (see jinxIdWriter in render-page.js).
+  Render.setOfficialNames(await officialNameMap(env, url.origin).catch(() => ({})));
   const boxesHTML = WikiRender.renderBoxes(d.customBoxes, { linkRoot: '../' });
   const pageKey = isScript ? d.slug : (d.id || d.slug);
   const newPageHref = mayEditParent
@@ -5696,6 +5784,14 @@ export default {
             // address, which is what the canonical link and the OG tags use.
             d.slug = String(row.slug);
             d.page = 'c/' + found.canonical;
+            // The uploading account's handle, for the id in this page's JSON
+            // box (Render.exportId). Derived from owner_id on every read, never
+            // stored — see ownerNames().
+            delete d.ownerName;
+            if (row.owner_id != null) {
+              const who = (await ownerNames(env).catch(() => ({})))[String(row.owner_id)];
+              if (who) d.ownerName = who;
+            }
             // The creator's opt-out, applied before anything can lend the mark
             // back: Classify.isCurata is the one answer, and the row's own flag
             // is dropped here so the rest of the page renders as unmarked.
@@ -6377,8 +6473,8 @@ export default {
         pub('characters'), pub('scripts'), pubCollections(), pubNews()
       ]);
       const staticPages = ['', 'all-characters', 'all-collections', 'scripts', 'tags', 'creators',
-        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'mass-upload', 'bloodstar',
-        'steven-approved-order', 'rules', 'news', 'jinxes'];
+        'script', 'tools', 'tokens', 'grimforge', 'iconforge', 'fancyscripts', 'mass-upload',
+        'bloodstar', 'steven-approved-order', 'rules', 'news', 'jinxes'];
       const urls = staticPages.map(p => '<url><loc>' + xmlEsc(url.origin + '/' + p) + '</loc></url>');
       const lastmod = r => r.updated_at ? '<lastmod>' + xmlEsc(String(r.updated_at).slice(0, 10)) + '</lastmod>' : '';
       for (const r of chars) {
@@ -7260,6 +7356,22 @@ export default {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
       const pageData = foldLegacyCurata(JSON.parse(row.data));
+      /* The uploading account's handle and the page's address, so the
+         editor's live preview writes the id the published page will
+         (Render.exportId reads both). Derived on read, never stored — the
+         save handler strips whatever a client sends back. */
+      if (type === 'character') {
+        delete pageData.ownerName;
+        if (row.owner_id != null) {
+          const who = (await ownerNames(env).catch(() => ({})))[String(row.owner_id)];
+          if (who) pageData.ownerName = who;
+        }
+        // The address off the ROW, never the stored `page` — same rule as
+        // buildPublicJSON: what an editor wrote there years ago is not where
+        // the page lives now, and the address is what says which set the id
+        // is qualified by.
+        pageData.page = 'c/' + String(row.url_slug || row.slug || '');
+      }
       /* Curata is admin-only to GRANT and the creator's to decline, so the
          editor has to be told which of the two it is looking at before it
          offers the opt-out — and a character usually has the mark because a
@@ -9411,6 +9523,11 @@ export default {
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.
         delete c.appearsInFrom;
+        // Same for the uploading account's handle: it is read off owner_id on
+        // every read (see ownerNames), so a stored copy could only ever be a
+        // stale one — and a forged one would put somebody else's name in this
+        // page's exported id.
+        delete c.ownerName;
         // An incomplete character cannot go live: it needs a name, an icon,
         // an ability and tags. Publishing attempts are saved as drafts
         // instead so nothing is lost — the editor shows what is missing.

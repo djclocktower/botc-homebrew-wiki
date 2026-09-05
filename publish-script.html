@@ -327,6 +327,15 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       </div>
     </details>
 
+    <!-- How this script writes the `id` on each character in its JSON -->
+    <details class="sb-details" id="sb-ids-sec">
+      <summary>Character IDs <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">How each character is named in the JSON, so two characters of the same name never collide.</span></summary>
+      <div class="sb-details-body">
+        <p class="sub" style="margin-top:0">Every tool that reads a script tells characters apart by their <code>id</code>. This wiki has plenty of names more than one page answers to &mdash; four Wardens, two Changelings &mdash; so an id carries the creator and the set as well as the name. Change it only if a tool you use needs something different.</p>
+        <div id="sb-ids-body"></div>
+      </div>
+    </details>
+
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
       <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
@@ -419,6 +428,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
   <script src="assets/theme-editor.js"></script>
   <script src="assets/wiki-editor.js"></script>
   <script src="assets/approved-editors.js"></script>
+  <script src="assets/export-ids-editor.js"></script>
   <script>
   (function () {
     var STORAGE_KEY = 'botc_script';
@@ -587,6 +597,27 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if ($('sb-hidetitle').checked) m.hideTitle = true; else delete m.hideTitle;
       setMeta(m);
     });
+
+    /* ── how this script names characters in its JSON ──
+       One widget, shared with publish-collection.html, so the two page types
+       cannot store the same setting differently. The sample it shows is a
+       character off THIS roster qualified by THIS script, which is the only
+       way a mode name means anything. */
+    var idsUI = window.ExportIdsEditor ? window.ExportIdsEditor.mount($('sb-ids-body'), {
+      getSample: function(){
+        var r = orderedRoster().chars || [];
+        for (var i = 0; i < r.length; i++) if (r[i] && !r[i].official) return r[i];
+        return null;
+      },
+      // The address is frozen and the name is not, so ids follow the slug —
+      // matching buildPageExport, which reads the same field.
+      getSet: function(){ return EDIT_SLUG || getMeta().editSlug || slugify($('sb-name').value || ''); },
+      onChange: function(v){
+        var m = getMeta();
+        if (v) m.exportIds = v; else delete m.exportIds;
+        setMeta(m);
+      }
+    }) : null;
     /* "This credit isn't mine" persists like every other setting on this
        page: the meta in localStorage is what survives a reload before the
        script has been saved, and primeFields reads it back. */
@@ -662,6 +693,8 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // redrawn here rather than at every call site that changes one.
       renderNightPanel();
       if (jinxUI) jinxUI.render();
+      // The id sample is drawn from this roster, so it follows it.
+      if (idsUI) idsUI.refresh();
       if (!chars.length){
         body.innerHTML = '<p class="pub-empty">Your script is empty. <a href="script">Add characters in the Script Builder →</a></p>';
         return;
@@ -729,6 +762,9 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         var m = getMeta();
         m[TEXT_FIELDS[id]] = el.value;
         setMeta(m);
+        // A script not yet published has no address, so its ids are qualified
+        // by the slug its name will become — which moves as the name is typed.
+        if (id === 'sb-name' && idsUI && !EDIT_SLUG) idsUI.refresh();
       });
     });
 
@@ -801,6 +837,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       syncEditorsBox();
       if (m.publicEdit) $('sb-open-sec').open = true;
       if ((m.bootlegger || []).length || m.almanac || m.hideTitle) $('sb-app-sec').open = true;
+      if (idsUI) { idsUI.set(m.exportIds || {}); if (m.exportIds) $('sb-ids-sec').open = true; }
       if (m.header){
         existingHeader = m.header;
         var pv = $('sb-header-prev'); pv.src = PageRender.imgSrc('', m.header); pv.style.display = 'block';
@@ -1006,6 +1043,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           bootlegger: gatherBoot(),
           almanac: $('sb-almanac').value.trim(),
           hideTitle: !!$('sb-hidetitle').checked,
+          exportIds: idsUI ? idsUI.get() : null,
           creditUnlinked: !!$('sb-credit-unlinked').checked,
           publicEdit: $('sb-public-edit').value,
           editors: editorsUI ? editorsUI.get() : []
@@ -1231,6 +1269,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
             bootlegger: entry.bootlegger || [],
             almanac: entry.almanac || '',
             hideTitle: !!entry.hideTitle,
+            exportIds: entry.exportIds || null,
             creditUnlinked: !!entry.creditUnlinked,
             publicEdit: PUBLIC_EDIT_MODES[entry.publicEdit] ? entry.publicEdit : '',
             editors: entry.editors || [],
@@ -1238,6 +1277,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           };
           if (!m.nightOrder) delete m.nightOrder;
           if (!m.jinxEdits) delete m.jinxEdits;
+          if (!m.exportIds) delete m.exportIds;
           setMeta(m);
           primeFields(m);
           setEditMode(slug);

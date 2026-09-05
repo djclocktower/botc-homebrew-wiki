@@ -763,6 +763,11 @@
 
     function update(){
       var d = gather();
+      // Two things the form does not hold and the id does (Render.exportId):
+      // the account that uploaded the page, and the page's address, which is
+      // what says which set the id is qualified by. /api/page sends both.
+      if (originalEntry && originalEntry.ownerName) d.ownerName = originalEntry.ownerName;
+      if (originalEntry && originalEntry.page) d.page = originalEntry.page;
       var src = artDataURL || (originalEntry ? SITE_ROOT+'assets/'+originalEntry.art : '');
       if (artAltDataURL) d.imageAlt = artAltDataURL;
       else if (!artAltRemoved && originalEntry && originalEntry.artAlt) d.artAlt = originalEntry.artAlt;

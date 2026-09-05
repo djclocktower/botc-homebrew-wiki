@@ -122,3 +122,14 @@
 /assets/iconforge/minipaint/*
   ! Cache-Control
   Cache-Control: public, max-age=31536000, immutable
+
+# Fancy Scripts' fixed payload: the sheet artwork (parchment, sidebar, skull,
+# flourishes — ~6.5 MB of calibrated pinned content) and the sheet fonts.
+# The tool's own modules (assets/fancyscripts/*.js), official-jinxes.json and
+# vendor/ stay on the revalidate rules above — same reasoning as Icon Forge.
+/assets/fancyscripts/art/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/fancyscripts/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+/assets/fancyscripts/icons/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -70,7 +70,9 @@
     'assets/night-order-picker.js', 'assets/redesign-create.js',
     'assets/rules.js', 'assets/rules-gate.js', 'assets/sao.js',
     'assets/theme-editor.js', 'assets/token-tool.js', 'assets/wiki-editor.js',
-    'assets/wikipage.js', 'assets/art-normalize.js'
+    'assets/wikipage.js', 'assets/art-normalize.js',
+    'assets/script-builder.js', 'assets/script-builder-view.js',
+    'assets/script-builder-tools.js'
   ];
 
   /* Server-rendered / dynamic paths. Their text is somebody's page content,
