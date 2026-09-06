@@ -23,9 +23,12 @@
     'Grim Peeker': 'Sees part of the Grimoire, or otherwise learns what the Storyteller can see.',
     'Hidden': 'Hides its presence, identity, or other game information from players.',
     'Information': 'The player learns something from their ability.',
-    'Loss Condition': 'Adds a new way for a player or team to lose the game.',
     'Loud': 'Announces information or effects publicly to the whole town.',
     'Madness': 'Creates madness, or interacts with mad players.',
+    /* No description on purpose: an empty string means no hover box
+       (tagEl() only offers one for a tag that describes itself), which is
+       different from the tag being unknown. */
+    'Magic': '',
     'Misregistration': 'Can register as another character, team, or alignment.',
     'Multi-Kill': 'An evil character that can kill more than one player per night.',
     'Neighbor': 'Cares about the players sitting next to someone.',
@@ -53,7 +56,7 @@
     'Timer': 'Adds a time limit or countdown to the game.',
     'True Info': 'This character’s ability interacts with or causes True Info.',
     'Votes': 'Interacts with voting — extra votes, blocked votes, or changed counts.',
-    'Win Condition': 'Adds a new way for a player or team to win the game.',
+    'Win/Loss Condition': 'Adds a new way for a player or team to win or lose the game.',
     'You Start Knowing': 'Starts the game knowing information from their ability.'
   };
 

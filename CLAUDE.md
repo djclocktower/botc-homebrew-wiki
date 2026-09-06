@@ -237,6 +237,21 @@ assets/
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+                       A description of '' is a tag with no hover box (Magic),
+                       which is not the same as a tag nothing knows about.
+                       A tag NOT in this list is still kept on a page that has
+                       one: both editors hold it aside and write it back after
+                       the picked tags, because the hidden field is rebuilt
+                       from the buttons and a stored tag with no button used to
+                       be dropped the moment the page was opened — which is
+                       every affected page for the minutes between a tag being
+                       renamed in D1 and the new tags.js reaching the site.
+                       Tag names may contain '/' (Win/Loss Condition): the
+                       links encodeURIComponent it, and the title-caser is
+                       spelled /(^|[\s\-\/])[a-z]/ in FIVE places (render.js,
+                       card-filters.js, all-characters/tag/tags.html) so
+                       'win/loss condition' comes back as 'Win/Loss Condition'
+                       and still finds its description.
                        The chips' CSS (.tag-pick-btn) is in styles.css, not in
                        the pages: it was hand-copied into create.html and
                        edit.html, so /bloodstar — the third page to use the

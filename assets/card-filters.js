@@ -26,7 +26,7 @@
   }
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
-      .replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
+      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
   }
   function cardTags(card) {
     return (card.getAttribute('data-tags') || '').split(',')

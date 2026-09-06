@@ -822,10 +822,18 @@
       var picker = document.getElementById('tag-picker');
       var hidden = document.getElementById('tags');
       if (window.buildTagPicker) window.buildTagPicker(picker);
+      /* Tags the picker has no button for are KEPT, not dropped. The hidden
+         field is rebuilt from the buttons on load and on every click, so a
+         stored tag missing from tags.js used to vanish the moment somebody
+         opened the page — which is exactly what happens to every page for the
+         minutes between a tag being renamed in the database and the new
+         tags.js reaching the site. They are held here and written back after
+         the picked ones. */
+      var extraTags = [];
       function syncHidden() {
         var sel = Array.from(picker.querySelectorAll('.tag-pick-btn.selected'))
                        .map(function(b){ return b.getAttribute('data-tag'); });
-        hidden.value = sel.join(', ');
+        hidden.value = sel.concat(extraTags).join(', ');
       }
       picker.addEventListener('click', function(e) {
         var btn = e.target.closest('.tag-pick-btn');
@@ -835,10 +843,15 @@
         schedule();
       });
       window.setTagPickerValue = function(csv) {
-        var vals = (csv || '').split(',').map(function(s){ return s.trim().toLowerCase(); });
+        var vals = (csv || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+        var lower = vals.map(function(s){ return s.toLowerCase(); });
+        var known = {};
         picker.querySelectorAll('.tag-pick-btn').forEach(function(b){
-          b.classList.toggle('selected', vals.indexOf(b.getAttribute('data-tag').toLowerCase()) !== -1);
+          var t = b.getAttribute('data-tag');
+          known[t.toLowerCase()] = 1;
+          b.classList.toggle('selected', lower.indexOf(t.toLowerCase()) !== -1);
         });
+        extraTags = vals.filter(function(t){ return !known[t.toLowerCase()]; });
         syncHidden();
       };
     })();

@@ -72,7 +72,7 @@
     function toTitleCase(s) {
       // hyphen-aware: "multi-kill" -> "Multi-Kill" (matches the canonical tags)
       return String(s || '').trim().toLowerCase()
-        .replace(/(^|[\s-])[a-z]/g, function(m) { return m.toUpperCase(); });
+        .replace(/(^|[\s\-\/])[a-z]/g, function(m) { return m.toUpperCase(); });
     }
 
     var rawTag = new URLSearchParams(location.search).get('t') || '';
