@@ -1833,6 +1833,35 @@ others writes a different credit, which is what the credit string is for.
   tick for a guest rather than showing a control the save would ignore.
 - Stored **only when true**, so the pages nobody ticks it on grow no key, and
   it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
+- **Ticking it keeps the uploader's key to the page** (`keepUploaderEditing()`,
+  called by all three save handlers right after `setCreditUnlinked`). The tick
+  is very nearly a request to hand the page over, and the usual next step is
+  an admin doing exactly that with `assign-owner` — at which point edit rights,
+  which hang off ownership, left the person who had written every word of it
+  unable to fix a typo. So the tick also names the **uploader** in the page's
+  own `editors` list and moves it onto `publicEdit: 'approved'`. Four rules:
+  - `sanitizeEditors()` drops the current owner from their own list on purpose
+    (an owner is not a guest on their own page), so this entry is appended
+    after it and is the one deliberate exception. It does nothing at all while
+    they still own the page; the day it moves it is the whole of what they keep.
+  - The mode is left alone when it is **`'all'` or `'all-but-ability'`** —
+    those already let any account edit, so forcing `'approved'` over one would
+    close a page its owner had opened to everyone. Everything else (`'closed'`,
+    `'tags'`, `'suggest'`, or nothing chosen) is moved onto `'approved'`,
+    because `editPermission()` asks for the mode **and** the list, so a named
+    editor counts in no other mode. The cost is that a character on the
+    tags-open default stops being open to strangers' tags.
+  - **Unticking undoes exactly that**: the uploader's own entry goes, editors
+    they named by hand stay, and an `'approved'` page left with nobody named
+    drops the mode rather than sitting on one that reads as closed.
+  - **Owner saves only.** The tick is the owner's field, so a guest's save must
+    not be what writes the entry. A page ticked before this existed picks it up
+    on its owner's next save (10 rows on the live wiki when it shipped).
+  `ApprovedEditors.mountCreditUnlink()` is the browser half, mounted by all
+  four editors: it moves the "Who can edit" select as the box is ticked, because
+  the edit-status bar is drawn from that select and says what the NEXT save
+  will store — a mode the Worker is about to set with the control still showing
+  something else is the one thing that bar must never do.
 - The **admin `creator_alias:` override still wins**, in both directions: it is
   checked before proof by ownership, so an admin can link a name every page of
   which disowns it. `creatorNamesFor()` clears the name out of `disowned` when

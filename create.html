@@ -192,7 +192,7 @@
           <label for="creator">Creator</label>
           <input type="text" id="creator" placeholder="Your name or handle">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
         </div>
       </div>
       <div class="fld">
@@ -781,6 +781,13 @@
     var editorsUI = window.ApprovedEditors
       ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
       : null;
+    /* Ticking "this credit isn't mine" moves the page onto approved editing
+       with the uploader named, so the Worker cannot hand it over and leave
+       them locked out. Wired here so the control matches what the save will
+       store — the edit-status bar is drawn from the select. */
+    if (window.ApprovedEditors)
+      window.ApprovedEditors.mountCreditUnlink(
+        document.getElementById('creditUnlinked'), document.getElementById('publicEdit'), editorsUI);
     function syncEditorsBox() {
       $('editors-fld').style.display = $('publicEdit').value === 'approved' ? '' : 'none';
     }
