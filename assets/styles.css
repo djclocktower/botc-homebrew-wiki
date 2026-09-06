@@ -431,6 +431,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .ex::before, .ex::after { content: ""; position: absolute; top: 50%; transform: translateY(-50%); width: 26px; height: 52px; opacity: .55; background: center/contain no-repeat url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 64' fill='none' stroke='%235B1F21' stroke-width='1.3' stroke-linecap='round'><path d='M16 3 C16 20 16 44 16 61'/><path d='M16 12 C10 12 6 9 5 4 C11 5 15 8 16 12'/><path d='M16 12 C22 12 26 9 27 4 C21 5 17 8 16 12'/><path d='M16 30 C8 30 4 25 3 18 C11 20 15 24 16 30'/><path d='M16 30 C24 30 28 25 29 18 C21 20 17 24 16 30'/><path d='M16 49 C10 49 7 45 6 40 C12 42 15 45 16 49'/><path d='M16 49 C22 49 25 45 26 40 C20 42 17 45 16 49'/><circle cx='16' cy='3' r='1.6' fill='%235B1F21'/><circle cx='16' cy='61' r='1.6' fill='%235B1F21'/></svg>"); }
 .ex::before { left: 12px; } .ex::after { right: 12px; transform: translateY(-50%) scaleX(-1); }
 .tips { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--parch-frame); }
+/* The rule between two blocks belongs to whichever one draws it first. .cols
+   carries a border-bottom and .tips a border-top, so a page with no Examples
+   between them drew both — a double line with a 38px gap in it. A .tips that
+   follows .cols directly keeps the rule already under the columns and drops
+   its own; at the top of the card there is nothing above it to separate from. */
+.cols + .tips { margin-top: 18px; padding-top: 0; border-top: 0; }
+.char-parchment > .tips:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 
 /* callout box within a column (How to Run note etc.) */
 .callout {
