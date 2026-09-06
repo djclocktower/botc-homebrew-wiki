@@ -946,7 +946,34 @@ What shapes it:
   The 1,900-row panel is built in slices of 220 rows, one per frame
   (`buildAddList`), so the first rows paint within a frame of the data.
   `performance.mark('sb:…')` marks the milestones; `window.ScriptBuilder`
-  is a small console handle (order, meta, view, undo/redo, history, ready).
+  is a small console handle (order, meta, view, undo/redo, history, ready,
+  source).
+- **A return visit paints from the last one.** The feeds are `private,
+  max-age=0`, so the browser revalidates them on every load and even an
+  unchanged feed cost the round trip to the Worker before anything could be
+  drawn. `cachedJSON()` keeps every feed (and `roles.json` /
+  `night-order.json`) in the Cache API as well — `caches.open('botc-sb-feeds-1')`,
+  a plain store the HTTP cache's rules do not reach — and hands back
+  `{fast, fresh}`: the copy from the last visit draws the page at once
+  (`feedSource === 'cache'`, the card copy for choice), the network's is
+  fetched alongside and stored for next time, and `reconcile()` merges what
+  moved into the objects already on screen. Rows are matched by slug and
+  compared by `v` (the seed carries none, so it falls back to the rows
+  themselves); a changed row is replaced IN its object, keys the fresh row
+  no longer carries deleted, so a jinx taken off a page does not live on
+  here. The panel is rebuilt only when something actually changed — a
+  rebuild takes the filter box down with it, and the usual answer on a
+  return visit is that nothing did — and never while the first build is
+  still pending (`panelState`), since that build will read the merged
+  objects anyway. **Nothing is trusted without the fresh feed**: `cardReady`
+  is set by the fresh card feed, or by the cached one only once the network
+  has actually failed (a toast says so, and the page then works offline);
+  the failure verdict waits for the cache read to settle, because a refused
+  connection fails before the cache has even been opened. Without `caches`
+  (an http:// origin that is not localhost) it is plain fetches, as before.
+  On the local server with a 400 ms feed delay the roster lands at ~460 ms
+  from cache against ~950 ms from the network; a headless check that wants
+  a cold run has to `caches.delete('botc-sb-feeds-1')` first.
 - **A click touches one row.** Every sidebar row is kept in `rowBySlug` when
   the list is built, so nothing queries the DOM to repaint a tick. The roster
   is small and is rebuilt whole. The night arranger, the jinx editor and the

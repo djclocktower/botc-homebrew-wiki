@@ -35,6 +35,9 @@
  *   botc_script_library  up to 15 saved scripts, each {id, chars, meta}.
  *                        Purely this page's; nothing else reads it.
  *   botc_builder_prefs   panel width, inline abilities, which tab was open.
+ *   caches 'botc-sb-feeds-1'  the last visit's copy of every feed this page
+ *                        reads, so a return visit paints at once and the
+ *                        network only has to say what moved (see start()).
  */
 (function () {
   'use strict';
@@ -3130,10 +3133,61 @@
   // ══════════════════════════════════════════════════════════════════════
   //  Boot
   // ══════════════════════════════════════════════════════════════════════
+  /* ── The feed cache ────────────────────────────────────────────────────
+     A return visit used to wait on a network round trip for both feeds
+     before it could draw anything — the browser revalidates them on every
+     load (they are `private, max-age=0`), so even an unchanged feed cost
+     the RTT to the Worker and back before the roster appeared. Now every
+     feed is also kept in the Cache API (`caches`, a plain store this page
+     owns; the HTTP cache's own rules do not reach it): the copy from the
+     LAST visit paints the page at once, the fresh one is fetched
+     alongside and stored for next time, and `reconcile()` merges whatever
+     changed into the objects already on screen. Nothing is trusted
+     without the fresh feed: `cardReady` — what the export waits on — is
+     set by the fresh card feed, or by the cached one only once the
+     network has actually failed. No `caches` (an http:// origin that is
+     not localhost, an old private-mode Safari): plain fetches, as before. */
+  var FEED_CACHE = 'botc-sb-feeds-1';
+  var cacheP = null;
+  function feedCache() {
+    if (cacheP) return cacheP;
+    cacheP = (typeof caches !== 'undefined' && caches.open)
+      ? caches.open(FEED_CACHE).catch(function () { return null; })
+      : Promise.resolve(null);
+    return cacheP;
+  }
+  /* cachedJSON(url) -> {fast, fresh}: `fast` resolves with the copy from the
+     last visit (null when there is none), `fresh` with the network's. */
+  function cachedJSON(url) {
+    var cp = feedCache();
+    var fast = cp.then(function (cache) {
+      if (!cache) return null;
+      return cache.match(url).then(function (r) { return r ? r.json() : null; }).catch(function () { return null; });
+    });
+    var fresh = fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      var copy = r.clone();
+      cp.then(function (cache) { if (cache) cache.put(url, copy).catch(function () { /* quota, or a response it will not keep */ }); });
+      return r.json();
+    });
+    // A caller that took the cached copy never looks at `fresh`, so its
+    // failure would surface as an unhandled rejection; this marks it handled
+    // without hiding it from a caller that does wait on it.
+    fresh.catch(function () { /* reported by whoever waits on it */ });
+    return { fast: fast, fresh: fresh };
+  }
+  /* The cached copy if there is one, else the network's. For the files that
+     change a few times a year (the official roster) that is all the page
+     needs: this visit draws from the last one, the next visit gets the
+     fresh one the store just took. */
+  function firstOf(cj) {
+    return cj.fast.then(function (d) { return d != null ? d : cj.fresh; });
+  }
+
   function loadOfficial() {
     return Promise.all([
-      fetch('assets/roles.json').then(function (r) { return r.json(); }),
-      fetch('assets/night-order.json').then(function (r) { return r.json(); }).catch(function () { return null; })
+      firstOf(cachedJSON('assets/roles.json')),
+      firstOf(cachedJSON('assets/night-order.json')).catch(function () { return null; })
     ]).then(function (both) {
       window.OfficialRoles.buildOfficialRoles(both[0], both[1]).forEach(function (c) {
         officialChars.push(c);
@@ -3178,14 +3232,19 @@
   }
   function perfMark(name) { try { performance.mark('sb:' + name); } catch (e) { /* fine */ } }
 
+  var feedSource = '';   // 'cache' | 'network' — what drew the first paint
+  var panelState = '';   // '' | 'pending' | 'building' | 'done'
   function start() {
     var official = loadOfficial();
-    var gridP = fetch('characters.json?fields=grid').then(function (r) { return r.json(); }).catch(function () { return null; });
-    var cardP = fetch('characters.json?fields=card').then(function (r) { return r.json(); });
-    var painted = false;
+    var grid = cachedJSON('characters.json?fields=grid');
+    var card = cachedJSON('characters.json?fields=card');
+    var gridP = grid.fresh.catch(function () { return null; });
+    var cardP = card.fresh;
+    var painted = false, paintedFromCard = false;
 
-    function firstPaint(list) {
+    function firstPaint(list, from) {
       painted = true;
+      feedSource = from || 'network';
       allChars = list || [];
       // The feed is in the order the pages were made, oldest first, which is
       // what the panel's "Recently added" sort reads (data-order, highest
@@ -3228,11 +3287,14 @@
          is their script, and it is on screen before the list starts. rAF
          then setTimeout, because an rAF callback alone still runs before
          that paint. */
+      panelState = 'pending';
       requestAnimationFrame(function () {
         setTimeout(function () {
           perfMark('panel-start');
+          panelState = 'building';
           buildAddList(function () {
             perfMark('panel-done');
+            panelState = 'done';
             mountAddFilters();
             paintJinxHints();
             paintPanelNeeds();
@@ -3241,6 +3303,75 @@
         }, 0);
       });
       return true;
+    }
+    /* The fresh feed against the copy the page was drawn from. Rows are
+       matched by slug and compared by `v` (the row's version, stamped by
+       the Worker); the seed feed carries none, so it falls back to the
+       rows themselves. A changed row is REPLACED in its object — keys the
+       fresh row no longer carries are deleted, or a jinx taken off a page
+       would live on here — and the panel is rebuilt only when something
+       actually moved: a rebuild takes the filter box down with it, and on
+       a return visit the usual answer is that nothing has. */
+    function rowChanged(have, row) {
+      if (have.v && row.v) return have.v !== row.v;
+      return JSON.stringify(sortedKeys(row)) !== JSON.stringify(sortedKeys(have));
+    }
+    function sortedKeys(o) {
+      var out = {};
+      Object.keys(o).sort().forEach(function (k) { if (k.charAt(0) !== '_') out[k] = o[k]; });
+      return out;
+    }
+    function replaceInto(have, row) {
+      Object.keys(have).forEach(function (k) { if (k.charAt(0) !== '_' && !(k in row)) delete have[k]; });
+      Object.assign(have, row);
+    }
+    function reconcile(list) {
+      var fresh = {}, added = [], removed = [], changed = 0;
+      (list || []).forEach(function (r) { if (r && r.slug) fresh[r.slug] = r; });
+      allChars.forEach(function (c) {
+        var row = fresh[c.slug];
+        if (!row) { removed.push(c.slug); return; }
+        if (rowChanged(c, row)) { changed++; replaceInto(c, row); }
+      });
+      (list || []).forEach(function (row) {
+        if (!row || !row.slug || bySlug[row.slug]) return;
+        row._ord = allChars.length + 1;
+        allChars.push(row);
+        bySlug[row.slug] = row;
+        added.push(row.slug);
+      });
+      if (removed.length) {
+        var gone = {};
+        removed.forEach(function (sl) { gone[sl] = 1; delete bySlug[sl]; });
+        allChars = allChars.filter(function (c) { return !gone[c.slug]; });
+      }
+      if (!added.length && !removed.length && !changed) { perfMark('reconcile-same'); return; }
+      perfMark('reconcile-changed');
+      registries();
+      rosterCache = null;
+      paintCounts();
+      paintRoster();
+      paintPicks();
+      nightDirty = jinxDirty = analyseDirty = true;
+      ensurePane();
+      settle();
+      // The panel: rebuilt from the objects as they now are, unless the
+      // first build has not started yet, in which case it will read them.
+      if (panelState && panelState !== 'pending') {
+        panelState = 'building';
+        buildAddList(function () {
+          panelState = 'done';
+          mountAddFilters();
+          paintJinxHints();
+          paintPanelNeeds();
+        });
+      }
+      if (added.length || removed.length) {
+        var bits = [];
+        if (added.length) bits.push(added.length + ' new character' + (added.length === 1 ? '' : 's'));
+        if (removed.length) bits.push(removed.length + ' taken down');
+        toast('The wiki moved since your last visit: ' + bits.join(', ') + '.', 3200);
+      }
     }
     function registries() {
       // The jinx resolver's wiki registry — one keying rule for every jinx
@@ -3273,6 +3404,21 @@
       settle();
     }
 
+    function releaseWaiters() {
+      cardReady = true;
+      var w = cardWaiters; cardWaiters = [];
+      w.forEach(function (fn) { try { fn(); } catch (e) { /* one waiter must not stop the rest */ } });
+    }
+    // The copy from the last visit, whichever feed left one — the card
+    // feed for choice, since it holds everything the page can need.
+    var cacheTried = Promise.all([official, card.fast, grid.fast]).then(function (all) {
+      if (painted) return;
+      var list = all[1] && all[1].length ? all[1] : (all[2] && all[2].length ? all[2] : null);
+      if (!list) return;
+      perfMark('feed-cache');
+      paintedFromCard = list === all[1];
+      firstPaint(list, 'cache');
+    }).catch(function () { /* the network copies are still coming */ });
     Promise.all([official, gridP]).then(function (both) {
       perfMark('feed-grid');
       if (!painted && both[1] && both[1].length) firstPaint(both[1]);
@@ -3281,14 +3427,24 @@
       perfMark('feed-card');
       var list = both[1] || [];
       if (!painted) { if (firstPaint(list) === false) return; }
+      else if (feedSource === 'cache') reconcile(list);
       else upgrade(list);
-      cardReady = true;
-      var w = cardWaiters; cardWaiters = [];
-      w.forEach(function (fn) { try { fn(); } catch (e) { /* one waiter must not stop the rest */ } });
+      releaseWaiters();
     }).catch(function () {
-      if (!painted) $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>';
-      else toast('The character details could not be loaded, so exports are off until a reload.', 4000);
-      cardWaiters = [];
+      // A refused connection fails at once — before the cache has even been
+      // read — so the verdict waits for that attempt to settle.
+      cacheTried.then(function () {
+        if (!painted) { $('sb-add-list').innerHTML = '<p class="sbx-note">Could not load the characters. Check your connection and reload.</p>'; cardWaiters = []; return; }
+        if (feedSource === 'cache' && paintedFromCard) {
+          // Offline, or the Worker is down: the last visit's card feed is
+          // the whole of what the export needs, so the page goes on working.
+          toast('The wiki could not be reached, so this is the character list from your last visit.', 4500);
+          releaseWaiters();
+          return;
+        }
+        toast('The character details could not be loaded, so exports are off until a reload.', 4000);
+        cardWaiters = [];
+      });
     });
   }
 
@@ -3348,7 +3504,8 @@
     view: function () { return view; },
     undo: undo, redo: redo,
     history: function () { return { undo: hist.undo.length, redo: hist.redo.length }; },
-    ready: function () { return cardReady; }
+    ready: function () { return cardReady; },
+    source: function () { return feedSource; }
   };
   syncTopbarHeight();
   window.addEventListener('resize', syncTopbarHeight);
