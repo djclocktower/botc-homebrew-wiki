@@ -1326,8 +1326,16 @@
       // the two columns stack.
       relatedHTML(d, root);
 
+    /* A page may carry more than one How-to-Run note, so `callout` is a list
+       like every other repeated field here. It was a single string for years
+       and thousands of rows still hold one, so a bare string reads as a list
+       of one rather than being migrated: nothing has to be rewritten, and an
+       old row and a new one render through the same line. */
+    var callouts = (Array.isArray(d.callout) ? d.callout : [d.callout])
+      .filter(function (x) { return typeof x === 'string' && x.trim(); });
+
     var howColBody = paras.map(function (p) { return '<p>' + inlineLinks(p) + '</p>'; }).join('') +
-      (d.callout && d.callout.trim() ? '<div class="callout">' + inlineLinks(d.callout) + '</div>' : '');
+      callouts.map(function (c) { return '<div class="callout">' + inlineLinks(c) + '</div>'; }).join('');
     var howCol = howColBody ?
       '<div class="gen-sech-wrap" id="sec-howtorun"><h2 class="gen-sech"><a class="sec-anchor" href="#sec-howtorun">How to Run</a></h2></div>' + howColBody : '';
 

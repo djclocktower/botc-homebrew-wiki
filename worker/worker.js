@@ -1133,7 +1133,7 @@ const FIELD_LABELS = {
   tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
   summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
   tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
-  callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
+  callout: 'how-to-run notes', art: 'icon', image: 'icon', imageAlt: 'alternate art',
   artAlt: 'alternate art', imageAlt2: 'evil art', artAlt2: 'evil art',
   jinxes: 'jinxes', reminders: 'reminders',
   remindersGlobal: 'global reminders', firstNight: 'first-night order',
@@ -5192,7 +5192,7 @@ const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
    cache keeps serving last week's HTML for the full s-maxage (a week) unless
    somebody happens to save a page. Bump this whenever a deploy changes what
    these routes render and the stale copies die with it. */
-const SSR_RENDER_V = 3;
+const SSR_RENDER_V = 4;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
@@ -10897,7 +10897,7 @@ export default {
           if (how.length) out.push('## How to Run\n' + how.map(x => x.trim()).join('\n\n'));
           section('Examples', d.examples);
           section('Tips', d.tips);
-          if (d.callout && String(d.callout).trim()) out.push('::: ' + String(d.callout).trim());
+          for (const c of lines(d.callout)) out.push('::: ' + c.trim());
           return out.join('\n\n');
         };
         const kebab = x => String(x || '').toLowerCase().normalize('NFD')

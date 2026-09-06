@@ -214,8 +214,8 @@
         <textarea id="howto"></textarea>
       </div>
       <div class="fld">
-        <label for="callout">How-to-Run note <span class="hint">(optional callout box)</span></label>
-        <input type="text" id="callout">
+        <label for="callout">How-to-Run notes <span class="hint">(one note per line &middot; optional)</span></label>
+        <textarea id="callout"></textarea>
       </div>
       <div class="fld">
         <label for="examples">Examples <span class="hint">(one per line)</span></label>
@@ -727,6 +727,10 @@
         else if (f.dataset.id) j.id = f.dataset.id;
         jinxes.push(j);
       });
+      /* How-to-Run notes: one box per line. Empty stays the empty STRING
+         the field has always stored, so re-saving a page that never had a
+         note is not recorded as a change in its history. */
+      var callouts = lines('callout');
       return {
         name: $('name').value.trim(),
         team: $('team').value,
@@ -736,7 +740,7 @@
         lede: $('lede').value.trim(),
         summaryBullets: lines('bullets'),
         howToRun: lines('howto'),
-        callout: $('callout').value.trim(),
+        callout: callouts.length ? callouts : '',
         examples: lines('examples'),
         tips: lines('tips'),
         bluffing: lines('bluffing'),

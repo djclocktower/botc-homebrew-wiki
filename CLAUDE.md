@@ -1300,6 +1300,14 @@ The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
 sidebar boxes.
 
+**`callout` is a LIST** — the How-to-Run notes, one box each, drawn after the
+How to Run paragraphs. It was a single string for years and thousands of rows
+still hold one, so nothing was migrated: `renderCharacter()` reads a bare
+string as a list of one, `classify.js` counts either shape as almanac text
+(or a page with a note and nothing else would read as Partial), and the
+editors' box is one note per line. The two importers still write a string,
+which is a single box exactly as before.
+
 **`ability` is deliberately NOT one of them** and stays escaped. It is not
 writing *about* the character, it is the character's rule: it goes verbatim
 into the official-schema JSON the app and every script tool read, it is
