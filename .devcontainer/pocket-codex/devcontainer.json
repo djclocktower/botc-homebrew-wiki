@@ -1,0 +1,19 @@
+{
+  "name": "Pocket Codex",
+  "image": "mcr.microsoft.com\/devcontainers\/universal:2",
+  "forwardPorts": [
+    8765,
+    3000,
+    5173,
+    8080
+  ],
+  "portsAttributes": {
+    "8765": {
+      "label": "Pocket Codex",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash .pocket-codex\/bootstrap.sh",
+  "postStartCommand": "bash .pocket-codex\/start.sh",
+  "remoteUser": "codespace"
+}

@@ -1,0 +1,9 @@
+{
+  "repo": "djclocktower\/botc-homebrew-wiki",
+  "baseBranch": "main",
+  "baseSha": "7350b07b67476f149d5f1efb389b9960711daf3e",
+  "workBranch": "pocket-codex\/work-a9bbd3f2",
+  "workDir": "\/workspaces\/pocket-codex-work",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAonvGHiYoMeF4ZoVtuAtuzPUOIqMngB9+W8R7UHmhI3vLTu1NXT\/CH3UXfYY6ne8hvAesWkEPnWFUg1rj6JA\/wK3mn0v069aGRIdh5mIpuoOhf1F4Z9GAt84VQoxswJwcKkgHa5uw9rjkE4cpwScbsBo1SqTeYJ6tby0ercutxuRUx66YVdeOI8uAvEY3\/KS6048WUYzxsHorgeNrTNzvrcgJLmx7sYV90oDhglQxe7Wzu2Re8bJXPyOVM99ljcSMFYw24JQuFCsNUjuWHjRbx\/82412KIeG4qycHtPQEZiW1no8+wuSH6JPKUqnKZbjgEvIMoq\/dWedJdQdIvXkcUwIDAQAB\n-----END PUBLIC KEY-----\n",
+  "pairId": "a9bbd3f2-3130-457d-b620-a7470dd779c0"
+}
