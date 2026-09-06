@@ -1922,8 +1922,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   color: rgba(236,225,200,.7); margin: 0 0 18px;
 }
 /* Until the JS builds them, keep the bar and toggle fully hidden — the
-   display rules below would otherwise override the [hidden] attribute. */
-.filter-bar[hidden], .filter-toggle[hidden] { display: none !important; }
+   display rules below would otherwise override the [hidden] attribute.
+   A GROUP needs it too (it is display:flex above): /scripts hides a whole
+   chip group when nothing on the page matches it. */
+.filter-bar[hidden], .filter-toggle[hidden],
+.filter-group[hidden] { display: none !important; }
 
 /* Mobile: collapse the (very tall) filter bar behind a toggle button. */
 .filter-toggle { display: none; }
@@ -1996,6 +1999,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .script-tile-desc {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: .95rem;
   color: var(--ink); margin: 0 0 12px; line-height: 1.35; flex: 1;
+  /* Clamped for the same reason .collection-tile-tagline is, and to the same
+     three lines: a tile falls back from `tagline` to `description`, and a
+     description is a paragraph — the longest on the wiki is 857 characters.
+     Tiles sit in a grid, so one of those stretched every card in its row to
+     match. The script's own page carries the full text. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  line-clamp: 3; overflow: hidden;
 }
 .collection-tile-tagline {
   font-family: 'EB Garamond', serif; font-style: italic; font-size: .9rem;

@@ -2,9 +2,9 @@
    Used by the Script Builder (script.html), the publish page
    (publish-script.html) and steven-approved-order.html, and safe to bundle
    into the Worker (no DOM access at top level).
-   The prefix order is semantic: more-specific prefixes ("Each night*") must
-   come before less-specific ones ("Each night"). Do not reorder casually —
-   steven-approved-order.html renders this exact list. */
+   SAO_PREFIXES is the SORT order, and steven-approved-order.html renders this
+   exact list, so it is written the way the order reads: "Each night" above
+   "Each night*". It is NOT the order they are matched in — see SAO_SCAN. */
 (function () {
   var SAO_PREFIXES = [
     'Hermit',
@@ -52,13 +52,29 @@
   ];
   var SAO_ANYTHING_ELSE_IDX = SAO_PREFIXES.indexOf('Atheist'); // slot just before Atheist
 
+  /* Matching order, which is not the sort order. The scan takes the first
+     prefix an ability starts with, and EVERY "Each night*, ..." ability also
+     starts with "Each night" — so the asterisked ones were ranked as plain
+     "Each night" and the two groups interleaved, sorted only by how long the
+     ability happened to be. ("Once per game, at night*" had it too.)
+     Two prefixes can both match one ability only when one is a prefix of the
+     other, so testing the LONGEST first always picks the most specific — and
+     it keeps working however the list above is later rewritten, which is what
+     an ordering rule written in a comment could not do. Ties keep the list's
+     own order; Atheist stays out of the scan, as it always has. */
+  var SAO_SCAN = SAO_PREFIXES
+    .map(function (p, i) { return i; })
+    .filter(function (i) { return i !== SAO_ANYTHING_ELSE_IDX; })
+    .sort(function (x, y) {
+      return (SAO_PREFIXES[y].length - SAO_PREFIXES[x].length) || (x - y);
+    });
+
   var TEAM_ORDER = ['townsfolk', 'outsider', 'minion', 'demon', 'traveller', 'fabled', 'loric'];
 
   function saoRank(ability) {
     var a = (ability || '').trim();
-    for (var i = 0; i < SAO_PREFIXES.length; i++) {
-      if (i === SAO_ANYTHING_ELSE_IDX) continue; // skip Atheist in prefix scan
-      if (a.indexOf(SAO_PREFIXES[i]) === 0) return i;
+    for (var i = 0; i < SAO_SCAN.length; i++) {
+      if (a.indexOf(SAO_PREFIXES[SAO_SCAN[i]]) === 0) return SAO_SCAN[i];
     }
     // <Anything else> gets the index just before Atheist
     return SAO_ANYTHING_ELSE_IDX;

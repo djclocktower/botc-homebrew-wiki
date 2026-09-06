@@ -587,7 +587,17 @@ news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
-scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
+scripts.html           /scripts — the script index. Filter chips for Curata and
+                       **Teensyville** (a small script; judged on the whole
+                       roster, which is the count the tile prints, because most
+                       rosters here are mostly official `off-` slugs this page
+                       has no team for — TEENSY_MAX is 15). A chip whose count
+                       is zero hides its group, and the bar hides with the last
+                       of them. It carries the mobile Filters toggle
+                       all-characters.html has: under 640px the CSS hides a
+                       .filter-bar that is not .open, so the bar was
+                       unreachable on a phone without it.
+script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
                        Creator Icons. This is what the "Tools" nav entry points at.
@@ -2789,8 +2799,14 @@ seeded with whole collections whose characters all arrived unowned.
   `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
   single source of truth used by script.html, publish-script.html, and rendered
-  into steven-approved-order.html. More-specific prefixes ("Each night*") must
-  come before less-specific ("Each night") in the array — do not reorder.
+  into steven-approved-order.html. **`SAO_PREFIXES` is the SORT order and
+  `SAO_SCAN` is the matching order** — the list is written the way the order
+  reads ("Each night" above "Each night*"), and matched longest-prefix-first,
+  because every "Each night*, …" ability also starts with "Each night" and the
+  scan would otherwise rank the asterisked ones as plain "Each night" and
+  interleave the two groups. Two prefixes can both match one ability only when
+  one is a prefix of the other, so longest-first is always the most specific
+  match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
