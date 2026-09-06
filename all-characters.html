@@ -198,7 +198,7 @@
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
 
-    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s-])[a-z]/g, function(m){ return m.toUpperCase(); }); }
+    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function(m){ return m.toUpperCase(); }); }
 
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');

@@ -87,7 +87,12 @@
   function hasAlmanac(d) {
     if (!d) return false;
     for (var i = 0; i < ALMANAC_TEXT_FIELDS.length; i++) {
-      if (nonEmpty(d[ALMANAC_TEXT_FIELDS[i]])) return true;
+      /* Either shape counts. `callout` is a list of How-to-Run notes now and
+         a plain string on every row written before it was, and renderCharacter()
+         draws both — so a page must not read as Partial for holding the one
+         the reader is looking at. */
+      var t = d[ALMANAC_TEXT_FIELDS[i]];
+      if (nonEmpty(t) || listHasText(t)) return true;
     }
     for (var j = 0; j < ALMANAC_LIST_FIELDS.length; j++) {
       var list = d[ALMANAC_LIST_FIELDS[j]];

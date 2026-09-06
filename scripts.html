@@ -55,11 +55,24 @@
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
+    <!-- Below 640px the CSS hides .filter-bar unless it is .open, so a bar
+         with no toggle beside it is a bar nobody on a phone can reach — which
+         is what the Curata chip here was. The button is display:none on
+         desktop, so it costs that view nothing. Same wiring as
+         all-characters.html. -->
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden
+      aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
     <div class="filter-bar" id="filter-bar" hidden>
       <div class="filter-group"><span class="filter-group-label">Status</span>
         <div class="filter-chips">
           <button type="button" class="filter-chip filter-chip-curata" id="fc-curata"
             title="Curata — scripts the wiki admins have picked out.">Curata only</button>
+        </div>
+      </div>
+      <div class="filter-group"><span class="filter-group-label">Size</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip" id="fc-teensy"
+            title="Teensyville — small scripts, 15 characters or fewer.">Teensyville</button>
         </div>
       </div>
     </div>
@@ -90,7 +103,17 @@
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        var curataOnly = false;
+        var curataOnly = false, teensyOnly = false;
+        /* Teensyville is a small script — the classic shape is 6 townsfolk,
+           2 outsiders, 2 minions and 1 demon — so it is judged on the size of
+           the roster. It is judged on the WHOLE roster, which is also the
+           number printed on the tile, rather than on the four core teams:
+           most rosters here are mostly official characters (`off-` slugs)
+           that this page has no team for, so counting core teams would call
+           a 25-strong official script tiny. 15 leaves room for a traveller or
+           two above the canonical 11 and sits well clear of a standard 25. */
+        var TEENSY_MAX = 15;
+        function isTeensy(sc){ return (sc.characters || []).length <= TEENSY_MAX; }
         function cardHTML(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
@@ -125,23 +148,46 @@
             '</div></a>';
         }
         function draw(){
-          var rows = curataOnly
-            ? scripts.filter(function(sc){ return sc.curata; })
-            : scripts;
+          var rows = scripts.filter(function(sc){
+            if (curataOnly && !sc.curata) return false;
+            if (teensyOnly && !isTeensy(sc)) return false;
+            return true;
+          });
+          // The chips combine, so the empty message cannot name one of them.
           grid.innerHTML = rows.map(cardHTML).join('') ||
-            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Curata scripts yet.</p>';
+            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts match those filters.</p>';
         }
-        // The chip only shows up once something carries the status.
-        var nCurata = scripts.filter(function(sc){ return sc.curata; }).length;
-        if (nCurata){
-          var bar = document.getElementById('filter-bar');
-          var btn = document.getElementById('fc-curata');
-          btn.textContent = 'Curata only (' + nCurata + ')';
+        // A chip only shows up once something matches it, and the bar only
+        // shows up once a chip does — a filter that can only ever empty the
+        // page is worse than no filter.
+        var bar = document.getElementById('filter-bar');
+        var toggle = document.getElementById('filter-toggle');
+        function showBar(){
           bar.hidden = false;
+          if (toggle) toggle.hidden = false;
+        }
+        function mountChip(id, label, n, onToggle){
+          var btn = document.getElementById(id);
+          if (!btn) return;
+          if (!n){ btn.closest('.filter-group').hidden = true; return; }
+          btn.textContent = label + ' (' + n + ')';
+          showBar();
           btn.addEventListener('click', function(){
-            curataOnly = !curataOnly;
-            btn.classList.toggle('active', curataOnly);
+            btn.classList.toggle('active', onToggle());
             draw();
+          });
+        }
+        mountChip('fc-curata', 'Curata only',
+          scripts.filter(function(sc){ return sc.curata; }).length,
+          function(){ return (curataOnly = !curataOnly); });
+        mountChip('fc-teensy', 'Teensyville',
+          scripts.filter(isTeensy).length,
+          function(){ return (teensyOnly = !teensyOnly); });
+        if (toggle) {
+          toggle.addEventListener('click', function(){
+            var open = bar.classList.toggle('open');
+            toggle.classList.toggle('open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
           });
         }
         draw();

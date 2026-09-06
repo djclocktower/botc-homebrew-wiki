@@ -237,6 +237,21 @@ assets/
   charpage.js          /c/ page enhancements (edit button, add-to-script/token)
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+                       A description of '' is a tag with no hover box (Magic),
+                       which is not the same as a tag nothing knows about.
+                       A tag NOT in this list is still kept on a page that has
+                       one: both editors hold it aside and write it back after
+                       the picked tags, because the hidden field is rebuilt
+                       from the buttons and a stored tag with no button used to
+                       be dropped the moment the page was opened — which is
+                       every affected page for the minutes between a tag being
+                       renamed in D1 and the new tags.js reaching the site.
+                       Tag names may contain '/' (Win/Loss Condition): the
+                       links encodeURIComponent it, and the title-caser is
+                       spelled /(^|[\s\-\/])[a-z]/ in FIVE places (render.js,
+                       card-filters.js, all-characters/tag/tags.html) so
+                       'win/loss condition' comes back as 'Win/Loss Condition'
+                       and still finds its description.
                        The chips' CSS (.tag-pick-btn) is in styles.css, not in
                        the pages: it was hand-copied into create.html and
                        edit.html, so /bloodstar — the third page to use the
@@ -572,7 +587,17 @@ news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
-scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
+scripts.html           /scripts — the script index. Filter chips for Curata and
+                       **Teensyville** (a small script; judged on the whole
+                       roster, which is the count the tile prints, because most
+                       rosters here are mostly official `off-` slugs this page
+                       has no team for — TEENSY_MAX is 15). A chip whose count
+                       is zero hides its group, and the bar hides with the last
+                       of them. It carries the mobile Filters toggle
+                       all-characters.html has: under 640px the CSS hides a
+                       .filter-bar that is not .open, so the bar was
+                       unreachable on a phone without it.
+script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        Grimoire Forge, Icon Forge, Bloodstar Import, Jinxes,
                        Creator Icons. This is what the "Tools" nav entry points at.
@@ -1300,6 +1325,14 @@ The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
 sidebar boxes.
 
+**`callout` is a LIST** — the How-to-Run notes, one box each, drawn after the
+How to Run paragraphs. It was a single string for years and thousands of rows
+still hold one, so nothing was migrated: `renderCharacter()` reads a bare
+string as a list of one, `classify.js` counts either shape as almanac text
+(or a page with a note and nothing else would read as Partial), and the
+editors' box is one note per line. The two importers still write a string,
+which is a single box exactly as before.
+
 **`ability` is deliberately NOT one of them** and stays escaped. It is not
 writing *about* the character, it is the character's rule: it goes verbatim
 into the official-schema JSON the app and every script tool read, it is
@@ -1800,6 +1833,35 @@ others writes a different credit, which is what the credit string is for.
   tick for a guest rather than showing a control the save would ignore.
 - Stored **only when true**, so the pages nobody ticks it on grow no key, and
   it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
+- **Ticking it keeps the uploader's key to the page** (`keepUploaderEditing()`,
+  called by all three save handlers right after `setCreditUnlinked`). The tick
+  is very nearly a request to hand the page over, and the usual next step is
+  an admin doing exactly that with `assign-owner` — at which point edit rights,
+  which hang off ownership, left the person who had written every word of it
+  unable to fix a typo. So the tick also names the **uploader** in the page's
+  own `editors` list and moves it onto `publicEdit: 'approved'`. Four rules:
+  - `sanitizeEditors()` drops the current owner from their own list on purpose
+    (an owner is not a guest on their own page), so this entry is appended
+    after it and is the one deliberate exception. It does nothing at all while
+    they still own the page; the day it moves it is the whole of what they keep.
+  - The mode is left alone when it is **`'all'` or `'all-but-ability'`** —
+    those already let any account edit, so forcing `'approved'` over one would
+    close a page its owner had opened to everyone. Everything else (`'closed'`,
+    `'tags'`, `'suggest'`, or nothing chosen) is moved onto `'approved'`,
+    because `editPermission()` asks for the mode **and** the list, so a named
+    editor counts in no other mode. The cost is that a character on the
+    tags-open default stops being open to strangers' tags.
+  - **Unticking undoes exactly that**: the uploader's own entry goes, editors
+    they named by hand stay, and an `'approved'` page left with nobody named
+    drops the mode rather than sitting on one that reads as closed.
+  - **Owner saves only.** The tick is the owner's field, so a guest's save must
+    not be what writes the entry. A page ticked before this existed picks it up
+    on its owner's next save (10 rows on the live wiki when it shipped).
+  `ApprovedEditors.mountCreditUnlink()` is the browser half, mounted by all
+  four editors: it moves the "Who can edit" select as the box is ticked, because
+  the edit-status bar is drawn from that select and says what the NEXT save
+  will store — a mode the Worker is about to set with the control still showing
+  something else is the one thing that bar must never do.
 - The **admin `creator_alias:` override still wins**, in both directions: it is
   checked before proof by ownership, so an admin can link a name every page of
   which disowns it. `creatorNamesFor()` clears the name out of `disowned` when
@@ -2766,8 +2828,14 @@ seeded with whole collections whose characters all arrived unowned.
   `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
   single source of truth used by script.html, publish-script.html, and rendered
-  into steven-approved-order.html. More-specific prefixes ("Each night*") must
-  come before less-specific ("Each night") in the array — do not reorder.
+  into steven-approved-order.html. **`SAO_PREFIXES` is the SORT order and
+  `SAO_SCAN` is the matching order** — the list is written the way the order
+  reads ("Each night" above "Each night*"), and matched longest-prefix-first,
+  because every "Each night*, …" ability also starts with "Each night" and the
+  scan would otherwise rank the asterisked ones as plain "Each night" and
+  interleave the two groups. Two prefixes can both match one ability only when
+  one is a prefix of the other, so longest-first is always the most specific
+  match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it

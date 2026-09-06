@@ -1133,7 +1133,7 @@ const FIELD_LABELS = {
   tags: 'tags', lede: 'flavour line', quote: 'flavour quote',
   summaryBullets: 'summary', howToRun: 'how to run', examples: 'examples',
   tips: 'tips', bluffing: 'bluffing notes', fighting: 'fighting notes',
-  callout: 'how-to-run note', art: 'icon', image: 'icon', imageAlt: 'alternate art',
+  callout: 'how-to-run notes', art: 'icon', image: 'icon', imageAlt: 'alternate art',
   artAlt: 'alternate art', imageAlt2: 'evil art', artAlt2: 'evil art',
   jinxes: 'jinxes', reminders: 'reminders',
   remindersGlobal: 'global reminders', firstNight: 'first-night order',
@@ -2832,6 +2832,68 @@ function carryDraftNote(next, existing, status) {
 function setCreditUnlinked(next, stored, perm) {
   const on = perm === 'owner' ? !!next.creditUnlinked : !!(stored && stored.creditUnlinked);
   if (on) next.creditUnlinked = true; else delete next.creditUnlinked;
+}
+
+/* ...and it keeps the uploader's key to the page.
+
+   Ticking "this credit isn't mine" says the page is somebody else's work,
+   and the usual next step is the page changing hands: an admin assigns it to
+   the account it is credited to, which is very nearly what the tick is a
+   request for. Edit rights hang off ownership, so being taken at your word
+   used to cost you the page you had just built — the person who wrote every
+   word of it could no longer fix a typo in it. So the tick also NAMES THE
+   UPLOADER as an approved editor of their own page. While they still own it
+   the entry does nothing; the day it moves, it is the whole of what they
+   keep.
+
+   Three rules:
+
+   - `sanitizeEditors()` drops the CURRENT owner from their own list on
+     purpose — an owner is not a guest on their own page — so this entry is
+     appended after it, and is the one deliberate exception to that.
+   - The MODE is only set where the page would otherwise leave them nothing.
+     'all' and 'all-but-ability' already let any account edit the page, so
+     forcing 'approved' over one of those would close a page its owner had
+     opened to everyone. Everything else — 'closed', 'tags', 'suggest', or
+     nothing chosen — is moved onto 'approved', because a named editor counts
+     in no other mode (editPermission asks for both).
+   - Unticking undoes exactly what ticking did and nothing more: the
+     uploader's own entry goes, the editors they named by hand stay, and an
+     'approved' page left with nobody named goes back to storing no mode at
+     all rather than sitting on one that reads as closed.
+
+   Owner saves only. The tick is the owner's field (setCreditUnlinked pins it
+   from the stored row for everyone else), so a guest's save must not be what
+   writes the entry — it would be the one thing an approved editor can change
+   about the editor list. A page ticked before this existed picks the entry up
+   on its owner's next save. */
+async function keepUploaderEditing(env, next, ownerId) {
+  if (ownerId == null) return;   // half the wiki has no owner account at all
+  const own = Number(ownerId);
+  const list = Array.isArray(next.editors) ? next.editors.slice() : [];
+  const isOwn = e => e && Number(e.id) === own;
+
+  if (!next.creditUnlinked) {
+    const kept = list.filter(e => !isOwn(e));
+    if (kept.length === list.length) return;      // was never on the list
+    if (kept.length) next.editors = kept;
+    else {
+      delete next.editors;
+      if (next.publicEdit === 'approved') delete next.publicEdit;
+    }
+    return;
+  }
+
+  if (!list.some(isOwn)) {
+    const u = await env.DB.prepare('SELECT username FROM users WHERE id=?')
+      .bind(own).first().catch(() => null);
+    if (!u || !u.username) return;   // an owner id with no account names nobody
+    list.push({ id: own, username: String(u.username) });
+    next.editors = list;
+  }
+  if (next.publicEdit !== 'all' && next.publicEdit !== 'all-but-ability') {
+    next.publicEdit = 'approved';
+  }
 }
 
 async function notifyDrafted(env, opts) {
@@ -5192,7 +5254,7 @@ const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
    cache keeps serving last week's HTML for the full s-maxage (a week) unless
    somebody happens to save a page. Bump this whenever a deploy changes what
    these routes render and the stale copies die with it. */
-const SSR_RENDER_V = 3;
+const SSR_RENDER_V = 4;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
@@ -9403,6 +9465,7 @@ export default {
            is: it decides whose work the page is said to be, and a guest
            editing an opened page has no say in that. See CREDIT_LINKED_SQL. */
         setCreditUnlinked(c, stored, perm);
+        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId);
         c.jinxes = sanitizeJinxes(c.jinxes);
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
@@ -9674,6 +9737,7 @@ export default {
         c.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(c, storedColl, perm);
+        if (perm === 'owner') await keepUploaderEditing(env, c, existing ? existing.owner_id : sess.userId);
         if (existing && perm !== 'owner' && publicEditTooBig(c)) {
           return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
         }
@@ -9783,6 +9847,7 @@ export default {
         s.curata = existing ? !!parseData(existing).curata : false;
         // The owner's "this credit isn't mine" tick — see CREDIT_UNLINKED_SQL.
         setCreditUnlinked(s, storedScript, perm);
+        if (perm === 'owner') await keepUploaderEditing(env, s, existing ? existing.owner_id : sess.userId);
         /* An admin's "why this went to drafts" note survives an ordinary
            save and is cleared only by going live. The creator opens the
            editor BECAUSE of the note, and fixing one field is not
@@ -10897,7 +10962,7 @@ export default {
           if (how.length) out.push('## How to Run\n' + how.map(x => x.trim()).join('\n\n'));
           section('Examples', d.examples);
           section('Tips', d.tips);
-          if (d.callout && String(d.callout).trim()) out.push('::: ' + String(d.callout).trim());
+          for (const c of lines(d.callout)) out.push('::: ' + c.trim());
           return out.join('\n\n');
         };
         const kebab = x => String(x || '').toLowerCase().normalize('NFD')

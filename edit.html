@@ -183,7 +183,7 @@
           <label for="creator">Creator</label>
           <input type="text" id="creator">
           <label class="credit-unlink" for="creditUnlinked"><input type="checkbox" id="creditUnlinked"> This credit isn’t mine</label>
-          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
+          <span class="credit-unlink-hint">Tick this when you are uploading somebody else’s character. The name in the Creator box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
         </div>
       </div>
       <div class="fld">
@@ -205,8 +205,8 @@
         <textarea id="howto"></textarea>
       </div>
       <div class="fld">
-        <label for="callout">How-to-Run note <span class="hint">(optional callout box)</span></label>
-        <input type="text" id="callout">
+        <label for="callout">How-to-Run notes <span class="hint">(one note per line &middot; optional)</span></label>
+        <textarea id="callout"></textarea>
       </div>
       <div class="fld">
         <label for="examples">Examples <span class="hint">(one per line)</span></label>
@@ -723,12 +723,17 @@
         else if (f.dataset.id) j.id = f.dataset.id;
         jinxes.push(j);
       });
+      /* How-to-Run notes: one box per line. Empty stays the empty STRING
+         the field has always stored, so re-saving a page that never had a
+         note is not recorded as a change in its history. */
+      var callouts = lines('callout');
       return {
         name: $('name').value.trim(), team: $('team').value,
         creator: $('creator').value.trim(), ability: $('ability').value.trim(),
         creditUnlinked: $('creditUnlinked').checked,
         lede: $('lede').value.trim(), summaryBullets: lines('bullets'),
-        howToRun: lines('howto'), callout: $('callout').value.trim(),
+        howToRun: lines('howto'),
+        callout: callouts.length ? callouts : '',
         examples: lines('examples'), tips: lines('tips'),
         bluffing: lines('bluffing'), fighting: lines('fighting'),
         quote: $('quote').value.trim(), appearsIn: $('appears').value.trim(),
@@ -792,10 +797,18 @@
       var picker = document.getElementById('tag-picker');
       var hidden = document.getElementById('tags');
       if (window.buildTagPicker) window.buildTagPicker(picker);
+      /* Tags the picker has no button for are KEPT, not dropped. The hidden
+         field is rebuilt from the buttons on load and on every click, so a
+         stored tag missing from tags.js used to vanish the moment somebody
+         opened the page — which is exactly what happens to every page for the
+         minutes between a tag being renamed in the database and the new
+         tags.js reaching the site. They are held here and written back after
+         the picked ones. */
+      var extraTags = [];
       function syncHidden() {
         var sel = Array.from(picker.querySelectorAll('.tag-pick-btn.selected'))
                        .map(function(b){ return b.getAttribute('data-tag'); });
-        hidden.value = sel.join(', ');
+        hidden.value = sel.concat(extraTags).join(', ');
       }
       picker.addEventListener('click', function(e) {
         var btn = e.target.closest('.tag-pick-btn');
@@ -805,10 +818,15 @@
         schedule();
       });
       window.setTagPickerValue = function(csv) {
-        var vals = (csv || '').split(',').map(function(s){ return s.trim().toLowerCase(); });
+        var vals = (csv || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+        var lower = vals.map(function(s){ return s.toLowerCase(); });
+        var known = {};
         picker.querySelectorAll('.tag-pick-btn').forEach(function(b){
-          b.classList.toggle('selected', vals.indexOf(b.getAttribute('data-tag').toLowerCase()) !== -1);
+          var t = b.getAttribute('data-tag');
+          known[t.toLowerCase()] = 1;
+          b.classList.toggle('selected', lower.indexOf(t.toLowerCase()) !== -1);
         });
+        extraTags = vals.filter(function(t){ return !known[t.toLowerCase()]; });
         syncHidden();
       };
     })();
@@ -1414,6 +1432,13 @@
     var editorsUI = window.ApprovedEditors
       ? window.ApprovedEditors.mount(document.getElementById('editors-box'), {})
       : null;
+    /* Ticking "this credit isn't mine" moves the page onto approved editing
+       with the uploader named, so the Worker cannot hand it over and leave
+       them locked out. Wired here so the control matches what the save will
+       store — the edit-status bar is drawn from the select. */
+    if (window.ApprovedEditors)
+      window.ApprovedEditors.mountCreditUnlink(
+        document.getElementById('creditUnlinked'), document.getElementById('publicEdit'), editorsUI);
     function syncEditorsBox() {
       var on = $('publicEdit').value === 'approved';
       $('editors-fld').style.display = on ? '' : 'none';
@@ -1506,7 +1531,9 @@
       $('lede').value            = entry.lede || '';
       $('bullets').value         = (entry.summaryBullets || []).join('\n');
       $('howto').value           = (entry.howToRun || []).join('\n');
-      $('callout').value         = entry.callout || '';
+      // A list now, a bare string on every page written before it was.
+      $('callout').value         = (Array.isArray(entry.callout) ? entry.callout : [entry.callout])
+        .filter(function (x) { return typeof x === 'string' && x.trim(); }).join('\n');
       $('examples').value        = (entry.examples || []).join('\n');
       $('tips').value            = (entry.tips || []).join('\n');
       $('bluffing').value        = (entry.bluffing || []).join('\n');
