@@ -1096,8 +1096,12 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   table in Analyse): the Storyteller's setup for one game — a player count,
   travellers, an Outsider ± for a Baron-like in play — with the roster
   listed per team as ticks, a die per team and for the whole bag, and the
-  list to copy. It is not the script: `prefs.bag` in the browser, ticks
-  pruned to the roster when drawn, nothing in the export or the library.
+  list to copy, plus three Demon bluffs drawn from the good characters left
+  out. It is not the script: `prefs.bag` in the browser, ticks pruned to
+  the roster when drawn, nothing in the export or the library. While a bag
+  exists the Night Order tab offers **Tonight's bag only** — the night lists
+  for the characters in play, the sheet to run the game from — through the
+  widget's `getEntries` (`nightEntries()`), so the arrangement still holds.
 - **The undo stack labels its steps** (`mark('add Zhen')`, `replaceOrder(list,
   quiet, label)`, `patchMeta(fn, how, label)`): the buttons' titles and the
   Undone/Redone toasts say what moved.

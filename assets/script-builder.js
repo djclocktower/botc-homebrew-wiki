@@ -1051,9 +1051,10 @@
      adding a character feel broken. */
   function ensurePane() {
     if (activeTab === 'night') {
+      paintBagOnly();
       if (!nightUI && window.NightOrderEditor) {
         nightUI = window.NightOrderEditor.mount($('sbx-night-body'), {
-          getEntries: rosterChars,
+          getEntries: nightEntries,
           getOrder: getNightOrder,
           setOrder: setNightOrder,
           getView: nightView,
@@ -1125,15 +1126,30 @@
   }
   function nightView() {
     var o = prefs.night || {};
-    return { reminders: o.reminders !== false, icons: !!o.icons, stacked: !!o.stacked };
+    return { reminders: o.reminders !== false, icons: !!o.icons, stacked: !!o.stacked, bagOnly: !!o.bagOnly };
+  }
+  /* The night lists for the characters in tonight's bag alone, when asked
+     — the sheet to run the game from. The arrangement still applies. */
+  function nightEntries() {
+    if (!nightView().bagOnly) return rosterChars();
+    var b = bagState();
+    if (!Object.keys(b.picks).length) return rosterChars();
+    return rosterChars().filter(function (c) { return b.picks[c.slug]; });
+  }
+  /* The "tonight's bag only" switch is only offered while a bag exists. */
+  function paintBagOnly() {
+    var wrap = $('sb-night-bagwrap');
+    if (!wrap) return;
+    wrap.hidden = !bagHasPicks();
   }
   /* The night order and the jinxes as text, for a Discord post or a
      storyteller's notes — the lists alone, not the whole script. */
   function nightText() {
     var PR = window.PageRender;
     if (!PR || !PR.nightItems) return '';
-    var L = PR.nightItems(rosterChars(), getNightOrder());
+    var L = PR.nightItems(nightEntries(), getNightOrder());
     var v = nightView(), lines = [];
+    if (v.bagOnly && bagHasPicks()) lines.push("TONIGHT'S BAG");
     [['first', 'FIRST NIGHT'], ['other', 'OTHER NIGHTS']].forEach(function (col) {
       var items = L[col[0]] || [];
       if (!items.length) return;
@@ -1487,13 +1503,24 @@
     Object.keys(b.picks || {}).forEach(function (sl) { if (sel[sl]) picks[sl] = 1; });
     var T = window.SBTools;
     var dflt = T ? T.setups(rosterChars()).maxOk || 8 : 8;
+    var bluffs = (Array.isArray(b.bluffs) ? b.bluffs : []).filter(function (sl) { return sel[sl] && !picks[sl]; });
     return {
       players: Math.min(15, Math.max(5, Number(b.players) || dflt)),
       travellers: Math.min(5, Math.max(0, Number(b.travellers) || 0)),
       outMod: Math.min(3, Math.max(-3, Number(b.outMod) || 0)),
-      picks: picks
+      picks: picks,
+      bluffs: bluffs
     };
   }
+  /* Three good characters NOT in the bag, for the Demon to bluff with. */
+  function bagBluffs(b) {
+    var pool = rosterChars().filter(function (c) {
+      return (c.team === 'townsfolk' || c.team === 'outsider') && !b.picks[c.slug];
+    });
+    for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
+    return pool.slice(0, 3).map(function (c) { return c.slug; });
+  }
+  function bagHasPicks() { return Object.keys(bagState().picks).length > 0; }
   function saveBag(b) { prefs.bag = b; savePrefs(); }
   function bagNeeds(b) {
     var T = window.SBTools;
@@ -1507,7 +1534,7 @@
     var host = $('sbx-bag-body');
     if (!host) return;
     var chars = rosterChars();
-    if (!chars.length) { host.innerHTML = '<p class="sbx-empty-in">Add characters to the script first.</p>'; return; }
+    if (!chars.length) { host.innerHTML = '<p class="sbx-empty-in">Add characters to the script first.</p>'; paintBagOnly(); return; }
     var b = bagState();
     var need = bagNeeds(b);
     var opts = '';
@@ -1542,18 +1569,13 @@
     var picked = chars.filter(function (c) { return b.picks[c.slug]; });
     html += '<div class="sbx-bag-foot">' +
       '<button type="button" class="sbx-b-sm" data-bag-act="draw">&#9860; Draw the whole bag</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="bluffs"' + (picked.length ? '' : ' disabled') + ' title="Three good characters not in the bag, for the Demon">&#9860; Bluffs</button>' +
       '<button type="button" class="sbx-b-sm" data-bag-act="clear"' + (picked.length ? '' : ' disabled') + '>Clear</button>' +
       '<button type="button" class="sbx-b-sm" data-bag-act="copy"' + (picked.length ? '' : ' disabled') + '>&#10697; Copy the list</button>' +
       '</div>';
-    if (picked.length) {
-      var lines = [];
-      TEAMS.forEach(function (tm) {
-        var names = picked.filter(function (c) { return c.team === tm[0]; }).map(function (c) { return c.name; });
-        if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
-      });
-      html += '<div class="sbx-bag-out">' + esc(lines.join('\n')) + '</div>';
-    }
+    if (picked.length) html += '<div class="sbx-bag-out">' + esc(bagText()) + '</div>';
     host.innerHTML = html;
+    paintBagOnly();
   }
   function bagText() {
     var b = bagState(), chars = rosterChars(), lines = [];
@@ -1562,6 +1584,7 @@
       var names = chars.filter(function (c) { return c.team === tm[0] && b.picks[c.slug]; }).map(function (c) { return c.name; });
       if (names.length) lines.push(tm[1] + ': ' + names.join(', '));
     });
+    if (b.bluffs.length) lines.push('Demon bluffs: ' + b.bluffs.map(function (sl) { return bySlug[sl] ? bySlug[sl].name : sl; }).join(', '));
     return lines.join('\n');
   }
   function bagDraw(team) {
@@ -1576,8 +1599,10 @@
       for (var i = pool.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var x = pool[i]; pool[i] = pool[j]; pool[j] = x; }
       pool.slice(0, want).forEach(function (c) { b.picks[c.slug] = 1; });
     });
+    b.bluffs = bagBluffs(b);
     saveBag(b);
     paintBag();
+    if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); }
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -2702,6 +2727,7 @@
         if (t.checked) b.picks[sl] = 1; else delete b.picks[sl];
         saveBag(b);
         paintBag();
+        if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); }
       }
     });
     $('sbx-bag-body').addEventListener('click', function (e) {
@@ -2711,7 +2737,8 @@
       if (!a) return;
       var act = a.getAttribute('data-bag-act');
       if (act === 'draw') bagDraw(null);
-      else if (act === 'clear') { var b = bagState(); b.picks = {}; saveBag(b); paintBag(); }
+      else if (act === 'bluffs') { var bb = bagState(); bb.bluffs = bagBluffs(bb); saveBag(bb); paintBag(); }
+      else if (act === 'clear') { var b = bagState(); b.picks = {}; b.bluffs = []; saveBag(b); paintBag(); if (nightUI && nightView().bagOnly) { nightDirty = true; if (activeTab === 'night') ensurePane(); } }
       else if (act === 'copy') copyPlain(bagText(), a, 'nothing is in the bag');
     });
     // notes
@@ -2971,7 +2998,8 @@
     $('sb-night-icons').checked = nv.icons;
     $('sb-night-stack').checked = nv.stacked;
     $('sbx-night-body').classList.toggle('stacked', nv.stacked);
-    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-stack', 'stacked']].forEach(function (pair) {
+    $('sb-night-bag').checked = nv.bagOnly;
+    [['sb-night-rem', 'reminders'], ['sb-night-icons', 'icons'], ['sb-night-stack', 'stacked'], ['sb-night-bag', 'bagOnly']].forEach(function (pair) {
       $(pair[0]).addEventListener('change', function () {
         prefs.night = prefs.night || {};
         prefs.night[pair[1]] = this.checked;
