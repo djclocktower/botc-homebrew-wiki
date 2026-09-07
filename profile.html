@@ -104,6 +104,7 @@
     background:#5b1f21; color:#f4ead2; border:1px solid rgba(236,225,200,.35);
   }
   .creator-link-msg { margin:6px 0 0; font-size:.82rem; }
+  .creator-link-note { margin:5px 0 0; font-size:.8rem; opacity:.75; }
   /* Pinned strip — one uniform card, because a pin can be any of the three types. */
   .pin-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
   .pin-card {
@@ -450,6 +451,22 @@
 
     // Admins can attach a creator name to an account (or detach it) from the
     // page where the mismatch is visible. Backed by POST /api/admin/creator-alias.
+    // Linking also hands the account the name's unowned pages — the Worker
+    // reports what moved, and since the page reloads to redraw the profile,
+    // that report is parked in sessionStorage and shown after the reload.
+    var CL_RESULT_KEY = 'botc_cl_result';
+    function claimSummary(res) {
+      var c = res.claimed || {};
+      var parts = [];
+      if (c.characters) parts.push(c.characters + (c.characters === 1 ? ' character' : ' characters'));
+      if (c.scripts) parts.push(c.scripts + (c.scripts === 1 ? ' script' : ' scripts'));
+      if (c.collections) parts.push(c.collections + (c.collections === 1 ? ' collection' : ' collections'));
+      var s = 'Linked to @' + res.username + '. ' +
+        (parts.length ? 'Handed over: ' + parts.join(', ') + '.' : 'No unowned pages to hand over.');
+      if (c.held) s += ' ' + c.held + (c.held === 1 ? ' page belongs' : ' pages belong') +
+        ' to another member and ' + (c.held === 1 ? 'was' : 'were') + ' left alone.';
+      return s;
+    }
     function renderAdminLinkBox(p) {
       var name = (p.creatorNames && p.creatorNames[0]) || authorName || p.displayName || '';
       if (!name) return;
@@ -462,8 +479,21 @@
         esc(p.claimed ? p.username : '') + '" autocomplete="off">' +
         '<button type="submit">Link</button>' +
         '<button type="button" id="cl-clear">Decide by ownership</button></form>' +
+        '<p class="creator-link-note">Linking also hands the account every page credited to this name ' +
+        'that has no owner yet (or is owned by an admin), so they can edit it. Pages another member ' +
+        'owns are left alone. Safe to click again.</p>' +
         '<p class="creator-link-msg" id="cl-msg"></p>';
       hero.parentNode.appendChild(box);
+
+      // What the last Link did, if this load is the reload after one.
+      try {
+        var last = sessionStorage.getItem(CL_RESULT_KEY);
+        if (last) {
+          sessionStorage.removeItem(CL_RESULT_KEY);
+          var m0 = document.getElementById('cl-msg');
+          m0.style.color = '#9d9'; m0.textContent = claimSummary(JSON.parse(last));
+        }
+      } catch (e) { /* storage blocked or a bad value: nothing to report */ }
 
       function post(body) {
         var msg = document.getElementById('cl-msg');
@@ -474,6 +504,9 @@
           body: JSON.stringify(Object.assign({ name: name }, body))
         }).then(function (r) { return r.json(); }).then(function (res) {
           if (res.error) { msg.style.color = '#e6a'; msg.textContent = res.error; return; }
+          if (res.claimed) {
+            try { sessionStorage.setItem(CL_RESULT_KEY, JSON.stringify(res)); } catch (e) { /* shown only if it fits */ }
+          }
           msg.style.color = '#9d9'; msg.textContent = 'Saved. Reloading…';
           location.reload();
         }).catch(function () { msg.style.color = '#e6a'; msg.textContent = 'Could not save.'; });

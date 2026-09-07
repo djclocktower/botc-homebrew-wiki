@@ -1722,6 +1722,25 @@ and an account are the same person, and decides it two ways
    unlinked, overruling a wrong ownership match. This is the only way to attach
    bulk-imported pages, which can never prove anything. Set from the admin box
    on the creator page itself (`POST /api/admin/creator-alias`).
+   **Linking a name also hands the account the pages credited to it**
+   (`claimCreditedPages()` in worker.js): every character, script and
+   collection credited to that name that has **no owner, or is owned by an
+   admin account** — the same rule `waterfallOwner()` uses, see "Assigning an
+   owner" — and never a page an ordinary member owns, which is counted as
+   `held` and left alone. It used to link the profile and nothing else, and
+   the first creator handed 95 characters that way opened every one of them
+   as a guest (name locked, ability locked, draft invisible) while her
+   profile said they were hers — the alias makes the pages *show* as the
+   account's, only `owner_id` makes them *editable*, and `canEditRow()` reads
+   nothing but `owner_id`. Matched per credit segment, so a co-credit goes to
+   the first of its names to be linked. By credit and not by roster: a
+   collection credited to the name comes across, its members credited to
+   somebody else do not. **Re-runnable** — Link again on a name already
+   linked picks up whatever is still unowned, which is how a name linked
+   before this existed is fixed (BakedIce, linked the day before it
+   shipped, still had 68 unowned characters). Pinning a name unlinked and
+   "Decide by ownership" never move a page. The box prints what moved after
+   the reload (`botc_cl_result` in sessionStorage).
 
 A creator page then shows the union of *pages the account owns* and *pages
 credited to any name it has claimed*, so a page counts either way round.
@@ -2804,6 +2823,11 @@ seeded with whole collections whose characters all arrived unowned.
 - Both responses carry `characters` and `charactersHeld`, and the dashboard
   prints them ("+112 character pages, 3 left with their owners"). The count is
   the only way to see it happened.
+- **The creator page's "Link" box is the other door**, and it claims by
+  CREDIT rather than by roster — every unowned or admin-owned page credited
+  to the name, whichever set it is in — through `claimCreditedPages()`. See
+  "Creator identity" above for why it has to; the short version is that an
+  alias without ownership is a profile full of pages its owner cannot edit.
 
 ## Frontend conventions
 
