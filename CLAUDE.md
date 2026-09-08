@@ -2925,7 +2925,21 @@ same order as `artSrc()`; site.js, render.js and the inline `thumb()` in the
 browse pages mirror it). The Worker's `serveThumb` falls back R2 thumbnail →
 R2 original → committed thumbnail → committed original, so a missing
 thumbnail is never a broken image, and an original standing in at the
-thumbnail URL is cached an hour, not a year. Writing `art/{file}` deletes its
+thumbnail URL is cached an hour, not a year. **A stored thumbnail under
+`THUMB_MIN_BYTES` (512) counts as absent** — to `serveThumb`, which falls
+through to the art, and to the backfill scan, which lists it. A canvas that
+drew nothing encodes to a 172-byte fully transparent WebP; that is a *valid*
+image, so it is served happily, `onerror` never fires, and the card is an
+empty tile while the character's own page (which draws the full art) looks
+perfect. One character sat like that from the day it was uploaded, with
+nothing on the wiki counting it. `art-thumb.js` decodes before
+drawing (`onload` means the bytes arrived, not that the bitmap can be painted)
+and refuses to upload a blank render, which is the fix at the writing end;
+this is the one at the reading end. The floor is set from what the wiki holds:
+the smallest genuine thumbnail of 2,063 is 1.8 KB. Repairing one that is
+already live also needs the row's **`v`** to move (an ordinary save), or the
+card keeps asking for the URL the blank was cached under, immutably, for a
+year. Writing `art/{file}` deletes its
 thumbnail (`dropThumbFor`, in `/api/upload` and `/api/bloodstar-art`), and the
 uploading page makes a fresh one (`assets/art-thumb.js`); the dashboard's
 **"Card thumbnails"** card (Maintenance tab, `/api/admin/thumb-missing`)

@@ -884,6 +884,7 @@
         <p style="font-family:'TradeGothicLT','Libre Franklin',sans-serif;font-size:.9rem;margin:0 0 10px;opacity:.85">
           Every card, search result and roster row draws a small WebP copy of the character's icon (about 8&nbsp;KB) instead of the full 591px art (150&nbsp;KB and up).
           The editors make one whenever art is uploaded; art that arrived before that, or through the server-side Bloodstar copy, has none yet and its cards still load the big picture.
+          A thumbnail that was stored but came out <em>blank</em> is listed too &mdash; it is a picture with nothing in it, so the card shows an empty tile even though the character&rsquo;s own page looks right.
           <strong>Scan</strong> lists them; <strong>Make them</strong> builds and uploads each thumbnail from this browser, one at a time. Re-runnable and safe: a character with no thumbnail just keeps showing the original.
         </p>
         <button type="button" class="small-btn" id="thumb-scan">Scan</button>
@@ -2125,11 +2126,13 @@
         if (!d || !d.ok) { $('thumb-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>'; return; }
         thumbItems = d.items || [];
         $('thumb-count').textContent = d.missing;
-        var html = '<p class="note">' + d.withArt + ' characters have art; ' + d.missing + ' still have no thumbnail' +
-          (d.missing ? ' (' + d.r2Thumbs + ' made so far, ' + d.committed + ' committed with the repo).' : '. Every card is on the small picture.') + '</p>';
+        var html = '<p class="note">' + d.withArt + ' characters have art; ' + d.missing + ' still have no usable thumbnail' +
+          (d.missing ? ' (' + d.r2Thumbs + ' made so far, ' + d.committed + ' committed with the repo' +
+            (d.blank ? '; ' + d.blank + ' of them stored one that came out blank' : '') + ').'
+            : '. Every card is on the small picture.') + '</p>';
         if (thumbItems.length) {
           html += '<ul class="note" style="max-height:220px;overflow:auto;margin:6px 0 0;padding-left:18px">' +
-            thumbItems.slice(0, 200).map(function(it){ return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + '</span></li>'; }).join('') +
+            thumbItems.slice(0, 200).map(function(it){ return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + (it.blank ? ' &mdash; blank' : '') + '</span></li>'; }).join('') +
             (thumbItems.length > 200 ? '<li>&hellip; and ' + (thumbItems.length - 200) + ' more</li>' : '') + '</ul>';
           $('thumb-run').style.display = '';
           $('thumb-run').textContent = 'Make ' + thumbItems.length + ' thumbnail' + (thumbItems.length === 1 ? '' : 's');

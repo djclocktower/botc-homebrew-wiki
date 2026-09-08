@@ -14,6 +14,13 @@
        Safari) gets a PNG back from toDataURL and the Worker would refuse
        `thumb/x.png.webp` carrying image/png — so the helper checks the
        result's type and simply skips, rather than uploading a mislabelled file.
+     - a picture or nothing. A thumbnail that drew nothing is far worse than
+       one that was never made: the fallback only fires when the file is
+       ABSENT, so a blank one is served as a real image, `onerror` never
+       fires (it IS a valid image), and the card is an empty tile while the
+       character's own page — which draws the full art — looks perfect. One
+       character on the wiki carried a 172-byte, entirely transparent
+       thumbnail that way. So the render is checked before it is uploaded.
      - only art/ keys. Collection banners and tokens have no thumbnail slot.
 
    The same permission as the art applies on the server (uploadSlotDenied maps
@@ -29,27 +36,57 @@
     return ART_RE.test(k) ? 'thumb/' + k.slice(4) + '.webp' : '';
   }
 
-  /* Draw `src` (a data: URL, a blob URL or a same-origin/CORS image URL) into
-     a SIZE×SIZE box, keeping its aspect ratio and transparency. Resolves with
-     a WebP data URL, or '' when this browser cannot encode WebP. */
+  /* Is every pixel of what was just drawn fully transparent? That is the
+     shape a failed draw takes — the canvas is the right size and completely
+     empty — and it is the one case worth refusing outright, since no icon on
+     this wiki is invisible. A tainted canvas cannot be read back, so that
+     answers "not blank" and toDataURL below rejects it a line later, which is
+     the same outcome by the route that was already there. */
+  function isBlank(ctx, w, h) {
+    var d;
+    try { d = ctx.getImageData(0, 0, w, h).data; } catch (e) { return false; }
+    for (var i = 3; i < d.length; i += 4) if (d[i]) return false;
+    return true;
+  }
+
+  /* Draw a DECODED image into a SIZE×SIZE box, keeping its aspect ratio and
+     transparency. Returns a WebP data URL, or '' when this browser cannot
+     encode WebP; throws when the render came out empty. */
+  function render(img) {
+    var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (!w || !h) throw new Error('empty image');
+    var scale = Math.min(1, SIZE / Math.max(w, h));
+    var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+    var cv = document.createElement('canvas');
+    cv.width = cw; cv.height = ch;
+    var ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, cw, ch);
+    if (isBlank(ctx, cw, ch)) throw new Error('blank render');
+    var out = cv.toDataURL('image/webp', 0.8);
+    return /^data:image\/webp/i.test(out) ? out : '';
+  }
+
+  /* Load `src` (a data: URL, a blob URL or a same-origin/CORS image URL) and
+     thumbnail it. Resolves with a WebP data URL, or '' when this browser
+     cannot encode WebP.
+
+     `onload` says the bytes arrived, NOT that the bitmap is ready to paint,
+     and a drawImage that lands in that gap paints nothing — which is the most
+     likely way a fully transparent thumbnail was ever stored. decode() is the
+     promise that closes the gap; a browser without it (or one whose decode
+     rejects) draws on load exactly as before, where isBlank() is the backstop. */
   function make(src) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       img.crossOrigin = 'anonymous';
+      function draw() {
+        try { resolve(render(img)); } catch (e) { reject(e); }
+      }
       img.onload = function () {
-        var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
-        if (!w || !h) return reject(new Error('empty image'));
-        var scale = Math.min(1, SIZE / Math.max(w, h));
-        var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
-        var cv = document.createElement('canvas');
-        cv.width = cw; cv.height = ch;
-        var ctx = cv.getContext('2d');
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, cw, ch);
-        var out;
-        try { out = cv.toDataURL('image/webp', 0.8); } catch (e) { return reject(e); }
-        resolve(/^data:image\/webp/i.test(out) ? out : '');
+        if (typeof img.decode === 'function') img.decode().then(draw, draw);
+        else draw();
       };
       img.onerror = function () { reject(new Error('image failed to load')); };
       img.src = src;
