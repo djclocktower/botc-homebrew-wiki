@@ -623,7 +623,19 @@
                 var tb = teamOrder[b.team] != null ? teamOrder[b.team] : 99;
                 return ta !== tb ? ta - tb : (a.name || '').localeCompare(b.name || '');
               });
-              return JSON.stringify([meta].concat(rows.map(window.buildSchema)), null, 2);
+              // Qualified by THIS collection, and by its own id settings, so
+              // the box here writes the same ids as the collection's page —
+              // a bare `rows.map(buildSchema)` would hand Array.map's index in
+              // as the options object, which only works by accident.
+              var collOpts = {
+                mode: (activeCollection.exportIds && activeCollection.exportIds.mode) || 'full',
+                prefix: (activeCollection.exportIds && activeCollection.exportIds.prefix) || '',
+                suffix: (activeCollection.exportIds && activeCollection.exportIds.suffix) || '',
+                set: activeCollection.id || activeCollection.slug || undefined
+              };
+              return JSON.stringify([meta].concat(rows.map(function (c) {
+                return window.buildSchema(c, collOpts);
+              })), null, 2);
             }
             function ensureCollJson() {
               if (collJsonLoad) return collJsonLoad;

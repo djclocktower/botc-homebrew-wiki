@@ -16,7 +16,11 @@
  * all go through that one function. Nothing here is written back to the
  * characters, so another script keeps whatever they say.
  *
- *   JinxEditor.mount(container, {getEntries, getEdits, setEdits})
+ *   JinxEditor.mount(container, {getEntries, getEdits, setEdits,
+ *                                getView, artOf})
+ *
+ * getView() may answer {icons}: whether a row shows the pair's icons
+ * (default no; artOf(c) gives the src). The publish page passes neither.
  *
  * Returns {render}; the host calls render() when the roster changes.
  * Browser only. Styles are .sjx-* in styles.css (.jx-* belongs to the jinx
@@ -63,6 +67,14 @@
       var entries = getEntries();
       var jinxes = list();
       var e = edits();
+      var v = (opts.getView && opts.getView()) || {};
+      var icons = !!v.icons && typeof opts.artOf === 'function';
+      function pair(a, b) {
+        if (!icons) return '';
+        return '<span class="sjx-icons">' +
+          '<img loading="lazy" decoding="async" src="' + esc(opts.artOf(a)) + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
+          '<img loading="lazy" decoding="async" src="' + esc(opts.artOf(b)) + '" alt="" onerror="this.style.visibility=\'hidden\'"></span>';
+      }
       // Inherited jinxes this script has switched off, listed so they can be
       // switched back on. A pair whose characters have both left the
       // roster is not shown (and is left in the data: it applies again if
@@ -86,7 +98,7 @@
       } else {
         jinxes.forEach(function (j) {
           var k = key(j.a.slug, j.b.slug);
-          html += '<div class="sjx-row" data-key="' + esc(k) + '">' +
+          html += '<div class="sjx-row" data-key="' + esc(k) + '">' + pair(j.a, j.b) +
             '<div class="sjx-text">' +
               '<span class="sjx-pair">' + esc(j.a.name) + ' &harr; ' + esc(j.b.name) +
                 (j.custom ? ' <span class="sjx-own">this script</span>' : '') + '</span>' +
