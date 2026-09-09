@@ -454,13 +454,16 @@
   /* "Appears in": the creator's own free-text line if there is one, else the
      collections that list this character by hand (worked out on read as
      `appearsInFrom`; see applyCollectionAppearsIn in worker.js). The typed
-     line is linked in the browser by charpage.js; the derived one already
-     knows its collection's id, so it arrives as a link. */
-  function appearsInRow(d, root) {
+     line is resolved by the Worker (with a charpage.js fallback); the derived
+     one already knows its collection's id, so it arrives as a link. */
+  function appearsInRow(d, root, setHref) {
     var own = (d.appearsIn || '').trim();
     if (own) {
       return '<dt>Appears in:</dt><dd class="info-appears-in" data-appears-in="' +
-        esc(own) + '">' + esc(own) + '</dd>';
+        esc(own) + '">' +
+        (typeof setHref === 'string' && /^(?:collection|s)\/[^/?#]+$/.test(setHref)
+          ? '<a class="appears-in-link" href="' + esc(root + setHref) + '">' + esc(own) + '</a>'
+          : esc(own)) + '</dd>';
     }
     var from = Array.isArray(d.appearsInFrom) ? d.appearsInFrom : [];
     var links = from.map(function (c) {
@@ -1264,7 +1267,7 @@
   }
 
   /* ── Full character page body ── */
-  function renderCharacter(d, artSrc, linkRoot) {
+  function renderCharacter(d, artSrc, linkRoot, opts) {
     var root = (linkRoot != null) ? linkRoot
       : ((typeof window !== 'undefined' && window.LINK_ROOT) || '');
     // The inline text helpers build links too (see R() above), and in the
@@ -1276,7 +1279,7 @@
     // restored exactly like curRoot, so nothing leaks between renders.
     curHost = d || null;
     setReminderTokens(d);
-    try { return characterBody(d, artSrc, root); }
+    try { return characterBody(d, artSrc, root, opts); }
     finally { curRoot = prevRoot; curHost = prevHost; setReminderTokens(null); }
   }
 
@@ -1299,7 +1302,7 @@
     W.setReminderTokens(list);
   }
 
-  function characterBody(d, artSrc, root) {
+  function characterBody(d, artSrc, root, opts) {
     var team = d.team || 'townsfolk';
     var label = TEAM_LABEL[team] || team;
     var bullets  = (d.summaryBullets || []).filter(function (x) { return x && x.trim(); });
@@ -1382,7 +1385,7 @@
               (creatorSymbol(n) ? ' <span class="creator-mark" title="' + esc(n) + '’s symbol" aria-hidden="true">' + esc(creatorSymbol(n)) + '</span>' : '');
           }).join('<span class="tag-sep">, </span>') +
           '</dd>' : '') +
-      appearsInRow(d, root) +
+      appearsInRow(d, root, opts && opts.appearsInHref) +
       tagsRow +
       /* The two credit rows take formatting — in practice a link, because
          what people write in them is somebody's name and where to find them.

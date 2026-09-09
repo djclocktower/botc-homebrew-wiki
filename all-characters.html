@@ -484,14 +484,15 @@
       if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
       else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
       else if (STATE.sort === 'recent') { /* keep array order reversed = most-recent first */
-        out = out.map(function(c,i){ return [c, FULL.indexOf(c)]; })
-                 .sort(function(a,b){ return b[1]-a[1]; })
-                 .map(function(p){ return p[0]; });
+        // All preceding operations are filters, which preserve FULL's order.
+        out.reverse();
       }
       return out;
     }
 
     function render(){
+      // Invalidate pending slices even when the new result is empty.
+      var token = ++renderToken;
       var list = applyFilters();
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
@@ -519,7 +520,6 @@
       // A filter change while that is still running invalidates the run
       // (renderToken) instead of racing it. Always grouped by team;
       // applyFilters() already ordered each group.
-      var token = ++renderToken;
       var FIRST = 72, SLICE = 160, drawn = 0;
       var html = '', pending = [];
       TEAMS.forEach(function (t) {

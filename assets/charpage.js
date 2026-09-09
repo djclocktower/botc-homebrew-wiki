@@ -67,6 +67,9 @@
   // Still deliberately plain: a value naming two sets ("A, B"). It is matched
   // whole, so it simply finds nothing, which is what it did before.
   (function linkAppearsIn() {
+    // SSR resolved this, including an intentional plain-text no-match. A
+    // failed server lookup leaves the flag unset so this fallback can retry.
+    if (window.APPEARS_IN_RESOLVED) return;
     var dd = document.querySelector('.info-appears-in');
     if (!dd) return;
     // A row derived from collection membership is rendered as links already,

@@ -3597,7 +3597,8 @@ async function includeCollections(env) {
       .map(d => ({
         name: d.displayName || d.id || d.slug || '',
         id: d.id || d.slug || '',
-        include: d.include
+        // Explicit exclusion wins over include everywhere else too.
+        include: d.include.filter(slug => !(d.exclude || []).includes(slug))
       }))
       .filter(c => c.name && c.id);
   } catch { rows = []; }
@@ -3817,19 +3818,29 @@ const PEOPLE_CACHE_CONTROL = 'public, s-maxage=1800';
 const CONTENT_VERSION_KEY = 'content_version';
 const CONTENT_VERSION_CACHE_MS = 5000;
 let _contentVersionCache = null;
+let _contentVersionPending = null;
+let _contentVersionEpoch = 0;
 
 async function contentVersion(env) {
   if (_contentVersionCache && (Date.now() - _contentVersionCache.at) < CONTENT_VERSION_CACHE_MS) {
     return _contentVersionCache.v;
   }
-  let v = '0';
-  try {
-    const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
-      .bind(CONTENT_VERSION_KEY).first();
-    if (r && r.value) v = String(r.value);
-  } catch { /* settings unavailable -> behave as version 0 */ }
-  _contentVersionCache = { at: Date.now(), v };
-  return v;
+  if (_contentVersionPending) return _contentVersionPending;
+  const epoch = _contentVersionEpoch;
+  const pending = (async () => {
+    let v = '0';
+    try {
+      const r = await env.DB.prepare('SELECT value FROM settings WHERE key=?')
+        .bind(CONTENT_VERSION_KEY).first();
+      if (r && r.value) v = String(r.value);
+      // A read begun before a save must not repopulate the invalidated memo.
+      if (epoch === _contentVersionEpoch) _contentVersionCache = { at: Date.now(), v };
+    } catch { /* do not memoize a transient failure as version 0 */ }
+    return v;
+  })();
+  _contentVersionPending = pending;
+  try { return await pending; }
+  finally { if (_contentVersionPending === pending) _contentVersionPending = null; }
 }
 
 // Called after anything that changes what the feeds would return. Never allowed
@@ -3842,7 +3853,9 @@ async function bumpContentVersion(env) {
        ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(settings.value AS INTEGER) + 1 AS TEXT)`
     ).bind(CONTENT_VERSION_KEY).run();
   } catch { /* stale feed is survivable; a failed save is not */ }
+  _contentVersionEpoch++;
   _contentVersionCache = null;
+  _contentVersionPending = null;
 }
 
 // ---- the almanac half of a character, dropped from the card feed ----
@@ -4054,23 +4067,60 @@ function edgeCachePut(ctx, key, body, cacheControl, contentType) {
 // The built feed BODIES, memoised in-isolate and at the edge. The public
 // feed endpoint, the card-character cache (SSR collection pages, /random,
 // the export download), the jinx index and the [[Name]] link map all pull
-// from here — so however cold the isolate, one content version costs at
-// most ONE full read of each table per colo. It used to be one read per
-// consumer per five minutes, which is what was eating the D1 read budget.
+// from here. Completed bodies are shared across isolates in a colo; overlapping
+// misses for the same version and projection share one build within an isolate.
+// Separate isolates can still build concurrently on a cold edge cache.
 const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
-async function cachedFeedBody(env, ctx, table, fields) {
-  const version = await contentVersion(env);
+const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
+async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
+  const version = knownVersion === undefined ? await contentVersion(env) : knownVersion;
   const memoKey = table + '|' + fields;
   const memo = _feedBodyCache.get(memoKey);
   if (memo && memo.version === version) return memo.body;
   const key = `https://feed.internal/${table}.json?fields=${fields}&v=${version}`;
-  let body = await edgeCacheGet(key);
-  if (body === null) {
-    body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
-    edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+  if (_feedBodyPending.has(key)) return _feedBodyPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      body = JSON.stringify(await buildPublicJSON(env, table, { fields }));
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    _feedBodyCache.set(memoKey, { version, body });
+    return body;
+  })();
+  _feedBodyPending.set(key, pending);
+  try { return await pending; }
+  finally { _feedBodyPending.delete(key); }
+}
+
+// Resolve the single set link on the server. The browser used to download
+// both full feeds for this. Reuse their cache and retain collection-first,
+// first-match precedence from charpage.js, including match-term aliases.
+let _appearsInLinksCache = null;
+async function appearsInHref(env, ctx, value) {
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const wanted = norm(value);
+  if (!wanted) return '';
+  const version = await contentVersion(env);
+  if (!_appearsInLinksCache || _appearsInLinksCache.version !== version) {
+    const [collBody, scriptBody] = await Promise.all([
+      cachedFeedBody(env, ctx, 'collections', 'full', version),
+      cachedFeedBody(env, ctx, 'scripts', 'full', version)
+    ]);
+    const links = new Map();
+    function add(keys, href) {
+      for (const key of keys.map(norm)) if (key && !links.has(key)) links.set(key, href);
+    }
+    for (const c of JSON.parse(collBody)) {
+      const id = c.id || c.slug;
+      if (id) add([...(c.match || []), c.id, c.slug, c.displayName], 'collection/' + encodeURIComponent(id));
+    }
+    for (const s of JSON.parse(scriptBody)) {
+      if (s.slug) add([s.name, s.slug], 's/' + encodeURIComponent(s.slug));
+    }
+    _appearsInLinksCache = { version, links };
   }
-  _feedBodyCache.set(memoKey, { version, body });
-  return body;
+  return _appearsInLinksCache.links.get(wanted) || '';
 }
 
 // The built sitemap, same two layers (crawlers re-fetch it constantly, and it
@@ -4431,7 +4481,7 @@ function charCreditLine(d) {
   return bits.join(' \u00b7 ');
 }
 
-function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
+function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
   const name = d.name || 'Character';
   // The lede takes the wiki's link and colour marks now, and a search result
   // or a Discord unfurl has nowhere to render one — so the description is the
@@ -4456,11 +4506,11 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
   // the SAME computed root: a hardcoded '../' pointed a nested address at
   // /c/{set}/assets/art/... and every icon on the wiki broke the moment the
   // backfill nested the URLs.
-  const artSrc = d.art ? root + 'assets/' + d.art : (imgRaw || '');
+  const artSrc = d.art ? root + 'assets/' + d.art + (d.v ? '?v=' + encodeURIComponent(d.v) : '') : (imgRaw || '');
   // Stamped here too (not just in characters.json) so the Curata mark in
   // the info box is right on a page reached directly.
   d.classification = Classify.classifyCharacter(d);
-  const body = Render.renderCharacter(d, artSrc, root);
+  const body = Render.renderCharacter(d, artSrc, root, { appearsInHref: setHref });
   const draftBanner = (isDraft
     ? '<div style="background:#7a5c18;color:#f7ecd0;text-align:center;padding:10px 16px;font-family:\'TradeGothicLT\',\'Libre Franklin\',sans-serif;letter-spacing:.04em">' + SYS.draftPage + ' <a href="' + root + 'edit?c=' + attr(d.slug) + '" style="color:#ffe9ad">' + SYS.draftEditorLink + '</a>.</div>' +
       draftNoteHTML(d)
@@ -4472,7 +4522,8 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
     themeColor: Render.TEAM_COLOR[String(d.team || '').toLowerCase()] || '',
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
-      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
+      ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};` +
+      (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : ''),
     scripts: ['render.js', 'tags.js', 'charpage.js', 'attach.js', 'comments.js', 'site.js']
   });
 }
@@ -4756,19 +4807,23 @@ async function cachedCharLinkMap(env, ctx) {
 async function charsBySlug(env, slugs) {
   const wanted = [...new Set((slugs || []).map(String).filter(Boolean))];
   if (!wanted.length) return [];
+  await ensureUrlSlugColumn(env);
   const out = [];
   for (let i = 0; i < wanted.length; i += 90) {
     const chunk = wanted.slice(i, i + 90);
     const marks = chunk.map(() => '?').join(',');
     try {
       const { results } = await env.DB.prepare(
-        `SELECT data, status FROM characters
+        `SELECT data, status, slug, url_slug, updated_at FROM characters
           WHERE status='published' AND slug IN (${marks})`
       ).bind(...chunk).all();
       for (const r of results || []) {
         try {
           const d = foldLegacyCurata(JSON.parse(r.data));
-          if (typeof d.page === 'string') d.page = d.page.replace(/\.html$/, '');
+          d.slug = String(r.slug);
+          d.page = 'c/' + charAddress(r);
+          const v = rowVersion(r.updated_at);
+          if (v) d.v = v; else delete d.v;
           const cls = Classify.classifyPage(d, 'character');
           if (cls !== 'standard') d.classification = cls;
           out.push(d);
@@ -4851,7 +4906,7 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   const table = isScript ? 'scripts' : 'collections';
   let row = null;
   try {
-    row = await env.DB.prepare(`SELECT slug, data, status, owner_id FROM ${table} WHERE slug=?`)
+    row = await env.DB.prepare(`SELECT slug, data, status, owner_id, updated_at FROM ${table} WHERE slug=?`)
       .bind(slug).first();
   } catch {
     row = await env.DB.prepare(`SELECT slug, data FROM ${table} WHERE slug=?`).bind(slug).first();
@@ -4878,6 +4933,8 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
   if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, type, row.slug || slug));
   const d = foldLegacyCurata(JSON.parse(row.data));
   if (!d.slug) d.slug = row.slug || slug;
+  const rv = rowVersion(row.updated_at);
+  if (rv) d.v = rv; else delete d.v;
 
   // A script knows its roster by slug, so it never needs the rest of the
   // table. A collection's membership is matched on `appearsIn` at read time,
@@ -5273,7 +5330,7 @@ const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
    cache keeps serving last week's HTML for the full s-maxage (a week) unless
    somebody happens to save a page. Bump this whenever a deploy changes what
    these routes render and the stale copies die with it. */
-const SSR_RENDER_V = 4;
+const SSR_RENDER_V = 5;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
@@ -5377,7 +5434,7 @@ export default {
       // Isolate + edge cache, keyed on the content version so a bump misses
       // automatically rather than needing an explicit purge (cachedFeedBody
       // owns both layers; the stored copy carries the long INTERNAL ttl).
-      const body = await cachedFeedBody(env, ctx, table, fields);
+      const body = await cachedFeedBody(env, ctx, table, fields, version);
       return new Response(body, {
         headers: {
           ...JSON_HEADERS,
@@ -5777,6 +5834,9 @@ export default {
             // address, which is what the canonical link and the OG tags use.
             d.slug = String(row.slug);
             d.page = 'c/' + found.canonical;
+            // Resolve alongside the other enrichment reads, before setting
+            // the shared renderer registries. A failure keeps the client fallback.
+            const setHrefPromise = appearsInHref(env, ctx, d.appearsIn).catch(() => undefined);
             // The creator's opt-out, applied before anything can lend the mark
             // back: Classify.isCurata is the one answer, and the row's own flag
             // is dropped here so the rest of the page renders as unmarked.
@@ -5797,6 +5857,7 @@ export default {
             // Views are counted against the IDENTITY, so a page's history
             // survives every rename it ever has.
             if (!isDraft) ctx.waitUntil(bumpView(env, request, 'character', String(row.slug)));
+            const setHref = await setHrefPromise;
             Render.setOfficialIconUrls(await officialIconMap(env, url.origin));
             Render.setOfficialNames(await officialNameMap(env, url.origin));
             // [[Character Name]] inside a jinx rule or a custom box links to
@@ -5814,7 +5875,7 @@ export default {
             // URLs (render.js artVersions) — same stamp as the feeds carry.
             const rv = rowVersion(row.updated_at);
             if (rv) d.v = rv;
-            return htmlPage(renderCharacterPage(d, url.origin, isDraft, partialNotice),
+            return htmlPage(renderCharacterPage(d, url.origin, isDraft, partialNotice, setHref),
               isDraft ? '' : 'character|' + String(row.slug));
           }
           // Nothing here. resolveCharacterPath already followed the `redirects`

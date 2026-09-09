@@ -237,10 +237,12 @@
      has always had (artSrc above). One resolver, or a remote logo comes out
      as "assets/https://…" and draws as a broken image on every tile while
      the page's own onerror quietly hides it. */
-  function imgSrc(root, p) {
+  function imgSrc(root, p, version) {
     p = String(p || '');
     if (!p) return '';
-    return /^https?:\/\//i.test(p) ? p : root + 'assets/' + p;
+    if (/^https?:\/\//i.test(p)) return p;
+    return root + 'assets/' + p + (version
+      ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
   }
   /* An official character has no page here, so its name links to the official
      wiki: another site, so a new tab, and a mark saying so. */
@@ -650,7 +652,7 @@
     rows += '<dt>Total:</dt><dd>' + opts.entries.length + ' character' + (opts.entries.length === 1 ? '' : 's') + '</dd>';
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
-      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath)) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
       (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
@@ -887,8 +889,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -921,7 +923,7 @@
     }
 
     var aside = renderInfobox({
-      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
@@ -946,8 +948,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '" alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -956,7 +958,7 @@
     // Information + JSON/tokens boxes — moved to the top. The author credit
     // lives prominently inside the Information box (linked to their page).
     var infobox = renderInfobox({
-      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows,
       authorProminent: true
     });
@@ -1014,7 +1016,7 @@
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' }
     ];
     return renderPageBody({
-      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo,
+      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v,
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
@@ -1044,7 +1046,7 @@
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' }
     ];
     return renderCollectionBody({
-      root: root, name: name, header: coll.header, logo: coll.logo,
+      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,

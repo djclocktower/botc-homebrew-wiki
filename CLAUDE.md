@@ -2889,7 +2889,7 @@ stored the feed at the edge, revalidated it with the Worker on every
 request, and served the browser its own copy under an ETag of its own
 making (a hash of the compressed body) — so the browser's If-None-Match
 never matched the Worker's and every browse page re-downloaded the whole
-feed. The bodies themselves are still built once per content version and
+feed. The bodies themselves are reused per content version and
 kept in `caches.default` under synthetic `https://feed.internal/...?v=`
 URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
 from `content_version` in the key — every content write bumps it and rolls
@@ -2897,6 +2897,12 @@ every key — never from expiry, so do not shorten those TTLs back to minutes;
 the D1 free tier allows 5M `rows_read` a day and the site once burned
 through it on rebuilds alone. The jinx index, the card-character cache, the
 `[[Name]]` link map and the sitemap share that plumbing (`cachedFeedBody()`).
+Overlapping misses for the same feed/version share one pending build within
+an isolate; separate isolates can still build concurrently on a cold edge
+cache. Version reads also share a pending request. A save invalidates that
+memo and prevents an older pending read from filling it again; failed reads
+and builds can retry. The public feed pins its body to the version used for
+its ETag.
 Creator lookups (`/author?a=`, anonymous `/api/user`, `/api/creators`) are
 capped at 30 minutes (`PEOPLE_CACHE_CONTROL`) because avatar/bio edits bump
 no version; logged-in `/api/user` responses are never cached.
@@ -2916,6 +2922,10 @@ image URL is served `public, max-age=31536000, immutable` and kept in the
 colo's edge cache** (`serveR2Image`), so an unchanged icon costs a returning
 reader nothing and the Worker nothing past the cache lookup; a save is a new
 version is a new URL, which is how replaced art still shows at once. The
+SSR character's main icon, script rosters, script/collection headers and
+logos, and search thumbnails carry that stamp too. Script roster identities
+and canonical links come from row columns, not potentially stale JSON.
+Remote image URLs and exported script JSON keep their original URLs. The
 bare URL keeps `no-cache, must-revalidate` + ETag exactly as before — and now
 actually answers a matching If-None-Match with a 304 (`onlyIf` on the R2
 read) instead of the whole file, which it never did. **Cards draw
@@ -2971,6 +2981,18 @@ page already cached keeps serving last week's HTML for the full week of
 `s-maxage` unless somebody happens to save a page. Bump it in the same commit
 as any deploy that changes what these routes render.
 
+The character's typed **"Appears in"** link is resolved during SSR using
+the cached public collection/script feeds, with the same collection-first
+alias matching as the browser. `APPEARS_IN_RESOLVED` skips two client feed
+requests, including when there is intentionally no matching link. A failed
+server lookup leaves the flag unset so `charpage.js` can retry. Derived
+collection membership honours `exclude` even when a slug is in `include`.
+
+Search warms its index on focus/touch, including the separate mobile field.
+Once loaded it searches immediately, without a typing timer. Pending results
+only paint for the current query while the search is still open; failed
+character-feed requests can retry on the next interaction.
+
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route
 for uploads. The official script tool fetch()es character icons cross-origin
@@ -2999,6 +3021,10 @@ animation frame (`renderToken`) and `.type-section` has
 
 - `node --check` every `.js` file you touch, and extract+check inline
   `<script>` blocks after editing HTML.
+- `node --test migration/tests/performance.test.mjs` (Node 22.13+ or 24)
+  checks SSR output, feed caching/invalidation, search races and browse
+  cancellation with local SQLite and small DOM fakes. It needs no service
+  credentials; it does not measure a deployed browser's loading time.
 - The Cloudflare dashboard, live site, and D1 are **not reachable from the
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
