@@ -285,8 +285,9 @@
 
   me().then(function (u) {
     if (!u || !u.loggedIn || !u.isAdmin) return;
+    window.BotcData.style('editor.css');
     var s = document.createElement('script');
-    s.src = '/assets/text-live.js';   // absolute: this also runs under /c/, /s/, /p/
+    s.src = window.BotcData.asset('text-live.js');   // absolute: this also runs under /c/, /s/, /p/
     document.head.appendChild(s);
   }).catch(function () {});
 })();
@@ -298,7 +299,7 @@
   var ROOT = (function () {
     var s = document.querySelector('link[rel="stylesheet"]');
     if (!s) return '';
-    return s.getAttribute('href').replace('assets/styles.css', '');
+    return (window.LINK_ROOT != null) ? window.LINK_ROOT : s.getAttribute('href').split('assets/')[0];
   })();
 
   function esc(s) {
@@ -346,9 +347,9 @@
     function loadFormatter(cb) {
       if (window.NewsRender && window.WikiRender) return cb(window.NewsRender);
       // render-news.js forwards to render-wiki.js, so that one loads first.
-      loadScript(ROOT + 'assets/render-wiki.js', function () {
+      loadScript(window.BotcData.asset('render-wiki.js'), function () {
         if (window.NewsRender) return cb(window.NewsRender);
-        loadScript(ROOT + 'assets/render-news.js', function () {
+        loadScript(window.BotcData.asset('render-news.js'), function () {
           cb(window.NewsRender || null);
         });
       });
@@ -511,7 +512,8 @@
           return me;
         });
     }
-    cachedMe().then(function (me) {
+    window.botcMePromise = cachedMe();
+    window.botcMePromise.then(function (me) {
       var loggedIn = !!(me && me.loggedIn);
       var label = loggedIn ? 'My Account' : 'Log In';
       var href = ROOT + (loggedIn ? 'account' : 'login');
@@ -584,10 +586,7 @@
     var allChars = null, allScripts = [], allCollections = [], fetchPromise = null;
 
     function fetchList(path) {
-      return fetch(ROOT + path).then(function (r) {
-        if (!r.ok) throw new Error('Could not load search data');
-        return r.json();
-      }).then(function (rows) {
+      return window.BotcData.json(ROOT + path).then(function (rows) {
         if (!Array.isArray(rows)) throw new Error('Invalid search data');
         return rows;
       });
@@ -602,8 +601,8 @@
         // worker.js). The browse pages fetch the same URL, so on most visits
         // this is already in the browser's cache.
         fetchList('characters.json?fields=grid'),
-        fetchList('scripts.json').catch(function () { return []; }),
-        fetchList('collections.json').catch(function () { return []; })
+        fetchList('scripts.json?fields=browse').catch(function () { return []; }),
+        fetchList('collections.json?fields=browse').catch(function () { return []; })
       ]).then(function (res) {
         allChars = res[0] || [];
         allScripts = res[1] || [];

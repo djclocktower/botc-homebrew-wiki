@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tag — BOTC HomeBrew Wiki</title>
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
@@ -119,8 +120,7 @@
         '</div></a>';
     }
 
-    fetch('characters.json?fields=grid')
-      .then(function(r) { return r.json(); })
+    BotcData.json('characters.json?fields=grid')
       .then(function(list) {
         var panel = document.getElementById('panel');
         if (!rawTag) {

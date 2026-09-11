@@ -244,6 +244,15 @@
     return root + 'assets/' + p + (version
       ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
   }
+  function responsiveAttrs(root, path, version, sizes) {
+    if (!/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(String(path || ''))) return '';
+    var encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    var query = version ? '?v=' + encodeURIComponent(String(version)) : '';
+    var srcset = [320, 640, 1280].map(function(width) {
+      return root + 'assets/media/' + width + '/' + encodedPath + '.webp' + query + ' ' + width + 'w';
+    }).join(', ');
+    return ' srcset="' + esc(srcset) + '" sizes="' + esc(sizes || '(max-width: 640px) 94vw, 800px') + '"';
+  }
   /* An official character has no page here, so its name links to the official
      wiki: another site, so a new tab, and a mark saying so. */
   function offsite(c) {
@@ -652,7 +661,7 @@
     rows += '<dt>Total:</dt><dd>' + opts.entries.length + ' character' + (opts.entries.length === 1 ? '' : 's') + '</dd>';
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
-      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '"' + responsiveAttrs(root, opts.logoPath, opts.artVersion, '240px') + ' alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
       (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
@@ -869,8 +878,8 @@
      gets this and passes the href in; an empty one renders nothing, so it is
      never shown to a reader the API would refuse. */
   function ownerBar(editHref, label) {
-    if (!editHref) return '';
-    return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
+    if (!editHref) return '<div id="page-owner-controls"></div>';
+    return '<p id="page-owner-controls" class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
       esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
   }
 
@@ -889,8 +898,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -909,7 +918,7 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) main += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
-    main += pagesSection(cfg.pagesHTML, cfg.newPageHref);
+    main += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
 
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
@@ -948,8 +957,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -973,7 +982,7 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
-    proseHTML += pagesSection(cfg.pagesHTML, cfg.newPageHref);
+    proseHTML += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
     // Custom boxes sit below the prose, full width, like the character-page ones.
     if (cfg.boxesHTML) proseHTML += '<div class="coll-boxes">' + cfg.boxesHTML + '</div>';
     var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
@@ -1078,7 +1087,7 @@
     artSrc: artSrc,
     thumbSrc: thumbSrc,
     artVer: artVer,
-    imgSrc: imgSrc,
+    imgSrc: imgSrc, responsiveAttrs: responsiveAttrs, pagesSection: pagesSection,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL
   };
   if (typeof window !== 'undefined') { window.PageRender = api; }

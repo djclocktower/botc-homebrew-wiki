@@ -2,6 +2,8 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All Characters — BOTC HomeBrew Wiki</title>
 <meta name="description" content="All homebrew characters on the BOTC HomeBrew Wiki — filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
@@ -17,8 +19,8 @@
      scripts at the end of the body have run. `crossorigin` has to be there
      for the preload to match a plain fetch(). -->
 <link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="scripts.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json?fields=browse" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="scripts.json?fields=browse" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -81,7 +83,7 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <script src="assets/render.js"></script>
+  <script src="assets/reader.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/classify.js"></script>
   <script>
@@ -491,8 +493,8 @@
     }
 
     function render(){
-      // Invalidate pending slices even when the new result is empty.
-      var token = ++renderToken;
+      // Disconnect previous batches even when the new result is empty.
+      if (cancelCards) cancelCards();
       var list = applyFilters();
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
@@ -514,50 +516,28 @@
         panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
-      // Draw in two steps, so the first paint is not held behind 1,800 cards:
-      // every section's shell and the first screenful of cards go in at once,
-      // and the rest of each grid is appended a slice per animation frame.
-      // A filter change while that is still running invalidates the run
-      // (renderToken) instead of racing it. Always grouped by team;
-      // applyFilters() already ordered each group.
-      var FIRST = 72, SLICE = 160, drawn = 0;
-      var html = '', pending = [];
-      TEAMS.forEach(function (t) {
-          var key = t[0], label = t[1];
-          var chars = list.filter(function (c) { return c.team === key; });
-          if (!chars.length) return;
-          var now = Math.max(0, Math.min(chars.length, FIRST - drawn));
-          drawn += now;
-          html += '<section class="type-section" id="' + key + '">' +
-            '<h2 class="type-header"><a href="team?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
-            '<div class="char-grid" data-team="' + key + '">' + chars.slice(0, now).map(card).join('') + '</div></section>';
-          if (now < chars.length) pending.push({ key: key, rest: chars.slice(now) });
-      });
-      panel.innerHTML = html;
-      function more(){
-        if (token !== renderToken || !pending.length) return;
-        var job = pending[0];
-        var grid = panel.querySelector('.char-grid[data-team="' + job.key + '"]');
-        var slice = job.rest.splice(0, SLICE);
-        if (grid) grid.insertAdjacentHTML('beforeend', slice.map(card).join(''));
-        if (!job.rest.length) pending.shift();
-        requestAnimationFrame(more);
-      }
-      if (pending.length) requestAnimationFrame(more);
+      var groups = [];
+      panel.innerHTML = TEAMS.map(function(t){
+        var chars = list.filter(function(c){ return c.team === t[0]; });
+        if (!chars.length) return '';
+        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
+        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
+      }).join('');
+      cancelCards = window.mountCardBatches(panel, groups, card);
     }
-    var renderToken = 0;
+    var cancelCards = null;
 
     Promise.all([
-      fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?fields=grid').then(function(r){return r.json();}),
-      fetch('scripts.json').then(function(r){return r.json();}).catch(function(){return[];})
+      BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
+      BotcData.json('characters.json?fields=grid'),
+      BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
       (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],description:c.description||'',header:c.header||'',
-                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[]};
+                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[],v:c.v};
       });
       AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
                            match:[],standalone:true,description:'',header:''});
@@ -588,7 +568,8 @@
             stack.className = 'collection-hero';
             var inner = '';
             if (activeCollection.header) {
-              inner += '<div class="collection-hero-header"><img loading="lazy" decoding="async" class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
+              var headerSrc = /^https?:\/\//i.test(activeCollection.header) ? activeCollection.header : 'assets/' + activeCollection.header + (activeCollection.v ? '?v=' + encodeURIComponent(activeCollection.v) : '');
+              inner += '<div class="collection-hero-header"><img decoding="async" class="collection-hero-img" src="' + esc(headerSrc) + '" alt="' + esc(displayName) + '"></div>';
             }
             if (activeCollection.tagline) {
               inner += '<p class="collection-hero-tagline">' + esc(activeCollection.tagline) + '</p>';
@@ -627,8 +608,9 @@
             }
             function ensureCollJson() {
               if (collJsonLoad) return collJsonLoad;
-              collJsonLoad = fetch('characters.json?fields=card').then(function (r) { return r.json(); })
-                .then(function (cards) {
+              collJsonLoad = Promise.all([BotcData.json('characters.json?fields=card'), BotcData.script('render.js')])
+                .then(function (loaded) {
+                  var cards = loaded[0];
                   collJsonText = buildCollJson(cards || []);
                   var code = stack.querySelector('.collection-json code');
                   if (code) code.textContent = collJsonText;
@@ -645,7 +627,7 @@
                 });
               return collJsonLoad;
             }
-            if (window.buildSchema && list.length) {
+            if (list.length) {
               inner += '<div class="collection-json">' +
                 '<div class="json-box">' +
                   '<div class="json-bar">' +

@@ -2,6 +2,9 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/art-thumb.js"></script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Collection Editor — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Create or edit a Blood on the Clocktower homebrew collection: name it, pick its characters, add a description and artwork, and publish it to the wiki.">
@@ -12,6 +15,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
 /* ─── Collection editor layout (mirrors publish-script.html) ─── */
@@ -380,6 +384,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/render-wiki.js"></script>
@@ -544,7 +549,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
-    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
     function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
     function matchTerms(){

@@ -2,7 +2,7 @@
 // Uses SQLite and the real renderers; no production services or dependencies.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DatabaseSync } from 'node:sqlite';
+import { fixture } from './worker-fixture.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
@@ -13,75 +13,12 @@ const read = path => readFile(resolve(root, path), 'utf8');
 const Render = (await import(pathToFileURL(resolve(root, 'assets/render.js')))).default;
 const PageRender = (await import(pathToFileURL(resolve(root, 'assets/render-page.js')))).default;
 PageRender.init(Render);
-let instance = 0;
 const deferred = () => {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 };
 const flush = () => new Promise(resolve => setImmediate(resolve));
-
-async function fixture() {
-  // Appending test-only exports avoids changing the production module API.
-  const source = (await read('worker/worker.js')).replace(
-    /from (['"])(\.\.?\/[^'"]+)\1/g,
-    (_, quote, path) => 'from ' + JSON.stringify(pathToFileURL(resolve(root, 'worker', path)).href)
-  ) + `\n// isolate ${instance++}\nexport const hooks = {
-    contentVersion, bumpContentVersion, cachedFeedBody, renderCharacterPage,
-    applyCollectionAppearsIn, charsBySlug,
-    appearsInHref: typeof appearsInHref === 'function' ? appearsInHref : null
-  };\n//# sourceURL=botc-worker-test-${instance}.mjs`;
-  const worker = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
-  const db = new DatabaseSync(':memory:');
-  db.exec(await read('migration/schema.sql'));
-  db.exec("ALTER TABLE characters ADD COLUMN url_slug TEXT; INSERT OR REPLACE INTO settings(key,value) VALUES('content_version','7')");
-  const calls = [], background = [], cache = new Map();
-  const state = { intercept: null };
-  const env = {
-    DB: {
-      prepare(sql) {
-        const statement = {
-          values: [],
-          bind(...values) { this.values = values; return this; },
-          async execute(kind) {
-            calls.push({ sql, kind });
-            const native = db.prepare(sql);
-            const value = kind === 'all' ? { results: native.all(...this.values) }
-              : kind === 'first' ? native.get(...this.values) || null : native.run(...this.values);
-            return state.intercept ? state.intercept({ sql, kind, value }) : value;
-          },
-          all() { return this.execute('all'); },
-          first() { return this.execute('first'); },
-          run() { return this.execute('run'); }
-        };
-        return statement;
-      }
-    },
-    SESSIONS: { async get() { return null; } },
-    ASSETS: { async fetch(request) {
-      const path = new URL(request.url).pathname.slice(1);
-      try { return new Response(await read(path)); }
-      catch { return new Response('Not found', { status: 404 }); }
-    } }
-  };
-  globalThis.caches = { default: {
-    async match(request) { return cache.get(request.url)?.clone(); },
-    async put(request, response) { cache.set(request.url, response.clone()); }
-  } };
-  const ctx = { waitUntil(promise) { background.push(promise); } };
-  function insert(table, slug, data, status = 'published') {
-    const nameCol = table === 'collections' ? 'display_name' : 'name';
-    const teamCol = table === 'characters' ? ',team,url_slug' : '';
-    const teamValues = table === 'characters' ? ',?,?' : '';
-    const values = [slug, data.name || data.displayName || slug, JSON.stringify(data), status, '2026-09-09 00:00:00'];
-    if (table === 'characters') values.push(data.team || 'townsfolk', 'test-set/' + slug);
-    db.prepare(`INSERT INTO ${table}(slug,${nameCol},data,status,updated_at${teamCol}) VALUES(?,?,?,?,?${teamValues})`).run(...values);
-  }
-  return { ...worker, env, ctx, db, calls, state, insert,
-    request(path) { return worker.default.fetch(new Request('https://botchomebrew.wiki' + path), env, ctx); },
-    async finish() { await Promise.all(background); db.close(); }
-  };
-}
 
 test('SSR keeps versioned main/alternate art, nested roots and unversioned export URLs', async () => {
   const f = await fixture();
@@ -162,9 +99,9 @@ test('24 simultaneous cold feed requests perform one version read and one feed s
   await flush();
   gate.resolve();
   const responses = await Promise.all(pending);
-  t.diagnostic('24 requests: ' + f.calls.filter(x => x.kind === 'first' && x.sql.includes('SELECT value FROM settings')).length +
+  t.diagnostic('24 requests: ' + f.calls.filter(x => x.kind === 'first' && x.sql.includes('SELECT value,')).length +
     ' version reads; ' + f.calls.filter(x => x.kind === 'all' && x.sql.includes('FROM scripts')).length + ' feed scans.');
-  assert.equal(f.calls.filter(x => x.kind === 'first' && x.sql.includes('SELECT value FROM settings')).length, 1);
+  assert.equal(f.calls.filter(x => x.kind === 'first' && x.sql.includes('SELECT value,')).length, 1);
   assert.equal(f.calls.filter(x => x.kind === 'all' && x.sql.includes('FROM scripts')).length, 1);
   const bodies = await Promise.all(responses.map(r => r.text()));
   assert.ok(bodies.every(body => body === bodies[0]));
@@ -198,7 +135,7 @@ test('a late version read cannot repopulate the memo after a save', async () => 
   const gate = deferred();
   let first = true;
   f.state.intercept = async ({ sql, value }) => {
-    if (first && sql.includes('SELECT value FROM settings')) { first = false; await gate.promise; }
+    if (first && sql.includes('SELECT value,')) { first = false; await gate.promise; }
     return value;
   };
   const old = f.hooks.contentVersion(f.env);
@@ -228,12 +165,14 @@ async function searchFixture(fetcher) {
   }
   const input = element('input'), drop = element('drop'), wrap = element('wrap'), mobile = element('mobile'), menu = element('menu');
   const context = vm.createContext({
-    document: { getElementById: id => ({ 'search-input': input, 'search-drop': drop, 'search-wrap': wrap, 'nav-search-input': mobile, hamburger: menu })[id] || null,
+    window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },
+    document: { baseURI: 'https://botchomebrew.wiki/', getElementById: id => ({ 'search-input': input, 'search-drop': drop, 'search-wrap': wrap, 'nav-search-input': mobile, hamburger: menu })[id] || null,
       addEventListener(event, callback) { handlers.set('document:' + event, callback); } },
-    fetch: fetcher, ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
+    fetch: url => fetcher(new URL(url).pathname.slice(1) + new URL(url).search), ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
     esc: s => String(s).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),
     setTimeout, clearTimeout
   });
+  vm.runInContext(await read('assets/data.js'), context);
   vm.runInContext(source.slice(source.indexOf('  /* ── Search ── */'), source.indexOf('  /* ── Mobile nav ── */')), context);
   return { input, drop, mobile, dispatch(id, event, data = {}) { handlers.get(id + ':' + event)?.(data); } };
 }
@@ -327,21 +266,20 @@ test('resolved Appears in markup skips both browser feed requests', async () => 
   assert.equal(requests, 2);
 });
 
-test('empty browse results cancel queued card rendering', async () => {
+test('empty browse results disconnect the previous viewport renderer', async () => {
   const source = await read('all-characters.html');
-  const renderer = source.slice(source.indexOf('    function render(){'), source.indexOf('    var renderToken = 0;'));
-  const frames = [], panel = { innerHTML: '', querySelector() { throw new Error('old render was not cancelled'); } };
+  const renderer = source.slice(source.indexOf('    function render(){'), source.indexOf('    Promise.all([', source.indexOf('    function render(){')));
+  let cancelled = 0;
+  const panel = { innerHTML: '' };
   let list = Array.from({ length: 200 }, (_, id) => ({ team: 'townsfolk', id }));
   const state = { includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [], includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [] };
-  const context = vm.createContext({ applyFilters: () => list, STATE: state, FULL: list, renderToken: 0,
+  const context = vm.createContext({ applyFilters: () => list, STATE: state, FULL: list,
     TEAMS: [['townsfolk', 'Townsfolk']], card: () => '<a>card</a>',
-    document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null },
-    requestAnimationFrame: callback => frames.push(callback) });
+    window: { mountCardBatches() { return () => { cancelled++; }; } },
+    document: { getElementById: id => id === 'panel' ? panel : id === 'filter-count' ? {} : null } });
   vm.runInContext(renderer + '\nrender();', context);
-  assert.equal(frames.length, 1);
   list = [];
   vm.runInContext('render();', context);
-  frames.shift()();
   assert.match(panel.innerHTML, /No characters match/);
-  assert.equal(frames.length, 0);
+  assert.equal(cancelled, 1);
 });

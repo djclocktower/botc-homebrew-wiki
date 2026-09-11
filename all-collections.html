@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All Collections — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Browse every curated collection of homebrew Blood on the Clocktower characters on the wiki.">
@@ -16,7 +17,7 @@
      scripts at the end of the body have run. `crossorigin` has to be there
      for the preload to match a plain fetch(). -->
 <link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json?fields=browse" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -112,7 +113,7 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
@@ -133,8 +134,8 @@
     var grid = document.getElementById('collections-grid');
 
     Promise.all([
-      fetch('collections.json').then(function(r){ return r.json(); }).catch(function(){ return []; }),
-      fetch('characters.json?fields=grid').then(function(r){ return r.json(); })
+      BotcData.json('collections.json?fields=browse').catch(function(){ return []; }),
+      BotcData.json('characters.json?fields=grid')
     ]).then(function(res){
       var collData = res[0] || [], list = res[1] || [];
       var COLLECTIONS = collData.map(function(c){
@@ -149,7 +150,7 @@
         return {id:c.id, slug:c.slug, displayName:c.displayName||c.slug,
                 match:c.match||[], tagline:c.tagline||'', description:c.description||'',
                 header:c.header||'', logo:c.logo||'', include:c.include||[], exclude:c.exclude||[],
-                author:c.author||'', curata:!!c.curata};
+                author:c.author||'', curata:!!c.curata, v:c.v};
       });
 
       var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
