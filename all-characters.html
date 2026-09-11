@@ -84,6 +84,12 @@
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
   <script src="assets/reader.js"></script>
+  <!-- splitCreators() lives here — the single source of truth for how one
+       `creator` string names several people. This page used to get it as a
+       side effect of loading the whole of render.js; reading pages load
+       reader.js now, which does not carry it, so the creator filter (and with
+       it the whole card list) died on an undefined function. -->
+  <script src="assets/creators.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/classify.js"></script>
   <script>
