@@ -409,10 +409,10 @@
       var linksHTML = '';
       var L = p.links || {};
       var linkItems = [];
-      if (L.website) linkItems.push('<li><a href="' + esc(L.website) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#127760;</span>Website</a></li>');
-      if (L.bluesky) linkItems.push('<li><a href="' + esc(L.bluesky) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#9729;</span>Bluesky</a></li>');
-      if (L.other) linkItems.push('<li><a href="' + esc(L.other) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">&#128279;</span>Link</a></li>');
-      if (L.discord) linkItems.push('<li><span><span class="plink-icon">&#128172;</span>' + esc(L.discord) + '</span></li>');
+      if (L.website) linkItems.push('<li><a href="' + esc(L.website) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">' + (window.UIIcons ? UIIcons.svg('globe') : '') + '</span>Website</a></li>');
+      if (L.bluesky) linkItems.push('<li><a href="' + esc(L.bluesky) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">' + (window.UIIcons ? UIIcons.svg('cloud') : '') + '</span>Bluesky</a></li>');
+      if (L.other) linkItems.push('<li><a href="' + esc(L.other) + '" target="_blank" rel="noopener noreferrer nofollow"><span class="plink-icon">' + (window.UIIcons ? UIIcons.svg('link') : '') + '</span>Link</a></li>');
+      if (L.discord) linkItems.push('<li><span><span class="plink-icon">' + (window.UIIcons ? UIIcons.svg('chat') : '') + '</span>' + esc(L.discord) + '</span></li>');
       if (linkItems.length) linksHTML = '<ul class="profile-links">' + linkItems.join('') + '</ul>';
 
       var btns = [];
@@ -594,6 +594,7 @@
     }).catch(function () { fail('Could not load this creator.'); });
   })();
   </script>
+  <script src="/assets/ui-icons.js"></script>
   <script src="/assets/site.js"></script>
 </body>
 </html>

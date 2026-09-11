@@ -3644,12 +3644,22 @@ seeded with whole collections whose characters all arrived unowned.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 - **Interface marks are SVG, never emoji.** `assets/ui-icons.js` is the set;
   it draws in `currentColor`, so an icon is the colour of the text around it
-  on every background the wiki has. A page that needs one loads that file and
-  writes `<i class="sbi-i" data-icon="download"></i>`, or asks
-  `UIIcons.svg('download')` for the markup. The Worker's SSR renderers have
-  no global to reach, so they carry the same shape inline. This is about the
-  furniture only: the creator symbols in `creators.js` and the credit marks
-  inside character names are content (gotcha 7).
+  on every background the wiki has — an emoji is painted by the reader's font
+  in that font's colours and takes no theme at all. A page that needs one
+  loads that file and writes `<i class="sbi-i" data-icon="download"></i>`
+  (`UIIcons.paint()` fills it on load), or asks `UIIcons.svg('download')` for
+  the markup. It is loaded by `script.html`, `publish-script.html`,
+  `all-characters.html`, `profile.html`, `account.html`, `dashboard.html`,
+  `tokens.html`, `script-view.html`, and by **`pageShell()`** on every SSR
+  page that mounts the comment widget (the pinned badge). Shared widgets ask
+  for it through `window.UIIcons ? … : '&#…;'` so a page that has not loaded
+  it keeps the old glyph rather than a hole. The Worker's own renderers have
+  no global to reach: `render-page.js` carries its one download mark inline,
+  with a comment pointing back here. This is about the furniture only — the
+  creator symbols in `creators.js` and the credit marks inside character
+  names are content (gotcha 7), and the plain text dingbats elsewhere
+  (`&#10003;` on a save, `&#10007;` on a failure) are glyphs in the site's
+  own ink, not emoji.
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole

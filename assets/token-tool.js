@@ -1402,7 +1402,7 @@
     res.files.forEach(function (f) {
       var url = 'data:' + f.mime + ';base64,' + f.b64;
       var a = document.createElement('a'); a.href = url; a.download = f.name;
-      a.innerHTML = '&#11015; ' + esc(f.name);
+      a.innerHTML = (window.UIIcons ? UIIcons.svg('download') : '') + ' ' + esc(f.name);
       out.appendChild(a);
     });
     (res.thumbs || []).forEach(function (t) {

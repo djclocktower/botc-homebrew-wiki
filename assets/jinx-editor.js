@@ -106,7 +106,7 @@
             '</div>' +
             '<button type="button" class="sjx-btn sjx-remove" data-key="' + esc(k) + '"' +
               ' data-custom="' + (j.custom ? '1' : '') + '"' +
-              ' aria-label="Remove the jinx between ' + esc(j.a.name) + ' and ' + esc(j.b.name) + '">&#10005;</button>' +
+              ' aria-label="Remove the jinx between ' + esc(j.a.name) + ' and ' + esc(j.b.name) + '">' + (window.UIIcons ? UIIcons.svg('close') : '&#10005;') + '</button>' +
             '</div>';
         });
       }

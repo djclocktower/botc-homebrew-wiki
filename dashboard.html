@@ -1744,7 +1744,7 @@
               '<span class="dim">on <a href="' + esc(pubUrl(c.entity_type, c.slug)) + '" target="_blank">' +
                 esc(c.entity_type) + '/' + esc(c.slug) + '</a> · ' + esc(String(c.ts || '').slice(0, 16)) +
                 (c.parent_id ? ' · reply to #' + c.parent_id : '') +
-                (c.pinned ? ' · 📌 pinned' : '') +
+                (c.pinned ? ' · ' + (window.UIIcons ? UIIcons.svg('pin') : '') + ' pinned' : '') +
                 (c.reports ? ' · ' + c.reports + ' report' + (c.reports === 1 ? '' : 's') : '') +
                 (c.status === 'removed' ? ' · removed by ' + esc(c.removed_by || 'admin') : '') +
                 // 'hidden' = went down with its parent rather than being
@@ -3327,6 +3327,7 @@
   <!-- The picker AND the gallery for images on modmail replies and comments. -->
   <script src="assets/attach.js"></script>
   <script src="assets/art-thumb.js"></script>
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

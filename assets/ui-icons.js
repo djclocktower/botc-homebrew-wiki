@@ -70,6 +70,9 @@
     star:      '<path d="M12 3.6l2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 10l6.1-.9z"/>',
     pin:       '<path d="M9 3.5h6l-.8 5.2 3.3 3.5v2H6.5v-2l3.3-3.5z"/><path d="M12 14.2v6.3"/>',
     jinx:      '<circle cx="8.2" cy="12" r="4.4"/><circle cx="15.8" cy="12" r="4.4"/>',
+    globe:     '<circle cx="12" cy="12" r="8.8"/><path d="M3.2 12h17.6M12 3.2a13 13 0 0 1 0 17.6 13 13 0 0 1 0-17.6"/>',
+    cloud:     '<path d="M7 19h10.2a4.3 4.3 0 0 0 .4-8.6 6 6 0 0 0-11.5 1.2A3.9 3.9 0 0 0 7 19z"/>',
+    chat:      '<path d="M20.5 12.4c0 3.9-3.8 7-8.5 7a9.9 9.9 0 0 1-2.6-.34L4.2 20.5l1.3-3.5a6.6 6.6 0 0 1-2-4.6c0-3.9 3.8-7 8.5-7s8.5 3.1 8.5 7z"/>',
     grip:      '<circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none"/>'
   };
 

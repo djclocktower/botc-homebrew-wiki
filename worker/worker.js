@@ -4454,7 +4454,7 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice) {
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};`,
-    scripts: ['render.js', 'tags.js', 'charpage.js', 'attach.js', 'comments.js', 'site.js']
+    scripts: ['ui-icons.js', 'render.js', 'tags.js', 'charpage.js', 'attach.js', 'comments.js', 'site.js']
   });
 }
 
@@ -4959,8 +4959,8 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
     scripts: isScript
-      ? ['render.js', 'pageview.js', 'attach.js', 'comments.js', 'site.js']
-      : ['render.js', 'pageview.js', 'sao.js', 'card-filters.js', 'attach.js', 'comments.js', 'site.js']
+      ? ['ui-icons.js', 'render.js', 'pageview.js', 'attach.js', 'comments.js', 'site.js']
+      : ['ui-icons.js', 'render.js', 'pageview.js', 'sao.js', 'card-filters.js', 'attach.js', 'comments.js', 'site.js']
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
 }
@@ -5280,7 +5280,7 @@ const SSR_EDGE_CACHE_CONTROL = 'public, s-maxage=604800';
    cache keeps serving last week's HTML for the full s-maxage (a week) unless
    somebody happens to save a page. Bump this whenever a deploy changes what
    these routes render and the stale copies die with it. */
-const SSR_RENDER_V = 3;
+const SSR_RENDER_V = 4;
 const PAGE_LINK_HEADER =
   '</assets/styles.css>; rel=preload; as=style, ' +
   '</assets/header-redesign.css>; rel=preload; as=style, ' +
@@ -5524,7 +5524,7 @@ export default {
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = 'news'; window.PAGE_SLUG = ${JSON.stringify(a.slug)};`,
           // newspage.js puts the Edit button in the top bar for admins.
-          scripts: ['attach.js', 'comments.js', 'newspage.js', 'site.js']
+          scripts: ['ui-icons.js', 'attach.js', 'comments.js', 'newspage.js', 'site.js']
         });
         return htmlPage(html, isDraft ? '' : 'news|' + row.slug);
       });
@@ -5665,7 +5665,7 @@ export default {
             : '',
           bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.WIKI_PAGE_SLUG = ${JSON.stringify(row.slug)};` +
             (d.comments === false ? '' : ` window.PAGE_TYPE = 'wikipage'; window.PAGE_SLUG = ${JSON.stringify(row.slug)};`),
-          scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['wikipage.js', 'attach.js', 'comments.js', 'site.js']
+          scripts: d.comments === false ? ['wikipage.js', 'site.js'] : ['ui-icons.js', 'wikipage.js', 'attach.js', 'comments.js', 'site.js']
         });
         return htmlPage(html, isDraft ? '' : 'wikipage|' + row.slug);
       });

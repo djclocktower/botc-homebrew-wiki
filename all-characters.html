@@ -598,11 +598,11 @@
             }
             inner += '<p class="collection-hero-count">' + list.length + ' character' + (list.length === 1 ? '' : 's') + ' in this collection</p>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '">📖 View collection page</a>';
+              inner += '<a class="cta-secondary" style="margin-top:6px" href="collection/' + encodeURIComponent(activeCollection.id) + '">' + (window.UIIcons ? UIIcons.svg('book') : '') + ' View collection page</a>';
             }
             inner += '<a class="cta-secondary" style="margin-top:6px" href="tokens?collection=' + encodeURIComponent(activeCollection.slug) + '">Print Tokens</a>';
             if (activeCollection.id && !activeCollection.standalone) {
-              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">✎ Edit Collection</a>';
+              inner += '<a class="cta-secondary collection-edit-btn" href="publish-collection?c=' + encodeURIComponent(activeCollection.id) + '">' + (window.UIIcons ? UIIcons.svg('pencil') : '') + ' Edit Collection</a>';
             }
             // Full collection JSON (official script-tool schema, every character).
             // This page draws from the GRID feed, which has none of the schema
@@ -666,7 +666,7 @@
                   '</div>' +
                   '<pre class="json-body" hidden><code>Loading the full character data…</code></pre>' +
                 '</div>' +
-                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">⬇ Download JSON</a>' +
+                '<a class="cta-secondary" style="display:inline-block;margin-top:10px" href="#" id="coll-json-download">' + (window.UIIcons ? UIIcons.svg('download') : '') + ' Download JSON</a>' +
               '</div>';
             }
             stack.innerHTML = inner;
@@ -716,6 +716,7 @@
       });
   </script>
 
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

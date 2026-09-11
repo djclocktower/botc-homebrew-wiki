@@ -169,7 +169,7 @@
               '</div>' +
               '<pre class="json-body"><code>' + esc(jsonText) + '</code></pre>' +
             '</div>' +
-            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="#" id="json-download">⬇ Download JSON</a>' +
+            '<a class="cta-secondary" style="display:block;text-align:center;margin-top:14px" href="#" id="json-download">' + (window.UIIcons ? UIIcons.svg('download') : '') + ' Download JSON</a>' +
             '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="script">Open in Script Builder</a>' +
             '<a class="cta-secondary" style="display:block;text-align:center;margin-top:10px" href="tokens?script=' + encodeURIComponent(sc.slug) + '">Print Tokens</a>' +
           '</aside>' +
@@ -190,6 +190,7 @@
     }
   })();
   </script>
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

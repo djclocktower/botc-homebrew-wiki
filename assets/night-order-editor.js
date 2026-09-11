@@ -9,7 +9,8 @@
  *
  * Two ways to move a character, on purpose:
  *   - drag a row (pointer events: mouse, pen and touch on one path)
- *   - the ▲▼ buttons, which work with a keyboard, with a screen reader, and
+ *   - the two arrow buttons, which work with a keyboard, with a screen
+ *     reader, and
  *     for anyone who finds dragging on a phone fiddly.
  *
  * Who ACTS is never editable here. A character is on a list because its own
@@ -84,7 +85,7 @@
         var rows = items.length
           ? items.map(function (it, i) {
             return '<div class="no-row" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
-              '<span class="no-grip" aria-hidden="true" title="Drag to move">&#10247;</span>' +
+              '<span class="no-grip" aria-hidden="true" title="Drag to move">' + (window.UIIcons ? UIIcons.svg('grip') : '&#10247;') + '</span>' +
               '<span class="no-pos">' + (i + 1) + '</span>' +
               (icons ? '<img class="no-ico" loading="lazy" decoding="async" src="' + esc(opts.artOf(it.c)) +
                 '" alt="" onerror="this.style.visibility=\'hidden\'">' : '') +
@@ -95,9 +96,9 @@
               '</span>' +
               '<span class="no-moves">' +
                 '<button type="button" class="no-move" data-move="up"' + (i === 0 ? ' disabled' : '') +
-                  ' aria-label="Move ' + esc(it.c.name) + ' earlier">&#9650;</button>' +
+                  ' aria-label="Move ' + esc(it.c.name) + ' earlier">' + (window.UIIcons ? UIIcons.svg('up') : '&#9650;') + '</button>' +
                 '<button type="button" class="no-move" data-move="down"' + (i === items.length - 1 ? ' disabled' : '') +
-                  ' aria-label="Move ' + esc(it.c.name) + ' later">&#9660;</button>' +
+                  ' aria-label="Move ' + esc(it.c.name) + ' later">' + (window.UIIcons ? UIIcons.svg('down') : '&#9660;') + '</button>' +
               '</span></div>';
           }).join('')
           : '<p class="no-empty">Nobody acts.</p>';
@@ -107,7 +108,7 @@
       }).join('');
     }
 
-    /* ── ▲▼ ── */
+    /* ── the arrows ── */
     container.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('.no-move');
       if (!btn) return;

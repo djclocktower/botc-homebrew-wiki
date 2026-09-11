@@ -1082,6 +1082,11 @@
   }
 
   /* ── public renderers ── */
+  /* The download mark. This file is imported by the WORKER, which has no
+     window and so no UIIcons — the one shape it needs is written out here
+     instead, and it is the same path data as ui-icons.js's `download`. */
+  var DOWNLOAD_ICON = '<svg class="sbi" viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v11M12 14.5L7.5 10M12 14.5L16.5 10"/><path d="M4 16v3.5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V16"/></svg>';
+
   function renderScriptPage(sc, allChars, opts) {
     opts = opts || {};
     var root = opts.linkRoot || '';
@@ -1099,7 +1104,7 @@
       // "save link as", and cannot fail silently. See pageJsonResponse().
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=script&slug=' + encodeURIComponent(sc.slug || ''),
-        label: '⬇ Download JSON' },
+        label: DOWNLOAD_ICON + ' Download JSON' },
       { href: root + 'script' + (share ? '?share=' + share : ''), label: 'Open in Script Builder' },
       { href: root + 'tokens?script=' + encodeURIComponent(sc.slug || ''), label: 'Print Tokens' },
       { href: root + 'fancyscripts?s=' + encodeURIComponent(sc.slug || ''), label: 'Fancy Sheet' }
@@ -1136,7 +1141,7 @@
     var actions = [
       { id: 'json-download', download: true,
         href: root + 'api/page-json?type=collection&slug=' + encodeURIComponent(coll.id || coll.slug || ''),
-        label: '⬇ Download JSON' },
+        label: DOWNLOAD_ICON + ' Download JSON' },
       { href: root + 'tokens?collection=' + encodeURIComponent(coll.slug || coll.id || ''), label: 'Print Tokens' },
       { href: root + 'fancyscripts?c=' + encodeURIComponent(coll.id || coll.slug || ''), label: 'Fancy Sheet' }
     ];

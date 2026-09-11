@@ -155,7 +155,7 @@
           // worth knowing.
           (c.isOwner ? '<span class="cmt-badge cmt-badge-creator" title="Made this page">Creator</span>' : '') +
           (c.isAdmin ? '<span class="cmt-badge">Admin</span>' : '') +
-          (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin">📌 Pinned</span>' : '') +
+          (c.pinned ? '<span class="cmt-badge cmt-badge-pin" title="Pinned by the page owner or an admin">' + (window.UIIcons ? UIIcons.svg('pin') : '') + ' Pinned</span>' : '') +
           '<span class="cmt-when">' + esc(when(c.ts)) + '</span>' +
         '</div>' +
         '<div class="cmt-body">' + bodyHTML(c.body) + '</div>' +
