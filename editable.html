@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Characters You Can Edit — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  /* Same furniture as /drafts: light text on the dark page background. */
+  .ed-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
+  .ed-back { display:block; text-align:center; margin:10px 0 0;
+    font-family:'Oswald',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+  .ed-back:hover { color:#fff; text-decoration:underline; }
+  .ed-count { text-align:center; font-family:'Oswald',sans-serif;
+    letter-spacing:.07em; text-transform:uppercase; font-size:.9rem;
+    color:rgba(236,225,200,.72); margin:0 0 20px; }
+  .ed-gate, .ed-empty {
+    text-align:center; color:rgba(236,225,200,.85); padding:40px 20px;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .ed-gate a, .ed-empty a { color:#9fc4ee; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.png" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.png" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>Characters You Can Edit</h1>
+    <p class="ed-sub">Your own pages, and the ones other creators opened to you.</p>
+    <a class="ed-back" href="account">← Back to my account</a>
+  </div>
+
+  <main class="home-panel" id="panel">
+    <div class="ed-gate" id="loading">Loading…</div>
+    <div class="ed-gate" id="gate" style="display:none">
+      <p>Log in to see the characters you can edit.</p>
+      <p><a href="login?next=editable">Log in or create an account</a></p>
+    </div>
+    <div id="cards" style="display:none">
+      <p class="ed-count" id="ed-count"></p>
+      <div id="char-filters"></div>
+      <p class="ed-count" id="char-count" style="margin:-12px 0 14px"></p>
+      <div id="char-grid"></div>
+    </div>
+    <div class="ed-empty" id="empty" style="display:none">
+      <p>Nothing here yet.</p>
+      <p>This page lists every character you can edit: the ones you made, the ones whose creator
+         named you an editor, and the rosters of scripts and collections shared with you.</p>
+      <p><a href="create">Create a character →</a></p>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/card-filters.js"></script>
+  <script>
+  /* /editable — every character this account may edit, as the same cards the
+     browse pages use. Same shape as /drafts, with one addition: each card is
+     stamped data-source "mine" or "shared", and the shared filter box grows a
+     Source chip pair, which is the "show me only the pages other people
+     opened to me" filter the account panel links here for.
+
+     /api/editable-characters is the list (owned + named-editor + shared
+     script/collection rosters); the cards are enriched from
+     characters.json?drafts=1 where that feed knows the page — for a non-admin
+     the ?drafts=1 half is silently ignored, so a shared DRAFT falls back to a
+     plain card built from what the endpoint itself said. Partial pages stay
+     visible (partialOn): hiding a page from the person meant to finish it
+     would be exactly backwards. */
+  (function () {
+    var PR = window.PageRender;
+    function $(id) { return document.getElementById(id); }
+    function show(id) { var e = $(id); if (e) e.style.display = ''; }
+    function hide(id) { var e = $(id); if (e) e.style.display = 'none'; }
+
+    fetch('/api/editable-characters', { credentials: 'same-origin' })
+      .then(function (r) {
+        if (r.status === 401) { hide('loading'); show('gate'); return null; }
+        return r.json();
+      })
+      .then(function (res) {
+        if (!res) return;
+        if (res.error) { hide('loading'); show('gate'); return; }
+        var rows = res.characters || [];
+        hide('loading');
+        if (!rows.length) { show('empty'); return; }
+        show('cards');
+        var shared = rows.filter(function (r) { return !r.owned; }).length;
+        $('ed-count').textContent = rows.length + ' character' + (rows.length === 1 ? '' : 's') +
+          (shared ? ' — ' + shared + ' shared with you' : '');
+
+        fetch('characters.json?drafts=1&_=' + Date.now())
+          .then(function (r) { return r.json(); })
+          .catch(function () { return []; })
+          .then(function (all) {
+            var bySlug = {};
+            (all || []).forEach(function (c) { if (c.slug) bySlug[c.slug] = c; });
+            var srcByHref = {};
+            var order = {};
+            var full = rows.map(function (r, i) {
+              var base = bySlug[r.slug] || r;
+              var out = {};
+              Object.keys(base).forEach(function (k) { out[k] = base[k]; });
+              out.slug = r.slug; out.name = r.name || out.name;
+              out.team = r.team || out.team; out.status = r.status;
+              // The cards carry no slug, so the card's own href is the key
+              // that carries "mine or shared" back onto it below. Same
+              // expression as the renderer's charHref with root ''.
+              var href = String(out.page || ('c/' + out.slug)).replace(/\.html$/, '');
+              srcByHref[href] = r.owned ? 'mine' : 'shared';
+              order[r.slug] = rows.length - i;
+              return out;
+            });
+
+            $('char-filters').innerHTML = PR.filterBoxHTML('ed', 'Filter characters');
+            $('char-grid').innerHTML = PR.renderRosterCards(full, '', order);
+            [].slice.call($('char-grid').querySelectorAll('.char-card')).forEach(function (card) {
+              var src = srcByHref[card.getAttribute('href')];
+              if (src) card.setAttribute('data-source', src);
+            });
+            if (window.mountCardFilters) {
+              var ok = window.mountCardFilters({
+                grid: 'char-grid', bar: 'ed-filter-bar',
+                toggle: 'ed-filter-toggle', count: 'char-count',
+                label: 'Filter characters', noun: 'character', minCards: 2,
+                partialOn: true,
+                sourceChips: [['mine', 'Pages you own'], ['shared', 'Shared with you']]
+              });
+              if (!ok) $('char-filters').style.display = 'none';
+            }
+          });
+      })
+      .catch(function () { hide('loading'); show('gate'); });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>
