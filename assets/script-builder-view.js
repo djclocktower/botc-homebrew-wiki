@@ -27,7 +27,8 @@
 
   var DEFAULTS = {
     layout: 'sheet',      // sheet | cards | list | icons
-    columns: 'auto',      // auto | 1 | 2 | 3
+    columns: 'auto',      // auto | 1 | 2 | 3 — inside one team's sheet
+    pageCols: false,      // the WHOLE script flowed down two columns
     order: 'added',       // added | name | sao | night
     teamLabel: 'full',    // full | short | none
     density: 'comfortable', // compact | comfortable | roomy
@@ -73,6 +74,8 @@
     { group: 'Roster', key: 'layout', label: 'Layout', type: 'seg', repaint: '',
       options: [['sheet', 'Sheet'], ['cards', 'Cards'], ['list', 'List'], ['icons', 'Icons']],
       hint: 'Sheet reads like the character sheet; Cards is the browse grid; List is one line each; Icons is a wall of art.' },
+    { group: 'Roster', key: 'pageCols', label: 'Whole script in two columns', type: 'check', repaint: '',
+      hint: 'The printed-sheet flow: every team runs on down two columns of the page. The Columns setting below splits one team\u2019s own sheet instead.' },
     { group: 'Roster', key: 'columns', label: 'Columns', type: 'seg', repaint: '',
       options: [['auto', 'Auto'], ['1', '1'], ['2', '2'], ['3', '3']] },
     { group: 'Roster', key: 'order', label: 'Order inside a team', type: 'select', repaint: 'roster',
@@ -139,7 +142,13 @@
     { key: 'icons', label: 'Icon wall',
       view: { layout: 'icons', columns: 'auto', density: 'comfortable', icon: 64, showAbility: false, teamLabel: 'full' } },
     { key: 'big', label: 'Big print',
-      view: { layout: 'sheet', columns: '1', density: 'roomy', icon: 56, text: 125, showAbility: true, font: 'print', teamLabel: 'full' } }
+      view: { layout: 'sheet', columns: '1', density: 'roomy', icon: 56, text: 125, showAbility: true, font: 'print', teamLabel: 'full' } },
+    /* The printed sheet: one narrow column per team, both poured down the
+       page, the serif face — what the builder's own print window used to
+       make, now something you can simply look at. */
+    { key: 'printed', label: 'Printed sheet',
+      view: { layout: 'sheet', pageCols: true, columns: '1', density: 'compact', icon: 30, text: 95,
+              showAbility: true, font: 'print', teamLabel: 'full', tone: 'paper' } }
   ];
 
   var byKey = {};
@@ -184,6 +193,12 @@
     v = normalize(v);
     root.setAttribute('data-layout', v.layout);
     root.setAttribute('data-cols', v.columns);
+    /* The two-column FLOW, not the per-team grid: the whole roster poured
+       down two columns of the page, the way a printed script sheet reads.
+       It is dropped while Arrange is on — a row lifted out of a multicol
+       flow lands back in the wrong column, and arranging is the one mode
+       where where a row sits has to be exactly where it looks. */
+    root.classList.toggle('sbx-two-col', !!v.pageCols && !v.arrange);
     root.setAttribute('data-density', v.density);
     root.setAttribute('data-font', v.font);
     root.setAttribute('data-side', v.side);

@@ -1037,7 +1037,8 @@ Everything about HOW the roster is drawn, and nothing about what is on it:
 the same script exports, publishes and shares identically under every view,
 so it lives in `botc_builder_prefs.view`, never in the meta.
 `SBView.SCHEMA` is the whole list — four layouts (sheet, cards, list, icon
-wall), columns, the order inside a team, team headings, spacing, paper tone
+wall), the two column settings (see below), the order inside a team, team
+headings, spacing, paper tone
 (parchment, dark, plain), type, icon and text sizes, what a row shows
 (ability, creator, tags, night marks, jinx marks, official badge, remove on
 hover, counts), team colours on the headings and a stripe on the rows,
@@ -1142,7 +1143,7 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   settle pass (`paintJinxHints`, touching only the rows whose mark changed).
 - **Notes on a character** (`meta.charNotes[slug]`): typed on the peek card
   of a character on the script, shown under its row (View → Your notes),
-  carried into the print sheet and Copy as text, and along share links.
+  carried into Copy as text and along share links.
   Never in the export.
 - **The bar** is configurable (View → The bar): Undo/redo, Random, Sort and
   Publish can each be taken off it; whatever is off appears in the More
@@ -1196,8 +1197,23 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
   ordinary importer; a pasted `/s/{slug}` or `/collection/{id}` link does the
   same.
 
-### Arrange, print, export options
+### Arrange, columns, export options
 
+- **Two settings say "columns" and they are different things.**
+  **Columns** (auto / 1 / 2 / 3) splits ONE team's own parchment into that
+  many columns of rows, and `auto` is a container query on `#sb-script`.
+  **Whole script in two columns** (`pageCols`) is the printed sheet's flow
+  instead: a `column-count: 2` multicol on the whole roster, so Townsfolk
+  fills the left column and the other teams run on down the right, each
+  team's own grid pinned to one column inside it. A team is kept whole and
+  only a long one may break (`:has(.sbx-sheet > .sbx-ch:nth-child(9))`) —
+  letting every team break stranded a four-character team's heading at the
+  foot of a column with an empty parchment under it, because `break-after:
+  avoid` on a heading is honoured patchily in a multicol. It unwinds to one
+  column below 700px, and it is **dropped while Arrange is on**: a row
+  lifted out of a multicol flow lands back in the wrong column. The
+  **Printed sheet** preset is this plus one column per team, the serif face
+  and the paper tone.
 - **Arrange** (View → Arrange by hand): every row gets a grip and two
   arrows; moves
   stay inside a team and write straight into `order` (`setTeamOrder`), which
@@ -1207,11 +1223,15 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
 - **Night Order / Jinxes tabs** take `getView` + `artOf` into the shared
   widgets (reminders, icons, stacked lists; icons on the jinx pairs). The
   publish page passes neither and gets the plain lists it always had.
-- **Print** writes its own window (the builder is a fixed-height app; a
-  `@media print` rule would have to unpick that). Options in Details &
-  Export: the character sheet, icons, team colours, night order, jinxes,
-  house rules, notes, one or two columns, text size. It waits for the icons
-  before calling `print()`.
+- **There is no print sheet here any more.** The builder used to write its
+  own print window — icons, team colours, one or two columns, the night
+  order and the jinxes — and Fancy Scripts presses the same script into the
+  official parchment sheet with a night sheet, a jinx page and a back cover,
+  and exports it as PNG or PDF. Two answers to "print this" and the worse
+  one was on the button, so **Fancy Scripts is the only visual export**: the
+  Fancy Sheet button hands the roster over (`doFancy`). Do not add a second
+  one. What the print sheet could do that nothing on screen could is now
+  **View → Whole script in two columns**.
 - **Details & Export** also carries a JSON preview, a Minified switch, and
   the **Character ids** widget (`export-ids-editor.js`, the same one
   publish-script mounts) writing `meta.exportIds`, which `buildPageExport`

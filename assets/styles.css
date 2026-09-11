@@ -4591,6 +4591,36 @@ html.sbx-page .nav-dropdown { z-index: 80; }
 .sbx[data-cols="3"] .sbx-sheet > .sbx-ch { border-right: none; }
 .sbx[data-cols="3"] .sbx-sheet > .sbx-ch:not(:nth-child(3n)) { border-right: 1px solid rgba(180,160,120,.45); }
 
+/* ── the whole script down two columns (View → Whole script in two columns)
+   The printed sheet's own flow: every team section pours on down the page
+   in two columns, rather than each team being a full-width parchment with
+   a two-column grid inside it. It is a MULTICOL on the container, so the
+   teams break where they fall — that is the point of the layout, and it is
+   why each team's own grid is pinned to one column inside it. A row is
+   never split across the gutter (`break-inside: avoid`), and a heading
+   never ends a column with nothing under it (`break-after: avoid`).
+   Below 700px the page is too narrow for two readable columns of ability
+   text, so it unwinds to one. */
+.sbx-two-col #sb-script { column-count: 2; column-gap: 20px; }
+.sbx-two-col #sb-script .sbx-sheet { grid-template-columns: minmax(0, 1fr); }
+.sbx-two-col #sb-script .sbx-sheet > .sbx-ch { border-right: none; break-inside: avoid; }
+/* A team is kept WHOLE by default and only a long one is allowed to break.
+   Letting every team break stranded the Outsider heading at the foot of the
+   left column with an empty parchment under it and its four rows at the top
+   of the right one, because `break-after: avoid` on a heading is honoured
+   patchily inside a multicol. Nine rows is the line: the four-a-team
+   sections stay together, Townsfolk (thirteen on a standard script) runs on.
+   A browser without :has() keeps every team whole, which packs the columns
+   less evenly but can never strand a heading — the right way to fail. */
+.sbx-two-col #sb-script .sbx-team { break-inside: avoid; margin-bottom: 10px; }
+.sbx-two-col #sb-script .sbx-team:has(.sbx-sheet > .sbx-ch:nth-child(9)) { break-inside: auto; }
+.sbx-two-col #sb-script .sbx-team-head { break-after: avoid; position: static; }
+/* A column box is not a scroll container, so a sticky heading inside one
+   has nothing to stick to; the setting simply does not apply here. */
+@media (max-width: 700px) {
+  .sbx-two-col #sb-script { column-count: 1; }
+}
+
 /* type */
 .sbx[data-font="plain"] .sbx-ch-name { font-family: 'Libre Franklin', sans-serif; text-transform: none; font-weight: 700; letter-spacing: 0; }
 .sbx[data-font="plain"] .sbx-ch-txt, .sbx[data-font="plain"] .sbx-team-head { font-family: 'Libre Franklin', sans-serif; }

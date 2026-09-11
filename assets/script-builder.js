@@ -1941,134 +1941,14 @@
     } else { window.prompt('Copy this link:', link); }
   }
 
-  /* A printable sheet, in its own window rather than a @media print rule on
-     this one: the builder is a fixed-height app with two scrolling panes, and
-     unpicking that for the printer would take more CSS than simply writing
-     the pages out. The character sheet (icons, two columns, team colours —
-     each a print option), then the night order, the jinxes, the house rules
-     and the notes as asked. Fancy Scripts is the pretty version; this is the
-     one that prints from any browser in a second. */
-  function printOpts() {
-    var o = prefs.print || {};
-    return {
-      icons: o.icons !== false, colour: o.colour !== false, night: o.night !== false,
-      roster: o.roster !== false, charNotes: o.charNotes !== false,
-      jinxes: o.jinxes !== false, rules: o.rules !== false, notes: !!o.notes,
-      cols: o.cols === '1' ? 1 : 2, size: o.size || 'normal'
-    };
-  }
-  var TEAM_INK = {
-    townsfolk: '#2C7BD0', outsider: '#1a6a80', minion: '#b5441a', demon: '#9A0D12',
-    traveller: '#6a3fa0', fabled: '#8f6d1a', loric: '#2f6b3f'
-  };
-  function absUrl(u) { try { return new URL(u, location.href).href; } catch (e) { return u; } }
-  function doPrint() {
-    if (!notEmpty()) return;
-    if (!cardReady) { withCards(doPrint); return; }
-    var m = getMeta();
-    var chars = rosterChars();
-    var po = printOpts();
-    var PR = window.PageRender;
-    var night = (PR && PR.nightItems) ? PR.nightItems(chars, getNightOrder()) : { first: [], other: [] };
-    var jinxes = scriptJinxes();
-    var pt = po.size === 'small' ? 9.5 : (po.size === 'large' ? 13 : 11);
-    var pn = charNotes();
-
-    function icon(c, px) {
-      return po.icons ? '<img src="' + esc(absUrl(artOf(c))) + '" alt="" width="' + px + '" height="' + px + '" onerror="this.style.visibility=\'hidden\'">' : '';
-    }
-    var out = '';
-    if (po.roster) TEAMS.forEach(function (t) {
-      var group = chars.filter(function (c) { return c.team === t[0]; });
-      if (!group.length) return;
-      out += '<section class="team ' + esc(t[0]) + '"><h2>' + esc(t[1]) + '</h2><div class="rows">';
-      group.forEach(function (c) {
-        var nt = po.charNotes && pn[c.slug] ? '<span class="note">' + esc(pn[c.slug]) + '</span>' : '';
-        out += '<div class="ch">' + icon(c, 34) + '<p><b class="nm">' + esc(c.name) + '</b> ' + esc(c.ability || '') + nt + '</p></div>';
-      });
-      out += '</div></section>';
-    });
-    if (po.jinxes && jinxes.length) {
-      out += '<section class="team jinx"><h2>Jinxes</h2><div class="rows one">';
-      jinxes.forEach(function (j) {
-        out += '<div class="ch">' + icon(j.a, 26) + icon(j.b, 26) + '<p><b class="nm">' + esc(j.a.name) + ' &amp; ' + esc(j.b.name) + '</b> ' + esc(j.text || '') + '</p></div>';
-      });
-      out += '</div></section>';
-    }
-    var boot = (m.bootlegger || []).map(function (r) { return String(r || '').trim(); }).filter(Boolean);
-    if (po.rules && boot.length) {
-      out += '<section class="team rules"><h2>House rules</h2><ul>' + boot.map(function (r) { return '<li>' + esc(r) + '</li>'; }).join('') + '</ul></section>';
-    }
-    if (po.notes && (m.notes || '').trim()) {
-      out += '<section class="team notes"><h2>Notes</h2><p class="notes">' + esc(m.notes.trim()).replace(/\n/g, '<br>') + '</p></section>';
-    }
-    function col(label, items) {
-      var rows = items.map(function (it, i) {
-        return '<div class="nrow"><span class="n">' + (i + 1) + '</span>' + icon(it.c, 26) +
-          '<span class="t"><b>' + esc(it.c.name) + '</b>' + (it.r ? '<span class="rem">' + esc(it.r) + '</span>' : '') + '</span></div>';
-      }).join('') || '<p class="none">Nobody acts.</p>';
-      return '<div class="nc"><h2>' + esc(label) + '</h2>' + rows + '</div>';
-    }
-    var nightHTML = po.night && (night.first.length || night.other.length)
-      ? '<div class="' + (out ? 'pb' : '') + '"><h1>Night Order</h1><div class="nights">' + col('First Night', night.first || []) + col('Other Nights', night.other || []) + '</div></div>'
-      : '';
-    var colours = po.colour ? Object.keys(TEAM_INK).map(function (t) {
-      return '.team.' + t + ' h2{color:' + TEAM_INK[t] + ';border-color:' + TEAM_INK[t] + ';}';
-    }).join('') : '';
-    var sheet =
-      '<!doctype html><html><head><meta charset="utf-8"><title>' +
-      esc((m.name || 'Script').trim()) + '</title><style>' +
-      '@page{margin:14mm 12mm;}' +
-      'body{font:' + pt + 'pt/1.4 Georgia,"Times New Roman",serif;color:#111;margin:0;}' +
-      'h1{font-size:2.1em;margin:0 0 2px;letter-spacing:.02em;}' +
-      '.by{font-style:italic;color:#555;margin:0 0 12px;}' +
-      'h2{font-size:1em;text-transform:uppercase;letter-spacing:.1em;margin:14px 0 5px;border-bottom:2px solid #333;padding-bottom:2px;break-after:avoid;}' +
-      '.rows{column-count:' + po.cols + ';column-gap:20px;}.rows.one{column-count:1;}' +
-      '.ch{display:flex;gap:8px;align-items:flex-start;break-inside:avoid;padding:4px 0;border-bottom:1px solid #ddd;}' +
-      '.ch img{width:34px;height:34px;object-fit:contain;flex:none;}.jinx .ch img{width:26px;height:26px;}' +
-      '.ch p{margin:0;}.nm{text-transform:uppercase;letter-spacing:.03em;font-size:.95em;margin-right:4px;}' +
-      'ul{margin:0;padding-left:18px;}li{margin:3px 0;}.notes{white-space:normal;}' +
-      '.note{display:block;font-style:italic;color:#555;font-size:.9em;margin-top:2px;}' +
-      '.pb{break-before:page;}.nights{display:flex;gap:26px;}.nc{flex:1;min-width:0;}' +
-      '.nrow{display:flex;gap:8px;align-items:flex-start;break-inside:avoid;padding:3px 0;border-bottom:1px solid #eee;}' +
-      '.nrow .n{width:22px;flex:none;color:#888;text-align:right;}.nrow img{width:26px;height:26px;object-fit:contain;flex:none;}' +
-      '.nrow .t{flex:1;min-width:0;}.rem{display:block;color:#555;font-size:.88em;}.none{color:#777;}' +
-      '.foot{margin-top:18px;font-size:.8em;color:#777;}' + colours +
-      '</style></head><body>' +
-      '<h1>' + esc((m.name || 'Untitled Script').trim()) + '</h1>' +
-      (m.author ? '<p class="by">by ' + esc(m.author) + '</p>' : '') +
-      out + nightHTML +
-      '<p class="foot">Built on botchomebrew.wiki &middot; fan-made content for Blood on the Clocktower.</p>' +
-      '</body></html>';
-
-    var w = window.open('', '_blank');
-    if (!w) { alert('Your browser blocked the print window. Allow pop-ups for this site and try again.'); return; }
-    w.document.open();
-    w.document.write(sheet);
-    w.document.close();
-    // Print once the icons are in — a sheet printed at 350 ms used to come
-    // out with half its icons blank — and no later than 3.5 s regardless.
-    var imgs = [].slice.call(w.document.images);
-    var pending = imgs.filter(function (i) { return !i.complete; }).length;
-    var printed = false;
-    function go() {
-      if (printed) return;
-      printed = true;
-      try { w.focus(); w.print(); } catch (e) { /* the reader can print it themselves */ }
-    }
-    if (!pending) { setTimeout(go, 250); return; }
-    imgs.forEach(function (i) {
-      if (i.complete) return;
-      var one = function () { if (--pending <= 0) setTimeout(go, 120); };
-      i.addEventListener('load', one);
-      i.addEventListener('error', one);
-    });
-    setTimeout(go, 3500);
-  }
-
-  /* Fancy Scripts (/fancyscripts) presses an official-style print sheet.
-     The roster goes across in localStorage — the same JSON the Export
-     button saves — and the tool reads the key once and clears it. */
+  /* There WAS a print sheet here — its own window, options for icons,
+     team colours, one or two columns. It is gone: Fancy Scripts presses the
+     same script into the official parchment sheet, with the night order and
+     the jinx page, and exports it as PNG or PDF, so the wiki had two answers
+     to "print this" and the worse one was the one on the button. The reader
+     who wants the script on paper goes through doFancy(); the reader who
+     wants it on screen has View → Whole script in two columns, which is the
+     printed flow without leaving the page. */
   function doFancy() {
     if (!notEmpty()) return;
     if (!cardReady) { withCards(doFancy); return; }
@@ -2895,7 +2775,6 @@
     $('sb-export').addEventListener('click', function () { ACTIONS.export(this); });
     $('sb-copy').addEventListener('click', function () { ACTIONS.copy(this); });
     $('sb-share').addEventListener('click', function () { ACTIONS.share(this); });
-    $('sb-print').addEventListener('click', function () { ACTIONS.print(this); });
     $('sb-fancy').addEventListener('click', function () { ACTIONS.fancy(this); });
     $('sb-import').addEventListener('click', function () { ACTIONS.import(this); });
     $('sb-randomize').addEventListener('click', randomize);
@@ -3000,20 +2879,6 @@
       paintJsonPreview();
     });
     $('sb-json-details').addEventListener('toggle', paintJsonPreview);
-    var pio = printOpts();
-    [['roster', 'sb-print-roster'], ['icons', 'sb-print-icons'], ['colour', 'sb-print-colour'], ['night', 'sb-print-night'],
-     ['jinxes', 'sb-print-jinxes'], ['rules', 'sb-print-rules'], ['notes', 'sb-print-notes'], ['charNotes', 'sb-print-charnotes']].forEach(function (pair) {
-      $(pair[1]).checked = !!pio[pair[0]];
-      $(pair[1]).addEventListener('change', function () {
-        prefs.print = prefs.print || {};
-        prefs.print[pair[0]] = this.checked;
-        savePrefs();
-      });
-    });
-    $('sb-print-cols').value = String(pio.cols);
-    $('sb-print-size').value = pio.size;
-    $('sb-print-cols').addEventListener('change', function () { prefs.print = prefs.print || {}; prefs.print.cols = this.value; savePrefs(); });
-    $('sb-print-size').addEventListener('change', function () { prefs.print = prefs.print || {}; prefs.print.size = this.value; savePrefs(); });
 
     // ── arranging ──
     wireArrange();
@@ -3048,7 +2913,6 @@
     'export': function () { doExport(); },
     copy: function (btn) { doCopy(btn); },
     share: function (btn) { doShare(btn); },
-    print: function () { doPrint(); },
     fancy: function () { doFancy(); },
     bag: function () { if (notEmpty()) togglePop('sbx-bag', $('sbx-more')); },
     'import': function () { $('sb-import-file').click(); },

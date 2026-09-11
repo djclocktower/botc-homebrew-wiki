@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, print it, and share.">
+<meta name="description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, share it, and press a print sheet.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Script Builder">
-<meta property="og:description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, print it, and share.">
+<meta property="og:description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, share it, and press a print sheet.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -142,7 +142,6 @@
               <button type="button" data-do="copy" role="menuitem"><i class="sbi-i" data-icon="copy"></i> Copy JSON</button>
               <button type="button" data-do="import" role="menuitem"><i class="sbi-i" data-icon="upload"></i> Import a JSON file</button>
               <button type="button" data-do="share" role="menuitem"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
-              <button type="button" data-do="print" role="menuitem"><i class="sbi-i" data-icon="print"></i> Print / save as PDF</button>
               <button type="button" data-do="bag" role="menuitem" data-pop-keep title="Pick tonight&rsquo;s characters for a player count"><i class="sbi-i" data-icon="bag"></i> Tonight&rsquo;s bag</button>
               <button type="button" data-do="fancy" role="menuitem" title="Press a print-style sheet of this script"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
               <hr class="sbx-menu-sep">
@@ -261,8 +260,7 @@
               <button type="button" class="sbx-b-sm" id="sb-export"><i class="sbi-i" data-icon="download"></i> Download JSON</button>
               <button type="button" class="sbx-b-sm" id="sb-copy"><i class="sbi-i" data-icon="copy"></i> Copy JSON</button>
               <button type="button" class="sbx-b-sm" id="sb-share"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
-              <button type="button" class="sbx-b-sm" id="sb-print"><i class="sbi-i" data-icon="print"></i> Print / PDF</button>
-              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style print sheet of this script in Fancy Scripts"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
+              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style sheet of this script in Fancy Scripts &mdash; the print, the PDF and the picture all come from there"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
               <label class="sbx-check" title="One line, no spaces — smaller, harder to read"><input type="checkbox" id="sb-json-min"> Minified</label>
             </div>
             <details class="sbx-details" id="sb-json-details">
@@ -272,21 +270,6 @@
             <details class="sbx-details">
               <summary>Character ids</summary>
               <div class="sbx-ids" id="sb-ids-body"></div>
-            </details>
-            <details class="sbx-details">
-              <summary>Print options</summary>
-              <div class="sbx-tool-row" style="padding:6px 0 2px">
-                <label class="sbx-check"><input type="checkbox" id="sb-print-roster" checked> Character sheet</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-icons" checked> Icons</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-colour" checked> Team colours</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-night" checked> Night order</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-jinxes" checked> Jinxes</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-rules" checked> House rules</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-notes"> Notes</label>
-                <label class="sbx-check"><input type="checkbox" id="sb-print-charnotes" checked> Character notes</label>
-                <select id="sb-print-cols" aria-label="Columns"><option value="2">Two columns</option><option value="1">One column</option></select>
-                <select id="sb-print-size" aria-label="Text size"><option value="small">Small text</option><option value="normal" selected>Normal text</option><option value="large">Large text</option></select>
-              </div>
             </details>
             <div class="sbx-field sbx-text-box">
               <label for="sb-text-fmt">Copy as text</label>
