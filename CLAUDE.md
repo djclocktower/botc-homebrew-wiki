@@ -15,15 +15,17 @@ and nightly backups live in **R2** (`ART` binding, bucket `botc-wiki-art`).
 The repo's HTML/CSS/JS are uploaded as static assets on deploy. The Worker
 intercepts the routes in `run_worker_first` (wrangler.toml); everything else
 falls through to the static files. Deploys happen **automatically when main is
-pushed** (Cloudflare Git integration, ~30–60 s). There is no build step and no
-framework — plain HTML/CSS/JS everywhere.
+pushed** (Cloudflare Git integration, ~30–60 s). A dependency-free Node build versions static assets; there is no
+framework — plain HTML/CSS/JS everywhere. Run `node migration/build-assets.mjs`
+after source edits and commit the generated manifest and archive. Wrangler
+checks them and uploads only `.build/public`; see "Caching".
 
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
   live from D1** (published rows only). Characters come in **three tiers**:
   `?fields=grid` (what a card needs and nothing else — the browse pages, the
-  homepage, the top-bar search; ~35% of the card feed), `?fields=card` (the
+  top-bar search; homepage summaries now use `/api/home`), `?fields=card` (the
   tools: Script Builder, editors, Token Tool, importers — everything
   `buildSchema()` needs to export a script) and the bare URL (the whole
   almanac, for `/api/seed` and a few admin tools). See "Caching" for which
@@ -47,8 +49,9 @@ Key dynamic behavior:
   `findCollectionRow()` resolves either. Script and collection pages carry an
   **Edit button in the page itself** (`ownerBar()` in render-page.js) as well
   as the pencil in the top bar, but only for a reader who may actually edit
-  it: the Worker passes `editHref` in when `canEditRow()` says yes and an
-  empty one otherwise, which is safe because SSR responses are `no-store`.
+  it: published HTML contains an empty control slot, filled by the private
+  `/api/page-viewer` response after permission checks. Drafts retain authenticated
+  rendering; neither private controls nor draft HTML enter the public cache.
   The pencil stays unconditional (the API is the enforcer); this one sits in
   the page, where a reader would take it as an invitation.
 - `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
@@ -146,7 +149,14 @@ _headers               Cache rules for static assets. Matching rules COMBINE
                        Gotcha 14. Also the Link preload header for the pages.
 .assetsignore          Files excluded from asset upload — CRITICAL, see Gotchas
 assets/
-  styles.css           ALL shared CSS (no per-page stylesheets)
+  styles.css           Shared reading styles. editor.css is loaded by tool/editor
+                       pages; comments.css is loaded with deferred comments.
+  data.js              Shared parsed public feeds and versioned asset loaders.
+  reader.js            Gallery, title fitting, JSON toggle/copy. SSR readers load
+                       this without the full rendering/export library.
+  viewport.js          Bounded character-card batches on viewport approach.
+  reading-lazy.js      Comments on approach, click or comment-anchor navigation.
+  page-viewer.js       Private editing controls for cached published pages.
   site.js              Shared topbar behavior: search dropdown, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
@@ -2372,7 +2382,7 @@ uploaded — except for the one opt-in save described below.
 ## Featured Character (the homepage slot)
 
 A **creator** is drawn first, then one of that creator's characters
-(`featuredPick()` in index.html). Drawing a character straight out of the hat
+(`featuredPick()` in worker/home-data.js). Drawing a character straight out of the hat
 gave the slot to whoever had written the most pages, so the same handful of
 prolific creators held it most weeks; every creator now has the same chance of
 the day however many characters they have made. **Curata is not a condition**
@@ -2385,10 +2395,9 @@ each of them a turn, and the page they share can come up under either name.
 
 Three rules shape the implementation, and the third is the one that is easy to
 break: the same creator never gets the slot **two days running**; everyone sees
-the same character for the same 24 hours; and **nothing is stored**. There is no
-server call in that slot and localStorage is per browser, so "who had it
-yesterday" cannot be remembered — it has to be recomputed, identically, by
-every reader.
+the same character for the same 24 hours; and **nothing is stored**. The server computes it from the UTC day number and public content,
+and `/api/home` caches that small snapshot. No per-viewer history is needed.
+With two eligible creators the order alternates; with one, a repeat is unavoidable.
 
 So the order is a per-block **permutation** rather than a fresh draw. Block `b`
 is the creator list shuffled with `b` as the seed; day `d` takes position
@@ -2862,114 +2871,118 @@ seeded with whole collections whose characters all arrived unowned.
 
 ## Caching (and why the site is fast on a phone)
 
-Four layers, each keyed so that freshness never depends on a timer:
+Four cache layers reduce repeat work while keeping changes visible.
 
-**1. Static files (`_headers`).** HTML/CSS/JS/art revalidate on every load
-(edits show on a normal refresh); icons, fonts, pyodide, token assets, the
-committed `*.webp` furniture and Icon Forge's payload are immutable for a
-year. **Matching rules COMBINE** — see Gotcha 14 — so every immutable block
-detaches the generic header first. Anything served immutable is replaced by
-a NEW filename, never by overwriting. The `/` and `/:page` rules add a
-`Link: rel=preload` header for the stylesheet and the two above-the-fold
-faces, and `pageShell()` sends the same header on the server-rendered pages
-(`PAGE_LINK_HEADER`). **Early Hints has to be switched on for the zone**
-(Cloudflare dashboard → Speed → Content Optimization → Early Hints) for
-Cloudflare to replay those as a 103 before the page is fetched; without the
-toggle the header still gets the preloads going as soon as the response
-headers land. The browse pages also carry `<link rel="preload" as="fetch">`
-for the feeds they draw from, so the feed download starts while the
-stylesheet is still loading rather than after the scripts at the end of the
-body have run; `crossorigin` on those is what makes the preload match a
-plain `fetch()`.
+**1. Static files.** `node migration/build-assets.mjs` writes content-hashed
+CSS/JS under `.build/public/assets/immutable/` and rewrites HTML and preload
+links to those URLs. `_headers` serves them immutable for a year; unversioned
+fallback files still revalidate. CSS-relative font/image URLs are rebased.
+`worker/asset-manifest.js` gives SSR and lazy loaders the same filenames.
+The generated `BUILD_ID` includes assets, Worker code and root HTML, and
+automatically rolls SSR keys after deploys.
 
-**2. The JSON feeds.** `Cache-Control: private, max-age=0, must-revalidate`
-with an ETag of `W/"{table}-{fields}-v{version}"`, answered with an empty 304
-when it matches. **`private` is load-bearing**: with `public` Cloudflare
-stored the feed at the edge, revalidated it with the Worker on every
-request, and served the browser its own copy under an ETag of its own
-making (a hash of the compressed body) — so the browser's If-None-Match
-never matched the Worker's and every browse page re-downloaded the whole
-feed. The bodies themselves are still built once per content version and
-kept in `caches.default` under synthetic `https://feed.internal/...?v=`
-URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
-from `content_version` in the key — every content write bumps it and rolls
-every key — never from expiry, so do not shorten those TTLs back to minutes;
-the D1 free tier allows 5M `rows_read` a day and the site once burned
-through it on rebuilds alone. The jinx index, the card-character cache, the
-`[[Name]]` link map and the sitemap share that plumbing (`cachedFeedBody()`).
-Creator lookups (`/author?a=`, anonymous `/api/user`, `/api/creators`) are
-capped at 30 minutes (`PEOPLE_CACHE_CONTROL`) because avatar/bio edits bump
-no version; logged-in `/api/user` responses are never cached.
-**The `grid` tier** (`GRID_FIELDS`, an include list) exists because the card
-feed carried night reminders, jinx text, quotes and custom JSON to pages that
-draw 64px thumbnails — 413 KB compressed on every browse page view. A page
-that only DRAWS characters (index, All Characters, team, tag, tags,
-All Collections, the 404 page, the top-bar search) asks for `grid`; anything
-that exports or edits stays on `card`. All Characters' "Collection JSON" box
-fetches the card feed lazily, the first time somebody reaches for it. If a
-grid page needs a new field, add it to `GRID_FIELDS`; `jinxCount` and the
-lede-less `quote` are the two derived stamps.
+**Commit both generated files:** `worker/asset-manifest.js` and
+`migration/asset-archive.json`. The archive retains compressed bytes for
+previous hashes so open tabs can fetch their old lazy dependencies after a
+later deploy. Do not prune published hashes or overwrite their contents.
+Wrangler runs `node migration/build-assets.mjs --check`; stale or missing
+artifacts stop deployment. Only the explicit public inputs (assets, root
+HTML/data files and legacy `characters/` redirect stubs) enter the build.
+Worker source, tests, archives, git metadata and docs are excluded.
 
-**3. Images.** Every row carries `v` (`rowVersion()`, base-36 `updated_at`),
-and every card renderer appends it: `assets/art/x.png?v=abc`. **A versioned
-image URL is served `public, max-age=31536000, immutable` and kept in the
-colo's edge cache** (`serveR2Image`), so an unchanged icon costs a returning
-reader nothing and the Worker nothing past the cache lookup; a save is a new
-version is a new URL, which is how replaced art still shows at once. The
-bare URL keeps `no-cache, must-revalidate` + ETag exactly as before — and now
-actually answers a matching If-None-Match with a 304 (`onlyIf` on the R2
-read) instead of the whole file, which it never did. **Cards draw
-thumbnails**: `thumb/{file}.webp` is the 192px WebP twin of `art/{file}` (8 KB
-against 150–700 KB), reached through `PageRender.thumbSrc(c, root)` (the
-same order as `artSrc()`; site.js, render.js and the inline `thumb()` in the
-browse pages mirror it). The Worker's `serveThumb` falls back R2 thumbnail →
-R2 original → committed thumbnail → committed original, so a missing
-thumbnail is never a broken image, and an original standing in at the
-thumbnail URL is cached an hour, not a year. **A stored thumbnail under
-`THUMB_MIN_BYTES` (512) counts as absent** — to `serveThumb`, which falls
-through to the art, and to the backfill scan, which lists it. A canvas that
-drew nothing encodes to a 172-byte fully transparent WebP; that is a *valid*
-image, so it is served happily, `onerror` never fires, and the card is an
-empty tile while the character's own page (which draws the full art) looks
-perfect. One character sat like that from the day it was uploaded, with
-nothing on the wiki counting it. `art-thumb.js` decodes before
-drawing (`onload` means the bytes arrived, not that the bitmap can be painted)
-and refuses to upload a blank render, which is the fix at the writing end;
-this is the one at the reading end. The floor is set from what the wiki holds:
-the smallest genuine thumbnail of 2,063 is 1.8 KB. Repairing one that is
-already live also needs the row's **`v`** to move (an ordinary save), or the
-card keeps asking for the URL the blank was cached under, immutably, for a
-year. Writing `art/{file}` deletes its
-thumbnail (`dropThumbFor`, in `/api/upload` and `/api/bloodstar-art`), and the
-uploading page makes a fresh one (`assets/art-thumb.js`); the dashboard's
-**"Card thumbnails"** card (Maintenance tab, `/api/admin/thumb-missing`)
-backfills whatever is left, from the admin's browser — the Worker cannot
-resize an image. Only `art/` keys have thumbnails; `uploadSlotDenied()` maps
-`thumb/` back to `art/` so the permission is the art's. Things that show the
-icon LARGE (the `/c/` emblem, the featured card) keep `artSrc()`.
-The page furniture is WebP beside its originals (`bg.webp` + the phone-sized
-`bg-m.webp`, `parchment.webp`, `ccc-parchment.webp`, `logo_skull.webp`, all
-from `migration/optimize-images.js`), immutable; the `.png`/`.jpg` originals
-stay because OG images and the credits Fabled point at them.
+Matching `_headers` rules **combine**. An immutable block must detach the
+old Cache-Control header with `! Cache-Control`. The static and SSR preload
+headers point to versioned CSS and the self-hosted fonts. Early Hints still
+requires the zone toggle; it is not enabled by this code change.
 
-**4. Server-rendered pages.** `/c/`, `/s/`, `/collection/`, `/news/` and
-`/p/` go through `ssrRoute()`. For a reader with no session cookie a
-published page is identical for everybody (edit button, draft bar and
-Partial notice are all decided from the session; the comment widget asks
-the API itself), so the HTML is kept in `caches.default` under a key of
-content version + origin + path and served from there on the next request
-with no D1 read — a `/c/` page was 6–10 queries and ~1.4 s of TTFB. Only a
-200 marked `X-Botc-View` (which the routes set ONLY for a published page) is
-stored; the header is `type|slug`, and a cache hit counts the view from it
-and strips it, so `page_views` keep counting. The browser still gets
-`no-store`. A logged-in reader always gets a fresh render.
-**`SSR_RENDER_V` is salted into that key**, for the same reason
-`CREDIT_RULE_V` is salted into the creator ones: the key rolls on
-`content_version`, a deploy does not touch it, and `caches.default` outlives
-a deploy — so a change to `pageShell()` or to a renderer goes live and every
-page already cached keeps serving last week's HTML for the full week of
-`s-maxage` unless somebody happens to save a page. Bump it in the same commit
-as any deploy that changes what these routes render.
+**2. Public data.** `assets/data.js` shares one in-flight request and one
+parsed object per public feed URL in each document. Failed loads retry;
+private `?drafts=` requests are never shared. Browse pages and top-bar search
+use the same URLs. `/api/home` sends counts, compact collection/script tiles,
+eight recent characters and one featured character rather than every
+character. It keeps random tile selection in the browser and keys the daily
+featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
+script/collection `?fields=browse` omits editor/export payloads. The character
+`card` feed and full feeds retain export fields. All Characters loads both
+the card feed and export code only when its Collection JSON box is used.
+
+Feeds send `private, max-age=0, must-revalidate` plus a version/format ETag.
+`private` prevents Cloudflare from replacing the Worker's ETag with its own.
+Matching ETags return 304 without rebuilding. Internal version-keyed copies
+remain in `caches.default` for a week, with parsed/in-flight reuse in each
+isolate. Overlapping misses share one build in an isolate; separate isolates
+can still build concurrently. `FEED_FORMAT_V` must move if a later deployment
+changes an existing feed's serialized shape or semantics.
+
+`settings.cache_versions` stores per-type dependency counters beside the
+legacy `content_version`. One SQL statement updates both. Character feeds
+depend on character and collection edits; script/collection browse feeds on
+their own type; SSR keys include the content types whose links/rosters they
+render. A news edit leaves character feeds and script pages warm. Unknown or
+mixed bulk writes invalidate everything. A manual SQL bump of the legacy
+counter also forces a full reset. Version reads share a **five-second memo**;
+saves clear it in their isolate, while other isolates can take up to five
+seconds to observe a change. A failed version read cannot reuse a stale
+version-zero public cache, and failed feed queries never retry without their
+visibility filters. No new database migration is required.
+
+Creator/profile caches retain their existing 30-minute cap for account
+fields; authenticated `/api/user` responses remain private and uncached.
+
+**3. Images.** Character icons, roster thumbnails, script/collection banners
+and logos carry their row's `v` stamp. Versioned image URLs use immutable
+browser/edge caching; bare URLs revalidate with ETags. Canonical row addresses
+and versions override old roster JSON. Remote image URLs and exported script
+JSON retain their original URLs.
+
+Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
+(under 512 bytes) fall back to the original; versioned thumbnail fallbacks
+keep their existing one-hour limit. Writing original art retires its thumb,
+and the browser uploader regenerates it. The featured image loads eagerly;
+secondary gallery images load on approach or interaction, respecting Save-Data.
+
+Local script/collection banners and logos use 320/640/1280px WebP `srcset`
+variants under `media/{width}/{source-path}.webp`. The publishing forms generate
+them before saving the row. Variant uploads inherit the source image's
+permissions and must present its current ETag. The Worker only serves a
+variant whose recorded source ETag still matches. Replacing an original
+retires all three sizes; an absent/stale variant falls back to the original
+with revalidation and **no immutable edge copy**, so backfill takes effect on
+the next visit. Remote images and GIFs keep their existing source behavior.
+
+**Existing banners need backfill after deployment:** Dashboard → Maintenance
+→ Card thumbnails → scan, then generate the missing images. The existing
+backfill tool now includes banners/logos alongside character icons. It runs
+in the admin browser because the Worker has no image encoder. Until then,
+original-image fallbacks keep every page usable. Nothing in this PR performs
+live R2 writes or automatically starts backfill.
+
+**4. Public SSR.** `/c/`, `/s/`, `/collection/`, `/news/` and `/p/` share
+published HTML for both anonymous and signed-in readers. Only a cookie-free
+GET build marked `X-Botc-View` can be cached; redirects, failures, drafts,
+private-parent fallback renders and personalized responses are not stored.
+Hits still count views and strip the internal marker. Browser HTML remains
+`no-store`. `/api/page-viewer` separately checks the current account and page
+permissions before returning edit controls, the incomplete-page notice, or
+owner-only draft wiki-page links. Approved editors never receive the owner's
+draft list or new-page button. `SSR_RENDER_V` includes generated `BUILD_ID`.
+
+Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
+load near the viewport, on a click or for a comment hash; the attachment
+uploader loads on interaction. Failure buttons permit retries and explicit
+buttons keep features reachable without IntersectionObserver.
+
+The character's typed **"Appears in"** link is resolved during SSR using
+the cached public collection/script feeds, with the same collection-first
+alias matching as the browser. `APPEARS_IN_RESOLVED` skips two client feed
+requests, including when there is intentionally no matching link. A failed
+server lookup leaves the flag unset so `charpage.js` can retry. Derived
+collection membership honours `exclude` even when a slug is in `include`.
+
+Search warms its index on focus/touch, including the separate mobile field.
+Once loaded it searches immediately, without a typing timer. Pending results
+only paint for the current query while the search is still open; failed
+character-feed requests can retry on the next interaction.
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route
@@ -2991,14 +3004,21 @@ Fonts: there is **no Google Fonts `@import`** any more (it put two more
 origins in the render-blocking path of every page). The seven families are
 self-hosted woff2 subsets in `assets/fonts/` with `unicode-range`, declared
 in styles.css; the wiki's own faces have woff2 twins too. See
-`assets/fonts/README.md`. All Characters draws its 1,800 cards in slices per
-animation frame (`renderToken`) and `.type-section` has
-`content-visibility: auto`, so off-screen sections cost no layout.
+`assets/fonts/README.md`. All Characters draws 48 cards initially, then
+appends bounded batches when their section approaches the viewport. Filter
+changes disconnect the old observer, including when results become empty.
+The Show more buttons also work without IntersectionObserver; `.type-section`
+keeps `content-visibility: auto`.
 
-## Verifying changes (no local server needed)
+## Verifying changes
 
 - `node --check` every `.js` file you touch, and extract+check inline
   `<script>` blocks after editing HTML.
+- `node --test migration/tests/*.test.mjs` (Node 22.13+ or 24)
+  checks real Worker routes with SQLite, scoped caching, draft/owner boundaries,
+  responsive image replacement/permissions, viewport loading, comment retries,
+  search races, export fields and immutable-build retention. It needs no service
+  credentials; it does not measure a deployed browser's loading time.
 - The Cloudflare dashboard, live site, and D1 are **not reachable from the
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
@@ -3006,9 +3026,10 @@ animation frame (`renderToken`) and `.type-section` has
 
 ## Gotchas (hard-won — do not repeat)
 
-1. **`.assetsignore` must keep excluding `.git`, `worker/`, `wrangler.toml`,
-   `migration/`, docs.** Cloudflare uploads everything else as assets; a
-   >25 MiB file (e.g. the git pack) fails the whole deploy.
+1. **Only `.build/public` is uploaded.** Keep the build's explicit public-input
+   list; never copy the entire repo into it. Worker source, git metadata,
+   migrations, archives and docs must stay out. `.assetsignore` remains for
+   legacy tooling, but the build allowlist is the deployment boundary now.
 2. **Don't scope `.home-panel` inside `.home-layout`** in styles.css — every
    list page uses the bare `.home-panel { max-width; margin auto }` rule.
 3. **`run_worker_first` in wrangler.toml is the routing contract.** A new

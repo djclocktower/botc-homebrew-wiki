@@ -269,8 +269,36 @@
      loaded, and every caller treats that as "no images", so the comment
      section keeps working on a page that has not been given the script. */
   function attachOn(host, pasteTarget) {
-    if (!host || typeof window.mountAttach !== 'function') return null;
-    return window.mountAttach(host, { pasteTarget: pasteTarget });
+    if (!host) return null;
+    if (typeof window.mountAttach === 'function') return window.mountAttach(host, { pasteTarget: pasteTarget });
+    var real = null, pending = null;
+    host.innerHTML = '<button type="button" class="cmt-submit">Attach images</button>';
+    function activate() {
+      if (pending) return pending;
+      pending = window.BotcData.script('attach.js').then(function () {
+        if (!host.isConnected) return null;
+        real = window.mountAttach(host, { pasteTarget: pasteTarget });
+        return real;
+      }).catch(function () {
+        pending = null;
+        var button = host.querySelector('button');
+        if (button) button.textContent = 'Could not load attachments. Tap to retry.';
+      });
+      return pending;
+    }
+    host.addEventListener('click', activate);
+    pasteTarget.addEventListener('focus', activate);
+    pasteTarget.addEventListener('paste', function(e) {
+      if (real) return;
+      var files = Array.from((e.clipboardData && e.clipboardData.items) || [])
+        .filter(function(item){ return item.kind === 'file' && /^image\//.test(item.type); })
+        .map(function(item){ return item.getAsFile(); }).filter(Boolean);
+      if (!files.length) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      activate().then(function(picker){ if (picker) picker.addFiles(files); });
+    });
+    return { paths: function(){ return real ? real.paths() : []; }, count: function(){ return real ? real.count() : 0; },
+      busy: function(){ return real ? real.busy() : !!pending; }, clear: function(){ if (real) real.clear(); } };
   }
 
   /* Inline reply box, opened under the comment being answered. Only one is
@@ -503,10 +531,13 @@
         state.loaded = true;
         var first = lastSeenId() === null;
         render();
+        if (/^#(?:comments|sec-comments|comment[-_]|cmt[-_])/.test(location.hash)) {
+          var target = document.getElementById(location.hash.slice(1)) || root; target.scrollIntoView();
+        }
         if (first) markSeen(newestId());   // nothing is new on a first visit
         else scheduleMarkSeen();
       })
-      .catch(function () { root.hidden = true; });
+      .catch(function () { root.innerHTML = '<button type="button" class="card-load-more">Could not load comments. Tap to retry.</button>'; root.querySelector('button').addEventListener('click', load); });
   }
 
   /* The dots stay put for this visit — you should be able to see what is new

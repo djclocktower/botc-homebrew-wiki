@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="/assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Page Not Found — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
@@ -348,7 +349,7 @@
       };
     } else if ((m = location.pathname.match(/^\/s\/([^/]+)/))) {
       wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/scripts.json';
+      feed = '/scripts.json?fields=browse';
       build = function (rows) {
         return best(rows, wanted, ['slug', 'name']).map(function (s) {
           return sugHTML('/s/' + encodeURIComponent(s.slug),
@@ -359,7 +360,7 @@
       };
     } else if ((m = location.pathname.match(/^\/collection\/([^/]+)/))) {
       wanted = slugify(decodeURIComponent(m[1]));
-      feed = '/collections.json';
+      feed = '/collections.json?fields=browse';
       build = function (rows) {
         return best(rows, wanted, ['id', 'slug', 'name', 'displayName']).map(function (c) {
           return sugHTML('/collection/' + encodeURIComponent(c.id || c.slug),
@@ -398,8 +399,7 @@
       }).join(''));
     }
 
-    return fetch(feed)
-      .then(function (r) { return r.json(); })
+    return BotcData.json(feed)
       .then(function (rows) { return Array.isArray(rows) ? build(rows) : ''; })
       .catch(function () { return ''; });
   }

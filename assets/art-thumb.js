@@ -21,7 +21,9 @@
        character's own page — which draws the full art — looks perfect. One
        character on the wiki carried a 172-byte, entirely transparent
        thumbnail that way. So the render is checked before it is uploaded.
-     - only art/ keys. Collection banners and tokens have no thumbnail slot.
+     - art/ uses 192px thumbnails. Script/collection banners and logos use
+       320/640/1280px media/ variants, tied to the original image ETag.
+       Publish pages await those variants before saving the new row version.
 
    The same permission as the art applies on the server (uploadSlotDenied maps
    the key back), so this cannot write where the art upload could not.
@@ -29,6 +31,8 @@
    every character that still lacks one. */
 (function () {
   var SIZE = 192;
+  var MEDIA_RE = /^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i;
+  var WIDTHS = [320, 640, 1280];
   var ART_RE = /^art\/[^/]+\.(png|jpe?g|webp|gif)$/i;
 
   function thumbKey(artKey) {
@@ -52,11 +56,12 @@
   /* Draw a DECODED image into a SIZE×SIZE box, keeping its aspect ratio and
      transparency. Returns a WebP data URL, or '' when this browser cannot
      encode WebP; throws when the render came out empty. */
-  function render(img) {
+  function render(img, width) {
     var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
     if (!w || !h) throw new Error('empty image');
-    var scale = Math.min(1, SIZE / Math.max(w, h));
+    var scale = width ? width / w : Math.min(1, SIZE / Math.max(w, h));
     var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+    if (cw * ch > 16 * 1024 * 1024) throw new Error('image aspect ratio is too large');
     var cv = document.createElement('canvas');
     cv.width = cw; cv.height = ch;
     var ctx = cv.getContext('2d');
@@ -77,12 +82,12 @@
      likely way a fully transparent thumbnail was ever stored. decode() is the
      promise that closes the gap; a browser without it (or one whose decode
      rejects) draws on load exactly as before, where isBlank() is the backstop. */
-  function make(src) {
+  function make(src, width) {
     return new Promise(function (resolve, reject) {
       var img = new Image();
       img.crossOrigin = 'anonymous';
       function draw() {
-        try { resolve(render(img)); } catch (e) { reject(e); }
+        try { resolve(render(img, width)); } catch (e) { reject(e); }
       }
       img.onload = function () {
         if (typeof img.decode === 'function') img.decode().then(draw, draw);
@@ -93,10 +98,10 @@
     });
   }
 
-  function post(key, dataUrl) {
+  function post(key, dataUrl, sourceETag) {
     return fetch((window.LINK_ROOT || '/') + 'api/upload', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
+      credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl, sourceETag: sourceETag })
     }).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || j.error) throw new Error((j && j.error) || 'thumbnail upload failed');
       return j;
@@ -106,7 +111,20 @@
   /* Make and upload the thumbnail for `artKey` from `src`. Resolves true when
      a thumbnail was stored, false when it was skipped or failed — never
      rejects, so callers can drop the promise. */
-  function upload(artKey, src) {
+  function upload(artKey, src, sourceETag) {
+    if (MEDIA_RE.test(artKey) && !/-bg\./.test(artKey)) {
+      if (!sourceETag) return Promise.resolve(false);
+      // Publish waits for these variants, so the new row version never names
+      // a partly-written set. Failures keep the original-image fallback.
+      return WIDTHS.reduce(function(chain, width) {
+        return chain.then(function(ok) {
+          return make(src, width).then(function(data) {
+            if (!data) return false;
+            return post('media/' + width + '/' + artKey + '.webp', data, sourceETag).then(function(){ return ok; });
+          });
+        });
+      }, Promise.resolve(true)).catch(function(){ return false; });
+    }
     var key = thumbKey(artKey);
     if (!key || !src) return Promise.resolve(false);
     return make(src).then(function (dataUrl) {
@@ -121,6 +139,16 @@
   function uploadFromUrl(artKey, url) {
     var u = url || ((window.LINK_ROOT || '/') + 'assets/' + String(artKey).replace(/^\/+/, '').replace(/^assets\//, ''));
     u += (u.indexOf('?') === -1 ? '?' : '&') + 'v=' + Date.now().toString(36);
+    if (MEDIA_RE.test(artKey)) {
+      return fetch(u, { cache: 'no-store', credentials: 'same-origin' }).then(function(r) {
+        if (!r.ok) throw new Error('image unavailable');
+        var etag = r.headers.get('ETag');
+        return r.blob().then(function(blob) {
+          var src = URL.createObjectURL(blob);
+          return upload(artKey, src, etag).finally(function(){ URL.revokeObjectURL(src); });
+        });
+      }).catch(function(){ return false; });
+    }
     return upload(artKey, u);
   }
 

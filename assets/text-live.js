@@ -463,7 +463,7 @@
     return new Promise(function (res) {
       if (window.TextScan) return res(window.TextScan);
       var s = document.createElement('script');
-      s.src = '/assets/text-scan.js';
+      s.src = window.BotcData.asset('text-scan.js');
       s.onload = function () { res(window.TextScan || null); };
       s.onerror = function () { res(null); };
       document.head.appendChild(s);

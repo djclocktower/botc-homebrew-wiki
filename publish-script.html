@@ -2,6 +2,9 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/art-thumb.js"></script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Publish Script — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Name your Blood on the Clocktower homebrew script, add a description and header graphic, and publish it to the wiki for other players to see.">
@@ -12,6 +15,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
 /* ─── Publish page layout ─────────────────────────────────── */
@@ -409,6 +413,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Scripts are saved in your browser only &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/official-roles.js"></script>
@@ -448,7 +453,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
     function pubStatus(cls, html){ var el = $('sb-publish-status'); el.className = cls; el.innerHTML = html; }
-    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
     function apiSaveScript(entry){ return fetch('/api/script',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
     // ── the roster, in the order the script page will show it ──

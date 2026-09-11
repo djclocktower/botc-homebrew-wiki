@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tags — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Browse fan-made Blood on the Clocktower characters by mechanic — Information, Setup, Wincon, Mobility, and more.">
@@ -80,8 +81,7 @@
     // Canonical tag list + descriptions live in assets/tags.js
     var KNOWN_TAGS = window.KNOWN_TAGS || [];
 
-    fetch('characters.json?fields=grid')
-      .then(function(r) { return r.json(); })
+    BotcData.json('characters.json?fields=grid')
       .then(function(list) {
         // Seed tagMap from KNOWN_TAGS, then overlay real counts
         var tagMap = {};

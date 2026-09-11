@@ -1,0 +1,410 @@
+/* ════════════════════════════════════════════════════════════════
+   WIKI TEXT EDITOR WIDGETS (assets/wiki-editor.js)
+   Used by publish-page, publish-news, publish-script, publish-collection.
+   ════════════════════════════════════════════════════════════════ */
+.we-toolbar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  border: 1px solid #cdbfa0; border-bottom: none;
+  background: #f6efdf; padding: 5px 6px;
+}
+.we-btn {
+  font-family: 'Oswald', sans-serif; font-size: .76rem; letter-spacing: .03em;
+  background: #fffdf8; border: 1px solid #cdbfa0; color: #5b4632;
+  padding: 3px 8px; cursor: pointer; line-height: 1.5;
+}
+.we-btn:hover { background: #fff; color: var(--maroon); border-color: var(--maroon); }
+.we-btn.we-b { font-weight: 700; }
+.we-btn.we-i { font-style: italic; }
+.we-btn.we-s { text-decoration: line-through; }
+.we-box-row { border: 1px solid #cdbfa0; background: #fffdf8; padding: 8px; margin-bottom: 8px; }
+.we-box-head { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.we-box-title { flex: 1; }
+.we-box-row input[type=text], .we-box-row textarea {
+  font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: #241a12;
+  background: #fff; border: 1px solid #cdbfa0; padding: 6px 8px; box-sizing: border-box; width: 100%;
+}
+.we-box-content { min-height: 60px; resize: vertical; }
+.we-box-del {
+  background: #f6dede; border: 1px solid #d99; color: #9A0D12;
+  font-size: .8rem; padding: 3px 9px; cursor: pointer; line-height: 1.4;
+}
+.we-box-del:hover { background: #f0caca; }
+.we-info-row { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 6px; margin-bottom: 6px; }
+.we-info-row input[type=text] {
+  font-family: 'Libre Franklin', sans-serif; font-size: .9rem; color: #241a12;
+  background: #fffdf8; border: 1px solid #cdbfa0; padding: 6px 8px; box-sizing: border-box; width: 100%;
+}
+@media (max-width: 560px) { .we-info-row { grid-template-columns: 1fr 1fr auto; } }
+/* The live preview frame in the editors. */
+.we-preview {
+  background: var(--parch); border: 2px solid var(--parch-frame);
+  padding: 14px 16px; margin-bottom: 18px;
+}
+.we-preview > h2 {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  margin: 0 0 10px; font-size: 1.2rem;
+}
+/* Scale the real page styles down a little inside the preview frame. */
+.we-preview .wiki-page-head, .we-preview .wiki-body { border-width: 2px; }
+.we-preview .wiki-title { font-size: 1.5rem; }
+
+/* Shared editor list rows (publish-news / publish-page / publish-script /
+   publish-collection). Each editor may still override them locally. */
+.article-list { list-style: none; margin: 0; padding: 0; }
+.article-row {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  justify-content: space-between; padding: 8px 0;
+  border-bottom: 1px solid rgba(180,160,120,.35);
+}
+.article-row:last-child { border-bottom: none; }
+.article-row a { color: var(--maroon); font-weight: 600; font-size: .94rem; text-decoration: none; }
+.article-row a:hover { text-decoration: underline; }
+.article-row .meta { font-size: .8rem; color: #6b5d49; }
+.article-row .pill {
+  font-family: 'Oswald', sans-serif; font-size: .68rem; letter-spacing: .05em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+}
+.article-row .pill.draft { background: rgba(154,110,20,.14); color: #7a5c18; border: 1px solid rgba(154,110,20,.4); }
+.article-row .pill.published { background: rgba(42,110,42,.12); color: #2a6e2a; border: 1px solid rgba(42,110,42,.4); }
+
+
+/* ─── Tag picker chips ────────────────────────────────────────────
+   The buttons buildTagPicker() (assets/tags.js) writes. The builder has
+   always been shared; the styling was hand-copied into create.html and
+   edit.html, so a third page using the widget — /bloodstar, which hands tags
+   out to a selection of characters — got bare browser buttons with no
+   selected state at all, and no way to see which tag was about to be
+   assigned. Same declarations both copies had, in one place.
+   redesign-create.js's checkmark and reordering still layer on top of this
+   in the two character editors: `html.create-redesign .tag-pick-btn.selected`
+   is more specific, so it wins wherever it applies. */
+.tag-pick-btn {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .76rem;
+  letter-spacing: .03em; cursor: pointer; border: 1px solid #cdbfa0; border-radius: 5px;
+  padding: 4px 10px; background: #fffdf8; color: #5b4632;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.tag-pick-btn:hover { background: #ece3d2; border-color: #b09070; }
+.tag-pick-btn.selected { background: var(--maroon); color: #f3ead4; border-color: var(--maroon); }
+
+/* ─── The formatting callout in the two character editors ────────
+   create.html and edit.html are the same form, so this is written once here
+   rather than into each page's own <style> — the same reasoning as the tag
+   chips above. It sits beside the Examples box; the marks it lists are the
+   links-only subset of the wiki's text engine that every almanac field on a
+   character page is rendered with (inlineLinks() in assets/render.js). */
+.fmt-help {
+  border: 1px solid #cdbfa0; border-left: 4px solid var(--maroon);
+  border-radius: 5px; background: #fffdf8;
+  padding: 10px 12px; margin: 0 0 8px; font-size: .82rem; color: #5b4632;
+}
+.fmt-help-h {
+  font-family: 'Oswald', sans-serif; font-weight: 600; font-size: .72rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--maroon);
+  margin-bottom: 6px;
+}
+.fmt-help-list { margin: 0; padding: 0; list-style: none; }
+.fmt-help-list li { margin: 0 0 5px; padding-left: 0; line-height: 1.45; }
+/* The site's global li::before draws a bullet in --evil; these rows already
+   start with the mark itself, which is the thing to read first. */
+.fmt-help-list li::before { content: none; }
+.fmt-help-list li:last-child { margin-bottom: 0; }
+.fmt-help code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .95em; background: rgba(91,31,33,.08); padding: 1px 5px;
+  border-radius: 3px; overflow-wrap: anywhere;
+}
+
+
+/* ── Live text editing (admin only, opt-in from /text-editor) ──────────────
+   Nothing here applies until text-live.js puts .textedit-on on <html>, and
+   that file is only ever fetched for a logged-in admin who turned the mode
+   on. It lives in the shared stylesheet like every other rule on the site
+   rather than being injected by the script that uses it. */
+html.textedit-on { touch-action: manipulation; }  /* so double-tap edits, not zooms */
+
+html.textedit-on .te-live-hit {
+  outline: 1px dashed rgba(122,45,47,.75);
+  outline-offset: 2px;
+  background: rgba(255,214,120,.22);
+  border-radius: 3px;
+  cursor: text;
+}
+
+.te-live-bar {
+  position: fixed; z-index: 9999;
+  left: 12px; bottom: 12px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(29,20,14,.94);
+  border: 1px solid #6b4f2a;
+  box-shadow: 0 10px 28px -12px rgba(0,0,0,.8);
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  font-size: .82rem;
+  color: #f2e6cc;
+}
+.te-live-bar .te-live-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #d8b24a; box-shadow: 0 0 0 3px rgba(216,178,74,.25);
+  flex: 0 0 auto;
+}
+.te-live-bar .te-live-title { font-weight: 700; letter-spacing: .04em; }
+.te-live-bar .te-live-note { opacity: .72; }
+.te-live-bar .te-live-link { color: #e8c98a; text-decoration: underline; }
+.te-live-bar .te-live-off {
+  font-family: inherit; font-size: .78rem;
+  color: #f2e6cc; background: #7a2d2f;
+  border: 1px solid #4a1719; border-radius: 999px;
+  padding: 4px 12px; cursor: pointer;
+}
+.te-live-bar .te-live-off:hover { background: #8a3537; }
+
+.te-live-pop {
+  position: fixed; z-index: 10000;
+  width: min(440px, calc(100vw - 24px));
+  padding: 14px;
+  background-color: var(--parch);
+  background-image: url('parchment.webp');
+  background-size: cover;
+  border: 2px solid var(--parch-frame);
+  border-radius: 6px;
+  box-shadow: 0 20px 44px -16px rgba(0,0,0,.7);
+  font-family: 'TradeGothicLT','Libre Franklin',sans-serif;
+  color: var(--ink);
+}
+.te-live-pop-head {
+  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.te-live-pop-head strong { font-family: 'Dumbledor2', serif; color: var(--maroon); letter-spacing: .04em; }
+.te-live-scope {
+  font-size: .68rem; text-transform: uppercase; letter-spacing: .07em;
+  border: 1px solid rgba(122,45,47,.35); border-radius: 999px; padding: 1px 9px;
+}
+.te-live-ta {
+  width: 100%; box-sizing: border-box;
+  font-family: ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  font-size: .9rem; line-height: 1.5;
+  padding: 9px; min-height: 74px; resize: vertical;
+  border: 1px solid var(--parch-frame); border-radius: 5px;
+  background: rgba(255,255,255,.62); color: var(--ink);
+}
+.te-live-hint { font-size: .76rem; opacity: .78; margin: 7px 0 9px; }
+.te-live-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.te-live-btn {
+  font-family: 'Dumbledor2', serif; font-size: .92rem; letter-spacing: .03em;
+  color: #f4ead2; background: var(--maroon);
+  border: 1px solid #4a1719; border-radius: 6px;
+  padding: 7px 15px; cursor: pointer;
+}
+.te-live-btn.ghost { background: transparent; color: var(--maroon); }
+.te-live-btn:disabled { opacity: .5; cursor: default; }
+.te-live-say { font-size: .78rem; font-weight: 700; }
+.te-live-say.err { color: #9a2c2c; }
+
+@media (max-width: 620px) {
+  /* A bottom sheet on a phone: a popover anchored to a fingertip would sit
+     under the keyboard as soon as the textarea takes focus. */
+  .te-live-pop {
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: auto; border-radius: 10px 10px 0 0;
+    max-height: 70vh; overflow-y: auto;
+  }
+  .te-live-bar { left: 8px; right: 8px; bottom: 8px; justify-content: center; }
+}
+
+
+/* ─── Icon adjuster (assets/art-adjust.js) ─────────────────────
+   The hand-placement editor behind "Adjust" on the two character editors.
+   Only the art is drawn on the canvas; the checkerboard is this element's
+   background and the token guides are an overlay, so the exported PNG stays
+   transparent. */
+.aa-backdrop {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(20,12,10,.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; overflow-y: auto;
+}
+.aa-panel {
+  background-color: var(--parch); background-image: url('parchment.webp'); background-size: cover;
+  border: 2px solid var(--parch-frame); border-radius: 8px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  padding: 18px 20px 16px; width: min(460px, 100%);
+  max-height: calc(100vh - 32px); overflow-y: auto;
+}
+.aa-title {
+  font-family: 'Dumbledor2', serif; font-weight: 400; color: var(--maroon);
+  font-size: 1.4rem; margin: 0 0 4px; text-align: center;
+}
+.aa-hint { font-size: .82rem; color: var(--ink); opacity: .8; margin: 0 0 12px; text-align: center; }
+.aa-stage {
+  position: relative; width: 100%; max-width: 340px; margin: 0 auto;
+  aspect-ratio: 1 / 1; touch-action: none; cursor: grab;
+  border: 1px solid var(--parch-frame);
+}
+.aa-stage.aa-dragging { cursor: grabbing; }
+.aa-canvas {
+  display: block; width: 100%; height: 100%;
+  /* Checkerboard: transparent art has to read as transparent, not as white. */
+  background-color: #fffdf8;
+  background-image:
+    linear-gradient(45deg, rgba(0,0,0,.07) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.07) 75%),
+    linear-gradient(45deg, rgba(0,0,0,.07) 25%, transparent 25%, transparent 75%, rgba(0,0,0,.07) 75%);
+  background-size: 22px 22px; background-position: 0 0, 11px 11px;
+}
+.aa-guides { position: absolute; inset: 0; pointer-events: none; }
+.aa-guides span { position: absolute; border-radius: 50%; }
+.aa-guide-token {
+  inset: 0; border: 2px solid rgba(122,45,47,.55);
+}
+.aa-guide-fill {
+  width: 70%; height: 70%; left: 15%; top: 15%;
+  border: 1px dashed rgba(122,45,47,.5);
+}
+.aa-controls { margin-top: 14px; }
+.aa-row { display: block; margin-bottom: 10px; }
+.aa-lab {
+  display: block; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--maroon); font-weight: 700; margin-bottom: 4px;
+}
+.aa-lab .aa-val { float: right; font-weight: 700; letter-spacing: 0; }
+.aa-range { width: 100%; margin: 0; accent-color: var(--maroon); height: 26px; }
+.aa-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.aa-mini {
+  font-size: .8rem; font-weight: 700; color: var(--maroon);
+  background: rgba(255,253,248,.6); border: 1px solid rgba(122,45,47,.4);
+  border-radius: 5px; padding: 7px 12px; cursor: pointer;
+}
+.aa-mini:hover { background: rgba(255,253,248,.95); }
+.aa-actions {
+  display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;
+  border-top: 1px solid rgba(0,0,0,.12); padding-top: 12px;
+}
+.aa-btn {
+  font-family: 'Dumbledor2', serif; font-size: 1rem; letter-spacing: .04em;
+  border-radius: 6px; padding: 10px 18px; cursor: pointer;
+}
+.aa-cancel { background: transparent; color: var(--maroon); border: 1px solid rgba(122,45,47,.45); }
+.aa-ok { background: var(--maroon); color: #f4ead2; border: 1px solid #4a1719; }
+.aa-ok:hover { filter: brightness(1.1); }
+@media (max-width: 480px) {
+  .aa-panel { padding: 14px 14px 12px; }
+  .aa-actions { justify-content: stretch; }
+  .aa-btn { flex: 1; text-align: center; }
+}
+
+/* ─── Night order arranger (assets/night-order-editor.js) ──────
+   Two lists, drag or ▲▼ to move a character. Shared by the Script Builder
+   and the publish page, so it lives here rather than in either page. */
+.no-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .no-cols { grid-template-columns: 1fr; } }
+.no-head {
+  font-family: 'Oswald', sans-serif; font-size: .8rem; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--maroon); margin: 0 0 6px;
+}
+.no-list {
+  border: 1px solid #cdbfa0; background: #fffdf8;
+  max-height: 380px; overflow-y: auto;
+  /* The rows handle their own pointer gestures; without this a drag on a
+     phone scrolls the list instead of moving the character. */
+  touch-action: pan-y;
+}
+.no-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 10px; background: #fffdf8;
+  border-bottom: 1px solid rgba(180,160,120,.25);
+  cursor: grab; user-select: none;
+}
+.no-row:last-child { border-bottom: none; }
+.no-is-dragging .no-row { cursor: grabbing; }
+/* The lifted row leaves the flow and follows the pointer; pointer-events:none
+   is what lets elementFromPoint see the row underneath it. */
+.no-row.no-dragging {
+  position: fixed; z-index: 3000; pointer-events: none;
+  box-shadow: 0 8px 22px rgba(40,12,30,.4);
+  border: 1px solid var(--maroon); border-radius: 3px;
+}
+/* The gap it will drop into. */
+.no-placeholder {
+  background: rgba(91,31,33,.06);
+  border: 1px dashed rgba(122,45,47,.5);
+  box-sizing: border-box;
+}
+/* On a phone the drag starts here rather than anywhere on the row, so the
+   list can still be scrolled with a finger, which makes this a real touch
+   target, not a decoration. */
+.no-grip {
+  flex-shrink: 0; color: #b3a184;
+  font-size: 1rem; line-height: 1.4; cursor: grab;
+  padding: 4px 8px 4px 2px; margin: -4px 0; min-width: 18px;
+  touch-action: none;
+}
+.no-grip:active { color: var(--maroon); }
+.no-pos {
+  flex-shrink: 0; min-width: 1.4em; text-align: right;
+  font-family: 'Oswald', sans-serif; font-size: .78rem; color: #6b5d49; line-height: 1.6;
+}
+.no-text { flex: 1; min-width: 0; }
+.no-name { display: block; font-size: .92rem; color: var(--maroon); font-weight: 600; }
+.no-official { font-weight: 400; color: #6b5d49; font-size: .78rem; }
+.no-reminder { display: block; font-size: .8rem; color: #6b5d49; line-height: 1.35; }
+.no-moves { display: flex; flex-shrink: 0; gap: 2px; }
+.no-move {
+  font-size: .8rem; line-height: 1; font-family: 'TradeGothicLT', 'Libre Franklin', sans-serif;
+  background: none; border: 1px solid #cdbfa0; color: #6b5d49; padding: 3px 6px; cursor: pointer;
+}
+.no-move:hover:not(:disabled) { color: var(--maroon); border-color: var(--maroon); }
+.no-move:disabled { opacity: .3; cursor: default; }
+.no-empty { color: #6b5d49; font-size: .88rem; padding: 8px 10px; margin: 0; }
+
+/* ─── Jinx editor (assets/jinx-editor.js) ──────────────────────
+   The jinxes on one script: the inherited ones with a switch-off, and this
+   script's own. Shared by the Script Builder and the publish page. */
+.sjx-list { border: 1px solid #cdbfa0; background: #fffdf8; }
+.sjx-row {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 10px; border-bottom: 1px solid rgba(180,160,120,.25);
+}
+.sjx-row:last-child { border-bottom: none; }
+.sjx-text { flex: 1; min-width: 0; }
+.sjx-pair { display: block; font-size: .92rem; font-weight: 600; color: var(--maroon); }
+.sjx-own {
+  font-family: 'Oswald', sans-serif; font-size: .66rem; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase;
+  color: #6b5d49; background: rgba(91,31,33,.08);
+  border: 1px solid rgba(180,160,120,.5); border-radius: 3px;
+  padding: 1px 5px; vertical-align: 2px;
+}
+.sjx-reason { display: block; font-size: .84rem; color: var(--ink); font-style: italic; line-height: 1.35; }
+.sjx-btn {
+  flex-shrink: 0; font-size: .78rem; font-family: 'Oswald', sans-serif;
+  background: rgba(255,253,248,.6); border: 1px solid rgba(122,45,47,.4);
+  color: var(--maroon); border-radius: 4px; padding: 4px 8px; cursor: pointer;
+}
+.sjx-btn:hover { background: rgba(255,253,248,1); }
+.sjx-off { margin-top: 10px; }
+.sjx-off-head {
+  font-family: 'Oswald', sans-serif; font-size: .72rem; letter-spacing: .06em;
+  text-transform: uppercase; color: #6b5d49; margin: 0 0 4px;
+}
+.sjx-row-off { border: 1px dashed rgba(180,160,120,.6); background: rgba(0,0,0,.02); opacity: .8; }
+.sjx-row-off .sjx-pair { font-weight: 400; text-decoration: line-through; }
+.sjx-empty { color: #6b5d49; font-size: .88rem; padding: 8px 10px; margin: 0; }
+.sjx-add { margin-top: 12px; }
+.sjx-add-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sjx-sel {
+  flex: 1; min-width: 130px; font-family: 'Libre Franklin', sans-serif; font-size: .88rem;
+  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; padding: 6px 8px;
+}
+.sjx-amp { color: var(--maroon); font-size: 1rem; }
+.sjx-input {
+  width: 100%; box-sizing: border-box; margin-top: 8px;
+  font-family: 'Libre Franklin', sans-serif; font-size: .88rem;
+  color: #241a12; background: #fffdf8; border: 1px solid #cdbfa0; padding: 7px 9px;
+}
+.sjx-add-btn { margin-top: 8px; }
+.sjx-note { font-size: .8rem; color: #9a2c2c; margin: 6px 0 0; min-height: 1em; }
+.sjx-note:empty { min-height: 0; }
+

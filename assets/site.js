@@ -285,8 +285,9 @@
 
   me().then(function (u) {
     if (!u || !u.loggedIn || !u.isAdmin) return;
+    window.BotcData.style('editor.css');
     var s = document.createElement('script');
-    s.src = '/assets/text-live.js';   // absolute: this also runs under /c/, /s/, /p/
+    s.src = window.BotcData.asset('text-live.js');   // absolute: this also runs under /c/, /s/, /p/
     document.head.appendChild(s);
   }).catch(function () {});
 })();
@@ -298,7 +299,7 @@
   var ROOT = (function () {
     var s = document.querySelector('link[rel="stylesheet"]');
     if (!s) return '';
-    return s.getAttribute('href').replace('assets/styles.css', '');
+    return (window.LINK_ROOT != null) ? window.LINK_ROOT : s.getAttribute('href').split('assets/')[0];
   })();
 
   function esc(s) {
@@ -346,9 +347,9 @@
     function loadFormatter(cb) {
       if (window.NewsRender && window.WikiRender) return cb(window.NewsRender);
       // render-news.js forwards to render-wiki.js, so that one loads first.
-      loadScript(ROOT + 'assets/render-wiki.js', function () {
+      loadScript(window.BotcData.asset('render-wiki.js'), function () {
         if (window.NewsRender) return cb(window.NewsRender);
-        loadScript(ROOT + 'assets/render-news.js', function () {
+        loadScript(window.BotcData.asset('render-news.js'), function () {
           cb(window.NewsRender || null);
         });
       });
@@ -511,7 +512,8 @@
           return me;
         });
     }
-    cachedMe().then(function (me) {
+    window.botcMePromise = cachedMe();
+    window.botcMePromise.then(function (me) {
       var loggedIn = !!(me && me.loggedIn);
       var label = loggedIn ? 'My Account' : 'Log In';
       var href = ROOT + (loggedIn ? 'account' : 'login');
@@ -583,6 +585,13 @@
     if (!input || !drop) return;
     var allChars = null, allScripts = [], allCollections = [], fetchPromise = null;
 
+    function fetchList(path) {
+      return window.BotcData.json(ROOT + path).then(function (rows) {
+        if (!Array.isArray(rows)) throw new Error('Invalid search data');
+        return rows;
+      });
+    }
+
     function ensureData() {
       if (allChars) return Promise.resolve(allChars);
       if (fetchPromise) return fetchPromise;
@@ -591,14 +600,18 @@
         // needs and nothing else (a third of `card`; see GRID_FIELDS in
         // worker.js). The browse pages fetch the same URL, so on most visits
         // this is already in the browser's cache.
-        fetch(ROOT + 'characters.json?fields=grid').then(function (r) { return r.json(); }),
-        fetch(ROOT + 'scripts.json').then(function (r) { return r.json(); }).catch(function () { return []; }),
-        fetch(ROOT + 'collections.json').then(function (r) { return r.json(); }).catch(function () { return []; })
+        fetchList('characters.json?fields=grid'),
+        fetchList('scripts.json?fields=browse').catch(function () { return []; }),
+        fetchList('collections.json?fields=browse').catch(function () { return []; })
       ]).then(function (res) {
         allChars = res[0] || [];
         allScripts = res[1] || [];
         allCollections = res[2] || [];
         return allChars;
+      }).catch(function (err) {
+        // A failed promise must not poison every subsequent search this visit.
+        fetchPromise = null;
+        throw err;
       });
       return fetchPromise;
     }
@@ -694,7 +707,9 @@
     }
     function pageThumb(p) {
       var img = p.logo || p.header;
-      return img ? assetSrc(img) : (ROOT + 'assets/favicon.png');
+      var ver = img && p.v && !/^(?:https?:)?\/\//i.test(img)
+        ? (img.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(p.v)) : '';
+      return img ? assetSrc(img) + ver : (ROOT + 'assets/favicon.png');
     }
     function resultsHTML(results) {
       return results.map(function (r) {
@@ -734,21 +749,49 @@
 
     function open() { drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
     function close() {
+      searchToken++;
       drop.hidden = true;
       input.setAttribute('aria-expanded', 'false');
       if (navResults) navResults.innerHTML = '';
     }
 
-    var debTimer;
-    input.addEventListener('input', function () {
-      clearTimeout(debTimer);
+    var searchToken = 0;
+    function updateSearch() {
       var q = input.value.trim();
       if (!q) { close(); return; }
-      debTimer = setTimeout(function () {
-        ensureData().then(function () { render(search(q), q); open(); });
-      }, 150);
+      var token = ++searchToken;
+      function show() {
+        if (token !== searchToken || input.value.trim() !== q) return;
+        render(search(q), q);
+        open();
+      }
+      // A local scan of this bounded index needs no artificial typing delay.
+      // While loading, ensureData shares one request and only the latest
+      // query may paint; clearing, Escape and outside clicks cancel it too.
+      if (allChars) show();
+      else ensureData().then(show).catch(function () {
+        if (token === searchToken) close();
+      });
+    }
+    function warmSearch() { ensureData().catch(function () {}); }
+    input.addEventListener('input', updateSearch);
+    input.addEventListener('focus', function () {
+      warmSearch();
+      if (input.value.trim()) updateSearch();
     });
-    input.addEventListener('focus', function () { if (input.value.trim() && allChars) open(); });
+    // The phone's field mirrors input into the hidden topbar field, but
+    // focus and Escape are separate events and need the same handling.
+    var mobileInput = document.getElementById('nav-search-input');
+    if (mobileInput) {
+      mobileInput.addEventListener('focus', function () {
+        input.value = mobileInput.value;
+        warmSearch();
+        if (input.value.trim()) updateSearch();
+      });
+      mobileInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    }
+    var menuButton = document.getElementById('hamburger');
+    if (menuButton) menuButton.addEventListener('click', close);
     input.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') { close(); input.blur(); return; }
       if (e.key === 'ArrowDown') { var f = drop.querySelector('.search-result'); if (f) { e.preventDefault(); f.focus(); } }
@@ -762,10 +805,14 @@
     document.addEventListener('click', function (e) {
       var w = document.getElementById('search-wrap');
       if (navResults && navResults.contains(e.target)) return; // tapping a mobile result
+      if (mobileInput && mobileInput.contains(e.target)) return;
       if (w && !w.contains(e.target)) close();
     });
     var sw = document.getElementById('search-wrap');
-    if (sw) sw.addEventListener('mouseenter', ensureData);
+    if (sw) {
+      sw.addEventListener('mouseenter', warmSearch);
+      sw.addEventListener('pointerdown', warmSearch);
+    }
   })();
 
   /* ── Mobile nav ── */

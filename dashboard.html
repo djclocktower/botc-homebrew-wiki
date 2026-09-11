@@ -2,12 +2,14 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Dashboard — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
   .dash-wrap {
@@ -2126,10 +2128,10 @@
         if (!d || !d.ok) { $('thumb-list').innerHTML = '<p class="note">' + esc((d && d.error) || 'Scan failed.') + '</p>'; return; }
         thumbItems = d.items || [];
         $('thumb-count').textContent = d.missing;
-        var html = '<p class="note">' + d.withArt + ' characters have art; ' + d.missing + ' still have no usable thumbnail' +
+        var html = '<p class="note">' + d.withArt + ' character icons and page images; ' + d.missing + ' still have no usable thumbnail' +
           (d.missing ? ' (' + d.r2Thumbs + ' made so far, ' + d.committed + ' committed with the repo' +
             (d.blank ? '; ' + d.blank + ' of them stored one that came out blank' : '') + ').'
-            : '. Every card is on the small picture.') + '</p>';
+            : '. Every image has a small version.') + '</p>';
         if (thumbItems.length) {
           html += '<ul class="note" style="max-height:220px;overflow:auto;margin:6px 0 0;padding-left:18px">' +
             thumbItems.slice(0, 200).map(function(it){ return '<li>' + esc(it.name || it.slug) + ' <span style="opacity:.6">' + esc(it.art) + (it.blank ? ' &mdash; blank' : '') + '</span></li>'; }).join('') +
@@ -3328,6 +3330,7 @@
   <script src="assets/tags.js"></script>
   <script src="assets/suggest.js"></script>
   <!-- The picker AND the gallery for images on modmail replies and comments. -->
+  <script src="assets/attachment-view.js"></script>
   <script src="assets/attach.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script src="assets/site.js"></script>

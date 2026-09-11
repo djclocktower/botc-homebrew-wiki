@@ -2,12 +2,14 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Account — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
   .dash-wrap {
@@ -491,6 +493,7 @@
 
   <!-- The picker AND the gallery for images on modmail messages. Loaded
        BEFORE the page script, which mounts the picker as it draws the form. -->
+  <script src="assets/attachment-view.js"></script>
   <script src="assets/attach.js"></script>
   <script>
     // Login state may have just changed (OAuth redirect lands here) — drop the nav cache.

@@ -28,7 +28,7 @@
   var ROOT = (function () {
     var s = document.querySelector('link[rel="stylesheet"]');
     if (!s) return '';
-    return s.getAttribute('href').replace('assets/styles.css', '');
+    return (window.LINK_ROOT != null) ? window.LINK_ROOT : s.getAttribute('href').split('assets/')[0];
   })();
 
   function build() {
