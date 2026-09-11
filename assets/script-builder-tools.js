@@ -107,9 +107,9 @@
   /* ── filling a script at random ──────────────────────────────────────
      fillPlan(): the slugs to ADD so every team reaches its target, drawn
      from `pool` (the characters the panel is showing), never one already on
-     the script. randomPlan(): a whole new script — everyone unlocked goes,
-     the locked ones stay, and the rest is drawn to the shape. Both take an
-     `rng` so a test can be deterministic; Math.random is the default. */
+     the script. randomPlan(): a whole new script, drawn to the shape from
+     nothing. Both take an `rng` so a test can be deterministic; Math.random
+     is the default. */
   function shuffle(arr, rng) {
     rng = rng || Math.random;
     for (var i = arr.length - 1; i > 0; i--) {
@@ -138,18 +138,15 @@
     });
     return { add: add, short: short };
   }
-  function randomPlan(pool, current, shape, locks, rng) {
-    var lockSet = {};
-    (locks || []).forEach(function (s) { lockSet[s] = 1; });
-    var kept = (current || []).filter(function (c) { return c && lockSet[c.slug]; });
-    var plan = fillPlan(pool, kept, shape, rng);
-    return { slugs: kept.map(function (c) { return c.slug; }).concat(plan.add), short: plan.short, kept: kept.length };
+  function randomPlan(pool, shape, rng) {
+    var plan = fillPlan(pool, [], shape, rng);
+    return { slugs: plan.add, short: plan.short };
   }
 
   /* ── analysis ─────────────────────────────────────────────────────────
      What the Analyse tab says about a script. `ctx` carries what only the
      page can compute: jinxes (PageRender.scriptJinxes), night
-     (PageRender.nightItems), the shape, the locks, and `allBySlug` for the
+     (PageRender.nightItems), the shape, and `allBySlug` for the
      jinx suggestions. Everything comes back as plain data; the controller
      draws it. */
   function tagsOf(c) {

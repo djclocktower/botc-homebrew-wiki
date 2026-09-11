@@ -58,8 +58,8 @@
           <button type="button" class="sbx-seg on" id="sbx-seg-chars" data-side="chars" role="tab" aria-selected="true">Characters</button>
           <button type="button" class="sbx-seg" id="sbx-seg-lib" data-side="lib" role="tab" aria-selected="false">My Scripts <span class="sbx-seg-n" id="sbx-lib-n"></span></button>
         </div>
-        <button type="button" class="sbx-icon" id="sbx-wide" title="Widen this panel" aria-label="Widen this panel" aria-pressed="false">&#8596;</button>
-        <button type="button" class="sbx-icon sbx-close-mob" id="sbx-close" aria-label="Close panel">&#10005;</button>
+        <button type="button" class="sbx-icon" id="sbx-wide" title="Widen this panel" aria-label="Widen this panel" aria-pressed="false"><i class="sbi-i" data-icon="widen"></i></button>
+        <button type="button" class="sbx-icon sbx-close-mob" id="sbx-close" aria-label="Close panel"><i class="sbi-i" data-icon="close"></i></button>
       </div>
 
       <!-- characters -->
@@ -67,12 +67,12 @@
         <div class="sbx-side-tools">
           <input class="sbx-search" id="sb-filter" type="search" placeholder="Search by name…" autocomplete="off" aria-label="Search characters to add">
           <div class="sbx-tool-row">
-            <button type="button" class="filter-toggle" id="sb-filter-toggle" aria-expanded="false" aria-controls="sb-filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
+            <button type="button" class="filter-toggle" id="sb-filter-toggle" aria-expanded="false" aria-controls="sb-filter-bar">Filters <span class="filter-toggle-arrow"><i class="sbi-i" data-icon="down"></i></span></button>
             <label class="sbx-check" title="Show every ability under its character instead of behind a chevron">
               <input type="checkbox" id="sbx-abilities"> Abilities
             </label>
-            <button type="button" class="sbx-b-sm" id="sb-add-all" title="Add every character the panel is showing">&#43; All</button>
-            <button type="button" class="sbx-b-sm" id="sb-remove-all" title="Take every character the panel is showing off the script">&#8722; All</button>
+            <button type="button" class="sbx-b-sm" id="sb-add-all" title="Add every character the panel is showing"><i class="sbi-i" data-icon="plus"></i> All</button>
+            <button type="button" class="sbx-b-sm" id="sb-remove-all" title="Take every character the panel is showing off the script"><i class="sbi-i" data-icon="minus"></i> All</button>
           </div>
         </div>
         <div class="sbx-picks" id="sbx-picks" aria-label="Pinned and recent characters"></div>
@@ -88,8 +88,8 @@
         <div class="sbx-side-tools">
           <input class="sbx-search" id="sbx-lib-q" type="search" placeholder="Search saved scripts…" autocomplete="off" aria-label="Search saved scripts">
           <div class="sbx-tool-row">
-            <button type="button" class="sbx-b-sm" id="sbx-lib-save" style="flex:1">&#128190; Save current</button>
-            <button type="button" class="sbx-b-sm" id="sbx-lib-new">&#43; New</button>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-save" style="flex:1"><i class="sbi-i" data-icon="save"></i> Save current</button>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-new"><i class="sbi-i" data-icon="plus"></i> New</button>
           </div>
           <div class="sbx-tool-row">
             <select id="sbx-lib-sort" class="sbx-lib-sort" aria-label="Sort saved scripts">
@@ -97,8 +97,8 @@
               <option value="name">By name</option>
               <option value="size">Most characters</option>
             </select>
-            <button type="button" class="sbx-b-sm" id="sbx-lib-backup" title="Download every saved script as one file">&#11015; Back up</button>
-            <button type="button" class="sbx-b-sm" id="sbx-lib-restore" title="Load a backup file into My Scripts">&#11014; Restore</button>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-backup" title="Download every saved script as one file"><i class="sbi-i" data-icon="download"></i> Back up</button>
+            <button type="button" class="sbx-b-sm" id="sbx-lib-restore" title="Load a backup file into My Scripts"><i class="sbi-i" data-icon="upload"></i> Restore</button>
             <input type="file" id="sbx-lib-file" accept=".json,application/json" hidden>
           </div>
         </div>
@@ -116,7 +116,7 @@
     <main class="sbx-main">
 
       <div class="sbx-bar">
-        <button type="button" class="sbx-b sbx-b-open" id="sbx-open">&#9776; Characters</button>
+        <button type="button" class="sbx-b sbx-b-open" id="sbx-open"><i class="sbi-i" data-icon="menu"></i> Characters</button>
         <div class="sbx-names">
           <input class="sbx-title" id="sb-name" type="text" placeholder="Untitled Script" maxlength="90" aria-label="Script name" spellcheck="false">
           <input class="sbx-author" id="sb-author" type="text" placeholder="by you" maxlength="70" aria-label="Script author" spellcheck="false">
@@ -124,34 +124,34 @@
         </div>
         <button type="button" class="sbx-counts" id="sbx-counts" data-pop="sbx-shape" aria-haspopup="dialog" aria-expanded="false" title="The shape this script is aiming for"></button>
         <div class="sbx-acts">
-          <button type="button" class="sbx-b sbx-b-icon" id="sbx-undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled>&#8630;</button>
-          <button type="button" class="sbx-b sbx-b-icon" id="sbx-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled>&#8631;</button>
-          <button type="button" class="sbx-b" id="sbx-view-btn" data-pop="sbx-view" aria-haspopup="dialog" aria-expanded="false" title="View: how the script is drawn" aria-label="View">&#9881; <span class="sbx-b-txt">View</span></button>
-          <button type="button" class="sbx-b" id="sb-randomize" title="Random: draw a script to the shape" aria-label="Random">&#9860; <span class="sbx-b-txt">Random</span></button>
-          <button type="button" class="sbx-b" id="sb-sort" title="Sort into Steven Approved Order" aria-label="Sort">&#8645; <span class="sbx-b-txt">Sort</span></button>
+          <button type="button" class="sbx-b sbx-b-icon" id="sbx-undo" title="Undo (Ctrl+Z)" aria-label="Undo" disabled><i class="sbi-i" data-icon="undo"></i></button>
+          <button type="button" class="sbx-b sbx-b-icon" id="sbx-redo" title="Redo (Ctrl+Y)" aria-label="Redo" disabled><i class="sbi-i" data-icon="redo"></i></button>
+          <button type="button" class="sbx-b" id="sbx-view-btn" data-pop="sbx-view" aria-haspopup="dialog" aria-expanded="false" title="View: how the script is drawn" aria-label="View"><i class="sbi-i" data-icon="gear"></i> <span class="sbx-b-txt">View</span></button>
+          <button type="button" class="sbx-b" id="sb-randomize" title="Random: draw a script to the shape" aria-label="Random"><i class="sbi-i" data-icon="dice"></i> <span class="sbx-b-txt">Random</span></button>
+          <button type="button" class="sbx-b" id="sb-sort" title="Sort into Steven Approved Order" aria-label="Sort"><i class="sbi-i" data-icon="sort"></i> <span class="sbx-b-txt">Sort</span></button>
           <div class="sbx-menu-wrap">
-            <button type="button" class="sbx-b" id="sbx-more" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More">&#8943; <span class="sbx-b-txt">More</span></button>
+            <button type="button" class="sbx-b" id="sbx-more" aria-haspopup="true" aria-expanded="false" title="More" aria-label="More"><i class="sbi-i" data-icon="more"></i> <span class="sbx-b-txt">More</span></button>
             <div class="sbx-menu" id="sbx-menu" role="menu">
-              <button type="button" data-do="random" role="menuitem" class="sbx-menu-bar">&#9860; Random script</button>
-              <button type="button" data-do="sort" role="menuitem" class="sbx-menu-bar">&#8645; Steven Approved Order</button>
-              <button type="button" data-do="undo" role="menuitem" class="sbx-menu-bar">&#8630; Undo</button>
-              <button type="button" data-do="redo" role="menuitem" class="sbx-menu-bar">&#8631; Redo</button>
-              <button type="button" data-do="publish" role="menuitem" class="sbx-menu-bar">&#9733; Publish to the wiki</button>
+              <button type="button" data-do="random" role="menuitem" class="sbx-menu-bar"><i class="sbi-i" data-icon="dice"></i> Random script</button>
+              <button type="button" data-do="sort" role="menuitem" class="sbx-menu-bar"><i class="sbi-i" data-icon="sort"></i> Steven Approved Order</button>
+              <button type="button" data-do="undo" role="menuitem" class="sbx-menu-bar"><i class="sbi-i" data-icon="undo"></i> Undo</button>
+              <button type="button" data-do="redo" role="menuitem" class="sbx-menu-bar"><i class="sbi-i" data-icon="redo"></i> Redo</button>
+              <button type="button" data-do="publish" role="menuitem" class="sbx-menu-bar"><i class="sbi-i" data-icon="star"></i> Publish to the wiki</button>
               <hr class="sbx-menu-sep sbx-menu-bar">
-              <button type="button" data-do="export" role="menuitem">&#11015; Download JSON</button>
-              <button type="button" data-do="copy" role="menuitem">&#10697; Copy JSON</button>
-              <button type="button" data-do="import" role="menuitem">&#11014; Import a JSON file</button>
-              <button type="button" data-do="share" role="menuitem">&#128279; Copy a share link</button>
-              <button type="button" data-do="print" role="menuitem">&#128424; Print / save as PDF</button>
-              <button type="button" data-do="bag" role="menuitem" data-pop-keep title="Pick tonight'"'"'s characters for a player count">&#127884; Tonight'"'"'s bag</button>
-              <button type="button" data-do="fancy" role="menuitem" title="Press a print-style sheet of this script">&#10024; Fancy Sheet</button>
+              <button type="button" data-do="export" role="menuitem"><i class="sbi-i" data-icon="download"></i> Download JSON</button>
+              <button type="button" data-do="copy" role="menuitem"><i class="sbi-i" data-icon="copy"></i> Copy JSON</button>
+              <button type="button" data-do="import" role="menuitem"><i class="sbi-i" data-icon="upload"></i> Import a JSON file</button>
+              <button type="button" data-do="share" role="menuitem"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
+              <button type="button" data-do="print" role="menuitem"><i class="sbi-i" data-icon="print"></i> Print / save as PDF</button>
+              <button type="button" data-do="bag" role="menuitem" data-pop-keep title="Pick tonight&rsquo;s characters for a player count"><i class="sbi-i" data-icon="bag"></i> Tonight&rsquo;s bag</button>
+              <button type="button" data-do="fancy" role="menuitem" title="Press a print-style sheet of this script"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
               <hr class="sbx-menu-sep">
-              <button type="button" data-do="save" role="menuitem">&#128190; Save to My Scripts</button>
-              <button type="button" data-do="new" role="menuitem">&#43; New script</button>
-              <button type="button" data-do="clear" role="menuitem">&#10005; Remove every character</button>
+              <button type="button" data-do="save" role="menuitem"><i class="sbi-i" data-icon="save"></i> Save to My Scripts</button>
+              <button type="button" data-do="new" role="menuitem"><i class="sbi-i" data-icon="plus"></i> New script</button>
+              <button type="button" data-do="clear" role="menuitem"><i class="sbi-i" data-icon="close"></i> Remove every character</button>
             </div>
           </div>
-          <a class="sbx-b sbx-b-go" id="sb-publish-link" href="publish-script">&#9733; Publish</a>
+          <a class="sbx-b sbx-b-go" id="sb-publish-link" href="publish-script"><i class="sbi-i" data-icon="star"></i> Publish</a>
           <input type="file" id="sb-import-file" accept=".json,application/json" hidden>
         </div>
       </div>
@@ -181,10 +181,10 @@
               <label class="sbx-check"><input type="checkbox" id="sb-night-icons"> Icons</label>
               <label class="sbx-check"><input type="checkbox" id="sb-night-stack"> One list under the other</label>
               <span id="sb-night-bagwrap" hidden><label class="sbx-check" title="Only the characters in tonight's bag (More &rarr; Tonight's bag)"><input type="checkbox" id="sb-night-bag"> Tonight&rsquo;s bag only</label></span>
-              <button type="button" class="sbx-b-sm" id="sb-night-copy">&#10697; Copy as text</button>
+              <button type="button" class="sbx-b-sm" id="sb-night-copy"><i class="sbi-i" data-icon="copy"></i> Copy as text</button>
             </div>
             <div class="no-cols" id="sbx-night-body"></div>
-            <button type="button" class="sbx-b-sm" id="sb-night-reset" style="margin-top:12px">&#8634; Back to the standard order</button>
+            <button type="button" class="sbx-b-sm" id="sb-night-reset" style="margin-top:12px"><i class="sbi-i" data-icon="reset"></i> Back to the standard order</button>
           </div>
         </section>
 
@@ -195,7 +195,7 @@
             <p class="sbx-panel-sub">Rules between two characters on this script. Switch off one you do not want, or write a rule that only holds here. Nothing is written back to the characters, so every other script keeps what they say.</p>
             <div class="sbx-tab-opts">
               <label class="sbx-check"><input type="checkbox" id="sb-jinx-icons" checked> Icons</label>
-              <button type="button" class="sbx-b-sm" id="sb-jinx-copy">&#10697; Copy as text</button>
+              <button type="button" class="sbx-b-sm" id="sb-jinx-copy"><i class="sbi-i" data-icon="copy"></i> Copy as text</button>
             </div>
             <div id="sbx-jinx-body"></div>
             <div id="sbx-jinx-official" hidden></div>
@@ -250,7 +250,7 @@
             <div class="sbx-field">
               <label>House rules (bootlegger)</label>
               <div id="sb-boot-list"></div>
-              <button type="button" class="sbx-b-sm" id="sb-boot-add" style="align-self:flex-start">&#43; Add a rule</button>
+              <button type="button" class="sbx-b-sm" id="sb-boot-add" style="align-self:flex-start"><i class="sbi-i" data-icon="plus"></i> Add a rule</button>
             </div>
           </div>
 
@@ -258,11 +258,11 @@
             <h2 class="sbx-panel-head">Export</h2>
             <p class="sbx-panel-sub">The official script format, the same one the app and every other script tool read.</p>
             <div class="sbx-tool-row" style="margin-bottom:12px">
-              <button type="button" class="sbx-b-sm" id="sb-export">&#11015; Download JSON</button>
-              <button type="button" class="sbx-b-sm" id="sb-copy">&#10697; Copy JSON</button>
-              <button type="button" class="sbx-b-sm" id="sb-share">&#128279; Copy a share link</button>
-              <button type="button" class="sbx-b-sm" id="sb-print">&#128424; Print / PDF</button>
-              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style print sheet of this script in Fancy Scripts">&#10024; Fancy Sheet</button>
+              <button type="button" class="sbx-b-sm" id="sb-export"><i class="sbi-i" data-icon="download"></i> Download JSON</button>
+              <button type="button" class="sbx-b-sm" id="sb-copy"><i class="sbi-i" data-icon="copy"></i> Copy JSON</button>
+              <button type="button" class="sbx-b-sm" id="sb-share"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
+              <button type="button" class="sbx-b-sm" id="sb-print"><i class="sbi-i" data-icon="print"></i> Print / PDF</button>
+              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style print sheet of this script in Fancy Scripts"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
               <label class="sbx-check" title="One line, no spaces — smaller, harder to read"><input type="checkbox" id="sb-json-min"> Minified</label>
             </div>
             <details class="sbx-details" id="sb-json-details">
@@ -305,8 +305,8 @@
               </div>
               <textarea id="sb-text-preview" rows="7" readonly spellcheck="false" aria-label="The script as text"></textarea>
               <div class="sbx-tool-row">
-                <button type="button" class="sbx-b-sm" id="sb-text-copy">&#10697; Copy text</button>
-                <button type="button" class="sbx-b-sm" id="sb-text-dl">&#11015; Download .txt</button>
+                <button type="button" class="sbx-b-sm" id="sb-text-copy"><i class="sbi-i" data-icon="copy"></i> Copy text</button>
+                <button type="button" class="sbx-b-sm" id="sb-text-dl"><i class="sbi-i" data-icon="download"></i> Download .txt</button>
               </div>
             </div>
             <div class="sbx-credits">
@@ -338,7 +338,7 @@
             </div>
             <div class="sbx-tool-row">
               <button type="button" class="sbx-b-sm" id="sb-paste-go">Import pasted JSON</button>
-              <button type="button" class="sbx-b-sm" id="sb-paste-clip" title="Read the script JSON, or a wiki link, straight from the clipboard">&#128203; Paste from clipboard</button>
+              <button type="button" class="sbx-b-sm" id="sb-paste-clip" title="Read the script JSON, or a wiki link, straight from the clipboard"><i class="sbi-i" data-icon="clipboard"></i> Paste from clipboard</button>
               <button type="button" class="sbx-b-sm" id="sb-import">Choose a file…</button>
             </div>
           </div>
@@ -359,7 +359,7 @@
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">View</span>
       <span class="sbx-pop-sub">Only how this page draws the script &mdash; the export and the published page never change.</span>
-      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-view-body"></div>
     <p class="sbx-keys"><strong>Keys</strong> &nbsp; <kbd>/</kbd> search &nbsp; <kbd>&uarr;</kbd><kbd>&darr;</kbd> walk the list &nbsp; <kbd>Enter</kbd> add &nbsp; <kbd>1</kbd>&ndash;<kbd>5</kbd> tabs &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo &nbsp; <kbd>Esc</kbd> close</p>
@@ -368,7 +368,7 @@
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">Script shape</span>
       <span class="sbx-pop-sub">How many of each team this script is aiming for. Random and Fill draw to it, and the counts in the bar show how close you are.</span>
-      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-shape-body"></div>
   </div>
@@ -376,7 +376,7 @@
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">Tonight&rsquo;s bag</span>
       <span class="sbx-pop-sub">Pick the characters going into the bag for a player count &mdash; by hand, or at random to the official numbers. Nothing here changes the script.</span>
-      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close">&#10005;</button>
+      <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-bag-body"></div>
   </div>
@@ -397,6 +397,7 @@
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
   <script src="assets/export-ids-editor.js"></script>
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/script-builder-view.js"></script>
   <script src="assets/script-builder-tools.js"></script>
   <script src="assets/script-builder.js"></script>

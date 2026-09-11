@@ -4762,20 +4762,6 @@ button.sbx-counts:empty { display: none; }
 .sbx-cnt.over { color: #f0b070; border-color: rgba(240,176,112,.55); }
 .sbx-cnt-total.ok { color: #9fe0a8; }
 
-/* the lock on a roster row */
-.sbx-ch-lock {
-  flex: none; width: 20px; height: 20px; cursor: pointer; line-height: 1;
-  background: none; border: none; padding: 0; font-size: .78rem;
-  color: rgba(91,31,33,.3); transition: color .12s, opacity .12s;
-}
-.sbx-ch-lock:hover, .sbx-ch-lock.on { color: var(--maroon); }
-.sbx-ch.locked { box-shadow: inset 3px 0 0 rgba(91,31,33,.45); }
-.sbx-remove-hover .sbx-ch-lock:not(.on) { opacity: 0; }
-.sbx-remove-hover .sbx-ch:hover .sbx-ch-lock, .sbx-remove-hover .sbx-ch-lock:focus-visible { opacity: 1; }
-@media (hover: none) { .sbx-remove-hover .sbx-ch-lock { opacity: 1; } }
-.sbx[data-layout="cards"] .sbx-ch-lock, .sbx[data-layout="icons"] .sbx-ch-lock { position: absolute; top: 4px; left: 4px; }
-.sbx[data-layout="icons"] .sbx-ch-lock { top: 0; left: 0; }
-
 /* the shape popover */
 .sbx-view-preset.on { background: var(--maroon); color: var(--parch); }
 .sbx-shape-grid { display: grid; gap: 4px; margin: 4px 0 10px; }
@@ -4959,9 +4945,6 @@ button.sbx-counts:empty { display: none; }
 .sbx[data-tone="dark"] .sbx-ch-meta, .sbx[data-tone="dark"] .sbx-tag { color: rgba(232,220,196,.6); border-color: rgba(232,220,196,.3); }
 .sbx[data-tone="dark"] .sbx-off { color: rgba(232,220,196,.7); border-color: rgba(232,220,196,.35); }
 .sbx[data-tone="dark"] .sbx-ch-x { color: rgba(255,140,140,.6); }
-.sbx[data-tone="dark"] .sbx-ch-lock { color: rgba(232,220,196,.35); }
-.sbx[data-tone="dark"] .sbx-ch-lock.on, .sbx[data-tone="dark"] .sbx-ch-lock:hover { color: #f2c46f; }
-.sbx[data-tone="dark"] .sbx-ch.locked { box-shadow: inset 3px 0 0 rgba(242,196,111,.5); }
 .sbx[data-tone="dark"] .sbx-ch-moves button { background: #362a3b; color: #e8dcc4; border-color: #4a3550; }
 .sbx[data-tone="dark"] .sbx-ch-grip { color: rgba(232,220,196,.4); }
 .sbx[data-tone="dark"] .sbx-ch-n { color: #9fc0f0; border-color: rgba(159,192,240,.4); background: rgba(159,192,240,.1); }
@@ -4983,8 +4966,6 @@ button.sbx-counts:empty { display: none; }
 .sbx-row-stripe .sbx-team[data-team="traveller"] .sbx-ch { border-left: 4px solid #8a5bc4; }
 .sbx-row-stripe .sbx-team[data-team="fabled"] .sbx-ch { border-left: 4px solid #c9a227; }
 .sbx-row-stripe .sbx-team[data-team="loric"] .sbx-ch { border-left: 4px solid #3f9a58; }
-.sbx-row-stripe .sbx-ch.locked { box-shadow: none; }
-.sbx-row-stripe .sbx-ch.locked .sbx-ch-lock { color: var(--maroon); }
 
 /* headings that stay put while a long roster scrolls under them */
 .sbx-sticky-heads .sbx-team-head {
@@ -5077,7 +5058,7 @@ button.sbx-counts:empty { display: none; }
 .sbx-an-cand .t { flex: 1; min-width: 0; line-height: 1.25; }
 .sbx-an-cand .t small { display: block; color: #6b5d49; font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sbx-add-item:focus-visible, .sbx-b:focus-visible, .sbx-b-sm:focus-visible, .sbx-tab:focus-visible,
-.sbx-pick:focus-visible, .sbx-ch-x:focus-visible, .sbx-ch-lock:focus-visible, .sbx-seg:focus-visible {
+.sbx-pick:focus-visible, .sbx-ch-x:focus-visible, .sbx-seg:focus-visible {
   outline: 2px solid #f2c46f; outline-offset: -2px;
 }
 
@@ -5133,3 +5114,22 @@ button.sbx-counts:empty { display: none; }
   .sbx-b { padding: 5px 9px; font-size: .86rem; }
   .sbx-b-go { font-size: .76rem; }
 }
+
+/* ── the icon set (assets/ui-icons.js) ────────────────────────────────────
+   Every mark on the builder is an inline SVG drawn in currentColor, so it is
+   the colour of the text it sits in and a new paper tone needs no icon work.
+   Two rules do the whole of it: the svg is an inline-block sized in em (so it
+   follows the button's own type), and the <i> placeholder the static markup
+   writes is display:contents — the svg is then a direct child of the button,
+   exactly as it is in the markup the JS builds, so there is one alignment
+   rule rather than two. A browser without display:contents leaves the <i> as
+   an ordinary inline box, which renders the same to within a hair. */
+.sbi { display: inline-block; vertical-align: -.16em; flex: none; }
+.sbi-i { display: contents; }
+/* The few places the mark is smaller than its line, or follows a word. */
+.sbx-off .sbi, .sbx-peek-acts a .sbi { width: .95em; height: .95em; margin-left: 3px; vertical-align: -.1em; }
+.sbx-ch-jx .sbi { width: 1.3em; height: 1.3em; margin-right: 1px; vertical-align: -.35em; }
+.sbx-ch-x .sbi, .sbx-pop-x .sbi, .sbx-icon .sbi { vertical-align: -.2em; }
+.sbx-ch-moves button .sbi { width: 1.5em; height: 1.5em; vertical-align: -.45em; }
+.sbx-add-tick .sbi { width: 1.15em; height: 1.15em; }
+.sbx-lib-acts .sbi, .sbx-team-tools .sbi, .sbx-add-die .sbi { vertical-align: -.2em; }

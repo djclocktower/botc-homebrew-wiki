@@ -303,9 +303,21 @@ assets/
                        every insert and walks the wrong character to the
                        bottom. On a phone the drag starts from the grip so the
                        list can still be scrolled with a finger.
+  ui-icons.js          The interface icons, as inline SVG drawn in
+                       currentColor — so a mark is the colour of the text it
+                       sits in and a new paper tone needs no icon work. Two
+                       doors on one set of path data: UIIcons.svg(name) for
+                       markup built in JS, and UIIcons.paint(root), which
+                       fills the <i class="sbi-i" data-icon="name"> the
+                       static pages write. NO EMOJI anywhere in the
+                       interface: an emoji is drawn by the reader's font in
+                       the font's own colours, so it never takes the site's
+                       ink. Content is a different matter — the credit marks
+                       in creators.js and the ♊︎ in a character's name are
+                       somebody's page, not our furniture.
   script-builder.js    The Script Builder's controller (script.html is the
-                       markup). Selection, the roster, undo/redo, the shape
-                       and locks, the Analyse tab, the saved-script library,
+                       markup). Selection, the roster, undo/redo, the shape,
+                       the Analyse tab, the saved-script library,
                        export/import/share/print, the peek card, the details
                        form and the panel all live here. Its header explains
                        the performance rules it is built around — read them
@@ -1042,21 +1054,43 @@ over the current one, so they never reset a size somebody chose. The view's
 `rosterChars()` — the export, the publish page, the night order — keeps the
 arranged `order`. Arrange mode forces display order back to the arranged one.
 
-### Shape, locks, Random and Fill
+### Shape, Random and Fill
 
 `meta.shape` is how many of each team the script is aiming for (`SBTools`:
 Standard 13/4/4/4, with Travellers, Teensyville, Big, none, or any numbers);
 the default is stored as nothing, exactly as `exportIds` is. The counts strip
 in the bar IS the Shape button and shows `have/want` per team (green at the
 target, dashed under, orange over); the roster headings show the same.
-`meta.locks` are the characters **Random** keeps and **Clear** leaves alone
-(the 🔒 on every row). Random draws to the shape from **whatever the panel is
+Random draws to the shape from **whatever the panel is
 showing** (`visibleSidebarChars()` reads the filter box's own DOM state);
 **Fill the gaps** adds only what is missing; the die on each team row in the
 Shape popover draws that one team again; **Swap** on the peek card replaces
 one character with another of its team in the same seat. `SBTools.fillPlan`
 / `randomPlan` are the pure versions, seedable for the test. Homebrew only,
 deliberately — official rows never carry `data-source="homebrew"`.
+
+There was a **lock** here — a padlock per row that Random and Clear kept —
+and it is gone. Nobody used it: the reader who wants to keep four characters
+filters the panel to them and draws the rest, or takes the one Random gave
+them back off. It cost a button on every row, a column in three layouts, a
+clause in every confirm and an argument to `randomPlan`. Do not put it back
+without asking; `meta.locks` on an old saved script is simply ignored.
+
+### The icons
+
+Every mark in the builder is an inline SVG from `assets/ui-icons.js`, drawn
+in **currentColor**. The page used to use emoji, and on a phone that is
+exactly the row of little coloured pictures the wiki's own furniture is not:
+an emoji is painted by the reader's font, so on the dark and paper tones it
+was the one thing that did not take the tone's ink. The static markup writes
+`<i class="sbi-i" data-icon="dice"></i>` and the module fills it; the
+generated markup calls `ico('dice')`, a one-line wrapper that returns nothing
+at all when the module is missing, so a failed load costs a button its
+picture and never its label. `.sbi` (the svg) and `.sbi-i` (the placeholder,
+`display: contents`, so the svg lands as a direct child of the button exactly
+as it does in the JS-built markup) are the whole of the CSS.
+**`flash()` therefore saves and restores `innerHTML`** — the old
+`textContent` version would have put a button's words back without its icon.
 
 ### Analyse
 
@@ -1164,7 +1198,8 @@ The tab is lazy like the night and jinx tabs (`analyseDirty`).
 
 ### Arrange, print, export options
 
-- **Arrange** (View → Arrange by hand): every row gets a grip and ▲▼; moves
+- **Arrange** (View → Arrange by hand): every row gets a grip and two
+  arrows; moves
   stay inside a team and write straight into `order` (`setTeamOrder`), which
   is what the export and the published page read. Drag with a mouse anywhere
   on the row, on a phone from the grip, the same lifted-row-plus-placeholder
@@ -3607,6 +3642,14 @@ seeded with whole collections whose characters all arrived unowned.
   into steven-approved-order.html. More-specific prefixes ("Each night*") must
   come before less-specific ("Each night") in the array — do not reorder.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Interface marks are SVG, never emoji.** `assets/ui-icons.js` is the set;
+  it draws in `currentColor`, so an icon is the colour of the text around it
+  on every background the wiki has. A page that needs one loads that file and
+  writes `<i class="sbi-i" data-icon="download"></i>`, or asks
+  `UIIcons.svg('download')` for the markup. The Worker's SSR renderers have
+  no global to reach, so they carry the same shape inline. This is about the
+  furniture only: the creator symbols in `creators.js` and the credit marks
+  inside character names are content (gotcha 7).
 - **Every string a user typed needs a wrap rule.** A bare URL is one
   unbreakable token, and the default `overflow-wrap: normal` will not break it
   — so it runs past its panel, past the viewport, and widens the whole

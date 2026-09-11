@@ -44,11 +44,12 @@ ok(!plan.add.includes('townsfolk0'), 'fill never adds a character already on the
 eq(Object.keys(plan.short).length, 0, 'a big enough pool leaves nothing short');
 const shortPlan = T.fillPlan(pool.filter(c => c.team !== 'demon'), [], T.DEFAULT_SHAPE, rng);
 eq(shortPlan.short, { demon: 4 }, 'a pool without demons reports the shortfall');
-const rp = T.randomPlan(pool, [mk('demon3', 'demon'), mk('minion1', 'minion')], T.DEFAULT_SHAPE, ['demon3'], rng);
-ok(rp.slugs[0] === 'demon3' && rp.kept === 1, 'random keeps the locked character first');
-ok(!rp.slugs.includes('minion1') || rp.slugs.filter(s => s === 'minion1').length <= 1, 'the unlocked one may go');
+const rp = T.randomPlan(pool, T.DEFAULT_SHAPE, rng);
 eq(rp.slugs.length, 25, 'random draws to the shape');
 eq(new Set(rp.slugs).size, 25, 'no duplicates in a random draw');
+eq(Object.keys(rp.short).length, 0, 'a big enough pool leaves a random draw nothing short');
+const rpShort = T.randomPlan(pool.filter(c => c.team !== 'demon'), T.DEFAULT_SHAPE, rng);
+eq(rpShort.short, { demon: 4 }, 'a pool without demons reports the shortfall');
 // deterministic under the same seed
 seed = 7; const a1 = T.fillPlan(pool, [], T.DEFAULT_SHAPE, rng).add;
 seed = 7; const a2 = T.fillPlan(pool, [], T.DEFAULT_SHAPE, rng).add;

@@ -77,6 +77,10 @@
 
   // ── tiny helpers ───────────────────────────────────────────────────────
   function $(id) { return document.getElementById(id); }
+  /* Every mark on this page is an inline SVG from assets/ui-icons.js, drawn
+     in currentColor so it takes the tone's own ink — see that file's header.
+     A missing icon set costs a button its picture, never its label. */
+  function ico(name, opts) { return window.UIIcons ? window.UIIcons.svg(name, opts) : ''; }
   function esc(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;')
       .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -200,11 +204,10 @@
     paintRoster();
   }
 
-  // ── the script's shape and its locks (script-builder-tools.js) ──────────
-  /* `shape` is how many of each team the script is aiming for; the default
-     (13 / 4 / 4 / 4) is stored as nothing. `locks` are the characters
-     Random keeps and Clear leaves alone. Both live on the meta, so they
-     travel with the script into My Scripts and a share link. */
+  // ── the script's shape (script-builder-tools.js) ────────────────────────
+  /* How many of each team the script is aiming for; the default
+     (13 / 4 / 4 / 4) is stored as nothing. It lives on the meta, so it
+     travels with the script into My Scripts and a share link. */
   function shape() {
     return window.SBTools ? window.SBTools.shapeOf(getMeta()) : null;
   }
@@ -233,22 +236,6 @@
       if (Object.keys(n).length) m.charNotes = n; else delete m.charNotes;
     }, 'typed');
     paintRoster();
-  }
-  function locks() {
-    var m = getMeta();
-    return Array.isArray(m.locks) ? m.locks.filter(function (x) { return sel[x]; }) : [];
-  }
-  function isLocked(slug) { return locks().indexOf(slug) !== -1; }
-  function toggleLock(slug) {
-    if (!sel[slug]) return;
-    patchMeta(function (m) {
-      var L = Array.isArray(m.locks) ? m.locks.slice() : [];
-      var i = L.indexOf(slug);
-      if (i === -1) L.push(slug); else L.splice(i, 1);
-      if (L.length) m.locks = L; else delete m.locks;
-    }, '', (isLocked(slug) ? 'unlock ' : 'lock ') + (bySlug[slug] ? bySlug[slug].name : ''));
-    paintRoster();
-    toast(isLocked(slug) ? bySlug[slug].name + ' is locked: Random keeps it.' : bySlug[slug].name + ' unlocked.');
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -316,29 +303,21 @@
     order[i === -1 ? order.length : i] = pick.slug;
     delete sel[slug];
     sel[pick.slug] = 1;
-    // the lock, if any, moves with the seat
-    var m = getMeta();
-    if (Array.isArray(m.locks) && m.locks.indexOf(slug) !== -1) {
-      m.locks = m.locks.map(function (x) { return x === slug ? pick.slug : x; });
-      setMeta(m);
-    }
     commitOrder();
     paintRow(slug);
     paintRow(pick.slug);
     afterChange();
     toast('Swapped ' + c.name + ' for ' + pick.name + '.');
   }
-  /* Draw one team again: its unlocked characters go and the seats are
-     refilled to the shape (or to the same number, for a team with no
-     target), from what the panel is showing. */
+  /* Draw one team again: it goes and the seats are refilled to the shape
+     (or to the same number, for a team with no target), from what the panel
+     is showing. */
   function rerollTeam(team) {
     var T = window.SBTools;
     if (!T) return;
     var sh = shape();
     var cur = T.countTeams(rosterChars());
-    var L = {};
-    locks().forEach(function (x) { L[x] = 1; });
-    var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team || L[s]; });
+    var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team; });
     var only = {};
     TEAMS.forEach(function (t) { only[t[0]] = t[0] === team ? (sh[team] || cur[team]) : 0; });
     var kept = keep.map(function (s) { return bySlug[s]; }).filter(Boolean);
@@ -475,13 +454,13 @@
         '<input type="number" min="0" max="99" inputmode="numeric" value="' + w + '" data-team="' + esc(t[0]) + '" aria-label="' + esc(t[1]) + ' target">' +
         '<span class="sbx-shape-bar"><span class="' + (w && h > w ? 'over' : (w && h === w ? 'ok' : '')) + '" style="width:' + pct + '%"></span></span>' +
         '<span class="sbx-shape-have">' + h + ' on it</span>' +
-        '<button type="button" class="sbx-shape-die" data-reroll="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again (locked ones stay)" aria-label="Draw the ' + esc(t[1]) + ' again"' +
-          (!h && !w ? ' disabled' : '') + '>&#9860;</button>' +
+        '<button type="button" class="sbx-shape-die" data-reroll="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again" aria-label="Draw the ' + esc(t[1]) + ' again"' +
+          (!h && !w ? ' disabled' : '') + '>' + ico('dice') + '</button>' +
       '</div>';
     }).join('') + '</div>';
     html += '<div class="sbx-view-foot">' +
-      '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape and keeps the locked characters. Fill only adds what is missing, from whatever the panel is showing.</span>' +
-      '<button type="button" class="sbx-b-sm" id="sbx-fill">&#9860; Fill the gaps</button>' +
+      '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape. Fill only adds what is missing, from whatever the panel is showing.</span>' +
+      '<button type="button" class="sbx-b-sm" id="sbx-fill">' + ico('dice') + ' Fill the gaps</button>' +
       '</div>';
     host.innerHTML = html;
   }
@@ -525,7 +504,6 @@
     return arr;
   }
 
-  var lockSet = {};   // the locks, as a set, for the length of one paintRoster()
   var noteMap = {};   // the script's own notes, likewise
 
   /* slug -> the names it is jinxed with on this script, for the row marks. */
@@ -555,41 +533,36 @@
       if (Number(c.otherNight) > 0) marks += '<span class="sbx-ch-n" title="Acts on other nights">O</span>';
     }
     if (jinxedWith && jinxedWith.length) {
-      marks += '<span class="sbx-ch-jx" title="Jinxed with ' + esc(jinxedWith.join(', ')) + '">&#9903;' + jinxedWith.length + '</span>';
+      marks += '<span class="sbx-ch-jx" title="Jinxed with ' + esc(jinxedWith.join(', ')) + '">' + ico('jinx') + jinxedWith.length + '</span>';
     }
-    var locked = lockSet[c.slug] === 1;
     var note = (v.showNotes !== false && noteMap[c.slug]) ? '<span class="sbx-ch-note">' + esc(noteMap[c.slug]) + '</span>' : '';
     // Name and ability are ONE paragraph, the way the character sheet
     // prints them — not a name stacked over its ability in a box.
     var arrange = v.arrange
-      ? '<span class="sbx-ch-grip" title="Drag to move" aria-hidden="true">&#10303;</span>'
+      ? '<span class="sbx-ch-grip" title="Drag to move" aria-hidden="true">' + ico('grip') + '</span>'
       : '';
     var moves = v.arrange
       ? '<span class="sbx-ch-moves">' +
           '<button type="button" data-move="up" data-slug="' + esc(c.slug) + '"' + (pos === 0 ? ' disabled' : '') +
-            ' aria-label="Move ' + esc(c.name) + ' earlier">&#9650;</button>' +
+            ' aria-label="Move ' + esc(c.name) + ' earlier">' + ico('up') + '</button>' +
           '<button type="button" data-move="down" data-slug="' + esc(c.slug) + '"' + (pos === len - 1 ? ' disabled' : '') +
-            ' aria-label="Move ' + esc(c.name) + ' later">&#9660;</button>' +
+            ' aria-label="Move ' + esc(c.name) + ' later">' + ico('down') + '</button>' +
         '</span>'
       : '';
-    return '<div class="sbx-ch' + (locked ? ' locked' : '') + '" data-slug="' + esc(c.slug) + '">' + arrange +
+    return '<div class="sbx-ch" data-slug="' + esc(c.slug) + '">' + arrange +
       '<img class="sbx-ch-img" loading="lazy" decoding="async" src="' +
         esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
       '<p class="sbx-ch-txt">' +
         '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
           (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
           esc(c.name) + '</a>' +
-        (c.official ? '<span class="sbx-off">official &#8599;</span> ' : '') +
+        (c.official ? '<span class="sbx-off">official' + ico('external') + '</span> ' : '') +
         marks +
         '<span class="sbx-ch-ab">' + esc(c.ability || '') + '</span>' +
         (meta ? '<span class="sbx-ch-meta">' + meta + '</span>' : '') + note +
       '</p>' + moves +
-      '<button type="button" class="sbx-ch-lock' + (locked ? ' on' : '') + '" data-slug="' + esc(c.slug) +
-        '" aria-pressed="' + (locked ? 'true' : 'false') + '" title="' +
-        (locked ? 'Locked: Random and Clear keep this character' : 'Lock: keep this character when the script is randomised') +
-        '" aria-label="' + (locked ? 'Unlock ' : 'Lock ') + esc(c.name) + '">' + (locked ? '&#128274;' : '&#128275;') + '</button>' +
       '<button type="button" class="sbx-ch-x" data-slug="' + esc(c.slug) +
-        '" aria-label="Remove ' + esc(c.name) + '">&#10005;</button>' +
+        '" aria-label="Remove ' + esc(c.name) + '">' + ico('close') + '</button>' +
     '</div>';
   }
 
@@ -603,16 +576,14 @@
         '<p>Pick characters from the panel' + (window.innerWidth <= 900 ? '' : (view && view.side === 'right' ? ' on the right' : ' on the left')) +
           ', draw a script at random, or start from one published on the wiki.</p>' +
         '<div class="sbx-empty-acts">' +
-          '<button type="button" class="sbx-b" data-empty="panel">&#9776; Open the panel</button>' +
-          '<button type="button" class="sbx-b" data-empty="random">&#9860; Random script</button>' +
-          '<button type="button" class="sbx-b" data-empty="wiki">&#128214; Start from a wiki script</button>' +
+          '<button type="button" class="sbx-b" data-empty="panel">' + ico('menu') + ' Open the panel</button>' +
+          '<button type="button" class="sbx-b" data-empty="random">' + ico('dice') + ' Random script</button>' +
+          '<button type="button" class="sbx-b" data-empty="wiki">' + ico('book') + ' Start from a wiki script</button>' +
         '</div></div>';
       return;
     }
     var jx = jinxMarks();
     var sh = shape();
-    lockSet = {};
-    locks().forEach(function (x) { lockSet[x] = 1; });
     noteMap = charNotes();
     var html = '';
     TEAMS.forEach(function (t) {
@@ -623,14 +594,14 @@
       var tools = '<span class="sbx-team-tools">' +
         '<button type="button" data-team-act="sao" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' into Steven Approved Order">SAO</button>' +
         '<button type="button" data-team-act="az" data-team="' + esc(t[0]) + '" title="Arrange the ' + esc(t[1]) + ' A to Z">A&ndash;Z</button>' +
-        '<button type="button" data-team-act="reroll" data-team="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again (locked ones stay)">&#9860;</button>' +
-        '<button type="button" data-team-act="clear" data-team="' + esc(t[0]) + '" title="Take every ' + esc(t[1]) + ' off the script (locked ones stay)">&#10005;</button>' +
+        '<button type="button" data-team-act="reroll" data-team="' + esc(t[0]) + '" title="Draw the ' + esc(t[1]) + ' again">' + ico('dice') + '</button>' +
+        '<button type="button" data-team-act="clear" data-team="' + esc(t[0]) + '" title="Take every ' + esc(t[1]) + ' off the script">' + ico('close') + '</button>' +
         '</span>';
       var folded = !!(prefs.rosterFolded && prefs.rosterFolded[t[0]]);
       html += '<div class="sbx-team' + (folded ? ' folded' : '') + '" data-team="' + esc(t[0]) + '">' +
         (head ? '<h3 class="sbx-team-head"><span class="sbx-team-label" data-team-fold="' + esc(t[0]) + '" title="' +
           (folded ? 'Unfold' : 'Fold this team away') + '">' + esc(head) + ' <span' + (want && group.length > want ? ' class="over"' : '') +
-          '>(' + group.length + (want ? '/' + want : '') + ')</span>' + (folded ? ' <span class="sbx-team-foldmark">&#9656;</span>' : '') + '</span>' + tools + '</h3>' : '') +
+          '>(' + group.length + (want ? '/' + want : '') + ')</span>' + (folded ? ' <span class="sbx-team-foldmark">' + ico('right') + '</span>' : '') + '</span>' + tools + '</h3>' : '') +
         '<div class="sbx-sheet">';
       group.forEach(function (c, i) { html += rowHTML(c, jx[c.slug], i, group.length); });
       html += '</div></div>';
@@ -650,9 +621,7 @@
     var label = (window.SBTools && window.SBTools.TEAM_LABEL[team]) || team;
     if (act === 'reroll') { rerollTeam(team); return; }
     if (act === 'clear') {
-      var L = {};
-      locks().forEach(function (x) { L[x] = 1; });
-      var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team || L[s]; });
+      var keep = order.filter(function (s) { var c = bySlug[s]; return !c || c.team !== team; });
       if (keep.length === order.length) { toast('Nothing to take off.'); return; }
       if (!confirm('Take every ' + label + ' off this script?')) return;
       replaceOrder(keep, false, 'clear the ' + label);
@@ -874,11 +843,11 @@
           '<span class="sbx-add-txt"><span class="sbx-add-name">' + esc(c.name) + '</span>' +
             (!c.official && c.creator ? '<span class="sbx-add-by">by ' + esc(c.creator) + '</span>' : '') + '</span>' +
           (c.official ? '<span class="sbx-off">official</span>' : '') +
-          '<span class="sbx-add-tick" aria-hidden="true">&#10003;</span>' +
+          '<span class="sbx-add-tick" aria-hidden="true">' + ico('check') + '</span>' +
         '</button>' +
         (c.ability
           ? '<button type="button" class="sbx-add-chev" aria-label="Show the ability of ' +
-              esc(c.name) + '">&#9662;</button>'
+              esc(c.name) + '">' + ico('down') + '</button>'
           : '') +
       '</div>' +
       // The filter box reads SAO's sort key off this element, so a
@@ -960,8 +929,8 @@
           if (g.team) wrap.setAttribute('data-team', g.team[0]);
           wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
             ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
-            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from what this group is showing" aria-label="Add a random ' + esc(g.label) + '">&#9860;</button>' +
-            '<span class="sbx-add-fold" aria-hidden="true">&#9662;</span></h3>' +
+            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from what this group is showing" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
+            '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
             '<div class="sbx-add-rows"></div>';
           list.appendChild(wrap);
           g.rowsEl = wrap.lastChild;
@@ -1168,7 +1137,7 @@
   function copyPlain(text, btn, what) {
     if (!text) { toast('Nothing to copy: ' + what + '.'); return; }
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
+      navigator.clipboard.writeText(text).then(function () { flash(btn, 'Copied'); },
         function () { window.prompt('Copy:', text); });
     } else { window.prompt('Copy:', text); }
   }
@@ -1244,7 +1213,7 @@
         }).join('') + '</tr>';
       }).join('') + '</tbody></table>' +
       '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count move the first two columns on the night.</p>' +
-      '<p style="margin:8px 0 0"><button type="button" class="sbx-b-sm" data-open-bag data-pop-keep>&#127884; Pick tonight&rsquo;s bag</button></p>';
+      '<p style="margin:8px 0 0"><button type="button" class="sbx-b-sm" data-open-bag data-pop-keep>' + ico('bag') + ' Pick tonight&rsquo;s bag</button></p>';
     html += '</div>';
 
     // tags
@@ -1269,7 +1238,7 @@
           g.candidates.map(function (c) {
             return '<span class="sbx-an-cand"><img loading="lazy" decoding="async" src="' + esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
               '<span class="t"><strong>' + esc(c.name) + '</strong><small>' + esc(c.ability || '') + '</small></span>' +
-              '<button type="button" class="sbx-b-sm" data-add="' + esc(c.slug) + '">&#43; Add</button></span>';
+              '<button type="button" class="sbx-b-sm" data-add="' + esc(c.slug) + '">' + ico('plus') + ' Add</button></span>';
           }).join('') + '</div>';
       });
       html += '<p class="sbx-view-hint">Drawn at random from what the panel is showing; open the tab again for another few.</p></div>';
@@ -1283,7 +1252,7 @@
           '<img loading="lazy" decoding="async" src="' + esc(artOf(sg.to)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
           '<span class="t"><strong>' + esc(sg.to.name) + '</strong> with ' + esc(sg.from.name) +
           (sg.text ? '<small>' + esc(sg.text) + '</small>' : '') + '</span>' +
-          '<button type="button" class="sbx-b-sm" data-add="' + esc(sg.to.slug) + '">&#43; Add</button></div>';
+          '<button type="button" class="sbx-b-sm" data-add="' + esc(sg.to.slug) + '">' + ico('plus') + ' Add</button></div>';
       });
       html += '</div>';
     }
@@ -1562,7 +1531,7 @@
       html += '<div class="sbx-bag-team" data-team="' + esc(tm[0]) + '"><div class="sbx-bag-head">' +
         '<span class="sbx-shape-label">' + esc(tm[1]) + '</span>' +
         '<span class="sbx-bag-count ' + cls + '">' + have + (counted ? ' of ' + want : ' (optional)') + '</span>' +
-        (counted ? '<button type="button" class="sbx-shape-die" data-bag-draw="' + esc(tm[0]) + '" title="Draw the ' + esc(tm[1]) + ' at random">&#9860;</button>' : '') +
+        (counted ? '<button type="button" class="sbx-shape-die" data-bag-draw="' + esc(tm[0]) + '" title="Draw the ' + esc(tm[1]) + ' at random">' + ico('dice') + '</button>' : '') +
         '</div><div class="sbx-bag-list">' +
         group.map(function (c) {
           return '<label><input type="checkbox" data-bag-pick="' + esc(c.slug) + '"' + (b.picks[c.slug] ? ' checked' : '') + '>' +
@@ -1571,10 +1540,10 @@
     });
     var picked = chars.filter(function (c) { return b.picks[c.slug]; });
     html += '<div class="sbx-bag-foot">' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="draw">&#9860; Draw the whole bag</button>' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="bluffs"' + (picked.length ? '' : ' disabled') + ' title="Three good characters not in the bag, for the Demon">&#9860; Bluffs</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="draw">' + ico('dice') + ' Draw the whole bag</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="bluffs"' + (picked.length ? '' : ' disabled') + ' title="Three good characters not in the bag, for the Demon">' + ico('dice') + ' Bluffs</button>' +
       '<button type="button" class="sbx-b-sm" data-bag-act="clear"' + (picked.length ? '' : ' disabled') + '>Clear</button>' +
-      '<button type="button" class="sbx-b-sm" data-bag-act="copy"' + (picked.length ? '' : ' disabled') + '>&#10697; Copy the list</button>' +
+      '<button type="button" class="sbx-b-sm" data-bag-act="copy"' + (picked.length ? '' : ' disabled') + '>' + ico('copy') + ' Copy the list</button>' +
       '</div>';
     if (picked.length) html += '<div class="sbx-bag-out">' + esc(bagText()) + '</div>';
     host.innerHTML = html;
@@ -1645,7 +1614,7 @@
     if (!cardReady) { withCards(function () { copyText(btn); }); return; }
     var text = buildText();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
+      navigator.clipboard.writeText(text).then(function () { flash(btn, 'Copied'); },
         function () { window.prompt('Copy the script:', text); });
     } else { window.prompt('Copy the script:', text); }
   }
@@ -1736,7 +1705,7 @@
     if (jx.length) facts.push('<b>Jinxed with:</b> ' + esc(jx.join(', ')));
     var cls = (!c.official && window.isPartial && window.isPartial(c)) ? 'Partial page' : ((window.isCurata && window.isCurata(c)) ? 'Curata' : '');
     var isOn = !!sel[c.slug];
-    return '<button type="button" class="sbx-pop-x sbx-peek-close" data-peek-close aria-label="Close">&#10005;</button>' +
+    return '<button type="button" class="sbx-pop-x sbx-peek-close" data-peek-close aria-label="Close">' + ico('close') + '</button>' +
       '<div class="sbx-peek-top">' +
         '<img class="sbx-peek-img" src="' + esc(artFull(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
         '<div style="min-width:0;flex:1">' +
@@ -1752,10 +1721,10 @@
       '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
       (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script — a bluff to suggest, a ruling, a reminder for you.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
       '<div class="sbx-peek-acts">' +
-        '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? '&#10005; Remove from script' : '&#43; Add to script') + '</button>' +
-        (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">&#9860; Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
-        '<button type="button" class="sbx-b-sm" data-peek-pin="' + esc(c.slug) + '">' + (isPinned(c.slug) ? '&#9733; Unpin' : '&#9734; Pin to the panel') + '</button>' +
-        (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page &#8599;</a>' : '') +
+        '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? ico('close') + ' Remove from script' : ico('plus') + ' Add to script') + '</button>' +
+        (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">' + ico('dice') + ' Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
+        '<button type="button" class="sbx-b-sm" data-peek-pin="' + esc(c.slug) + '">' + (isPinned(c.slug) ? ico('pin', { fill: true }) + ' Unpin' : ico('pin') + ' Pin to the panel') + '</button>' +
+        (c.page ? '<a href="' + esc(c.page) + '" target="_blank" rel="noopener">Open page' + ico('external') + '</a>' : '') +
       '</div>';
   }
   function showPeek(slug, x, y) {
@@ -1918,11 +1887,14 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
+  /* The buttons carry an SVG beside their label, so the "Copied" flash has
+     to put back the MARKUP it replaced — textContent would restore the words
+     and drop the icon for good. */
   function flash(btn, text) {
     if (!btn) return;
-    var was = btn.textContent;
-    btn.textContent = text;
-    setTimeout(function () { btn.textContent = was; }, 1500);
+    var was = btn.innerHTML;
+    btn.innerHTML = ico('check') + ' ' + esc(text);
+    setTimeout(function () { btn.innerHTML = was; }, 1500);
   }
   function notEmpty() {
     if (order.length) return true;
@@ -1936,7 +1908,7 @@
     if (!cardReady) { withCards(function () { doCopy(btn); }); return; }
     var text = exportText();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () { flash(btn, '✓ Copied'); },
+      navigator.clipboard.writeText(text).then(function () { flash(btn, 'Copied'); },
         function () { window.prompt('Copy the script JSON:', text); });
     } else { window.prompt('Copy the script JSON:', text); }
   }
@@ -1964,7 +1936,7 @@
     if (!notEmpty()) return;
     var link = SITE_ROOT + 'script?share=' + encodeShare();
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(link).then(function () { flash(btn, '✓ Link copied'); },
+      navigator.clipboard.writeText(link).then(function () { flash(btn, 'Link copied'); },
         function () { window.prompt('Copy this link:', link); });
     } else { window.prompt('Copy this link:', link); }
   }
@@ -2427,9 +2399,9 @@
           '<span class="sbx-lib-meta">' + esc(bits.join(' · ')) + '</span>' +
         '</button>' +
         '<span class="sbx-lib-acts">' +
-          '<button type="button" data-act="rename" title="Rename" aria-label="Rename">&#9998;</button>' +
-          '<button type="button" data-act="dup" title="Duplicate" aria-label="Duplicate">&#10697;</button>' +
-          '<button type="button" data-act="del" title="Delete" aria-label="Delete">&#128465;</button>' +
+          '<button type="button" data-act="rename" title="Rename" aria-label="Rename">' + ico('pencil') + '</button>' +
+          '<button type="button" data-act="dup" title="Duplicate" aria-label="Duplicate">' + ico('copy') + '</button>' +
+          '<button type="button" data-act="del" title="Delete" aria-label="Delete">' + ico('trash') + '</button>' +
         '</span></div>';
     }).join('');
   }
@@ -2485,7 +2457,7 @@
     var del = document.createElement('button');
     del.type = 'button';
     del.className = 'sbx-b-sm';
-    del.textContent = '✕';
+    del.innerHTML = ico('close');
     del.setAttribute('aria-label', 'Remove this rule');
     del.addEventListener('click', function () { row.parentNode.removeChild(row); saveBoot(); });
     input.addEventListener('input', saveBootSoon);
@@ -2688,8 +2660,6 @@
       }
       var x = e.target.closest('.sbx-ch-x');
       if (x) { removeSlug(x.getAttribute('data-slug')); return; }
-      var lk = e.target.closest('.sbx-ch-lock');
-      if (lk) { toggleLock(lk.getAttribute('data-slug')); return; }
       var mv = e.target.closest('button[data-move]');
       if (mv) moveInTeam(mv.getAttribute('data-slug'), mv.getAttribute('data-move'));
     });
@@ -3086,11 +3056,8 @@
     'new': function () { newScript(); },
     clear: function () {
       if (!order.length) return;
-      var L = locks();
-      if (!confirm('Remove every character from this script?' +
-        (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : '') +
-        '\n\nThe name and the details are kept.')) return;
-      replaceOrder(L, false, 'clear the script');
+      if (!confirm('Remove every character from this script?\n\nThe name and the details are kept.')) return;
+      replaceOrder([], false, 'clear the script');
     }
   };
 
@@ -3116,15 +3083,13 @@
      would swamp a random homebrew script. Add officials by hand. (Official
      rows never carry data-source="homebrew", so visibleSidebarChars()
      leaves them out whatever the Source chip says.) The draw goes to the
-     script's SHAPE and keeps its locked characters — see SBTools.randomPlan. */
+     script's SHAPE — see SBTools.randomPlan. */
   function randomize() {
     if (!allChars.length || !window.SBTools) return;
     var pool = visibleSidebarChars();
     if (!pool.length) { alert('No homebrew characters match your current filters.'); return; }
-    var L = locks();
-    if (order.length > L.length && !confirm('Replace this script with a random one?' +
-      (L.length ? '\n\nThe ' + L.length + ' locked character' + (L.length === 1 ? ' stays' : 's stay') + '.' : ''))) return;
-    var plan = window.SBTools.randomPlan(pool, rosterChars(), shape(), L);
+    if (order.length && !confirm('Replace this script with a random one?')) return;
+    var plan = window.SBTools.randomPlan(pool, shape());
     replaceOrder(plan.slugs, false, 'random script');
     var shortBits = Object.keys(plan.short).map(function (t) { return plan.short[t] + ' ' + window.SBTools.TEAM_LABEL[t]; });
     if (shortBits.length) toast('The panel is short of ' + shortBits.join(', ') + ' for this shape.', 3200);

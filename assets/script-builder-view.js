@@ -33,7 +33,7 @@
     density: 'comfortable', // compact | comfortable | roomy
     font: 'wiki',         // wiki | plain | print
     accent: true,         // team colours on the headings and rules
-    arrange: false,       // ▲▼ and drag on every row
+    arrange: false,       // a grip and the two arrows on every row
     tone: 'parchment',    // parchment | dark | paper
     rowStripe: false,     // a team-coloured edge on every row
     stickyHeads: true,    // team headings stay put while the roster scrolls
@@ -47,7 +47,7 @@
     showNotes: true,      // the script's own note under a character
     showOfficial: true,
     showCounts: true,
-    removeHover: false,   // the ✕ only on hover
+    removeHover: false,   // the remove button only on hover
     side: 'left',         // left | right
     panelIcon: 26,        // px
     panelCompact: false,
@@ -87,7 +87,7 @@
     { group: 'Roster', key: 'accent', label: 'Team colours on the headings', type: 'check', repaint: '' },
     { group: 'Roster', key: 'rowStripe', label: 'Team colour stripe on each row', type: 'check', repaint: '' },
     { group: 'Roster', key: 'stickyHeads', label: 'Team headings stay in view', type: 'check', repaint: '' },
-    { group: 'Roster', key: 'arrange', label: 'Arrange by hand (▲▼ and drag)', type: 'check', repaint: 'roster' },
+    { group: 'Roster', key: 'arrange', label: 'Arrange by hand (drag, or the arrows)', type: 'check', repaint: 'roster' },
 
     { group: 'Size', key: 'icon', label: 'Icon size', type: 'range', min: 20, max: 96, step: 2, unit: 'px', repaint: '' },
     { group: 'Size', key: 'text', label: 'Text size', type: 'range', min: 75, max: 140, step: 5, unit: '%', repaint: '' },
@@ -283,7 +283,8 @@
         html += '</fieldset>';
       });
       html += '<div class="sbx-view-foot">' +
-        '<button type="button" class="sbx-b-sm" id="sbv-reset"' + (isDefault(v) ? ' disabled' : '') + '>&#8634; Back to the default look</button>' +
+        '<button type="button" class="sbx-b-sm" id="sbv-reset"' + (isDefault(v) ? ' disabled' : '') + '>' +
+          (window.UIIcons ? window.UIIcons.svg('reset') : '') + ' Back to the default look</button>' +
         '</div>';
       host.innerHTML = html;
     }
