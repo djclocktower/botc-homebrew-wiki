@@ -2999,6 +2999,16 @@ a:hover .curata-mark { opacity: .9; }
 .wiki-callout-example .wiki-callout-head { color: #7a5c18; }
 .wiki-callout-lore    { border-left-color: #5B1F21; background: rgba(91,31,33,.06); }
 
+/* The things beside a float that draw a line or a frame.
+   Only a block's LINE boxes shorten next to a float — its border box still
+   spans the whole container — so a heading's rule and a callout's frame were
+   drawn straight THROUGH the contents box (and through a floated figure)
+   while their text wrapped around it correctly. flow-root gives them a block
+   formatting context, which is not allowed to overlap a float, so the box now
+   stops where the text already did. An <hr> needs nothing: the HTML spec's own
+   rendering rules give it overflow:hidden, which establishes one for free. */
+.wiki-h1, .wiki-callout { display: flow-root; }
+
 /* Fact box in the side column */
 .wiki-infobox { margin: 0; }
 .wiki-info-img { display: block; width: 100%; height: auto; margin-bottom: 10px; border: 1px solid var(--parch-frame); }
