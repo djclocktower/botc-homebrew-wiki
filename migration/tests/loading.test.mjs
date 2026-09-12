@@ -260,6 +260,37 @@ test('data loader shares parsed public objects, keeps private requests separate,
   assert.equal(calls, 5);
 });
 
+test('the link root comes from our own stylesheet, never an extension-injected one', async () => {
+  const source = await read('assets/data.js');
+  const rootWith = (sheets, extra = {}) => {
+    const context = vm.createContext({ window: { ...extra }, URL,
+      location: { origin: 'https://botchomebrew.wiki' },
+      document: { baseURI: 'https://botchomebrew.wiki/',
+        querySelectorAll: () => sheets.map(href => ({ getAttribute: () => href })) } });
+    vm.runInContext(source, context);
+    return context.window.BotcData.root();
+  };
+  // The reported bug: an ad blocker injects its element-hiding stylesheet at
+  // document_start, so it is the FIRST link[rel=stylesheet] in the document.
+  // Taking that one made every nav link site.js builds point into the
+  // extension, and "My Account" opened the blocker's own filter list.
+  const blocker = 'chrome-extension://cfhdojbkjhnklbpkdaibdccddilifddb/assets/elemhide.css';
+  assert.equal(rootWith([blocker, 'assets/styles.css']), '');
+  assert.equal(rootWith([blocker, '/assets/immutable/styles.ef868994.css']), '/');
+  assert.equal(rootWith(['moz-extension://abc/assets/hide.css', '../../assets/styles.css']), '../../');
+  assert.equal(rootWith(['https://cdn.example.com/assets/x.css', '../assets/styles.css']), '../');
+  // A stated root always wins, and is no longer lost when our stylesheet is
+  // missing — that used to silently fall back to '' on a nested SSR page.
+  assert.equal(rootWith([blocker], { LINK_ROOT: '../../' }), '../../');
+  assert.equal(rootWith([], { LINK_ROOT: '../' }), '../');
+  assert.equal(rootWith([]), '');
+  // Whatever the document holds, a root must stay a path on this site.
+  for (const sheets of [[blocker], [blocker, 'assets/styles.css'], ['blob:https://botchomebrew.wiki/assets/x'], []]) {
+    const href = new URL(rootWith(sheets) + 'account', 'https://botchomebrew.wiki/c/odyssey/witcher');
+    assert.equal(href.origin, 'https://botchomebrew.wiki');
+  }
+});
+
 test('card batches stop below the viewport, support section jumps, and cancel stale callbacks', async () => {
   let intersect; const observed = new Set(), frames = [];
   const grids = new Map(['first', 'second'].map(name => [name, { cards: '', insertAdjacentHTML(_, html) { this.cards += html; }, insertAdjacentElement(_, button) { this.button = button; } }]));
