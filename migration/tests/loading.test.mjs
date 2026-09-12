@@ -331,3 +331,45 @@ test('comments wait for proximity or intent; comment anchors and failed-load ret
   fallback.setFail(true); fallback.handlers.click(); await flush(); assert.match(fallback.button.textContent, /retry/);
   fallback.setFail(false); fallback.handlers.click(); await flush(); assert.ok(fallback.loaded.includes('comments.js'));
 });
+
+/* Assigning a collection hands over its character pages (waterfallOwner), and
+   it does that in chunks because D1 caps a statement at 100 bound parameters
+   and errors above it. The chunk is not the only thing bound — the new owner
+   and every admin id are too — so a chunk of a full 100 slugs overran the cap,
+   threw, and was swallowed by the loop's catch: a 152-character collection
+   assigned the 52 in its short second chunk and reported success. */
+test('assigning a collection claims every character page, within D1 bound-parameter limits', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f);
+  f.db.prepare('UPDATE users SET is_admin=1 WHERE id=1').run();
+  const SIZE = 152;
+  for (let i = 0; i < SIZE; i++) f.insert('characters', 'spud-' + i, {
+    slug: 'spud-' + i, name: 'Spud ' + i, team: 'townsfolk', appearsIn: 'The Potato Patch'
+  });
+  // The roster scan reads the indexed column, which the fixture's insert does
+  // not fill; membership here is matched, exactly as the live collection's is.
+  f.db.prepare("UPDATE characters SET appears_in='The Potato Patch'").run();
+  f.insert('collections', 'the-potato-patch', {
+    id: 'the-potato-patch', displayName: 'The Potato Patch', match: ['thepotatopatch']
+  });
+  // One page already belongs to another member: it must be left alone and
+  // reported, not claimed, whichever chunk it falls in.
+  f.db.prepare("UPDATE characters SET owner_id=3 WHERE slug='spud-120'").run();
+  const before = f.calls.length;
+  const response = await f.request('/api/admin/assign-owner', {
+    method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'collection', slug: 'the-potato-patch', username: 'user-2' })
+  });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.characters, SIZE - 1);
+  assert.equal(body.charactersHeld, 1);
+  assert.equal(body.charactersFailed, 0);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM characters WHERE owner_id=2').get().n, SIZE - 1);
+  assert.equal(f.db.prepare("SELECT owner_id FROM characters WHERE slug='spud-120'").get().owner_id, 3);
+  // node:sqlite allows thousands of variables, so the count is the assertion:
+  // nothing this route sends may exceed what D1 would accept.
+  const over = f.calls.slice(before)
+    .filter(call => (call.sql.match(/\?/g) || []).length > 100);
+  assert.deepEqual(over.map(call => call.sql.replace(/\s+/g, ' ').slice(0, 60)), []);
+});

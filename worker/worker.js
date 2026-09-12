@@ -2589,6 +2589,17 @@ async function waterfallEditor(env, sess, charRow) {
    assigned wrongly. */
 const OWNER_WATERFALL_MAX = 1000;
 
+/* D1 caps a statement at 100 bound parameters and ERRORS above it ("too many
+   SQL variables") rather than degrading, so the slug chunks below cannot have
+   the whole budget to themselves: each statement also binds the new owner and
+   every admin id. Chunking at a flat 100 put both queries at 102 variables on
+   a one-admin wiki, so every full chunk threw and the catch swallowed it — a
+   152-character collection claimed only the 52 in its short second chunk and
+   left the first hundred unowned, with a success message and no error
+   anywhere. Everything else in this file that chunks an IN (...) binds nothing
+   beside the chunk and uses a flat 90; this one works out what is left. */
+const D1_MAX_BINDS = 100;
+
 /* The characters a script or collection holds. A script says so outright (an
    `off-` slug is an official character and has no page here); a collection is
    resolved by the one membership rule rather than a second copy of it. */
@@ -2632,10 +2643,11 @@ async function adminUserIds(env, cache) {
   return ids;
 }
 
-/* Returns {claimed, held}: how many characters this assignment picked up, and
-   how many were left with the members who own them. */
+/* Returns {claimed, held, failed}: how many characters this assignment picked
+   up, how many were left with the members who own them, and how many it could
+   not read or write at all. */
 async function waterfallOwner(env, sess, type, row, ownerId, cache) {
-  const out = { claimed: 0, held: 0 };
+  const out = { claimed: 0, held: 0, failed: 0 };
   if (ownerId == null) return out;
   if (type !== 'script' && type !== 'collection') return out;
   const slugs = [...new Set(await rosterCharacterSlugs(env, type, row, cache))].slice(0, OWNER_WATERFALL_MAX);
@@ -2645,8 +2657,15 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
   // the claim falls back to unowned-only — the safe half of the rule.
   const admins = await adminUserIds(env, cache);
   const adminQ = admins.length ? admins.map(() => '?').join(',') : '';
-  for (let i = 0; i < slugs.length; i += 100) {
-    const chunk = slugs.slice(i, i + 100);
+  // Both statements below bind the new owner and every admin id beside the
+  // chunk, so the chunk gets what those leave of the budget — named here so a
+  // third bind cannot be added without this line being wrong in an obvious
+  // way. Never below one, or an implausible number of admin accounts would
+  // leave the loop stepping over an empty chunk forever.
+  const extraBinds = 1 + admins.length;
+  const per = Math.max(1, D1_MAX_BINDS - extraBinds);
+  for (let i = 0; i < slugs.length; i += per) {
+    const chunk = slugs.slice(i, i + per);
     const q = chunk.map(() => '?').join(',');
     try {
       // Counted BEFORE the update, or the ones just claimed would count as
@@ -2666,7 +2685,16 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
            AND (owner_id IS NULL` + (adminQ ? ` OR owner_id IN (${adminQ})` : '') + `)`
       ).bind(ownerId, ...chunk, ...admins).run();
       out.claimed += (res && res.meta && res.meta.changes) || 0;
-    } catch { /* one bad chunk must not lose the assignment itself */ }
+    } catch (err) {
+      /* One bad chunk must not lose the assignment itself — but it must not be
+         invisible either. This catch hid the bind-limit bug above for as long
+         as it existed: the pages simply did not move, and the dashboard said
+         the assignment had worked. The count goes back with the response so
+         the caller can say some were missed. */
+      out.failed += chunk.length;
+      console.log('waterfallOwner: chunk failed on ' + type + ' ' + (row && row.slug) +
+        ': ' + ((err && err.message) || err));
+    }
   }
   if (out.claimed) {
     await logActivity(env, sess, 'assign-owner', 'character', null,
@@ -10420,7 +10448,8 @@ export default {
         const spread = await waterfallOwner(env, sess, type, row, ownerId);
         return jsonResponse({
           ok: true, slug: row.slug, owner: uname || null,
-          characters: spread.claimed, charactersHeld: spread.held
+          characters: spread.claimed, charactersHeld: spread.held,
+          charactersFailed: spread.failed
         });
       }
 
@@ -12052,7 +12081,7 @@ export default {
           const u = await env.DB.prepare('SELECT username FROM users WHERE id=?').bind(sess.userId).first();
           adminName = u ? u.username : null;
         } catch { /* non-fatal */ }
-        let done = 0, claimed = 0, held = 0;
+        let done = 0, claimed = 0, held = 0, charFailed = 0;
         // One read of the character table for the whole batch (see
         // rosterCharacterSlugs), however many collections it assigns.
         const rosterCache = {};
@@ -12096,6 +12125,7 @@ export default {
                 const spread = await waterfallOwner(env, sess, type, row, ownerId, rosterCache);
                 claimed += spread.claimed;
                 held += spread.held;
+                charFailed += spread.failed;
               }
             } else if (action === 'curata' || action === 'uncurata') {
               const on = action === 'curata';
@@ -12127,7 +12157,7 @@ export default {
           } catch { failed.push(slug); }
         }
         await logActivity(env, sess, 'bulk-' + action, type, null, done + ' page' + (done === 1 ? '' : 's'));
-        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held });
+        return jsonResponse({ ok: true, done, failed, characters: claimed, charactersHeld: held, charactersFailed: charFailed });
       }
 
       return jsonResponse({ error: 'Unknown endpoint' }, { status: 404 });

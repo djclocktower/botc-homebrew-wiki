@@ -2952,6 +2952,10 @@
       var bits = [];
       if (res.characters) bits.push('+' + res.characters + ' character page' + (res.characters === 1 ? '' : 's'));
       if (res.charactersHeld) bits.push(res.charactersHeld + ' left with their owners');
+      /* Pages the waterfall could not move at all. Never normally anything, and
+         the whole point of printing it: when this silently counted nothing, an
+         assignment that moved a third of a collection still read as a success. */
+      if (res.charactersFailed) bits.push(res.charactersFailed + ' could not be assigned \u2014 run it again');
       return bits.length ? ' (' + bits.join(', ') + ')' : '';
     }
 

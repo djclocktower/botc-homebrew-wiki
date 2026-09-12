@@ -31,8 +31,13 @@ export async function fixture() {
           async execute(kind) {
             calls.push({ sql, kind });
             const native = db.prepare(sql);
+            // A write reports through `meta` on D1, which is what the Worker
+            // reads to count the rows an UPDATE actually touched; node:sqlite
+            // returns the counts bare, so both shapes are handed back.
+            const written = kind === 'run' ? native.run(...this.values) : null;
             const value = kind === 'all' ? { results: native.all(...this.values) }
-              : kind === 'first' ? native.get(...this.values) || null : native.run(...this.values);
+              : kind === 'first' ? native.get(...this.values) || null
+              : { ...written, meta: { changes: Number(written.changes) || 0 } };
             return state.intercept ? state.intercept({ sql, kind, value }) : value;
           },
           all() { return this.execute('all'); },
