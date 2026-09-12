@@ -2825,9 +2825,20 @@ seeded with whole collections whose characters all arrived unowned.
   second copy of the membership rule. Deleted pages are skipped, drafts are
   not — a draft still belongs to the set. Capped at `OWNER_WATERFALL_MAX`
   (1000) and re-runnable, since it only ever looks for unowned pages.
-- Both responses carry `characters` and `charactersHeld`, and the dashboard
-  prints them ("+112 character pages, 3 left with their owners"). The count is
-  the only way to see it happened.
+- **The slug chunks are sized against D1's 100-bound-parameter cap, which is
+  shared with the new owner and every admin id** (`D1_MAX_BINDS`, `extraBinds`).
+  D1 ERRORS above that cap rather than degrading, and both statements bind the
+  chunk *plus* those, so a flat chunk of 100 was 102 variables: every full
+  chunk threw, the loop's catch swallowed it, and The Potato Patch's 152
+  characters assigned the 52 in the short second chunk and reported success.
+  Anything else here that chunks an `IN (...)` binds nothing beside the chunk
+  and uses a flat 90.
+- Both responses carry `characters`, `charactersHeld` and `charactersFailed`,
+  and the dashboard prints them ("+112 character pages, 3 left with their
+  owners"). The count is the only way to see it happened — and `failed` exists
+  because the silent catch above is what hid that bug for as long as it lived:
+  a chunk that cannot be written is now counted, logged and reported instead of
+  reading as a clean success.
 
 ## Frontend conventions
 
