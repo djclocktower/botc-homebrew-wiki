@@ -25,11 +25,7 @@
   if (ackedVersion() === version) return;
 
   // ROOT mirrors site.js: '' on root pages, '../' on server-rendered pages.
-  var ROOT = (function () {
-    var s = document.querySelector('link[rel="stylesheet"]');
-    if (!s) return '';
-    return (window.LINK_ROOT != null) ? window.LINK_ROOT : s.getAttribute('href').split('assets/')[0];
-  })();
+  var ROOT = window.BotcData.root();
 
   function build() {
     var overlay = document.createElement('div');

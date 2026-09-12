@@ -296,11 +296,9 @@
    Root-aware: derives the path prefix from the stylesheet href so it works
    from the site root and from subdirectories like /c/. */
 (function () {
-  var ROOT = (function () {
-    var s = document.querySelector('link[rel="stylesheet"]');
-    if (!s) return '';
-    return (window.LINK_ROOT != null) ? window.LINK_ROOT : s.getAttribute('href').split('assets/')[0];
-  })();
+  // BotcData.root() is the single answer, and it deliberately ignores a
+  // stylesheet that is not ours — see the comment on it in data.js.
+  var ROOT = window.BotcData.root();
 
   function esc(s) {
     return String(s == null ? '' : s)

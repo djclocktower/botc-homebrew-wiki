@@ -151,7 +151,11 @@ _headers               Cache rules for static assets. Matching rules COMBINE
 assets/
   styles.css           Shared reading styles. editor.css is loaded by tool/editor
                        pages; comments.css is loaded with deferred comments.
-  data.js              Shared parsed public feeds and versioned asset loaders.
+  data.js              Shared parsed public feeds and versioned asset loaders,
+                       plus root() — the page's link prefix, and the single
+                       source of truth for it (see "Character identity vs
+                       address"). Never trust the first stylesheet in the
+                       document to be ours.
   reader.js            Gallery, title fitting, JSON toggle/copy. SSR readers load
                        this without the full rendering/export library.
   viewport.js          Bounded character-card batches on viewport approach.
@@ -1706,8 +1710,19 @@ serving the old addresses.
 - `pageShell({root})`: every path in the shell is relative. `/s/`, `/collection/`,
   `/news/` and `/p/` are one level deep and default to `../`; a nested character
   page passes `../../`, computed from the address depth. `window.LINK_ROOT`
-  carries the same value, and `site.js` derives its own `ROOT` from the
-  stylesheet href, so both follow automatically.
+  carries the same value, and `BotcData.root()` (data.js) is the one answer
+  every browser-side caller takes it from, so both follow automatically.
+  It reads `window.LINK_ROOT` **first**, then falls back to **our own**
+  stylesheet href — a link whose text before `assets/` is nothing but `./`
+  and `../` steps. Both halves are load-bearing and neither was there at
+  first: the old code took the FIRST `link[rel=stylesheet]` in the document,
+  and an **ad blocker injects its element-hiding stylesheet at
+  `document_start`**, so for those readers the first stylesheet was
+  `chrome-extension://...` — every nav link site.js builds (Tools, Create a
+  Character, My Account, Messages, search results) pointed into the
+  extension, and tapping "My Account" opened the blocker's own filter list
+  instead of the wiki. It also returned early when no stylesheet was found,
+  throwing `LINK_ROOT` away and resolving `account` against `/c/{set}/`.
 - `/api/slug-check` is about the **identity** (the PK and the art slot), not the
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still
