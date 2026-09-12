@@ -135,7 +135,7 @@
  *   GET  /u/{username}        -> creator page (serves profile.html)
  *   GET  /author?a={name}     -> same page; 302 to /u/{username} when the name
  *                                belongs to an account
- *   POST /api/admin/creator-alias -> admin: link a creator name to an account
+ *   POST /api/admin/creator-alias -> admin: link a creator name to an account, and hand it the name's unowned pages
  *   GET  /random              -> 302 to a random published character page
  *   GET  /sitemap.xml         -> built live from D1
  *   GET  /s/{slug}            -> script page (server-side rendered from D1)
@@ -2672,6 +2672,84 @@ async function waterfallOwner(env, sess, type, row, ownerId, cache) {
     await logActivity(env, sess, 'assign-owner', 'character', null,
       out.claimed + ' character page' + (out.claimed === 1 ? '' : 's') +
       ' with ' + type + ' ' + row.slug);
+  }
+  return out;
+}
+
+/* Linking a creator NAME to an account — the admin box on the creator page,
+   POST /api/admin/creator-alias — is the other door somebody is handed their
+   work through, and it used to do half the job: the alias made the profile
+   list the pages, and nothing gave the account the pages. The first creator
+   handed 95 characters that way opened every one of them as a guest (name
+   locked, ability locked, no Publish, her one draft invisible) while her
+   profile said they were hers, and the admin who had watched the profile
+   fill up had nothing to show that ownership was still nobody's.
+
+   So linking a name also claims the pages credited to it, on the rule
+   waterfallOwner uses: a page with no owner, or owned by an admin account
+   (the bulk import's leftovers), and never one an ordinary member owns — a
+   credit is not proof, and "Luis S, Pynstripe" on a page Luis maintains is
+   Luis's page. Those are counted (`held`) rather than moved. The match is
+   per credit segment (creditMatchSQL), so a co-credited page goes to the
+   first of its names to be linked and the second finds it held.
+
+   By credit, not by roster, on purpose: a collection credited to the name
+   comes across, but its members credited to somebody ELSE stay put, listed
+   on that creator's page until that name is linked in turn. (Assigning the
+   collection from the dashboard is the tool that moves a whole roster.)
+   Re-runnable: Link again on a name already linked picks up whatever is
+   still unowned, which is how a name linked before this existed is fixed.
+   Unlinking never moves a page. Returns per-type counts and `held`. */
+async function claimCreditedPages(env, sess, name, ownerId) {
+  const out = { characters: 0, scripts: 0, collections: 0, held: 0 };
+  const key = normCreator(name);
+  if (!key || ownerId == null) return out;
+  // The account being linked may itself be an admin: its own pages are
+  // neither claimable nor held.
+  const admins = (await adminUserIds(env)).filter(id => id !== Number(ownerId));
+  const adminQ = admins.length ? admins.map(() => '?').join(',') : '';
+  const claimable = `(owner_id IS NULL` + (adminQ ? ` OR owner_id IN (${adminQ})` : '') + `)`;
+  const heldBy = `owner_id IS NOT NULL AND owner_id != ?` +
+    (adminQ ? ` AND owner_id NOT IN (${adminQ})` : '');
+  for (const [table, col] of [['characters', 'creator'], ['scripts', 'author']]) {
+    try {
+      // Counted BEFORE the update, or the pages just claimed would count as
+      // somebody else's — same order as waterfallOwner.
+      const held = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM ${table}
+          WHERE ${creditMatchSQL(col)} AND status IS NOT 'deleted' AND ${heldBy}`
+      ).bind(key, ownerId, ...admins).first();
+      out.held += (held && held.n) || 0;
+      const res = await env.DB.prepare(
+        `UPDATE ${table} SET owner_id=?, updated_at=datetime('now')
+          WHERE ${creditMatchSQL(col)} AND status IS NOT 'deleted' AND ${claimable}`
+      ).bind(ownerId, key, ...admins).run();
+      out[table] += (res && res.meta && res.meta.changes) || 0;
+    } catch { /* one table must not lose the link itself */ }
+  }
+  // A collection's author lives in its JSON, not in a column, and there are
+  // a few dozen of them: read the table and decide in JS, as /api/user does.
+  try {
+    const { results } = await env.DB.prepare(
+      "SELECT slug, owner_id, data FROM collections WHERE status IS NOT 'deleted'"
+    ).all();
+    for (const r of results || []) {
+      if (!creditNames(parseData(r).author).includes(key)) continue;
+      const oid = r.owner_id == null ? null : Number(r.owner_id);
+      if (oid === Number(ownerId)) continue;
+      if (oid !== null && !admins.includes(oid)) { out.held++; continue; }
+      const res = await env.DB.prepare(
+        "UPDATE collections SET owner_id=?, updated_at=datetime('now') WHERE slug=?"
+      ).bind(ownerId, r.slug).run();
+      out.collections += (res && res.meta && res.meta.changes) || 0;
+    }
+  } catch { /* as above */ }
+  const total = out.characters + out.scripts + out.collections;
+  if (total) {
+    // 'assign-owner' is in FEED_CHANGING_ACTIONS: owner_id rides the feeds
+    // and every permission check, so the caches roll with it.
+    await logActivity(env, sess, 'assign-owner', 'creator', key,
+      total + ' page' + (total === 1 ? '' : 's') + ' credited to ' + name);
   }
   return out;
 }
@@ -10359,7 +10437,9 @@ export default {
       // as deliberately unlinked, {name, clear: true} to go back to deciding by
       // ownership. This is what covers bulk-imported pages, which have no owner
       // and so can never prove who made them. The control lives on the creator
-      // page itself, where you notice the problem.
+      // page itself, where you notice the problem. Linking also hands the
+      // account the name's unowned pages (claimCreditedPages); the other two
+      // branches move nothing.
       if (path === '/api/admin/creator-alias') {
         const b = await request.json().catch(() => ({}));
         const name = String(b.name || '').trim();
@@ -10384,7 +10464,10 @@ export default {
             'INSERT INTO settings (key, value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
           ).bind(key, u.username).run();
           await logActivity(env, sess, 'update', 'creator', name, u.username);
-          return jsonResponse({ ok: true, username: u.username });
+          // The pages go with the name — see claimCreditedPages. The counts
+          // come back so the creator page can say what actually moved.
+          const claimed = await claimCreditedPages(env, sess, name, u.id);
+          return jsonResponse({ ok: true, username: u.username, claimed });
         }
         // Empty value = "this name has no account", overruling any ownership match.
         await env.DB.prepare(
