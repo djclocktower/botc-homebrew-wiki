@@ -29,7 +29,11 @@
   'use strict';
 
   var TARGET = 591;   // output canvas, the official icon size
-  var FILL = 0.70;    // the standard: figure spans 70% of the frame
+  // The standard fill is OWNED by art-normalize.js (loaded first by both
+  // editors); the fallback only matters if that file failed to load. A
+  // copy that drifted would open the adjuster on a different answer from
+  // the one Resize gives, and the whole point is that it opens on that.
+  var FILL = global.ART_FILL || 0.60;
   var MIN_FILL = 15;  // slider range, in percent of the frame
   var MAX_FILL = 130;
 

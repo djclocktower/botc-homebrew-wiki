@@ -138,6 +138,7 @@
        for the special[] flags this page imports. -->
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
+  <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script>
   (function(){
@@ -359,6 +360,11 @@
     $('appears').addEventListener('input', drawJinxWarnings);
 
     // ── art helpers ──
+    // Only ever called for icons, so the copy comes back standardized
+    // (assets/art-normalize.js): an import's art is cropped however its
+    // author's tool cropped it, and the official script tool prints a
+    // tight crop half again the size of the character beside it. A copy
+    // the normalizer cannot handle ships as the plain 600px one.
     function loadImageToCanvas(src){
       return new Promise(function(resolve, reject){
         var img = new Image();
@@ -372,6 +378,9 @@
         };
         img.onerror = function(){ reject(new Error('load failed')); };
         img.src = src;
+      }).then(function(dataUrl){
+        if (typeof normalizeArtDataURL !== 'function') return dataUrl;
+        return normalizeArtDataURL(dataUrl).catch(function(){ return dataUrl; });
       });
     }
     function apiUpload(key, dataUrl){

@@ -291,7 +291,7 @@
         <div id="artStdWrap" style="display:none;margin-top:6px">
           <button type="button" class="btn btn-sm" id="artStd">&#9635; Resize icon</button>
           <button type="button" class="btn btn-sm" id="artAdjust">&#9998; Adjust by hand</button>
-          <div class="sub" style="margin-top:4px">Resize fits your art to the standard 591&times;591 frame. Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
+          <div class="sub" style="margin-top:4px">Your art is fitted to the standard 591&times;591 frame as it lands, so it prints at the same size as an official character in the script tool. Resize puts it back to that; Adjust opens the same frame so you can drag the art and set how much of the token it fills.</div>
         </div>
         <div class="sub" style="margin-top:6px">
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
@@ -849,12 +849,22 @@
         img.src = src;
       });
     }
+    /* Picked art lands already standardized — see create.html, the same
+       form: the figure trimmed and set to the official icons' size on the
+       591 frame (assets/art-normalize.js). The file AS PICKED is kept for
+       Adjust by hand; the plain copy stands in when the canvas can't be read. */
+    function standardizedCopy(src) {
+      return loadImageToCanvas(src, false).then(function(url){
+        if (typeof normalizeArtDataURL !== 'function') return url;
+        return normalizeArtDataURL(url).catch(function(){ return url; });
+      });
+    }
     $('art').addEventListener('change', function(e){
       var file = e.target.files[0]; if(!file) return;
       var reader = new FileReader();
       reader.onload = function(ev){
         artOriginal = ev.target.result;
-        loadImageToCanvas(ev.target.result, false).then(function(url){
+        standardizedCopy(ev.target.result).then(function(url){
           artDataURL = url; artChanged = true;
           var th=$('artthumb'); th.src=url; th.style.display='block';
           $('artStdWrap').style.display=''; update();
@@ -889,7 +899,7 @@
         var reader = new FileReader();
         reader.onload = function(ev){
           slot.setOrig(ev.target.result);
-          loadImageToCanvas(ev.target.result, false).then(function(url){
+          standardizedCopy(ev.target.result).then(function(url){
             slot.set(url);
             var th=$(id+'Thumb'); th.src=url; th.style.display='block';
             $(id+'StdWrap').style.display=''; $(id+'Clear').style.display='';

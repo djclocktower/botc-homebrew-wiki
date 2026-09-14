@@ -92,8 +92,10 @@
       <p class="norm-sub">
         Re-fits every published character's art onto the standard <strong>591&times;591</strong> frame:
         it trims the empty transparent space around each figure, then scales and centers it so every icon
-        appears at a consistent size — matching the official wiki. The original art is replaced with the
-        standardized version in storage; the site updates as soon as the run finishes.
+        appears at the size the official icons do &mdash; on the wiki, and in the official script tool,
+        which prints a script's icons at whatever size the file's own margin gives them. Art already on
+        the standard is skipped, so a re-run only touches what has changed. The original art is replaced
+        with the standardized version in storage; the site updates as soon as the run finishes.
       </p>
 
       <div class="warn">
@@ -178,9 +180,17 @@
 
     function processOne(job){
       if (job.skip) { logRow('skip', job.name, job.skip); return Promise.resolve('skip'); }
-      return normalizeArtDataURL(job.url)
-        .then(function(dataUrl){ return apiUpload(job.key, dataUrl); })
+      // ifNeeded: art already on the standard frame at the standard size
+      // comes back null and is left exactly as it is. Every pass resamples
+      // and every upload retires a thumbnail, so a re-run only touches what
+      // moved — a fresh upload, or a standard that changed.
+      return normalizeArtDataURL(job.url, { ifNeeded: true })
+        .then(function(dataUrl){
+          if (dataUrl === null) { logRow('skip', job.name, 'already standard'); return 'skip'; }
+          return apiUpload(job.key, dataUrl);
+        })
         .then(function(res){
+          if (res === 'skip') return res;
           if (res.status === 200 && res.body && res.body.ok) { logRow('ok', job.name); return 'ok'; }
           logRow('err', job.name, (res.body && res.body.error) || ('HTTP ' + res.status)); return 'err';
         })

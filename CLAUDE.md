@@ -396,10 +396,17 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
-  art-normalize.js     The "Resize icon" button: trims the transparent margin
-                       to find the figure and scales it to 70% of the 591×591
-                       frame. artTrimBox() (the trim on its own) is exported
-                       for art-adjust.js. Browser only (canvas).
+  art-normalize.js     The icon standard: trims the transparent margin to
+                       find the figure and scales it to ART_FILL (60%) of the
+                       591×591 frame — see "Icon size in the official script
+                       tool" for why 60 and not more. Runs on every art pick
+                       in create/edit and in mass-upload; the "Resize icon"
+                       button re-runs it. {ifNeeded:true} answers null for
+                       art already on the standard, which is what lets the
+                       bulk tool (/normalize-icons) be re-run cheaply.
+                       artTrimBox() (the trim on its own) is exported for
+                       art-adjust.js, which reads ART_FILL rather than
+                       keeping a copy. Browser only (canvas).
   art-adjust.js        "Adjust by hand": the same frame with the art in your
                        hands. Drag to move (pointer events, so mouse and touch
                        are one path), a slider or a pinch for how much of the
@@ -1572,6 +1579,46 @@ Things worth knowing before touching any of it:
   `art/vampire-good.png`, and a wrong path fails *silently* (the worker
   swallows the fetch error and the Python skips any payload whose file is
   missing).
+
+## Icon size in the official script tool
+
+A script exported from here prints its icons in the official script tool
+(script.bloodontheclocktower.com) **at the same box size as the tool's own
+icons**, contain-fit — its Typst print template and its on-screen preview
+both do that — so the transparent margin inside the file IS the icon's size.
+Nothing in the JSON can set it. Three things decided how big a wiki icon
+came out, and all three were pushing the same way:
+
+- **The tool scales every non-bundled image by 1.1×** in the PDF
+  (`(0.1 + iconScale)` in its `data.typ`; the "Custom Icon Size" slider in
+  its Export Options is that number, default 1). It is the tool's choice and
+  applies to homebrew art from anywhere; a reader who wants it exact sets
+  the slider to 0.9.
+- **The wiki's standard was 70% fill and the official icons are not.**
+  Measured by alpha bounding box, longest side over frame: the 191 official
+  icons in `assets/icons/` sit at median 0.63, the tool's own bundled icons
+  at 0.61. So even a standardized wiki icon printed ~25% larger than the
+  character beside it. `ART_FILL` in `art-normalize.js` is now **0.60**,
+  which lands on the tool's own size after its 1.1× and is inside the
+  official spread on the wiki's own pages (the Token Tool trims alpha itself
+  and is unaffected).
+- **Standardizing was opt-in, so a sixth of the live art never was.** A
+  live sample of 139 icons had 24 above 0.75 and 15 at 0.85+ — a figure
+  cropped to its ink, which then printed at half again the official size.
+  Both character editors and `mass-upload.html` now standardize art as it
+  lands (Adjust by hand still opens on the file as picked, so a deliberate
+  crop is one click away). `/bloodstar` is the exception: its server-side
+  copy never passes through a canvas, and Bloodstar's own icons are already
+  padded, so it is left alone.
+
+Existing art is fixed by running the admin page **`/normalize-icons`**
+("Standardize Icons") once after deploy: it now skips anything already on
+the standard (`{ifNeeded: true}`), so a re-run costs only the icons that
+moved. It writes through `/api/upload`, so the wiki must be unlocked and the
+thumbnails follow by themselves. The credits Fabled the Script Builder
+appends had the same problem for the same reason — `logo_skull.png` is
+cropped to the ink — so `buildCreditsFabled()` points at
+`logo_skull_icon.png`, the same pixels on a padded 320px square.
 
 ## The printable token (`tokenArt` / `token`)
 
