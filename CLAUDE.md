@@ -248,7 +248,18 @@ assets/
                        (setLinkMode + onPair) reuses the ordinary click to pick
                        two characters. A long press or two-finger gesture would
                        be both harder to find and easier to hit by accident.
-  charpage.js          /c/ page enhancements (edit button, add-to-script/token)
+  charpage.js          /c/ page enhancements (edit button, add-to-script/token,
+                       and the Favorite button — see favorites.js)
+  favorites.js         Favorites, the browser half: ONE module for the button
+                       on a character page (charpage.js), the one on a script
+                       or collection page (pageview.js), the Favorites chip
+                       in every filter box and the account page, so they all
+                       read and write one list. Talks to /api/favorites and
+                       /api/favorite; caches the lists in sessionStorage
+                       (botc_favs:*) for two minutes and patches the cache on
+                       a toggle. Logged-out readers cost no request at all.
+                       Loaded BEFORE charpage.js / pageview.js / card-filters.js
+                       wherever those mount something of it. See "Favorites".
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
                        A description of '' is a tag with no hover box (Magic),
@@ -720,6 +731,13 @@ drafts.html            /drafts — your own unpublished pages as cards (the same
                        have no card art so they get a plain tile. Linked from
                        the Your Drafts panel on the account page, which keeps
                        its own table — the two are deliberately both there.
+favorites.html         /favorites — the pages this account saved, as cards:
+                       the saved characters (renderRosterCards + the shared
+                       filter box), tiles for saved scripts and collections,
+                       and a second card grid of the characters those bring
+                       with them. Same shape as /drafts, and linked from the
+                       Your Favorites panel on the account page, which keeps
+                       its own table with a Remove button. See "Favorites".
 404.html               The custom Not Found page. Nothing links to it: the
                        Worker serves it AT the address that failed (no
                        redirect) with a 404 status, via assetsOrNotFound(),
@@ -2004,6 +2022,72 @@ render empty.
 - `related` is in `CARD_DROP_FIELDS`, so the Token Tool and the card grids
   never carry it, and notes take `inlineText()` marks like jinx rules —
   nothing in it leaves the page.
+
+## Favorites (a reader's saved pages)
+
+Any account can save a character, a script or a collection, and get it back
+three ways: the **Favorites** chip in the filter boxes, the **Your Favorites**
+panel on the account page, and `/favorites` (cards). Saving a script or a
+collection is also saving **every character on it**: the chip admits the
+saved characters PLUS those rosters, resolved server-side.
+
+- **The table is `favorites`** (`user_id`, `entity_type`, `slug`, `ts`; PK on
+  the first three), lazily created like every other satellite table. The
+  slug is the page's **stable key** — a character's identity (never its
+  address), a script's slug, a collection's **PK slug** (not the kebab id;
+  `favoriteTarget()` resolves either on the way in through
+  `resolveCharacterPath()` / `getEntityRow()` / `findCollectionRow()`, the
+  same resolvers every other route uses). Nothing is stored on the page and
+  nothing public reads the table: who saved what is that reader's business.
+  `renameCharacter()` moves the rows along with everything else keyed on the
+  identity; `/api/admin/purge` deletes them (a soft-deleted page keeps them,
+  since it can come back).
+- **`POST /api/favorite {type, slug, on}`** saves or unsaves one page.
+  **Published pages only** — a draft is not a page a reader was shown.
+  Capped at `FAVORITES_MAX` (500) per account, which bounds what `?expand=1`
+  has to resolve. Rate-limited on its own bucket (`fav`, 300/hour). **Not a
+  content write**: nothing about the page changes, so it is not in
+  `isContentWrite`, bumps no feed version and logs nothing — a bookmark is not
+  an edit and does not belong in "Your Recent Edits".
+- **`GET /api/favorites`** is the three slug lists, newest first, and is what
+  every button asks. **`?expand=1`** adds `items` (name, status, link key,
+  roster count per page — the account page's table) and `characterSlugs`,
+  the set the Favorites chip filters on: the saved characters that are
+  published, plus the roster of every saved script and collection that is
+  published, through `rosterCharacterSlugs()` — the one membership rule,
+  shared with the owner waterfall, with one character read across every
+  collection. A saved page that has gone to draft **stays saved** (it comes
+  back with the page) but is out of `characterSlugs` and reported with its
+  `status`; one that no longer exists is dropped from `items`.
+- **`assets/favorites.js` is the whole browser side**, and the reason the
+  five places that touch favorites cannot drift. `mountButton()` draws the
+  button unsaved at once and corrects it when the list arrives, so no page
+  waits on the request; a logged-out tap goes to `login?next=` and comes
+  back. A toggle is optimistic, reverts on failure, patches the plain cache
+  in place and drops the expanded one (its character set depends on rosters
+  this file cannot resolve), then calls every `onChange()` listener, which is
+  how the chips re-count without a reload. Login is read off the same
+  `botc_me` sessionStorage entry site.js keeps, so a logged-out reader costs
+  no request.
+- **Where the button is.** On a `/c/` page it is the third full-width button
+  in the info card under Add to Script / Add to Token Tool (`charpage.js`,
+  skinned by `.add-to-script-btn`), stored on the ACCOUNT where those two are
+  localStorage. On `/s/` and `/collection/` it is a `.page-fav-bar` that
+  `pageview.js` inserts right after the `#page-owner-controls` slot. It is
+  mounted in the browser, never rendered by the server, because the
+  published HTML is one shared cache entry for every reader (see "Caching")
+  and saved/unsaved is one reader's state. The heart's fill IS the state
+  (`.fav-btn.on`), so it reads without the label.
+- **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
+  the creator page, the Script Builder's Add sidebar, `/favorites`);
+  all-characters.html, scripts.html and all-collections.html carry their own,
+  matching their own filter code. Every one of them is **built hidden and
+  shown only once something on that page is saved** — a chip that can only
+  ever empty the page is worse than no chip, and a logged-out reader never
+  sees one. Cards must carry **`data-slug`** (renderRosterCards writes it;
+  the Script Builder's rows too) because the link's href is the address and
+  a saved character is keyed on the identity. `?favorites=1` opens a browse
+  page on the chip; the account page links that way.
 
 ## No official characters
 

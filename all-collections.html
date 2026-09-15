@@ -69,6 +69,14 @@
             title="Curata — collections the wiki admins have picked out.">Curata only</button>
         </div>
       </div>
+      <!-- Your saved collections (assets/favorites.js). Shown only once you
+           have saved one; logged-out readers never see it. -->
+      <div class="filter-group" hidden><span class="filter-group-label">Saved</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip filter-chip-fav" id="fc-fav"
+            title="Collections you added to your favorites.">Favorites</button>
+        </div>
+      </div>
     </div>
   </div>
   <main class="home-panel">
@@ -83,6 +91,7 @@
 
   <script src="assets/render-page.js"></script>
   <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
   <script>
   (function(){
     function esc(s){
@@ -167,18 +176,44 @@
         return { coll: coll, chars: resolve(coll, list) };
       }).filter(function(x){ return x.chars.length; });
 
-      var curataOnly = false;
+      var curataOnly = false, favOnly = false, FAV = {};
       function draw(){
-        var rows = curataOnly
-          ? SHOWN.filter(function(x){ return x.coll.curata; })
-          : SHOWN;
+        var rows = SHOWN.filter(function(x){
+          if (curataOnly && !x.coll.curata) return false;
+          // Saved collections are keyed on the PK slug; a legacy row's kebab
+          // id can differ from it, so either matches.
+          if (favOnly && !(FAV[x.coll.slug] || FAV[x.coll.id])) return false;
+          return true;
+        });
         grid.innerHTML = rows.map(function(x){
           var coll = x.coll;
           return collectionTileHTML(coll.displayName || coll.slug, coll.id || coll.slug,
             x.chars.length, pickIcons(x.chars, 4), coll.header||'', coll.tagline||'', coll);
-        }).join('') || (curataOnly
-          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Curata collections yet.</p>'
+        }).join('') || ((curataOnly || favOnly)
+          ? '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections match those filters.</p>'
           : '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections yet. <a href="publish-collection" style="color:#7fb2e6">Create the first one →</a></p>');
+      }
+      // Favorites: mounted once the reader's saved list arrives
+      // (assets/favorites.js); the chip and its group stay hidden until one
+      // of these collections is in it. ?favorites=1 opens the page on it.
+      if (window.Favorites) {
+        window.Favorites.lists().then(function(fav){
+          FAV = {};
+          ((fav && fav.collections) || []).forEach(function(s){ FAV[s] = true; });
+          ((fav && fav.collectionIds) || []).forEach(function(s){ FAV[s] = true; });
+          var n = SHOWN.filter(function(x){ return FAV[x.coll.slug] || FAV[x.coll.id]; }).length;
+          var fb = document.getElementById('fc-fav');
+          if (!fb || !n) return;
+          fb.closest('.filter-group').hidden = false;
+          fb.innerHTML = window.Favorites.heartSVG() + ' Favorites (' + n + ')';
+          document.getElementById('filter-bar').hidden = false;
+          fb.addEventListener('click', function(){
+            favOnly = !favOnly;
+            fb.classList.toggle('active', favOnly);
+            draw();
+          });
+          if (/[?&]favorites=1(&|$)/.test(location.search)) fb.click();
+        });
       }
 
       // The chip only appears once something has actually been given the
