@@ -43,6 +43,24 @@
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
   mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool');
 
+  // Favorite — the third button in the same stack, but this one is stored on
+  // the ACCOUNT (assets/favorites.js), not in localStorage: a saved character
+  // is meant to be there on your phone as well as your laptop, and the
+  // Favorites filter on the browse pages reads the same list. The button
+  // draws unsaved at once and fills its state in when the list arrives;
+  // logged-out readers are sent to log in and come straight back. A draft
+  // gets no button: only a published page can be saved.
+  if (window.Favorites && !window.PAGE_DRAFT) {
+    var infocardFav = document.querySelector('.char-infocard');
+    if (infocardFav) {
+      infocardFav.appendChild(window.Favorites.mountButton({
+        type: 'character', slug: SLUG,
+        className: 'add-to-script-btn fav-btn-block',
+        onLabel: 'In Your Favorites', offLabel: 'Add to Favorites'
+      }));
+    }
+  }
+
   if (window.fitCharTitle) window.fitCharTitle();
   if (location.hash) {
     var target = document.getElementById(location.hash.slice(1));
