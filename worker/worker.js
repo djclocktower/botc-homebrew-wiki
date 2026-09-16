@@ -759,9 +759,13 @@ async function uploadSlotDenied(env, sess, key) {
     // Longest matching slug wins: "my-page-header.png" belongs to the
     // page "my-page", not to a page that happens to be called "my".
     const row = await env.DB.prepare(
-      "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
+      "SELECT slug, owner_id, parent_type, parent_slug FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
     ).bind(base, base).first().catch(() => null);
-    if (row && !canEditRow(sess, row)) {
+    // ...or an approved editor of its script/collection (wikiPageAccess).
+    const wikiOk = row && (canEditRow(sess, row) || !!(await wikiPageAccess(env, sess, row,
+      await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))));
+    if (wikiOk) ownedSlot = true;
+    if (row && !wikiOk) {
       return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
     }
   }
@@ -1736,12 +1740,12 @@ async function wikiParentRow(env, type, key) {
     const row = await findCollectionRow(env, key);
     if (!row) return null;
     const d = parseData(row);
-    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status };
+    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status, data: d };
   }
   if (type !== 'script') return null;
   const row = await getEntityRow(env, 'script', key);
   if (!row) return null;
-  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status };
+  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status, data: parseData(row) };
 }
 
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
@@ -2559,6 +2563,44 @@ async function waterfallParent(env, sess, charRow) {
 
 async function waterfallEditor(env, sess, charRow) {
   return !!(await waterfallParent(env, sess, charRow));
+}
+
+/* ---- ...and to the wiki pages (/p/) that hang off it ----
+   The same sharing reaches the parent's custom wiki pages — its rules page,
+   its lore, its storyteller notes are as much the set as its roster. Same
+   boundary as the characters: only pages owned by the SAME account as the
+   parent, so a page somebody else wrote under it stays theirs.
+
+   What an approved editor gets on a wiki page matches what they get anywhere
+   else: the content, drafts included, and adding new pages under the parent.
+   What stays with the owner: publishing and unpublishing, deleting, and
+   rolling back. A page an editor creates is filed under the PARENT's owner
+   (as a draft), so it is the owner's to publish and stays inside the share.
+
+   `parent` is a wikiParentRow() result. */
+async function isParentApprovedEditor(env, sess, parent) {
+  if (!sess || sess.userId == null || !parent || !parent.data) return false;
+  if (parent.ownerId == null || (parent.status || 'published') === 'deleted') return false;
+  if (publicEditMode(parent.data) !== 'approved' || !isApprovedEditor(sess, parent.data)) return false;
+  return !(await isProtected(env, parent.type, parent.slug));
+}
+
+/* 'owner' | 'approved' | '' for one wiki page row. */
+async function wikiPageAccess(env, sess, row, parent) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if (row.owner_id == null || !parent || parent.ownerId == null) return '';
+  if (Number(row.owner_id) !== Number(parent.ownerId)) return '';
+  if (await isProtected(env, 'wikipage', row.slug)) return '';
+  return (await isParentApprovedEditor(env, sess, parent)) ? 'approved' : '';
+}
+
+/* May this session add a page under this parent? Its owner, an admin, or an
+   approved editor of it. */
+async function mayAddWikiPage(env, sess, parent) {
+  if (!sess || !parent) return false;
+  if (canEditRow(sess, { owner_id: parent.ownerId })) return true;
+  return isParentApprovedEditor(env, sess, parent);
 }
 
 /* ---- assigning a script or collection carries its characters with it ----
@@ -5566,8 +5608,10 @@ export default {
       });
       const key = type === 'collection' ? (d.id || d.slug) : row.slug;
       const editHref = mayEdit ? '/' + (type === 'script' ? 'publish-script?s=' : 'publish-collection?c=') + encodeURIComponent(key) : '';
-      const pages = mayOwn ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
-      const newPageHref = mayOwn ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
+      // Approved editors of the script/collection work on its pages too
+      // (see wikiPageAccess), so they get the drafts and the add button.
+      const pages = mayEdit ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
+      const newPageHref = mayEdit ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
       return jsonResponse({ editHref, pages: pages
         ? PageRender.pagesSection(WikiRender.renderPageLinks(pages, { linkRoot: '/' }), newPageHref) : null });
     }
@@ -5745,10 +5789,12 @@ export default {
       const parent = await wikiParentRow(env, parentType, parentKey);
       if (!parent) return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
       const sess = await getSession(env, request);
-      const mayEdit = canEditRow(sess, { owner_id: parent.ownerId });
+      const mayEdit = await mayAddWikiPage(env, sess, parent);
       return jsonResponse({
         parent: { type: parent.type, key: parent.key, name: parent.name },
         canEdit: mayEdit,
+        // An approved editor adds pages but does not publish them.
+        isOwner: canEditRow(sess, { owner_id: parent.ownerId }),
         pages: await listWikiPages(env, parent.type, parent.slug, { includeDrafts: mayEdit })
       });
     }
@@ -5762,11 +5808,12 @@ export default {
         .bind(slug).first().catch(() => null);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+      const access = await wikiPageAccess(env, sess, row, parent);
+      const editable = !!access;
       if (row.status !== 'published' && !editable) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
-      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
       return jsonResponse({
         page: {
           ...parseData(row), slug: row.slug, title: row.title,
@@ -5776,7 +5823,10 @@ export default {
           author: row.author || null,
           updatedAt: row.updated_at
         },
-        status: row.status, canEdit: editable
+        status: row.status, canEdit: editable,
+        // 'owner' | 'approved' | '': the editor hides publish/delete for 'approved'.
+        access,
+        editVia: access === 'approved' && parent ? { type: parent.type, key: parent.key, name: parent.name } : null
       });
     }
 
@@ -5799,7 +5849,11 @@ export default {
         const isDraft = row.status !== 'published';
         if (isDraft) {
           const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
+          const par = canEditRow(sess, row) ? null
+            : await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+          if (!canEditRow(sess, row) && !(await wikiPageAccess(env, sess, row, par))) {
+            return assetsOrNotFound(env, request);
+          }
         }
         if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
@@ -10156,18 +10210,23 @@ export default {
           ? await env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(String(b.slug)).first().catch(() => null)
           : null;
         if (b.slug && !existing) return jsonResponse({ error: 'That page no longer exists.' }, { status: 404 });
-        if (existing && !canEditRow(sess, existing)) {
-          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
-        }
-
         // The parent never changes once a page is created — its URL and the
         // link back to it would both break.
         const parent = existing
           ? await wikiParentRow(env, existing.parent_type, existing.parent_slug)
           : await wikiParentRow(env, String(b.parentType || ''), String(b.parentSlug || ''));
+        // 'owner' | 'approved' — see wikiPageAccess. A new page is the owner's
+        // when its writer owns the parent, and an approved editor's otherwise.
+        const access = existing
+          ? await wikiPageAccess(env, sess, existing, parent)
+          : (parent && canEditRow(sess, { owner_id: parent.ownerId }) ? 'owner'
+            : (await isParentApprovedEditor(env, sess, parent) ? 'approved' : ''));
+        if (existing && !access) {
+          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        }
         if (!parent) return jsonResponse({ error: 'That script or collection could not be found.' }, { status: 404 });
-        if (!existing && !canEditRow(sess, { owner_id: parent.ownerId })) {
-          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" can add pages to it.' }, { status: 403 });
+        if (!existing && !access) {
+          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" (or an editor they named) can add pages to it.' }, { status: 403 });
         }
         if (!sess.isAdmin && await isProtected(env, parent.type, parent.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -10202,7 +10261,13 @@ export default {
         page.parentSlug = parent.slug;
         if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
 
-        const status = b.status === 'published' ? 'published' : 'draft';
+        // Going live stays the owner's call: an approved editor's save keeps
+        // the stored status, and a page they create starts as a draft.
+        let status = b.status === 'published' ? 'published' : 'draft';
+        if (access !== 'owner') status = existing ? (existing.status === 'published' ? 'published' : 'draft') : 'draft';
+        if (access !== 'owner' && publicEditTooBig(page)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'wikipage', existing);
         await env.DB.prepare(
           `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
@@ -10211,8 +10276,17 @@ export default {
              title=excluded.title, author=excluded.author, data=excluded.data,
              status=excluded.status, updated_at=datetime('now')`
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
-               existing ? existing.owner_id : sess.userId, JSON.stringify(page), status).run();
+               existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
+               JSON.stringify(page), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
+        if (access === 'approved') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing ? existing.owner_id : parent.ownerId,
+            type: 'wikipage', slug, what: existing ? 'edited' : 'added the page',
+            name: existing ? title : title + '\u201d (a draft) to \u201c' + parent.name,
+            path: '/p/' + slug, origin: url.origin
+          }));
+        }
         return jsonResponse({
           ok: true, slug, status,
           parentType: parent.type, parentKey: parent.key, parentName: parent.name

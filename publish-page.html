@@ -370,6 +370,17 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       }
     }
 
+    // An approved editor of the parent script/collection (not the page's
+    // owner): they can write, but publishing and deleting stay with the owner,
+    // and the server keeps the stored status whatever they send.
+    var editorMode = false;
+    function applyEditorMode(){
+      if (!editorMode) return;
+      $('p-delete').style.display = 'none';
+      $('p-draft').style.display = 'none';
+      $('p-publish').textContent = '★ Save Changes';
+    }
+
     function setPill(status){
       currentStatus = status;
       var pill = $('p-pill');
@@ -377,6 +388,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       pill.textContent = status === 'published' ? 'Published' : 'Draft';
       $('p-publish').textContent = status === 'published' ? '★ Save Changes' : '★ Publish Page';
       $('p-draft').textContent = status === 'published' ? 'Move to Draft' : 'Save as Draft';
+      applyEditorMode();
     }
 
     function parentHref(){
@@ -395,7 +407,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       if (!slug) return;
       $('p-url').style.display = '';
       $('p-url').innerHTML = 'Page URL (fixed once created): <code>' + esc(SITE_ROOT + 'p/' + slug) + '</code> — <a href="p/' + encodeURIComponent(slug) + '" target="_blank" rel="noopener">open it</a>';
-      $('p-delete').style.display = '';
+      $('p-delete').style.display = editorMode ? 'none' : '';
       $('page-title').textContent = 'Edit Page';
       imgSay('', 'Uploads are stored under this page and can be dropped straight into the text.');
       try { history.replaceState(null, '', 'publish-page?p=' + encodeURIComponent(slug)); } catch(e){}
@@ -555,6 +567,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         setPill(res.status);
         showParent(); showUrl(); preview(); loadSiblings();
         var url = 'p/' + encodeURIComponent(slug);
+        if (editorMode) {
+          say('ok', res.status === 'published'
+            ? '✓ Saved. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a>'
+            : '✓ Saved as a draft — the owner of ' + esc(parentName || 'the parent page') + ' decides when it goes live. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
+          $('p-publish').disabled = false; $('p-draft').disabled = false;
+          return;
+        }
         say('ok', res.status === 'published'
           ? '✓ Published. <a href="' + url + '" target="_blank" rel="noopener">View the page →</a> It is linked from <a href="' + parentHref() + '">' + esc(parentName || 'its parent page') + '</a>.'
           : '✓ Draft saved — only you (and admins) can see it. <a href="' + url + '" target="_blank" rel="noopener">Preview →</a>');
@@ -585,6 +604,10 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         .then(function(d){
           var list = (d && d.pages) || [];
           if (d && d.parent) { parentName = d.parent.name; showParent(); }
+          if (d && d.canEdit && d.isOwner === false && !slug) {
+            editorMode = true; applyEditorMode();
+            say('work', 'You were named an editor of <strong>' + esc(parentName) + '</strong>, so you can add pages to it. New pages are saved as drafts for its owner to publish.');
+          }
           // Say so up front rather than at the end of a long write-up.
           if (d && d.canEdit === false && !slug) {
             gate('That page isn’t yours',
@@ -660,7 +683,13 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (window.ThemeEditor.prime(theme)) $('p-appearance').open = true;
           renderImages();
           setPill(res.status);
-          showParent(); showUrl();
+          if (res.access === 'approved') {
+            editorMode = true;
+            say('work', 'You can edit this page because you were named an editor of <strong>' +
+              esc((res.editVia && res.editVia.name) || parentName || 'its script or collection') +
+              '</strong>. Publishing, moving to draft and deleting stay with its owner.');
+          }
+          showParent(); showUrl(); applyEditorMode();
           if (res.canEdit === false) {
             say('err', 'This page belongs to another account, so you cannot save changes to it.');
             $('p-publish').disabled = true; $('p-draft').disabled = true;
