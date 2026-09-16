@@ -683,11 +683,18 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
           if (window.ThemeEditor.prime(theme)) $('p-appearance').open = true;
           renderImages();
           setPill(res.status);
-          if (res.access === 'approved') {
+          // Anything but the owner: an editor named on the parent, or anyone
+          // with an account when the parent is open to all. Both write; the
+          // server pins the status either way.
+          if (res.access && res.access !== 'owner') {
             editorMode = true;
-            say('work', 'You can edit this page because you were named an editor of <strong>' +
-              esc((res.editVia && res.editVia.name) || parentName || 'its script or collection') +
-              '</strong>. Publishing, moving to draft and deleting stay with its owner.');
+            var viaName = esc((res.editVia && res.editVia.name) || parentName || 'its script or collection');
+            say('work', res.access === 'all'
+              ? 'You can edit this page because <strong>' + viaName + '</strong> is open for anyone with an ' +
+                'account to edit, and that covers its owner’s pages on it. Publishing, moving to draft and ' +
+                'deleting stay with its owner, and your change is recorded in the page’s history.'
+              : 'You can edit this page because you were named an editor of <strong>' + viaName +
+                '</strong>. Publishing, moving to draft and deleting stay with its owner.');
           }
           showParent(); showUrl(); applyEditorMode();
           if (res.canEdit === false) {

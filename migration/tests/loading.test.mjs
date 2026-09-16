@@ -241,6 +241,82 @@ test('approved editors of a script reach its wiki pages; publishing, deleting an
   assert.equal((await post(2, { slug: 'secret-lore', title: 'PRIVATE LORE', body: 'Locked' })).status, 403);
 });
 
+test("a set's sharing choice governs its owner's characters and wiki pages, and nobody else's", async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f);
+  f.insert('scripts', 'demo', { slug: 'demo', name: 'Demo', characters: ['mine', 'theirs'] });
+  f.db.prepare("UPDATE scripts SET owner_id=1 WHERE slug='demo'").run();
+  const setMode = (mode, editors) => {
+    const d = { slug: 'demo', name: 'Demo', characters: ['mine', 'theirs'] };
+    if (mode) d.publicEdit = mode;
+    if (editors) d.editors = editors;
+    f.db.prepare("UPDATE scripts SET data=? WHERE slug='demo'").run(JSON.stringify(d));
+    return f.hooks.bumpContentVersion(f.env, 'script');
+  };
+  // The owner's character was opened wide by the admin sweep before it was
+  // handed over; the other one on the roster belongs to somebody else.
+  f.insert('characters', 'mine', { slug: 'mine', name: 'Mine', ability: 'x', publicEdit: 'all-but-ability' });
+  f.insert('characters', 'theirs', { slug: 'theirs', name: 'Theirs', ability: 'y', publicEdit: 'all' });
+  f.db.prepare("UPDATE characters SET owner_id=1 WHERE slug='mine'").run();
+  f.db.prepare("UPDATE characters SET owner_id=3 WHERE slug='theirs'").run();
+  await f.hooks.ensurePagesTable(f.env);
+  f.db.prepare("INSERT INTO pages(slug,title,parent_type,parent_slug,owner_id,data,status) VALUES('rules','RULES','script','demo',1,'{}','published')").run();
+  f.db.prepare("INSERT INTO pages(slug,title,parent_type,parent_slug,owner_id,data,status) VALUES('notes','NOTES','script','demo',1,'{}','draft')").run();
+  const page = (slug, id) => f.request('/api/page?type=character&slug=' + slug, member(id)).then(r => r.json());
+  const wiki = (slug, id) => f.request('/api/wiki-page?slug=' + slug, member(id)).then(r => r.json());
+
+  // Not set: every page keeps its own setting.
+  assert.equal((await page('mine', 3)).editMode, 'all-but-ability');
+  assert.equal((await page('mine', 1)).governedBy, null);
+  assert.equal((await wiki('rules', 3)).canEdit, false);
+
+  // Approved editing with nobody named yet: closed to strangers, whatever the
+  // character's own setting says, and the owner is told what governs it.
+  await setMode('approved');
+  assert.equal((await page('mine', 3)).editMode, false);
+  const owner = await page('mine', 1);
+  assert.equal(owner.governedBy.name, 'Demo'); assert.equal(owner.governedBy.mode, 'approved');
+  // The other owner's character is not the set owner's to govern.
+  assert.equal((await page('theirs', 2)).editMode, 'all');
+  // Naming an editor lets them in, on the character and on the wiki pages.
+  await setMode('approved', [{ id: 2, username: 'user-2' }]);
+  const shared = await page('mine', 2);
+  assert.equal(shared.editMode, 'approved'); assert.equal(shared.editVia.name, 'Demo');
+  assert.equal((await wiki('notes', 2)).access, 'approved');
+  assert.equal((await wiki('notes', 3)).error, 'Not found');
+
+  // Open to all: anyone edits the character and the PUBLISHED wiki page; the
+  // draft stays private, the status is pinned, and the owner is told.
+  await setMode('all');
+  assert.equal((await page('mine', 3)).editMode, 'all');
+  const open = await wiki('rules', 3);
+  assert.equal(open.access, 'all'); assert.equal(open.editVia.name, 'Demo');
+  assert.equal((await wiki('notes', 3)).error, 'Not found');
+  assert.equal((await f.request('/p/notes', member(3))).status, 404);
+  const saved = await f.request('/api/wiki-page', { method: 'POST',
+    headers: { ...member(3).headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug: 'rules', title: 'RULES', body: 'Edited by a guest', status: 'draft' }) });
+  assert.equal(saved.status, 200); assert.equal((await saved.json()).status, 'published');
+  await Promise.all(f.background);
+  assert.equal(f.db.prepare('SELECT COUNT(*) AS n FROM dms WHERE recipient_id=1 AND sender_id=3').get().n, 1);
+  const history = await (await f.request('/api/page-history?type=character&slug=mine')).json();
+  assert.equal(history.publicEdit, 'all'); assert.equal(history.publicEditVia.name, 'Demo');
+
+  // Suggestions: the character takes them; a wiki page has no send path, so
+  // it reads as closed.
+  await setMode('suggest');
+  assert.equal((await page('mine', 3)).editMode, 'suggest');
+  assert.equal((await wiki('rules', 3)).canEdit, false);
+
+  // Only me: closed to everyone, the tags-open default included.
+  await setMode('closed');
+  assert.equal((await page('mine', 3)).editMode, false);
+  assert.equal((await page('mine', 2)).editMode, false);
+  assert.equal((await wiki('rules', 2)).canEdit, false);
+  // Back to not set: the character's own setting is in force again.
+  await setMode('');
+  assert.equal((await page('mine', 3)).editMode, 'all-but-ability');
+});
+
 function r2(f) {
   const objects = new Map(); let reads = 0;
   function object(key, body, etag, sourceETag) { objects.set(key, { body: Buffer.from(body), etag, sourceETag }); }
