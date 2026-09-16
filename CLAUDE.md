@@ -1131,7 +1131,7 @@ everyone. They edit it as the creator would; the creator keeps the page.
 - **A set's choice governs its pages: a script or collection's "Who can edit"
   choice is the one in force on the character pages on it**
   (`governingParent()` / `sharedParentPages()` in worker.js; `waterfallParent()`
-  / `waterfallEditor()` are the approved-editor half of it). The roster IS the
+  is the approved-editor half of it). The roster IS the
   work: a creator who set their collection to approved editing, or to "Only
   me", meant the set — and an editor who can fix the script's synopsis but not
   a typo in any of its characters has been given the smaller half. So a chosen

@@ -2595,10 +2595,6 @@ async function waterfallParent(env, sess, charRow) {
   return p;
 }
 
-async function waterfallEditor(env, sess, charRow) {
-  return !!(await waterfallParent(env, sess, charRow));
-}
-
 /* ---- ...and to the wiki pages (/p/) that hang off it ----
    The set's choice reaches its custom wiki pages the same way — its rules
    page, its lore, its storyteller notes are as much the set as its roster.
