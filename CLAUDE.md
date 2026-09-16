@@ -1161,9 +1161,10 @@ everyone. They edit it as the creator would; the creator keeps the page.
   Worker resolves the list again on save regardless — the lookup is a courtesy,
   never the check.
 
-Wiki pages (`/p/`) are deliberately outside all of this: they are owner-only
-across the board on every route, and giving them `publicEdit` would mean
-teaching `/api/wiki-page` the whole machinery.
+Wiki pages (`/p/`) carry no `publicEdit` of their own: giving them one would
+mean teaching `/api/wiki-page` the whole machinery. The one way in for anyone
+but the owner is the parent's approved-editor list, waterfalled as above;
+every other mode leaves them owner-only on every route.
 
 **History is public and drafts have none.** `saveRevision()` skips any row whose
 stored status is not `published`: a draft is saved over constantly while it is
@@ -2222,9 +2223,11 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
   wiki pages to it — being unlisted is the feature.
 - **Who may write one:** the owner of the parent script/collection (or an
-  admin). Ownership then belongs to the writer, and only they or an admin can
-  edit it afterwards. Parentage is frozen at creation — moving a page would
-  break its links.
+  admin), and the parent's approved editors. The owner's page belongs to the
+  writer; an editor's is filed under the parent's owner as a draft, so it
+  stays inside the share. Afterwards it is edited by its owner, an admin, or
+  an approved editor of the parent (see "Approved editing"). Parentage is
+  frozen at creation — moving a page would break its links.
 - **Slug** is derived from the title once and frozen, with a `-2`, `-3` …
   suffix if that slug is taken. Slugs are global across all wiki pages.
 - Images live in R2 under `pages/{slug}-*`; the banner is
