@@ -2069,15 +2069,24 @@ saved characters PLUS those rosters, resolved server-side.
   how the chips re-count without a reload. Login is read off the same
   `botc_me` sessionStorage entry site.js keeps, so a logged-out reader costs
   no request.
-- **Where the button is.** On a `/c/` page it is the third full-width button
-  in the info card under Add to Script / Add to Token Tool (`charpage.js`,
-  skinned by `.add-to-script-btn`), stored on the ACCOUNT where those two are
-  localStorage. On `/s/` and `/collection/` it is a `.page-fav-bar` that
-  `pageview.js` inserts right after the `#page-owner-controls` slot. It is
-  mounted in the browser, never rendered by the server, because the
-  published HTML is one shared cache entry for every reader (see "Caching")
-  and saved/unsaved is one reader's state. The heart's fill IS the state
-  (`.fav-btn.on`), so it reads without the label.
+- **Where the button is.** On a `/c/` page it is a **Save tab beside Copy
+  link** in the info card's corner tab row (`charpage.js` inserts it first in
+  `.card-actions`, skinned by `.copy-link-btn` plus `.fav-tab`) — above the
+  fold on a phone and out of the way of the reading; the owner picked it
+  from five mocked placements (stacked button, corner tab, heart badge on
+  the icon, bookmark ribbon, sticky action bar). It is stored on the
+  ACCOUNT where Add to Script / Add to Token Tool are localStorage. On `/s/`
+  and `/collection/` it is a `.page-fav-bar` that `pageview.js` inserts
+  right after the `#page-owner-controls` slot. It is mounted in the browser,
+  never rendered by the server, because the published HTML is one shared
+  cache entry for every reader (see "Caching") and saved/unsaved is one
+  reader's state. **The icon is a tribal flame heart with a heart-shaped
+  hole** (`HEART_PATH` in favorites.js, after the owner's reference art, in
+  `currentColor`): two subpaths under `fill-rule: evenodd`, an outline when
+  unsaved and filled with the hole showing through when saved — the fill IS
+  the state (`.fav-btn.on`), so it reads without the label. The left half
+  was authored and the right half is its mirror; it is tuned to still read
+  at the 14px the tab draws it, so do not add detail to it.
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,

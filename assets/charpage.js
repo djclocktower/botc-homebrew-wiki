@@ -43,21 +43,23 @@
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
   mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool');
 
-  // Favorite — the third button in the same stack, but this one is stored on
-  // the ACCOUNT (assets/favorites.js), not in localStorage: a saved character
-  // is meant to be there on your phone as well as your laptop, and the
-  // Favorites filter on the browse pages reads the same list. The button
-  // draws unsaved at once and fills its state in when the list arrives;
-  // logged-out readers are sent to log in and come straight back. A draft
-  // gets no button: only a published page can be saved.
+  // Favorite — a Save tab beside Copy link in the info card's corner tab
+  // row, so it is above the fold on a phone and out of the way of the
+  // reading. Unlike the two buttons above it is stored on the ACCOUNT
+  // (assets/favorites.js), not in localStorage: a saved character is meant to
+  // be there on your phone as well as your laptop, and the Favorites filter on
+  // the browse pages reads the same list. The tab draws unsaved at once and
+  // fills its state in when the list arrives; logged-out readers are sent to
+  // log in and come straight back. A draft gets no tab: only a published page
+  // can be saved.
   if (window.Favorites && !window.PAGE_DRAFT) {
-    var infocardFav = document.querySelector('.char-infocard');
-    if (infocardFav) {
-      infocardFav.appendChild(window.Favorites.mountButton({
+    var actions = document.querySelector('.char-infocard .card-actions');
+    if (actions) {
+      actions.insertBefore(window.Favorites.mountButton({
         type: 'character', slug: SLUG,
-        className: 'add-to-script-btn fav-btn-block',
-        onLabel: 'In Your Favorites', offLabel: 'Add to Favorites'
-      }));
+        className: 'copy-link-btn fav-tab',
+        onLabel: 'Saved', offLabel: 'Save'
+      }), actions.firstChild);
     }
   }
 
