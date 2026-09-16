@@ -1058,6 +1058,7 @@
     // What this account may do to this page, as the Worker answered it:
     // 'owner' | 'approved' | 'all' | 'all-but-ability' | 'tags' | 'suggest' | false.
     var EDIT_MODE = 'owner';
+    var GOVERNED_BY = null;   // the set whose sharing choice governs this page (/api/page's governedBy)
     // True when 'tags' came from the default (the owner chose nothing and the
     // page has no tags of their own) rather than from the owner opening them.
     var EDIT_DEFAULT = false;
@@ -1136,7 +1137,8 @@
       guestBanner('<strong>This page takes suggestions.</strong> ' +
         esc(entry.creator || 'The creator') + ' reviews changes before they go live: edit the page ' +
         'as you think it should read, then send it. Nothing changes until they approve it, and ' +
-        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>');
+        'they can reply. <em>Art cannot be part of a suggestion \u2014 describe any icon change in your note.</em>' +
+        viaSetHTML());
     }
 
     /* ── editing somebody else's page ──
@@ -1247,22 +1249,69 @@
       }
       return bar;
     }
+    /* ── a set governs this page ──
+       The character is on a script or collection whose owner chose a sharing
+       mode, and that choice is the one in force (the Worker's
+       governingParent). The control here is locked on it rather than hidden:
+       the owner should see what applies, and be sent where it is set. Its
+       value is what the save posts, so what the form shows is what the row
+       will store — the bar and the control can never disagree. */
+    function setHref(v) {
+      return (v.type === 'collection' ? 'collection/' : 's/') + encodeURIComponent(v.key || '');
+    }
+    function setEditHref(v) {
+      return (v.type === 'collection' ? 'publish-collection?c=' : 'publish-script?s=') + encodeURIComponent(v.key || '');
+    }
+    function lockToSet() {
+      if (!GOVERNED_BY) return;
+      var sel = $('publicEdit');
+      if (!sel) return;
+      var has = [].some.call(sel.options, function (o) { return o.value === GOVERNED_BY.mode; });
+      if (has) sel.value = GOVERNED_BY.mode;
+      sel.disabled = true;
+      sel.title = 'Set by ' + GOVERNED_BY.name;
+      var note = document.createElement('p');
+      note.className = 'sub';
+      note.style.margin = '8px 0 0';
+      note.innerHTML = 'This page follows the setting on <a href="' + esc(setEditHref(GOVERNED_BY)) + '">' +
+        esc(GOVERNED_BY.name) + '</a>, which covers your characters and pages on it. Change it there.';
+      var fld = sel.closest('.fld') || sel.parentNode;
+      if (fld && fld.parentNode) fld.parentNode.insertBefore(note, fld.nextSibling);
+      syncEditorsBox();
+    }
+    /* When a guest's permission comes from the script or collection the
+       character is on rather than from the page itself, the banner says so —
+       otherwise somebody who found one open collection reads that the
+       creator opened THIS page. */
+    function viaSetHTML() {
+      if (!GOVERNED_BY || !GOVERNED_BY.name) return '';
+      return ' The setting comes from <a href="' + esc(setHref(GOVERNED_BY)) + '">' + esc(GOVERNED_BY.name) +
+        '</a>, which covers its creator\u2019s characters and pages on it.';
+    }
     function renderEditStatus() {
       if (EDIT_MODE !== 'owner' || !window.editStatusHTML) return;
       var bar = editStatusBar();
       if (!bar) return;
       var sel = $('publicEdit');
       var mode = sel ? sel.value : '';
-      // Nothing chosen is the default, and the default is "tags open" only
-      // while the page has no tags of the owner's own — the same rule the
-      // Worker applies (defaultTagsOpen), read off the form so the bar says
-      // what the NEXT save will leave in force.
-      if (!mode) {
+      var note = '';
+      var links = [];
+      if (GOVERNED_BY) {
+        // The set's choice is what applies, whatever the control here says,
+        // and the way to change it is on the set (see lockToSet).
+        mode = GOVERNED_BY.mode;
+        note = 'Set by <a href="' + esc(setHref(GOVERNED_BY)) + '">' + esc(GOVERNED_BY.name) +
+          '</a>, which covers your characters and pages on it.';
+        links.push({ href: setEditHref(GOVERNED_BY), label: 'Change this on ' + GOVERNED_BY.name });
+      } else if (!mode) {
+        // Nothing chosen is the default, and the default is "tags open" only
+        // while the page has no tags of the owner's own — the same rule the
+        // Worker applies (defaultTagsOpen), read off the form so the bar says
+        // what the NEXT save will leave in force.
         var tagsNow = ($('tags').value || '').trim();
         var guestTagged = !!(originalEntry && originalEntry.tagsBy === 'guest');
         if (!tagsNow || (guestTagged && tagsNow === String(originalEntry.tags || '').trim())) mode = 'default';
       }
-      var links = [];
       if (mode === 'suggest') {
         links.push({ href: 'suggestions?type=character&slug=' + encodeURIComponent(originalSlug),
                      label: 'Suggestions' });
@@ -1270,8 +1319,8 @@
       // A draft genuinely has no history (saveRevision() skips unpublished
       // rows), so it gets no link to one — see showOwnerHistory().
       if (!isDraftPage) links.push({ href: histPageHref(), label: 'Edit history' });
-      links.push({ href: '#publicEdit', label: 'Change this' });
-      bar.innerHTML = window.editStatusHTML(mode, { links: links });
+      if (!GOVERNED_BY) links.push({ href: '#publicEdit', label: 'Change this' });
+      bar.innerHTML = window.editStatusHTML(mode, { links: links, note: note });
       var change = bar.querySelector('a[href="#publicEdit"]');
       if (change) change.addEventListener('click', function (e) {
         e.preventDefault();
@@ -1292,7 +1341,7 @@
       guestBanner('<strong>This is ' + esc(entry.creator || 'someone else') + '\u2019s page,</strong> ' +
         'opened for anyone with an account to edit. Everything but the name is yours to improve. ' +
         'Your username and every field you change are recorded in ' + histLink(entry) +
-        ', and the creator can put an earlier version back.');
+        ', and the creator can put an earlier version back.' + viaSetHTML());
     }
     /* Open except the ability. The form is the guest form above with the
        rule itself locked: the Worker re-pins `ability` (and the custom JSON,
@@ -1318,7 +1367,7 @@
         'opened for anyone with an account to edit \u2014 <strong>everything except the ability</strong>. ' +
         'The name and the ability text stay with the creator; the rest of the page is yours to improve. ' +
         'Your username and every field you change are recorded in ' + histLink(entry) +
-        ', and the creator can put an earlier version back.');
+        ', and the creator can put an earlier version back.' + viaSetHTML());
     }
     // Controls that only mean something to the page's owner. The Worker carries
     // the stored value forward whatever a guest posts, so leaving these on
@@ -1968,6 +2017,7 @@
           var mode = res.editMode || (res.canEdit ? 'owner' : false);
           EDIT_MODE = mode;
           EDIT_DEFAULT = !!res.editDefault;
+          GOVERNED_BY = res.governedBy || null;
           isDraftPage = (res.status || 'published') === 'draft';
           if(!mode){
             setStatus('err','This page belongs to another account, so you cannot save changes to it.');
@@ -1993,7 +2043,7 @@
           else if (mode === 'suggest') suggestMode(entry);
           // The owner (and an admin, who reaches this page the same way) is the
           // only one who can roll a version back, so the panel is theirs.
-          else if (mode === 'owner') { renderEditStatus(); showOwnerHistory(); }
+          else if (mode === 'owner') { lockToSet(); renderEditStatus(); showOwnerHistory(); }
         })
         .catch(function(err){
           $('loading').textContent = err.message || 'Could not load character data.';
