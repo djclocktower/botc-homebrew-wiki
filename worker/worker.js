@@ -7772,7 +7772,7 @@ export default {
             status: r.status || 'published',
             updatedAt: r.updated_at || null,
             /* Editing a script or a collection carries down to the owner's own
-               characters on it (waterfallEditor). The characters themselves
+               characters on it (waterfallParent). The characters themselves
                are not listed here — a roster of 200 would bury the four pages
                actually shared with this account — so the row says so instead,
                and the parent page is the way to them. */
