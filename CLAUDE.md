@@ -64,7 +64,9 @@ Key dynamic behavior:
   entry, no search, no browse list, no homepage strip. The only two links in
   are the "Pages" section on the parent script/collection page and the
   author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
-  (or an admin) can create one; the page is then owned by whoever wrote it.
+  (or an admin) — or an **approved editor of the parent** — can create one;
+  the owner's page is owned by whoever wrote it, an editor's is filed under the
+  parent's owner as a draft. See the wiki-page waterfall under approved editing.
 - `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
@@ -1142,6 +1144,16 @@ everyone. They edit it as the creator would; the creator keeps the page.
   parent's row says "and its characters" and is the way to them. `/api/page`
   returns `editVia` naming the parent, so edit.html's banner can say where the
   permission came from instead of claiming somebody named you on this page.
+- **The same sharing reaches the parent's custom wiki pages (`/p/`)**
+  (`wikiPageAccess()` / `isParentApprovedEditor()` / `mayAddWikiPage()`), with
+  the same boundary: only pages owned by the parent's owner. An editor gets
+  the content (drafts included), the page's image slots, the parent's Pages
+  section with drafts, and **adding** pages — which are saved as drafts owned
+  by the PARENT's owner, so they stay inside the share and going live is still
+  the owner's call. Saves keep the stored status; delete and rollback stay
+  `canEditRow`. `/api/wiki-page` returns `access` ('owner'|'approved') and
+  `editVia`; `/api/wiki-pages` returns `isOwner`; publish-page.html hides
+  Publish/Move to Draft/Delete for an editor. Owner gets a `notifyPageEdit` DM.
 - `assets/approved-editors.js` is the one naming widget, mounted by all four
   editors (`create.html`, `edit.html`, `publish-script.html`,
   `publish-collection.html`) so the three page types cannot drift apart. It
@@ -2990,8 +3002,10 @@ private-parent fallback renders and personalized responses are not stored.
 Hits still count views and strip the internal marker. Browser HTML remains
 `no-store`. `/api/page-viewer` separately checks the current account and page
 permissions before returning edit controls, the incomplete-page notice, or
-owner-only draft wiki-page links. Approved editors never receive the owner's
-draft list or new-page button. `SSR_RENDER_V` includes generated `BUILD_ID`.
+the draft wiki-page links and new-page button. Those two go to the owner and
+to the parent's approved editors (see the wiki-page waterfall under "Approved
+editing"); nobody else receives them, and a reader who cannot edit gets
+nothing. `SSR_RENDER_V` includes generated `BUILD_ID`.
 
 Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
 load near the viewport, on a click or for a comment hash; the attachment

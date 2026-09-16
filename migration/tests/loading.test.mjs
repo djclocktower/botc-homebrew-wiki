@@ -147,8 +147,12 @@ test('members share public HTML; owner and approved-editor controls stay private
   const controls = await owner.json();
   assert.match(controls.pages, /PRIVATE LORE/); assert.match(controls.pages, /id="sec-pages"/);
   assert.match(controls.pages, /Write a page/); assert.equal(controls.editHref, '/publish-script?s=demo');
+  // An approved editor works on the script's wiki pages too (wikiPageAccess),
+  // so the drafts and the add button are theirs as well — privately, never in
+  // the shared HTML above.
   const editor = await (await f.request('/api/page-viewer?type=script&slug=demo', member(2))).json();
-  assert.equal(editor.editHref, '/publish-script?s=demo'); assert.equal(editor.pages, null);
+  assert.equal(editor.editHref, '/publish-script?s=demo');
+  assert.match(editor.pages, /PRIVATE LORE/); assert.match(editor.pages, /Write a page/);
   const stranger = await (await f.request('/api/page-viewer?type=script&slug=demo', member(3))).json();
   assert.equal(stranger.editHref, ''); assert.equal(stranger.pages, null);
   // A demoted admin's old session must not expose another owner's draft links.
@@ -173,6 +177,68 @@ test('draft pages and pages under deleted parents never enter the public SSR cac
   assert.equal((await f.request('/p/lore')).status, 404);
   assert.equal((await f.request('/p/lore', member(3))).status, 404);
   assert.ok(![...f.cache.keys()].some(k => k.startsWith('https://ssr.internal/')));
+});
+
+test('approved editors of a script reach its wiki pages; publishing, deleting and other owners’ pages stay out', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f);
+  f.insert('scripts', 'demo', { slug: 'demo', name: 'Demo', characters: [], publicEdit: 'approved', editors: [{ id: 2, username: 'user-2' }] });
+  f.db.prepare("UPDATE scripts SET owner_id=1 WHERE slug='demo'").run();
+  await f.hooks.ensurePagesTable(f.env);
+  f.db.prepare("INSERT INTO pages(slug,title,parent_type,parent_slug,owner_id,data,status) VALUES('secret-lore','PRIVATE LORE','script','demo',1,'{}','draft')").run();
+  // Written under the same script by somebody who is not its owner: theirs, not the share's.
+  f.db.prepare("INSERT INTO pages(slug,title,parent_type,parent_slug,owner_id,data,status) VALUES('guest-notes','GUEST NOTES','script','demo',3,'{}','published')").run();
+  const post = (id, body) => f.request('/api/wiki-page', { method: 'POST',
+    headers: { ...member(id).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  // The parent's listing: the editor sees drafts and may add, but is not the owner.
+  const listing = await (await f.request('/api/wiki-pages?parentType=script&parentSlug=demo', member(2))).json();
+  assert.equal(listing.canEdit, true); assert.equal(listing.isOwner, false);
+  assert.ok(listing.pages.some(p => p.slug === 'secret-lore'));
+  const strangerListing = await (await f.request('/api/wiki-pages?parentType=script&parentSlug=demo', member(3))).json();
+  assert.equal(strangerListing.canEdit, false);
+  assert.ok(!strangerListing.pages.some(p => p.slug === 'secret-lore'));
+
+  // The page itself, drafts included, and where the permission came from.
+  const shared = await (await f.request('/api/wiki-page?slug=secret-lore', member(2))).json();
+  assert.equal(shared.access, 'approved'); assert.equal(shared.canEdit, true); assert.equal(shared.editVia.name, 'Demo');
+  assert.equal((await f.request('/api/wiki-page?slug=secret-lore', member(3))).status, 404);
+  const theirs = await (await f.request('/api/wiki-page?slug=guest-notes', member(2))).json();
+  assert.equal(theirs.access, ''); assert.equal(theirs.canEdit, false);
+  // The rendered draft too, and never through the public cache.
+  assert.match(await (await f.request('/p/secret-lore', member(2))).text(), /PRIVATE LORE/);
+  assert.equal((await f.request('/p/secret-lore', member(3))).status, 404);
+  assert.ok(![...f.cache.keys()].some(k => k.startsWith('https://ssr.internal/')));
+  // The page's image slots follow the page.
+  assert.equal(await f.hooks.uploadSlotDenied(f.env, { userId: 2 }, 'pages/secret-lore-header.png'), null);
+  assert.equal((await f.hooks.uploadSlotDenied(f.env, { userId: 3 }, 'pages/secret-lore-header.png')).status, 403);
+  assert.equal((await f.hooks.uploadSlotDenied(f.env, { userId: 2 }, 'pages/guest-notes-header.png')).status, 403);
+
+  // An editor's save keeps the stored status whatever it asks for, keeps the
+  // owner, and tells the owner.
+  const edited = await post(2, { slug: 'secret-lore', title: 'PRIVATE LORE', body: 'Rewritten by the editor', status: 'published' });
+  assert.equal(edited.status, 200); assert.equal((await edited.json()).status, 'draft');
+  let row = f.db.prepare("SELECT owner_id, status, data FROM pages WHERE slug='secret-lore'").get();
+  assert.equal(row.owner_id, 1); assert.equal(row.status, 'draft'); assert.match(row.data, /Rewritten by the editor/);
+  await Promise.all(f.background);
+  const dm = f.db.prepare('SELECT sender_id, recipient_id, sender_deleted, body FROM dms').get();
+  assert.equal(dm.sender_id, 2); assert.equal(dm.recipient_id, 1); assert.equal(dm.sender_deleted, 1);
+  assert.match(dm.body, /PRIVATE LORE/);
+  // A page the editor adds is a draft filed under the parent's owner, who
+  // still publishes it — and only the owner does.
+  const added = await (await post(2, { parentType: 'script', parentSlug: 'demo', title: 'Editor Notes', body: 'New', status: 'published' })).json();
+  assert.equal(added.slug, 'editor-notes'); assert.equal(added.status, 'draft');
+  row = f.db.prepare("SELECT owner_id, status FROM pages WHERE slug='editor-notes'").get();
+  assert.equal(row.owner_id, 1); assert.equal(row.status, 'draft');
+  const published = await (await post(1, { slug: 'editor-notes', title: 'Editor Notes', body: 'New', status: 'published' })).json();
+  assert.equal(published.status, 'published');
+  // Out of reach: another owner's page, a stranger, deleting, and a protected parent.
+  assert.equal((await post(2, { slug: 'guest-notes', title: 'GUEST NOTES', body: 'Hijacked' })).status, 403);
+  assert.equal((await post(3, { parentType: 'script', parentSlug: 'demo', title: 'Stranger', body: 'No' })).status, 403);
+  assert.equal((await post(2, { action: 'delete', slug: 'secret-lore' })).status, 403);
+  assert.ok(f.db.prepare("SELECT 1 FROM pages WHERE slug='secret-lore'").get());
+  f.db.prepare("INSERT INTO settings(key,value) VALUES('protected:script:demo','1')").run();
+  assert.equal((await f.request('/api/wiki-page?slug=secret-lore', member(2))).status, 404);
+  assert.equal((await post(2, { slug: 'secret-lore', title: 'PRIVATE LORE', body: 'Locked' })).status, 403);
 });
 
 function r2(f) {
