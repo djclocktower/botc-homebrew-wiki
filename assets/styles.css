@@ -730,6 +730,17 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   .crumb        { display: none; }
   .char-parchment, .char-infocard, .char-side { grid-column: 1; grid-row: auto; }
   .char-infocard { order: -1; }
+  /* The info card is drawn FIRST here but comes AFTER the almanac in the
+     markup, and that is exactly the case the browser's scroll anchoring
+     gets wrong: when the JSON box in the card opens, the browser picks the
+     almanac text (first in DOM order, still on screen below the bar) as the
+     thing to hold still, and shoves the page down by the height of the box
+     — the JSON you just opened scrolls off the top of the screen. Taking the
+     reordered blocks out of anchor selection leaves the card itself as the
+     anchor, so the bar stays where it was tapped and the box opens under
+     it. Only under this query: on a desktop the two are side by side, the
+     DOM order matches the visual order, and anchoring behaves. */
+  .char-parchment, .char-side { overflow-anchor: none; }
   .char-col2 { display: contents; }
   .brand-skull  { height: 44px; }
   .brand-header-text { height: 34px; }
@@ -1396,6 +1407,51 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   color: var(--parch);
 }
 .add-to-script-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
+
+/* ── Favorites (assets/favorites.js) ──
+   One button in three skins: the full-width one in a character's info card
+   (the third in the stack under the JSON bar, on the Add to Script button's
+   rules above), the centred .cta-secondary one under a script's or
+   collection's title (.page-fav-btn), and a bare icon (.fav-btn-compact).
+   The heart is an outline until the page is saved, then filled — the fill
+   IS the state, so it reads without the label. The pop on toggle is the one
+   animation, and it is skipped for anyone who asked for reduced motion. */
+.fav-btn { -webkit-tap-highlight-color: transparent; }
+.fav-btn .fav-ico {
+  width: 1em; height: 1em; vertical-align: -.15em; margin-right: .35em;
+  flex: 0 0 auto;
+}
+.fav-btn.on .fav-ico path { fill: currentColor; }
+.fav-btn-compact { padding: 6px 8px; }
+.fav-btn-compact .fav-ico { margin-right: 0; font-size: 1.15em; }
+.fav-btn.fav-pop .fav-ico { animation: fav-pop .45s ease-out; }
+@keyframes fav-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.35); }
+  70%  { transform: scale(.92); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fav-btn.fav-pop .fav-ico { animation: none; }
+}
+/* Under a script's or collection's title, next to the owner-controls slot. */
+.page-fav-bar { text-align: center; margin: 0 0 22px; }
+.page-fav-btn {
+  display: inline-block; font-size: .82rem; padding: 8px 18px;
+  letter-spacing: .06em; cursor: pointer;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400;
+}
+.page-fav-btn.on { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
+.page-fav-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
+/* The two bars sit one above the other when both are drawn; pull the second
+   up so they read as one row of controls. */
+.page-owner-bar + .page-fav-bar { margin-top: -14px; }
+/* The Favorites chip in the filter boxes carries the same heart. */
+.filter-chip-fav .fav-ico { width: 1em; height: 1em; vertical-align: -.15em; margin-right: 2px; }
+.filter-chip-fav.active .fav-ico path { fill: currentColor; }
+/* Until the list arrives, the chip is [hidden] — stated here because a chip
+   is a <button> with its own display rules elsewhere. */
+.filter-chip[hidden] { display: none !important; }
 
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {

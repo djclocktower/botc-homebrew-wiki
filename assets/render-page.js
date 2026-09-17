@@ -361,6 +361,9 @@
             '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
+        // The identity, for the Favorites chip in card-filters.js: a saved
+        // character is keyed on it, never on the address the link goes to.
+        ' data-slug="' + esc(c.slug || '') + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +

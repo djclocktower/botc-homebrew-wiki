@@ -311,6 +311,7 @@
   <!-- sao.js before card-filters.js: the filter box only offers Steven
        Approved Order when window.saoCompare is already there. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/favorites.js"></script>
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>
@@ -452,6 +453,7 @@
           var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
           var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
           html += '<div class="sb-add-row" data-team="' + esc(c.team || '') + '"' +
+            ' data-slug="' + esc(c.slug || '') + '"' +
             ' data-tags="' + esc(c.tags || '') + '"' +
             ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
             ' data-name="' + esc(c.name || '') + '"' +
@@ -494,6 +496,10 @@
         sectionSel: '.sb-add-group', innerSel: '.sb-add-rows', cardSel: '.sb-add-row',
         sectionCountSel: '.sb-add-groupcount', abilitySel: '.sb-add-ability',
         label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
+        // "Add my favorites": the reader's saved characters, and every
+        // character on a saved script or collection. Hidden until one of
+        // them is in this list.
+        favChip: true,
         sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']]
       });
     }

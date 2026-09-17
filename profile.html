@@ -171,6 +171,7 @@
   <!-- sao.js first: card-filters.js only offers Steven Approved Order when
        window.saoCompare is already defined. -->
   <script src="/assets/sao.js"></script>
+  <script src="/assets/favorites.js"></script>
   <script src="/assets/card-filters.js"></script>
   <script>
   (function () {
@@ -556,7 +557,9 @@
         // default: this is one person's body of work, and hiding half of it
         // read as the wiki losing their characters. The chip starts active
         // so a reader can still filter them out.
-        partialChip: true, partialOn: true, curataChip: true
+        partialChip: true, partialOn: true, curataChip: true,
+        // The reader's saved characters; hidden until one of them is here.
+        favChip: true
       });
       if (!mounted) {
         var f = document.getElementById('cr-filters');

@@ -155,6 +155,17 @@
  *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
  *   POST /api/suggestion      -> approve / decline / withdraw one
  *   GET  /api/shared-pages    -> pages this account is an approved editor of
+ *   GET  /api/favorites       -> this account's saved pages: three slug lists,
+ *                                newest first; ?expand=1 adds `items` (name,
+ *                                status, link key per page) and
+ *                                `characterSlugs` — the saved characters PLUS
+ *                                every character on a saved script or
+ *                                collection, which is what the Favorites
+ *                                filter on the browse pages admits
+ *   POST /api/favorite        -> {type, slug, on}: save or unsave one page.
+ *                                Published pages only, capped per account,
+ *                                and not a content write (no feed changes,
+ *                                nothing logged — a bookmark is not an edit)
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -1310,6 +1321,142 @@ async function ensureSuggestTable(env) {
 
 const SUGGEST_MAX_OPEN_PER_PAGE = 50;   // per suggester, per page: a queue, not a firehose
 const SUGGEST_NOTE_MAX = 600;
+
+// ---- favorites (a reader's saved pages) ----
+// One row per (account, page). The slug is the page's stable key — a
+// character's IDENTITY (never its address, which moves on rename), a script's
+// slug, a collection's PK slug (not its kebab id; findCollectionRow resolves
+// either on the way in). Nothing is stored on the page itself and nothing
+// public reads the table: who saved what is that reader's business.
+// See "Favorites" in CLAUDE.md.
+let _favoritesReady = false;
+async function ensureFavoritesTable(env) {
+  if (_favoritesReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS favorites (
+       user_id     INTEGER NOT NULL,
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       PRIMARY KEY (user_id, entity_type, slug)
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_favorites_page ON favorites(entity_type, slug)'
+  ).run();
+  _favoritesReady = true;
+}
+// Per account. Bounds the roster resolution ?expand=1 does, and nobody needs
+// more bookmarks than this to find their way around.
+const FAVORITES_MAX = 500;
+const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* The page a favorite names, resolved the way every other route resolves that
+   type: a character by identity or address (resolveCharacterPath), a script by
+   slug, a collection by PK slug or kebab id (findCollectionRow). Returns
+   {slug, key, name, status} — `slug` is what the table stores and `key` is
+   what a URL wants (a collection's id) — or null. */
+async function favoriteTarget(env, type, key) {
+  key = String(key || '').trim();
+  if (!FAVORITE_TYPES.includes(type) || !key || key.length > 180) return null;
+  if (type === 'character') {
+    const hit = await resolveCharacterPath(env, key);
+    if (!hit) return null;
+    const d = parseData(hit.row);
+    return { slug: hit.row.slug, key: hit.row.slug, name: d.name || hit.row.slug, status: hit.row.status };
+  }
+  const row = type === 'script' ? await getEntityRow(env, 'script', key) : await findCollectionRow(env, key);
+  if (!row) return null;
+  const d = parseData(row);
+  return {
+    slug: row.slug,
+    key: type === 'collection' ? (d.id || row.slug) : row.slug,
+    name: row.name || d.displayName || d.name || row.slug,
+    status: row.status
+  };
+}
+
+/* The whole of one account's favorites: the three slug lists, newest first.
+   With `expand`, also `items` (name, status and link key per page, for the
+   account page's list) and `characterSlugs` — the characters the Favorites
+   filter admits: the ones saved directly PLUS every character on a saved
+   script or collection. Rosters resolve through rosterCharacterSlugs(), the
+   same one rule the owner waterfall uses, with one shared character read
+   across every collection rather than one per collection. Only pages that are
+   still public count toward `characterSlugs`; a saved page that has gone to
+   draft, or was deleted, stays in the table (so it comes back if the page
+   does) but is reported with its status, or dropped once it no longer exists. */
+async function favoritesPayload(env, userId, expand) {
+  await ensureFavoritesTable(env);
+  const { results } = await env.DB.prepare(
+    'SELECT entity_type, slug, ts FROM favorites WHERE user_id=? ORDER BY ts DESC'
+  ).bind(userId).all().catch(() => ({ results: [] }));
+  const rows = results || [];
+  const lists = { characters: [], scripts: [], collections: [] };
+  const listOf = { character: 'characters', script: 'scripts', collection: 'collections' };
+  for (const r of rows) if (listOf[r.entity_type]) lists[listOf[r.entity_type]].push(r.slug);
+  const out = { ...lists, total: rows.length, max: FAVORITES_MAX };
+
+  // A flat 90 per IN (...) chunk, like everything else here that binds
+  // nothing beside the chunk (see D1_MAX_BINDS).
+  async function fetchRows(sql, slugs) {
+    const found = [];
+    for (let i = 0; i < slugs.length; i += 90) {
+      const chunk = slugs.slice(i, i + 90);
+      const q = chunk.map(() => '?').join(',');
+      const { results } = await env.DB.prepare(sql.replace('%IN%', q)).bind(...chunk).all().catch(() => ({ results: [] }));
+      found.push(...(results || []));
+    }
+    return found;
+  }
+  // A collection's URL key is its kebab id, which on a legacy row is not the
+  // PK slug stored here — and the button on a collection page only knows the
+  // id. So the ids ride along even on the plain call, read off the few saved
+  // rows; the button treats either as "saved".
+  const colls = lists.collections.length
+    ? await fetchRows("SELECT slug, display_name AS name, status, data FROM collections WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.collections)
+    : [];
+  out.collectionIds = colls.map(r => { const d = parseData(r); return d.id || r.slug; });
+  if (!expand) return out;
+
+  const savedAt = {};
+  for (const r of rows) savedAt[r.entity_type + ':' + r.slug] = r.ts;
+  if (lists.characters.length) await ensureUrlSlugColumn(env);
+  const [chars, scripts] = await Promise.all([
+    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.characters),
+    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.scripts)
+  ]);
+  const bySlug = list => Object.fromEntries(list.map(r => [r.slug, r]));
+  const charMap = bySlug(chars), scriptMap = bySlug(scripts), collMap = bySlug(colls);
+
+  const via = new Set();
+  const cache = {};
+  const items = { characters: [], scripts: [], collections: [] };
+  for (const slug of lists.characters) {
+    const r = charMap[slug]; if (!r) continue;
+    items.characters.push({ slug, key: slug, page: charAddress(r), name: r.name || slug, team: r.team || '',
+      status: r.status, savedAt: savedAt['character:' + slug] });
+  }
+  for (const slug of lists.scripts) {
+    const r = scriptMap[slug]; if (!r) continue;
+    const roster = await rosterCharacterSlugs(env, 'script', r, cache);
+    if (r.status === 'published') roster.forEach(s => via.add(s));
+    items.scripts.push({ slug, key: slug, name: r.name || slug, status: r.status, count: roster.length,
+      savedAt: savedAt['script:' + slug] });
+  }
+  for (const slug of lists.collections) {
+    const r = collMap[slug]; if (!r) continue;
+    const d = parseData(r);
+    const roster = await rosterCharacterSlugs(env, 'collection', r, cache);
+    if (r.status === 'published') roster.forEach(s => via.add(s));
+    items.collections.push({ slug, key: d.id || slug, name: r.name || d.displayName || slug, status: r.status,
+      count: roster.length, savedAt: savedAt['collection:' + slug] });
+  }
+  const direct = items.characters.filter(c => c.status === 'published').map(c => c.slug);
+  out.items = items;
+  out.characterSlugs = [...new Set([...direct, ...via])];
+  return out;
+}
 
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
 let _viewsReady = false;
@@ -3541,7 +3688,11 @@ async function renameCharacter(env, from, to) {
     ['UPDATE comments SET slug=? WHERE entity_type=? AND slug=?', ['character']],
     ['UPDATE OR REPLACE page_views SET slug=? WHERE entity_type=? AND slug=?', ['character']],
     ['UPDATE revisions SET slug=? WHERE entity_type=? AND slug=?', ['character']],
-    ['UPDATE activity_log SET entity_slug=? WHERE entity_type=? AND entity_slug=?', ['character']]
+    ['UPDATE activity_log SET entity_slug=? WHERE entity_type=? AND entity_slug=?', ['character']],
+    // Readers' bookmarks are keyed on the identity, which is exactly what is
+    // moving here. OR REPLACE: an account that had somehow saved both keys
+    // keeps one row rather than tripping the primary key.
+    ['UPDATE OR REPLACE favorites SET slug=? WHERE entity_type=? AND slug=?', ['character']]
   ];
   for (const [sql, extra] of moves) {
     try { await env.DB.prepare(sql).bind(to, ...extra, from).run(); }
@@ -4726,8 +4877,13 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};` +
-      (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : ''),
-    scripts: ['reader.js', 'tags.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
+      (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : '') +
+      // Only a published page can be saved, so charpage.js draws no
+      // Favorite button on a draft. Private render; never in the public cache.
+      (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
+    // favorites.js before charpage.js: the info card's Favorite button is
+    // mounted by charpage.js through window.Favorites.
+    scripts: ['reader.js', 'tags.js', 'favorites.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
   });
 }
 
@@ -5201,12 +5357,16 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
     body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};` +
+      // pageview.js draws no Favorite button on a draft (published only).
+      (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
+    // favorites.js before both pageview.js (which mounts the page's Favorite
+    // button) and card-filters.js (whose Favorites chip asks it for the list).
     scripts: isScript
-      ? ['reader.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
-      : ['reader.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      ? ['reader.js', 'favorites.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      : ['reader.js', 'favorites.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
 }
@@ -7784,6 +7944,18 @@ export default {
       return jsonResponse({ pages: out.slice(0, 100) });
     }
 
+    // ---------- FAVORITES (this account's saved pages) ----------
+    // The three slug lists, newest first. ?expand=1 adds `items` (what the
+    // account page lists) and `characterSlugs` (what the Favorites filter on
+    // the browse pages admits: saved characters plus every character on a
+    // saved script or collection). Private: the lists are one reader's own.
+    if (method === 'GET' && path === '/api/favorites') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const expand = url.searchParams.get('expand') === '1';
+      return jsonResponse(await favoritesPayload(env, sess.userId, expand));
+    }
+
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
     // Discord sign-in has two failure modes nothing on the wiki can see on its
     // own, because both happen outside the repo: a Git deploy wiping a
@@ -9931,6 +10103,44 @@ export default {
       // A jinx is a relationship, so it can be created from either end: you
       // need to own (or admin) just ONE of the two characters. It is stored on
       // the side you own, and the other page shows it mirrored on read.
+      // ---- favorite / unfavorite one page ----
+      // Body: {type, slug, on}. `slug` may be a character's address or a
+      // collection's kebab id — favoriteTarget() resolves it to the stored
+      // key. Only a published page can be saved (a draft is not a page a
+      // reader was shown), and the table is capped per account. Not a content
+      // write: nothing about the page changes, so no feed is invalidated and
+      // no activity is logged — a bookmark is not an edit.
+      if (path === '/api/favorite') {
+        if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
+          return tooManyResponse('You have changed a lot of favorites in the last hour. Take a short break and try again.', 3600);
+        }
+        const b = await request.json().catch(() => null);
+        if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
+        const target = await favoriteTarget(env, b.type, b.slug);
+        if (!target) return jsonResponse({ error: 'No such page' }, { status: 404 });
+        await ensureFavoritesTable(env);
+        const on = b.on !== false && b.on !== 0 && b.on !== 'false';
+        if (on) {
+          if (target.status !== 'published') {
+            return jsonResponse({ error: 'Only published pages can be added to your favorites.' }, { status: 400 });
+          }
+          const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favorites WHERE user_id=?')
+            .bind(sess.userId).first().catch(() => null);
+          const already = await env.DB.prepare('SELECT 1 AS x FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
+            .bind(sess.userId, b.type, target.slug).first().catch(() => null);
+          if (!already && n && n.n >= FAVORITES_MAX) {
+            return jsonResponse({ error: 'You have reached the limit of ' + FAVORITES_MAX + ' favorites. Remove some to add more.' }, { status: 400 });
+          }
+          await env.DB.prepare(
+            'INSERT OR IGNORE INTO favorites (user_id, entity_type, slug) VALUES (?,?,?)'
+          ).bind(sess.userId, b.type, target.slug).run();
+        } else {
+          await env.DB.prepare('DELETE FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
+            .bind(sess.userId, b.type, target.slug).run();
+        }
+        return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
       if (path === '/api/jinx') {
         {
           const limited = await writeLimited(env, request, sess, 'character');
@@ -10484,6 +10694,11 @@ export default {
         try {
           await env.DB.prepare('DELETE FROM revisions WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
         } catch { /* revisions table may not exist yet */ }
+        // And the bookmarks pointing at it: a soft-deleted page keeps them
+        // (it can be restored), a purged one has nothing left to come back.
+        try {
+          await env.DB.prepare('DELETE FROM favorites WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
+        } catch { /* favorites table may not exist yet */ }
         await logActivity(env, sess, 'purge', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug });
       }
