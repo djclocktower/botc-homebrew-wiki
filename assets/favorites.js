@@ -188,22 +188,17 @@
       '<path d="M12 20.6 4.2 12.9a4.6 4.6 0 0 1 6.5-6.5L12 7.7l1.3-1.3a4.6 4.6 0 0 1 6.5 6.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
   }
 
-  /* opts: {type, slug, className, onLabel, offLabel, shortOnLabel,
-            shortOffLabel, title, compact}
+  /* opts: {type, slug, className, onLabel, offLabel, title, compact}
      The button is drawn at once in its "unsaved" look and corrected when
      the list arrives, so the page never waits on the request. Logged-out
      readers are sent to the login page and come back here afterwards: a
      button that does nothing is worse than one that asks you to sign in.
-     `compact` draws the icon alone (the label goes on aria-label + title).
-     The short labels, when given, ride along in an .act-short span for a
-     place that shows them instead of the full ones — the character page's
-     bottom bar on a phone, where three buttons share the width. */
+     `compact` draws the icon alone (the label goes on aria-label + title). */
   function mountButton(opts) {
     opts = opts || {};
     var type = opts.type, slug = opts.slug;
     var onLabel = opts.onLabel || 'In Your Favorites';
     var offLabel = opts.offLabel || 'Add to Favorites';
-    var shortOn = opts.shortOnLabel || '', shortOff = opts.shortOffLabel || '';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'fav-btn' + (opts.className ? ' ' + opts.className : '') + (opts.compact ? ' fav-btn-compact' : '');
@@ -214,10 +209,7 @@
       btn.classList.toggle('on', state);
       btn.setAttribute('aria-pressed', state ? 'true' : 'false');
       var label = state ? onLabel : offLabel;
-      var short = state ? shortOn : shortOff;
-      btn.innerHTML = heartSVG() + (opts.compact ? '' :
-        '<span class="fav-label' + (short ? ' act-full' : '') + '">' + label + '</span>' +
-        (short ? '<span class="fav-label act-short">' + short + '</span>' : ''));
+      btn.innerHTML = heartSVG() + (opts.compact ? '' : '<span class="fav-label">' + label + '</span>');
       btn.title = opts.title || (state ? 'Remove from your favorites' : 'Save to your favorites');
       btn.setAttribute('aria-label', label);
     }

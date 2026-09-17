@@ -2069,26 +2069,21 @@ saved characters PLUS those rosters, resolved server-side.
   how the chips re-count without a reload. Login is read off the same
   `botc_me` sessionStorage entry site.js keeps, so a logged-out reader costs
   no request.
-- **Where the button is.** On a `/c/` page the three actions — Favorite,
-  Add to Script, Add to Token Tool — are ONE container, `.char-actions`,
-  built by `charpage.js`. On a desktop it is the foot of the info card and
-  the three stack full-width as they always have; **on a phone (styles.css,
-  max-width 640px) it is pinned to the bottom of the screen as a bar of
-  three**, always a thumb away however far down the almanac you have read,
-  with `body.has-char-actions` padded underneath so nothing hides behind
-  it. Each button carries a full label for the card and a short one for the
-  bar (`.act-full` / `.act-short`; `mountButton()` takes `shortOnLabel` /
-  `shortOffLabel`). The owner picked this from five mocked placements
-  (stacked button, corner tab, heart badge on the icon, bookmark ribbon,
-  sticky bar). Favorite is stored on the ACCOUNT where the other two are
-  localStorage. On `/s/` and `/collection/` it is a `.page-fav-bar` that
-  `pageview.js` inserts right after the `#page-owner-controls` slot. It is
-  mounted in the browser, never rendered by the server, because the
-  published HTML is one shared cache entry for every reader (see "Caching")
-  and saved/unsaved is one reader's state. The heart is a plain outline in
-  `currentColor`, filled when saved — the fill IS the state (`.fav-btn.on`),
-  so it reads without the label. (A tribal flame heart after the owner's
-  art was tried and rejected; the plain one stays.)
+- **Where the button is.** On a `/c/` page it is the **third full-width
+  button in the info card**, under the JSON bar with Add to Script and Add
+  to Token Tool (`charpage.js`, skinned by `.add-to-script-btn`), stored on
+  the ACCOUNT where those two are localStorage. The owner chose this from
+  five mocked placements (stacked button, corner tab, heart badge on the
+  icon, bookmark ribbon, sticky phone bar); the corner tab and the sticky
+  bar were each built and taken out again in the same PR, so do not
+  reintroduce either without asking. On `/s/` and `/collection/` it is a
+  `.page-fav-bar` that `pageview.js` inserts right after the
+  `#page-owner-controls` slot. It is mounted in the browser, never rendered
+  by the server, because the published HTML is one shared cache entry for
+  every reader (see "Caching") and saved/unsaved is one reader's state. The
+  heart is a plain outline in `currentColor`, filled when saved — the fill
+  IS the state (`.fav-btn.on`), so it reads without the label. (A tribal
+  flame heart after the owner's art was tried and rejected too.)
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,
@@ -3307,3 +3302,16 @@ keeps `content-visibility: auto`.
    A rule that means to REPLACE a header detaches it first with a
    `! Cache-Control` line. And `_headers` never applies to a response the
    Worker generated — those set their own.
+15. **A block drawn out of DOM order breaks the browser's scroll
+   anchoring, and it looks like the page jumping.** On a phone the `/c/`
+   info card is shown first (`order: -1`) but comes AFTER the almanac
+   parchment in the markup. Open the JSON box in the card and Chrome picks
+   the parchment — first in DOM order, still on screen below the bar — as
+   the node to hold still, then moves the page down by the box's whole
+   height so the JSON you just opened scrolls off the top. The fix is
+   `overflow-anchor: none` on the reordered blocks (`.char-parchment`,
+   `.char-side`) inside the same media query as the `order` rule, so the
+   card is the anchor and the bar stays under your thumb. Any future
+   reordering by `order` / `grid-row` on a page with a collapsible box
+   needs the same line, or the same report ("the JSON bar jumps the screen
+   around") will come back.
