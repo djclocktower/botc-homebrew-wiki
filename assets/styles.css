@@ -1424,11 +1424,13 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .fav-btn.on .fav-ico path { fill: currentColor; }
 .fav-btn-compact { padding: 6px 8px; }
 .fav-btn-compact .fav-ico { margin-right: 0; font-size: 1.15em; }
-.fav-btn.fav-pop .fav-ico { animation: fav-pop .45s ease-out; }
+/* Deliberately faint: a 5% swell and back, over a third of a second. The
+   owner asked for the bigger bounce to be toned right down, so the heart
+   filling in is the event and the motion is only a nudge that it happened. */
+.fav-btn.fav-pop .fav-ico { animation: fav-pop .3s ease-out; }
 @keyframes fav-pop {
   0%   { transform: scale(1); }
-  35%  { transform: scale(1.35); }
-  70%  { transform: scale(.92); }
+  45%  { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
