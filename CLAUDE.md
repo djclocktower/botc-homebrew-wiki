@@ -64,7 +64,11 @@ Key dynamic behavior:
   entry, no search, no browse list, no homepage strip. The only two links in
   are the "Pages" section on the parent script/collection page and the
   author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
-  (or an admin) can create one; the page is then owned by whoever wrote it.
+  (or an admin) — or an **approved editor of the parent** — can create one;
+  the owner's page is owned by whoever wrote it, an editor's is filed under the
+  parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
+  choice, exactly as for its characters. See the wiki-page waterfall under
+  approved editing.
 - `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
@@ -1000,7 +1004,10 @@ stored on the page's `data` as `publicEdit`:
 - **`'closed'`** (`PUBLIC_EDIT_CLOSED`): the owner chose "Only me". Stored as
   a word rather than as nothing so the choice is remembered — see the
   default below. Reads as closed everywhere (`publicEditMode()` returns `''`
-  for it). Characters only; a script or collection stores nothing.
+  for it). On a character it switches the tags-open default off; on a script
+  or collection it is the choice that closes the owner's characters and wiki
+  pages on it (see "A set's choice governs its pages" below), which nothing
+  stored — "not set" — never does.
 - **`'suggest'`**: anyone with an account may PROPOSE a version for the creator
   to approve. Not write access: every save handler asks `permCanWrite()`, and
   'suggest' is not a writing mode, so it can never be mistaken for an edit.
@@ -1139,27 +1146,72 @@ everyone. They edit it as the creator would; the creator keeps the page.
   scrolls away, so **`GET /api/shared-pages`** is the standing list, shown as
   *Shared With You* on the account page. Without it there is no way back to a
   shared draft: by design it is in no feed, no search and no browse page.
-- **Naming an editor on a script or a collection carries down to the character
-  pages on it** (`waterfallParent()` / `waterfallEditor()` in worker.js). The
-  roster IS the work: an editor who can fix the script's synopsis but not a
-  typo in any of its characters has been given the smaller half. It grants
-  exactly `'approved'`, so everything above still holds — drafts yes,
-  publishing no, the editor list no.
+- **A set's choice governs its pages: a script or collection's "Who can edit"
+  choice is the one in force on the character pages on it**
+  (`governingParent()` / `sharedParentPages()` in worker.js; `waterfallParent()`
+  is the approved-editor half of it). The roster IS the
+  work: a creator who set their collection to approved editing, or to "Only
+  me", meant the set — and an editor who can fix the script's synopsis but not
+  a typo in any of its characters has been given the smaller half. So a chosen
+  mode on the set — `'closed'`, `'approved'`, `'suggest'` or `'all'` — is the
+  mode in force on every character on it that the same account owns, and the
+  character's own `publicEdit` is dormant while it is; the tags-open default
+  never applies under a governing set either. A set whose owner chose nothing
+  ("not set", the empty value every set carried before this existed) governs
+  nothing. `'approved'` grants exactly `'approved'`, so everything above still
+  holds — drafts yes, publishing no, the editor list no — and the character's
+  own named editors still count beside the set's. Derived on read, never
+  written through: a character added to the set later is covered without
+  anyone re-saving, taking the choice off the set puts every page back on its
+  own setting, and nothing bulk-writes a hundred rows. It was built because an
+  owner set a 96-character collection to approved editing and every page
+  stayed open: the admin sweep had put `'all-but-ability'` on each of them
+  while they were still unowned, and the collection's choice reached none.
   **It reaches only characters owned by the SAME account as the parent page.**
-  A collection can list anybody's characters, so without that rule naming an
-  editor on one would hand them edit rights over strangers' pages, which is
-  not the owner's to give. An unowned page (half the wiki) is reached by
-  nothing.
-  `sharedParentPages()` is the lookup: the few script/collection rows that name
-  any editor at all, memoised per isolate against `contentVersion()` exactly
-  like `curataCollections()`, so the check costs one cached query rather than a
-  scan per page view. Membership goes through `resolveCollectionMembers()` with
-  the single character as the whole corpus — one membership rule, not a second
-  copy of it. The characters are deliberately **not** listed in *Shared With
-  You* (a 200-character roster would bury the pages actually shared); the
-  parent's row says "and its characters" and is the way to them. `/api/page`
-  returns `editVia` naming the parent, so edit.html's banner can say where the
-  permission came from instead of claiming somebody named you on this page.
+  A collection can list anybody's characters, so without that rule a choice on
+  one would open or close strangers' pages, which is not the owner's to do. An
+  unowned page (half the wiki) is reached by nothing. A character on two
+  governed sets takes the collection's choice over the script's, then the
+  first in table order — the precedence `characterQualifier()` uses to file it.
+  `sharedParentPages()` is the lookup: the few script/collection rows that
+  carry a `publicEdit` at all, memoised per isolate against `contentVersion()`
+  exactly like `curataCollections()`, so the check costs one cached query
+  rather than a scan per page view. Membership goes through
+  `resolveCollectionMembers()` with the single character as the whole corpus —
+  one membership rule, not a second copy of it. The characters are deliberately
+  **not** listed in *Shared With You* (a 200-character roster would bury the
+  pages actually shared); the parent's row says "and its characters" and is
+  the way to them. `/api/page` returns `editVia` naming the parent, so
+  edit.html's banner can say where the permission came from instead of
+  claiming somebody named you on this page, and `governedBy`
+  (`{type, key, name, mode}`) so the owner's editor can lock its own "Who can
+  edit" control on the set's choice and send them to the set to change it —
+  the control and the status bar must never disagree, and the select's value
+  is what the save posts, so a governed page's stored setting follows the
+  set's on its owner's next save. `/api/page-history` and `/api/suggest` read
+  the mode in force through `effectiveModeFor()` (`publicEditVia` on the
+  history response says which set). The set editors' select offers "Not set"
+  (`''`) and "Only me" (`'closed'`) as two options for exactly this reason,
+  and their status bar asks `editStatusHTML` for `'unset'` with a `what` that
+  names the set and its pages.
+- **The set's choice reaches its custom wiki pages (`/p/`) the same way**
+  (`wikiPageAccess()` / `parentSharingMode()` / `isParentApprovedEditor()` /
+  `mayAddWikiPage()`), with the same boundary: only pages owned by the parent's
+  owner. A wiki page has no `publicEdit` of its own, so the parent's choice is
+  the whole of its answer: `'approved'` admits the named editors to the content
+  (drafts included), the page's image slots, the parent's Pages section with
+  drafts, and **adding** pages — which are saved as drafts owned by the
+  PARENT's owner, so they stay inside the share and going live is still the
+  owner's call; `'all'` admits anyone with an account to a PUBLISHED page (a
+  draft stays the owner's and the named editors'), editing but never adding;
+  `'suggest'` reads as closed, because a wiki page has no send path for a
+  suggestion; `'closed'` and "not set" keep it the owner's. Every non-owner
+  save keeps the stored status, is size-capped, and DMs the owner
+  (`notifyPageEdit`); delete and rollback stay `canEditRow`. `/api/wiki-page`
+  returns `access` (`'owner'`|`'approved'`|`'all'`|`''`) and `editVia`;
+  `/api/wiki-pages` returns `isOwner`; publish-page.html hides Publish/Move to
+  Draft/Delete for anyone but the owner and says where the permission came
+  from.
 - `assets/approved-editors.js` is the one naming widget, mounted by all four
   editors (`create.html`, `edit.html`, `publish-script.html`,
   `publish-collection.html`) so the three page types cannot drift apart. It
@@ -1167,9 +1219,9 @@ everyone. They edit it as the creator would; the creator keeps the page.
   Worker resolves the list again on save regardless — the lookup is a courtesy,
   never the check.
 
-Wiki pages (`/p/`) are deliberately outside all of this: they are owner-only
-across the board on every route, and giving them `publicEdit` would mean
-teaching `/api/wiki-page` the whole machinery.
+Wiki pages (`/p/`) carry no `publicEdit` of their own: giving them one would
+mean teaching `/api/wiki-page` the whole machinery. The one way in for anyone
+but the owner is the parent's choice, waterfalled as above.
 
 **History is public and drafts have none.** `saveRevision()` skips any row whose
 stored status is not `published`: a draft is saved over constantly while it is
@@ -2300,9 +2352,14 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
   wiki pages to it — being unlisted is the feature.
 - **Who may write one:** the owner of the parent script/collection (or an
-  admin). Ownership then belongs to the writer, and only they or an admin can
-  edit it afterwards. Parentage is frozen at creation — moving a page would
-  break its links.
+  admin), and the parent's approved editors. The owner's page belongs to the
+  writer; an editor's is filed under the parent's owner as a draft, so it
+  stays inside the share. Afterwards, who may edit it is the parent's "Who can
+  edit" choice — its owner and an admin always, the named editors under
+  approved editing, anyone with an account under "anyone can edit" (published
+  pages only), nobody else under suggestions or "only me" (see "Approved
+  editing"). Parentage is frozen at creation — moving a page would break its
+  links.
 - **Slug** is derived from the title once and frozen, with a `-2`, `-3` …
   suffix if that slug is taken. Slugs are global across all wiki pages.
 - Images live in R2 under `pages/{slug}-*`; the banner is
@@ -3080,8 +3137,10 @@ private-parent fallback renders and personalized responses are not stored.
 Hits still count views and strip the internal marker. Browser HTML remains
 `no-store`. `/api/page-viewer` separately checks the current account and page
 permissions before returning edit controls, the incomplete-page notice, or
-owner-only draft wiki-page links. Approved editors never receive the owner's
-draft list or new-page button. `SSR_RENDER_V` includes generated `BUILD_ID`.
+the draft wiki-page links and new-page button. Those two go to the owner and
+to the parent's approved editors (see the wiki-page waterfall under "Approved
+editing"); nobody else receives them, and a reader who cannot edit gets
+nothing. `SSR_RENDER_V` includes generated `BUILD_ID`.
 
 Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
 load near the viewport, on a click or for a comment hash; the attachment

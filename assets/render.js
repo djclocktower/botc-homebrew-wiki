@@ -258,6 +258,11 @@
   var EDIT_STATUS = {
     '':        ['yours alone', 'only you and the wiki admins can edit this page.'],
     closed:    ['yours alone', 'only you and the wiki admins can edit this page.'],
+    /* A script or collection whose owner has chosen nothing. The page itself
+       is closed like '' above, but the difference matters and is said: a
+       CHOSEN mode on a set governs the owner's characters and wiki pages on
+       it, and "not set" leaves each of them on its own setting. */
+    unset:     ['not set', 'only you and the wiki admins can edit this page; each character and wiki page on it keeps its own setting.'],
     /* A character whose owner chose nothing keeps its tags open until the
        owner tags it (the Worker's defaultTagsOpen). The editor asks for this
        key when that default is what the next save will leave in force, and
@@ -274,20 +279,28 @@
     approved:  ['shared', 'only the accounts you have named can edit this page.']
   };
   /* mode: the stored `publicEdit` ('' or 'closed' for a closed page,
-     'default' for a character still on the tags-open default).
-     opts.links: [{href, label}] appended after the sentence — the history
-     page, a suggestions queue, whatever the editor has to offer. */
+     'default' for a character still on the tags-open default, 'unset' for a
+     script or collection whose owner has chosen nothing).
+     opts.what: what the sentence is about — 'this page' unless the setting
+     reaches further, as a set's does ('this collection and your characters
+     and wiki pages on it').
+     opts.note: HTML the caller has already escaped, appended after the
+     sentence — the character editor uses it to say a set governs the page.
+     opts.links: [{href, label}] appended after that — the history page, a
+     suggestions queue, whatever the editor has to offer. */
   function editStatusHTML(mode, opts) {
     opts = opts || {};
     var key = Object.prototype.hasOwnProperty.call(EDIT_STATUS, mode) ? mode : '';
     var t = EDIT_STATUS[key];
+    var sentence = t[1].replace('this page', opts.what || 'this page');
+    var closed = !key || key === 'closed' || key === 'unset';
     var links = (opts.links || []).filter(Boolean).map(function (l) {
       return '<a class="hist-page-link" href="' + esc(l.href) + '">' + esc(l.label) + '</a>';
     }).join(' ');
-    return '<p class="edit-status-bar' + (key ? '' : ' is-closed') + '">' +
+    return '<p class="edit-status-bar' + (closed ? ' is-closed' : '') + '">' +
       '<span class="es-label">Who can edit:</span> ' +
       '<span class="oe-chip">' + esc(t[0]) + '</span> ' +
-      esc(t[1]) + (links ? ' ' + links : '') + '</p>';
+      esc(sentence) + (opts.note ? ' ' + opts.note : '') + (links ? ' ' + links : '') + '</p>';
   }
 
   /* ── why an admin took this page down ──

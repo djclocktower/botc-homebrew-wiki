@@ -770,9 +770,13 @@ async function uploadSlotDenied(env, sess, key) {
     // Longest matching slug wins: "my-page-header.png" belongs to the
     // page "my-page", not to a page that happens to be called "my".
     const row = await env.DB.prepare(
-      "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
+      "SELECT slug, owner_id, parent_type, parent_slug FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
     ).bind(base, base).first().catch(() => null);
-    if (row && !canEditRow(sess, row)) {
+    // ...or an approved editor of its script/collection (wikiPageAccess).
+    const wikiOk = row && (canEditRow(sess, row) || !!(await wikiPageAccess(env, sess, row,
+      await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))));
+    if (wikiOk) ownedSlot = true;
+    if (row && !wikiOk) {
       return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
     }
   }
@@ -1883,12 +1887,12 @@ async function wikiParentRow(env, type, key) {
     const row = await findCollectionRow(env, key);
     if (!row) return null;
     const d = parseData(row);
-    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status };
+    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status, data: d };
   }
   if (type !== 'script') return null;
   const row = await getEntityRow(env, 'script', key);
   if (!row) return null;
-  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status };
+  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status, data: parseData(row) };
 }
 
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
@@ -2518,15 +2522,17 @@ function publicEditMode(d) {
   const v = d && d.publicEdit;
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
 }
-/* What a save may store. A character keeps 'closed' (the owner's explicit
-   "Only me", which switches the default off); a script or collection has no
-   default to switch off, so for them it is nothing, and a character-only mode
-   becomes its nearest equivalent rather than a word their editors never
-   offered. */
+/* What a save may store. 'closed' is the owner's explicit "Only me" and is
+   kept on every type: on a character it switches the tags-open default off,
+   and on a script or collection it is a CHOICE that governs the owner's
+   characters and wiki pages on it (see sharedParentPages), which nothing
+   stored — "not set" — never does. A character-only mode on a script or
+   collection becomes its nearest equivalent rather than a word their editors
+   never offered. */
 function sanitizePublicEdit(v, type) {
   if (typeof v !== 'string') return '';
   const character = !type || type === 'character';
-  if (v === PUBLIC_EDIT_CLOSED) return character ? PUBLIC_EDIT_CLOSED : '';
+  if (v === PUBLIC_EDIT_CLOSED) return PUBLIC_EDIT_CLOSED;
   if (!PUBLIC_EDIT_MODES[v]) return '';
   if (!character && CHARACTER_ONLY_MODES[v]) return v === 'all-but-ability' ? 'all' : '';
   return v;
@@ -2542,6 +2548,18 @@ function defaultTagsOpen(type, d) {
    editPermission()'s. */
 function effectivePublicEdit(type, d) {
   return publicEditMode(d) || (defaultTagsOpen(type, d) ? 'tags' : '');
+}
+/* The same answer with the set's choice applied (characters only), plus where
+   it came from — what /api/page-history reports and what /api/suggest checks.
+   Async because the set has to be looked up; the sync form above is for the
+   callers that already know no set is involved. */
+async function effectiveModeFor(env, type, row, d) {
+  d = d || parseData(row);
+  if (type === 'character') {
+    const gov = await governingParent(env, row, d).catch(() => null);
+    if (gov) return { mode: gov.mode === PUBLIC_EDIT_CLOSED ? '' : gov.mode, via: parentRef(gov) };
+  }
+  return { mode: effectivePublicEdit(type, d), via: null };
 }
 
 /* ---- approved editing: the accounts the owner named ----
@@ -2618,43 +2636,50 @@ async function notifyEditorsAdded(env, opts) {
   } catch { /* a notification must never break a save */ }
 }
 
-/* ---- approved editing, waterfalled from a script or a collection ----
-   Sharing a script or a collection with somebody is almost never a request to
-   share only that one page: the roster IS the work, and an editor who can fix
-   the script's synopsis but not a typo in any of its characters has been given
-   the smaller half. So being an approved editor of a script or a collection
-   carries down to the character pages it lists.
+/* ---- a set's sharing choice governs its owner's pages on it ----
+   Sharing a script or a collection is almost never about that one page: the
+   roster IS the work, and its rules pages are the rest of it. So the "Who can
+   edit" choice on a script or a collection — 'closed', 'approved', 'suggest'
+   or 'all' — is the choice in force on every character and wiki page on it
+   that the SAME account owns. A character's own setting is dormant while a
+   set governs it; a set whose owner chose nothing ("not set") governs nothing,
+   which is what every set on the wiki was before this existed.
 
-   With one boundary, and it is the important part: it reaches only characters
-   owned by the SAME account as the parent page. A collection can list anybody's
-   characters — that is what makes collections useful — so without this rule,
-   naming an editor on a collection would hand them edit rights over other
-   people's pages, which is not the owner's to give. Their own characters in
-   their own collection is exactly what they meant to share.
+   The boundary is the important part: it reaches only pages owned by the same
+   account as the parent. A collection can list anybody's characters — that is
+   what makes collections useful — so without it, a choice on a collection
+   would open or close other people's pages, which is not the owner's to do.
+   Their own characters in their own collection is exactly what they meant.
+
+   A character on two governed sets takes the collection's choice over the
+   script's, then the first in table order — the same precedence
+   characterQualifier() uses to decide which set a character is filed under.
 
    The scan is the whole point of the cache: it asks for the few script and
-   collection rows that name any editor at all (almost always none), keyed on
-   the content version so a change to a roster or an editor list invalidates
-   it, exactly like curataCollections above. */
+   collection rows that carry a `publicEdit` at all (a handful), keyed on the
+   content version so a change to a roster or a choice invalidates it, exactly
+   like curataCollections above. */
 let _sharedParentCache = null;
 async function sharedParentPages(env) {
   const version = await contentVersion(env);
   if (_sharedParentCache && _sharedParentCache.version === version) return _sharedParentCache.rows;
   const rows = [];
   try {
+    // Collections first: see the precedence note above.
     for (const type of ['collection', 'script']) {
       const { results } = await env.DB.prepare(
         `SELECT slug, owner_id, data FROM ${CONTENT[type].table}
          WHERE status IS NOT 'deleted' AND owner_id IS NOT NULL AND data LIKE ?`
-      ).bind('%"editors"%').all();
+      ).bind('%"publicEdit"%').all();
       for (const r of results || []) {
         const d = parseData(r);
-        // The list only means anything in the mode that reads it.
-        if (publicEditMode(d) !== 'approved') continue;
-        const editors = approvedEditors(d)
-          .map(e => Number(e.id)).filter(n => Number.isFinite(n));
-        if (!editors.length) continue;
-        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), editors, data: d });
+        const mode = sanitizePublicEdit(d.publicEdit, type);
+        if (!mode) continue;
+        // The editor list only means anything in the mode that reads it.
+        const editors = mode === 'approved'
+          ? approvedEditors(d).map(e => Number(e.id)).filter(n => Number.isFinite(n))
+          : [];
+        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), mode, editors, data: d });
       }
     }
   } catch {
@@ -2667,11 +2692,9 @@ async function sharedParentPages(env) {
   return rows;
 }
 
-/* Does this script/collection list this character? A script says so outright;
-   a collection is resolved by the one membership rule (match[]/include[]/
-   exclude[]) rather than a second copy of it — passing the single character in
-   as the whole corpus asks "is this one a member" with the same code the page
-   itself renders through. */
+// Does this script list the character / does this collection resolve it as a
+// member? Collections go through the ONE membership rule
+// (resolveCollectionMembers) with the single character as the whole corpus.
 function parentListsCharacter(parent, charRow, charData) {
   if (parent.type === 'script') {
     return (parent.data.characters || []).some(x => String(x) === charRow.slug);
@@ -2680,32 +2703,95 @@ function parentListsCharacter(parent, charRow, charData) {
   return PageRender.resolveCollectionMembers(parent.data, [probe]).length > 0;
 }
 
-/* The script or collection that shares this character with this session, or
-   null. Returning the parent rather than a boolean is what lets the editor say
-   WHERE the permission came from — "you were made an editor of this page" is
-   a confusing thing to read on a page nobody named you on. */
-async function waterfallParent(env, sess, charRow) {
-  if (!sess || sess.userId == null || !charRow) return null;
-  // An unowned page (most of the bulk-imported wiki) belongs to no creator, so
-  // there is nobody whose sharing could reach it.
-  if (charRow.owner_id == null) return null;
+/* The set whose choice governs this character, or null: owned by the same
+   account, listing the character, with a mode its owner chose. No session
+   needed — this is a fact about the page, not about who is asking. */
+async function governingParent(env, charRow, charData) {
+  if (!charRow || charRow.owner_id == null) return null;
   if ((charRow.status || 'published') === 'deleted') return null;
   const parents = await sharedParentPages(env);
   if (!parents.length) return null;
-  const d = parseData(charRow);
+  const d = charData || parseData(charRow);
   for (const p of parents) {
     if (p.ownerId !== Number(charRow.owner_id)) continue;
-    if (!p.editors.includes(Number(sess.userId))) continue;
-    if (!parentListsCharacter(p, charRow, d)) continue;
-    // An admin-protected page is nobody's to share, the same as everywhere.
-    if (await isProtected(env, 'character', charRow.slug)) return null;
-    return p;
+    if (parentListsCharacter(p, charRow, d)) return p;
   }
   return null;
 }
+/* {type, key, name} of a set row: the shape the editors take to say where a
+   permission or a setting came from. */
+function parentRef(p) {
+  return {
+    type: p.type,
+    key: p.type === 'collection' ? (p.data.id || p.slug) : p.slug,
+    name: (p.type === 'script' ? p.data.name : p.data.displayName) || p.slug
+  };
+}
 
-async function waterfallEditor(env, sess, charRow) {
-  return !!(await waterfallParent(env, sess, charRow));
+/* The script or collection that shares this character with this session as
+   an approved editor, or null. Returning the parent rather than a boolean is
+   what lets the editor say WHERE the permission came from — "you were made an
+   editor of this page" is a confusing thing to read on a page nobody named
+   you on. */
+async function waterfallParent(env, sess, charRow) {
+  if (!sess || sess.userId == null || !charRow) return null;
+  const p = await governingParent(env, charRow);
+  if (!p || p.mode !== 'approved' || !p.editors.includes(Number(sess.userId))) return null;
+  // An admin-protected page is nobody's to share, the same as everywhere.
+  if (await isProtected(env, 'character', charRow.slug)) return null;
+  return p;
+}
+
+/* ---- ...and to the wiki pages (/p/) that hang off it ----
+   The set's choice reaches its custom wiki pages the same way — its rules
+   page, its lore, its storyteller notes are as much the set as its roster.
+   Same boundary as the characters: only pages owned by the SAME account as
+   the parent, so a page somebody else wrote under it stays theirs.
+
+   A wiki page has no `publicEdit` of its own, so the parent's choice is the
+   whole of its answer: 'approved' admits the named editors (drafts included,
+   and adding new pages), 'all' admits anyone with an account to a PUBLISHED
+   page, and 'closed' or nothing keeps it the owner's. 'suggest' reads as
+   closed here — there is no send path for a suggestion on a wiki page.
+   What stays with the owner whatever the mode: publishing and unpublishing,
+   deleting, and rolling back. A page an editor creates is filed under the
+   PARENT's owner (as a draft), so it is the owner's to publish and stays
+   inside the share.
+
+   `parent` is a wikiParentRow() result. */
+function parentSharingMode(parent) {
+  if (!parent || !parent.data || parent.ownerId == null) return '';
+  if ((parent.status || 'published') === 'deleted') return '';
+  return sanitizePublicEdit(parent.data.publicEdit, parent.type);
+}
+async function isParentApprovedEditor(env, sess, parent) {
+  if (!sess || sess.userId == null) return false;
+  if (parentSharingMode(parent) !== 'approved' || !isApprovedEditor(sess, parent.data)) return false;
+  return !(await isProtected(env, parent.type, parent.slug));
+}
+
+/* 'owner' | 'approved' | 'all' | '' for one wiki page row. */
+async function wikiPageAccess(env, sess, row, parent) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if (row.owner_id == null || !parent || parent.ownerId == null) return '';
+  if (Number(row.owner_id) !== Number(parent.ownerId)) return '';
+  const mode = parentSharingMode(parent);
+  if (!mode || mode === PUBLIC_EDIT_CLOSED || mode === 'suggest') return '';
+  if (await isProtected(env, 'wikipage', row.slug)) return '';
+  if (await isProtected(env, parent.type, parent.slug)) return '';
+  if (mode === 'approved') return isApprovedEditor(sess, parent.data) ? 'approved' : '';
+  // 'all' opens a published page; a draft is still its owner's and its named
+  // editors' alone, exactly as a character draft is.
+  return (row.status || 'published') === 'published' ? 'all' : '';
+}
+
+/* May this session add a page under this parent? Its owner, an admin, or an
+   approved editor of it. */
+async function mayAddWikiPage(env, sess, parent) {
+  if (!sess || !parent) return false;
+  if (canEditRow(sess, { owner_id: parent.ownerId })) return true;
+  return isParentApprovedEditor(env, sess, parent);
 }
 
 /* ---- assigning a script or collection carries its characters with it ----
@@ -2866,24 +2952,31 @@ async function editPermission(env, sess, type, row) {
   if (canEditRow(sess, row)) return 'owner';
   if ((row.status || 'published') === 'deleted') return '';
   const d = parseData(row);
-  const mode = publicEditMode(d);
+  /* A character on a set whose owner chose a sharing mode takes THAT mode —
+     the set governs its owner's pages on it (see governingParent). The
+     character's own setting is dormant while it does. */
+  const gov = type === 'character' ? await governingParent(env, row, d) : null;
+  const mode = gov ? gov.mode : publicEditMode(d);
   /* Approved editors are named one account at a time, so they reach a DRAFT
      too — a collaborator is most use before the page goes live, and there is
      no stranger here to hide it from. They still cannot publish it: the save
      handlers carry the stored status forward for everyone but the owner, so
-     what goes live stays the creator's call. */
-  if (mode === 'approved' && isApprovedEditor(sess, d)) {
-    if (await isProtected(env, type, row.slug)) return '';
-    return 'approved';
+     what goes live stays the creator's call. Named on the set rather than on
+     the character itself is the same permission for the same reason: it is
+     the page's owner who named them. */
+  if (mode === 'approved') {
+    const named = isApprovedEditor(sess, d) || !!(gov && gov.editors.includes(Number(sess.userId)));
+    if (named) {
+      if (await isProtected(env, type, row.slug)) return '';
+      return 'approved';
+    }
   }
-  /* Named on the script or collection this character is part of, rather than
-     on the character itself. Same permission, for the same reason: it is the
-     page's owner who named them. Checked here so it applies to a page that
-     opted into nothing of its own — which is most of them. */
-  if (type === 'character' && await waterfallEditor(env, sess, row)) return 'approved';
   // Nothing chosen is not nothing on a character: the tags stay open until
-  // the owner tags the page or picks a mode (see defaultTagsOpen).
-  const eff = mode || (defaultTagsOpen(type, d) ? 'tags' : '');
+  // the owner tags the page or picks a mode (see defaultTagsOpen). A set that
+  // governs the page HAS chosen, so that default never applies under one.
+  const eff = gov
+    ? (mode === PUBLIC_EDIT_CLOSED ? '' : mode)
+    : (mode || (defaultTagsOpen(type, d) ? 'tags' : ''));
   if (!eff) return '';
   if (eff === 'approved') return '';    // named editing, and this is not one of the names
   if ((row.status || 'published') !== 'published') return '';
@@ -2901,15 +2994,18 @@ async function canEditPage(env, sess, type, row) {
   if (canEditRow(sess, row)) return true;
   if (!sess || !row) return false;
   const d = parseData(row);
-  if (publicEditMode(d) === 'approved' && isApprovedEditor(sess, d)) {
-    if ((row.status || 'published') === 'deleted') return false;
-    return !(await isProtected(env, type, row.slug));
-  }
-  // ...or named on the script/collection this character belongs to. Being here
-  // is what lets a shared roster's character pages be SEEN as drafts and take
-  // an art upload, not just be saved.
-  if (type === 'character') return waterfallEditor(env, sess, row);
-  return false;
+  // The same answer editPermission() gives for 'approved': the set's choice
+  // when one governs the character, else the page's own, and the names on
+  // either. Being here is what lets a shared roster's character pages be SEEN
+  // as drafts and take an art upload, not just be saved — so it must not say
+  // yes where the save would say no.
+  const gov = type === 'character' ? await governingParent(env, row, d) : null;
+  const mode = gov ? gov.mode : publicEditMode(d);
+  if (mode !== 'approved') return false;
+  const named = isApprovedEditor(sess, d) || !!(gov && gov.editors.includes(Number(sess.userId)));
+  if (!named) return false;
+  if ((row.status || 'published') === 'deleted') return false;
+  return !(await isProtected(env, type, row.slug));
 }
 
 /* Who may put an IMAGE in a page's own R2 slot.
@@ -5726,8 +5822,10 @@ export default {
       });
       const key = type === 'collection' ? (d.id || d.slug) : row.slug;
       const editHref = mayEdit ? '/' + (type === 'script' ? 'publish-script?s=' : 'publish-collection?c=') + encodeURIComponent(key) : '';
-      const pages = mayOwn ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
-      const newPageHref = mayOwn ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
+      // Approved editors of the script/collection work on its pages too
+      // (see wikiPageAccess), so they get the drafts and the add button.
+      const pages = mayEdit ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
+      const newPageHref = mayEdit ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
       return jsonResponse({ editHref, pages: pages
         ? PageRender.pagesSection(WikiRender.renderPageLinks(pages, { linkRoot: '/' }), newPageHref) : null });
     }
@@ -5905,10 +6003,12 @@ export default {
       const parent = await wikiParentRow(env, parentType, parentKey);
       if (!parent) return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
       const sess = await getSession(env, request);
-      const mayEdit = canEditRow(sess, { owner_id: parent.ownerId });
+      const mayEdit = await mayAddWikiPage(env, sess, parent);
       return jsonResponse({
         parent: { type: parent.type, key: parent.key, name: parent.name },
         canEdit: mayEdit,
+        // An approved editor adds pages but does not publish them.
+        isOwner: canEditRow(sess, { owner_id: parent.ownerId }),
         pages: await listWikiPages(env, parent.type, parent.slug, { includeDrafts: mayEdit })
       });
     }
@@ -5922,11 +6022,12 @@ export default {
         .bind(slug).first().catch(() => null);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+      const access = await wikiPageAccess(env, sess, row, parent);
+      const editable = !!access;
       if (row.status !== 'published' && !editable) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
-      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
       return jsonResponse({
         page: {
           ...parseData(row), slug: row.slug, title: row.title,
@@ -5936,7 +6037,11 @@ export default {
           author: row.author || null,
           updatedAt: row.updated_at
         },
-        status: row.status, canEdit: editable
+        status: row.status, canEdit: editable,
+        // 'owner' | 'approved' | 'all' | '': the editor hides publish/delete
+        // for anything but 'owner'.
+        access,
+        editVia: access && access !== 'owner' && parent ? { type: parent.type, key: parent.key, name: parent.name } : null
       });
     }
 
@@ -5959,7 +6064,11 @@ export default {
         const isDraft = row.status !== 'published';
         if (isDraft) {
           const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
+          const par = canEditRow(sess, row) ? null
+            : await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+          if (!canEditRow(sess, row) && !(await wikiPageAccess(env, sess, row, par))) {
+            return assetsOrNotFound(env, request);
+          }
         }
         if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
@@ -7711,13 +7820,16 @@ export default {
       let editVia = null;
       if (mode === 'approved' && type === 'character' && !isApprovedEditor(sess, parseData(row))) {
         const par = await waterfallParent(env, sess, row).catch(() => null);
-        if (par) {
-          editVia = {
-            type: par.type,
-            key: par.type === 'collection' ? (par.data.id || par.slug) : par.slug,
-            name: (par.type === 'script' ? par.data.name : par.data.displayName) || par.slug
-          };
-        }
+        if (par) editVia = parentRef(par);
+      }
+      /* The set whose sharing choice governs this character, if any: the
+         owner's editor locks its own "Who can edit" control on that choice
+         and says where to change it, and a guest's banner says where the
+         permission came from. */
+      let governedBy = null;
+      if (type === 'character') {
+        const gov = await governingParent(env, row, parseData(row)).catch(() => null);
+        if (gov) governedBy = { ...parentRef(gov), mode: gov.mode };
       }
       /* Who points here: the pages naming this character in their own
          Related list. Relations are one-way by design — nothing shows on a
@@ -7746,7 +7858,7 @@ export default {
       }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia, relatedBy,
+        curataFrom, editVia, governedBy, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -7820,7 +7932,7 @@ export default {
             status: r.status || 'published',
             updatedAt: r.updated_at || null,
             /* Editing a script or a collection carries down to the owner's own
-               characters on it (waterfallEditor). The characters themselves
+               characters on it (waterfallParent). The characters themselves
                are not listed here — a roster of 200 would bury the four pages
                actually shared with this account — so the row says so instead,
                and the parent page is the way to them. */
@@ -8175,6 +8287,7 @@ export default {
           changed: diffFieldLabels(r.data, after)
         };
       }).reverse();
+      const eff = await effectiveModeFor(env, type, row);
       return jsonResponse({
         type, slug: row.slug,
         name: row.name || row.slug,
@@ -8182,7 +8295,9 @@ export default {
         createdAt: row.created_at || null,
         updatedAt: row.updated_at || null,
         canRestore: owns,
-        publicEdit: effectivePublicEdit(type, parseData(row)),
+        publicEdit: eff.mode,
+        // The set the mode comes from, when a script or collection governs it.
+        publicEditVia: eff.via,
         entries
       });
     }
@@ -9394,7 +9509,8 @@ export default {
         if (canEditRow(sess, row)) {
           return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
         }
-        const mode = publicEditMode(parseData(row));
+        // The set's choice, when one governs the character (see governingParent).
+        const mode = (await effectiveModeFor(env, type, row)).mode;
         if (mode !== 'suggest') {
           return jsonResponse({ error: 'That page is not taking suggestions.' }, { status: 403 });
         }
@@ -10366,18 +10482,23 @@ export default {
           ? await env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(String(b.slug)).first().catch(() => null)
           : null;
         if (b.slug && !existing) return jsonResponse({ error: 'That page no longer exists.' }, { status: 404 });
-        if (existing && !canEditRow(sess, existing)) {
-          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
-        }
-
         // The parent never changes once a page is created — its URL and the
         // link back to it would both break.
         const parent = existing
           ? await wikiParentRow(env, existing.parent_type, existing.parent_slug)
           : await wikiParentRow(env, String(b.parentType || ''), String(b.parentSlug || ''));
+        // 'owner' | 'approved' — see wikiPageAccess. A new page is the owner's
+        // when its writer owns the parent, and an approved editor's otherwise.
+        const access = existing
+          ? await wikiPageAccess(env, sess, existing, parent)
+          : (parent && canEditRow(sess, { owner_id: parent.ownerId }) ? 'owner'
+            : (await isParentApprovedEditor(env, sess, parent) ? 'approved' : ''));
+        if (existing && !access) {
+          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        }
         if (!parent) return jsonResponse({ error: 'That script or collection could not be found.' }, { status: 404 });
-        if (!existing && !canEditRow(sess, { owner_id: parent.ownerId })) {
-          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" can add pages to it.' }, { status: 403 });
+        if (!existing && !access) {
+          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" (or an editor they named) can add pages to it.' }, { status: 403 });
         }
         if (!sess.isAdmin && await isProtected(env, parent.type, parent.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -10412,7 +10533,13 @@ export default {
         page.parentSlug = parent.slug;
         if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
 
-        const status = b.status === 'published' ? 'published' : 'draft';
+        // Going live stays the owner's call: an approved editor's save keeps
+        // the stored status, and a page they create starts as a draft.
+        let status = b.status === 'published' ? 'published' : 'draft';
+        if (access !== 'owner') status = existing ? (existing.status === 'published' ? 'published' : 'draft') : 'draft';
+        if (access !== 'owner' && publicEditTooBig(page)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'wikipage', existing);
         await env.DB.prepare(
           `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
@@ -10421,8 +10548,17 @@ export default {
              title=excluded.title, author=excluded.author, data=excluded.data,
              status=excluded.status, updated_at=datetime('now')`
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
-               existing ? existing.owner_id : sess.userId, JSON.stringify(page), status).run();
+               existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
+               JSON.stringify(page), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
+        if (access !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing ? existing.owner_id : parent.ownerId,
+            type: 'wikipage', slug, what: existing ? 'edited' : 'added the page',
+            name: existing ? title : title + '\u201d (a draft) to \u201c' + parent.name,
+            path: '/p/' + slug, origin: url.origin
+          }));
+        }
         return jsonResponse({
           ok: true, slug, status,
           parentType: parent.type, parentKey: parent.key, parentName: parent.name
