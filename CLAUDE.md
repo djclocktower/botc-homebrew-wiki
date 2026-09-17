@@ -889,7 +889,12 @@ theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is
 must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
-on `<body>` (never raw CSS).
+on `<body>` (never raw CSS). **The background's `--pg-bg` is root-absolute
+(`/assets/…`), never `linkRoot`-relative**: Chromium resolves a relative
+`url()` inside a custom property against the stylesheet where `var()` is used,
+and the build now serves styles.css from `/assets/immutable/`, so
+`../assets/x-bg.png` came out as `/assets/assets/x-bg.png` and every custom
+background on the site 404'd. Keep it absolute.
 The last three are the **top graphic** — the header banner, or the logo when
 there is no banner. `headerSize` and `logoSize` are **two settings because
 they are two images**: a page with a banner still has a logo, which the

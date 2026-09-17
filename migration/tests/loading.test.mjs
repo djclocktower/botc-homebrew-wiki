@@ -515,3 +515,26 @@ test('assigning a collection claims every character page, within D1 bound-parame
     .filter(call => (call.sql.match(/\?/g) || []).length > 100);
   assert.deepEqual(over.map(call => call.sql.replace(/\s+/g, ' ').slice(0, 60)), []);
 });
+
+test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {
+  // Chromium resolves a relative url() inside a custom property against the
+  // stylesheet where var() is used; the immutable build moved that stylesheet
+  // under /assets/immutable/, which turned '../assets/x-bg.png' into
+  // /assets/assets/x-bg.png. A root-absolute URL cannot be moved by anything.
+  const attrs = PageRender.themeAttrs({ background: 'scripts/demo-bg.png' }, '../');
+  assert.match(attrs.style, /--pg-bg:url\("\/assets\/scripts\/demo-bg\.png"\)/);
+  assert.doesNotMatch(attrs.style, /\.\.\//);
+  assert.match(attrs.cls, /\btheme-bg\b/);
+  const f = await fixture();
+  t.after(() => f.finish());
+  f.insert('characters', 'char-0', { slug: 'char-0', name: 'Character 0', team: 'townsfolk', art: 'art/demo.png', ability: 'Each night, learn a player.' });
+  f.insert('scripts', 'demo', { slug: 'demo', name: 'Demo', characters: ['char-0'],
+    theme: { background: 'scripts/demo-bg.png', accent: '#112233' } });
+  f.insert('collections', 'demo', { id: 'demo', slug: 'demo', include: ['char-0'], displayName: 'Demo',
+    theme: { background: 'collections/demo-bg.png' } });
+  const script = await (await f.request('/s/demo')).text();
+  assert.match(script, /<body class="[^"]*\btheme-bg\b[^"]*" style="[^"]*--pg-bg:url\(&quot;\/assets\/scripts\/demo-bg\.png&quot;\)/);
+  assert.doesNotMatch(script, /--pg-bg:url\(&quot;\.\.\//);
+  const collection = await (await f.request('/collection/demo')).text();
+  assert.match(collection, /--pg-bg:url\(&quot;\/assets\/collections\/demo-bg\.png&quot;\)/);
+});

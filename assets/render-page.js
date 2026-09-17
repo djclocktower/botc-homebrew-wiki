@@ -106,9 +106,11 @@
     return Object.keys(out).length ? out : null;
   }
 
-  /* Build the class list + inline style for <main> from a sanitized theme.
+  /* Build the class list + inline style for <body> from a sanitized theme.
      Callers MUST pass the theme through sanitizeTheme first (the Worker does
-     this on save and again at render time). */
+     this on save and again at render time). `linkRoot` is accepted for the
+     callers that pass it but no longer shapes anything — see the background
+     note below for why the one URL here must not be relative. */
   function themeAttrs(theme, linkRoot) {
     if (!theme) return { cls: '', style: '' };
     var cls = ['page-themed'];
@@ -120,7 +122,16 @@
     if (theme.link)   { cls.push('theme-link');   style.push('--pg-link:' + theme.link); }
     if (theme.background) {
       cls.push('theme-bg');
-      style.push('--pg-bg:url("' + (linkRoot || '') + 'assets/' + theme.background + '")');
+      /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
+         custom property on <body>, and Chromium resolves a relative url() in
+         a custom property against the STYLESHEET where var() consumes it,
+         not the document that declared it. The stylesheet used to live at
+         /assets/styles.css, where '../assets/x-bg.png' came out right by
+         accident; the build now serves it from /assets/immutable/, so the
+         same string resolved to /assets/assets/x-bg.png and every custom
+         background on the site 404'd. '/assets/...' reads the same from any
+         base URL, so no stylesheet move can break it again. */
+      style.push('--pg-bg:url("/assets/' + theme.background + '")');
     }
     /* Both of these are carried by the class list on <body> and read by
        styles.css, so the page markup itself is untouched: the same rules
