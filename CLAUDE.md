@@ -253,7 +253,10 @@ assets/
                        two characters. A long press or two-finger gesture would
                        be both harder to find and easier to hit by accident.
   charpage.js          /c/ page enhancements (edit button, add-to-script/token,
-                       and the Favorite button — see favorites.js)
+                       and the Favorite button — see favorites.js). The three
+                       stacked buttons share one skin — .tog-ico (an outline
+                       glyph, filled when on) + .tog-pop (the swell) in
+                       styles.css — so they look and move as one set.
   favorites.js         Favorites, the browser half: ONE module for the button
                        on a character page (charpage.js), the one on a script
                        or collection page (pageview.js), the Favorites chip
@@ -2136,6 +2139,15 @@ saved characters PLUS those rosters, resolved server-side.
   heart is a plain outline in `currentColor`, filled when saved — the fill
   IS the state (`.fav-btn.on`), so it reads without the label. (A tribal
   flame heart after the owner's art was tried and rejected too.)
+  **All three stacked buttons share one skin.** `.tog-ico` (an outline glyph
+  in `currentColor`, filled when the button is on) and `.tog-pop` (a 5%
+  swell over .3s, none under reduced motion) in styles.css, and
+  `-webkit-tap-highlight-color: transparent` on the lot. charpage.js draws a
+  page glyph for Add to Script and a disc for Add to Token Tool with the same
+  markup and `aria-pressed` the heart uses, so the fill and the swell are the
+  same on all three. The owner asked for that parity after the heart alone
+  had an icon and a pop; the pop itself started at 135% and was toned down
+  to barely moving at the owner's request — keep it faint.
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,
