@@ -4993,7 +4993,9 @@ async function jinxIndex(env, ctx) {
   const version = await contentVersion(env, FEED_DEPS.characters);
   if (_jinxIndexCache && _jinxIndexCache.version === version) return _jinxIndexCache.index;
 
-  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}`, { method: 'GET' });
+  // `f=` rolls with FEED_FORMAT_V, like the feed keys: the row shape here
+  // changed once (the `v` stamp) and an edge copy outlives a deploy.
+  const cacheKey = new Request(`https://feed.internal/jinx-index.json?v=${version}&f=${FEED_FORMAT_V}`, { method: 'GET' });
   try {
     const hit = await caches.default.match(cacheKey);
     if (hit) {
@@ -5061,6 +5063,9 @@ function buildJinxIndex(chars) {
     slug: c.slug, name: c.name || c.slug, team: c.team || '',
     art: c.art || '', image: typeof c.image === 'string' ? c.image : '',
     creator: c.creator || '',
+    // The row's version stamp (rowVersion), so /api/jinxes can hand out the
+    // same immutable `?v=` thumbnail URL every card on the wiki draws.
+    v: c.v ? String(c.v) : '',
     // The address. `slug` stays the identity, which is what edges and
     // the mirroring are keyed on; this is only ever used to build a link.
     page: typeof c.page === 'string' ? c.page : ''
@@ -6698,7 +6703,13 @@ export default {
         nodes.set('c:' + slug, {
           id: 'c:' + slug, slug: r.slug, name: r.name, team: r.team,
           creator: r.creator, official: false,
-          icon: r.art ? (url.origin + '/assets/' + r.art) : (r.image || ''),
+          // Everything on /jinxes draws the icon small (a map node, a panel
+          // head, a list row), so it takes the 192px WebP thumbnail every
+          // card does — thumb/{file}.webp, versioned by the row's `v` — and
+          // never the full art. A remote `image` stays as it is. No art at
+          // all is '' (the map keeps the bare coloured ring), not the favicon
+          // thumbSrc() would otherwise fall back to.
+          icon: (r.art || r.image) ? PageRender.thumbSrc(r, url.origin + '/') : '',
           href: '/' + String(r.page || ('c/' + r.slug)).replace(/^\//, '')
         });
         return 'c:' + slug;
@@ -6745,8 +6756,11 @@ export default {
         nodes: [...nodes.values()], edges, baseEdges
       });
       // Same edge-cache treatment as the JSON feeds: the index underneath is
-      // already keyed by contentVersion, so the response can be too.
-      const etag = `W/"jinxes-v${await contentVersion(env)}"`;
+      // already keyed by contentVersion, so the response can be too. The
+      // format version is in it for the same reason it is in the feeds': a
+      // deploy that changes what a node carries (the icons became thumbnail
+      // URLs) must not 304 a browser back onto the old body.
+      const etag = `W/"jinxes-v${await contentVersion(env)}-f${FEED_FORMAT_V}"`;
       if ((request.headers.get('If-None-Match') || '') === etag) {
         return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL } });
       }

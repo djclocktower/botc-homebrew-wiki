@@ -234,7 +234,16 @@ assets/
                        (`slug` for one of ours, `id` for an official one) so the
                        jinx no longer depends on the typed name matching later.
                        Shaped like night-order-picker.js on purpose. Used by
-                       create.html, edit.html and /jinxes.
+                       create.html, edit.html and /jinxes. Takes an options
+                       object: `source` swaps the roster for a caller's own list
+                       (rows carry `group`/`order`/`meta` for their heading,
+                       sort and small print) — /jinxes mounts it that way on
+                       "Your character", over the pages the reader owns, where
+                       a <select> of a prolific creator's hundred pages was a
+                       very long scroll on a phone; `empty` is the no-match
+                       line. Its rows draw the 192px WebP thumbnail
+                       (jinxCharIcon(), the same rule as thumbSrc()), never
+                       the full art.
   jinx-graph.js        The relationship map on /jinxes: hand-rolled SVG plus a
                        small spring layout, no library and no CDN. Positions are
                        seeded from a hash of the node id so the map looks the
@@ -613,8 +622,19 @@ publish-page.html      Custom wiki page editor (/p/): title/subtitle/blurb/autho
 jinxes.html            /jinxes: every jinx on the wiki, as a grouped list and an
                        interactive map, both built from GET /api/jinxes so they
                        cannot disagree. Creators can add a jinx to a character
-                       they own (POST /api/jinx). Linked from tools.html and the
-                       homepage browse cards; in the sitemap's staticPages.
+                       they own (POST /api/jinx); both boxes on that form are
+                       the jinx-picker combobox, "Your character" over the
+                       reader's own pages (from /api/account, icons and teams
+                       looked up in the roster the other box already loads;
+                       filled in by itself when they own exactly one) and the
+                       save posts what the pick recorded on data-slug. Every
+                       icon the page draws — map node, panel, list, picker —
+                       is the WebP thumbnail: /api/jinxes emits
+                       thumb/{file}.webp?v= through PageRender.thumbSrc(), and
+                       its ETag carries FEED_FORMAT_V so a deploy that changes
+                       a node's shape cannot 304 a browser onto the old body.
+                       Linked from tools.html and the homepage browse cards; in
+                       the sitemap's staticPages.
 news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus

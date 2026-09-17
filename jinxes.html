@@ -21,7 +21,7 @@
   .jg-wrap { position: relative; margin: 0 0 10px; }
   .jg-stage {
     position: relative; width: 100%; height: clamp(420px, 80vh, 860px);
-    background: var(--parch); background-image: url('assets/parchment.jpg');
+    background: var(--parch); background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
     overflow: hidden; touch-action: none; cursor: grab;
@@ -121,7 +121,7 @@
 
   .jx-panel {
     background-color: var(--parch);
-    background-image: url('assets/parchment.jpg');
+    background-image: url('assets/parchment.webp');
     background-size: cover;
     border: 4px solid var(--parch-frame);
     padding: 24px 28px;
@@ -269,7 +269,7 @@
       <form class="jx-form" id="jx-form">
         <div>
           <label for="jx-mine">Your character</label>
-          <select id="jx-mine"></select>
+          <input type="text" id="jx-mine" placeholder="Search your characters…" autocomplete="off">
         </div>
         <div class="jx-form-row">
           <div>
@@ -440,7 +440,7 @@
          edit. */
       function editJinx(j, viewed) {
         var other = otherEnd(j, viewed);
-        $('jx-mine').value = j.storedOn.slug;
+        setMine(j.storedOn);
         if (window.setJinxField) {
           window.setJinxField($('jx-other'), other.name,
             other.official ? '' : other.slug,
@@ -739,7 +739,7 @@
           bar.hidden = true;
         }
 
-        $('jx-mine').value = mine.slug;
+        setMine(mine);
         if (window.setJinxField) {
           window.setJinxField($('jx-other'), other.name,
             other.official ? '' : other.slug,
@@ -753,25 +753,69 @@
       // ---------- add a jinx ----------
       /* Shown only when the reader has a character to hang a jinx off. The
          Worker checks ownership again on POST: convenience, not security. */
+      /* "Your character" is the same search box as "Jinxed with", mounted
+         over the reader's own pages instead of the whole roster: a <select>
+         of every character an account owns was a very long scroll for the
+         prolific, and a search is the same control either way. The picker
+         records the pick on data-slug, which is what the save posts. */
+      var MY_ITEMS = null;    // the picker rows for the characters you own
+      var MY_ROSTER = {};     // slug -> item, for setMine()
+
+      function setMine(c) {
+        var it = c && MY_ROSTER[c.slug];
+        if (window.setJinxField) {
+          window.setJinxField($('jx-mine'), (it && it.name) || (c && c.name) || '',
+            c ? c.slug : '', '', (it && it.team) || (c && c.team) || '');
+        }
+      }
+
+      /* /api/account lists a page's slug, name, team and status and nothing
+         else, so the icon comes from the card feed the other picker fetches
+         anyway (loadJinxRoster shares the promise). A draft is not in that
+         feed and simply gets no icon, filed under its own heading. */
+      function myItems(chars) {
+        if (MY_ITEMS) return Promise.resolve(MY_ITEMS);
+        var roster = window.loadJinxRoster ? window.loadJinxRoster() : Promise.resolve([]);
+        return roster.then(function (all) {
+          var bySlug = {};
+          (all || []).forEach(function (c) { if (!c.official && c.slug) bySlug[c.slug] = c; });
+          MY_ITEMS = chars.map(function (c) {
+            var known = bySlug[c.slug] || {};
+            var draft = c.status === 'draft';
+            var team = c.team || known.team || '';
+            var teamLabel = team ? team.charAt(0).toUpperCase() + team.slice(1) : '';
+            var it = {
+              official: false, slug: c.slug, name: c.name || c.slug, team: team,
+              icon: known.icon || '',
+              group: draft ? 'Your drafts' : 'Your characters',
+              order: draft ? 1 : 0,
+              meta: teamLabel + (draft ? (teamLabel ? ' · ' : '') + 'Draft' : '')
+            };
+            MY_ROSTER[c.slug] = it;
+            return it;
+          });
+          return MY_ITEMS;
+        });
+      }
+
       function setupForm() {
         fetch('/api/account', { credentials: 'same-origin' })
           .then(function (r) { return r.ok ? r.json() : null; })
           .then(function (acct) {
             var chars = (acct && acct.characters) || [];
             if (!chars.length) return;
-            var sel = $('jx-mine');
-            chars.slice().sort(function (a, b) {
-              return String(a.name || '').localeCompare(String(b.name || ''));
-            }).forEach(function (c) {
-              var o = document.createElement('option');
-              o.value = c.slug;
-              o.textContent = c.name + (c.status === 'draft' ? ' (draft)' : '');
-              sel.appendChild(o);
-            });
             chars.forEach(function (c) { MY_CHARS[c.slug] = c.name; });
             $('jx-add-section').hidden = false;
             $('jg-f-link').hidden = false;
-            if (window.mountJinxPicker) window.mountJinxPicker($('jx-other'));
+            if (window.mountJinxPicker) {
+              window.mountJinxPicker($('jx-mine'), {
+                source: function () { return myItems(chars); },
+                empty: 'None of your characters is called that.'
+              });
+              window.mountJinxPicker($('jx-other'));
+            }
+            // One character is not a choice: fill it in and save the tap.
+            if (chars.length === 1) myItems(chars).then(function () { setMine(chars[0]); });
           })
           .catch(function () { /* logged out: the form stays hidden */ });
       }
@@ -787,10 +831,11 @@
         ev.preventDefault();
         var other = $('jx-other');
         var body = {
-          from: $('jx-mine').value,
+          from: $('jx-mine').dataset.slug || '',
           align: $('jx-align').value,
           text: $('jx-text').value.trim()
         };
+        if (!body.from) { msg('Pick which of your characters carries the jinx.', 'err'); return; }
         if (other.dataset.slug) body.toSlug = other.dataset.slug;
         else if (other.dataset.id) body.toId = other.dataset.id;
         else { msg('Pick the other character from the list so the jinx points at a real page.', 'err'); return; }
