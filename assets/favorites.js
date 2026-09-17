@@ -182,9 +182,11 @@
   function onChange(fn) { if (typeof fn === 'function') listeners.push(fn); }
 
   /* The heart: a plain outline in whatever colour the text around it is,
-     filled once the page is saved (.fav-btn.on; see styles.css). */
+     filled once the page is saved (.on .tog-ico path in styles.css — the
+     same rule, class names and swell the Add to Script and Add to Token
+     Tool buttons use, so the three read as one set; see charpage.js). */
   function heartSVG() {
-    return '<svg class="fav-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">' +
+    return '<svg class="tog-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">' +
       '<path d="M12 20.6 4.2 12.9a4.6 4.6 0 0 1 6.5-6.5L12 7.7l1.3-1.3a4.6 4.6 0 0 1 6.5 6.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
   }
 
@@ -209,7 +211,7 @@
       btn.classList.toggle('on', state);
       btn.setAttribute('aria-pressed', state ? 'true' : 'false');
       var label = state ? onLabel : offLabel;
-      btn.innerHTML = heartSVG() + (opts.compact ? '' : '<span class="fav-label">' + label + '</span>');
+      btn.innerHTML = heartSVG() + (opts.compact ? '' : '<span class="tog-label">' + label + '</span>');
       btn.title = opts.title || (state ? 'Remove from your favorites' : 'Save to your favorites');
       btn.setAttribute('aria-label', label);
     }
@@ -226,8 +228,8 @@
         busy = true;
         var was = state;
         state = !was; paint();                // optimistic: the tap answers at once
-        btn.classList.add('fav-pop');
-        setTimeout(function () { btn.classList.remove('fav-pop'); }, 450);
+        btn.classList.add('tog-pop');
+        setTimeout(function () { btn.classList.remove('tog-pop'); }, 450);
         return toggle(type, slug, !was).then(function (body) {
           state = !!body.on; paint();
         }).catch(function (err) {
