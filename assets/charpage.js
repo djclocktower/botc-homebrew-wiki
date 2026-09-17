@@ -6,10 +6,26 @@
   var SLUG = window.CHAR_SLUG;
   if (!document.getElementById('content') || !SLUG) return;
 
-  // Generic localStorage-backed toggle button appended to the info card.
-  function mountToggleButton(storageKey, extraClass, onLabel, offLabel, onChange) {
-    var infocard = document.querySelector('.char-infocard');
-    if (!infocard) return;
+  // The page's three actions — Add to Script, Add to Token Tool, Favorite —
+  // live in ONE container, .char-actions. On a desktop it sits at the foot of
+  // the info card and the buttons stack full-width as they always have; on a
+  // phone (styles.css, max-width 640px) the container is pinned to the
+  // bottom of the screen as a bar of three, always a thumb away however far
+  // down the almanac you have read. Each button carries a full label for the
+  // card and a short one for the bar (.act-full / .act-short); CSS shows one.
+  // Only ever built when there is a card to put it in: a page rendered
+  // without one (the editors' preview frame mid-repaint, a test's stub
+  // document) gets no buttons, as before.
+  var infocard = document.querySelector('.char-infocard');
+  var actions = infocard ? document.createElement('div') : null;
+  if (actions) actions.className = 'char-actions';
+  function labelHTML(full, short) {
+    return '<span class="act-full">' + full + '</span><span class="act-short">' + short + '</span>';
+  }
+
+  // Generic localStorage-backed toggle button.
+  function mountToggleButton(storageKey, extraClass, onLabel, offLabel, shortOn, shortOff, onChange) {
+    if (!actions) return;
     function getList() {
       try { return JSON.parse(localStorage.getItem(storageKey)) || []; } catch (e) { return []; }
     }
@@ -19,7 +35,8 @@
     function sync() {
       var on = getList().indexOf(SLUG) !== -1;
       btn.classList.toggle('on', on);
-      btn.textContent = on ? onLabel : offLabel;
+      // Fixed strings from this file, never anything a person typed.
+      btn.innerHTML = on ? labelHTML(onLabel, shortOn) : labelHTML(offLabel, shortOff);
     }
     btn.addEventListener('click', function () {
       var list = getList();
@@ -30,7 +47,7 @@
       if (onChange) onChange();
     });
     sync();
-    infocard.appendChild(btn);
+    actions.appendChild(btn);
   }
 
   var editBtn = document.getElementById('edit-btn');
@@ -39,28 +56,29 @@
     editBtn.style.display = '';
   }
 
-  mountToggleButton('botc_script', '', '✓ On Your Script', '+ Add to Script',
+  // Favorite first: on the phone bar it is the leftmost of the three, and in
+  // the card it heads the stack. Unlike the other two it is stored on the
+  // ACCOUNT (assets/favorites.js), not in localStorage: a saved character is
+  // meant to be there on your phone as well as your laptop, and the Favorites
+  // filter on the browse pages reads the same list. It draws unsaved at once
+  // and fills its state in when the list arrives; logged-out readers are sent
+  // to log in and come straight back. A draft gets no Favorite button: only a
+  // published page can be saved.
+  if (actions && window.Favorites && !window.PAGE_DRAFT) {
+    actions.appendChild(window.Favorites.mountButton({
+      type: 'character', slug: SLUG,
+      className: 'add-to-script-btn',
+      onLabel: 'In Your Favorites', offLabel: 'Add to Favorites',
+      shortOnLabel: 'Saved', shortOffLabel: 'Favorite'
+    }));
+  }
+  mountToggleButton('botc_script', '', '✓ On Your Script', '+ Add to Script', '✓ Script', '+ Script',
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
-  mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool');
-
-  // Favorite — a Save tab beside Copy link in the info card's corner tab
-  // row, so it is above the fold on a phone and out of the way of the
-  // reading. Unlike the two buttons above it is stored on the ACCOUNT
-  // (assets/favorites.js), not in localStorage: a saved character is meant to
-  // be there on your phone as well as your laptop, and the Favorites filter on
-  // the browse pages reads the same list. The tab draws unsaved at once and
-  // fills its state in when the list arrives; logged-out readers are sent to
-  // log in and come straight back. A draft gets no tab: only a published page
-  // can be saved.
-  if (window.Favorites && !window.PAGE_DRAFT) {
-    var actions = document.querySelector('.char-infocard .card-actions');
-    if (actions) {
-      actions.insertBefore(window.Favorites.mountButton({
-        type: 'character', slug: SLUG,
-        className: 'copy-link-btn fav-tab',
-        onLabel: 'Saved', offLabel: 'Save'
-      }), actions.firstChild);
-    }
+  mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool', '✓ Tokens', '+ Tokens');
+  if (actions) {
+    infocard.appendChild(actions);
+    // Makes room for the bar on a phone (styles.css pads the body under it).
+    document.body.classList.add('has-char-actions');
   }
 
   if (window.fitCharTitle) window.fitCharTitle();

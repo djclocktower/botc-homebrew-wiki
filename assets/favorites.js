@@ -181,30 +181,29 @@
 
   function onChange(fn) { if (typeof fn === 'function') listeners.push(fn); }
 
-  /* The heart: a tribal flame heart with a heart-shaped hole, after the
-     owner's reference art, in whatever colour the text around it is. Two
-     subpaths under fill-rule evenodd, so the same path is an outline when
-     unsaved and a filled shape with the hole showing through when saved
-     (.fav-btn.on fills it; see styles.css). The left half was authored and
-     the right half is its mirror, so the licks match; it is tuned to still
-     read at the 14px the Copy link tab draws it. */
-  var HEART_PATH = 'M16 8.8 C14.2 5.6 12.2 3.8 10 3.5 C7.6 3.2 5.4 2 3.4 0.6 C4.6 2.6 5.4 4 6.2 5 C3.4 6.2 1.6 9.4 2 13 C2.4 15.8 4 17.8 5.8 19.2 C4.8 20.2 4 21 2.8 21.8 C4.8 21.4 6.4 21.6 7.6 22.2 C10.4 24.4 13.6 27.2 16 31.6 C18.4 27.2 21.6 24.4 24.4 22.2 C25.6 21.6 27.2 21.4 29.2 21.8 C28 21 27.2 20.2 26.2 19.2 C28 17.8 29.6 15.8 30 13 C30.4 9.4 28.6 6.2 25.8 5 C26.6 4 27.4 2.6 28.6 0.6 C26.6 2 24.4 3.2 22 3.5 C19.8 3.8 17.8 5.6 16 8.8 Z M16 13.2 C14.9 11.4 12.8 10.7 11.3 11.9 C9.5 13.3 10 16 11.8 18 C13.3 19.7 14.9 21 16 22.6 C17.1 21 18.7 19.7 20.2 18 C22 16 22.5 13.3 20.7 11.9 C19.2 10.7 17.1 11.4 16 13.2 Z';
+  /* The heart: a plain outline in whatever colour the text around it is,
+     filled once the page is saved (.fav-btn.on; see styles.css). */
   function heartSVG() {
-    return '<svg class="fav-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="1em" height="1em" aria-hidden="true" focusable="false">' +
-      '<path d="' + HEART_PATH + '" fill-rule="evenodd" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+    return '<svg class="fav-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">' +
+      '<path d="M12 20.6 4.2 12.9a4.6 4.6 0 0 1 6.5-6.5L12 7.7l1.3-1.3a4.6 4.6 0 0 1 6.5 6.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
   }
 
-  /* opts: {type, slug, className, onLabel, offLabel, title, compact}
+  /* opts: {type, slug, className, onLabel, offLabel, shortOnLabel,
+            shortOffLabel, title, compact}
      The button is drawn at once in its "unsaved" look and corrected when
      the list arrives, so the page never waits on the request. Logged-out
      readers are sent to the login page and come back here afterwards: a
      button that does nothing is worse than one that asks you to sign in.
-     `compact` draws the icon alone (the label goes on aria-label + title). */
+     `compact` draws the icon alone (the label goes on aria-label + title).
+     The short labels, when given, ride along in an .act-short span for a
+     place that shows them instead of the full ones — the character page's
+     bottom bar on a phone, where three buttons share the width. */
   function mountButton(opts) {
     opts = opts || {};
     var type = opts.type, slug = opts.slug;
     var onLabel = opts.onLabel || 'In Your Favorites';
     var offLabel = opts.offLabel || 'Add to Favorites';
+    var shortOn = opts.shortOnLabel || '', shortOff = opts.shortOffLabel || '';
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'fav-btn' + (opts.className ? ' ' + opts.className : '') + (opts.compact ? ' fav-btn-compact' : '');
@@ -215,7 +214,10 @@
       btn.classList.toggle('on', state);
       btn.setAttribute('aria-pressed', state ? 'true' : 'false');
       var label = state ? onLabel : offLabel;
-      btn.innerHTML = heartSVG() + (opts.compact ? '' : '<span class="fav-label">' + label + '</span>');
+      var short = state ? shortOn : shortOff;
+      btn.innerHTML = heartSVG() + (opts.compact ? '' :
+        '<span class="fav-label' + (short ? ' act-full' : '') + '">' + label + '</span>' +
+        (short ? '<span class="fav-label act-short">' + short + '</span>' : ''));
       btn.title = opts.title || (state ? 'Remove from your favorites' : 'Save to your favorites');
       btn.setAttribute('aria-label', label);
     }

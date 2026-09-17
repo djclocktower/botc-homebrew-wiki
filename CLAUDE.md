@@ -2069,24 +2069,26 @@ saved characters PLUS those rosters, resolved server-side.
   how the chips re-count without a reload. Login is read off the same
   `botc_me` sessionStorage entry site.js keeps, so a logged-out reader costs
   no request.
-- **Where the button is.** On a `/c/` page it is a **Save tab beside Copy
-  link** in the info card's corner tab row (`charpage.js` inserts it first in
-  `.card-actions`, skinned by `.copy-link-btn` plus `.fav-tab`) — above the
-  fold on a phone and out of the way of the reading; the owner picked it
-  from five mocked placements (stacked button, corner tab, heart badge on
-  the icon, bookmark ribbon, sticky action bar). It is stored on the
-  ACCOUNT where Add to Script / Add to Token Tool are localStorage. On `/s/`
-  and `/collection/` it is a `.page-fav-bar` that `pageview.js` inserts
-  right after the `#page-owner-controls` slot. It is mounted in the browser,
-  never rendered by the server, because the published HTML is one shared
-  cache entry for every reader (see "Caching") and saved/unsaved is one
-  reader's state. **The icon is a tribal flame heart with a heart-shaped
-  hole** (`HEART_PATH` in favorites.js, after the owner's reference art, in
-  `currentColor`): two subpaths under `fill-rule: evenodd`, an outline when
-  unsaved and filled with the hole showing through when saved — the fill IS
-  the state (`.fav-btn.on`), so it reads without the label. The left half
-  was authored and the right half is its mirror; it is tuned to still read
-  at the 14px the tab draws it, so do not add detail to it.
+- **Where the button is.** On a `/c/` page the three actions — Favorite,
+  Add to Script, Add to Token Tool — are ONE container, `.char-actions`,
+  built by `charpage.js`. On a desktop it is the foot of the info card and
+  the three stack full-width as they always have; **on a phone (styles.css,
+  max-width 640px) it is pinned to the bottom of the screen as a bar of
+  three**, always a thumb away however far down the almanac you have read,
+  with `body.has-char-actions` padded underneath so nothing hides behind
+  it. Each button carries a full label for the card and a short one for the
+  bar (`.act-full` / `.act-short`; `mountButton()` takes `shortOnLabel` /
+  `shortOffLabel`). The owner picked this from five mocked placements
+  (stacked button, corner tab, heart badge on the icon, bookmark ribbon,
+  sticky bar). Favorite is stored on the ACCOUNT where the other two are
+  localStorage. On `/s/` and `/collection/` it is a `.page-fav-bar` that
+  `pageview.js` inserts right after the `#page-owner-controls` slot. It is
+  mounted in the browser, never rendered by the server, because the
+  published HTML is one shared cache entry for every reader (see "Caching")
+  and saved/unsaved is one reader's state. The heart is a plain outline in
+  `currentColor`, filled when saved — the fill IS the state (`.fav-btn.on`),
+  so it reads without the label. (A tribal flame heart after the owner's
+  art was tried and rejected; the plain one stays.)
 - **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
   the creator page, the Script Builder's Add sidebar, `/favorites`);
   all-characters.html, scripts.html and all-collections.html carry their own,
