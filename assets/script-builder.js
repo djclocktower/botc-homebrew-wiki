@@ -87,18 +87,15 @@
   }
   /* The 192px WebP thumbnail beside the art (PageRender.thumbSrc): ~8 KB
      against the original's ~150 KB, and this list draws 1,900 of them. The
-     Worker serves the original at the thumbnail URL when none exists yet. */
+     Worker serves the original at the thumbnail URL when none exists yet.
+     Every picture on this page goes through it, the peek card included: its
+     72px box is inside what 192px covers on a 2x phone, and the thumbnail is
+     already in the cache from the row that was just hovered, so the card
+     paints at once instead of after a 150-700 KB download. Official rows
+     get the bundled painted WebP (see thumbSrc). */
   function artOf(c) {
     var PR = window.PageRender;
     if (PR && PR.thumbSrc) return PR.thumbSrc(c, '');
-    if (c.art) return 'assets/' + c.art;
-    if (typeof c.image === 'string' && c.image) return c.image;
-    return 'assets/favicon.png';
-  }
-  /* The full-size icon, for anywhere it is shown large. */
-  function artFull(c) {
-    var PR = window.PageRender;
-    if (PR && PR.artSrc) return PR.artSrc(c, '');
     if (c.art) return 'assets/' + c.art;
     if (typeof c.image === 'string' && c.image) return c.image;
     return 'assets/favicon.png';
@@ -1710,7 +1707,7 @@
     var isOn = !!sel[c.slug];
     return '<button type="button" class="sbx-pop-x sbx-peek-close" data-peek-close aria-label="Close">' + ico('close') + '</button>' +
       '<div class="sbx-peek-top">' +
-        '<img class="sbx-peek-img" src="' + esc(artFull(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
+        '<img class="sbx-peek-img" src="' + esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
         '<div style="min-width:0;flex:1">' +
           '<p class="sbx-peek-name">' + esc(c.name) + '</p>' +
           '<span class="sbx-peek-team ' + esc(c.team || '') + '">' + esc(c.team || '') + '</span>' +

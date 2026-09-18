@@ -34,7 +34,7 @@ import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage 
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
-import { fontsChanged, hexToRgb, rgbToHex, hslToHex, clamp } from './util.js';
+import { fontsChanged, hexToRgb, rgbToHex, hslToHex, clamp, setHiresIcons } from './util.js';
 import { pixelWorkerActive } from './jobs.js';
 
 const $ = (id) => document.getElementById(id);
@@ -293,13 +293,20 @@ function currentPage() {
 /* build one page's element. `ctx.forExport` renders without selection */
 function renderPageNode(p, ctx) {
   ctx = { requestRender, selected: ctx && ctx.forExport ? '' : selectedId, stickers: stickersFor(p), ...(ctx || {}) };
-  if (p.kind === 'front') return renderSheetPage(derived, options, layouts.front, p.index, ctx);
-  if (p.kind === 'jinx') return renderListPage(derived, layouts.jinxSpec, options, layouts.jinx, p.index, ctx);
-  if (p.kind === 'night') {
-    const lay = layouts[p.which], spec = layouts[p.which + 'Spec'];
-    return renderListPage(derived, spec, options, lay, p.index, ctx);
+  // The preview draws the 192px twin of each wiki icon; an export, which
+  // withPageNode renders offscreen and waits on, draws the originals.
+  setHiresIcons(!!ctx.forExport);
+  try {
+    if (p.kind === 'front') return renderSheetPage(derived, options, layouts.front, p.index, ctx);
+    if (p.kind === 'jinx') return renderListPage(derived, layouts.jinxSpec, options, layouts.jinx, p.index, ctx);
+    if (p.kind === 'night') {
+      const lay = layouts[p.which], spec = layouts[p.which + 'Spec'];
+      return renderListPage(derived, spec, options, lay, p.index, ctx);
+    }
+    return renderBack(derived, options, requestRender, { selected: ctx.selected, stickers: ctx.stickers, forExport: ctx.forExport });
+  } finally {
+    setHiresIcons(false);
   }
-  return renderBack(derived, options, requestRender, { selected: ctx.selected, stickers: ctx.stickers, forExport: ctx.forExport });
 }
 
 let lastTabsSig = '';

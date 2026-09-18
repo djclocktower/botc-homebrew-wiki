@@ -5,8 +5,17 @@
  * script.js stays pure and imports nothing from here.
  */
 
+import { previewIcon } from './script.js';
+
 export const px = (v) => v + 'px';
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+/* Which copy of a wiki icon the renderers draw: the 192px twin for the
+   preview, the original for an export (app.js flips this around
+   renderPageNode when ctx.forExport). See previewIcon in script.js. */
+let hiresIcons = false;
+export function setHiresIcons(on) { hiresIcons = !!on; }
+export function drawIcon(url) { return hiresIcons ? url : previewIcon(url); }
 
 /* tiny element builder: tag, style object, then children (nodes/strings) */
 export function el(tag, style, ...children) {
@@ -196,8 +205,11 @@ export const ICON_IDENTITY = { s: 1, dx: 0, dy: 0 };
 const iconInkCache = new Map();
 const iconInkPending = new Set();
 
+/* Keyed by the preview twin whichever copy is drawn: the ink's bounding box
+   is the same fraction of either, and measuring the twin means an export
+   never waits on, or disagrees with, a measurement of the original. */
 export function iconFit(url) {
-  return iconInkCache.get(url) || ICON_IDENTITY;
+  return iconInkCache.get(previewIcon(url)) || ICON_IDENTITY;
 }
 
 function measureInk(image) {
@@ -239,7 +251,8 @@ function measureInk(image) {
    is asked for ONCE, shortly after the last measurement of a burst. */
 let inkNotifyTimer = null;
 export function normalizeIcons(urls, requestRender) {
-  for (const u of urls) {
+  for (const raw of urls) {
+    const u = previewIcon(raw);
     if (!u || iconInkCache.has(u) || iconInkPending.has(u)) continue;
     iconInkPending.add(u);
     const image = new Image();

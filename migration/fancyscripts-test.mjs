@@ -76,5 +76,11 @@ check('background filter', S.bgFilter({ brightness: 0.9, sepia: 0.2 }), 'brightn
 check('credits Fabled skipped', S.parseScript(['imp', 'botchomebrewwiki'], true).characters.map((c) => c.id), ['imp']);
 check('not an array throws', (() => { try { S.parseScript({}, true); return 'no'; } catch (e) { return 'threw'; } })(), 'threw');
 
+// the preview twin of a wiki icon
+check('preview icon: absolute wiki art', S.previewIcon('https://botchomebrew.wiki/assets/art/witcher-odyssey.png?v=abc'), 'https://botchomebrew.wiki/assets/thumb/witcher-odyssey.png.webp?v=abc');
+check('preview icon: site-relative art', S.previewIcon('/assets/art/x.jpg'), '/assets/thumb/x.jpg.webp');
+check('preview icon: everything else untouched', [S.previewIcon('/assets/fancyscripts/icons/imp.webp'), S.previewIcon('data:image/png;base64,AA'), S.previewIcon('https://images.weserv.nl/?url=x'), S.previewIcon('')],
+  ['/assets/fancyscripts/icons/imp.webp', 'data:image/png;base64,AA', 'https://images.weserv.nl/?url=x', '']);
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

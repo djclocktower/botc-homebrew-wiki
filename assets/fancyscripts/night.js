@@ -26,7 +26,7 @@ import {
   nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
 } from './script.js';
 import {
-  el, img, px, clamp, wrappedRunLineCount, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY,
+  el, img, px, clamp, wrappedRunLineCount, normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import { pageFrame, renderBackground, renderStickers, resolveSrc, markSelected } from './elements.js';
 
@@ -362,7 +362,7 @@ function reminderNodes(row, cfg, fonts, ed) {
         verticalAlign: '-0.28em', margin: '0 0.14em', overflow: 'hidden', position: 'relative',
       });
       if (row.icons[0]) {
-        tok.append(iconImg(resolveSrc(row.icons[0]), {
+        tok.append(iconImg(drawIcon(resolveSrc(row.icons[0])), {
           position: 'absolute', left: '8%', top: '8%', width: '84%', height: '84%', objectFit: 'contain',
         }));
       }
@@ -407,7 +407,7 @@ function rowNode(u, ci, layout, cfg, options, ed, e, mark, rowIndex) {
     const u2 = resolveSrc(raw);
     const fit = iconFit(u2) || ICON_IDENTITY;
     const size = ed(m.iconEm) * (row.icons.length > 1 ? 0.86 : 1);
-    const ic = iconImg(u2, {
+    const ic = iconImg(drawIcon(u2), {
       position: 'absolute',
       left: px(k * size * 0.62),
       top: px(ed(Math.max(0, (blockH - m.iconEm) / 2))),

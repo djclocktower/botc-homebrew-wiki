@@ -235,6 +235,15 @@
     if (c.art && /^art\/[^/]+$/.test(c.art)) {
       return root + 'assets/thumb/' + c.art.slice(4) + '.webp' + artVer(c);
     }
+    /* An official character (official-roles.js, slug off-{id}) carries the
+       official app's own icon URL as `image`: a ~24 KB WebP on another host.
+       The same painted icon is bundled for Fancy Scripts as a ~170px WebP
+       (assets/fancyscripts/icons/{id}.webp, one per roles.json id, cached
+       immutable), so a card draws that: the same picture, from this origin,
+       at half the bytes. Anything shown large keeps artSrc(). */
+    if (c.official && typeof c.slug === 'string' && c.slug.indexOf('off-') === 0) {
+      return root + 'assets/fancyscripts/icons/' + encodeURIComponent(String(c.id || c.slug.slice(4))) + '.webp';
+    }
     return artSrc(c, root);
   }
   function charHref(c, root) {

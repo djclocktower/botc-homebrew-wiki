@@ -735,7 +735,10 @@ iconforge.html         Icon Forge (/iconforge) — turns line art, a scan or a
                        page-local CSS; everything else is in assets/iconforge/.
                        See "Icon Forge" below.
 tokens.html            Token Tool (Pyodide in a Web Worker; token-tool.js,
-                       token-worker.js, assets/tokens/manifest.json versioning)
+                       token-worker.js, assets/tokens/manifest.json versioning).
+                       Its two character lists draw the 192px thumbnails
+                       (listThumb() in token-tool.js); the tokens themselves
+                       render from the originals (artAbs).
 mass-upload.html       Bulk import from official-schema JSON. Warns before it
                        writes when a jinx in the file names a character more
                        than one page here shares a name with, says which page
@@ -1065,9 +1068,13 @@ What shapes it:
   screen; off screen they are marked dirty. The jinx count, the credits line
   and the library save all happen in one debounced pass 200 ms after the
   clicking stops. Anything new that a click has to do belongs in that pass
-  unless it must be immediate. Both lists draw the **192px thumbnails**
-  (`PageRender.thumbSrc`), never the 150 KB originals; only the peek card
-  shows the full icon.
+  unless it must be immediate. Every picture on the page is a **192px
+  thumbnail** (`PageRender.thumbSrc`), never a 150 KB original: both lists,
+  the picks strip, the bag, the Analyse candidates and the peek card too,
+  whose 72px box is inside what 192px covers on a 2x phone and which now
+  paints from the thumbnail the hovered row already fetched. An official row
+  draws the bundled painted WebP rather than the app's CDN copy (see
+  "Caching", Images).
 - **Undo/redo is one stack over the roster and the details** (`hist`, 80
   steps, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z outside a text box, and the two
   buttons in the bar). Every mutation calls `mark()` BEFORE it changes
@@ -3336,7 +3343,9 @@ The footnote sits on the last page (or every page), and pages get a
 - **Official roster data is the wiki's own** (`assets/roles.json`, handed to
   the engine via `setOfficialRoster()`) — but the **icons are the tool's own
   bundled set** (`assets/fancyscripts/icons/{id}.webp`, the real official
-  painted art, one per roles.json id). The wiki's committed
+  painted art, one per roles.json id; `PageRender.thumbSrc` draws the same
+  file for an `off-` row on every card surface, the Script Builder's panel
+  included, instead of the app's CDN copy). The wiki's committed
   `assets/icons/{id}.png` set is deliberately NOT used on the sheet: those
   are flat recreations — right at 20px in a jinx pill, visibly wrong on a
   print sheet the reference renders with the real art (the official Imp
@@ -3347,6 +3356,21 @@ The footnote sits on the last page (or every page), and pages get a
   declaring character when the partner is also on the script; partners are
   matched by id AND by slugified name, because wiki exports write whichever
   the jinx row stored.
+- **The preview draws the 192px twin of every wiki icon; an export draws the
+  original.** `previewIcon()` in script.js maps `/assets/art/{file}` (site
+  relative or absolute, `?v=` kept) to `/assets/thumb/{file}.webp`, which the
+  Worker serves as the original where no twin exists; everything else (the
+  bundled official icons, uploads, proxied off-site images) passes through.
+  `drawIcon()` in util.js applies it unless `setHiresIcons(true)`, which
+  `renderPageNode()` sets around a `ctx.forExport` render and clears after,
+  and every export goes through `withPageNode()`, which renders that way and
+  waits for the originals. Ink normalisation measures the twin and `iconFit`
+  is keyed by it whichever copy is drawn, so the two share one fit and an
+  export never waits on, or disagrees with, a measurement of the original.
+  A twenty-character wiki script costs the preview about 160 KB of icons
+  instead of three to eight megabytes. Checked headlessly by
+  `fs-round16.js` in the session scratchpad: twelve thumb requests before an
+  export, only original-art requests during it.
 - **Wiki integration is read-only**: the picker lists `/scripts.json` and
   `/collections.json` (two optgroups, values `script:{slug}` /
   `collection:{id}`), and `?s={slug}` / `?c={id}` (the "Fancy Sheet" action
@@ -4053,6 +4077,10 @@ Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
 keep their existing one-hour limit. Writing original art retires its thumb,
 and the browser uploader regenerates it. The featured image loads eagerly;
 secondary gallery images load on approach or interaction, respecting Save-Data.
+An official character has no `thumb/` twin: `thumbSrc()` draws the bundled
+painted WebP (`assets/fancyscripts/icons/{id}.webp`, ~13 KB, immutable, one
+per roles.json id) for an `off-` row instead of the app's ~24 KB CDN copy,
+so a card never leaves this origin for an icon.
 
 Local script/collection banners and logos use 320/640/1280px WebP `srcset`
 variants under `media/{width}/{source-path}.webp`. The publishing forms generate

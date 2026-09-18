@@ -689,6 +689,20 @@ export function bundledIcon(id) {
   return '/assets/fancyscripts/icons/' + id + '.webp';
 }
 
+/* The wiki's character art has a 192px WebP twin beside it
+   (thumb/{file}.webp beside art/{file}), and the Worker serves the original
+   at that URL when no twin exists yet. The on-screen preview draws an icon
+   at about a tenth of the sheet, which the twin covers, so the preview
+   fetches ~8 KB a character instead of the 150-700 KB original; exports draw
+   the originals (setHiresIcons in util.js). Anything that is not wiki art,
+   the bundled official icons, an upload, a proxied off-site image, passes
+   through untouched. */
+const WIKI_ART_RE = /^((?:https?:\/\/(?:www\.)?botchomebrew\.wiki)?\/?assets\/)art\/([^/?#]+)(\?[^#]*)?$/i;
+export function previewIcon(url) {
+  const m = WIKI_ART_RE.exec(String(url || ''));
+  return m ? m[1] + 'thumb/' + m[2] + '.webp' + (m[3] || '') : url;
+}
+
 /* Route off-site images through a resizing CORS proxy so the PNG/PDF capture
    is never tainted. The wiki's OWN art never goes through it: same-origin
    images cannot taint a canvas, and proxying them would break drafts (the

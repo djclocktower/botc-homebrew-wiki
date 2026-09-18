@@ -41,7 +41,7 @@ import {
 } from './script.js';
 import {
   el, img, px, clamp, hexHsl, shade, wrappedLineCount,
-  normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY,
+  normalizeIcons, iconFit, inkTransform, iconFilter, ICON_IDENTITY, drawIcon,
 } from './util.js';
 import {
   ART, pageFrame, renderBackground, renderStickers, resolveSrc, applyEl, markSelected,
@@ -231,7 +231,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
       boxShadow: options.iconFrame === 'disc' ? `0 ${ed(0.1)}px ${ed(0.25)}px rgba(32,20,8,0.35)` : 'none',
     }));
   }
-  const icon = iconImg(char.icon, {
+  const icon = iconImg(drawIcon(char.icon), {
     position: 'absolute',
     left: px(iconLeft),
     top: px(iconTop),
@@ -269,7 +269,7 @@ function characterEntry(char, options, heightEm, iconEm, ed, e, fonts, widthMul,
     for (const j of char.jinxIcons) {
       const jf = options.normalizeIcons ? iconFit(j.icon) : ICON_IDENTITY;
       const jsz = ed(SHEET.jinxSize * nameSize) * 0.72 * (options.jinxIconSize || 1);
-      const ji = iconImg(j.icon, {
+      const ji = iconImg(drawIcon(j.icon), {
         height: px(jsz),
         width: px(jsz),
         objectFit: 'contain',
