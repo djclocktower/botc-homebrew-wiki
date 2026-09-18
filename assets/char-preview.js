@@ -60,7 +60,7 @@
   function shell(siteRoot, inner) {
     return '<!doctype html><html><head><meta charset="utf-8">' +
       '<base href="' + siteRoot + '">' +
-      '<link rel="stylesheet" href="assets/styles.css">' +
+      '<link rel="stylesheet" href="' + window.BotcData.asset('styles.css') + '">' +
       '</head><body>' +
       '<header class="topbar"><a class="brand"><img class="brand-skull" src="assets/logo_skull.webp" alt="">' +
       '<span class="brand-text"><b>BOTC</b><br>HomeBrew Wiki</span>' +

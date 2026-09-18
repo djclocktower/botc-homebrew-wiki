@@ -22,7 +22,7 @@
         pasted newlines collapse to spaces, so nothing downstream
         (appearsIn matching, the JSON export) sees a stray \n.
      ============================================================ */
-  ['lede', 'callout', 'quote', 'appears'].forEach(function (id) {
+  ['lede', 'quote', 'appears'].forEach(function (id) {
     var el = document.getElementById(id);
     if (!el || el.tagName !== 'INPUT') return;
     var ta = document.createElement('textarea');

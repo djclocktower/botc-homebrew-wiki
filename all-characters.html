@@ -2,6 +2,8 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/viewport.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>All Characters — BOTC HomeBrew Wiki</title>
 <meta name="description" content="All homebrew characters on the BOTC HomeBrew Wiki — filter fan-made Blood on the Clocktower characters by team, tag, and collection.">
@@ -17,8 +19,8 @@
      scripts at the end of the body have run. `crossorigin` has to be there
      for the preload to match a plain fetch(). -->
 <link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="scripts.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="collections.json?fields=browse" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="scripts.json?fields=browse" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -81,9 +83,16 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <script src="assets/render.js"></script>
+  <script src="assets/reader.js"></script>
+  <!-- splitCreators() lives here — the single source of truth for how one
+       `creator` string names several people. This page used to get it as a
+       side effect of loading the whole of render.js; reading pages load
+       reader.js now, which does not carry it, so the creator filter (and with
+       it the whole card list) died on an undefined function. -->
+  <script src="assets/creators.js"></script>
   <script src="assets/tags.js"></script>
   <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
   <script>
     var TEAMS = [
       ['townsfolk', 'Townsfolk'], ['outsider', 'Outsider'],
@@ -189,16 +198,21 @@
       return {
         includeTeams: [], excludeTeams: [], includeTags: [], excludeTags: [],
         includeSources: [], excludeSources: [], includeCreators: [], excludeCreators: [],
-        creatorQuery: '', showPartial: false, curataOnly: false, sort: 'name-asc'
+        creatorQuery: '', showPartial: false, curataOnly: false, favOnly: false, sort: 'name-asc'
       };
     }
     var STATE = blankState();
+    // The reader's saved characters (assets/favorites.js): the ones saved
+    // directly plus every character on a saved script or collection. A Set
+    // once known; null while loading, when logged out, or when nothing here
+    // is saved — and then the chip is simply not shown.
+    var FAV_SET = null;
     var ALL_CREATORS = [];
     var FULL = [];   // collection-scoped full list
 
     function splitTags(c){ return (c.tags||'').split(',').map(function(s){return s.trim();}).filter(Boolean); }
 
-    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s-])[a-z]/g, function(m){ return m.toUpperCase(); }); }
+    function titleCase(s){ return String(s||'').trim().toLowerCase().replace(/(^|[\s\-\/])[a-z]/g, function(m){ return m.toUpperCase(); }); }
 
     function buildFilterBar(list){
       var bar = document.getElementById('filter-bar');
@@ -242,13 +256,19 @@
       // reader asks for them; Curata is a narrowing filter.
       var nPartial = list.filter(function(c){ return window.isPartial(c); }).length;
       var nCurata = list.filter(function(c){ return window.isCurata(c); }).length;
-      if (nPartial || nCurata){
-        html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
+      // The Favorites chip is built hidden: the saved list arrives after the
+      // bar does, and the chip shows once something on the page is in it.
+      var wantFav = !!window.Favorites;
+      if (nPartial || nCurata || wantFav){
+        html += '<div class="filter-group" id="fc-status-group"' + (nPartial || nCurata ? '' : ' hidden') + '><span class="filter-group-label">Status</span><div class="filter-chips" id="fc-status">';
         if (nPartial){
           html += '<button type="button" class="filter-chip" id="fc-partial" title="Unfinished pages: an ability and an icon, but no tags and no almanac text. Hidden unless you tick this.">Show Partial (' + nPartial + ')</button>';
         }
         if (nCurata){
           html += '<button type="button" class="filter-chip filter-chip-curata" id="fc-curata" title="Curata — pages the wiki admins have picked out.">Curata only (' + nCurata + ')</button>';
+        }
+        if (wantFav){
+          html += '<button type="button" class="filter-chip filter-chip-fav" id="fc-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' + window.Favorites.heartSVG() + ' Favorites</button>';
         }
         html += '</div></div>';
       }
@@ -369,6 +389,37 @@
         curataBtn.classList.toggle('active', STATE.curataOnly);
         render();
       });
+      // ── Favorites chip ──
+      // Counted against THIS list, so a collection-scoped view says how many
+      // of its characters are saved. Re-counted after a toggle elsewhere on
+      // the page through onChange. ?favorites=1 opens the page on the chip;
+      // the account page links here that way.
+      var favBtn = document.getElementById('fc-fav');
+      if (favBtn){
+        favBtn.addEventListener('click', function(){
+          STATE.favOnly = !STATE.favOnly;
+          favBtn.classList.toggle('active', STATE.favOnly);
+          render();
+        });
+        var favLoad = function(){
+          window.Favorites.characterSlugs().then(function(set){
+            FAV_SET = set;
+            var n = set ? list.filter(function(c){ return set.has(c.slug); }).length : 0;
+            favBtn.hidden = !n;
+            favBtn.innerHTML = window.Favorites.heartSVG() + ' Favorites' + (n ? ' (' + n + ')' : '');
+            var group = document.getElementById('fc-status-group');
+            if (group && !partialBtn && !curataBtn) group.hidden = !n;
+            if (!n && STATE.favOnly){ STATE.favOnly = false; favBtn.classList.remove('active'); }
+            if (n && !STATE.favOnly && /[?&]favorites=1(&|$)/.test(location.search) && !favLoad.opened){
+              favLoad.opened = true;
+              STATE.favOnly = true; favBtn.classList.add('active');
+            }
+            render();
+          });
+        };
+        favLoad();
+        window.Favorites.onChange(favLoad);
+      }
 
       // ── Creator search + 3-state chips ──
       var crSearch = document.getElementById('fc-creator-search');
@@ -459,6 +510,7 @@
       // Partial (unfinished) pages are out of the list unless asked for.
       if (!STATE.showPartial) out = out.filter(function(c){ return !window.isPartial(c); });
       if (STATE.curataOnly) out = out.filter(function(c){ return window.isCurata(c); });
+      if (STATE.favOnly) out = out.filter(function(c){ return !!(FAV_SET && FAV_SET.has(c.slug)); });
       if (STATE.includeTeams.length) out = out.filter(function(c){ return STATE.includeTeams.indexOf(c.team) !== -1; });
       if (STATE.excludeTeams.length) out = out.filter(function(c){ return STATE.excludeTeams.indexOf(c.team) === -1; });
       if (STATE.includeTags.length) out = out.filter(function(c){
@@ -484,14 +536,15 @@
       if (STATE.sort === 'name-asc') out.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
       else if (STATE.sort === 'name-desc') out.sort(function(a,b){ return (b.name||'').localeCompare(a.name||''); });
       else if (STATE.sort === 'recent') { /* keep array order reversed = most-recent first */
-        out = out.map(function(c,i){ return [c, FULL.indexOf(c)]; })
-                 .sort(function(a,b){ return b[1]-a[1]; })
-                 .map(function(p){ return p[0]; });
+        // All preceding operations are filters, which preserve FULL's order.
+        out.reverse();
       }
       return out;
     }
 
     function render(){
+      // Disconnect previous batches even when the new result is empty.
+      if (cancelCards) cancelCards();
       var list = applyFilters();
       var panel = document.getElementById('panel');
       var count = document.getElementById('filter-count');
@@ -501,7 +554,7 @@
           STATE.includeTags.length + STATE.excludeTags.length +
           STATE.includeSources.length + STATE.excludeSources.length +
           STATE.includeCreators.length + STATE.excludeCreators.length +
-          (STATE.showPartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0);
+          (STATE.showPartial ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
         toggle.innerHTML = 'Filters' + (nActive ? ' (' + nActive + ')' : '') +
           ' <span class="filter-toggle-arrow">&#9662;</span>';
       }
@@ -513,51 +566,28 @@
         panel.innerHTML = '<p style="text-align:center;color:rgba(236,225,200,.6);padding:40px">No characters match these filters. <button type="button" class="filter-reset" onclick="document.getElementById(\'fc-reset\').click()">Reset</button></p>';
         return;
       }
-      // Draw in two steps, so the first paint is not held behind 1,800 cards:
-      // every section's shell and the first screenful of cards go in at once,
-      // and the rest of each grid is appended a slice per animation frame.
-      // A filter change while that is still running invalidates the run
-      // (renderToken) instead of racing it. Always grouped by team;
-      // applyFilters() already ordered each group.
-      var token = ++renderToken;
-      var FIRST = 72, SLICE = 160, drawn = 0;
-      var html = '', pending = [];
-      TEAMS.forEach(function (t) {
-          var key = t[0], label = t[1];
-          var chars = list.filter(function (c) { return c.team === key; });
-          if (!chars.length) return;
-          var now = Math.max(0, Math.min(chars.length, FIRST - drawn));
-          drawn += now;
-          html += '<section class="type-section" id="' + key + '">' +
-            '<h2 class="type-header"><a href="team?t=' + key + '" class="team-header-link">' + label + '</a></h2><div class="type-rule"></div>' +
-            '<div class="char-grid" data-team="' + key + '">' + chars.slice(0, now).map(card).join('') + '</div></section>';
-          if (now < chars.length) pending.push({ key: key, rest: chars.slice(now) });
-      });
-      panel.innerHTML = html;
-      function more(){
-        if (token !== renderToken || !pending.length) return;
-        var job = pending[0];
-        var grid = panel.querySelector('.char-grid[data-team="' + job.key + '"]');
-        var slice = job.rest.splice(0, SLICE);
-        if (grid) grid.insertAdjacentHTML('beforeend', slice.map(card).join(''));
-        if (!job.rest.length) pending.shift();
-        requestAnimationFrame(more);
-      }
-      if (pending.length) requestAnimationFrame(more);
+      var groups = [];
+      panel.innerHTML = TEAMS.map(function(t){
+        var chars = list.filter(function(c){ return c.team === t[0]; });
+        if (!chars.length) return '';
+        groups.push({ selector: '.char-grid[data-team="' + t[0] + '"]', items: chars });
+        return '<section class="type-section" id="' + t[0] + '"><h2 class="type-header"><a href="team?t=' + t[0] + '" class="team-header-link">' + t[1] + '</a></h2><div class="type-rule"></div><div class="char-grid" data-team="' + t[0] + '"></div></section>';
+      }).join('');
+      cancelCards = window.mountCardBatches(panel, groups, card);
     }
-    var renderToken = 0;
+    var cancelCards = null;
 
     Promise.all([
-      fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?fields=grid').then(function(r){return r.json();}),
-      fetch('scripts.json').then(function(r){return r.json();}).catch(function(){return[];})
+      BotcData.json('collections.json?fields=browse').catch(function(){return[];}),
+      BotcData.json('characters.json?fields=grid'),
+      BotcData.json('scripts.json?fields=browse').catch(function(){return[];})
     ]).then(function(res){
       var collData = res[0]||[], list = res[1], scripts = res[2]||[];
       (scripts||[]).forEach(function(s){ (s.characters||[]).forEach(function(sl){ SCRIPT_SLUGS[norm(sl)] = true; }); });
       AC_COLLECTIONS = collData.map(function(c){
         return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
                 match:c.match||[],description:c.description||'',header:c.header||'',
-                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[]};
+                tagline:c.tagline||'',include:c.include||[],exclude:c.exclude||[],v:c.v};
       });
       AC_COLLECTIONS.push({id:'standalone',slug:'Standalone',displayName:'Standalone Characters',
                            match:[],standalone:true,description:'',header:''});
@@ -588,7 +618,8 @@
             stack.className = 'collection-hero';
             var inner = '';
             if (activeCollection.header) {
-              inner += '<div class="collection-hero-header"><img loading="lazy" decoding="async" class="collection-hero-img" src="assets/' + activeCollection.header + '" alt="' + esc(displayName) + '"></div>';
+              var headerSrc = /^https?:\/\//i.test(activeCollection.header) ? activeCollection.header : 'assets/' + activeCollection.header + (activeCollection.v ? '?v=' + encodeURIComponent(activeCollection.v) : '');
+              inner += '<div class="collection-hero-header"><img decoding="async" class="collection-hero-img" src="' + esc(headerSrc) + '" alt="' + esc(displayName) + '"></div>';
             }
             if (activeCollection.tagline) {
               inner += '<p class="collection-hero-tagline">' + esc(activeCollection.tagline) + '</p>';
@@ -639,8 +670,9 @@
             }
             function ensureCollJson() {
               if (collJsonLoad) return collJsonLoad;
-              collJsonLoad = fetch('characters.json?fields=card').then(function (r) { return r.json(); })
-                .then(function (cards) {
+              collJsonLoad = Promise.all([BotcData.json('characters.json?fields=card'), BotcData.script('render.js')])
+                .then(function (loaded) {
+                  var cards = loaded[0];
                   collJsonText = buildCollJson(cards || []);
                   var code = stack.querySelector('.collection-json code');
                   if (code) code.textContent = collJsonText;
@@ -657,7 +689,7 @@
                 });
               return collJsonLoad;
             }
-            if (window.buildSchema && list.length) {
+            if (list.length) {
               inner += '<div class="collection-json">' +
                 '<div class="json-box">' +
                   '<div class="json-bar">' +

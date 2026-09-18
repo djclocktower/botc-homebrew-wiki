@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Page History — BOTC HomeBrew Wiki</title>
 <meta name="robots" content="noindex">
@@ -123,12 +124,23 @@
         ' since it was published. <a href="' + esc(pageHref()) + '">View the page →</a>';
       $('hist-link').href = pageHref();
       if (data.publicEdit) {
-        $('hist-open').style.display = '';
-        $('hist-open').textContent = data.publicEdit === 'tags'
+        var pe = data.publicEdit;
+        var open = pe === 'tags'
           ? 'This page’s tags are open to anyone with an account.'
-          : data.publicEdit === 'all-but-ability'
+          : pe === 'all-but-ability'
             ? 'The creator has opened this page to anyone with an account, except its ability.'
-            : 'The creator has opened this page to anyone with an account.';
+            : pe === 'suggest'
+              ? 'Anyone with an account can propose an edit to this page; the creator approves it.'
+              : pe === 'approved'
+                ? 'The creator shares this page with editors they have named.'
+                : 'The creator has opened this page to anyone with an account.';
+        // A character's setting can come from the script or collection it is
+        // on: its owner's choice there covers their pages on it.
+        if (data.publicEditVia && data.publicEditVia.name) {
+          open += ' That is the setting on ' + data.publicEditVia.name + ', which covers its creator’s pages on it.';
+        }
+        $('hist-open').style.display = '';
+        $('hist-open').textContent = open;
       }
       var html = '';
       // The page as it stands, at the top: the version every entry below is

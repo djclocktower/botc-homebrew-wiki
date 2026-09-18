@@ -26,7 +26,7 @@
   }
   function titleCase(s) {
     return String(s || '').trim().toLowerCase()
-      .replace(/(^|[\s-])[a-z]/g, function (m) { return m.toUpperCase(); });
+      .replace(/(^|[\s\-\/])[a-z]/g, function (m) { return m.toUpperCase(); });
   }
   /* Both of these are read for every card on every apply(), and apply() runs
      on every keystroke and every chip. Splitting the same attribute string
@@ -47,7 +47,13 @@
   function el(x) { return typeof x === 'string' ? document.getElementById(x) : x; }
 
   /* opts: {grid, bar, toggle, count} — elements or element ids — plus optional
-     {label, noun, partialChip, curataChip, minCards}.
+     {label, noun, partialChip, curataChip, favChip, minCards}.
+
+     favChip adds a "Favorites" chip over the reader's saved list
+     (assets/favorites.js — the saved characters plus every character on a
+     saved script or collection). The list arrives after the bar is built, so
+     the chip starts hidden and shows once something on the page is in it;
+     a logged-out reader never sees it. Cards must carry data-slug.
 
      The markup it filters is described by four selectors, defaulting to the
      card grid renderRosterCards() produces. The Script Builder's Add sidebar
@@ -122,9 +128,14 @@
     function freshState() {
       return { inTeams: [], exTeams: [], inTags: [], exTags: [],
                inSources: [], exSources: [], creator: '',
-               showPartial: PARTIAL_ON, curataOnly: false, sort: DEFAULT_SORT,
+               showPartial: PARTIAL_ON, curataOnly: false, favOnly: false, sort: DEFAULT_SORT,
                q: searchEl ? searchEl.value.trim().toLowerCase() : '' };
     }
+    // The reader's saved characters, once known (a Set), or null: logged out,
+    // still loading, or nothing here is saved.
+    var FAV_SET = null;
+    var wantFav = !!opts.favChip && !!window.Favorites &&
+      cards.some(function (c) { return c.getAttribute('data-slug'); });
     var STATE = freshState();
 
     function teamOf(card) {
@@ -181,14 +192,21 @@
     // their characters. See "Page classification" in CLAUDE.md.
     var wantPartial = !!opts.partialChip && nPartial > 0;
     var wantCurata = !!opts.curataChip && nCurata > 0;
-    if (wantPartial || wantCurata) {
-      html += '<div class="filter-group"><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
+    if (wantPartial || wantCurata || wantFav) {
+      // The group itself is hidden when the Favorites chip is its only
+      // occupant, until that chip has something to show.
+      html += '<div class="filter-group" id="cf-status-group"' + (wantPartial || wantCurata ? '' : ' hidden') +
+        '><span class="filter-group-label">Status</span><div class="filter-chips" id="cf-status">';
       if (wantPartial) {
         html += '<button type="button" class="filter-chip' + (PARTIAL_ON ? ' active' : '') +
           '" id="cf-partial" title="Unfinished pages: an ability and an icon, but no tags, no almanac text and no mechanics.">Show Partial (' + nPartial + ')</button>';
       }
       if (wantCurata) {
         html += '<button type="button" class="filter-chip filter-chip-curata" id="cf-curata" title="Pages the wiki admins have marked as Curata.">Curata only (' + nCurata + ')</button>';
+      }
+      if (wantFav) {
+        html += '<button type="button" class="filter-chip filter-chip-fav" id="cf-fav" hidden title="Characters you saved, and every character on a script or collection you saved.">' +
+          window.Favorites.heartSVG() + ' Favorites</button>';
       }
       html += '</div></div>';
     }
@@ -252,6 +270,32 @@
       curataBtn.classList.toggle('active', STATE.curataOnly);
       apply();
     });
+    var favBtn = bar.querySelector('#cf-fav');
+    if (favBtn) {
+      favBtn.addEventListener('click', function () {
+        STATE.favOnly = !STATE.favOnly;
+        favBtn.classList.toggle('active', STATE.favOnly);
+        apply();
+      });
+      // Count what is saved among THESE cards; the chip only shows when that
+      // is more than nothing. Re-counted after every toggle on the page (a
+      // card's own heart, on pages that draw one) through onChange.
+      var favLoad = function () {
+        window.Favorites.characterSlugs().then(function (set) {
+          FAV_SET = set;
+          var n = 0;
+          if (set) cards.forEach(function (c) { if (set.has(c.getAttribute('data-slug'))) n++; });
+          favBtn.hidden = !n;
+          favBtn.innerHTML = window.Favorites.heartSVG() + ' Favorites' + (n ? ' (' + n + ')' : '');
+          var group = bar.querySelector('#cf-status-group');
+          if (group && !(partialBtn || curataBtn)) group.hidden = !n;
+          if (!n && STATE.favOnly) { STATE.favOnly = false; favBtn.classList.remove('active'); }
+          apply();
+        });
+      };
+      favLoad();
+      window.Favorites.onChange(favLoad);
+    }
     var crSel = bar.querySelector('#cf-creator');
     if (crSel) crSel.addEventListener('change', function () { STATE.creator = crSel.value; apply(); });
     var sortSel = bar.querySelector('#cf-sort');
@@ -285,6 +329,7 @@
       // hidden with no way to reveal them.
       if (wantPartial && !STATE.showPartial && card.getAttribute('data-partial') === '1') return false;
       if (STATE.curataOnly && card.getAttribute('data-curata') !== '1') return false;
+      if (STATE.favOnly && !(FAV_SET && FAV_SET.has(card.getAttribute('data-slug')))) return false;
       var team = teamOf(card);
       if (STATE.inTeams.length && STATE.inTeams.indexOf(team) === -1) return false;
       if (STATE.exTeams.indexOf(team) !== -1) return false;
@@ -374,7 +419,7 @@
       var active = STATE.inTeams.length + STATE.exTeams.length + STATE.inTags.length +
         STATE.exTags.length + STATE.inSources.length + STATE.exSources.length +
         (STATE.creator ? 1 : 0) + (STATE.q ? 1 : 0) +
-        (STATE.showPartial !== PARTIAL_ON ? 1 : 0) + (STATE.curataOnly ? 1 : 0);
+        (STATE.showPartial !== PARTIAL_ON ? 1 : 0) + (STATE.curataOnly ? 1 : 0) + (STATE.favOnly ? 1 : 0);
       if (countEl) {
         // At rest, count what the reader can actually see: Partial pages are
         // hidden by default, and "15 of 16" with nothing filtered just reads
@@ -406,7 +451,10 @@
       toggle: 'coll-filter-toggle', count: 'coll-chars-count',
       // A collection's roster order is the author's — set in the editor and
       // rendered by the server — so it is what a reader sees first.
-      defaultSort: 'page'
+      defaultSort: 'page',
+      // The reader's saved characters (favorites.js loads before this file
+      // on a collection page). Hidden until something here is saved.
+      favChip: true
     });
     if (!ok) {   // empty collection — nothing to filter
       var fc = document.getElementById('coll-filters');

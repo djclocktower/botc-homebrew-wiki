@@ -2,6 +2,9 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<script src="assets/art-thumb.js"></script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Collection Editor — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Create or edit a Blood on the Clocktower homebrew collection: name it, pick its characters, add a description and artwork, and publish it to the wiki.">
@@ -12,6 +15,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 <style>
 /* ─── Collection editor layout (mirrors publish-script.html) ─── */
@@ -185,7 +189,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         <label for="pc-author">Author / curator</label>
         <input type="text" id="pc-author" placeholder="Your name">
         <label class="credit-unlink" for="pc-credit-unlinked"><input type="checkbox" id="pc-credit-unlinked"> This credit isn’t mine</label>
-        <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s collection. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Untick it everywhere to link the name back.</span>
+        <span class="credit-unlink-hint">Tick this when you are publishing somebody else’s collection. The name in the Author box stops pointing at your account: it gets its own creator page, and every page of yours credited to that name stays off your profile. Ticking it also puts the page on approved editing with you named, so you can still edit it if it is ever handed over to them. Untick it everywhere to link the name back.</span>
       </div>
       <div class="sb-fld">
         <label for="pc-tagline">Tagline <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#726348">(optional — one line shown under the title)</span></label>
@@ -310,21 +314,23 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
-      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">One choice for this collection and your characters and pages on it.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
-            <option value="">Only me (and the wiki admins)</option>
+            <option value="">Not set: my characters and pages on it keep their own settings</option>
+            <option value="closed">Only me (and the wiki admins)</option>
             <option value="approved">Approved editing: only the people I name below</option>
-            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
-            <option value="all">Anyone with an account can edit this page</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, I approve it</option>
+            <option value="all">Anyone with an account can edit</option>
           </select>
+          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this collection <strong>and to every character and wiki page on it that belongs to you</strong>, so one choice covers the whole set. Pages belonging to anyone else are not yours to share, so those keep their own settings.</p>
         </div>
         <div class="sb-fld" id="sb-editors-fld" style="display:none">
           <label>Approved editors</label>
           <div id="sb-editors-box"></div>
-          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included — and the character pages on it that belong to you, so they can fix the roster as well as the page. Characters belonging to anyone else are not yours to share, so those stay untouched.</p>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this collection exactly as you would, drafts included — and the character pages and wiki pages on it that belong to you, so they can fix the roster and the rules as well as the page. They can add new wiki pages too, which stay drafts until you publish them. Pages belonging to anyone else are not yours to share, so those stay untouched.</p>
         </div>
         <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
       </div>
@@ -389,6 +395,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
+  <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/render-wiki.js"></script>
@@ -424,13 +431,20 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     /* The modes the <select> offers. Anything else stored on the row reads as
        closed, and is never silently re-saved as something it is not. */
-    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
+    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1, closed: 1 };
     /* The named-account list behind "Approved editing". Mounted whatever the
        mode is, so switching away and back keeps the names; shown only while
        that mode is chosen. */
     var editorsUI = window.ApprovedEditors
       ? window.ApprovedEditors.mount($('sb-editors-box'), {})
       : null;
+    /* Ticking "this credit isn't mine" moves the page onto approved editing
+       with the uploader named, so the Worker cannot hand it over and leave
+       them locked out. Wired here so the control matches what the save will
+       store — the edit-status bar is drawn from the select. */
+    if (window.ApprovedEditors)
+      window.ApprovedEditors.mountCreditUnlink(
+        document.getElementById('pc-credit-unlinked'), document.getElementById('sb-public-edit'), editorsUI);
     function syncEditorsBox(){
       $('sb-editors-fld').style.display = $('sb-public-edit').value === 'approved' ? '' : 'none';
     }
@@ -490,7 +504,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // A draft keeps no history — saveRevision() does not snapshot one.
       if (currentStatus !== 'draft') links.push({ href: 'history?' + q, label: 'Edit history' });
       links.push({ href: '#sb-public-edit', label: 'Change this' });
-      host.innerHTML = window.editStatusHTML(mode, { links: links });
+      // A chosen mode reaches the owner's characters and wiki pages on the
+      // set; "not set" leaves each on its own setting, and the bar says which.
+      host.innerHTML = window.editStatusHTML(mode || 'unset', {
+        links: links,
+        what: mode ? 'this collection and your characters and wiki pages on it' : 'this collection'
+      });
       var change = host.querySelector('a[href="#sb-public-edit"]');
       if (change) change.addEventListener('click', function(e){
         e.preventDefault();
@@ -547,7 +566,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
         ? 'This collection takes suggested edits rather than direct ones, and they cannot be sent from this page yet. Message the creator instead.'
         : 'This collection belongs to another account, so you cannot save changes to it.');
     }
-    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return j;}); }
+    function apiUpload(key, dataUrl){ return fetch('/api/upload',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({key:key,data:dataUrl})}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Image upload failed.');return ArtThumb.upload(key,dataUrl,j.etag).then(function(){return j;});}); }
     function apiSave(entry){ return fetch('/api/collection',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(entry)}).then(function(r){return r.json();}).then(function(j){if(!j||j.error)throw new Error((j&&j.error)||'Save failed. Are you logged in?');return j;}); }
 
     function matchTerms(){

@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scripts — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Community-made Blood on the Clocktower scripts built from homebrew characters, with official-schema JSON exports and printable tokens.">
@@ -55,11 +56,32 @@
   </div>
 
   <div class="home-panel" style="padding-bottom:0">
+    <!-- Below 640px the CSS hides .filter-bar unless it is .open, so a bar
+         with no toggle beside it is a bar nobody on a phone can reach — which
+         is what the Curata chip here was. The button is display:none on
+         desktop, so it costs that view nothing. Same wiring as
+         all-characters.html. -->
+    <button type="button" id="filter-toggle" class="filter-toggle" hidden
+      aria-expanded="false" aria-controls="filter-bar">Filters <span class="filter-toggle-arrow">&#9662;</span></button>
     <div class="filter-bar" id="filter-bar" hidden>
       <div class="filter-group"><span class="filter-group-label">Status</span>
         <div class="filter-chips">
           <button type="button" class="filter-chip filter-chip-curata" id="fc-curata"
             title="Curata — scripts the wiki admins have picked out.">Curata only</button>
+        </div>
+      </div>
+      <!-- Your saved scripts (assets/favorites.js). Shown only once you have
+           saved one; logged-out readers never see it. -->
+      <div class="filter-group" hidden><span class="filter-group-label">Saved</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip filter-chip-fav" id="fc-fav"
+            title="Scripts you added to your favorites.">Favorites</button>
+        </div>
+      </div>
+      <div class="filter-group"><span class="filter-group-label">Size</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip" id="fc-teensy"
+            title="Teensyville — small scripts, 15 characters or fewer.">Teensyville</button>
         </div>
       </div>
     </div>
@@ -79,18 +101,28 @@
        catch below reports it as "Could not load scripts." -->
   <script src="assets/render-page.js"></script>
   <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
   <script>
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     var grid = document.getElementById('scripts-grid');
-    fetch('scripts.json')
-      .then(function(r){ return r.json(); })
+    BotcData.json('scripts.json?fields=browse')
       .then(function(scripts){
         if (!scripts.length){
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        var curataOnly = false;
+        var curataOnly = false, teensyOnly = false, favOnly = false, FAV = {};
+        /* Teensyville is a small script — the classic shape is 6 townsfolk,
+           2 outsiders, 2 minions and 1 demon — so it is judged on the size of
+           the roster. It is judged on the WHOLE roster, which is also the
+           number printed on the tile, rather than on the four core teams:
+           most rosters here are mostly official characters (`off-` slugs)
+           that this page has no team for, so counting core teams would call
+           a 25-strong official script tiny. 15 leaves room for a traveller or
+           two above the canonical 11 and sits well clear of a standard 25. */
+        var TEENSY_MAX = 15;
+        function isTeensy(sc){ return (sc.characters || []).length <= TEENSY_MAX; }
         function cardHTML(sc){
           var n = (sc.characters || []).length;
           var href = 's/' + encodeURIComponent(sc.slug);
@@ -106,7 +138,7 @@
           // box instead of being clipped. Same trick as the /c/ page title.
           var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
           var headerHTML = banner
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + (sc.v ? '?v=' + encodeURIComponent(String(sc.v)) : '') + '" alt="' + esc(sc.name) + '"></div>'
+            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, sc.v)) + '"' + PageRender.responsiveAttrs('', banner, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
             : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
           var blurb = sc.tagline || sc.description || '';
           return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
@@ -125,23 +157,69 @@
             '</div></a>';
         }
         function draw(){
-          var rows = curataOnly
-            ? scripts.filter(function(sc){ return sc.curata; })
-            : scripts;
+          var rows = scripts.filter(function(sc){
+            if (curataOnly && !sc.curata) return false;
+            if (teensyOnly && !isTeensy(sc)) return false;
+            if (favOnly && !FAV[sc.slug]) return false;
+            return true;
+          });
+          // The chips combine, so the empty message cannot name one of them.
           grid.innerHTML = rows.map(cardHTML).join('') ||
-            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No Curata scripts yet.</p>';
+            '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts match those filters.</p>';
         }
-        // The chip only shows up once something carries the status.
-        var nCurata = scripts.filter(function(sc){ return sc.curata; }).length;
-        if (nCurata){
-          var bar = document.getElementById('filter-bar');
-          var btn = document.getElementById('fc-curata');
-          btn.textContent = 'Curata only (' + nCurata + ')';
+        // A chip only shows up once something matches it, and the bar only
+        // shows up once a chip does — a filter that can only ever empty the
+        // page is worse than no filter.
+        var bar = document.getElementById('filter-bar');
+        var toggle = document.getElementById('filter-toggle');
+        function showBar(){
           bar.hidden = false;
+          if (toggle) toggle.hidden = false;
+        }
+        function mountChip(id, label, n, onToggle){
+          var btn = document.getElementById(id);
+          if (!btn) return;
+          if (!n){ btn.closest('.filter-group').hidden = true; return; }
+          btn.textContent = label + ' (' + n + ')';
+          showBar();
           btn.addEventListener('click', function(){
-            curataOnly = !curataOnly;
-            btn.classList.toggle('active', curataOnly);
+            btn.classList.toggle('active', onToggle());
             draw();
+          });
+        }
+        mountChip('fc-curata', 'Curata only',
+          scripts.filter(function(sc){ return sc.curata; }).length,
+          function(){ return (curataOnly = !curataOnly); });
+        mountChip('fc-teensy', 'Teensyville',
+          scripts.filter(isTeensy).length,
+          function(){ return (teensyOnly = !teensyOnly); });
+        // Favorites: the count is only known once the reader's saved list
+        // arrives (assets/favorites.js), so this chip is mounted then rather
+        // than with the two above. ?favorites=1 opens the page on it — the
+        // account page links here that way.
+        if (window.Favorites) {
+          window.Favorites.lists().then(function(fav){
+            FAV = {};
+            ((fav && fav.scripts) || []).forEach(function(s){ FAV[s] = true; });
+            var n = scripts.filter(function(sc){ return FAV[sc.slug]; }).length;
+            var btn = document.getElementById('fc-fav');
+            if (!btn || !n) return;
+            btn.closest('.filter-group').hidden = false;
+            btn.innerHTML = window.Favorites.heartSVG() + ' Favorites (' + n + ')';
+            showBar();
+            btn.addEventListener('click', function(){
+              favOnly = !favOnly;
+              btn.classList.toggle('active', favOnly);
+              draw();
+            });
+            if (/[?&]favorites=1(&|$)/.test(location.search)) btn.click();
+          });
+        }
+        if (toggle) {
+          toggle.addEventListener('click', function(){
+            var open = bar.classList.toggle('open');
+            toggle.classList.toggle('open', open);
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
           });
         }
         draw();

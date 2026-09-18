@@ -15,15 +15,17 @@ and nightly backups live in **R2** (`ART` binding, bucket `botc-wiki-art`).
 The repo's HTML/CSS/JS are uploaded as static assets on deploy. The Worker
 intercepts the routes in `run_worker_first` (wrangler.toml); everything else
 falls through to the static files. Deploys happen **automatically when main is
-pushed** (Cloudflare Git integration, ~30–60 s). There is no build step and no
-framework — plain HTML/CSS/JS everywhere.
+pushed** (Cloudflare Git integration, ~30–60 s). A dependency-free Node build versions static assets; there is no
+framework — plain HTML/CSS/JS everywhere. Run `node migration/build-assets.mjs`
+after source edits and commit the generated manifest and archive. Wrangler
+checks them and uploads only `.build/public`; see "Caching".
 
 Key dynamic behavior:
 
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
   live from D1** (published rows only). Characters come in **three tiers**:
   `?fields=grid` (what a card needs and nothing else — the browse pages, the
-  homepage, the top-bar search; ~35% of the card feed), `?fields=card` (the
+  top-bar search; homepage summaries now use `/api/home`), `?fields=card` (the
   tools: Script Builder, editors, Token Tool, importers — everything
   `buildSchema()` needs to export a script) and the bare URL (the whole
   almanac, for `/api/seed` and a few admin tools). See "Caching" for which
@@ -47,8 +49,9 @@ Key dynamic behavior:
   `findCollectionRow()` resolves either. Script and collection pages carry an
   **Edit button in the page itself** (`ownerBar()` in render-page.js) as well
   as the pencil in the top bar, but only for a reader who may actually edit
-  it: the Worker passes `editHref` in when `canEditRow()` says yes and an
-  empty one otherwise, which is safe because SSR responses are `no-store`.
+  it: published HTML contains an empty control slot, filled by the private
+  `/api/page-viewer` response after permission checks. Drafts retain authenticated
+  rendering; neither private controls nor draft HTML enter the public cache.
   The pencil stays unconditional (the API is the enforcer); this one sits in
   the page, where a reader would take it as an invitation.
 - `GET /news/{slug}` is **server-side rendered** too (`assets/render-news.js`,
@@ -61,7 +64,11 @@ Key dynamic behavior:
   entry, no search, no browse list, no homepage strip. The only two links in
   are the "Pages" section on the parent script/collection page and the
   author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
-  (or an admin) can create one; the page is then owned by whoever wrote it.
+  (or an admin) — or an **approved editor of the parent** — can create one;
+  the owner's page is owned by whoever wrote it, an editor's is filed under the
+  parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
+  choice, exactly as for its characters. See the wiki-page waterfall under
+  approved editing.
 - `GET /assets/art|collections|scripts|tokens|pages|news|avatars/*` is served
   **from R2
   first**, falling back to committed files (`avatars/` is R2-only: profile
@@ -146,7 +153,18 @@ _headers               Cache rules for static assets. Matching rules COMBINE
                        Gotcha 14. Also the Link preload header for the pages.
 .assetsignore          Files excluded from asset upload — CRITICAL, see Gotchas
 assets/
-  styles.css           ALL shared CSS (no per-page stylesheets)
+  styles.css           Shared reading styles. editor.css is loaded by tool/editor
+                       pages; comments.css is loaded with deferred comments.
+  data.js              Shared parsed public feeds and versioned asset loaders,
+                       plus root() — the page's link prefix, and the single
+                       source of truth for it (see "Character identity vs
+                       address"). Never trust the first stylesheet in the
+                       document to be ours.
+  reader.js            Gallery, title fitting, JSON toggle/copy. SSR readers load
+                       this without the full rendering/export library.
+  viewport.js          Bounded character-card batches on viewport approach.
+  reading-lazy.js      Comments on approach, click or comment-anchor navigation.
+  page-viewer.js       Private editing controls for cached published pages.
   site.js              Shared topbar behavior: search dropdown, mobile nav,
                        script-count badge, Tools + Create + Account link injection.
                        Every page with a topbar loads this — never inline-copy it.
@@ -234,9 +252,38 @@ assets/
                        (setLinkMode + onPair) reuses the ordinary click to pick
                        two characters. A long press or two-finger gesture would
                        be both harder to find and easier to hit by accident.
-  charpage.js          /c/ page enhancements (edit button, add-to-script/token)
+  charpage.js          /c/ page enhancements (edit button, add-to-script/token,
+                       and the Favorite button — see favorites.js). The three
+                       stacked buttons share one skin — .tog-ico (an outline
+                       glyph, filled when on) + .tog-pop (the swell) in
+                       styles.css — so they look and move as one set.
+  favorites.js         Favorites, the browser half: ONE module for the button
+                       on a character page (charpage.js), the one on a script
+                       or collection page (pageview.js), the Favorites chip
+                       in every filter box and the account page, so they all
+                       read and write one list. Talks to /api/favorites and
+                       /api/favorite; caches the lists in sessionStorage
+                       (botc_favs:*) for two minutes and patches the cache on
+                       a toggle. Logged-out readers cost no request at all.
+                       Loaded BEFORE charpage.js / pageview.js / card-filters.js
+                       wherever those mount something of it. See "Favorites".
   tags.js              Canonical tag list + descriptions + hover tooltips +
                        tag-picker builder. Adding a tag = edit ONLY this file.
+                       A description of '' is a tag with no hover box (Magic),
+                       which is not the same as a tag nothing knows about.
+                       A tag NOT in this list is still kept on a page that has
+                       one: both editors hold it aside and write it back after
+                       the picked tags, because the hidden field is rebuilt
+                       from the buttons and a stored tag with no button used to
+                       be dropped the moment the page was opened — which is
+                       every affected page for the minutes between a tag being
+                       renamed in D1 and the new tags.js reaching the site.
+                       Tag names may contain '/' (Win/Loss Condition): the
+                       links encodeURIComponent it, and the title-caser is
+                       spelled /(^|[\s\-\/])[a-z]/ in FIVE places (render.js,
+                       card-filters.js, all-characters/tag/tags.html) so
+                       'win/loss condition' comes back as 'Win/Loss Condition'
+                       and still finds its description.
                        The chips' CSS (.tag-pick-btn) is in styles.css, not in
                        the pages: it was hand-copied into create.html and
                        edit.html, so /bloodstar — the third page to use the
@@ -613,7 +660,17 @@ news.html              /news index (client-rendered from /api/news)
 publish-news.html      Admin-only news editor: the same kit as publish-page
                        (toolbar, images, boxes, fact box, theme) plus
                        summary/hero/pin, and preview/publish/delete
-scripts.html, script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
+scripts.html           /scripts — the script index. Filter chips for Curata and
+                       **Teensyville** (a small script; judged on the whole
+                       roster, which is the count the tile prints, because most
+                       rosters here are mostly official `off-` slugs this page
+                       has no team for — TEENSY_MAX is 15). A chip whose count
+                       is zero hides its group, and the bar hides with the last
+                       of them. It carries the mobile Filters toggle
+                       all-characters.html has: under 640px the CSS hides a
+                       .filter-bar that is not .open, so the bar was
+                       unreachable on a phone without it.
+script-view.html (legacy; /s/ is SSR now), create-script.html (→script), edit-script.html (→publish-script)
 tools.html             /tools — the toolbox hub: Script Builder, Token Tool,
                        Fancy Scripts, Grimoire Forge, Icon Forge, Bloodstar
                        Import, Jinxes, Creator Icons. This is what the "Tools"
@@ -737,6 +794,13 @@ drafts.html            /drafts — your own unpublished pages as cards (the same
                        have no card art so they get a plain tile. Linked from
                        the Your Drafts panel on the account page, which keeps
                        its own table — the two are deliberately both there.
+favorites.html         /favorites — the pages this account saved, as cards:
+                       the saved characters (renderRosterCards + the shared
+                       filter box), tiles for saved scripts and collections,
+                       and a second card grid of the characters those bring
+                       with them. Same shape as /drafts, and linked from the
+                       Your Favorites panel on the account page, which keeps
+                       its own table with a Remove button. See "Favorites".
 404.html               The custom Not Found page. Nothing links to it: the
                        Worker serves it AT the address that failed (no
                        redirect) with a 404 status, via assetsOrNotFound(),
@@ -884,7 +948,12 @@ theme-validated server-side in `sanitizePageFields()` (worker.js). `theme` is
 must be `#rrggbb`, font a `FONT_PRESETS` key,
 background only the entity's own `{scripts|collections}/{key}-bg.{ext}` slot;
 `sanitizeTheme()` drops anything else and it's applied as CSS custom properties
-on `<body>` (never raw CSS).
+on `<body>` (never raw CSS). **The background's `--pg-bg` is root-absolute
+(`/assets/…`), never `linkRoot`-relative**: Chromium resolves a relative
+`url()` inside a custom property against the stylesheet where `var()` is used,
+and the build now serves styles.css from `/assets/immutable/`, so
+`../assets/x-bg.png` came out as `/assets/assets/x-bg.png` and every custom
+background on the site 404'd. Keep it absolute.
 The last three are the **top graphic** — the header banner, or the logo when
 there is no banner. `headerSize` and `logoSize` are **two settings because
 they are two images**: a page with a banner still has a logo, which the
@@ -1342,7 +1411,10 @@ stored on the page's `data` as `publicEdit`:
 - **`'closed'`** (`PUBLIC_EDIT_CLOSED`): the owner chose "Only me". Stored as
   a word rather than as nothing so the choice is remembered — see the
   default below. Reads as closed everywhere (`publicEditMode()` returns `''`
-  for it). Characters only; a script or collection stores nothing.
+  for it). On a character it switches the tags-open default off; on a script
+  or collection it is the choice that closes the owner's characters and wiki
+  pages on it (see "A set's choice governs its pages" below), which nothing
+  stored — "not set" — never does.
 - **`'suggest'`**: anyone with an account may PROPOSE a version for the creator
   to approve. Not write access: every save handler asks `permCanWrite()`, and
   'suggest' is not a writing mode, so it can never be mistaken for an edit.
@@ -1481,27 +1553,72 @@ everyone. They edit it as the creator would; the creator keeps the page.
   scrolls away, so **`GET /api/shared-pages`** is the standing list, shown as
   *Shared With You* on the account page. Without it there is no way back to a
   shared draft: by design it is in no feed, no search and no browse page.
-- **Naming an editor on a script or a collection carries down to the character
-  pages on it** (`waterfallParent()` / `waterfallEditor()` in worker.js). The
-  roster IS the work: an editor who can fix the script's synopsis but not a
-  typo in any of its characters has been given the smaller half. It grants
-  exactly `'approved'`, so everything above still holds — drafts yes,
-  publishing no, the editor list no.
+- **A set's choice governs its pages: a script or collection's "Who can edit"
+  choice is the one in force on the character pages on it**
+  (`governingParent()` / `sharedParentPages()` in worker.js; `waterfallParent()`
+  is the approved-editor half of it). The roster IS the
+  work: a creator who set their collection to approved editing, or to "Only
+  me", meant the set — and an editor who can fix the script's synopsis but not
+  a typo in any of its characters has been given the smaller half. So a chosen
+  mode on the set — `'closed'`, `'approved'`, `'suggest'` or `'all'` — is the
+  mode in force on every character on it that the same account owns, and the
+  character's own `publicEdit` is dormant while it is; the tags-open default
+  never applies under a governing set either. A set whose owner chose nothing
+  ("not set", the empty value every set carried before this existed) governs
+  nothing. `'approved'` grants exactly `'approved'`, so everything above still
+  holds — drafts yes, publishing no, the editor list no — and the character's
+  own named editors still count beside the set's. Derived on read, never
+  written through: a character added to the set later is covered without
+  anyone re-saving, taking the choice off the set puts every page back on its
+  own setting, and nothing bulk-writes a hundred rows. It was built because an
+  owner set a 96-character collection to approved editing and every page
+  stayed open: the admin sweep had put `'all-but-ability'` on each of them
+  while they were still unowned, and the collection's choice reached none.
   **It reaches only characters owned by the SAME account as the parent page.**
-  A collection can list anybody's characters, so without that rule naming an
-  editor on one would hand them edit rights over strangers' pages, which is
-  not the owner's to give. An unowned page (half the wiki) is reached by
-  nothing.
-  `sharedParentPages()` is the lookup: the few script/collection rows that name
-  any editor at all, memoised per isolate against `contentVersion()` exactly
-  like `curataCollections()`, so the check costs one cached query rather than a
-  scan per page view. Membership goes through `resolveCollectionMembers()` with
-  the single character as the whole corpus — one membership rule, not a second
-  copy of it. The characters are deliberately **not** listed in *Shared With
-  You* (a 200-character roster would bury the pages actually shared); the
-  parent's row says "and its characters" and is the way to them. `/api/page`
-  returns `editVia` naming the parent, so edit.html's banner can say where the
-  permission came from instead of claiming somebody named you on this page.
+  A collection can list anybody's characters, so without that rule a choice on
+  one would open or close strangers' pages, which is not the owner's to do. An
+  unowned page (half the wiki) is reached by nothing. A character on two
+  governed sets takes the collection's choice over the script's, then the
+  first in table order — the precedence `characterQualifier()` uses to file it.
+  `sharedParentPages()` is the lookup: the few script/collection rows that
+  carry a `publicEdit` at all, memoised per isolate against `contentVersion()`
+  exactly like `curataCollections()`, so the check costs one cached query
+  rather than a scan per page view. Membership goes through
+  `resolveCollectionMembers()` with the single character as the whole corpus —
+  one membership rule, not a second copy of it. The characters are deliberately
+  **not** listed in *Shared With You* (a 200-character roster would bury the
+  pages actually shared); the parent's row says "and its characters" and is
+  the way to them. `/api/page` returns `editVia` naming the parent, so
+  edit.html's banner can say where the permission came from instead of
+  claiming somebody named you on this page, and `governedBy`
+  (`{type, key, name, mode}`) so the owner's editor can lock its own "Who can
+  edit" control on the set's choice and send them to the set to change it —
+  the control and the status bar must never disagree, and the select's value
+  is what the save posts, so a governed page's stored setting follows the
+  set's on its owner's next save. `/api/page-history` and `/api/suggest` read
+  the mode in force through `effectiveModeFor()` (`publicEditVia` on the
+  history response says which set). The set editors' select offers "Not set"
+  (`''`) and "Only me" (`'closed'`) as two options for exactly this reason,
+  and their status bar asks `editStatusHTML` for `'unset'` with a `what` that
+  names the set and its pages.
+- **The set's choice reaches its custom wiki pages (`/p/`) the same way**
+  (`wikiPageAccess()` / `parentSharingMode()` / `isParentApprovedEditor()` /
+  `mayAddWikiPage()`), with the same boundary: only pages owned by the parent's
+  owner. A wiki page has no `publicEdit` of its own, so the parent's choice is
+  the whole of its answer: `'approved'` admits the named editors to the content
+  (drafts included), the page's image slots, the parent's Pages section with
+  drafts, and **adding** pages — which are saved as drafts owned by the
+  PARENT's owner, so they stay inside the share and going live is still the
+  owner's call; `'all'` admits anyone with an account to a PUBLISHED page (a
+  draft stays the owner's and the named editors'), editing but never adding;
+  `'suggest'` reads as closed, because a wiki page has no send path for a
+  suggestion; `'closed'` and "not set" keep it the owner's. Every non-owner
+  save keeps the stored status, is size-capped, and DMs the owner
+  (`notifyPageEdit`); delete and rollback stay `canEditRow`. `/api/wiki-page`
+  returns `access` (`'owner'`|`'approved'`|`'all'`|`''`) and `editVia`;
+  `/api/wiki-pages` returns `isOwner`; publish-page.html hides Publish/Move to
+  Draft/Delete for anyone but the owner and says where the permission came
+  from.
 - `assets/approved-editors.js` is the one naming widget, mounted by all four
   editors (`create.html`, `edit.html`, `publish-script.html`,
   `publish-collection.html`) so the three page types cannot drift apart. It
@@ -1509,9 +1626,9 @@ everyone. They edit it as the creator would; the creator keeps the page.
   Worker resolves the list again on save regardless — the lookup is a courtesy,
   never the check.
 
-Wiki pages (`/p/`) are deliberately outside all of this: they are owner-only
-across the board on every route, and giving them `publicEdit` would mean
-teaching `/api/wiki-page` the whole machinery.
+Wiki pages (`/p/`) carry no `publicEdit` of their own: giving them one would
+mean teaching `/api/wiki-page` the whole machinery. The one way in for anyone
+but the owner is the parent's choice, waterfalled as above.
 
 **History is public and drafts have none.** `saveRevision()` skips any row whose
 stored status is not `published`: a draft is saved over constantly while it is
@@ -1698,6 +1815,14 @@ go through `inlineText()` as before.
 The fields in links mode: `lede`, `summaryBullets`, `howToRun`, `callout`,
 `examples`, `tips`, `bluffing`, `fighting`, the flavour quote and the custom
 sidebar boxes.
+
+**`callout` is a LIST** — the How-to-Run notes, one box each, drawn after the
+How to Run paragraphs. It was a single string for years and thousands of rows
+still hold one, so nothing was migrated: `renderCharacter()` reads a bare
+string as a list of one, `classify.js` counts either shape as almanac text
+(or a page with a note and nothing else would read as Partial), and the
+editors' box is one note per line. The two importers still write a string,
+which is a single box exactly as before.
 
 **`ability` is deliberately NOT one of them** and stays escaped. It is not
 writing *about* the character, it is the character's rule: it goes verbatim
@@ -2165,8 +2290,19 @@ serving the old addresses.
 - `pageShell({root})`: every path in the shell is relative. `/s/`, `/collection/`,
   `/news/` and `/p/` are one level deep and default to `../`; a nested character
   page passes `../../`, computed from the address depth. `window.LINK_ROOT`
-  carries the same value, and `site.js` derives its own `ROOT` from the
-  stylesheet href, so both follow automatically.
+  carries the same value, and `BotcData.root()` (data.js) is the one answer
+  every browser-side caller takes it from, so both follow automatically.
+  It reads `window.LINK_ROOT` **first**, then falls back to **our own**
+  stylesheet href — a link whose text before `assets/` is nothing but `./`
+  and `../` steps. Both halves are load-bearing and neither was there at
+  first: the old code took the FIRST `link[rel=stylesheet]` in the document,
+  and an **ad blocker injects its element-hiding stylesheet at
+  `document_start`**, so for those readers the first stylesheet was
+  `chrome-extension://...` — every nav link site.js builds (Tools, Create a
+  Character, My Account, Messages, search results) pointed into the
+  extension, and tapping "My Account" opened the blocker's own filter list
+  instead of the wiki. It also returned early when no stylesheet was found,
+  throwing `LINK_ROOT` away and resolving `account` against `/c/{set}/`.
 - `/api/slug-check` is about the **identity** (the PK and the art slot), not the
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still
@@ -2302,6 +2438,35 @@ others writes a different credit, which is what the credit string is for.
   tick for a guest rather than showing a control the save would ignore.
 - Stored **only when true**, so the pages nobody ticks it on grow no key, and
   it is in `CARD_DROP_FIELDS` — nothing that draws a card needs it.
+- **Ticking it keeps the uploader's key to the page** (`keepUploaderEditing()`,
+  called by all three save handlers right after `setCreditUnlinked`). The tick
+  is very nearly a request to hand the page over, and the usual next step is
+  an admin doing exactly that with `assign-owner` — at which point edit rights,
+  which hang off ownership, left the person who had written every word of it
+  unable to fix a typo. So the tick also names the **uploader** in the page's
+  own `editors` list and moves it onto `publicEdit: 'approved'`. Four rules:
+  - `sanitizeEditors()` drops the current owner from their own list on purpose
+    (an owner is not a guest on their own page), so this entry is appended
+    after it and is the one deliberate exception. It does nothing at all while
+    they still own the page; the day it moves it is the whole of what they keep.
+  - The mode is left alone when it is **`'all'` or `'all-but-ability'`** —
+    those already let any account edit, so forcing `'approved'` over one would
+    close a page its owner had opened to everyone. Everything else (`'closed'`,
+    `'tags'`, `'suggest'`, or nothing chosen) is moved onto `'approved'`,
+    because `editPermission()` asks for the mode **and** the list, so a named
+    editor counts in no other mode. The cost is that a character on the
+    tags-open default stops being open to strangers' tags.
+  - **Unticking undoes exactly that**: the uploader's own entry goes, editors
+    they named by hand stay, and an `'approved'` page left with nobody named
+    drops the mode rather than sitting on one that reads as closed.
+  - **Owner saves only.** The tick is the owner's field, so a guest's save must
+    not be what writes the entry. A page ticked before this existed picks it up
+    on its owner's next save (10 rows on the live wiki when it shipped).
+  `ApprovedEditors.mountCreditUnlink()` is the browser half, mounted by all
+  four editors: it moves the "Who can edit" select as the box is ticked, because
+  the edit-status bar is drawn from that select and says what the NEXT save
+  will store — a mode the Worker is about to set with the control still showing
+  something else is the one thing that bar must never do.
 - The **admin `creator_alias:` override still wins**, in both directions: it is
   checked before proof by ownership, so an admin can link a name every page of
   which disowns it. `creatorNamesFor()` clears the name out of `disowned` when
@@ -2419,6 +2584,87 @@ render empty.
 - `related` is in `CARD_DROP_FIELDS`, so the Token Tool and the card grids
   never carry it, and notes take `inlineText()` marks like jinx rules —
   nothing in it leaves the page.
+
+## Favorites (a reader's saved pages)
+
+Any account can save a character, a script or a collection, and get it back
+three ways: the **Favorites** chip in the filter boxes, the **Your Favorites**
+panel on the account page, and `/favorites` (cards). Saving a script or a
+collection is also saving **every character on it**: the chip admits the
+saved characters PLUS those rosters, resolved server-side.
+
+- **The table is `favorites`** (`user_id`, `entity_type`, `slug`, `ts`; PK on
+  the first three), lazily created like every other satellite table. The
+  slug is the page's **stable key** — a character's identity (never its
+  address), a script's slug, a collection's **PK slug** (not the kebab id;
+  `favoriteTarget()` resolves either on the way in through
+  `resolveCharacterPath()` / `getEntityRow()` / `findCollectionRow()`, the
+  same resolvers every other route uses). Nothing is stored on the page and
+  nothing public reads the table: who saved what is that reader's business.
+  `renameCharacter()` moves the rows along with everything else keyed on the
+  identity; `/api/admin/purge` deletes them (a soft-deleted page keeps them,
+  since it can come back).
+- **`POST /api/favorite {type, slug, on}`** saves or unsaves one page.
+  **Published pages only** — a draft is not a page a reader was shown.
+  Capped at `FAVORITES_MAX` (500) per account, which bounds what `?expand=1`
+  has to resolve. Rate-limited on its own bucket (`fav`, 300/hour). **Not a
+  content write**: nothing about the page changes, so it is not in
+  `isContentWrite`, bumps no feed version and logs nothing — a bookmark is not
+  an edit and does not belong in "Your Recent Edits".
+- **`GET /api/favorites`** is the three slug lists, newest first, and is what
+  every button asks. **`?expand=1`** adds `items` (name, status, link key,
+  roster count per page — the account page's table) and `characterSlugs`,
+  the set the Favorites chip filters on: the saved characters that are
+  published, plus the roster of every saved script and collection that is
+  published, through `rosterCharacterSlugs()` — the one membership rule,
+  shared with the owner waterfall, with one character read across every
+  collection. A saved page that has gone to draft **stays saved** (it comes
+  back with the page) but is out of `characterSlugs` and reported with its
+  `status`; one that no longer exists is dropped from `items`.
+- **`assets/favorites.js` is the whole browser side**, and the reason the
+  five places that touch favorites cannot drift. `mountButton()` draws the
+  button unsaved at once and corrects it when the list arrives, so no page
+  waits on the request; a logged-out tap goes to `login?next=` and comes
+  back. A toggle is optimistic, reverts on failure, patches the plain cache
+  in place and drops the expanded one (its character set depends on rosters
+  this file cannot resolve), then calls every `onChange()` listener, which is
+  how the chips re-count without a reload. Login is read off the same
+  `botc_me` sessionStorage entry site.js keeps, so a logged-out reader costs
+  no request.
+- **Where the button is.** On a `/c/` page it is the **third full-width
+  button in the info card**, under the JSON bar with Add to Script and Add
+  to Token Tool (`charpage.js`, skinned by `.add-to-script-btn`), stored on
+  the ACCOUNT where those two are localStorage. The owner chose this from
+  five mocked placements (stacked button, corner tab, heart badge on the
+  icon, bookmark ribbon, sticky phone bar); the corner tab and the sticky
+  bar were each built and taken out again in the same PR, so do not
+  reintroduce either without asking. On `/s/` and `/collection/` it is a
+  `.page-fav-bar` that `pageview.js` inserts right after the
+  `#page-owner-controls` slot. It is mounted in the browser, never rendered
+  by the server, because the published HTML is one shared cache entry for
+  every reader (see "Caching") and saved/unsaved is one reader's state. The
+  heart is a plain outline in `currentColor`, filled when saved — the fill
+  IS the state (`.fav-btn.on`), so it reads without the label. (A tribal
+  flame heart after the owner's art was tried and rejected too.)
+  **All three stacked buttons share one skin.** `.tog-ico` (an outline glyph
+  in `currentColor`, filled when the button is on) and `.tog-pop` (a 5%
+  swell over .3s, none under reduced motion) in styles.css, and
+  `-webkit-tap-highlight-color: transparent` on the lot. charpage.js draws a
+  page glyph for Add to Script and a disc for Add to Token Tool with the same
+  markup and `aria-pressed` the heart uses, so the fill and the swell are the
+  same on all three. The owner asked for that parity after the heart alone
+  had an icon and a pop; the pop itself started at 135% and was toned down
+  to barely moving at the owner's request — keep it faint.
+- **The chip.** `card-filters.js` takes `favChip: true` (collection pages,
+  the creator page, the Script Builder's Add sidebar, `/favorites`);
+  all-characters.html, scripts.html and all-collections.html carry their own,
+  matching their own filter code. Every one of them is **built hidden and
+  shown only once something on that page is saved** — a chip that can only
+  ever empty the page is worse than no chip, and a logged-out reader never
+  sees one. Cards must carry **`data-slug`** (renderRosterCards writes it;
+  the Script Builder's rows too) because the link's href is the address and
+  a saved character is keyed on the identity. `?favorites=1` opens a browse
+  page on the chip; the account page links that way.
 
 ## No official characters
 
@@ -2625,9 +2871,14 @@ except title and body, all capped and validated by `sanitizeWikiFields()`.
   `/u/{username}` pages. If you add a new listing anywhere, do **not** add
   wiki pages to it — being unlisted is the feature.
 - **Who may write one:** the owner of the parent script/collection (or an
-  admin). Ownership then belongs to the writer, and only they or an admin can
-  edit it afterwards. Parentage is frozen at creation — moving a page would
-  break its links.
+  admin), and the parent's approved editors. The owner's page belongs to the
+  writer; an editor's is filed under the parent's owner as a draft, so it
+  stays inside the share. Afterwards, who may edit it is the parent's "Who can
+  edit" choice — its owner and an admin always, the named editors under
+  approved editing, anyone with an account under "anyone can edit" (published
+  pages only), nobody else under suggestions or "only me" (see "Approved
+  editing"). Parentage is frozen at creation — moving a page would break its
+  links.
 - **Slug** is derived from the title once and frozen, with a `-2`, `-3` …
   suffix if that slug is taken. Slugs are global across all wiki pages.
 - Images live in R2 under `pages/{slug}-*`; the banner is
@@ -3206,7 +3457,7 @@ The footnote sits on the last page (or every page), and pages get a
 ## Featured Character (the homepage slot)
 
 A **creator** is drawn first, then one of that creator's characters
-(`featuredPick()` in index.html). Drawing a character straight out of the hat
+(`featuredPick()` in worker/home-data.js). Drawing a character straight out of the hat
 gave the slot to whoever had written the most pages, so the same handful of
 prolific creators held it most weeks; every creator now has the same chance of
 the day however many characters they have made. **Curata is not a condition**
@@ -3219,10 +3470,9 @@ each of them a turn, and the page they share can come up under either name.
 
 Three rules shape the implementation, and the third is the one that is easy to
 break: the same creator never gets the slot **two days running**; everyone sees
-the same character for the same 24 hours; and **nothing is stored**. There is no
-server call in that slot and localStorage is per browser, so "who had it
-yesterday" cannot be remembered — it has to be recomputed, identically, by
-every reader.
+the same character for the same 24 hours; and **nothing is stored**. The server computes it from the UTC day number and public content,
+and `/api/home` caches that small snapshot. No per-viewer history is needed.
+With two eligible creators the order alternates; with one, a repeat is unavoidable.
 
 So the order is a per-block **permutation** rather than a fresh draw. Block `b`
 is the creator list shuffled with `b` as the seed; day `d` takes position
@@ -3635,9 +3885,20 @@ seeded with whole collections whose characters all arrived unowned.
   second copy of the membership rule. Deleted pages are skipped, drafts are
   not — a draft still belongs to the set. Capped at `OWNER_WATERFALL_MAX`
   (1000) and re-runnable, since it only ever looks for unowned pages.
-- Both responses carry `characters` and `charactersHeld`, and the dashboard
-  prints them ("+112 character pages, 3 left with their owners"). The count is
-  the only way to see it happened.
+- **The slug chunks are sized against D1's 100-bound-parameter cap, which is
+  shared with the new owner and every admin id** (`D1_MAX_BINDS`, `extraBinds`).
+  D1 ERRORS above that cap rather than degrading, and both statements bind the
+  chunk *plus* those, so a flat chunk of 100 was 102 variables: every full
+  chunk threw, the loop's catch swallowed it, and The Potato Patch's 152
+  characters assigned the 52 in the short second chunk and reported success.
+  Anything else here that chunks an `IN (...)` binds nothing beside the chunk
+  and uses a flat 90.
+- Both responses carry `characters`, `charactersHeld` and `charactersFailed`,
+  and the dashboard prints them ("+112 character pages, 3 left with their
+  owners"). The count is the only way to see it happened — and `failed` exists
+  because the silent catch above is what hid that bug for as long as it lived:
+  a chunk that cannot be written is now counted, logged and reported instead of
+  reading as a clean success.
 
 ## Frontend conventions
 
@@ -3662,8 +3923,14 @@ seeded with whole collections whose characters all arrived unowned.
   `[[TOKEN]]` in howToRun/callout text renders as a reminder pill.
 - SAO sort lives in `assets/sao.js` (`SAO_PREFIXES` / `sortRosterSAO`), the
   single source of truth used by script.html, publish-script.html, and rendered
-  into steven-approved-order.html. More-specific prefixes ("Each night*") must
-  come before less-specific ("Each night") in the array — do not reorder.
+  into steven-approved-order.html. **`SAO_PREFIXES` is the SORT order and
+  `SAO_SCAN` is the matching order** — the list is written the way the order
+  reads ("Each night" above "Each night*"), and matched longest-prefix-first,
+  because every "Each night*, …" ability also starts with "Each night" and the
+  scan would otherwise rank the asterisked ones as plain "Each night" and
+  interleave the two groups. Two prefixes can both match one ability only when
+  one is a prefix of the other, so longest-first is always the most specific
+  match and the list above can be reordered freely.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
 - **Interface text is short and plain.** A hint, a toast, a tooltip or a
   panel intro says what the control does in one or two short sentences and
@@ -3682,8 +3949,8 @@ seeded with whole collections whose characters all arrived unowned.
   (`UIIcons.paint()` fills it on load), or asks `UIIcons.svg('download')` for
   the markup. It is loaded by `script.html`, `publish-script.html`,
   `all-characters.html`, `profile.html`, `account.html`, `dashboard.html`,
-  `tokens.html`, `script-view.html`, and by **`pageShell()`** on every SSR
-  page that mounts the comment widget (the pinned badge). Shared widgets ask
+  `tokens.html`, `script-view.html`, and by `reading-lazy.js` ahead of the
+  deferred comment widget on every SSR page (the pinned badge). Shared widgets ask
   for it through `window.UIIcons ? … : '&#…;'` so a page that has not loaded
   it keeps the old glyph rather than a hole. The Worker's own renderers have
   no global to reach: `render-page.js` carries its one download mark inline,
@@ -3717,100 +3984,120 @@ seeded with whole collections whose characters all arrived unowned.
 
 ## Caching (and why the site is fast on a phone)
 
-Four layers, each keyed so that freshness never depends on a timer:
+Four cache layers reduce repeat work while keeping changes visible.
 
-**1. Static files (`_headers`).** HTML/CSS/JS/art revalidate on every load
-(edits show on a normal refresh); icons, fonts, pyodide, token assets, the
-committed `*.webp` furniture and Icon Forge's payload are immutable for a
-year. **Matching rules COMBINE** — see Gotcha 14 — so every immutable block
-detaches the generic header first. Anything served immutable is replaced by
-a NEW filename, never by overwriting. The `/` and `/:page` rules add a
-`Link: rel=preload` header for the stylesheet and the two above-the-fold
-faces, and `pageShell()` sends the same header on the server-rendered pages
-(`PAGE_LINK_HEADER`). **Early Hints has to be switched on for the zone**
-(Cloudflare dashboard → Speed → Content Optimization → Early Hints) for
-Cloudflare to replay those as a 103 before the page is fetched; without the
-toggle the header still gets the preloads going as soon as the response
-headers land. The browse pages also carry `<link rel="preload" as="fetch">`
-for the feeds they draw from, so the feed download starts while the
-stylesheet is still loading rather than after the scripts at the end of the
-body have run; `crossorigin` on those is what makes the preload match a
-plain `fetch()`.
+**1. Static files.** `node migration/build-assets.mjs` writes content-hashed
+CSS/JS under `.build/public/assets/immutable/` and rewrites HTML and preload
+links to those URLs. `_headers` serves them immutable for a year; unversioned
+fallback files still revalidate. CSS-relative font/image URLs are rebased.
+`worker/asset-manifest.js` gives SSR and lazy loaders the same filenames.
+The generated `BUILD_ID` includes assets, Worker code and root HTML, and
+automatically rolls SSR keys after deploys.
 
-**2. The JSON feeds.** `Cache-Control: private, max-age=0, must-revalidate`
-with an ETag of `W/"{table}-{fields}-v{version}"`, answered with an empty 304
-when it matches. **`private` is load-bearing**: with `public` Cloudflare
-stored the feed at the edge, revalidated it with the Worker on every
-request, and served the browser its own copy under an ETag of its own
-making (a hash of the compressed body) — so the browser's If-None-Match
-never matched the Worker's and every browse page re-downloaded the whole
-feed. The bodies themselves are still built once per content version and
-kept in `caches.default` under synthetic `https://feed.internal/...?v=`
-URLs with a LONG TTL (`INTERNAL_CACHE_CONTROL`, a week): freshness comes
-from `content_version` in the key — every content write bumps it and rolls
-every key — never from expiry, so do not shorten those TTLs back to minutes;
-the D1 free tier allows 5M `rows_read` a day and the site once burned
-through it on rebuilds alone. The jinx index, the card-character cache, the
-`[[Name]]` link map and the sitemap share that plumbing (`cachedFeedBody()`).
-Creator lookups (`/author?a=`, anonymous `/api/user`, `/api/creators`) are
-capped at 30 minutes (`PEOPLE_CACHE_CONTROL`) because avatar/bio edits bump
-no version; logged-in `/api/user` responses are never cached.
-**The `grid` tier** (`GRID_FIELDS`, an include list) exists because the card
-feed carried night reminders, jinx text, quotes and custom JSON to pages that
-draw 64px thumbnails — 413 KB compressed on every browse page view. A page
-that only DRAWS characters (index, All Characters, team, tag, tags,
-All Collections, the 404 page, the top-bar search) asks for `grid`; anything
-that exports or edits stays on `card`. All Characters' "Collection JSON" box
-fetches the card feed lazily, the first time somebody reaches for it. If a
-grid page needs a new field, add it to `GRID_FIELDS`; `jinxCount` and the
-lede-less `quote` are the two derived stamps.
+**Commit both generated files:** `worker/asset-manifest.js` and
+`migration/asset-archive.json`. The archive retains compressed bytes for
+previous hashes so open tabs can fetch their old lazy dependencies after a
+later deploy. Do not prune published hashes or overwrite their contents.
+Wrangler runs `node migration/build-assets.mjs --check`; stale or missing
+artifacts stop deployment. Only the explicit public inputs (assets, root
+HTML/data files and legacy `characters/` redirect stubs) enter the build.
+Worker source, tests, archives, git metadata and docs are excluded.
 
-**3. Images.** Every row carries `v` (`rowVersion()`, base-36 `updated_at`),
-and every card renderer appends it: `assets/art/x.png?v=abc`. **A versioned
-image URL is served `public, max-age=31536000, immutable` and kept in the
-colo's edge cache** (`serveR2Image`), so an unchanged icon costs a returning
-reader nothing and the Worker nothing past the cache lookup; a save is a new
-version is a new URL, which is how replaced art still shows at once. The
-bare URL keeps `no-cache, must-revalidate` + ETag exactly as before — and now
-actually answers a matching If-None-Match with a 304 (`onlyIf` on the R2
-read) instead of the whole file, which it never did. **Cards draw
-thumbnails**: `thumb/{file}.webp` is the 192px WebP twin of `art/{file}` (8 KB
-against 150–700 KB), reached through `PageRender.thumbSrc(c, root)` (the
-same order as `artSrc()`; site.js, render.js and the inline `thumb()` in the
-browse pages mirror it). The Worker's `serveThumb` falls back R2 thumbnail →
-R2 original → committed thumbnail → committed original, so a missing
-thumbnail is never a broken image, and an original standing in at the
-thumbnail URL is cached an hour, not a year. Writing `art/{file}` deletes its
-thumbnail (`dropThumbFor`, in `/api/upload` and `/api/bloodstar-art`), and the
-uploading page makes a fresh one (`assets/art-thumb.js`); the dashboard's
-**"Card thumbnails"** card (Maintenance tab, `/api/admin/thumb-missing`)
-backfills whatever is left, from the admin's browser — the Worker cannot
-resize an image. Only `art/` keys have thumbnails; `uploadSlotDenied()` maps
-`thumb/` back to `art/` so the permission is the art's. Things that show the
-icon LARGE (the `/c/` emblem, the featured card) keep `artSrc()`.
-The page furniture is WebP beside its originals (`bg.webp` + the phone-sized
-`bg-m.webp`, `parchment.webp`, `ccc-parchment.webp`, `logo_skull.webp`, all
-from `migration/optimize-images.js`), immutable; the `.png`/`.jpg` originals
-stay because OG images and the credits Fabled point at them.
+Matching `_headers` rules **combine**. An immutable block must detach the
+old Cache-Control header with `! Cache-Control`. The static and SSR preload
+headers point to versioned CSS and the self-hosted fonts. Early Hints still
+requires the zone toggle; it is not enabled by this code change.
 
-**4. Server-rendered pages.** `/c/`, `/s/`, `/collection/`, `/news/` and
-`/p/` go through `ssrRoute()`. For a reader with no session cookie a
-published page is identical for everybody (edit button, draft bar and
-Partial notice are all decided from the session; the comment widget asks
-the API itself), so the HTML is kept in `caches.default` under a key of
-content version + origin + path and served from there on the next request
-with no D1 read — a `/c/` page was 6–10 queries and ~1.4 s of TTFB. Only a
-200 marked `X-Botc-View` (which the routes set ONLY for a published page) is
-stored; the header is `type|slug`, and a cache hit counts the view from it
-and strips it, so `page_views` keep counting. The browser still gets
-`no-store`. A logged-in reader always gets a fresh render.
-**`SSR_RENDER_V` is salted into that key**, for the same reason
-`CREDIT_RULE_V` is salted into the creator ones: the key rolls on
-`content_version`, a deploy does not touch it, and `caches.default` outlives
-a deploy — so a change to `pageShell()` or to a renderer goes live and every
-page already cached keeps serving last week's HTML for the full week of
-`s-maxage` unless somebody happens to save a page. Bump it in the same commit
-as any deploy that changes what these routes render.
+**2. Public data.** `assets/data.js` shares one in-flight request and one
+parsed object per public feed URL in each document. Failed loads retry;
+private `?drafts=` requests are never shared. Browse pages and top-bar search
+use the same URLs. `/api/home` sends counts, compact collection/script tiles,
+eight recent characters and one featured character rather than every
+character. It keeps random tile selection in the browser and keys the daily
+featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
+script/collection `?fields=browse` omits editor/export payloads. The character
+`card` feed and full feeds retain export fields. All Characters loads both
+the card feed and export code only when its Collection JSON box is used.
+
+Feeds send `private, max-age=0, must-revalidate` plus a version/format ETag.
+`private` prevents Cloudflare from replacing the Worker's ETag with its own.
+Matching ETags return 304 without rebuilding. Internal version-keyed copies
+remain in `caches.default` for a week, with parsed/in-flight reuse in each
+isolate. Overlapping misses share one build in an isolate; separate isolates
+can still build concurrently. `FEED_FORMAT_V` must move if a later deployment
+changes an existing feed's serialized shape or semantics.
+
+`settings.cache_versions` stores per-type dependency counters beside the
+legacy `content_version`. One SQL statement updates both. Character feeds
+depend on character and collection edits; script/collection browse feeds on
+their own type; SSR keys include the content types whose links/rosters they
+render. A news edit leaves character feeds and script pages warm. Unknown or
+mixed bulk writes invalidate everything. A manual SQL bump of the legacy
+counter also forces a full reset. Version reads share a **five-second memo**;
+saves clear it in their isolate, while other isolates can take up to five
+seconds to observe a change. A failed version read cannot reuse a stale
+version-zero public cache, and failed feed queries never retry without their
+visibility filters. No new database migration is required.
+
+Creator/profile caches retain their existing 30-minute cap for account
+fields; authenticated `/api/user` responses remain private and uncached.
+
+**3. Images.** Character icons, roster thumbnails, script/collection banners
+and logos carry their row's `v` stamp. Versioned image URLs use immutable
+browser/edge caching; bare URLs revalidate with ETags. Canonical row addresses
+and versions override old roster JSON. Remote image URLs and exported script
+JSON retain their original URLs.
+
+Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
+(under 512 bytes) fall back to the original; versioned thumbnail fallbacks
+keep their existing one-hour limit. Writing original art retires its thumb,
+and the browser uploader regenerates it. The featured image loads eagerly;
+secondary gallery images load on approach or interaction, respecting Save-Data.
+
+Local script/collection banners and logos use 320/640/1280px WebP `srcset`
+variants under `media/{width}/{source-path}.webp`. The publishing forms generate
+them before saving the row. Variant uploads inherit the source image's
+permissions and must present its current ETag. The Worker only serves a
+variant whose recorded source ETag still matches. Replacing an original
+retires all three sizes; an absent/stale variant falls back to the original
+with revalidation and **no immutable edge copy**, so backfill takes effect on
+the next visit. Remote images and GIFs keep their existing source behavior.
+
+**Existing banners need backfill after deployment:** Dashboard → Maintenance
+→ Card thumbnails → scan, then generate the missing images. The existing
+backfill tool now includes banners/logos alongside character icons. It runs
+in the admin browser because the Worker has no image encoder. Until then,
+original-image fallbacks keep every page usable. Nothing in this PR performs
+live R2 writes or automatically starts backfill.
+
+**4. Public SSR.** `/c/`, `/s/`, `/collection/`, `/news/` and `/p/` share
+published HTML for both anonymous and signed-in readers. Only a cookie-free
+GET build marked `X-Botc-View` can be cached; redirects, failures, drafts,
+private-parent fallback renders and personalized responses are not stored.
+Hits still count views and strip the internal marker. Browser HTML remains
+`no-store`. `/api/page-viewer` separately checks the current account and page
+permissions before returning edit controls, the incomplete-page notice, or
+the draft wiki-page links and new-page button. Those two go to the owner and
+to the parent's approved editors (see the wiki-page waterfall under "Approved
+editing"); nobody else receives them, and a reader who cannot edit gets
+nothing. `SSR_RENDER_V` includes generated `BUILD_ID`.
+
+Reading pages load `reader.js` instead of `render.js`. Comments and their CSS
+load near the viewport, on a click or for a comment hash; the attachment
+uploader loads on interaction. Failure buttons permit retries and explicit
+buttons keep features reachable without IntersectionObserver.
+
+The character's typed **"Appears in"** link is resolved during SSR using
+the cached public collection/script feeds, with the same collection-first
+alias matching as the browser. `APPEARS_IN_RESOLVED` skips two client feed
+requests, including when there is intentionally no matching link. A failed
+server lookup leaves the flag unset so `charpage.js` can retry. Derived
+collection membership honours `exclude` even when a slug is in `include`.
+
+Search warms its index on focus/touch, including the separate mobile field.
+Once loaded it searches immediately, without a typing timer. Pending results
+only paint for the current query while the search is still open; failed
+character-feed requests can retry on the next interaction.
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route
@@ -3832,14 +4119,21 @@ Fonts: there is **no Google Fonts `@import`** any more (it put two more
 origins in the render-blocking path of every page). The seven families are
 self-hosted woff2 subsets in `assets/fonts/` with `unicode-range`, declared
 in styles.css; the wiki's own faces have woff2 twins too. See
-`assets/fonts/README.md`. All Characters draws its 1,800 cards in slices per
-animation frame (`renderToken`) and `.type-section` has
-`content-visibility: auto`, so off-screen sections cost no layout.
+`assets/fonts/README.md`. All Characters draws 48 cards initially, then
+appends bounded batches when their section approaches the viewport. Filter
+changes disconnect the old observer, including when results become empty.
+The Show more buttons also work without IntersectionObserver; `.type-section`
+keeps `content-visibility: auto`.
 
-## Verifying changes (no local server needed)
+## Verifying changes
 
 - `node --check` every `.js` file you touch, and extract+check inline
   `<script>` blocks after editing HTML.
+- `node --test migration/tests/*.test.mjs` (Node 22.13+ or 24)
+  checks real Worker routes with SQLite, scoped caching, draft/owner boundaries,
+  responsive image replacement/permissions, viewport loading, comment retries,
+  search races, export fields and immutable-build retention. It needs no service
+  credentials; it does not measure a deployed browser's loading time.
 - The Cloudflare dashboard, live site, and D1 are **not reachable from the
   sandbox** in some sessions — if `botchomebrew.wiki` is unreachable, ask the
   user to verify on the live site after deploy instead of guessing.
@@ -3861,9 +4155,10 @@ animation frame (`renderToken`) and `.type-section` has
 
 ## Gotchas (hard-won — do not repeat)
 
-1. **`.assetsignore` must keep excluding `.git`, `worker/`, `wrangler.toml`,
-   `migration/`, docs.** Cloudflare uploads everything else as assets; a
-   >25 MiB file (e.g. the git pack) fails the whole deploy.
+1. **Only `.build/public` is uploaded.** Keep the build's explicit public-input
+   list; never copy the entire repo into it. Worker source, git metadata,
+   migrations, archives and docs must stay out. `.assetsignore` remains for
+   legacy tooling, but the build allowlist is the deployment boundary now.
 2. **Don't scope `.home-panel` inside `.home-layout`** in styles.css — every
    list page uses the bare `.home-panel { max-width; margin auto }` rule.
 3. **`run_worker_first` in wrangler.toml is the routing contract.** A new
@@ -4020,3 +4315,16 @@ animation frame (`renderToken`) and `.type-section` has
    A rule that means to REPLACE a header detaches it first with a
    `! Cache-Control` line. And `_headers` never applies to a response the
    Worker generated — those set their own.
+15. **A block drawn out of DOM order breaks the browser's scroll
+   anchoring, and it looks like the page jumping.** On a phone the `/c/`
+   info card is shown first (`order: -1`) but comes AFTER the almanac
+   parchment in the markup. Open the JSON box in the card and Chrome picks
+   the parchment — first in DOM order, still on screen below the bar — as
+   the node to hold still, then moves the page down by the box's whole
+   height so the JSON you just opened scrolls off the top. The fix is
+   `overflow-anchor: none` on the reordered blocks (`.char-parchment`,
+   `.char-side`) inside the same media query as the `order` rule, so the
+   card is the anchor and the bar stays under your thumb. Any future
+   reordering by `order` / `grid-row` on a page with a collapsible box
+   needs the same line, or the same report ("the JSON bar jumps the screen
+   around") will come back.

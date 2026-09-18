@@ -34,6 +34,11 @@
 /assets/*.js
   Cache-Control: no-cache, must-revalidate
 
+# Content-hashed files are retained across deploys by build-assets.mjs.
+/assets/immutable/*
+  ! Cache-Control
+  Cache-Control: public, max-age=31536000, immutable
+
 # Character art & other repo images: revalidate so updated art shows immediately
 /assets/*.png
   Cache-Control: no-cache, must-revalidate

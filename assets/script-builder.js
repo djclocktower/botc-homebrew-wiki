@@ -825,6 +825,7 @@
     var partial = (window.isPartial && window.isPartial(c)) ? '1' : '0';
     var star = (window.isCurata && window.isCurata(c)) ? '1' : '0';
     return '<div class="sbx-add-row' + (sel[c.slug] ? ' on' : '') + '" data-team="' + esc(c.team || '') + '"' +
+      ' data-slug="' + esc(c.slug || '') + '"' +
       ' data-tags="' + esc(c.tags || '') + '"' +
       ' data-creator="' + esc(c.official ? 'The Pandemonium Institute' : (c.creator || '')) + '"' +
       ' data-name="' + esc(c.name || '') + '"' +
@@ -962,6 +963,9 @@
       sectionSel: '.sbx-add-group', innerSel: '.sbx-add-rows', cardSel: '.sbx-add-row',
       sectionCountSel: '.sbx-add-groupcount', abilitySel: '.sbx-add-ab',
       label: 'Filters', partialChip: true, partialOn: true, curataChip: true,
+      // The reader's saved characters, and everyone on a saved script or
+      // collection (assets/favorites.js). Hidden until one is in the list.
+      favChip: true,
       sourceChips: [['homebrew', 'Homebrew'], ['official', 'Official']],
       searchAbility: function () { return !!(view && view.panelSearchAbility); }
     }) || null;

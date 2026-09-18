@@ -2,6 +2,7 @@
 <html lang="en" class="redesign-on sbx-page">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
 <meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, keep up to 15 scripts, export the JSON, share a link or press a print sheet.">
@@ -12,6 +13,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/editor.css">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -369,6 +371,7 @@
   <!-- creators.js first: render.js reads the credit-mark registry off it, so
        the detailed credits list "Cheerleader", not "Cheerleader ∇". -->
   <script src="assets/creators.js"></script>
+  <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/render-page.js"></script>
   <script src="assets/official-roles.js"></script>
@@ -376,6 +379,7 @@
   <!-- sao.js before card-filters.js: the filter box only offers Steven
        Approved Order when window.saoCompare is already there. -->
   <script src="assets/sao.js"></script>
+  <script src="assets/favorites.js"></script>
   <script src="assets/card-filters.js"></script>
   <script src="assets/night-order-editor.js"></script>
   <script src="assets/jinx-editor.js"></script>

@@ -106,9 +106,11 @@
     return Object.keys(out).length ? out : null;
   }
 
-  /* Build the class list + inline style for <main> from a sanitized theme.
+  /* Build the class list + inline style for <body> from a sanitized theme.
      Callers MUST pass the theme through sanitizeTheme first (the Worker does
-     this on save and again at render time). */
+     this on save and again at render time). `linkRoot` is accepted for the
+     callers that pass it but no longer shapes anything — see the background
+     note below for why the one URL here must not be relative. */
   function themeAttrs(theme, linkRoot) {
     if (!theme) return { cls: '', style: '' };
     var cls = ['page-themed'];
@@ -120,7 +122,16 @@
     if (theme.link)   { cls.push('theme-link');   style.push('--pg-link:' + theme.link); }
     if (theme.background) {
       cls.push('theme-bg');
-      style.push('--pg-bg:url("' + (linkRoot || '') + 'assets/' + theme.background + '")');
+      /* ROOT-ABSOLUTE, never linkRoot-relative. This url() sits inside a
+         custom property on <body>, and Chromium resolves a relative url() in
+         a custom property against the STYLESHEET where var() consumes it,
+         not the document that declared it. The stylesheet used to live at
+         /assets/styles.css, where '../assets/x-bg.png' came out right by
+         accident; the build now serves it from /assets/immutable/, so the
+         same string resolved to /assets/assets/x-bg.png and every custom
+         background on the site 404'd. '/assets/...' reads the same from any
+         base URL, so no stylesheet move can break it again. */
+      style.push('--pg-bg:url("/assets/' + theme.background + '")');
     }
     /* Both of these are carried by the class list on <body> and read by
        styles.css, so the page markup itself is untouched: the same rules
@@ -237,10 +248,21 @@
      has always had (artSrc above). One resolver, or a remote logo comes out
      as "assets/https://…" and draws as a broken image on every tile while
      the page's own onerror quietly hides it. */
-  function imgSrc(root, p) {
+  function imgSrc(root, p, version) {
     p = String(p || '');
     if (!p) return '';
-    return /^https?:\/\//i.test(p) ? p : root + 'assets/' + p;
+    if (/^https?:\/\//i.test(p)) return p;
+    return root + 'assets/' + p + (version
+      ? (p.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(version)) : '');
+  }
+  function responsiveAttrs(root, path, version, sizes) {
+    if (!/^(scripts|collections)\/[^/]+\.(png|jpe?g|webp)$/i.test(String(path || ''))) return '';
+    var encodedPath = path.split('/').map(encodeURIComponent).join('/');
+    var query = version ? '?v=' + encodeURIComponent(String(version)) : '';
+    var srcset = [320, 640, 1280].map(function(width) {
+      return root + 'assets/media/' + width + '/' + encodedPath + '.webp' + query + ' ' + width + 'w';
+    }).join(', ');
+    return ' srcset="' + esc(srcset) + '" sizes="' + esc(sizes || '(max-width: 640px) 94vw, 800px') + '"';
   }
   /* An official character has no page here, so its name links to the official
      wiki: another site, so a new tab, and a mark saying so. */
@@ -350,6 +372,9 @@
             '" aria-label="Curata"></span>' : '');
       return '<a class="char-card' + (c.status === 'draft' ? ' char-card-draft' : '') +
         '" href="' + esc(charHref(c, root)) + '"' +
+        // The identity, for the Favorites chip in card-filters.js: a saved
+        // character is keyed on it, never on the address the link goes to.
+        ' data-slug="' + esc(c.slug || '') + '"' +
         ' data-team="' + esc(c.team || '') + '"' +
         ' data-tags="' + esc(c.tags || '') + '"' +
         ' data-creator="' + esc((c.creator || '').trim()) + '"' +
@@ -650,7 +675,7 @@
     rows += '<dt>Total:</dt><dd>' + opts.entries.length + ' character' + (opts.entries.length === 1 ? '' : 's') + '</dd>';
     (opts.extraRows || []).forEach(function (r) { rows += r; });
     return '<div class="card char-infocard sv-infobox">' +
-      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath)) + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      (opts.logoPath ? '<img class="sv-info-logo" src="' + esc(imgSrc(root, opts.logoPath, opts.artVersion)) + '"' + responsiveAttrs(root, opts.logoPath, opts.artVersion, '240px') + ' alt="" onerror="this.style.display=\'none\'">' : '') +
       // Prominent author credit sits directly under the logo.
       (opts.author && opts.authorProminent ? '<p class="sv-info-author">by ' + authorLink + symHTML + '</p>' : '') +
       '<h2 class="info-h">Information</h2>' +
@@ -957,8 +982,8 @@
      gets this and passes the href in; an empty one renders nothing, so it is
      never shown to a reader the API would refuse. */
   function ownerBar(editHref, label) {
-    if (!editHref) return '';
-    return '<p class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
+    if (!editHref) return '<div id="page-owner-controls"></div>';
+    return '<p id="page-owner-controls" class="page-owner-bar"><a class="cta-secondary page-owner-edit" href="' +
       esc(editHref) + '">&#9998; ' + esc(label) + '</a></p>';
   }
 
@@ -977,8 +1002,8 @@
              creditsEntries, pagesHTML, boxesHTML, newPageHref} */
     var root = cfg.root;
     var top = cfg.header
-      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="script-header-wrap"><img class="script-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="script-title-fallback">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -997,7 +1022,7 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) main += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
-    main += pagesSection(cfg.pagesHTML, cfg.newPageHref);
+    main += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
 
     main += '<div class="sv-section">' +
       (main ? sech('sec-characters', 'Characters') : '') +
@@ -1011,7 +1036,7 @@
     }
 
     var aside = renderInfobox({
-      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows
     });
     aside += renderCredits(cfg.creditsEntries || cfg.entries, root);
@@ -1036,8 +1061,8 @@
 
     // Header graphic — big and front-and-centre. Falls back to logo + title.
     var top = cfg.header
-      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header)) + '" alt="' + esc(cfg.name) + '"></div>'
-      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo)) + '" alt="" onerror="this.style.display=\'none\'"></div>' : '') +
+      ? '<div class="coll-header-wrap"><img class="coll-header-img" src="' + esc(imgSrc(root, cfg.header, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.header, cfg.artVersion, '(max-width: 640px) 94vw, 1000px') + ' alt="' + esc(cfg.name) + '"></div>'
+      : ((cfg.logo ? '<div class="sv-logo-wrap"><img class="sv-logo" src="' + esc(imgSrc(root, cfg.logo, cfg.artVersion)) + '"' + responsiveAttrs(root, cfg.logo, cfg.artVersion, '(max-width: 640px) 80vw, 400px') + ' alt="" onerror="this.style.display=\'none\'"></div>' : '') +
          '<h1 class="coll-title">' + esc(cfg.name) + '</h1>');
     if (cfg.tagline) top += '<p class="sv-tagline">' + esc(cfg.tagline) + '</p>';
     if (cfg.description) top += '<p class="script-desc">' + esc(cfg.description) + '</p>';
@@ -1046,7 +1071,7 @@
     // Information + JSON/tokens boxes — moved to the top. The author credit
     // lives prominently inside the Information box (linked to their page).
     var infobox = renderInfobox({
-      root: root, logoPath: cfg.logo, author: cfg.author, version: cfg.version,
+      root: root, logoPath: cfg.logo, artVersion: cfg.artVersion, author: cfg.author, version: cfg.version,
       difficulty: cfg.difficulty, entries: cfg.entries, extraRows: cfg.extraInfoRows,
       authorProminent: true
     });
@@ -1061,7 +1086,7 @@
     if (cfg.strategyGood) gameplay += '<h3 class="sv-subhead good">Playing Good</h3>' + prose(cfg.strategyGood);
     if (cfg.strategyEvil) gameplay += '<h3 class="sv-subhead">Playing Evil</h3>' + prose(cfg.strategyEvil);
     if (gameplay) proseHTML += '<div class="sv-section">' + sech('sec-gameplay', 'Gameplay') + gameplay + '</div>';
-    proseHTML += pagesSection(cfg.pagesHTML, cfg.newPageHref);
+    proseHTML += '<div id="page-wiki-links">' + pagesSection(cfg.pagesHTML, cfg.newPageHref) + '</div>';
     // Custom boxes sit below the prose, full width, like the character-page ones.
     if (cfg.boxesHTML) proseHTML += '<div class="coll-boxes">' + cfg.boxesHTML + '</div>';
     var prosePanel = proseHTML ? '<section class="script-chars-panel coll-prose">' + proseHTML + '</section>' : '';
@@ -1110,7 +1135,7 @@
       { href: root + 'fancyscripts?s=' + encodeURIComponent(sc.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderPageBody({
-      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo,
+      root: root, name: sc.name || 'Untitled Script', header: sc.header, logo: sc.logo, artVersion: sc.v,
       tagline: sc.tagline, author: sc.author, version: sc.version, difficulty: sc.difficulty,
       synopsis: sc.synopsis, gameplay: sc.gameplay, strategyGood: sc.strategyGood,
       strategyEvil: sc.strategyEvil, description: sc.description,
@@ -1146,7 +1171,7 @@
       { href: root + 'fancyscripts?c=' + encodeURIComponent(coll.id || coll.slug || ''), label: 'Fancy Sheet' }
     ];
     return renderCollectionBody({
-      root: root, name: name, header: coll.header, logo: coll.logo,
+      root: root, name: name, header: coll.header, logo: coll.logo, artVersion: coll.v,
       tagline: coll.tagline, author: coll.author, version: coll.version, difficulty: coll.difficulty,
       synopsis: coll.synopsis, gameplay: coll.gameplay, strategyGood: coll.strategyGood,
       strategyEvil: coll.strategyEvil, description: coll.description,
@@ -1178,7 +1203,7 @@
     artSrc: artSrc,
     thumbSrc: thumbSrc,
     artVer: artVer,
-    imgSrc: imgSrc,
+    imgSrc: imgSrc, responsiveAttrs: responsiveAttrs, pagesSection: pagesSection,
     DIFFICULTY_LABEL: DIFFICULTY_LABEL
   };
   if (typeof window !== 'undefined') { window.PageRender = api; }

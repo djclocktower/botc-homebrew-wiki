@@ -175,5 +175,44 @@
     };
   }
 
-  window.ApprovedEditors = { mount: mount, MAX: MAX, clean: clean };
+  /* "This credit isn't mine", on the browser side.
+   *
+   * The Worker names the uploader as an approved editor when that box is
+   * ticked, so that handing the page to the account it is credited to does
+   * not take it away from the person who built it. That has to show in the
+   * form as it is ticked, not only in the row afterwards: the edit-status bar
+   * is drawn from this <select> and says what the NEXT SAVE will store, so a
+   * mode the Worker is about to set and the control still showing something
+   * else is the one thing that bar must never do.
+   *
+   * The two modes that already let any account edit are left alone, exactly
+   * as the Worker leaves them — moving one of those onto "approved" would
+   * close a page its owner had opened to everyone.
+   *
+   * Unticking puts the mode back only when nobody was named by hand: the
+   * uploader's own entry is invisible here (it is added on save, not in this
+   * list), so an "approved" page showing an empty list is one this box put
+   * there. Mounted by all four editors, like the list itself. */
+  var OPEN_TO_ALL = { all: 1, 'all-but-ability': 1 };
+
+  function mountCreditUnlink(tick, select, editorsUI) {
+    if (!tick || !select) return;
+    tick.addEventListener('change', function () {
+      var named = editorsUI && editorsUI.get ? editorsUI.get().length : 0;
+      if (tick.checked) {
+        if (!OPEN_TO_ALL[select.value]) select.value = 'approved';
+      } else if (select.value === 'approved' && !named) {
+        select.value = '';
+      } else {
+        return;
+      }
+      // The status bar and the editors box both listen for `change`, which
+      // assigning .value does not fire.
+      select.dispatchEvent(new Event('change'));
+    });
+  }
+
+  window.ApprovedEditors = {
+    mount: mount, MAX: MAX, clean: clean, mountCreditUnlink: mountCreditUnlink
+  };
 })();

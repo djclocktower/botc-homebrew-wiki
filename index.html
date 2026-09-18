@@ -2,19 +2,18 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
+<script src="assets/data.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOTC HomeBrew Wiki</title>
 <meta name="description" content="A community library of fan-made characters for Blood on the Clocktower. Browse curated collections, read full almanac entries, and export to the official script tool.">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
 <link rel="stylesheet" href="assets/styles.css">
-<!-- The three feeds the homepage draws from start downloading here, while
+<!-- The compact homepage snapshot starts downloading here, while
      the stylesheet and scripts are still on their way, instead of after the
      scripts at the end of the body have run. `crossorigin` has to be there
      for the preload to match a plain fetch(). -->
-<link rel="preload" href="characters.json?fields=grid" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="collections.json" as="fetch" crossorigin="anonymous">
-<link rel="preload" href="scripts.json" as="fetch" crossorigin="anonymous">
+<link rel="preload" href="/api/home" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
 </head>
 <body>
@@ -269,40 +268,6 @@
         .replace(/&/g,'&amp;').replace(/</g,'&lt;')
         .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    function norm(s){
-      return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-    }
-
-    // Collection definitions are loaded from collections.json (built live
-    // from D1). Each entry's match[] lists normalized appearsIn spellings.
-    var COLLECTIONS = [];
-
-    function classifyCollection(appearsIn){
-      var n = norm(appearsIn);
-      if (!n) return null;
-      for (var i = 0; i < COLLECTIONS.length; i++){
-        if (COLLECTIONS[i].match.indexOf(n) > -1) return i;
-      }
-      return -1; // unknown / standalone
-    }
-
-    function pickIcons(charList, n){
-      // pick up to n characters with art, varying teams if possible
-      var withArt = charList.filter(function(c){ return c.art; });
-      var out = [];
-      var teamsSeen = {};
-      // first pass: one per team
-      for (var i = 0; i < withArt.length && out.length < n; i++){
-        var t = withArt[i].team;
-        if (!teamsSeen[t]) { out.push(withArt[i]); teamsSeen[t] = 1; }
-      }
-      // fill remaining
-      for (var i = 0; i < withArt.length && out.length < n; i++){
-        if (out.indexOf(withArt[i]) === -1) out.push(withArt[i]);
-      }
-      return out;
-    }
-
     function collectionTileHTML(name, id, count, icons, header, tagline, coll){
       var href = 'collection/' + encodeURIComponent(id);
       // Header image, then the author's logo, then the scatter of member
@@ -310,7 +275,7 @@
       // own page shows at the top.
       var banner = header || (coll && coll.logo);
       var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner)) + PageRender.artVer(coll) + '" alt="' + esc(name) + '"></div>'
+        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
         : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
       return '<a class="collection-tile" href="' + esc(href) + '">' +
         topHTML +
@@ -337,97 +302,7 @@
       '</a>';
     }
 
-    /* ── Featured: a creator first, then one of their characters ──
-       Featured used to draw a character straight out of the hat, weighted, and
-       only from the Curata pages. Both halves of that are gone.
-
-       Drawing by CREATOR is the point: picking a character at random gives the
-       slot to whoever wrote the most pages, so the same handful of prolific
-       creators held it most weeks. Every creator now has the same chance of
-       the day, however many characters they have made, and Curata is no longer
-       a condition — it stays a thumb on the scale for WHICH of that creator's
-       characters is drawn (weightedPick), never a gate on being drawn at all.
-
-       Two rules the rotation has to keep, and one thing it must not need:
-
-       - the same creator never gets the slot two days running;
-       - everybody sees the same character for the same 24 hours;
-       - and it stores nothing. There is no server call here and localStorage
-         is per browser, so "who had it yesterday" cannot be remembered — it
-         has to be recomputed, identically, by every reader.
-
-       So the order is a per-block PERMUTATION rather than a fresh draw: block
-       `b` is the creator list shuffled with `b` as the seed, and day `d` takes
-       position `d % N` of block `floor(d / N)`. Inside a block every creator
-       appears exactly once, so no repeat is possible; the only place two
-       neighbouring days can land on one name is the seam between blocks, and
-       that one case is fixed by swapping the incoming block's first two names.
-       Both blocks are computable from the day number alone, which is what
-       keeps the whole thing memoryless. */
-    function featuredRng(seed){
-      var s = (seed >>> 0) || 1;
-      return function(){
-        s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-        return s / 4294967296;
-      };
-    }
-    function featuredShuffle(arr, rand){
-      var a = arr.slice();
-      for (var i = a.length - 1; i > 0; i--){
-        var j = Math.floor(rand() * (i + 1));
-        var t = a[i]; a[i] = a[j]; a[j] = t;
-      }
-      return a;
-    }
-    function featuredHash(str){
-      var h = 2166136261;
-      for (var i = 0; i < str.length; i++){
-        h ^= str.charCodeAt(i);
-        h = Math.imul(h, 16777619);
-      }
-      return h >>> 0;
-    }
-    function featuredPick(list, day){
-      // Partial pages stay off the front page (eligible), and a featured card
-      // is a picture and a paragraph — a page with neither has nothing to show
-      // here. An uncredited page is skipped too: this rotation is a turn for
-      // each creator, and a page with no creator is nobody's turn.
-      var pool = window.eligible(list).filter(function(c){
-        return c.name && c.art && (c.lede || c.quote || c.ability) &&
-               window.splitCreators(c.creator).length;
-      });
-      if (!pool.length) return null;
-      // A credit can name several people ("Taiyi, Saki") and each of them is
-      // their own creator page, so each of them gets their own turn — and the
-      // page they share can be drawn under either name. Keyed case-folded so
-      // one creator with two spellings is one creator; the display name is
-      // whichever spelling was seen first.
-      var byKey = {}, keys = [];
-      pool.forEach(function(c){
-        window.splitCreators(c.creator).forEach(function(nm){
-          var k = nm.toLowerCase();
-          if (!byKey[k]) { byKey[k] = []; keys.push(k); }
-          byKey[k].push(c);
-        });
-      });
-      keys.sort();   // the shuffle is the randomness; the input has to be stable
-      var n = keys.length;
-      function blockOrder(b){
-        return featuredShuffle(keys, featuredRng(Math.imul(b + 1, 2654435761)));
-      }
-      var block = Math.floor(day / n), pos = day % n;
-      var today = blockOrder(block);
-      // The seam: yesterday was the last name of the previous block.
-      if (pos === 0 && n > 1){
-        var prev = blockOrder(block - 1)[n - 1];
-        if (today[0] === prev){ var t = today[0]; today[0] = today[1]; today[1] = t; }
-      }
-      var key = today[pos];
-      // Which of that creator's characters — Curata pages still surface more
-      // often here, which is all the weighting was ever meant to do.
-      return window.weightedPick(byKey[key], featuredRng(Math.imul(day, 40503) ^ featuredHash(key)));
-    }
-
+    // The server picks the daily feature; only presentation happens here.
     function featuredCardHTML(c){
       var tc = GOOD[c.team] ? ' good' : '';
       var label = TEAM_LABEL[c.team] || c.team;
@@ -444,7 +319,7 @@
       var creator = c.creator || '';
       var appears = c.appearsIn || '';
       return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
+        '<img decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
         '<div class="featured-body">' +
           '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
           '<h3 class="featured-name">' + esc(c.name) +
@@ -460,188 +335,29 @@
       '</a>';
     }
 
-    Promise.all([
-      fetch('collections.json').then(function(r){return r.json();}).catch(function(){return[];}),
-      fetch('characters.json?fields=grid').then(function(r){ return r.json(); }),
-      fetch('scripts.json').then(function(r){ return r.json(); }).catch(function(){return[];})
-    ]).then(function(mainRes){
-      var collData=mainRes[0]||[], list=mainRes[1], scriptData=mainRes[2]||[];
-      COLLECTIONS = collData.map(function(c){
-        // Whatever the tiles draw has to be copied across here: this is a
-        // rebuilt object, not the row from collections.json, so a field that
-        // is missing from this list is simply absent later on. `logo` was the
-        // one that went missing: the tile falls back header -> logo -> the
-        // icon scatter, and with the logo dropped here the second step could
-        // never fire, so a collection with a logo and no header (Oblivion
-        // Theatre, The Bootlegger's Anthology) drew four member icons on its
-        // card while its own page showed the logo.
-        return {id:c.id,slug:c.slug,displayName:c.displayName||c.slug,
-                match:c.match||[],tagline:c.tagline||'',description:c.description||'',
-                header:c.header||'',logo:c.logo||'',v:c.v||'',include:c.include||[],exclude:c.exclude||[],
-                author:c.author||'',curata:!!c.curata};
-      });
-        // ── Stats ─────────────────────────────────────────────
-        // Membership honors hybrid include/exclude via the shared resolver.
-        var resolve = (window.PageRender && window.PageRender.resolveCollectionMembers)
-          || function(coll){ return list.filter(function(c){ return coll.match.indexOf(norm(c.appearsIn)) !== -1; }); };
-        var collected = {};
-        COLLECTIONS.forEach(function(coll){
-          collected[coll.slug] = resolve(coll, list);
-        });
-        var creatorSet = {};
-        list.forEach(function(c){
-          var cr = c.creator || '';
-          if (!cr) return;
-          // split on common delimiters
-          // Split only on commas, not & (& is part of creator names like "Harry & Co.")
-          cr.split(/,/).forEach(function(n){
-            n = n.trim();
-            if (n) creatorSet[n] = 1;
-          });
-        });
-        var nCollections = Object.keys(collected).filter(function(k){ return collected[k].length; }).length;
-        var nCreators = Object.keys(creatorSet).length;
-        var nScripts = scriptData.length;
-        document.getElementById('landing-stats').textContent =
-          list.length + ' characters · ' +
-          nCollections + ' collection' + (nCollections===1?'':'s') + ' · ' +
-          nCreators + ' creator' + (nCreators===1?'':'s') + ' · ' +
-          nScripts + ' script' + (nScripts===1?'':'s');
-
-        // ── Collections grid ──────────────────────────────────
-        var grid = document.getElementById('collections-grid');
-        // Featured collections: 7 picked at random from those with members,
-        // reshuffled on every page load, plus an "All Collections" tile (8 total).
-        // The full list lives on /all-collections.
-        var featuredPool = COLLECTIONS.filter(function(coll){
-          return (collected[coll.slug] || []).length;
-        });
-        // Curata collections surface more often (assets/classify.js).
-        featuredPool = window.weightedShuffle(featuredPool);
-        var html = '';
-        featuredPool.slice(0, 7).forEach(function(coll){
-          var chars = collected[coll.slug] || [];
-          var displayName = coll.displayName || coll.slug;
-          var icons = pickIcons(chars, 4);
-          html += collectionTileHTML(displayName, coll.id || coll.slug, chars.length, icons, coll.header||'', coll.tagline||'', coll);
-        });
-        // "All Collections" tile — browse every collection on the wiki.
-        var nColl = featuredPool.length;
-        var allIcons = pickIcons(list, 4);
-        html += '<a class="collection-tile" href="all-collections">' +
-          '<div class="collection-icons">' + allIcons.map(function(c){
-            return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">';
-          }).join('') + '</div>' +
-          '<h3 class="collection-name">All Collections</h3>' +
-          '<div class="collection-footer">' +
-            '<span class="collection-count">' + nColl + ' collection' + (nColl===1?'':'s') + '</span>' +
-            '<span class="collection-arrow">Browse →</span>' +
-          '</div>' +
-        '</a>';
-        grid.innerHTML = html || '<p style="text-align:center;color:rgba(236,225,200,.6);padding:24px">No collections found.</p>';
-
-        // ── Browse-paths counts ───────────────────────────────
-        var teams = {};
-        list.forEach(function(c){ teams[c.team || ''] = 1; });
-        document.getElementById('bc-team').textContent = list.length + ' characters';
-        document.getElementById('bc-creator').textContent = nCreators + ' creators';
-        // Tags count
-        var tagSet = {};
-        list.forEach(function(c){
-          var t = c.tags || '';
-          if (!t) return;
-          t.split(',').forEach(function(x){
-            x = x.trim().toLowerCase();   // case-insensitive so "Multi-Kill" and "multi-kill" count once
-            if (x) tagSet[x] = 1;
-          });
-        });
-        document.getElementById('bc-tag').textContent = Object.keys(tagSet).length + ' tags';
-        // Jinx count: characters carrying at least one. The card feed keeps
-        // `jinxes` (see CARD_DROP_FIELDS in worker.js), so this needs no
-        // second request.
-        var nJinxed = list.filter(function(c){ return c.jinxCount || (c.jinxes && c.jinxes.length); }).length;
-        document.getElementById('bc-jinx').textContent =
-          nJinxed ? nJinxed + ' jinxed characters' : 'See the map';
-
-        // ── Recently added (last 8 in array order) ────────────
-        // Partial (unfinished) pages stay off the front page.
-        var recent = window.eligible(list.slice().reverse()).slice(0, 8);
-        document.getElementById('recent-strip').innerHTML = recent.map(recentCardHTML).join('');
-
-        // ── Featured (rotates daily) ──────────────────────────
-        var picked = featuredPick(list, Math.floor(Date.now() / 86400000));
-        if (picked){
-          document.getElementById('featured-wrap').innerHTML = featuredCardHTML(picked);
-        } else {
-          document.getElementById('featured-wrap').innerHTML =
-            '<p style="text-align:center;color:rgba(236,225,200,.6);padding:18px">No featured character available.</p>';
-        }
-      })
-      .catch(function(err){
-        console.error(err);
-        document.getElementById('landing-stats').textContent = 'Could not load character data.';
-        document.getElementById('collections-grid').innerHTML =
-          '<p style="grid-column:1/-1;text-align:center;color:#e6a;padding:30px">Could not load character data.</p>';
-      });
+    BotcData.json('/api/home').then(function(data){
+      var stats = data.stats;
+      document.getElementById('landing-stats').textContent = stats.characters + ' characters · ' + stats.collections + ' collections · ' + stats.creators + ' creators · ' + stats.scripts + ' scripts';
+      document.getElementById('bc-team').textContent = stats.characters + ' characters';
+      document.getElementById('bc-creator').textContent = stats.creators + ' creators';
+      document.getElementById('bc-tag').textContent = stats.tags + ' tags';
+      document.getElementById('bc-jinx').textContent = stats.jinxed ? stats.jinxed + ' jinxed characters' : 'See the map';
+      document.getElementById('recent-strip').innerHTML = data.recent.map(recentCardHTML).join('');
+      document.getElementById('featured-wrap').innerHTML = data.featured ? featuredCardHTML(data.featured) : '<p>No featured character available.</p>';
+      var collections = window.weightedShuffle(data.collections).slice(0, 7);
+      var html = collections.map(function(c){ return collectionTileHTML(c.displayName || c.slug, c.id || c.slug, c.count, c.icons, c.header, c.tagline, c); }).join('');
+      html += '<a class="collection-tile" href="all-collections"><div class="collection-icons">' + data.icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" alt="">'; }).join('') + '</div><h3 class="collection-name">All Collections</h3><div class="collection-footer"><span class="collection-count">' + stats.collections + ' collections</span><span class="collection-arrow">Browse →</span></div></a>';
+      document.getElementById('collections-grid').innerHTML = html;
+      document.getElementById('scripts-grid').innerHTML = window.weightedShuffle(data.scripts).slice(0, 7).map(function(sc){
+        var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
+        var header = sc.header || sc.logo
+          ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('', sc.header || sc.logo, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
+          : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
+        return '<a class="collection-tile script-tile" href="s/' + encodeURIComponent(sc.slug) + '">' + header + '<h3 class="collection-name">' + esc(sc.name) + '</h3><div class="collection-footer"><span class="collection-count">' + sc.count + ' characters' + (sc.author ? ' · ' + esc(sc.author) : '') + (sc.curata ? window.classBadgeHTML('curata', {sep: true}) : '') + '</span><span class="collection-arrow">Browse →</span></div></a>';
+      }).join('') + '<a class="collection-tile script-tile" href="scripts"><div class="script-card-header script-card-header-empty"><span>All Scripts</span></div><h3 class="collection-name">All Scripts</h3><div class="collection-footer"><span class="collection-count">' + stats.scripts + ' scripts</span><span class="collection-arrow">Browse →</span></div></a>';
+    }).catch(function(){ document.getElementById('landing-stats').textContent = 'Could not load homepage data. Please refresh to retry.'; });
   })();
   </script>
-
-<script>
-  (function(){
-    function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    var grid = document.getElementById('scripts-grid');
-    if (!grid) return;
-    fetch('scripts.json')
-      .then(function(r){ return r.json(); })
-      .then(function(scripts){
-        if (!scripts || !scripts.length){
-          grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="create-script" style="color:#7fb2e6">Create the first one →</a></p>';
-          return;
-        }
-        // Featured scripts: 7 picked at random and reshuffled on every page
-        // load, plus an "All Scripts" tile (8 total). Full list lives on
-        // /scripts. Curata scripts are weighted to the front of the shuffle.
-        var pool = window.weightedShuffle(scripts);
-        var html = pool.slice(0, 7).map(function(sc){
-          var n = (sc.characters || []).length;
-          var href = 's/' + encodeURIComponent(sc.slug);
-          // Header image, then the logo, then the name drawn as a banner —
-          // the same order the /s/ page itself falls back through.
-          // --nch (letter count, spaces collapsed) drives the banner text's
-          // font-size in styles.css, so a long name shrinks to fit the 21:9
-          // box instead of being clipped. Same trick as the /c/ page title.
-          var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
-          var headerHTML = sc.header || sc.logo
-            ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo)) + PageRender.artVer(sc) + '" alt="' + esc(sc.name) + '"></div>'
-            : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
-          return '<a class="collection-tile script-tile" href="' + esc(href) + '">' +
-            headerHTML +
-            '<h3 class="collection-name">' + esc(sc.name) + '</h3>' +
-            '<div class="collection-footer">' +
-              // Same footer shape as the collection tiles above: count, then
-              // who made it, then the Curata wreath behind a hairline.
-              '<span class="collection-count">' + n + ' character' + (n===1?'':'s') +
-                (sc.author ? ' · ' + esc(sc.author) : '') +
-                (sc.curata ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
-              '<span class="collection-arrow">View →</span>' +
-            '</div></a>';
-        }).join('');
-        // "All Scripts" tile — browse every script on the wiki.
-        html += '<a class="collection-tile script-tile" href="scripts">' +
-          '<div class="script-card-header script-card-header-empty"><span>All Scripts</span></div>' +
-          '<h3 class="collection-name">All Scripts</h3>' +
-          '<div class="collection-footer">' +
-            '<span class="collection-count">' + scripts.length + ' script' + (scripts.length===1?'':'s') + '</span>' +
-            '<span class="collection-arrow">Browse →</span>' +
-          '</div></a>';
-        grid.innerHTML = html;
-      })
-      .catch(function(){
-        grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.5);padding:24px">Could not load scripts.</p>';
-      });
-  })();
-  </script>
-
 
   <script src="assets/rules.js"></script>
   <script>
