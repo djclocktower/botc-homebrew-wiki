@@ -256,22 +256,22 @@
     var warnings = [];
     function warn(level, text, list) { warnings.push({ level: level, text: text, list: list || null }); }
     if (total && !counts.demon) warn('bad', 'There is no Demon on this script.');
-    if (counts.demon > 1 && shape.demon <= 1) warn('note', counts.demon + ' Demons: the app will still pick one, but say so if that is not the plan.');
+    if (counts.demon > 1 && shape.demon <= 1) warn('note', counts.demon + ' Demons on the script.');
     if (total && !counts.minion) warn('bad', 'There is no Minion on this script.');
-    if (total && counts.townsfolk < 5 && total >= 8) warn('warn', 'Only ' + counts.townsfolk + ' Townsfolk — the good team will be short of abilities.');
+    if (total && counts.townsfolk < 5 && total >= 8) warn('warn', 'Only ' + counts.townsfolk + ' Townsfolk. The good team will be short of abilities.');
     teams.forEach(function (t) {
       if (t.want && t.have > t.want) warn('note', t.have + ' ' + t.label + ' against a target of ' + t.want + '.');
     });
-    if (dupes.length) warn('warn', 'Two characters share a name: ' + dupes.join(', ') + '. The exported ids are qualified, but players will still mix them up.');
+    if (dupes.length) warn('warn', 'Two characters share a name: ' + dupes.join(', ') + '. The ids stay distinct, but players will mix them up.');
     if (partial.length) warn('warn', partial.length + ' character' + (partial.length === 1 ? ' is' : 's are') + ' unfinished on this wiki (no icon, tags or almanac text).', partial.map(function (c) { return c.name; }));
     if (noArt.length) warn('warn', noArt.length + ' character' + (noArt.length === 1 ? ' has' : 's have') + ' no icon, so the app and the sheets will show a blank.', noArt.map(function (c) { return c.name; }));
-    if (total >= 10 && !info) warn('warn', 'Nobody on this script learns anything — no Information, You Start Knowing or True Info tags.');
-    if (total >= 10 && !misinfo) warn('note', 'Nothing here makes information false — no Poison, Drunkenness, False Info or Misregistration.');
+    if (total >= 10 && !info) warn('warn', 'Nobody learns anything: no Information, You Start Knowing or True Info tags.');
+    if (total >= 10 && !misinfo) warn('note', 'Nothing makes information false: no Poison, Drunkenness, False Info or Misregistration tags.');
     if (total >= 8 && official && official / total > 0.7) warn('note', 'Mostly official characters (' + official + ' of ' + total + ').');
     if (outsiderMods.length > 3) warn('note', outsiderMods.length + ' characters change the Outsider count; setups will vary a lot.');
 
     var seats = setups(chars);
-    if (total >= 5 && !seats.maxOk) warn('warn', 'No player count can be seated from this script: every table needs at least a Demon, a Minion and three Townsfolk.');
+    if (total >= 5 && !seats.maxOk) warn('warn', 'No player count can be seated. A table needs a Demon, a Minion and three Townsfolk.');
 
     return {
       total: total, official: official, homebrew: total - official,
@@ -349,7 +349,7 @@
         lines.push(group.map(function (c) { return c.name; }).join(', '));
       } else {
         group.forEach(function (c) {
-          var ab = opts.abilities !== false && c.ability ? (md ? ' — ' : ': ') + c.ability : '';
+          var ab = opts.abilities !== false && c.ability ? ': ' + c.ability : '';
           var note = opts.charNotes && opts.charNotes[c.slug] ? (md ? ' _(' : ' (') + String(opts.charNotes[c.slug]).trim() + (md ? ')_' : ')') : '';
           lines.push((md ? '• ' : '- ') + b(c.name) + ab + note);
         });
@@ -359,7 +359,7 @@
     if (opts.jinxes && opts.jinxList && opts.jinxList.length) {
       lines.push(h('Jinxes'));
       opts.jinxList.forEach(function (j) {
-        lines.push((md ? '• ' : '- ') + b(j.a.name + ' & ' + j.b.name) + (md ? ' — ' : ': ') + (j.text || ''));
+        lines.push((md ? '• ' : '- ') + b(j.a.name + ' & ' + j.b.name) + ': ' + (j.text || ''));
       });
       lines.push('');
     }
@@ -374,7 +374,7 @@
         if (!items.length) return;
         lines.push(h(col[1]));
         items.forEach(function (it, i) {
-          lines.push((i + 1) + '. ' + it.c.name + (opts.reminders && it.r ? (md ? ' — ' : ': ') + it.r : ''));
+          lines.push((i + 1) + '. ' + it.c.name + (opts.reminders && it.r ? ': ' + it.r : ''));
         });
         lines.push('');
       });

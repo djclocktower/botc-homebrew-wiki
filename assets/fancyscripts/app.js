@@ -495,7 +495,7 @@ async function fillScriptPicker(preselect) {
       if (!s.slug) continue;
       const o = document.createElement('option');
       o.value = 'script:' + s.slug;
-      o.textContent = (s.name || s.slug) + (s.author ? ' — ' + s.author : '');
+      o.textContent = (s.name || s.slug) + (s.author ? ' by ' + s.author : '');
       gs.append(o);
     }
     colls.sort((a, b) => String(a.displayName || a.id).localeCompare(String(b.displayName || b.id)));
@@ -505,7 +505,7 @@ async function fillScriptPicker(preselect) {
       if (!key) continue;
       const o = document.createElement('option');
       o.value = 'collection:' + key;
-      o.textContent = (c.displayName || key) + (c.author ? ' — ' + c.author : '');
+      o.textContent = (c.displayName || key) + (c.author ? ' by ' + c.author : '');
       gc.append(o);
     }
     if (preselect) sel.value = preselect;
@@ -1072,7 +1072,7 @@ function buildPagesCard() {
   row.append(sel);
   makeButton(row, 'Apply', () => applyPreset(sel.value));
   makeButton(row, 'Shuffle', shuffleColors);
-  makeHint(box, 'A look changes colours and backgrounds; your layout, uploads and character edits stay. Shuffle rolls a fresh ribbon, title and back-cover colour family.');
+  makeHint(box, 'A look sets colours and backgrounds only. Shuffle picks a random colour family.');
 
   makeLabel(box, 'Design');
   const r2 = makeRow(box);
@@ -1088,7 +1088,7 @@ function buildPagesCard() {
     afterOptionsReplaced();
     buildFontSelects();
   });
-  makeHint(box, 'Your work autosaves in this browser and comes back on the next visit. A design file carries the script, every setting and every upload — share it or keep it.');
+  makeHint(box, 'Autosaved in this browser. A design file holds the script, every setting and every upload.');
 }
 
 /* a random colour family: one hue for the ribbon, title and back cover,
@@ -1103,7 +1103,7 @@ function shuffleColors() {
   backColorSeeded = true;
   commit();
   afterOptionsReplaced();
-  toast('New colours rolled — undo to go back');
+  toast('New colours. Undo to go back');
 }
 
 function applyPreset(key) {
@@ -1239,7 +1239,7 @@ function buildFontsCard() {
     toast('Font “' + fam + '” added to every font list');
     scheduleAutosave();
   });
-  makeHint(box, 'An uploaded font appears in every font menu on every page, and is embedded in the exports.');
+  makeHint(box, 'Uploaded fonts appear in every font menu and are embedded in the exports.');
   endCard(box);
 }
 
@@ -1284,7 +1284,7 @@ function buildNightCard() {
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   const ord = makeRow(box);
   makeButton(ord, 'Reset the night order', () => { options.night.order = { first: null, other: null }; commit(); toast('Night order reset'); });
-  makeHint(box, 'Drag any step on the night sheet up or down to reorder it; this puts the official order back.');
+  makeHint(box, 'Drag a step on the night sheet to reorder it. Reset puts the official order back.');
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));
   makeToggle(box, 'Script logo at the top right', bindPath('night.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('night.showName'));
@@ -1336,7 +1336,7 @@ function buildJinxCard() {
   makeToggle(box, 'House rules from the script (_meta.bootlegger)', bindPath('jinxPage.showHouseRules'));
   makeText(box, 'House rules heading', bindPath('jinxPage.houseTitle'));
   makeText(box, 'Notes heading', bindPath('jinxPage.notesTitle'));
-  makeText(box, 'Notes — free text printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
+  makeText(box, 'Notes, printed under the jinxes (blank line = new paragraph)', bindPath('jinxPage.notes'), { multiline: true, rows: 4 });
   makeToggle(box, 'Script logo at the top right', bindPath('jinxPage.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('jinxPage.showName'));
   makeToggle(box, 'Footer lines (shared with the night sheets)', bindPath('jinxPage.showFooter'));
@@ -1365,18 +1365,18 @@ function buildExportCard() {
   makeSelect(box, 'PDF page size', Object.entries(PAGE_FORMATS).map(([k, v]) => [k, v.label]), bindPath('exportOpts.pageSize'));
   const row = makeRow(box, 'fs-colors');
   makeColor(row, 'Paper around the sheet (A4 / Letter)', bindPath('exportOpts.marginColor'));
-  makeSelect(box, 'Print resolution', [['2', '2× (2484 px wide)'], ['3', '3× (3726 px wide, print)'], ['4', '4× (4968 px — large files)']],
+  makeSelect(box, 'Print resolution', [['2', '2× (2484 px wide)'], ['3', '3× (3726 px wide, print)'], ['4', '4× (4968 px, large files)']],
     { get: () => String(options.exportOpts.printScale), set: (v) => { options.exportOpts.printScale = Number(v); } });
   makeSelect(box, 'Share image size', [['1', '1× (1242 px)'], ['1.5', '1.5× (1863 px)'], ['2', '2× (2484 px)']],
     { get: () => String(options.exportOpts.shareScale), set: (v) => { options.exportOpts.shareScale = Number(v); } });
   makeSlider(box, 'JPEG quality', 0.6, 1, 0.01, pct, bindPath('exportOpts.jpegQuality'), { reset: 0.92 });
-  if (IOS) makeHint(box, 'On an iPhone or iPad the print resolution is capped at 2.8× — Safari cannot make a larger image and would hand back a blank one.');
+  if (IOS) makeHint(box, 'On iPhone and iPad the print resolution is capped at 2.8×. Safari returns a blank image above that.');
   makeLabel(box, 'Pages in the PDF');
   makeToggle(box, 'Script sheet(s)', bindPath('exportOpts.pages.front'));
   makeToggle(box, 'Night order sheets', bindPath('exportOpts.pages.night'));
   makeToggle(box, 'Jinx page', bindPath('exportOpts.pages.jinx'));
   makeToggle(box, 'Back cover right after the script sheet (double-sided printing)', bindPath('exportOpts.duplex'));
-  makeHint(box, 'Share Image and Print PNG download the page you are looking at; “All pages” downloads each one; Print PDF is every ticked page in order.');
+  makeHint(box, 'Share Image and Print PNG save the page on screen. All pages saves each page. Print PDF is every ticked page in order.');
   endCard(box);
 }
 
@@ -1448,13 +1448,13 @@ function buildElementPanel() {
   if (!it) {
     if (selectedId.startsWith('char:')) {
       const c = parsed.characters.find((x) => x.id === selectedId.slice(5));
-      makeHint(box, 'Icon of ' + (c ? c.name : 'a character') + ' — drag it to nudge it into place (arrow keys too). Its size, art and colour are in the Characters card below.');
+      makeHint(box, 'Icon of ' + (c ? c.name : 'a character') + '. Drag or use the arrow keys to nudge it. Size, art and colour are in the Characters card.');
     } else if (selectedId.startsWith('crow:')) {
-      makeHint(box, 'A character row — drag it up or down (or across the columns) to reorder the team.');
+      makeHint(box, 'A character row. Drag it up, down or across the columns to reorder the team.');
     } else if (selectedId.startsWith('nrow:')) {
-      makeHint(box, 'A night-order step — drag it up or down to reorder the night. “Reset the night order” in the night sheet card puts the official order back.');
+      makeHint(box, 'A night-order step. Drag it up or down to reorder the night.');
     } else {
-      makeHint(box, 'Tap anything on the preview to select it, then drag to move: decor, text, stickers, character icons (to nudge) and rows (to reorder). Arrow keys nudge the selection (Shift for bigger steps); Delete removes a sticker.');
+      makeHint(box, 'Tap anything on the preview to select it, then drag to move it. Arrow keys nudge (Shift for bigger steps). Delete removes a sticker.');
     }
     return;
   }
@@ -1626,7 +1626,7 @@ function updateSelectionInfo() {
   if (!selectedId) { info.textContent = ''; return; }
   const p = currentPage();
   const it = selectableOnPage(p).find((x) => x.id === selectedId);
-  info.textContent = it ? 'Selected: ' + it.label + ' — drag to move, arrows to nudge' : '';
+  info.textContent = it ? 'Selected: ' + it.label + '. Drag to move, arrows to nudge.' : '';
 }
 
 /* ── drag wiring ── */
@@ -1912,7 +1912,7 @@ function buildCharPanel() {
       if (q && !(shown.toLowerCase().includes(q) || c.id.includes(q))) continue;
       const o = document.createElement('option');
       o.value = c.id;
-      o.textContent = (ov.hidden ? '(hidden) ' : '') + shown + ' — ' + TEAM_NAMES[ov.team || c.team];
+      o.textContent = (ov.hidden ? '(hidden) ' : '') + shown + ' (' + TEAM_NAMES[ov.team || c.team] + ')';
       sel.append(o);
     }
     sel.value = chars.some((c) => c.id === charSel) ? charSel : '';
@@ -1932,7 +1932,7 @@ function buildCharPanel() {
   makeButton(bulk, 'Show all', () => { for (const k of Object.keys(options.chars)) delete options.chars[k].hidden; commit(); buildCharPanel(); });
   makeButton(bulk, 'Clear all edits', () => { options.chars = {}; commit(); buildCharPanel(); });
   if (!c) {
-    makeHint(box, 'Hide a character, rename it, rewrite its ability, swap its icon for your own, recolour its name, or move it up and down its team. Night positions and reminders can be set here too.');
+    makeHint(box, 'Pick a character to hide, rename or reorder it, or to change its ability, icon, colour, night positions or reminders.');
     return;
   }
   const ov = () => (options.chars[c.id] = options.chars[c.id] || {});
@@ -1956,9 +1956,9 @@ function buildCharPanel() {
   makeButton(order, '▲ Move up', () => moveChar(c.id, -1));
   makeButton(order, '▼ Move down', () => moveChar(c.id, 1));
   makeLabel(box, 'Night order (blank = the script’s)');
-  track(makeText(box, 'First night position (0 = does not wake) — now ' + (c.firstNight || 0), { get: () => g('firstNight', ''), set: (v) => { ov().firstNight = v; } }));
+  track(makeText(box, 'First night position (0 = does not wake), now ' + (c.firstNight || 0), { get: () => g('firstNight', ''), set: (v) => { ov().firstNight = v; } }));
   track(makeText(box, 'First night reminder', { get: () => g('firstNightReminder', ''), set: (v) => { ov().firstNightReminder = v; } }, { multiline: true, rows: 2 }));
-  track(makeText(box, 'Other nights position — now ' + (c.otherNight || 0), { get: () => g('otherNight', ''), set: (v) => { ov().otherNight = v; } }));
+  track(makeText(box, 'Other nights position, now ' + (c.otherNight || 0), { get: () => g('otherNight', ''), set: (v) => { ov().otherNight = v; } }));
   track(makeText(box, 'Other nights reminder', { get: () => g('otherNightReminder', ''), set: (v) => { ov().otherNightReminder = v; } }, { multiline: true, rows: 2 }));
   makeHint(box, 'Reminders take *INFO TOKEN* for bold caps and :reminder: for a token dot, like the official text.');
 }
@@ -2020,7 +2020,7 @@ function buildBackPanel() {
     setSelected(options.back.texts.length ? 'back:0' : '');
     commit();
   });
-  makeHint(box, 'The title words are elements: tap one on the preview, or pick it in the Elements card, to restyle or move it.');
+  makeHint(box, 'Each title word is an element. Tap one on the preview, or pick it in the Elements card.');
 }
 
 /* ── export ── */
@@ -2218,9 +2218,9 @@ function copyImage() {
   } catch {
     // a browser that wants a Blob, not a promise: wait, then write
     return bytes.then((blob) => navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]))
-      .then(() => toast('Copied — paste it anywhere'));
+      .then(() => toast('Copied'));
   }
-  return navigator.clipboard.write([item]).then(() => toast('Copied — paste it anywhere'));
+  return navigator.clipboard.write([item]).then(() => toast('Copied'));
 }
 
 function exportPages() {
@@ -2301,7 +2301,7 @@ async function boot() {
     ]);
     setOfficialRoster(roles, jinxes, night);
   } catch {
-    note('Could not load the official roster — official character ids will render bare.', 'err');
+    note('Could not load the official roster. Official ids will show as plain text.', 'err');
   }
   if (window.saoCompare) setSaoCompare(window.saoCompare);
 
@@ -2347,7 +2347,7 @@ async function boot() {
   $('fs-to-builder').addEventListener('click', () => {
     if (rawJson == null) { note('Load a script first.', 'err'); return; }
     try { localStorage.setItem('botc_builder_incoming', JSON.stringify(rawJson)); }
-    catch { note('Could not hand the script over — your browser blocked storage.', 'err'); return; }
+    catch { note('Could not open the Script Builder. The browser blocked storage.', 'err'); return; }
     window.open('script?from=fancy', '_blank');
   });
   $('fs-export-png').addEventListener('click', (e) => withExport(e.currentTarget, exportPNG));
@@ -2449,7 +2449,7 @@ async function boot() {
     applyDesignData(saved);
     loadJson(saved.script, saved.sourceLabel || 'your last session', saved.key && saved.key.startsWith('wiki:') ? saved.key.slice(5) : '', true);
     buildFontSelects();
-    note('Restored your last design from this browser. Pick a script or a sample to start fresh.', 'ok');
+    note('Restored your last design. Pick a script or a sample to start fresh.', 'ok');
   }
   if (rawJson == null) loadJson(SAMPLE_TROUBLE_BREWING);
 

@@ -285,7 +285,7 @@
       var o = bySlug[s];
       if (o && String(o.name || '').trim().toLowerCase() === nm) twin = o;
     });
-    if (twin) toast('Added ' + c.name + ' — another ' + c.name + ' is already on this script' + (twin.creator ? ' (by ' + twin.creator + ')' : '') + '.', 3600);
+    if (twin) toast('Added ' + c.name + '. Another ' + c.name + (twin.creator ? ' (by ' + twin.creator + ')' : '') + ' is already on this script.', 3600);
     return !!twin;
   }
   /* Swap one character for a random one of the same team, in the same
@@ -322,10 +322,10 @@
     TEAMS.forEach(function (t) { only[t[0]] = t[0] === team ? (sh[team] || cur[team]) : 0; });
     var kept = keep.map(function (s) { return bySlug[s]; }).filter(Boolean);
     var plan = T.fillPlan(visibleSidebarChars(), kept, only);
-    if (!plan.add.length && keep.length === order.length) { toast('Nothing in the panel to draw from for that team.'); return; }
+    if (!plan.add.length && keep.length === order.length) { toast('Nothing in the panel to draw from.'); return; }
     replaceOrder(keep.concat(plan.add), false, 'draw the ' + (T.TEAM_LABEL[team] || team) + ' again');
     var short = plan.short[team];
-    toast('Drew ' + plan.add.length + ' ' + (T.TEAM_LABEL[team] || team) + (short ? ' — the panel is ' + short + ' short' : '') + '.');
+    toast('Drew ' + plan.add.length + ' ' + (T.TEAM_LABEL[team] || team) + (short ? '. The panel is ' + short + ' short' : '') + '.');
   }
   function removeSlug(slug) {
     if (!sel[slug]) return;
@@ -459,7 +459,7 @@
       '</div>';
     }).join('') + '</div>';
     html += '<div class="sbx-view-foot">' +
-      '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape. Fill only adds what is missing, from whatever the panel is showing.</span>' +
+      '<span class="sbx-view-hint" style="flex:1 1 200px">Random draws a whole script to this shape. Fill adds only what is missing. Both draw from what the panel is showing.</span>' +
       '<button type="button" class="sbx-b-sm" id="sbx-fill">' + ico('dice') + ' Fill the gaps</button>' +
       '</div>';
     host.innerHTML = html;
@@ -477,7 +477,7 @@
     var plan = T.fillPlan(visibleSidebarChars(), rosterChars(), shape());
     var shortBits = Object.keys(plan.short).map(function (t) { return plan.short[t] + ' ' + T.TEAM_LABEL[t]; });
     if (!plan.add.length) {
-      toast(shortBits.length ? 'Nothing in the panel fits the gaps (' + shortBits.join(', ') + ').' : 'Every team is already at its target.');
+      toast(shortBits.length ? 'Nothing in the panel fits the gaps (' + shortBits.join(', ') + ').' : 'Every team is at its target.');
       return;
     }
     replaceOrder(order.concat(plan.add), false, 'fill the gaps');
@@ -554,7 +554,7 @@
         esc(artOf(c)) + '" alt="" onerror="this.onerror=null;this.src=\'assets/favicon.png\'">' +
       '<p class="sbx-ch-txt">' +
         '<a class="sbx-ch-name" href="' + esc(c.page || '#') + '"' +
-          (c.official ? ' target="_blank" rel="noopener" title="Official character — opens the official wiki"' : '') + '>' +
+          (c.official ? ' target="_blank" rel="noopener" title="Official character. Opens the official wiki"' : '') + '>' +
           esc(c.name) + '</a>' +
         (c.official ? '<span class="sbx-off">official' + ico('external') + '</span> ' : '') +
         marks +
@@ -573,8 +573,7 @@
     if (!chars.length && !miss.length) {
       box.innerHTML = '<div class="sbx-empty-box">' +
         '<p>Nothing on this script yet.</p>' +
-        '<p>Pick characters from the panel' + (window.innerWidth <= 900 ? '' : (view && view.side === 'right' ? ' on the right' : ' on the left')) +
-          ', draw a script at random, or start from one published on the wiki.</p>' +
+        '<p>Pick characters from the panel, draw a script at random, or start from one published on the wiki.</p>' +
         '<div class="sbx-empty-acts">' +
           '<button type="button" class="sbx-b" data-empty="panel">' + ico('menu') + ' Open the panel</button>' +
           '<button type="button" class="sbx-b" data-empty="random">' + ico('dice') + ' Random script</button>' +
@@ -608,7 +607,7 @@
     });
     if (miss.length) {
       html += '<p class="sbx-missing">' + miss.length + ' character' + (miss.length === 1 ? '' : 's') +
-        ' on this script have no page on this wiki and are carried along untouched: ' +
+        ' have no page on this wiki and are kept as they are: ' +
         esc(miss.slice(0, 12).join(', ')) + (miss.length > 12 ? '…' : '') + '</p>';
     }
     box.innerHTML = html;
@@ -929,7 +928,7 @@
           if (g.team) wrap.setAttribute('data-team', g.team[0]);
           wrap.innerHTML = '<h3 class="sbx-add-grouphead" title="Fold this group away">' + esc(g.label) +
             ' <span class="sbx-add-groupcount">(' + g.chars.length + ')</span><span class="sbx-add-groupneed"></span>' +
-            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from what this group is showing" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
+            '<button type="button" class="sbx-add-die" data-group-random title="Add one at random from this group" aria-label="Add a random ' + esc(g.label) + '">' + ico('dice') + '</button>' +
             '<span class="sbx-add-fold" aria-hidden="true">' + ico('down') + '</span></h3>' +
             '<div class="sbx-add-rows"></div>';
           list.appendChild(wrap);
@@ -1090,7 +1089,7 @@
     if (!hits.length) { host.hidden = true; host.innerHTML = ''; return; }
     host.hidden = false;
     host.innerHTML = '<p class="sjx-off-head" style="margin-top:14px">Official jinxes on this script</p>' +
-      '<p class="sbx-view-hint" style="margin:0 0 6px">Between two official characters. The app applies these itself, so they are not written into the export.</p>' +
+      '<p class="sbx-view-hint" style="margin:0 0 6px">Between official characters. The app applies these itself, so they are not in the export.</p>' +
       '<div class="sjx-list">' + hits.map(function (j) {
         return '<div class="sjx-row"><div class="sjx-text"><span class="sjx-pair">' + esc(ids[j.a].name) + ' &harr; ' + esc(ids[j.b].name) +
           '</span><span class="sjx-reason">' + esc(j.text || '') + '</span></div></div>';
@@ -1126,7 +1125,7 @@
       var items = L[col[0]] || [];
       if (!items.length) return;
       lines.push(col[1]);
-      items.forEach(function (it, i) { lines.push((i + 1) + '. ' + it.c.name + (v.reminders && it.r ? ' — ' + it.r : '')); });
+      items.forEach(function (it, i) { lines.push((i + 1) + '. ' + it.c.name + (v.reminders && it.r ? ': ' + it.r : '')); });
       lines.push('');
     });
     return lines.join('\n').trim();
@@ -1151,7 +1150,7 @@
     if (!host || !T) return;
     var chars = rosterChars();
     if (!chars.length) {
-      host.innerHTML = '<p class="sbx-empty-in">Add characters and this tab will tell you about the script.</p>';
+      host.innerHTML = '<p class="sbx-empty-in">Add characters to see the analysis.</p>';
       $('sbx-tab-an-n').textContent = '';
       return;
     }
@@ -1177,7 +1176,7 @@
     html += '</div>';
 
     // warnings
-    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Worth a look</h3>';
+    html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Things to check</h3>';
     if (!a.warnings.length) html += '<p class="sbx-an-empty">Nothing to flag.</p>';
     else {
       html += '<ul class="sbx-an-list">' + a.warnings.map(function (w) {
@@ -1201,7 +1200,7 @@
     html += '<div class="sbx-an-sec"><h3 class="sbx-an-head">Players it can seat</h3>';
     if (st.maxOk) {
       html += '<p class="sbx-an-fact"><b>' + st.minOk + ' to ' + st.maxOk + ' players</b>' +
-        (st.maxOk < 15 ? ' — more would need ' + st.rows.filter(function (r) { return !r.ok && r.players > st.maxOk; })[0].short.map(function (t) { return 'more ' + T.TEAM_LABEL[t]; }).join(', ') : '') + '</p>';
+        (st.maxOk < 15 ? '. More would need ' + st.rows.filter(function (r) { return !r.ok && r.players > st.maxOk; })[0].short.map(function (t) { return 'more ' + T.TEAM_LABEL[t]; }).join(', ') : '') + '</p>';
     } else {
       html += '<p class="sbx-an-fact">No player count yet: a table needs a Demon, a Minion and Townsfolk.</p>';
     }
@@ -1212,7 +1211,7 @@
           return '<td class="' + (r.short.indexOf(t) !== -1 ? 'short' : '') + '">' + n + '</td>';
         }).join('') + '</tr>';
       }).join('') + '</tbody></table>' +
-      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count move the first two columns on the night.</p>' +
+      '<p class="sbx-view-hint" style="margin-top:6px">The official table. Characters that change the Outsider count shift the first two columns.</p>' +
       '<p style="margin:8px 0 0"><button type="button" class="sbx-b-sm" data-open-bag data-pop-keep>' + ico('bag') + ' Pick tonight&rsquo;s bag</button></p>';
     html += '</div>';
 
@@ -1241,7 +1240,7 @@
               '<button type="button" class="sbx-b-sm" data-add="' + esc(c.slug) + '">' + ico('plus') + ' Add</button></span>';
           }).join('') + '</div>';
       });
-      html += '<p class="sbx-view-hint">Drawn at random from what the panel is showing; open the tab again for another few.</p></div>';
+      html += '<p class="sbx-view-hint">Drawn at random from the panel. Reopen the tab for others.</p></div>';
     }
 
     // jinx suggestions
@@ -1516,7 +1515,7 @@
     var html = '<div class="sbx-bag-row">' +
       '<label>Table <select data-bag="players">' + opts + '</select></label>' +
       '<label>Travellers <select data-bag="travellers">' + trav + '</select></label>' +
-      '<label title="A Baron-like character in play changes the Outsider count: put the change here">Outsiders &plusmn; <input type="number" min="-3" max="3" data-bag="outMod" value="' + b.outMod + '"></label>' +
+      '<label title="The change to the Outsider count, for a Baron-like character in play">Outsiders &plusmn; <input type="number" min="-3" max="3" data-bag="outMod" value="' + b.outMod + '"></label>' +
       '</div>' +
       '<p class="sbx-bag-need">Needs ' + need.townsfolk + ' Townsfolk &middot; ' + need.outsider + ' Outsider' + (need.outsider === 1 ? '' : 's') +
       ' &middot; ' + need.minion + ' Minion' + (need.minion === 1 ? '' : 's') + ' &middot; ' + need.demon + ' Demon' +
@@ -1719,7 +1718,7 @@
       '<p class="sbx-peek-ab">' + esc(c.ability || '(no ability text)') + '</p>' +
       (tags.length ? '<p class="sbx-peek-facts" style="margin-top:6px">' + tags.map(function (t) { return '<span class="sbx-tag">' + esc(t) + '</span>'; }).join('') + '</p>' : '') +
       '<p class="sbx-peek-facts">' + facts.join('<br>') + '</p>' +
-      (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script — a bluff to suggest, a ruling, a reminder for you.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
+      (isOn ? '<textarea class="sbx-peek-note" data-peek-note="' + esc(c.slug) + '" rows="2" maxlength="500" placeholder="A note about ' + esc(c.name) + ' on this script: a bluff, a ruling, a reminder.">' + esc(charNotes()[c.slug] || '') + '</textarea>' : '') +
       '<div class="sbx-peek-acts">' +
         '<button type="button" class="sbx-b-sm" data-peek-toggle="' + esc(c.slug) + '">' + (isOn ? ico('close') + ' Remove from script' : ico('plus') + ' Add to script') + '</button>' +
         (isOn ? '<button type="button" class="sbx-b-sm" data-peek-swap="' + esc(c.slug) + '">' + ico('dice') + ' Swap for another ' + esc(c.team || 'character') + '</button>' : '') +
@@ -1898,7 +1897,7 @@
   }
   function notEmpty() {
     if (order.length) return true;
-    alert('This script is empty — add a character or two first.');
+    alert('Add a character first.');
     return false;
   }
 
@@ -1953,7 +1952,7 @@
     if (!notEmpty()) return;
     if (!cardReady) { withCards(doFancy); return; }
     try { localStorage.setItem('botc_fancy_incoming', buildExport()); }
-    catch (e) { alert('Could not hand the script over — your browser blocked storage.'); return; }
+    catch (e) { alert('Could not open Fancy Scripts. The browser blocked storage.'); return; }
     window.open('fancyscripts?from=builder', '_blank');
   }
 
@@ -1979,7 +1978,7 @@
   function importScript(text) {
     var data;
     try { data = JSON.parse(text); } catch (e) { alert('That is not valid JSON.'); return; }
-    if (!Array.isArray(data)) { alert('Expected a script array — the official script JSON format.'); return; }
+    if (!Array.isArray(data)) { alert('Not a script file. Expected the official script JSON, which is an array.'); return; }
     var map = idToSlug();
     var slugs = [], missing = [], meta = null;
     data.forEach(function (entry) {
@@ -2104,7 +2103,7 @@
   function saveCurrentToLibrary() {
     var m = getMeta();
     if (!order.length && !(m.name || '').trim()) {
-      alert('There is nothing to save yet — add a character or give the script a name.');
+      alert('Nothing to save yet. Add a character or name the script.');
       return;
     }
     if (!m.libId && getLib().length >= LIB_MAX) {
@@ -2317,8 +2316,8 @@
     note.hidden = false;
     note.innerHTML = 'This script is linked to the published page <a href="s/' +
       esc(m.editSlug) + '" target="_blank" rel="noopener">/s/' + esc(m.editSlug) +
-      '</a>, so publishing updates that page. ' +
-      '<button type="button" class="sbx-b-sm" id="sbx-detach">Detach — publish as a new script</button>';
+      '</a>. Publishing updates that page. ' +
+      '<button type="button" class="sbx-b-sm" id="sbx-detach">Unlink</button>';
     $('sbx-detach').addEventListener('click', function () {
       patchMeta(function (mm) { delete mm.editSlug; });
       paintEditNote();
@@ -2789,16 +2788,16 @@
       return true;
     }
     $('sb-paste-go').addEventListener('click', function () {
-      if (!importText($('sb-paste').value, this)) { alert('Paste a script JSON, or a link to a page on this wiki, into the box first.'); return; }
+      if (!importText($('sb-paste').value, this)) { alert('Paste script JSON or a wiki link into the box first.'); return; }
       $('sb-paste').value = '';
     });
     // One tap on a phone instead of a long press into the box.
     $('sb-paste-clip').addEventListener('click', function () {
       var btn = this;
-      if (!navigator.clipboard || !navigator.clipboard.readText) { toast('This browser cannot read the clipboard — paste into the box instead.', 3200); return; }
+      if (!navigator.clipboard || !navigator.clipboard.readText) { toast('This browser cannot read the clipboard. Paste into the box instead.', 3200); return; }
       navigator.clipboard.readText().then(function (t) {
         if (!importText(t, btn)) toast('The clipboard holds no script JSON or wiki link.', 3200);
-      }, function () { toast('The browser did not allow reading the clipboard — paste into the box instead.', 3600); });
+      }, function () { toast('Clipboard access was refused. Paste into the box instead.', 3600); });
     });
     $('sb-import-file').addEventListener('change', function (e) {
       var f = e.target.files[0];
@@ -3199,7 +3198,7 @@
         var bits = [];
         if (added.length) bits.push(added.length + ' new character' + (added.length === 1 ? '' : 's'));
         if (removed.length) bits.push(removed.length + ' taken down');
-        toast('The wiki moved since your last visit: ' + bits.join(', ') + '.', 3200);
+        toast('Changed since your last visit: ' + bits.join(', ') + '.', 3200);
       }
     }
     function registries() {
@@ -3267,11 +3266,11 @@
         if (feedSource === 'cache' && paintedFromCard) {
           // Offline, or the Worker is down: the last visit's card feed is
           // the whole of what the export needs, so the page goes on working.
-          toast('The wiki could not be reached, so this is the character list from your last visit.', 4500);
+          toast('The wiki could not be reached. Showing the characters from your last visit.', 4500);
           releaseWaiters();
           return;
         }
-        toast('The character details could not be loaded, so exports are off until a reload.', 4000);
+        toast('Character details could not be loaded. Exports are off until you reload.', 4000);
         cardWaiters = [];
       });
     });
@@ -3283,7 +3282,7 @@
       var incoming = (sh.c || []).filter(function (slug) { return bySlug[slug]; });
       if (incoming.length &&
           (!order.length ||
-           confirm('Load the shared script (' + incoming.length + ' characters)?\n\nThis replaces what you have open — it is kept in My Scripts.'))) {
+           confirm('Load the shared script (' + incoming.length + ' characters)?\n\nWhat you have open is kept in My Scripts.'))) {
         if (order.length) syncLibrary();
         mark('load the shared script');
         var m = {};

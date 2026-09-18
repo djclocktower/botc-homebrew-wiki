@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fancy Scripts — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Turn any Blood on the Clocktower script into a polished, print-style script sheet — parchment, engraved dividers, night order sheets and a back cover — customise every element, and download it as a PNG or a print-ready PDF.">
+<meta name="description" content="Print-style Blood on the Clocktower script sheets, night order sheets, a jinx page and a back cover from any script. Move or restyle every element, then download a PNG or a PDF.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Fancy Scripts">
-<meta property="og:description" content="Print-style Blood on the Clocktower script sheets, night order sheets and back covers from any script JSON or any script published on the wiki. Every element customisable. PNG and PDF export.">
+<meta property="og:description" content="Print-style Blood on the Clocktower script sheets, night order sheets, a jinx page and a back cover from any script. Move or restyle every element, then download a PNG or a PDF.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -289,7 +289,7 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 
   <div class="home-hero fs-hero">
     <h1>Fancy Scripts</h1>
-    <p>Turn any script into a polished, print-style sheet — parchment, engraved dividers, the works — with matching night order sheets, a jinx page and a back cover. Pick a script published on the wiki or load any official-schema script JSON, tap anything on the preview to move or restyle it, and download a PNG or a print-ready PDF.</p>
+    <p>Press any script into an official-style sheet, with night order sheets, a jinx page and a back cover. Pick a script published on the wiki or load a script JSON, tap anything on the preview to move or restyle it, then download a PNG or a PDF.</p>
     <p class="fs-credit">In the style of the classic fancy script sheets</p>
   </div>
 
@@ -406,14 +406,11 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
 
         <section class="fs-card" data-fs-for="all">
           <p style="margin:0; font-size:.84rem; line-height:1.5;">
-            Accepts official script-tool JSON: a <code>_meta</code> object plus
-            official character ids and/or full character objects with
-            <code>id, name, team, ability, image</code> (and <code>firstNight</code>,
-            <code>firstNightReminder</code> and friends for the night sheets) —
-            exactly what the <a href="script">Script Builder</a> exports and what
-            every published script page's Download JSON button saves. Official
-            icons, reminders and night positions are built in; wiki characters
-            bring their own.
+            Takes official script JSON: a <code>_meta</code> object plus official
+            character ids or full character objects. The
+            <a href="script">Script Builder</a> and every published script page
+            export this format. Official icons, reminders and night positions are
+            built in.
           </p>
         </section>
       </aside>
@@ -426,7 +423,7 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
           <button class="fs-btn" id="fs-export-png" type="button">Print PNG</button>
           <button class="fs-btn" id="fs-export-all" type="button">All pages</button>
           <button class="fs-btn" id="fs-export-pdf" type="button">Print PDF</button>
-          <button class="fs-btn" id="fs-to-builder" type="button" title="Open this roster in the Script Builder to change the characters">Script Builder</button>
+          <button class="fs-btn" id="fs-to-builder" type="button" title="Edit the characters in the Script Builder">Script Builder</button>
           <span class="fs-spacer"></span>
           <span class="fs-toolgroup">
             <button class="fs-btn" id="fs-undo" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
@@ -448,7 +445,7 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
         </div>
         <p id="fs-sel-info"></p>
         <p id="fs-progress" hidden></p>
-        <p class="fs-preview-hint">Tap anything on the page to select it, then drag it. Share Image and Print PNG download the page you're looking at; All pages downloads every page; Print PDF is every ticked page in order. Ctrl+wheel or pinch to zoom.</p>
+        <p class="fs-preview-hint">Tap anything on the page to select it, then drag it. Ctrl+wheel or pinch to zoom.</p>
       </div>
 
     </div>

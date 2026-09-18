@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Script Builder — BOTC HomeBrew Wiki</title>
-<meta name="description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, share it, and press a print sheet.">
+<meta name="description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, keep up to 15 scripts, export the JSON, share a link or press a print sheet.">
 <meta property="og:site_name" content="BOTC HomeBrew Wiki">
 <meta property="og:title" content="Script Builder">
-<meta property="og:description" content="Build a custom Blood on the Clocktower script from homebrew and official characters — name it, arrange the night order, keep up to 15 scripts, export official-schema JSON, share it, and press a print sheet.">
+<meta property="og:description" content="Build a Blood on the Clocktower script from homebrew and official characters. Arrange the night order, keep up to 15 scripts, export the JSON, share a link or press a print sheet.">
 <meta property="og:type" content="website">
 <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
 <link rel="apple-touch-icon" href="assets/favicon.png">
@@ -68,11 +68,11 @@
           <input class="sbx-search" id="sb-filter" type="search" placeholder="Search by name…" autocomplete="off" aria-label="Search characters to add">
           <div class="sbx-tool-row">
             <button type="button" class="filter-toggle" id="sb-filter-toggle" aria-expanded="false" aria-controls="sb-filter-bar">Filters <span class="filter-toggle-arrow"><i class="sbi-i" data-icon="down"></i></span></button>
-            <label class="sbx-check" title="Show every ability under its character instead of behind a chevron">
+            <label class="sbx-check" title="Show every ability in the list">
               <input type="checkbox" id="sbx-abilities"> Abilities
             </label>
             <button type="button" class="sbx-b-sm" id="sb-add-all" title="Add every character the panel is showing"><i class="sbi-i" data-icon="plus"></i> All</button>
-            <button type="button" class="sbx-b-sm" id="sb-remove-all" title="Take every character the panel is showing off the script"><i class="sbi-i" data-icon="minus"></i> All</button>
+            <button type="button" class="sbx-b-sm" id="sb-remove-all" title="Remove every character the panel is showing"><i class="sbi-i" data-icon="minus"></i> All</button>
           </div>
         </div>
         <div class="sbx-picks" id="sbx-picks" aria-label="Pinned and recent characters"></div>
@@ -103,7 +103,7 @@
           </div>
         </div>
         <p class="sbx-side-count" id="sbx-lib-count"></p>
-        <p class="sbx-lib-full" id="sbx-lib-full" hidden>That is 15 scripts, which is all this browser keeps. Delete one to save another.</p>
+        <p class="sbx-lib-full" id="sbx-lib-full" hidden>15 scripts is the limit. Delete one to save another.</p>
         <div class="sbx-side-scroll">
           <div id="sbx-lib-list"></div>
         </div>
@@ -143,7 +143,7 @@
               <button type="button" data-do="import" role="menuitem"><i class="sbi-i" data-icon="upload"></i> Import a JSON file</button>
               <button type="button" data-do="share" role="menuitem"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
               <button type="button" data-do="bag" role="menuitem" data-pop-keep title="Pick tonight&rsquo;s characters for a player count"><i class="sbi-i" data-icon="bag"></i> Tonight&rsquo;s bag</button>
-              <button type="button" data-do="fancy" role="menuitem" title="Press a print-style sheet of this script"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
+              <button type="button" data-do="fancy" role="menuitem" title="Open this script in Fancy Scripts"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
               <hr class="sbx-menu-sep">
               <button type="button" data-do="save" role="menuitem"><i class="sbi-i" data-icon="save"></i> Save to My Scripts</button>
               <button type="button" data-do="new" role="menuitem"><i class="sbi-i" data-icon="plus"></i> New script</button>
@@ -174,7 +174,7 @@
         <section class="sbx-pane" data-tab="night">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Night Order</h2>
-            <p class="sbx-panel-sub">Who acts comes from the characters themselves. The order is yours — drag a row, or use &#9650;&#9660;. This is the order your published page and your exported JSON will use.</p>
+            <p class="sbx-panel-sub">Drag a row, or use &#9650;&#9660;. The published page and the exported JSON use this order.</p>
             <div class="sbx-tab-opts">
               <label class="sbx-check"><input type="checkbox" id="sb-night-rem" checked> Reminders</label>
               <label class="sbx-check"><input type="checkbox" id="sb-night-icons"> Icons</label>
@@ -191,7 +191,7 @@
         <section class="sbx-pane" data-tab="jinx">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Jinxes</h2>
-            <p class="sbx-panel-sub">Rules between two characters on this script. Switch off one you do not want, or write a rule that only holds here. Nothing is written back to the characters, so every other script keeps what they say.</p>
+            <p class="sbx-panel-sub">Switch off a jinx, or add one that applies to this script only. The character pages are not changed.</p>
             <div class="sbx-tab-opts">
               <label class="sbx-check"><input type="checkbox" id="sb-jinx-icons" checked> Icons</label>
               <button type="button" class="sbx-b-sm" id="sb-jinx-copy"><i class="sbi-i" data-icon="copy"></i> Copy as text</button>
@@ -205,7 +205,7 @@
         <section class="sbx-pane" data-tab="analyse">
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Analysis</h2>
-            <p class="sbx-panel-sub">What this script is made of: the shape against its targets, who acts when, what the tags add up to, and anything worth a second look. Nothing here is stored &mdash; it is read off the roster as it stands.</p>
+            <p class="sbx-panel-sub">A read of the script as it stands: shape, night activity, tags and anything to check.</p>
             <div id="sbx-analyse-body"></div>
           </div>
         </section>
@@ -217,7 +217,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Details</h2>
-            <p class="sbx-panel-sub">The name and author ride in the exported JSON and are what the publish page starts from. Everything else about a published page — description, logo, background, colours — lives on <a href="publish-script">Publish to Wiki</a>.</p>
+            <p class="sbx-panel-sub">The name and author go into the exported JSON. Description, logo, background and colours are set on <a href="publish-script">Publish to Wiki</a>.</p>
             <div class="sbx-fields">
               <div class="sbx-field">
                 <label for="sb-name2">Script name</label>
@@ -230,13 +230,13 @@
             </div>
             <div class="sbx-field" style="margin-top:10px">
               <label for="sb-notes">Storyteller notes</label>
-              <textarea id="sb-notes" rows="3" maxlength="4000" placeholder="Anything you want to remember about running this script. Kept with the script in this browser and in share links; never in the exported JSON."></textarea>
+              <textarea id="sb-notes" rows="3" maxlength="4000" placeholder="Notes for running this script. Saved in this browser and in share links, not in the exported JSON."></textarea>
             </div>
           </div>
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">In the Official App</h2>
-            <p class="sbx-panel-sub">Options the official Blood on the Clocktower app reads out of the script file. House rules also appear on your published page.</p>
+            <p class="sbx-panel-sub">Settings the official app reads from the script file. House rules also show on the published page.</p>
             <div class="sbx-field" style="margin-bottom:10px">
               <label class="sbx-check" style="align-self:flex-start">
                 <input type="checkbox" id="sb-hidetitle"> Hide the script name on the character sheet
@@ -255,13 +255,13 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Export</h2>
-            <p class="sbx-panel-sub">The official script format, the same one the app and every other script tool read.</p>
+            <p class="sbx-panel-sub">The official script JSON, as the app and other script tools read it.</p>
             <div class="sbx-tool-row" style="margin-bottom:12px">
               <button type="button" class="sbx-b-sm" id="sb-export"><i class="sbi-i" data-icon="download"></i> Download JSON</button>
               <button type="button" class="sbx-b-sm" id="sb-copy"><i class="sbi-i" data-icon="copy"></i> Copy JSON</button>
               <button type="button" class="sbx-b-sm" id="sb-share"><i class="sbi-i" data-icon="link"></i> Copy a share link</button>
-              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Press an official-style sheet of this script in Fancy Scripts &mdash; the print, the PDF and the picture all come from there"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
-              <label class="sbx-check" title="One line, no spaces — smaller, harder to read"><input type="checkbox" id="sb-json-min"> Minified</label>
+              <button type="button" class="sbx-b-sm" id="sb-fancy" title="Open this script in Fancy Scripts for a print sheet, a PDF or an image"><i class="sbi-i" data-icon="sheet"></i> Fancy Sheet</button>
+              <label class="sbx-check" title="One line, no spaces. Smaller, but harder to read"><input type="checkbox" id="sb-json-min"> Minified</label>
             </div>
             <details class="sbx-details" id="sb-json-details">
               <summary>Preview the JSON</summary>
@@ -307,7 +307,7 @@
 
           <div class="sbx-panel">
             <h2 class="sbx-panel-head">Import</h2>
-            <p class="sbx-panel-sub">Load a script from a file, paste the JSON straight in, or pick a page published on this wiki. Characters this wiki has are matched by id; anything it does not have is listed back to you. Bringing a whole project over from Bloodstar? <a href="bloodstar">The Bloodstar importer</a> carries the almanac text and the art as well.</p>
+            <p class="sbx-panel-sub">Load a file, paste JSON, or pick a page published on this wiki. Characters are matched by id, and any the wiki does not have are listed. For a whole Bloodstar project, with its art and almanac text, use <a href="bloodstar">the Bloodstar importer</a>.</p>
             <div class="sbx-field" style="margin-bottom:10px">
               <label for="sb-wiki-pick">From this wiki</label>
               <div class="sbx-tool-row">
@@ -317,11 +317,11 @@
             </div>
             <div class="sbx-field" style="margin-bottom:10px">
               <label for="sb-paste">Paste</label>
-              <textarea id="sb-paste" rows="4" placeholder="Paste a script JSON here — or a link to a script or collection page on this wiki." spellcheck="false"></textarea>
+              <textarea id="sb-paste" rows="4" placeholder="Paste script JSON, or a link to a script or collection page on this wiki." spellcheck="false"></textarea>
             </div>
             <div class="sbx-tool-row">
               <button type="button" class="sbx-b-sm" id="sb-paste-go">Import pasted JSON</button>
-              <button type="button" class="sbx-b-sm" id="sb-paste-clip" title="Read the script JSON, or a wiki link, straight from the clipboard"><i class="sbi-i" data-icon="clipboard"></i> Paste from clipboard</button>
+              <button type="button" class="sbx-b-sm" id="sb-paste-clip" title="Import from the clipboard"><i class="sbi-i" data-icon="clipboard"></i> Paste from clipboard</button>
               <button type="button" class="sbx-b-sm" id="sb-import">Choose a file…</button>
             </div>
           </div>
@@ -341,16 +341,16 @@
   <div class="sbx-pop" id="sbx-view" role="dialog" aria-label="View settings" hidden>
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">View</span>
-      <span class="sbx-pop-sub">Only how this page draws the script &mdash; the export and the published page never change.</span>
+      <span class="sbx-pop-sub">Display only. The export and the published page are not affected.</span>
       <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-view-body"></div>
-    <p class="sbx-keys"><strong>Keys</strong> &nbsp; <kbd>/</kbd> search &nbsp; <kbd>&uarr;</kbd><kbd>&darr;</kbd> walk the list &nbsp; <kbd>Enter</kbd> add &nbsp; <kbd>1</kbd>&ndash;<kbd>5</kbd> tabs &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo &nbsp; <kbd>Esc</kbd> close</p>
+    <p class="sbx-keys"><strong>Keys</strong> &nbsp; <kbd>/</kbd> search &nbsp; <kbd>&uarr;</kbd><kbd>&darr;</kbd> walk the list &nbsp; <kbd>Enter</kbd> add &nbsp; <kbd>1</kbd> to <kbd>5</kbd> tabs &nbsp; <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo &nbsp; <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo &nbsp; <kbd>Esc</kbd> close</p>
   </div>
   <div class="sbx-pop" id="sbx-shape" role="dialog" aria-label="Script shape" hidden>
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">Script shape</span>
-      <span class="sbx-pop-sub">How many of each team this script is aiming for. Random and Fill draw to it, and the counts in the bar show how close you are.</span>
+      <span class="sbx-pop-sub">Target counts per team. Random and Fill draw to them, and the bar shows how close you are.</span>
       <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-shape-body"></div>
@@ -358,7 +358,7 @@
   <div class="sbx-pop" id="sbx-bag" role="dialog" aria-label="Tonight's bag" hidden>
     <div class="sbx-pop-head">
       <span class="sbx-pop-title">Tonight&rsquo;s bag</span>
-      <span class="sbx-pop-sub">Pick the characters going into the bag for a player count &mdash; by hand, or at random to the official numbers. Nothing here changes the script.</span>
+      <span class="sbx-pop-sub">Pick the characters for a player count, by hand or at random. The script itself is not changed.</span>
       <button type="button" class="sbx-pop-x" data-pop-close aria-label="Close"><i class="sbi-i" data-icon="close"></i></button>
     </div>
     <div class="sbx-pop-body" id="sbx-bag-body"></div>

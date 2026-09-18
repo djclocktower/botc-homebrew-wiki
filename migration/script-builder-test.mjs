@@ -99,7 +99,7 @@ const meta = { name: 'My Script', author: 'Me', bootlegger: ['No Fortune Teller 
 const plain = T.textExport(script.slice(0, 3), meta, { format: 'plain' });
 ok(plain.startsWith('My Script\nby Me\n\nTOWNSFOLK\n- a: x'), 'plain text shape');
 const md = T.textExport(script.slice(0, 3), meta, { format: 'markdown', rules: true, notes: true });
-ok(md.startsWith('# My Script\n*by Me*\n\n## Townsfolk\n• **a** — x'), 'markdown shape');
+ok(md.startsWith('# My Script\n*by Me*\n\n## Townsfolk\n• **a**: x'), 'markdown shape');
 ok(/## House rules\n• No Fortune/.test(md) && /## Notes\nbe nice/.test(md), 'markdown carries rules and notes');
 const disc = T.textExport(script.slice(0, 3), meta, { format: 'discord', abilities: false });
 ok(/__TOWNSFOLK__\n• \*\*a\*\*\n/.test(disc), 'discord: bold names, no abilities when off');
@@ -112,7 +112,7 @@ eq(T.summary(script), '2 Townsfolk, 1 Outsider, 2 Minion, 1 Demon', 'summary lin
 const noted = T.textExport(script.slice(0, 2), meta, { format: 'plain', charNotes: { a: 'bluff this' } });
 ok(/- a: x \(bluff this\)/.test(noted), 'a character note rides on its line');
 const notedMd = T.textExport(script.slice(0, 2), meta, { format: 'markdown', charNotes: { a: 'bluff this' } });
-ok(/\*\*a\*\* — x _\(bluff this\)_/.test(notedMd), 'markdown italicises the note');
+ok(/\*\*a\*\*: x _\(bluff this\)_/.test(notedMd), 'markdown italicises the note');
 
 // ── view normaliser ──
 const v = V.normalize({ layout: 'bogus', icon: 1000, text: '90', showAbility: 0, extra: 1 });

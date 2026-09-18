@@ -774,7 +774,10 @@ migration/             D1 schema reference (schema.sql, accounts_migration.sql,
                        two image/font maintenance scripts: optimize-images.js
                        (the WebP page furniture and the committed thumbnails)
                        and fetch-google-fonts.js (refreshes assets/fonts/*.woff2
-                       and prints the @font-face block for styles.css).
+                       and prints the @font-face block for styles.css), and
+                       ui-strings.py, which lists the user-visible strings of
+                       a page or script that break the wording rule below
+                       (a dash, or over 110 characters).
 ```
 
 ## Database (D1, SQLite)
@@ -3662,6 +3665,15 @@ seeded with whole collections whose characters all arrived unowned.
   into steven-approved-order.html. More-specific prefixes ("Each night*") must
   come before less-specific ("Each night") in the array — do not reorder.
 - Grid/list `<img>` tags get `loading="lazy" decoding="async"`.
+- **Interface text is short and plain.** A hint, a toast, a tooltip or a
+  panel intro says what the control does in one or two short sentences and
+  stops. No em or en dashes anywhere a reader sees them (a full stop, a comma
+  or a colon instead), no explaining why the site is built the way it is, no
+  "polished", "the works", "in one go" or the like. The owner asked for this
+  in so many words on the Script Builder and Fancy Scripts, and it holds for
+  every tool. `python3 migration/ui-strings.py <file>` lists the strings that
+  break it; the page `<title>` separator ("Page — BOTC HomeBrew Wiki") is the
+  one dash left, because forty pages share it.
 - **Interface marks are SVG, never emoji.** `assets/ui-icons.js` is the set;
   it draws in `currentColor`, so an icon is the colour of the text around it
   on every background the wiki has — an emoji is painted by the reader's font
