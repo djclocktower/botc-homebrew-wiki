@@ -404,6 +404,7 @@
   <script src="assets/reader.js"></script>
   <script src="assets/render.js"></script>
   <script src="assets/bloodstar.js"></script>
+  <script src="assets/art-normalize.js"></script>
   <script src="assets/art-thumb.js"></script>
   <script>
   (function () {
@@ -853,16 +854,41 @@
         return (u.protocol === 'https:' && bare(u.host) === bare(new URL(base).host)) ? u.href : '';
       } catch (e) { return ''; }
     }
+    /* Character icons (art/ keys — never a logo or a background) land on the
+       wiki's standard frame, see assets/art-normalize.js: the figure trimmed
+       and set to the official icons' size, which is what the official script
+       tool prints them at. Bloodstar draws its own margin round an icon, and
+       it is not this one. Resolves with the standardized data URL, or null
+       when the file is already standard or the normalizer is missing. */
+    function standardized(key, dataUrl) {
+      if (!/^art\//.test(key) || typeof normalizeArtDataURL !== 'function') return Promise.resolve(null);
+      return normalizeArtDataURL(dataUrl, { ifNeeded: true }).catch(function () { return null; });
+    }
     function copyArt(key, src) {
       var onBloodstar = bloodstarUrl(src);
       if (onBloodstar) {
         return post('/api/bloodstar-art', { key: key, src: onBloodstar })
           .then(function (res) {
             // The copy happened on the server, so the browser never held the
-            // image: read it back and make the card thumbnail from that
-            // (assets/art-thumb.js). Never awaited.
-            if (window.ArtThumb) ArtThumb.uploadFromUrl(key);
-            return res;
+            // image. Read it back (same origin, so the canvas can be read)
+            // and standardize it if it needs it — a second, smaller upload
+            // only for an icon that was not already on the frame. The card
+            // thumbnail (assets/art-thumb.js) is made from whichever version
+            // ends up stored, and in that order, so the read-back thumb can
+            // never land after the standardized one. Never awaited past the
+            // copy: the art IS there, standard or not, so a failure here
+            // costs the standard and nothing else.
+            var own = (window.LINK_ROOT || '/') + 'assets/' + key + '?v=' + Date.now().toString(36);
+            var follow = loadImage(own)
+              .then(function (dataUrl) { return standardized(key, dataUrl); })
+              .then(function (out) {
+                if (!out) { if (window.ArtThumb) ArtThumb.uploadFromUrl(key); return; }
+                return post('/api/upload', { key: key, data: out }).then(function () {
+                  if (window.ArtThumb) ArtThumb.upload(key, out);
+                });
+              })
+              .catch(function () { if (window.ArtThumb) ArtThumb.uploadFromUrl(key); });
+            return follow.then(function () { return res; }, function () { return res; });
           })
           .catch(function (err) {
             if (err && err.rateLimited) throw err;
@@ -873,6 +899,8 @@
     }
     function canvasUpload(key, src) {
       return loadImage(src).then(function (dataUrl) {
+        return standardized(key, dataUrl).then(function (out) { return out || dataUrl; });
+      }).then(function (dataUrl) {
         return post('/api/upload', { key: key, data: dataUrl }).then(function (res) {
           if (window.ArtThumb) ArtThumb.upload(key, dataUrl);
           return res;

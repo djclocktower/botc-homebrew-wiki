@@ -1605,11 +1605,23 @@ came out, and all three were pushing the same way:
 - **Standardizing was opt-in, so a sixth of the live art never was.** A
   live sample of 139 icons had 24 above 0.75 and 15 at 0.85+ — a figure
   cropped to its ink, which then printed at half again the official size.
-  Both character editors and `mass-upload.html` now standardize art as it
-  lands (Adjust by hand still opens on the file as picked, so a deliberate
-  crop is one click away). `/bloodstar` is the exception: its server-side
-  copy never passes through a canvas, and Bloodstar's own icons are already
-  padded, so it is left alone.
+  Both character editors, `mass-upload.html` and `/bloodstar` now
+  standardize art as it lands (Adjust by hand still opens on the file as
+  picked, so a deliberate crop is one click away). Bloodstar's server-side
+  copy never passes through a canvas, so `copyArt()` reads the copied file
+  back from our own origin, and uploads a standardized version only when
+  `{ifNeeded: true}` says the file is not already on the frame — the thumb
+  is made from whichever version is stored, in that order, so the two
+  cannot race. Only `art/` keys: a logo or a background is not an icon.
+
+**One file serves every surface**, so this is visible on the wiki too:
+cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
+all contain-fit the same PNG, and a re-standardized icon's figure is
+one-seventh smaller than at the old 0.70 (and much smaller than a
+never-standardized one). The Token Tool is the one consumer that is not
+affected, because it trims alpha itself. The bulk tool also resets a
+hand-adjusted icon (an owner who chose 80% in Adjust by hand) back to the
+standard — it always did; nothing marks a deliberate crop.
 
 Existing art is fixed by running the admin page **`/normalize-icons`**
 ("Standardize Icons") once after deploy: it now skips anything already on
