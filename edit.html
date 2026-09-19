@@ -297,6 +297,22 @@
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">Need a new icon? Forge one from your own drawing &#8599;</a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
+        <!-- Display size: how big the icon is DRAWN on the character page, and
+             nowhere else. The file in the art slot and the JSON export are
+             the "true size" (the standard 591 frame, so the script tool prints
+             it beside official icons); this only scales the emblem on /c/.
+             Off by default, and off means the page follows the stylesheet. -->
+        <div id="artScaleWrap" style="margin-top:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="artScaleOn" style="width:17px;height:17px;margin:0">
+            <label for="artScaleOn" style="margin:0">Change how big the icon is displayed on this page</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
+            <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
+          </div>
+          <div class="sub" style="margin-top:4px">Only the picture on the character page. The icon file, the JSON export, the cards and the search results keep the true size.</div>
+        </div>
       </div>
       <div class="fld" data-art-slot="alt">
         <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
@@ -745,6 +761,7 @@
         ipa: $('ipa').value.trim(),
         respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(), iconBy: $('iconBy').value.trim(),
+        artScale: artScaleSetting(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value)||0,
         firstNightReminder: $('fnReminder').value.trim(),
@@ -971,6 +988,24 @@
       syncTokenHint(); update();
     });
     $('tokenArt').addEventListener('change', update);
+    /* Display size: the slider is greyed out until the box is ticked, and an
+       unticked box posts nothing — so the page follows the stylesheet and
+       the row grows no key. The value is a whole percentage inside Render's
+       range; the Worker clamps it again on save. */
+    function artScaleSetting() {
+      if (!$('artScaleOn').checked) return 0;
+      var n = Math.round(Number($('artScale').value));
+      return (isFinite(n) && n !== 100) ? n : 0;
+    }
+    function syncArtScale() {
+      var on = $('artScaleOn').checked;
+      $('artScale').disabled = !on;
+      $('artScaleOut').textContent = $('artScale').value + '%';
+      $('artScaleOut').style.opacity = on ? '' : '.5';
+    }
+    $('artScaleOn').addEventListener('change', function () { syncArtScale(); update(); });
+    $('artScale').addEventListener('input', function () { syncArtScale(); update(); });
+    syncArtScale();
     // The Token Tool's per-token editor, opened straight on this character —
     // its "Save to page" writes the finished token back onto this page.
     $('tokenEdit').addEventListener('click', function(){
@@ -1100,6 +1135,7 @@
       d = Object.assign({}, originalEntry || {}, d);
       // The gallery tick is a checkbox gather() does not carry.
       if ($('tokenArt').checked) d.tokenArt = true; else delete d.tokenArt;
+      if (!d.artScale) delete d.artScale;
       delete d.publicEdit;
       delete d.editors;
       fetch('/api/suggest', {
@@ -1559,6 +1595,10 @@
       $('respelling').value      = entry.respelling || '';
       $('translatedBy').value    = entry.translatedBy || '';
       $('iconBy').value          = entry.iconBy || '';
+      var sc = window.artScaleValue ? window.artScaleValue(entry.artScale) : 0;
+      $('artScaleOn').checked    = !!sc;
+      $('artScale').value        = sc || 100;
+      syncArtScale();
       $('edition').value         = entry.edition || '';
       $('firstNight').value      = entry.firstNight || 0;
       $('otherNight').value      = entry.otherNight || 0;
@@ -1778,6 +1818,7 @@
           tips: d.tips, bluffing: d.bluffing, fighting: d.fighting, quote: d.quote, appearsIn: d.appearsIn, tags: d.tags,
           pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
           translatedBy: d.translatedBy, iconBy: d.iconBy,
+          artScale: d.artScale,
           edition: d.edition, firstNight: d.firstNight,
           firstNightReminder: d.firstNightReminder, otherNight: d.otherNight,
           otherNightReminder: d.otherNightReminder, reminders: d.reminders,
@@ -1827,6 +1868,8 @@
         // box has to reach the save, and Object.assign would keep the loaded
         // value forever.
         if($('tokenArt').checked) entry.tokenArt = true; else delete entry.tokenArt;
+        // Same again for the display size: unticking it has to reach the save.
+        if(!entry.artScale) delete entry.artScale;
         if(tokenDataURL){
           entry.token      = 'art/'+slug+'-token.png';
           entry.tokenImage = ART_BASE+slug+'-token.png';

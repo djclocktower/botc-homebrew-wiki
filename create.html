@@ -306,6 +306,22 @@
           <a class="gf-check-link" href="iconforge" target="_blank" rel="noopener">No icon yet? Forge one from your own drawing &#8599;</a>
         </div>
         <div id="arturl" class="sub" style="margin-top:6px"></div>
+        <!-- Display size: how big the icon is DRAWN on the character page, and
+             nowhere else. The file in the art slot and the JSON export are
+             the "true size" (the standard 591 frame, so the script tool prints
+             it beside official icons); this only scales the emblem on /c/.
+             Off by default, and off means the page follows the stylesheet. -->
+        <div id="artScaleWrap" style="margin-top:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="artScaleOn" style="width:17px;height:17px;margin:0">
+            <label for="artScaleOn" style="margin:0">Change how big the icon is displayed on this page</label>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+            <input type="range" id="artScale" min="50" max="200" step="5" value="100" disabled style="flex:1;min-width:0">
+            <output id="artScaleOut" for="artScale" style="min-width:3.6em;text-align:right;font-variant-numeric:tabular-nums">100%</output>
+          </div>
+          <div class="sub" style="margin-top:4px">Only the picture on the character page. The icon file, the JSON export, the cards and the search results keep the true size.</div>
+        </div>
       </div>
       <div class="fld" data-art-slot="alt">
         <label for="artAlt">Alternate art <span class="hint">(optional &mdash; the flipped-alignment icon; the second entry in the JSON)</span></label>
@@ -756,6 +772,7 @@
         respelling: $('respelling').value.trim(),
         translatedBy: $('translatedBy').value.trim(),
         iconBy: $('iconBy').value.trim(),
+        artScale: artScaleSetting(),
         edition: $('edition').value.trim(),
         firstNight: Number($('firstNight').value) || 0,
         firstNightReminder: $('fnReminder').value.trim(),
@@ -990,6 +1007,24 @@
       $('tokenClear').style.display = 'none'; update();
     });
     $('tokenArt').addEventListener('change', update);
+    /* Display size: the slider is greyed out until the box is ticked, and an
+       unticked box posts nothing — so the page follows the stylesheet and
+       the row grows no key. The value is a whole percentage inside Render's
+       range; the Worker clamps it again on save. */
+    function artScaleSetting() {
+      if (!$('artScaleOn').checked) return 0;
+      var n = Math.round(Number($('artScale').value));
+      return (isFinite(n) && n !== 100) ? n : 0;
+    }
+    function syncArtScale() {
+      var on = $('artScaleOn').checked;
+      $('artScale').disabled = !on;
+      $('artScaleOut').textContent = $('artScale').value + '%';
+      $('artScaleOut').style.opacity = on ? '' : '.5';
+    }
+    $('artScaleOn').addEventListener('change', function () { syncArtScale(); update(); });
+    $('artScale').addEventListener('input', function () { syncArtScale(); update(); });
+    syncArtScale();
     // Ticking the box draws a token with the complete default settings by
     // itself — nobody should have to visit the Token Tool just to have one.
     // The rendered image lands in tokenDataURL exactly as an upload would,
@@ -1247,6 +1282,7 @@
             appearsIn: d.appearsIn, tags: d.tags,
             pronunciation: d.pronunciation, ipa: d.ipa, respelling: d.respelling,
             translatedBy: d.translatedBy, iconBy: d.iconBy, edition: d.edition,
+            artScale: d.artScale,
             firstNight: d.firstNight, firstNightReminder: d.firstNightReminder,
             otherNight: d.otherNight, otherNightReminder: d.otherNightReminder,
             reminders: d.reminders, remindersGlobal: d.remindersGlobal,
@@ -1269,6 +1305,7 @@
             entry.imageAlt2 = ART_BASE + slug + '-alt2.png';
           }
           if ($('tokenArt').checked) entry.tokenArt = true;
+          if (!entry.artScale) delete entry.artScale;   // off, or 100: the default, stored as nothing
           if (tokenDataURL) {
             entry.token      = 'art/' + slug + '-token.png';
             entry.tokenImage = ART_BASE + slug + '-token.png';

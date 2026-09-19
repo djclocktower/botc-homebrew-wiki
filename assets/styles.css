@@ -471,7 +471,11 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    of the column after scaling), so nothing is cut off and nothing scrolls.
    Keep .emblem-stack below in step; its child images take their transform
    inline from reader.js (emPaint) and must not inherit this one. */
-.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(1.1429); }
+/* --art-scale is the owner's wiki-only display size (render.js writes it
+   inline as a fraction, 0.5..2, only when one was chosen). It multiplies
+   the 8/7 above rather than replacing it, so "100%" on the slider is
+   exactly the page as drawn with the box switched off. */
+.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
@@ -2238,7 +2242,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .emblem-stack {
   position: relative;
   width: min(100%, 334px);   /* 7/6 of the old box, then 8/7 again: see .emblem above */
-  transform: scale(1.1429);
+  transform: scale(calc(1.1429 * var(--art-scale, 1)));
   aspect-ratio: 1;
   margin: 4px auto 6px;
   cursor: pointer;

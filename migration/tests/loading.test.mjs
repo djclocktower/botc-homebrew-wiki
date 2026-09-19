@@ -399,3 +399,26 @@ test('assigning a collection claims every character page, within D1 bound-parame
     .filter(call => (call.sql.match(/\?/g) || []).length > 100);
   assert.deepEqual(over.map(call => call.sql.replace(/\s+/g, ' ').slice(0, 60)), []);
 });
+
+test('the wiki-only display size scales the /c/ emblem and reaches neither the export nor the cards', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.env.ART.put = async () => ({ etag: 'e' }); f.env.ART.delete = async () => {};
+  const save = body => f.request('/api/character', { method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const base = { slug: 'scaled', name: 'Scaled', team: 'townsfolk', ability: 'Each night, grow.', creator: 'user-1',
+    art: 'art/scaled.png', image: 'https://botchomebrew.wiki/assets/art/scaled.png', tags: 'Information', status: 'published' };
+  const stored = () => JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='scaled'").get().data);
+  // A whole percentage inside the range is kept; 100 and anything outside it are the default and store nothing.
+  assert.equal((await save({ ...base, artScale: 130 })).status, 200);
+  assert.equal(stored().artScale, 130);
+  const page = await (await f.request('/c/user-1/scaled')).text();
+  assert.match(page, /class="emblem" style="--art-scale:1\.3"/);
+  assert.ok(!page.includes('artScale'), 'the JSON box never carries the display size');
+  const card = await (await f.request('/characters.json?fields=card')).json();
+  assert.equal(card.find(c => c.slug === 'scaled').artScale, undefined);
+  for (const bad of [100, 49, 201, 'big']) {
+    assert.equal((await save({ ...base, artScale: bad })).status, 200);
+    assert.equal(stored().artScale, undefined, 'artScale ' + bad + ' is the default');
+  }
+  assert.ok(!(await (await f.request('/c/user-1/scaled')).text()).includes('--art-scale'));
+});

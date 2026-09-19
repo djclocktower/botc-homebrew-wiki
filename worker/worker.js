@@ -3965,7 +3965,7 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale'
 ]);
 
 // ---- the GRID feed: only what a card needs ----
@@ -9744,6 +9744,12 @@ export default {
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
         if (!c.related.length) delete c.related;
+        /* The wiki-only display size of the /c/ emblem (render.js draws it,
+           buildSchema never exports it). A whole percentage inside
+           Render's range, or nothing: 100 is the default and is not stored,
+           so an untouched page grows no key. */
+        c.artScale = Render.artScaleValue(c.artScale);
+        if (!c.artScale) delete c.artScale;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.

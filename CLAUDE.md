@@ -1635,6 +1635,22 @@ trims alpha itself. The bulk tool also resets a
 hand-adjusted icon (an owner who chose 80% in Adjust by hand) back to the
 standard — it always did; nothing marks a deliberate crop.
 
+**A creator can still make their icon draw bigger (or smaller) on its own
+page: `artScale`**, the "Change how big the icon is displayed on this page"
+box in both character editors. It is a **display setting and nothing else**:
+a whole percentage (`Render.ART_SCALE_MIN`..`ART_SCALE_MAX`, 50–200) that
+`renderCharacter()` writes onto the `/c/` emblem as an inline `--art-scale`
+variable, which styles.css multiplies into the 8/7 transform the emblem
+already has. The file in the art slot, the JSON box (`buildSchema()` never
+reads it), the cards, the search rows, the jinx boxes and the Token Tool all
+keep the true size, and `artScale` is in `CARD_DROP_FIELDS` so it never
+reaches a card feed. The slider is greyed out until the box is ticked, and an
+unticked box posts nothing; 100 is never stored either (`Render.artScaleValue()`
+answers 0 for it and for anything outside the range, and `/api/character` runs
+it on save), so an untouched page grows no key and keeps following the
+stylesheet. The editors' live preview follows it, since the frame carries the
+same stylesheet.
+
 Existing art is fixed by running the admin page **`/normalize-icons`**
 ("Standardize Icons") once after deploy: it now skips anything already on
 the standard (`{ifNeeded: true}`), so a re-run costs only the icons that
