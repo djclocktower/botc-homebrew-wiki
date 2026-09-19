@@ -1618,8 +1618,14 @@ came out, and all three were pushing the same way:
 cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
 all contain-fit the same PNG, and a re-standardized icon's figure is
 one-seventh smaller than at the old 0.70 (and much smaller than a
-never-standardized one). The Token Tool is the one consumer that is not
-affected, because it trims alpha itself. The bulk tool also resets a
+never-standardized one). **The `/c/` emblem is compensated**: `.emblem` and
+`.emblem-stack` in styles.css grew by exactly 0.70/0.60 (86% → 100%,
+286px → 334px), so the figure on a character page is the size it always
+was; only transparent margin reaches the extra width. Cards, search rows
+and the jinx boxes are not, deliberately — there a homebrew icon sits
+beside official ones drawn from `assets/icons/`, and matching them is the
+point. The Token Tool is the one consumer that is not affected, because it
+trims alpha itself. The bulk tool also resets a
 hand-adjusted icon (an owner who chose 80% in Adjust by hand) back to the
 standard — it always did; nothing marks a deliberate crop.
 
