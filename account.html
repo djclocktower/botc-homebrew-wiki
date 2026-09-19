@@ -594,7 +594,7 @@
       }
       $('p-email-line').innerHTML = '✉ ' + emailLine;
       $('p-discord-line').innerHTML = p.discordLinked
-        ? '🎮 Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
+        ? (window.UIIcons ? UIIcons.svg('chat') : '') + ' Discord: ' + esc(p.discordUsername || 'linked') + ' <span class="badge ok">linked</span>'
         : '';
       $('p-created').textContent = 'Member since ' + fmtDate(p.createdAt);
 
@@ -1267,6 +1267,7 @@
     }
     load();
   </script>
+  <script src="assets/ui-icons.js"></script>
   <script src="assets/site.js"></script>
 </body>
 </html>

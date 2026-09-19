@@ -466,8 +466,8 @@ test('comments wait for proximity or intent; comment anchors and failed-load ret
     return { loaded, handlers, button, approach: () => intersect([{ isIntersecting: true }]), setFail(value) { fail = value; } };
   }
   const f = await setup('', true); assert.deepEqual(f.loaded, []);
-  f.approach(); await flush(); assert.deepEqual(f.loaded, ['comments.css', 'attachment-view.js', 'comments.js']);
-  f.handlers.click(); await flush(); assert.equal(f.loaded.length, 3);
+  f.approach(); await flush(); assert.deepEqual(f.loaded, ['comments.css', 'ui-icons.js', 'attachment-view.js', 'comments.js']);
+  f.handlers.click(); await flush(); assert.equal(f.loaded.length, 4);
   const anchor = await setup('#comment-42', true); assert.ok(anchor.loaded.includes('comments.js'));
   const fallback = await setup('', false); assert.deepEqual(fallback.loaded, []);
   fallback.setFail(true); fallback.handlers.click(); await flush(); assert.match(fallback.button.textContent, /retry/);

@@ -9,13 +9,19 @@
  *
  * Two ways to move a character, on purpose:
  *   - drag a row (pointer events: mouse, pen and touch on one path)
- *   - the ▲▼ buttons, which work with a keyboard, with a screen reader, and
+ *   - the two arrow buttons, which work with a keyboard, with a screen
+ *     reader, and
  *     for anyone who finds dragging on a phone fiddly.
  *
  * Who ACTS is never editable here. A character is on a list because its own
  * firstNight / otherNight says so; this only changes the order.
  *
- *   NightOrderEditor.mount(container, {getEntries, getOrder, setOrder})
+ *   NightOrderEditor.mount(container, {getEntries, getOrder, setOrder,
+ *                                      getView, artOf})
+ *
+ * getView() may answer {reminders, icons}: whether each row prints its
+ * reminder text (default yes) and its icon (default no; artOf(c) gives the
+ * src). The publish page passes neither and gets the plain list.
  *
  * Returns {render}. The host calls render() whenever the roster changes.
  * Browser only (DOM + pointer events). Styles are .no-* in styles.css.
@@ -65,6 +71,9 @@
 
     function render() {
       var L = lists();
+      var v = (opts.getView && opts.getView()) || {};
+      var showRem = v.reminders !== false;
+      var icons = !!v.icons && typeof opts.artOf === 'function';
       if (!L.first.length && !L.other.length) {
         container.innerHTML = '<p class="no-empty">No character on this script wakes at night, so there is no night order to arrange.</p>';
         if (opts.onEmpty) opts.onEmpty(true);
@@ -76,18 +85,20 @@
         var rows = items.length
           ? items.map(function (it, i) {
             return '<div class="no-row" data-slug="' + esc(it.c.slug) + '" data-i="' + i + '">' +
-              '<span class="no-grip" aria-hidden="true" title="Drag to move">&#10247;</span>' +
+              '<span class="no-grip" aria-hidden="true" title="Drag to move">' + (window.UIIcons ? UIIcons.svg('grip') : '&#10247;') + '</span>' +
               '<span class="no-pos">' + (i + 1) + '</span>' +
+              (icons ? '<img class="no-ico" loading="lazy" decoding="async" src="' + esc(opts.artOf(it.c)) +
+                '" alt="" onerror="this.style.visibility=\'hidden\'">' : '') +
               '<span class="no-text">' +
                 '<span class="no-name">' + esc(it.c.name) +
                   (it.c.official ? ' <span class="no-official">(official)</span>' : '') + '</span>' +
-                (it.r ? '<span class="no-reminder">' + esc(it.r) + '</span>' : '') +
+                (showRem && it.r ? '<span class="no-reminder">' + esc(it.r) + '</span>' : '') +
               '</span>' +
               '<span class="no-moves">' +
                 '<button type="button" class="no-move" data-move="up"' + (i === 0 ? ' disabled' : '') +
-                  ' aria-label="Move ' + esc(it.c.name) + ' earlier">&#9650;</button>' +
+                  ' aria-label="Move ' + esc(it.c.name) + ' earlier">' + (window.UIIcons ? UIIcons.svg('up') : '&#9650;') + '</button>' +
                 '<button type="button" class="no-move" data-move="down"' + (i === items.length - 1 ? ' disabled' : '') +
-                  ' aria-label="Move ' + esc(it.c.name) + ' later">&#9660;</button>' +
+                  ' aria-label="Move ' + esc(it.c.name) + ' later">' + (window.UIIcons ? UIIcons.svg('down') : '&#9660;') + '</button>' +
               '</span></div>';
           }).join('')
           : '<p class="no-empty">Nobody acts.</p>';
@@ -97,7 +108,7 @@
       }).join('');
     }
 
-    /* ── ▲▼ ── */
+    /* ── the arrows ── */
     container.addEventListener('click', function (e) {
       var btn = e.target.closest && e.target.closest('.no-move');
       if (!btn) return;

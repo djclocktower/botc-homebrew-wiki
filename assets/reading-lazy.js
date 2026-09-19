@@ -12,7 +12,10 @@
     if (pending) return pending;
     if (observer) observer.disconnect();
     window.BotcData.style('comments.css');
-    pending = window.BotcData.script('attachment-view.js').then(function () { return window.BotcData.script('comments.js'); }).catch(function () {
+    // ui-icons.js first: the pinned badge in comments.js draws its mark
+    // through window.UIIcons, and shows none without it.
+    pending = window.BotcData.script('ui-icons.js').then(function () { return window.BotcData.script('attachment-view.js'); })
+      .then(function () { return window.BotcData.script('comments.js'); }).catch(function () {
       pending = null;
       var button = root.querySelector('button');
       if (button) button.textContent = 'Could not load comments. Tap to retry.';
