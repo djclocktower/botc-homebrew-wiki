@@ -1636,8 +1636,9 @@ moved. It writes through `/api/upload`, so the wiki must be unlocked, the
 thumbnails follow by themselves, and — because that route now touches the
 row (see "Caching", Images) — the new picture reaches cards and emblems at
 once instead of hiding behind the year-long versioned cache. About 2,100
-icons, one at a time from the admin's browser: expect the run to take the
-best part of an hour, and leave the tab open. The credits Fabled the Script Builder
+icons from the admin's browser, `PARALLEL` (6) in flight at once: expect
+ten to fifteen minutes, and leave the tab open. It cannot run anywhere
+else — the Worker has no image encoder, so the resize is a canvas job. The credits Fabled the Script Builder
 appends had the same problem for the same reason — `logo_skull.png` is
 cropped to the ink — so `buildCreditsFabled()` points at
 `logo_skull_icon.png`, the same pixels on a padded 320px square.

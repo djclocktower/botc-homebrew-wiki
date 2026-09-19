@@ -133,7 +133,13 @@
       return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
     }); }
 
-    var THROTTLE_MS = 150;   // brief pause between images to be gentle on storage
+    // Several icons in flight at once. One at a time with a pause between
+    // each put a full run of ~2,100 icons at the best part of an hour; the
+    // slow part is the round trip (fetch, upload, thumbnail), not the CPU,
+    // so a handful in parallel finishes in a fraction of that. Admins are
+    // exempt from the upload limiter. Kept modest so the tab stays
+    // responsive and storage is not hammered.
+    var PARALLEL = 6;
     var cancelled = false;
     var running = false;
 
@@ -155,8 +161,6 @@
         return { status: r.status, body: j };
       }); });
     }
-
-    function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
     // Build the flat work list: one job per art / artAlt image under art/.
     function buildJobs(chars){
@@ -215,18 +219,25 @@
           $('c-total').textContent = jobs.length;
           if (!jobs.length) { logRow('skip', 'Nothing to do', 'no character art found'); return null; }
 
-          return jobs.reduce(function(chain, job){
-            return chain.then(function(){
-              if (cancelled) return;
-              return processOne(job).then(function(result){
-                done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
-                $('c-done').textContent = done; $('c-ok').textContent = ok;
-                $('c-skip').textContent = skip; $('c-err').textContent = err;
-                $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
-                return sleep(THROTTLE_MS);
-              });
-            });
-          }, Promise.resolve()).then(function(){ return jobs.length; });
+          // A small pool: each lane takes the next job when it finishes one,
+          // so PARALLEL icons are in flight until the list runs dry or the run
+          // is cancelled (a lane then stops picking up work; what is already
+          // in flight completes, which is why the log may add a few lines
+          // after Cancel).
+          var next = 0;
+          function lane() {
+            if (cancelled || next >= jobs.length) return Promise.resolve();
+            var job = jobs[next++];
+            return processOne(job).then(function(result){
+              done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
+              $('c-done').textContent = done; $('c-ok').textContent = ok;
+              $('c-skip').textContent = skip; $('c-err').textContent = err;
+              $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
+            }).then(lane);
+          }
+          var lanes = [];
+          for (var i = 0; i < Math.min(PARALLEL, jobs.length); i++) lanes.push(lane());
+          return Promise.all(lanes).then(function(){ return jobs.length; });
         })
         .then(function(){
           running = false;
