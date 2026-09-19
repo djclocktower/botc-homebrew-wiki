@@ -1632,8 +1632,12 @@ standard — it always did; nothing marks a deliberate crop.
 Existing art is fixed by running the admin page **`/normalize-icons`**
 ("Standardize Icons") once after deploy: it now skips anything already on
 the standard (`{ifNeeded: true}`), so a re-run costs only the icons that
-moved. It writes through `/api/upload`, so the wiki must be unlocked and the
-thumbnails follow by themselves. The credits Fabled the Script Builder
+moved. It writes through `/api/upload`, so the wiki must be unlocked, the
+thumbnails follow by themselves, and — because that route now touches the
+row (see "Caching", Images) — the new picture reaches cards and emblems at
+once instead of hiding behind the year-long versioned cache. About 2,100
+icons, one at a time from the admin's browser: expect the run to take the
+best part of an hour, and leave the tab open. The credits Fabled the Script Builder
 appends had the same problem for the same reason — `logo_skull.png` is
 cropped to the ink — so `buildCreditsFabled()` points at
 `logo_skull_icon.png`, the same pixels on a padded 320px square.
@@ -3022,7 +3026,16 @@ fields; authenticated `/api/user` responses remain private and uncached.
 
 **3. Images.** Character icons, roster thumbnails, script/collection banners
 and logos carry their row's `v` stamp. Versioned image URLs use immutable
-browser/edge caching; bare URLs revalidate with ETags. Canonical row addresses
+browser/edge caching; bare URLs revalidate with ETags. **An art upload
+touches its row** (`touchArtRow()` in worker.js, called by `/api/upload` and
+`/api/bloodstar-art`): the bulk standardizer, the thumbnail backfill and a
+Bloodstar re-import all replace the picture without saving the page, and
+until this the wiki kept serving the OLD icon and thumbnail at the old `v`
+for up to a year while only the export's bare URL saw the new file. The
+slot names the identity (`-alt`/`-alt2`/`-token` stripped), so it is one
+primary-key write; a legacy path that is not a slug is found by a JSON
+scan, only on a miss. It moves `updated_at`, so a bulk run reorders the
+account page's and dashboard's "recent edits" lists once. Canonical row addresses
 and versions override old roster JSON. Remote image URLs and exported script
 JSON retain their original URLs.
 

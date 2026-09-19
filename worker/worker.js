@@ -5412,6 +5412,36 @@ function dropThumbFor(env, ctx, key) {
   } catch { /* nothing to do */ }
 }
 
+/* An icon written straight into its R2 slot — the bulk standardizer
+   (/normalize-icons), the thumbnail backfill, a Bloodstar copy over an
+   existing page — replaced the picture without touching the ROW, and every
+   card and emblem loads the picture at `?v={rowVersion}` (see rowVersion()),
+   which is cached immutable for a year at the edge and in every browser. So
+   the wiki went on showing the old icon, and its old thumbnail, until the
+   page happened to be saved; only the bare URL the JSON export carries saw
+   the new file. Touching the row rolls `v` and the feeds re-serve.
+
+   The slot names the identity (art/{identity}[-alt|-alt2|-token].ext), so
+   the row is one primary-key write. A legacy row whose art field names a
+   path that is not its slug (art/vampire-good.png) is found by that path in
+   its JSON — a scan, so only when the key matched no slug, which is also
+   the case for a NEW character whose art is uploaded before its row exists.
+   Fails soft: a miss here costs a stale picture, never the upload. */
+async function touchArtRow(env, key) {
+  if (!key.startsWith('art/')) return false;
+  const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+  try {
+    let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug=? AND status IS NOT 'deleted'`).bind(slug).run();
+    let n = (r && r.meta && r.meta.changes) || 0;
+    if (!n) {
+      r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE status IS NOT 'deleted' AND data LIKE ?`).bind('%"' + key + '"%').run();
+      n = (r && r.meta && r.meta.changes) || 0;
+    }
+    if (n) await bumpContentVersion(env, 'character');
+    return n > 0;
+  } catch { return false; }
+}
+
 /* Public reading HTML is shared by every viewer. Only cookie-free GET
    builds marked X-Botc-View can enter the edge cache. Owners and approved
    editors fetch private controls separately; drafts and private-parent
@@ -9066,8 +9096,11 @@ export default {
         }
         // Uploads were never recorded anywhere, so there was no way to answer
         // "who put this image here" or to see a flood while it was happening.
-        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
+        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache —
+        // except for character art, where touchArtRow() rolls the row's
+        // version so the year-long image cache lets the new picture through.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
+        await touchArtRow(env, key);
         return jsonResponse({ ok: true, path: '/assets/' + key, etag: stored && stored.etag });
       }
 
@@ -9195,6 +9228,7 @@ export default {
         });
         dropThumbFor(env, ctx, key);
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB (Bloodstar)');
+        await touchArtRow(env, key);   // a re-import over an existing page: see touchArtRow
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
