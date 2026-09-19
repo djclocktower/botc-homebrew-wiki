@@ -1618,10 +1618,16 @@ came out, and all three were pushing the same way:
 cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
 all contain-fit the same PNG, and a re-standardized icon's figure is
 one-seventh smaller than at the old 0.70 (and much smaller than a
-never-standardized one). **The `/c/` emblem is compensated**: `.emblem` and
-`.emblem-stack` in styles.css grew by exactly 0.70/0.60 (86% → 100%,
-286px → 334px), so the figure on a character page is the size it always
-was; only transparent margin reaches the extra width. Cards, search rows
+never-standardized one). **The `/c/` emblem is more than compensated**:
+`.emblem` and `.emblem-stack` in styles.css grew by 0.70/0.60 (86% → 100%,
+286px → 334px), which alone would keep the figure on a character page the
+size it always was, and are then **scaled by a further 8/7** (the owner
+wanted the icon a touch larger than before: 8/6 of the original in all).
+The second step is a `transform`, not a wider box, because on a phone the
+box is already the full card width and a wider one would push the page
+sideways; only transparent margin reaches past the column. The stack's
+child images get `transform: none` so they do not double up before
+`emPaint` writes their inline transform. Cards, search rows
 and the jinx boxes are not, deliberately — there a homebrew icon sits
 beside official ones drawn from `assets/icons/`, and matching them is the
 point. The Token Tool is the one consumer that is not affected, because it
