@@ -1774,8 +1774,20 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 }
 .featured-art {
   width: 100%; max-width: 220px; aspect-ratio: 1;
+  /* The markup carries width/height="260" so the space is reserved before
+     the picture arrives; without this the height attribute wins over the
+     aspect ratio and the box is 180x260 on a phone, with the icon floating
+     in the empty top and bottom of it. */
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(91,31,33,.25));
+  /* Scaled 8/6 for the same reason the /c/ emblem is (see .emblem): the
+     icon standard shrank from 70% to 60% fill so exports print at the
+     official size, and this card shows one icon on its own with nothing
+     official beside it to match. A transform rather than a wider box so
+     the grid column and the phone layout stay as they are; only
+     transparent margin reaches past the box. */
+  transform: scale(1.3333);
 }
 .featured-body { min-width: 0; }
 .featured-type {

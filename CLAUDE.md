@@ -1731,7 +1731,9 @@ The second step is a `transform`, not a wider box, because on a phone the
 box is already the full card width and a wider one would push the page
 sideways; only transparent margin reaches past the column. The stack's
 child images get `transform: none` so they do not double up before
-`emPaint` writes their inline transform. Cards, search rows
+`emPaint` writes their inline transform. The homepage's **Featured
+Character card** (`.featured-art`) takes the same 8/6 transform: it is the
+other surface that shows one icon on its own. Cards, search rows
 and the jinx boxes are not, deliberately — there a homebrew icon sits
 beside official ones drawn from `assets/icons/`, and matching them is the
 point. The Token Tool is the one consumer that is not affected, because it
