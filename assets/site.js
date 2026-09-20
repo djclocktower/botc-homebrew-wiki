@@ -579,238 +579,95 @@
   /* ── Search ── */
   (function () {
     var input = document.getElementById('search-input');
-    var drop  = document.getElementById('search-drop');
+    var drop = document.getElementById('search-drop');
+    var mobile = document.getElementById('nav-search-input');
+    var wrap = document.getElementById('search-wrap');
     if (!input || !drop) return;
-    var allChars = null, allScripts = [], allCollections = [], fetchPromise = null;
-
-    function fetchList(path) {
-      return window.BotcData.json(ROOT + path).then(function (rows) {
-        if (!Array.isArray(rows)) throw new Error('Invalid search data');
-        return rows;
-      });
+    var token = 0, navResults, active = input;
+    function client() {
+      return window.BotcSearch ? Promise.resolve(window.BotcSearch)
+        : window.BotcData.script('search-client.js').then(function () { return window.BotcSearch; });
     }
-
-    function ensureData() {
-      if (allChars) return Promise.resolve(allChars);
-      if (fetchPromise) return fetchPromise;
-      fetchPromise = Promise.all([
-        // `grid` is the smallest feed tier — what a card or a search result
-        // needs and nothing else (a third of `card`; see GRID_FIELDS in
-        // worker.js). The browse pages fetch the same URL, so on most visits
-        // this is already in the browser's cache.
-        fetchList('characters.json?fields=grid'),
-        fetchList('scripts.json?fields=browse').catch(function () { return []; }),
-        fetchList('collections.json?fields=browse').catch(function () { return []; })
-      ]).then(function (res) {
-        allChars = res[0] || [];
-        allScripts = res[1] || [];
-        allCollections = res[2] || [];
-        return allChars;
-      }).catch(function (err) {
-        // A failed promise must not poison every subsequent search this visit.
-        fetchPromise = null;
-        throw err;
-      });
-      return fetchPromise;
-    }
-
-    // Returns {type, item, field} entries — characters first, then scripts,
-    // then collections. Caps at 8 results total, but scripts and collections
-    // keep up to PAGE_SLOTS of them: every character on "Fall of Rome" matches
-    // the words "fall of rome" through its Appears-in field, and filling the
-    // list with characters first meant the script's own page — the thing being
-    // searched for — never appeared at all.
-    var MAX_RESULTS = 8, PAGE_SLOTS = 3;
-    function search(q) {
-      q = q.trim().toLowerCase();
-      if (!q || !allChars) return [];
-      var out = [];
-      for (var i = 0; i < allChars.length && out.length < MAX_RESULTS; i++) {
-        var c = allChars[i];
-        var field = null;
-        if ((c.name || '').toLowerCase().indexOf(q) !== -1) field = 'name';
-        else if ((c.ability || '').toLowerCase().indexOf(q) !== -1) field = 'ability';
-        else if ((c.tags || '').toLowerCase().indexOf(q) !== -1) field = 'tag';
-        else if ((c.appearsIn || '').toLowerCase().indexOf(q) !== -1) field = 'collection';
-        else if ((c.creator || '').toLowerCase().indexOf(q) !== -1) field = 'creator';
-        else if ((c.lede || '').toLowerCase().indexOf(q) !== -1) field = 'flavor';
-        if (field) out.push({ type: 'character', c: c, field: field });
-      }
-      function matchPage(p) {
-        return (p.name || p.displayName || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.tagline || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.description || '').toLowerCase().indexOf(q) !== -1 ||
-               (p.author || '').toLowerCase().indexOf(q) !== -1;
-      }
-      var pages = [];
-      for (var s = 0; s < allScripts.length && pages.length < PAGE_SLOTS; s++) {
-        if (matchPage(allScripts[s])) pages.push({ type: 'script', c: allScripts[s] });
-      }
-      for (var k = 0; k < allCollections.length && pages.length < PAGE_SLOTS; k++) {
-        if (matchPage(allCollections[k])) pages.push({ type: 'collection', c: allCollections[k] });
-      }
-      // Give the pages their slots back by trimming characters, never the
-      // other way round.
-      if (pages.length) out = out.slice(0, Math.max(0, MAX_RESULTS - pages.length));
-      return out.concat(pages);
-    }
-
-    // On mobile the topbar dropdown (.search-wrap) is display:none, so the
-    // nav search would render results invisibly. Mirror them into an in-flow
-    // box inside the mobile nav instead.
-    var navResults = null;
-    function navResultsBox() {
-      if (navResults) return navResults;
-      var nav = document.getElementById('nav-dropdown');
-      if (!nav) return null;
-      navResults = document.createElement('div');
-      navResults.className = 'nav-search-results';
-      var ns = nav.querySelector('.nav-dropdown-search');
-      if (ns && ns.nextSibling) nav.insertBefore(navResults, ns.nextSibling);
-      else nav.appendChild(navResults);
-      return navResults;
-    }
-
-    function render(results, q) {
-      var html;
-      if (!results.length) {
-        html = '<div class="search-empty">Nothing found for \u201c' + esc(q) + '\u201d</div>';
-      } else {
-        html = resultsHTML(results);
-      }
-      drop.innerHTML = html;
-      var nb = navResultsBox();
-      if (nb) nb.innerHTML = html;
-    }
-
-    // An image field is either a path inside assets/ or a whole URL somebody
-    // pasted — 45 published characters host their icon on another site and
-    // have no `art` at all. Prefixing 'assets/' onto one of those (or onto
-    // the `undefined` of a character with no `art`) is what put the site's
-    // own favicon in the search results where the character's icon belongs.
-    function assetSrc(v) {
-      return /^(?:https?:)?\/\//i.test(v) ? v : (ROOT + 'assets/' + v);
-    }
-    // The same order as thumbSrc() in render-page.js, which is what every
-    // card on the wiki draws through: the 192px thumbnail of `art`
-    // (thumb/{file}.webp, versioned by the row's `v` so it caches for a
-    // year), then `image` (a string or the first of a list), then the favicon.
-    function charThumb(c) {
-      var ver = c.v ? '?v=' + encodeURIComponent(String(c.v)) : '';
-      if (c.art && /^art\/[^/]+$/.test(c.art)) return ROOT + 'assets/thumb/' + c.art.slice(4) + '.webp' + ver;
-      if (c.art) return assetSrc(c.art) + ver;
-      if (typeof c.image === 'string' && c.image) return assetSrc(c.image);
-      if (Array.isArray(c.image) && c.image[0]) return assetSrc(c.image[0]);
-      return ROOT + 'assets/favicon.png';
-    }
-    function pageThumb(p) {
-      var img = p.logo || p.header;
-      var ver = img && p.v && !/^(?:https?:)?\/\//i.test(img)
-        ? (img.indexOf('?') === -1 ? '?' : '&') + 'v=' + encodeURIComponent(String(p.v)) : '';
-      return img ? assetSrc(img) + ver : (ROOT + 'assets/favicon.png');
-    }
-    function resultsHTML(results) {
-      return results.map(function (r) {
-        if (r.type === 'script' || r.type === 'collection') {
-          var p = r.c;
-          var pname = p.name || p.displayName || '';
-          var phref = r.type === 'script'
-            ? ROOT + 's/' + encodeURIComponent(p.slug)
-            : ROOT + 'collection/' + encodeURIComponent(p.id || p.slug);
-          var psub = p.tagline || p.description || '';
-          if (psub.length > 80) psub = psub.slice(0, 80) + '\u2026';
-          return '<a class="search-result" href="' + esc(phref) + '" role="option">' +
-            '<img class="search-result-thumb" src="' + esc(pageThumb(p)) + '" alt="" ' +
-            'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
-            '<div class="search-result-info">' +
-            '<span class="search-result-name">' + esc(pname) +
-            '<span class="search-match">' + (r.type === 'script' ? 'Script' : 'Collection') + '</span></span>' +
-            '<span class="search-result-ability">' + esc(psub) + '</span>' +
-            '</div></a>';
-        }
-        var c = r.c;
-        var typeClass = GOOD[c.team] ? ' good' : '';
-        var ability = c.ability || '';
-        if (ability.length > 80) ability = ability.slice(0, 80) + '…';
-        var fieldTag = r.field !== 'name'
-          ? '<span class="search-match">matched ' + esc(r.field) + '</span>' : '';
-        return '<a class="search-result" href="' + esc(ROOT + c.page) + '" role="option">' +
-          '<img class="search-result-thumb" src="' + esc(charThumb(c)) + '" alt="" ' +
-          'onerror="this.src=\'' + ROOT + 'assets/favicon.png\'">' +
-          '<div class="search-result-info">' +
-          '<span class="search-result-name">' + esc(c.name) + fieldTag + '</span>' +
-          '<span class="search-result-type' + typeClass + '">' + esc(TEAM_LABEL[c.team] || c.team) + '</span>' +
-          '<span class="search-result-ability">' + esc(ability) + '</span>' +
-          '</div></a>';
-      }).join('');
-    }
-
-    function open() { drop.hidden = false; input.setAttribute('aria-expanded', 'true'); }
+    function resultsURL(q) { return '/search?q=' + encodeURIComponent(q.trim().slice(0, 200)); }
+    function warm() { client().then(function (s) { return s.warm(); }).catch(function () {}); }
     function close() {
-      searchToken++;
+      token++;
       drop.hidden = true;
       input.setAttribute('aria-expanded', 'false');
-      if (navResults) navResults.innerHTML = '';
+      if (mobile) mobile.setAttribute('aria-expanded', 'false');
+      if (navResults) navResults.hidden = true;
     }
-
-    var searchToken = 0;
-    function updateSearch() {
-      var q = input.value.trim();
-      if (!q) { close(); return; }
-      var token = ++searchToken;
-      function show() {
-        if (token !== searchToken || input.value.trim() !== q) return;
-        render(search(q), q);
-        open();
+    function mobileBox() {
+      if (!navResults) {
+        var nav = document.getElementById('nav-dropdown');
+        if (!nav) return null;
+        navResults = document.createElement('div');
+        navResults.className = 'nav-search-results';
+        navResults.id = 'nav-search-results';
+        navResults.setAttribute('aria-label', 'Search suggestions');
+        var search = nav.querySelector('.nav-dropdown-search');
+        if (search) search.after(navResults); else nav.appendChild(navResults);
       }
-      // A local scan of this bounded index needs no artificial typing delay.
-      // While loading, ensureData shares one request and only the latest
-      // query may paint; clearing, Escape and outside clicks cancel it too.
-      if (allChars) show();
-      else ensureData().then(show).catch(function () {
-        if (token === searchToken) close();
+      return navResults;
+    }
+    function paint(html) {
+      var box = active === mobile ? mobileBox() : drop;
+      if (!box) return;
+      box.innerHTML = html; box.hidden = false;
+      active.setAttribute('aria-expanded', 'true');
+    }
+    function update(field) {
+      active = field;
+      var q = field.value.trim(), current = ++token;
+      if (!q) { close(); return; }
+      var more = '<a class="search-result search-view-all" href="' + esc(resultsURL(q)) + '">View all results →</a>';
+      paint(more);
+      client().then(function (s) { return s.search({ q: q, limit: 8 }); }).then(function (result) {
+        if (current !== token || field.value.trim() !== q) return;
+        paint(result.results.map(function (doc) { return window.BotcSearch.resultHTML(doc, true); }).join('') + more);
+      }).catch(function () {
+        if (current === token) paint('<div class="search-empty">Could not load suggestions.</div>' + more);
       });
     }
-    function warmSearch() { ensureData().catch(function () {}); }
-    input.addEventListener('input', updateSearch);
-    input.addEventListener('focus', function () {
-      warmSearch();
-      if (input.value.trim()) updateSearch();
-    });
-    // The phone's field mirrors input into the hidden topbar field, but
-    // focus and Escape are separate events and need the same handling.
-    var mobileInput = document.getElementById('nav-search-input');
-    if (mobileInput) {
-      mobileInput.addEventListener('focus', function () {
-        input.value = mobileInput.value;
-        warmSearch();
-        if (input.value.trim()) updateSearch();
+    function wire(field) {
+      if (!field) return;
+      field.setAttribute('aria-controls', field === input ? 'search-drop' : 'nav-search-results');
+      field.setAttribute('aria-label', 'Search the wiki');
+      field.setAttribute('enterkeyhint', 'search');
+      field.addEventListener('focus', function () { active = field; warm(); if (field.value.trim()) update(field); });
+      field.addEventListener('input', function (e) { if (!e.isComposing) update(field); });
+      field.addEventListener('compositionend', function () { update(field); });
+      field.addEventListener('keydown', function (e) {
+        if (e.isComposing) return;
+        if (e.key === 'Enter') { e.preventDefault(); close(); location.href = resultsURL(field.value); }
+        else if (e.key === 'Escape') close();
+        else if (e.key === 'ArrowDown') {
+          var box = field === mobile ? navResults : drop;
+          var first = box && !box.hidden && box.querySelector('a');
+          if (first) { e.preventDefault(); first.focus(); }
+        }
       });
-      mobileInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
     }
-    var menuButton = document.getElementById('hamburger');
-    if (menuButton) menuButton.addEventListener('click', close);
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') { close(); input.blur(); return; }
-      if (e.key === 'ArrowDown') { var f = drop.querySelector('.search-result'); if (f) { e.preventDefault(); f.focus(); } }
-    });
-    drop.addEventListener('keydown', function (e) {
+    wire(input); wire(mobile);
+    function keys(e) {
+      if (!e.target.closest('.search-result')) return;
       var cur = document.activeElement;
-      if (e.key === 'ArrowDown') { e.preventDefault(); var n = cur.nextElementSibling; if (n) n.focus(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); var p = cur.previousElementSibling; if (p) p.focus(); else input.focus(); }
-      else if (e.key === 'Escape') { close(); input.focus(); }
-    });
-    document.addEventListener('click', function (e) {
-      var w = document.getElementById('search-wrap');
-      if (navResults && navResults.contains(e.target)) return; // tapping a mobile result
-      if (mobileInput && mobileInput.contains(e.target)) return;
-      if (w && !w.contains(e.target)) close();
-    });
-    var sw = document.getElementById('search-wrap');
-    if (sw) {
-      sw.addEventListener('mouseenter', warmSearch);
-      sw.addEventListener('pointerdown', warmSearch);
+      if (e.key === 'ArrowDown') { e.preventDefault(); var next = cur.nextElementSibling; if (next && next.tagName === 'A') next.focus(); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); var previous = cur.previousElementSibling; if (previous && previous.tagName === 'A') previous.focus(); else active.focus(); }
+      if (e.key === 'Escape') { active.focus(); close(); }
     }
+    drop.addEventListener('keydown', keys);
+    var nav = document.getElementById('nav-dropdown');
+    if (nav) nav.addEventListener('keydown', keys);
+    document.addEventListener('click', function (e) {
+      if (wrap && wrap.contains(e.target)) return;
+      if (mobile && mobile.contains(e.target)) return;
+      if (navResults && navResults.contains(e.target)) return;
+      close();
+    });
+    var menu = document.getElementById('hamburger');
+    if (menu) menu.addEventListener('click', close);
+    if (wrap) { wrap.addEventListener('mouseenter', warm); wrap.addEventListener('pointerdown', warm); }
   })();
 
   /* ── Mobile nav ── */
@@ -864,10 +721,6 @@
     var navSearch = document.getElementById('nav-search-input');
     var topSearch = document.getElementById('search-input');
     if (navSearch && topSearch) {
-      navSearch.addEventListener('input', function () {
-        topSearch.value = navSearch.value;
-        topSearch.dispatchEvent(new Event('input'));
-      });
       navSearch.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') { drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
       });

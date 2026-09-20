@@ -168,84 +168,86 @@ async function searchFixture(fetcher) {
     window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },
     document: { baseURI: 'https://botchomebrew.wiki/', getElementById: id => ({ 'search-input': input, 'search-drop': drop, 'search-wrap': wrap, 'nav-search-input': mobile, hamburger: menu })[id] || null,
       addEventListener(event, callback) { handlers.set('document:' + event, callback); } },
-    fetch: url => fetcher(new URL(url).pathname.slice(1) + new URL(url).search), ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
+    fetch: url => { const parsed = new URL(url, 'https://botchomebrew.wiki'); return fetcher(parsed.pathname.slice(1) + parsed.search); }, ROOT: '', GOOD: { townsfolk: true }, TEAM_LABEL: {},
     esc: s => String(s).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),
     setTimeout, clearTimeout
   });
   vm.runInContext(await read('assets/data.js'), context);
+  vm.runInContext(await read('assets/search-engine.js'), context);
+  context.window.BotcSearchEngine = context.BotcSearchEngine;
+  context.window.BotcData.script = () => Promise.resolve();
+  vm.runInContext(await read('assets/search-client.js'), context);
   vm.runInContext(source.slice(source.indexOf('  /* ── Search ── */'), source.indexOf('  /* ── Mobile nav ── */')), context);
-  return { input, drop, mobile, dispatch(id, event, data = {}) { handlers.get(id + ':' + event)?.(data); } };
+  return { input, drop, mobile, location: context.location, dispatch(id, event, data = {}) { handlers.get(id + ':' + event)?.(data); } };
 }
 const ok = rows => ({ ok: true, json: async () => rows });
 
-test('search warms on touch/keyboard focus and cached searches have no 150ms delay', async () => {
+const searchOK = names => ok({ schema: 1, documents: names.map(title => ({ title, type: 'character', url: '/c/set/' + title.toLowerCase() })) });
+
+test('search warms one index and searches without a typing delay or repeat fetch', async () => {
   let requests = 0;
-  const f = await searchFixture(async path => { requests++; return ok(path.startsWith('characters') ? [{ name: 'Sculptor', page: 'c/set/sculptor' }] : []); });
+  const f = await searchFixture(async () => { requests++; return searchOK(['Sculptor']); });
   f.dispatch('input', 'focus');
-  assert.equal(requests, 3);
   await flush();
-  f.input.value = 'Sculptor';
-  f.dispatch('input', 'input');
+  assert.equal(requests, 1);
+  f.input.value = 'Sculptor'; f.dispatch('input', 'input');
   assert.equal(f.drop.hidden, false);
+  assert.match(f.drop.innerHTML, /View all results/);
+  await flush();
   assert.match(f.drop.innerHTML, /Sculptor/);
-  assert.equal(requests, 3);
+  assert.equal(requests, 1);
 });
 
-test('search retries failed HTTP responses and ignores results after clearing or Escape', async () => {
-  let fail = true, characterRequests = 0;
+test('search retries failures and ignores results after clearing or Escape', async () => {
+  let fail = true, requests = 0;
   const gate = deferred();
-  const f = await searchFixture(async path => {
-    if (!path.startsWith('characters')) return ok([]);
-    characterRequests++;
-    if (fail) return { ok: false, json: async () => ({ error: 'temporary' }) };
-    await gate.promise;
-    return ok([{ name: 'Sculptor', page: 'c/set/sculptor' }]);
+  const f = await searchFixture(async () => {
+    requests++;
+    if (fail) return { ok: false };
+    await gate.promise; return searchOK(['Sculptor']);
   });
-  f.dispatch('input', 'focus');
-  await flush();
-  fail = false;
-  f.input.value = 'Sculptor';
-  f.dispatch('input', 'input');
-  f.input.value = '';
-  f.dispatch('input', 'input');
-  gate.resolve();
-  await flush();
-  assert.equal(characterRequests, 2);
-  assert.equal(f.drop.hidden, true);
-
+  f.dispatch('input', 'focus'); await flush(); fail = false;
+  f.input.value = 'Sculptor'; f.dispatch('input', 'input');
+  f.input.value = ''; f.dispatch('input', 'input');
+  gate.resolve(); await flush();
+  assert.equal(requests, 2); assert.equal(f.drop.hidden, true);
   const secondGate = deferred();
-  const next = await searchFixture(async path => { await secondGate.promise; return ok(path.startsWith('characters') ? [{ name: 'Sculptor' }] : []); });
-  next.input.value = 'Sculptor';
-  next.dispatch('input', 'input');
+  const next = await searchFixture(async () => { await secondGate.promise; return searchOK(['Sculptor']); });
+  next.input.value = 'Sculptor'; next.dispatch('input', 'input');
   next.dispatch('input', 'keydown', { key: 'Escape' });
-  secondGate.resolve();
-  await flush();
+  secondGate.resolve(); await flush();
   assert.equal(next.drop.hidden, true);
 });
 
 test('only the latest query paints after a shared request finishes', async () => {
-  const gate = deferred();
-  let requests = 0;
-  const f = await searchFixture(async path => { requests++; await gate.promise; return ok(path.startsWith('characters') ? [{ name: 'Sculptor' }, { name: 'Oracle' }] : []); });
+  const gate = deferred(); let requests = 0;
+  const f = await searchFixture(async () => { requests++; await gate.promise; return searchOK(['Sculptor', 'Oracle']); });
   f.input.value = 'Sculptor'; f.dispatch('input', 'input');
   f.input.value = 'Oracle'; f.dispatch('input', 'input');
   gate.resolve(); await flush();
-  assert.match(f.drop.innerHTML, /Oracle/);
-  assert.doesNotMatch(f.drop.innerHTML, /Sculptor/);
-  assert.equal(requests, 3);
+  assert.match(f.drop.innerHTML, /Oracle/); assert.doesNotMatch(f.drop.innerHTML, /Sculptor/);
+  assert.equal(requests, 1);
 });
 
-test('the actual mobile field warms data and closing the menu cancels pending results', async () => {
-  const gate = deferred();
-  let requests = 0;
-  const f = await searchFixture(async () => { requests++; await gate.promise; return ok([]); });
-  f.mobile.value = 'Oracle';
-  f.dispatch('mobile', 'focus');
-  assert.equal(requests, 3);
-  assert.equal(f.input.value, 'Oracle');
-  f.dispatch('menu', 'click');
-  gate.resolve(); await flush();
+test('mobile focus warms the index and closing the menu cancels pending results', async () => {
+  const gate = deferred(); let requests = 0;
+  const f = await searchFixture(async () => { requests++; await gate.promise; return searchOK([]); });
+  f.mobile.value = 'Oracle'; f.dispatch('mobile', 'focus'); await flush();
+  assert.equal(requests, 1);
+  f.dispatch('menu', 'click'); gate.resolve(); await flush();
   assert.equal(f.drop.hidden, true);
+});
+
+test('Enter always navigates to full results from either header field, even before loading', async () => {
+  const f = await searchFixture(async () => searchOK([]));
+  let prevented = 0;
+  f.input.value = 'Öracle & friends';
+  f.dispatch('input', 'keydown', { key: 'Enter', preventDefault() { prevented++; } });
+  assert.equal(f.location.href, '/search?q=%C3%96racle%20%26%20friends');
+  f.mobile.value = 'John';
+  f.dispatch('mobile', 'keydown', { key: 'Enter', preventDefault() { prevented++; } });
+  assert.equal(f.location.href, '/search?q=John');
+  assert.equal(prevented, 2);
 });
 
 test('resolved Appears in markup skips both browser feed requests', async () => {

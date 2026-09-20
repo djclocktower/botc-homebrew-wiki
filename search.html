@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search | BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex,follow">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<link rel="stylesheet" href="assets/search.css">
+<script src="assets/data.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" aria-label="Search the wiki" aria-expanded="false">
+      <div class="search-drop" id="search-drop" role="region" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+
+<main class="home-panel search-page">
+  <div class="home-hero"><h1>Search the Wiki</h1></div>
+  <form id="wiki-search-form" class="wiki-search-form" action="/search" method="get" role="search">
+    <label class="search-sr-only" for="wiki-query">Search the wiki</label>
+    <input id="wiki-query" name="q" type="search" maxlength="200" placeholder="Search the wiki…" autocomplete="off" enterkeyhint="search">
+    <button type="submit">Search</button>
+  </form>
+  <div id="search-types" class="search-types" role="group" aria-label="Result type">
+    <button type="button" class="filter-chip active" data-type="all" aria-pressed="true">Everything <span></span></button>
+    <button type="button" class="filter-chip" data-type="character" aria-pressed="false">All characters <span></span></button>
+    <button type="button" class="filter-chip" data-type="user" aria-pressed="false">Users <span></span></button>
+    <button type="button" class="filter-chip" data-type="script" aria-pressed="false">Scripts <span></span></button>
+    <button type="button" class="filter-chip" data-type="collection" aria-pressed="false">Collections <span></span></button>
+    <button type="button" class="filter-chip" data-type="creator" aria-pressed="false">Creators <span></span></button>
+    <button type="button" class="filter-chip" data-type="page" aria-pressed="false">Pages <span></span></button>
+    <button type="button" class="filter-chip" data-type="news" aria-pressed="false">News <span></span></button>
+    <button type="button" class="filter-chip" data-type="tag" aria-pressed="false">Tags <span></span></button>
+    <button type="button" class="filter-chip" data-type="tool" aria-pressed="false">Site &amp; tools <span></span></button>
+  </div>
+  <div class="search-layout">
+    <aside class="search-filters" aria-label="Search filters">
+      <div class="search-filter-heading"><h2>Filters</h2><button id="search-reset" type="button">Reset</button></div>
+      <label for="search-team">Character type</label>
+      <select id="search-team" class="filter-select">
+        <option value="">All characters</option><option value="townsfolk">Townsfolk</option>
+        <option value="outsider">Outsiders</option><option value="minion">Minions</option>
+        <option value="demon">Demons</option><option value="traveller">Travellers</option>
+        <option value="fabled">Fabled</option><option value="loric">Loric</option>
+      </select>
+      <label for="search-creator">Creator</label><input id="search-creator" class="filter-select" list="search-creators" placeholder="Any creator" autocomplete="off"><datalist id="search-creators"></datalist>
+      <label for="search-tag">Tag</label><input id="search-tag" class="filter-select" list="search-tags" placeholder="Any tag" autocomplete="off"><datalist id="search-tags"></datalist>
+      <label for="search-set">Appears in</label><input id="search-set" class="filter-select" list="search-sets" placeholder="Any script or collection" autocomplete="off"><datalist id="search-sets"></datalist>
+      <label for="search-status">Status</label>
+      <select id="search-status" class="filter-select"><option value="">Any status</option><option value="curata">Curata</option><option value="standard">Standard</option><option value="partial">Partial</option></select>
+      <a class="search-browse-link" href="/all-characters">Browse all characters →</a>
+    </aside>
+    <section class="search-content" aria-label="Search results">
+      <div class="search-results-bar">
+        <p id="search-status-text" role="status" aria-live="polite">Loading search…</p>
+        <label for="search-sort">Sort <select id="search-sort" class="filter-select"><option value="relevance">Best match</option><option value="name">Name A–Z</option></select></label>
+      </div>
+      <div id="search-results" aria-busy="true"></div>
+      <div id="search-error" class="search-page-empty" hidden><p>Could not load search.</p><button id="search-retry" type="button" class="filter-chip">Try again</button></div>
+      <nav id="search-pagination" class="search-pagination" aria-label="Results pages" hidden></nav>
+    </section>
+  </div>
+  <noscript><p class="search-page-empty">Enable JavaScript to search, or <a href="/all-characters">browse all characters</a>.</p></noscript>
+</main>
+<p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+<script src="assets/search-client.js"></script>
+<script src="assets/search-page.js"></script>
+<script src="assets/site.js"></script>
+</body>
+</html>

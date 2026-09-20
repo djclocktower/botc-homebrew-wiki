@@ -25,7 +25,7 @@ Key dynamic behavior:
 - `GET /characters.json`, `/collections.json`, `/scripts.json` are **built
   live from D1** (published rows only). Characters come in **three tiers**:
   `?fields=grid` (what a card needs and nothing else — the browse pages, the
-  top-bar search; homepage summaries now use `/api/home`), `?fields=card` (the
+  character grids; homepage summaries now use `/api/home`), `?fields=card` (the
   tools: Script Builder, editors, Token Tool, importers — everything
   `buildSchema()` needs to export a script) and the bare URL (the whole
   almanac, for `/api/seed` and a few admin tools). See "Caching" for which
@@ -60,10 +60,9 @@ Key dynamic behavior:
 - `GET /p/{slug}` is a **custom wiki page** — a text-first page (rules, lore,
   a glossary, a storyteller guide) belonging to exactly one script or
   collection. SSR from the `pages` table via `assets/render-wiki.js`, same
-  `pageShell()`. These are **deliberately unlisted**: `noindex`, no sitemap
-  entry, no search, no browse list, no homepage strip. The only two links in
-  are the "Pages" section on the parent script/collection page and the
-  author's `/author?a=` + `/u/{username}` pages. Only the parent page's owner
+  `pageShell()`. Published pages with a published parent are included in
+  site search. They retain `noindex` and stay out of the sitemap, browse lists
+  and homepage strips. They also appear on their parent and author pages. Only the parent page's owner
   (or an admin) — or an **approved editor of the parent** — can create one;
   the owner's page is owned by whoever wrote it, an editor's is filed under the
   parent's owner as a draft. Who may EDIT one is the parent's "Who can edit"
@@ -2362,12 +2361,11 @@ table holds them; `data` carries `{title, subtitle, blurb, author, body,
 header, images[], boxes[], infobox{}, theme{}, toc, comments}` — all optional
 except title and body, all capped and validated by `sanitizeWikiFields()`.
 
-- **Unlisted by design.** `/p/` sends `noindex`, is absent from
-  `sitemap.xml`, the JSON feeds, site search, `/random`, the homepage strips
-  and every browse page. Exactly two things link to one: the **Pages** section
-  on its parent script/collection page, and its author's `/author?a=` and
-  `/u/{username}` pages. If you add a new listing anywhere, do **not** add
-  wiki pages to it — being unlisted is the feature.
+- **Site-searchable when published.** `/api/search-index` includes published
+  wiki pages only when their parent script or collection is also published.
+  This is the owner-requested exception to the earlier unlisted policy. `/p/`
+  retains `noindex` and stays out of the sitemap, random route, homepage and
+  browse lists. Parent and creator pages still link to these pages.
 - **Who may write one:** the owner of the parent script/collection (or an
   admin), and the parent's approved editors. The owner's page belongs to the
   writer; an editor's is filed under the parent's owner as a draft, so it
@@ -3087,8 +3085,8 @@ requires the zone toggle; it is not enabled by this code change.
 
 **2. Public data.** `assets/data.js` shares one in-flight request and one
 parsed object per public feed URL in each document. Failed loads retry;
-private `?drafts=` requests are never shared. Browse pages and top-bar search
-use the same URLs. `/api/home` sends counts, compact collection/script tiles,
+private `?drafts=` requests are never shared. Browse pages share their feed URLs;
+the header and results page now share `/api/search-index`. `/api/home` sends counts, compact collection/script tiles,
 eight recent characters and one featured character rather than every
 character. It keeps random tile selection in the browser and keys the daily
 featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
@@ -3171,10 +3169,23 @@ requests, including when there is intentionally no matching link. A failed
 server lookup leaves the flag unset so `charpage.js` can retry. Derived
 collection membership honours `exclude` even when a slug is in `include`.
 
-Search warms its index on focus/touch, including the separate mobile field.
-Once loaded it searches immediately, without a typing timer. Pending results
-only paint for the current query while the search is still open; failed
-character-feed requests can retry on the next interaction.
+Search warms one `/api/search-index` request on focus/touch. `search-client.js`
+loads lazily from the header and eagerly on `/search`. `search-worker.js` fetches
+and indexes the public projection, then `search-engine.js` performs normalized
+substring/token/typo matching off the main thread. The vocabulary and postings
+are built once per document, and token matches have a bounded 64-entry cache.
+Results paint at most 30 rows (eight in the header). Enter always opens `/search`;
+query, type, filters, sort and pagination live in the URL. Old responses cannot
+replace a newer query or reopen a dismissed preview. Failed loads retry.
+
+The server index uses published character/script/collection search projections,
+published pages with published parents, published news, and an explicit public
+username/display-name/avatar projection. It also includes credited creators,
+tags and public site/tool links. Never add account emails, ids, auth fields,
+drafts or private messages. Account changes appear within five minutes on a
+fresh request; content changes use the existing dependency versions. Cold builds
+coalesce within an isolate and are cached at the edge. Search projection changes
+must bump `FEED_FORMAT_V`, like other feed shape changes.
 
 Everything under `/assets/` sends `Access-Control-Allow-Origin: *` — the
 `_headers` blanket rule for committed files, and the Worker's image route

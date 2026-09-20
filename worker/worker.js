@@ -323,6 +323,7 @@ import * as Bloodstar from './bloodstar.js';
 // Delete this import, the route and the card once the cleanup has been run.
 import OdysseyCleanup from '../migration/odyssey-cleanup.js';
 import { homeData } from './home-data.js';
+import { contentDocument, completeIndex } from './search-index.js';
 import ASSET_MANIFEST, { BUILD_ID } from './asset-manifest.js';
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8' };
@@ -1851,8 +1852,8 @@ async function siteTextItems(env) {
 
 // ---- custom wiki pages (text-first pages hanging off a script/collection) ----
 // A page belongs to exactly one script or collection and is reachable ONLY
-// from that parent page and from its author's page — never from search, the
-// homepage, the browse lists or the sitemap. Same hybrid shape as everything
+// from its parent, author and site search when both page and parent are
+// published. It stays out of the homepage, browse lists and sitemap. Same hybrid shape as everything
 // else: indexed columns for the lookups plus the whole page as JSON in `data`.
 let _pagesReady = false;
 async function ensurePagesTable(env) {
@@ -4292,7 +4293,7 @@ async function buildPublicJSON(env, table, opts = {}) {
   // (what links go to). Twelve pages already link through `page`, which is why
   // this one line is most of the frontend's share of nesting.
   if (chars) await ensureUrlSlugColumn(env);
-  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status') + ', updated_at';
+  const cols = (chars ? 'data, status, slug, url_slug' : 'data, status, slug') + ', updated_at';
   // Fail closed: a transient database error must not retry without the
   // published-only filter and expose drafts in a public, cached response.
   const { results } = await env.DB.prepare(`SELECT ${cols} FROM ${table} WHERE ${where}`).all();
@@ -4300,6 +4301,7 @@ async function buildPublicJSON(env, table, opts = {}) {
     : table === 'collections' ? 'collection' : 'script';
   const out = results.map(r => {
     const d = foldLegacyCurata(JSON.parse(r.data));
+    if (opts.fields === 'search') d.slug = String(r.slug);
     // Only the admin feed carries status; the public one must never imply
     // that unpublished pages exist.
     if (drafts) d.status = r.status || 'published';
@@ -4337,7 +4339,7 @@ async function buildPublicJSON(env, table, opts = {}) {
     // finished page Partial. Stamping 'standard' is what tells it not to
     // (Classify.isPartial trusts an explicit stamp over recomputing).
     if (cls !== 'standard') d.classification = cls;
-    else if (cardOnly || opts.fields === 'browse') d.classification = 'standard';
+    else if (cardOnly || opts.fields === 'browse' || opts.fields === 'search') d.classification = 'standard';
     else delete d.classification;
     if (cardOnly) for (const k of CARD_DROP_FIELDS) delete d[k];
     // The row's version, for the versioned (immutable) image URLs — see
@@ -4354,7 +4356,8 @@ async function buildPublicJSON(env, table, opts = {}) {
   }
   // The grid trim runs LAST, after the collection passes above have stamped
   // curataFrom and appearsInFrom — both are card fields.
-  return gridOnly ? out.map(gridRow) : opts.fields === 'browse' ? out.map(browseRow) : out;
+  return opts.fields === 'search' ? out.map(d => contentDocument(type, d))
+    : gridOnly ? out.map(gridRow) : opts.fields === 'browse' ? out.map(browseRow) : out;
 }
 
 // ---- version-keyed edge cache plumbing ----
@@ -4391,7 +4394,7 @@ function edgeCachePut(ctx, key, body, cacheControl, contentType) {
 // misses for the same version and projection share one build within an isolate.
 // Separate isolates can still build concurrently on a cold edge cache.
 const _feedBodyCache = new Map();   // `${table}|${fields}` -> { version, body }
-const FEED_FORMAT_V = 2;
+const FEED_FORMAT_V = 3;
 const _feedBodyPending = new Map(); // coalesce overlapping misses within this isolate
 async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   const version = knownVersion === undefined ? await contentVersion(env, FEED_DEPS[table]) : knownVersion;
@@ -4412,6 +4415,51 @@ async function cachedFeedBody(env, ctx, table, fields, knownVersion) {
   _feedBodyPending.set(key, pending);
   try { return await pending; }
   finally { _feedBodyPending.delete(key); }
+}
+
+// One compact public index for the header and full results page. Querying and
+// filtering happen in a browser Worker, with no D1 read per keystroke. Content
+// writes roll the key; the five-minute account bucket also covers new users
+// and public profile edits, which do not bump the content version.
+let _searchIndexMemo = null;
+const _searchIndexPending = new Map();
+async function searchIndexBody(env, ctx, version, bucket) {
+  const key = `https://feed.internal/search.json?v=${version}&b=${bucket}&build=${BUILD_ID}`;
+  if (_searchIndexMemo?.key === key) return _searchIndexMemo.body;
+  if (_searchIndexPending.has(key)) return _searchIndexPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      await Promise.all([ensurePagesTable(env), ensureNewsTable(env)]);
+      const [characters, scripts, collections, pages, news, users] = await Promise.all([
+        cachedFeedBody(env, ctx, 'characters', 'search'),
+        cachedFeedBody(env, ctx, 'scripts', 'search'),
+        cachedFeedBody(env, ctx, 'collections', 'search'),
+        env.DB.prepare(`SELECT p.slug, p.title, p.author, p.data, p.updated_at FROM pages p
+          WHERE p.status='published' AND (
+            (p.parent_type='script' AND p.parent_slug IN (SELECT slug FROM scripts WHERE status='published')) OR
+            (p.parent_type='collection' AND p.parent_slug IN (
+              SELECT slug FROM collections WHERE status='published' UNION
+              SELECT json_extract(data,'$.id') FROM collections WHERE status='published')))`).all(),
+        env.DB.prepare("SELECT slug, title, data, updated_at FROM news WHERE status='published'").all(),
+        env.DB.prepare('SELECT username, display_name, avatar_url FROM users').all()
+      ]);
+      const documents = [characters, scripts, collections].flatMap(x => JSON.parse(x));
+      for (const [type, rows] of [['page', pages.results], ['news', news.results]]) {
+        for (const r of rows) documents.push(contentDocument(type, {
+          ...parseData(r), slug: r.slug, title: r.title,
+          author: r.author || parseData(r).author, v: rowVersion(r.updated_at)
+        }));
+      }
+      body = JSON.stringify(completeIndex(documents, users.results));
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    _searchIndexMemo = { key, body };
+    return body;
+  })();
+  _searchIndexPending.set(key, pending);
+  try { return await pending; }
+  finally { _searchIndexPending.delete(key); }
 }
 
 // Resolve the single set link on the server. The browser used to download
@@ -4677,8 +4725,8 @@ ${o.draftBanner || ''}
       <a href="${R}script">Script Builder</a>
     </nav>
   <div class="search-wrap" id="search-wrap">
-    <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
-    <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    <input class="search-input" id="search-input" type="search" placeholder="Search the wiki…" autocomplete="off" aria-label="Search the wiki" aria-expanded="false">
+    <div class="search-drop" id="search-drop" role="region" aria-label="Search results" hidden></div>
   </div>
   <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
     <span></span><span></span><span></span>
@@ -4686,7 +4734,7 @@ ${o.draftBanner || ''}
 </header>
 <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
   <div class="nav-dropdown-search">
-    <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    <input type="search" id="nav-search-input" placeholder="Search the wiki…" autocomplete="off">
   </div>
   <a href="${R}">Home</a>
   <a href="${R}all-characters">All Characters</a>
@@ -5754,6 +5802,19 @@ export default {
     // than an error, so a stale bookmark or a logged-out admin can never be
     // told that drafts exist. Every one of these responses is `no-store`
     // (jsonResponse), so a cache can't hand an admin's copy to a visitor.
+    if (method === 'GET' && path === '/api/search-index') {
+      try {
+        const version = await contentVersion(env, ['character', 'collection', 'script', 'wikipage', 'news']);
+        const bucket = Math.floor(Date.now() / 300000);
+        const etag = `W/"search-${version}-${bucket}-${BUILD_ID}"`;
+        const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+        if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+        return new Response(await searchIndexBody(env, ctx, version, bucket), { headers });
+      } catch {
+        // Never cache an incomplete index or replace a failed read with drafts.
+        return jsonResponse({ error: 'Search is temporarily unavailable.' }, { status: 503 });
+      }
+    }
     if (method === 'GET' && (path === '/characters.json' || path === '/collections.json' || path === '/scripts.json')) {
       const table = path === '/characters.json' ? 'characters'
         : path === '/collections.json' ? 'collections' : 'scripts';
@@ -6103,7 +6164,7 @@ export default {
           ogImage: bannerImg || (url.origin + '/assets/logo_skull.png'),
           ogCard: bannerImg ? 'summary_large_image' : 'summary',
           // These pages are intentionally unlisted: no search engines, no
-          // sitemap entry, no site search — only their parent page links here.
+          // sitemap entry, no external indexing. Published pages are in site search.
           noindex: true,
           bodyClass: ta.cls, bodyStyle: ta.style,
           body: WikiRender.renderWikiPage(page, { linkRoot: '../', isDraft }),
