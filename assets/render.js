@@ -1230,9 +1230,19 @@
        says something. artScaleCSS() is the one place the number becomes a
        style, and it re-validates, since a row can carry anything. */
     var scaleAttr = artScaleCSS(d.artScale);
+    /* The printable token is marked, because it is not drawn like the icons.
+       The emblem box is 7/6 of what it was and then scaled 8/7 (see .emblem
+       in styles.css), and both steps assume a picture that is mostly
+       transparent margin: an icon on the 60% standard grows into room it
+       already had. A token is a full-bleed disc with no margin at all, so
+       the same growth put it a seventh past the card on a phone. The class
+       lets styles.css draw it at the size the box was before, unscaled, and
+       keep the owner's --art-scale off it — that setting is how big the
+       ICON is displayed, and a token is not an icon. */
+    function emblemClass(v) { return 'emblem' + (v.key === 'token' ? ' emblem-token' : ''); }
     var emblem = '';
     if (artVers.length === 1) {
-      emblem = '<img class="emblem"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+      emblem = '<img class="' + emblemClass(artVers[0]) + '"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
     } else if (artVers.length) {
       /* Every version is its own <img>, stacked — see the icon gallery
          above for why swapping one src is not good enough. Only the one on
@@ -1243,7 +1253,7 @@
       emblem = '<div class="emblem-stack" data-at="0"' + scaleAttr +
         ' title="Swipe or click to see the other versions of this icon">' +
         artVers.map(function (v, i) {
-          return '<img class="emblem' + (i === 0 ? ' is-on' : '') + '" ' +
+          return '<img class="' + emblemClass(v) + (i === 0 ? ' is-on' : '') + '" ' +
             (i === 0 ? 'src' : 'data-src') + '="' + esc(v.src) +
             '" alt="' + (i === 0 ? esc(d.name) : '') + '"' +
             (i === 0 ? '' : ' aria-hidden="true"') +

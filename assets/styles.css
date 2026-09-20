@@ -469,13 +469,26 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    the page sideways. A transform costs no layout, and only transparent
    margin reaches past the column (the figure is 60% of the picture, 69%
    of the column after scaling), so nothing is cut off and nothing scrolls.
-   Keep .emblem-stack below in step; its child images take their transform
-   inline from reader.js (emPaint) and must not inherit this one. */
+   Keep .emblem-stack below in step; its child images carry only their own
+   dip (reader.js's emPaint writes it as --em-s) and must not inherit this
+   one. The printable token is the exception to all of it: see .emblem-token
+   just below. */
 /* --art-scale is the owner's wiki-only display size (render.js writes it
    inline as a fraction, 0.5..2, only when one was chosen). It multiplies
    the 8/7 above rather than replacing it, so "100%" on the slider is
    exactly the page as drawn with the box switched off. */
 .emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
+/* The printable token (render.js marks it) is the one version that is NOT
+   mostly transparent margin: it is a full-bleed disc, edge to edge. Every
+   step above assumes the margin — the 7/6 box grows into room an icon on
+   the 60% standard already had, the 8/7 pushes only that margin past the
+   column — so on the token both steps were real growth, and on a phone it
+   ran a seventh past the card. It is drawn at exactly the size the box was
+   before any of this (6/7 of the box: 86%, 286px) and unscaled, and the
+   owner's --art-scale stays off it: that setting is how big the ICON is
+   displayed, and a token is not an icon. The .75 in the stack rule below
+   is this 6/7 with the stack's own 8/7 divided back out. */
+.emblem.emblem-token { transform: scale(.8571); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
@@ -2331,11 +2344,30 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   margin: 0;
-  transform: none;   /* the stack is scaled; emPaint sets each image's own */
+  /* The stack is scaled; each image carries only its own dip, which
+     emPaint (reader.js) writes as --em-s rather than as the transform, so
+     the token below can fold a base scale of its own into the same rule.
+     Before a line of script has run --em-s is unset and this is scale(1). */
+  transform: scale(var(--em-s, 1));
   opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
   -webkit-user-drag: none;
+  /* Invisible is not the same as absent: the versions all sit in one box
+     and the LAST one in the markup is on top, so a long-press or a
+     right-click on the icon landed on a picture nobody could see, and
+     "Open image in new tab" opened the alternate art (or the token) every
+     time, whichever version was showing. Only the version on screen is
+     hit-testable; the stack's own listeners resolve the stack from
+     whatever was hit, so a tap or a swipe still works — and in the margin
+     around the smaller token they land on the stack itself, which is right:
+     there is no picture there to open. */
+  pointer-events: none;
 }
+.emblem-stack .emblem.is-on { pointer-events: auto; }
+/* The token inside a stack: undo the stack's 8/7 and the owner's display
+   size, then 6/7 of the box — see .emblem-token above. --art-scale is
+   inherited from the stack, where render.js writes it. */
+.emblem-stack .emblem.emblem-token { transform: scale(calc(var(--em-s, 1) * .75 / var(--art-scale, 1))); }
 /* Which one is showing before a line of script has run. Once the gallery is
    working these are inline styles, and a version part-way through a drag is
    part-way between the two. */
