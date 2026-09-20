@@ -36,6 +36,12 @@
      ART_FILL_TOLERANCE is how far off the standard an already-square
      image may be before a re-run of the bulk tool rewrites it. */
   var FILL_TOLERANCE = 0.02;
+  /* The fills the wiki's OWN tools wrote before FILL was what it is now. An
+     icon sitting on the frame at one of these was put there automatically
+     and can be re-fitted without losing anything anybody chose; one on the
+     frame at any other size or position was placed by a person (Adjust by
+     hand, or Icon Forge with its own margin) and is theirs. */
+  var LEGACY_FILLS = [0.70];
   var CENTER_TOLERANCE = 4;  // px the figure's centre may sit off the frame's
   var ALPHA_THRESHOLD = 16;  // pixels with alpha above this count as "figure"
 
@@ -93,8 +99,28 @@
     return Math.abs(cx - target / 2) <= CENTER_TOLERANCE && Math.abs(cy - target / 2) <= CENTER_TOLERANCE;
   }
 
+  /* Placed by hand: already on the frame, but at a size or a position that
+     none of the wiki's automatic passes ever wrote. Nothing marks a
+     deliberate crop in the file, so this is the whole of how one is told
+     apart from an icon the old standard fitted — and a 591 square somebody
+     exported from their own tool reads as placed too, which is the right
+     side to err on: the point of the bulk run is to catch art that was
+     never fitted, not to undo choices. */
+  function isPlacedFrame(iw, ih, box, target, fill) {
+    if (iw !== target || ih !== target) return false;
+    if (isStandardFrame(iw, ih, box, target, fill)) return false;
+    for (var i = 0; i < LEGACY_FILLS.length; i++) {
+      if (isStandardFrame(iw, ih, box, target, LEGACY_FILLS[i])) return false;
+    }
+    return true;
+  }
+
   /* opts.ifNeeded: resolve null instead of a data URL when the image is
-     already standard (see isStandardFrame). */
+     already standard (see isStandardFrame).
+     opts.keepPlaced: resolve FALSE when the image was placed by hand (see
+     isPlacedFrame), so a bulk run can leave it exactly as it is. Only the
+     bulk tool asks for this: an editor re-fitting a freshly picked file
+     wants the answer either way. */
   function normalizeArtDataURL(src, opts) {
     opts = opts || {};
     var target = opts.target || TARGET;
@@ -112,6 +138,7 @@
         // fully transparent image comes back as the whole frame, contain-fit.
         var box = artTrimBox(img);
         if (opts.ifNeeded && isStandardFrame(iw, ih, box, target, fill)) { resolve(null); return; }
+        if (opts.keepPlaced && isPlacedFrame(iw, ih, box, target, fill)) { resolve(false); return; }
 
         // Scale so the figure's longest side spans fill * target, centered.
         var scale = (fill * target) / Math.max(box.w, box.h);
@@ -141,4 +168,5 @@
   global.ART_TARGET = TARGET;
   global.ART_FILL = FILL;
   global.ART_FILL_TOLERANCE = FILL_TOLERANCE;
+  global.ART_LEGACY_FILLS = LEGACY_FILLS.slice();
 })(typeof window !== 'undefined' ? window : this);
