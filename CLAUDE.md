@@ -1893,6 +1893,19 @@ serving the old addresses.
   extension, and tapping "My Account" opened the blocker's own filter list
   instead of the wiki. It also returned early when no stylesheet was found,
   throwing `LINK_ROOT` away and resolving `account` against `/c/{set}/`.
+- **A redirect whose page has been deleted parks nothing.** An address is
+  taken when a live page has it or a redirect for it points at a live page
+  (`LIVE_REDIRECT_SQL`, used by `freeCharAddress()` and the nest-urls sweep).
+  One pointing at a deleted page is a dead end — the `/c/` route 404s it
+  anyway — so the next page whose name and set ask for that address takes it,
+  and `setCharAddress()` replaces the stale row. It was built because a
+  creator renamed Anthropologist to Cryptographer and back within half an
+  hour, which parked `principia-horologica/cryptographer` for the
+  Anthropologist page; the real Cryptographer they made next was pushed to
+  `-2`, and deleting the Anthropologist page turned the parked address into a
+  404 that nothing could reclaim. A page already settled on a numbered
+  address keeps it (`characterAddress()`), so that one live page was moved
+  onto its unnumbered address by hand, with `-2` left as a redirect.
 - `/api/slug-check` is about the **identity** (the PK and the art slot), not the
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still

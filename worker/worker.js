@@ -3341,6 +3341,24 @@ async function ensureRedirectsTable(env) {
   _redirectsReady = true;
 }
 
+// A redirect row parks its old address — nothing else may take it, so the
+// links posted to it keep reaching the page that moved. That holds only while
+// the page it points at is still a page. Once that page is deleted the
+// redirect is a dead end (the /c/ route 404s it), and an address that nothing
+// can reach must not go on blocking the next page whose name and set ask for
+// it. This is the SQL half of that test, for the two places that build the
+// "taken" set: a redirect counts only when a live row answers to its target,
+// by identity or (the rows written before the identity/address split) by
+// address. setCharAddress() then replaces the stale row when the address is
+// claimed. It was built because a creator renamed Anthropologist to
+// Cryptographer and back within half an hour, which parked
+// principia-horologica/cryptographer for the Anthropologist page; the real
+// Cryptographer they made next was pushed to -2, and deleting the
+// Anthropologist page turned the parked address into a 404 nothing could
+// reclaim.
+const LIVE_REDIRECT_SQL =
+  "EXISTS (SELECT 1 FROM characters c WHERE (c.slug=r.to_slug OR c.url_slug=r.to_slug) AND c.status<>'deleted')";
+
 // Read side: never creates the table (a wiki that has never renamed anything
 // has none), never throws — a missing redirect is just a 404 like before.
 async function lookupRedirect(env, type, slug) {
@@ -3580,8 +3598,11 @@ async function freeCharAddress(env, qualifier, base, exceptUid) {
     for (const r of results || []) if (r.url_slug) taken.add(String(r.url_slug));
   } catch { /* column not there yet: nothing is taken */ }
   try {
+    // Only a redirect whose page still exists parks its address — see
+    // LIVE_REDIRECT_SQL for the one pointing at a deleted page.
     const { results } = await env.DB.prepare(
-      "SELECT from_slug, to_slug FROM redirects WHERE entity_type='character' AND (from_slug=? OR from_slug LIKE ?)"
+      `SELECT r.from_slug, r.to_slug FROM redirects r
+        WHERE r.entity_type='character' AND (r.from_slug=? OR r.from_slug LIKE ?) AND ${LIVE_REDIRECT_SQL}`
     ).bind(first, first + '-%').all();
     for (const r of results || []) {
       // An address this same page used to live at is not in the way: moving
@@ -11918,12 +11939,15 @@ export default {
         ).all();
 
         // Addresses already spoken for, plus every address any page has ever
-        // had — taking one of those back would hijack a live redirect.
+        // had — taking one of those back would hijack a live redirect. A
+        // redirect whose page is deleted is not live (LIVE_REDIRECT_SQL), so
+        // the address it held is free again, exactly as freeCharAddress()
+        // sees it on an ordinary save.
         const taken = new Set();
         for (const r of rows || []) if (r.url_slug) taken.add(String(r.url_slug));
         try {
           const { results } = await env.DB.prepare(
-            "SELECT from_slug FROM redirects WHERE entity_type='character'"
+            `SELECT r.from_slug FROM redirects r WHERE r.entity_type='character' AND ${LIVE_REDIRECT_SQL}`
           ).all();
           for (const r of results || []) if (r.from_slug) taken.add(String(r.from_slug));
         } catch { /* nothing has ever moved */ }
