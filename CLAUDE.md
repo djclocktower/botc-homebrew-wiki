@@ -171,6 +171,20 @@ assets/
                        The nav entry is "Tools" (→ /tools), NOT "Token Tool":
                        change it here and every page's top bar and hamburger
                        follow, because no page hardcodes it.
+                       The hamburger menu is position:fixed and hangs off the
+                       bar's BOTTOM edge (getBoundingClientRect().bottom, re-run
+                       on scroll while open), never its height: a DRAFT bar,
+                       the Partial notice or the announcement sits above the
+                       bar in the flow, and measured by height the open menu
+                       covered the whole bar, hamburger included. It also
+                       stamps `translate="no"` on .topbar and .nav-dropdown:
+                       Chrome's translator re-wraps a run of inline siblings
+                       as one sentence and moves the tags, which turned the
+                       injected Random Character / Edit / My Account rows
+                       into one wrapped line with the dice on its own and an
+                       empty Edit box. Set here rather than in the markup so
+                       every page gets it from one line (the topbar markup
+                       is hand-copied per page).
   render.js            Shared character renderer + official-schema JSON builder.
                        Used by create/edit previews AND imported by the Worker
                        for SSR, so it must stay browser+module compatible with
@@ -3278,7 +3292,19 @@ for up to a year while only the export's bare URL saw the new file. The
 slot names the identity (`-alt`/`-alt2`/`-token` stripped), so it is one
 primary-key write; a legacy path that is not a slug is found by a JSON
 scan, only on a miss. It moves `updated_at`, so a bulk run reorders the
-account page's and dashboard's "recent edits" lists once. Canonical row addresses
+account page's and dashboard's "recent edits" lists once. **It also moves
+the stamp the edit-conflict check compares** (`editConflict()`: the editors
+post the `updated_at` they loaded as `baseUpdatedAt`, and a save whose base
+no longer matches the row is refused with a 409 rather than overwriting
+somebody else's work). The editors upload the art and THEN save, so every
+save that came with a new icon was refused as somebody else's edit. So
+`/api/upload` takes `baseUpdatedAt` too — checked through `artRowStamp()`
+BEFORE the bytes land, since a stale tab's icon must not overwrite the live
+one either — and answers with the row's new `updatedAt`, which `edit.html`'s
+`apiUpload()` and `mass-upload.html`'s adopt as the base for the save that
+follows. A client that sends no stamp (Icon Forge, the standardizer, the
+thumbnail backfill, Bloodstar) is left alone, exactly as the save handlers
+leave one. Canonical row addresses
 and versions override old roster JSON. Remote image URLs and exported script
 JSON retain their original URLs.
 
