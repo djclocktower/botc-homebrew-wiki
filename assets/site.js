@@ -848,9 +848,16 @@
       var h = (a.getAttribute('href') || '').replace(/\.html$/, '');
       if (h === here || (here === 'index' && (h === '/' || h === '../' || h === './'))) a.classList.add('active');
     });
+    // The menu is position:fixed, so it hangs at the bar's BOTTOM edge in
+    // viewport terms — not at the bar's height. The two agree only while
+    // the bar is at the top of the screen; a DRAFT bar, the Partial notice
+    // or the announcement banner sits above it in the flow, and until that
+    // scrolls away the bar's bottom is lower by exactly that much. Measured
+    // by height, the open menu covered the whole bar, hamburger included,
+    // on every draft page.
     function positionDrop() {
       var tb = document.querySelector('.topbar');
-      if (tb) drop.style.top = tb.getBoundingClientRect().height + 'px';
+      if (tb) drop.style.top = Math.max(0, tb.getBoundingClientRect().bottom) + 'px';
     }
     btn.addEventListener('click', function () {
       positionDrop();
@@ -873,12 +880,32 @@
       });
     }
     window.addEventListener('resize', positionDrop);
+    // The bar moves while whatever sits above it scrolls away; keep the
+    // open menu hanging off it.
+    window.addEventListener('scroll', function () {
+      if (drop.classList.contains('open')) positionDrop();
+    }, { passive: true });
     document.addEventListener('click', function (e) {
       if (!btn.contains(e.target) && !drop.contains(e.target)) {
         drop.classList.remove('open'); btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false');
       }
     });
   })();
+
+  /* ── Site chrome is never machine-translated ──
+     Chrome's translator (and every other one that honours the standard
+     attribute) rewrites the DOM it translates: text nodes are re-wrapped in
+     <font> elements, and a run of inline siblings is re-emitted as ONE
+     sentence with its inline tags moved to wherever the translation put
+     them. The menu's links are inline while it is closed (display:none
+     blockifies nothing), and the ones this file adds — Random Character
+     with its dice, the Edit clone, My Account — came back as one wrapped
+     row, the dice on a line of its own and an empty bordered Edit box. The
+     top bar's crumb row is the same shape. Nothing in either needs
+     translating for the menu to work, so both are left alone. */
+  document.querySelectorAll('.topbar, .nav-dropdown').forEach(function (el) {
+    el.setAttribute('translate', 'no');
+  });
 })();
 
 /* ── Redesigned top bar: solid/scrolled state past 24px of scroll ── */

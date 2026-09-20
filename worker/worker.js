@@ -5689,6 +5689,29 @@ function dropThumbFor(env, ctx, key) {
   } catch { /* nothing to do */ }
 }
 
+function artRowSlug(key) {
+  return key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+}
+
+/* The row an art key belongs to — its slug and its updated_at — by the same
+   two lookups touchArtRow() writes through: the identity the slot names,
+   then the path inside the JSON for a legacy row. Null for a slot with no
+   row behind it yet (a new character's art is uploaded before its row
+   exists). What /api/upload's edit-conflict check reads, and what it hands
+   back as the stamp the editor should carry into its save. */
+async function artRowStamp(env, key) {
+  if (!key.startsWith('art/')) return null;
+  try {
+    const bySlug = await env.DB.prepare(
+      `SELECT slug, updated_at FROM characters WHERE slug=? AND status IS NOT 'deleted'`
+    ).bind(artRowSlug(key)).first();
+    if (bySlug) return bySlug;
+    return await env.DB.prepare(
+      `SELECT slug, updated_at FROM characters WHERE status IS NOT 'deleted' AND data LIKE ? LIMIT 1`
+    ).bind('%"' + key + '"%').first() || null;
+  } catch { return null; }
+}
+
 /* An icon written straight into its R2 slot — the bulk standardizer
    (/normalize-icons), the thumbnail backfill, a Bloodstar copy over an
    existing page — replaced the picture without touching the ROW, and every
@@ -5706,7 +5729,7 @@ function dropThumbFor(env, ctx, key) {
    Fails soft: a miss here costs a stale picture, never the upload. */
 async function touchArtRow(env, key) {
   if (!key.startsWith('art/')) return false;
-  const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+  const slug = artRowSlug(key);
   try {
     let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug=? AND status IS NOT 'deleted'`).bind(slug).run();
     let n = (r && r.meta && r.meta.changes) || 0;
@@ -9328,10 +9351,11 @@ export default {
         }
         if (!env.ART) return jsonResponse({ error: 'Image storage (R2) is not configured' }, { status: 500 });
         const ct = request.headers.get('Content-Type') || '';
-        let key, bytes, contentType, sourceETag;
+        let key, bytes, contentType, sourceETag, baseUpdatedAt = null;
         if (ct.includes('application/json')) {
           const b = await request.json().catch(() => ({}));
           key = b.key; sourceETag = cleanETag(b.sourceETag);
+          if (b.baseUpdatedAt) baseUpdatedAt = String(b.baseUpdatedAt);
           if (!key || !b.data) return jsonResponse({ error: 'Missing key or data' }, { status: 400 });
           let data = String(b.data);
           if (data.startsWith('data:')) {
@@ -9387,6 +9411,22 @@ export default {
           const denied = await uploadSlotDenied(env, sess, key);
           if (denied) return denied;
         }
+        // The character editors upload the art and THEN save the row, and
+        // the save carries the stamp the editor loaded (baseUpdatedAt, see
+        // editConflict). touchArtRow() below moves that stamp, so every save
+        // that came with a new icon was refused as somebody else's edit —
+        // the one editor on the page was being told to reload. So an upload
+        // may carry the same stamp: it is checked HERE, before any bytes
+        // land (a stale tab's picture must not overwrite the live one
+        // either), and the row's new stamp goes back in the response for the
+        // editor to adopt. A caller that sends none — Icon Forge, the
+        // standardizer, the thumbnail backfill — is unaffected, exactly as
+        // the save handlers leave such a client alone.
+        const artRow = baseUpdatedAt && key.startsWith('art/') ? await artRowStamp(env, key) : null;
+        {
+          const conflict = artRow ? editConflict(artRow, { baseUpdatedAt }) : null;
+          if (conflict) return conflict;
+        }
 
         const ext = key.split('.').pop().toLowerCase();
         if (!contentType) contentType = EXT_CONTENT_TYPE[ext] || 'application/octet-stream';
@@ -9408,8 +9448,12 @@ export default {
         // except for character art, where touchArtRow() rolls the row's
         // version so the year-long image cache lets the new picture through.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
-        await touchArtRow(env, key);
-        return jsonResponse({ ok: true, path: '/assets/' + key, etag: stored && stored.etag });
+        const touched = await touchArtRow(env, key);
+        const stamp = touched ? await artRowStamp(env, key) : null;
+        return jsonResponse({
+          ok: true, path: '/assets/' + key, etag: stored && stored.etag,
+          ...(stamp && stamp.updated_at ? { updatedAt: stamp.updated_at } : {})
+        });
       }
 
       /* ---- an image on a comment or a modmail message ----

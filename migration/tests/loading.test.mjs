@@ -412,6 +412,39 @@ test('writing character art into its slot rolls the row version so cached icons 
   assert.equal(version(), v1); assert.equal(stamps().bystander, t0.bystander);
 });
 
+test('an art upload carries the edit stamp forward, so the save that follows it is not refused', async t => {
+  // The editors upload the icon and then save the row with the stamp they
+  // loaded; writing the icon moves that stamp (touchArtRow), so every save
+  // that came with new art was refused as somebody else's edit.
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.insert('characters', 'demo-char', { slug: 'demo-char', name: 'Demo Char', team: 'townsfolk',
+    ability: 'Each night, wake.', art: 'art/demo-char.png', tags: 'Information' });
+  f.db.prepare("UPDATE characters SET owner_id=1 WHERE slug='demo-char'").run();
+  const stored = []; f.env.ART.put = async key => { stored.push(key); return { etag: 'e' }; }; f.env.ART.delete = async () => {};
+  const post = (path, body) => f.request(path, { method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const png = 'data:image/png;base64,' + Buffer.alloc(1000, 1).toString('base64');
+  const stamp = () => f.db.prepare("SELECT updated_at FROM characters WHERE slug='demo-char'").get().updated_at;
+  const loaded = stamp();
+  // The editor's flow: upload with the stamp it loaded, save with the one the upload answered.
+  const upload = await post('/api/upload', { key: 'art/demo-char.png', data: png, baseUpdatedAt: loaded });
+  assert.equal(upload.status, 200);
+  const { updatedAt } = await upload.json();
+  assert.ok(updatedAt && updatedAt !== loaded, 'the upload moved the row and says so');
+  assert.equal(updatedAt, stamp());
+  const row = { slug: 'demo-char', name: 'Demo Char', team: 'townsfolk', ability: 'Each night, wake.',
+    art: 'art/demo-char.png', tags: 'Information', status: 'published' };
+  assert.equal((await post('/api/character', { ...row, baseUpdatedAt: loaded })).status, 409, 'the loaded stamp is stale now');
+  assert.equal((await post('/api/character', { ...row, baseUpdatedAt: updatedAt })).status, 200);
+  // A stale tab's icon is refused before any bytes land.
+  stored.length = 0;
+  const stale = await post('/api/upload', { key: 'art/demo-char-alt.png', data: png, baseUpdatedAt: '2020-01-01 00:00:00' });
+  assert.equal(stale.status, 409); assert.ok((await stale.json()).conflict); assert.equal(stored.length, 0);
+  // A caller that sends no stamp (Icon Forge, the bulk tools) is unaffected.
+  assert.equal((await post('/api/upload', { key: 'art/demo-char-alt.png', data: png })).status, 200);
+  assert.equal(stored.length, 1);
+});
+
 test('data loader shares parsed public objects, keeps private requests separate, and retries failures', async () => {
   let calls = 0, fail = false;
   const context = vm.createContext({ window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },

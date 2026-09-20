@@ -390,10 +390,17 @@
         return normalizeArtDataURL(dataUrl).catch(function(){ return dataUrl; });
       });
     }
-    function apiUpload(key, dataUrl){
+    // `base` is the stamp of the page this art is landing on (a re-import
+    // over your own page reads it back first): the Worker checks it before
+    // the bytes land and answers with the row's new stamp, which the save
+    // that follows has to carry — writing the icon moves the row, so a save
+    // still holding the old stamp is refused as somebody else's edit.
+    function apiUpload(key, dataUrl, base){
+      var body = { key:key, data:dataUrl };
+      if (base) body.baseUpdatedAt = base;
       return fetch('/api/upload', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        credentials:'same-origin', body: JSON.stringify({ key:key, data:dataUrl })
+        credentials:'same-origin', body: JSON.stringify(body)
       }).then(function(r){
         return r.json().catch(function(){ return {}; }).then(function(j){
           // A 429 must not be swallowed by the "keep the remote URL" fallback:
@@ -538,9 +545,10 @@
         var artJob = Promise.resolve(kept ? 'kept' : 'remote');
         if (plan.main && imgUrl && /^https?:\/\//.test(imgUrl)) {
           artJob = loadImageToCanvas(imgUrl).then(function(dataUrl){
-            return apiUpload('art/' + slug + '.png', dataUrl).then(function(){
+            return apiUpload('art/' + slug + '.png', dataUrl, entry.baseUpdatedAt).then(function(j){
               entry.art = 'art/' + slug + '.png';
               entry.image = ART_BASE + slug + '.png';
+              if (j && j.updatedAt) entry.baseUpdatedAt = j.updatedAt;
               return 'uploaded';
             });
           }).catch(function(err){
@@ -558,9 +566,10 @@
           return prev.then(function(artHow){
             if (!wanted || !(url && /^https?:\/\//.test(url))) return artHow;
             return loadImageToCanvas(url).then(function(dataUrl){
-              return apiUpload('art/' + slug + suffix + '.png', dataUrl).then(function(){
+              return apiUpload('art/' + slug + suffix + '.png', dataUrl, entry.baseUpdatedAt).then(function(j){
                 entry[relKey] = 'art/' + slug + suffix + '.png';
                 entry[absKey] = ART_BASE + slug + suffix + '.png';
+                if (j && j.updatedAt) entry.baseUpdatedAt = j.updatedAt;
                 return artHow;
               });
             }).catch(function(err){

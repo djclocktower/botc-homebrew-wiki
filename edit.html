@@ -1782,11 +1782,19 @@
 
     // ── R2 image upload via the site Worker ──
     function apiUpload(key, dataUrl) {
+      // The upload carries the stamp this editor loaded, for the same check
+      // the save makes (a stale tab's icon must not land on the live page
+      // either), and the Worker touches the row when the art lands — so the
+      // stamp it answers with is the one the save has to post, or the save
+      // is refused as somebody else's edit. Every save with a new icon was.
+      var body = { key: key, data: dataUrl };
+      if (loadedUpdatedAt) body.baseUpdatedAt = loadedUpdatedAt;
       return fetch('/api/upload', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin', body: JSON.stringify({ key: key, data: dataUrl })
+        credentials: 'same-origin', body: JSON.stringify(body)
       }).then(function (r) { return r.json(); }).then(function (j) {
         if (!j || j.error) throw new Error((j && j.error) || 'Image upload failed.');
+        if (j.updatedAt) loadedUpdatedAt = j.updatedAt;
         // The card thumbnail rides along with every art upload — made here,
         // never awaited (assets/art-thumb.js).
         if (window.ArtThumb) ArtThumb.upload(key, dataUrl);
