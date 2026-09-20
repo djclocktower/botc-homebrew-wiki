@@ -749,6 +749,17 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   .crumb        { display: none; }
   .char-parchment, .char-infocard, .char-side { grid-column: 1; grid-row: auto; }
   .char-infocard { order: -1; }
+  /* The info card is drawn FIRST here but comes AFTER the almanac in the
+     markup, and that is exactly the case the browser's scroll anchoring
+     gets wrong: when the JSON box in the card opens, the browser picks the
+     almanac text (first in DOM order, still on screen below the bar) as the
+     thing to hold still, and shoves the page down by the height of the box
+     — the JSON you just opened scrolls off the top of the screen. Taking the
+     reordered blocks out of anchor selection leaves the card itself as the
+     anchor, so the bar stays where it was tapped and the box opens under
+     it. Only under this query: on a desktop the two are side by side, the
+     DOM order matches the visual order, and anchoring behaves. */
+  .char-parchment, .char-side { overflow-anchor: none; }
   .char-col2 { display: contents; }
   .brand-skull  { height: 44px; }
   .brand-header-text { height: 34px; }
@@ -1415,6 +1426,55 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   color: var(--parch);
 }
 .add-to-script-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
+
+/* ── The info card's toggles, and Favorites (assets/favorites.js) ──
+   The three full-width buttons stacked under a character's JSON bar — Add
+   to Script, Add to Token Tool (charpage.js) and Favorites (favorites.js) —
+   share ONE skin: .add-to-script-btn above plus the .tog-* rules here, so
+   they cannot drift. An outline glyph in currentColor that fills in when the
+   button is on (the fill IS the state, so it reads without the label), and
+   one faint swell on toggle. The owner asked for parity between them after
+   the heart alone had an icon and a pop. The heart also wears two other
+   skins: the centred .cta-secondary one under a script's or collection's
+   title (.page-fav-btn) and a bare icon (.fav-btn-compact). */
+.add-to-script-btn, .fav-btn { -webkit-tap-highlight-color: transparent; }
+.tog-ico {
+  width: 1em; height: 1em; vertical-align: -.15em; margin-right: .35em;
+  flex: 0 0 auto;
+}
+.add-to-script-btn.on .tog-ico path, .fav-btn.on .tog-ico path { fill: currentColor; }
+.fav-btn-compact { padding: 6px 8px; }
+.fav-btn-compact .tog-ico { margin-right: 0; font-size: 1.15em; }
+/* Deliberately faint: a 5% swell and back, over a third of a second. The
+   owner asked for the bigger bounce to be toned right down, so the glyph
+   filling in is the event and the motion is only a nudge that it happened. */
+.tog-pop .tog-ico { animation: tog-pop .3s ease-out; }
+@keyframes tog-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tog-pop .tog-ico { animation: none; }
+}
+/* Under a script's or collection's title, next to the owner-controls slot. */
+.page-fav-bar { text-align: center; margin: 0 0 22px; }
+.page-fav-btn {
+  display: inline-block; font-size: .82rem; padding: 8px 18px;
+  letter-spacing: .06em; cursor: pointer;
+  font-family: 'Dumbledor2', serif; text-transform: uppercase; font-weight: 400;
+}
+.page-fav-btn.on { background: var(--maroon); border-color: var(--maroon); color: var(--parch); }
+.page-fav-btn.on:hover { background: #7a2a2d; border-color: #7a2a2d; }
+/* The two bars sit one above the other when both are drawn; pull the second
+   up so they read as one row of controls. */
+.page-owner-bar + .page-fav-bar { margin-top: -14px; }
+/* The Favorites chip in the filter boxes carries the same heart. */
+.filter-chip-fav .tog-ico { width: 1em; height: 1em; vertical-align: -.15em; margin-right: 2px; }
+.filter-chip-fav.active .tog-ico path { fill: currentColor; }
+/* Until the list arrives, the chip is [hidden] — stated here because a chip
+   is a <button> with its own display rules elsewhere. */
+.filter-chip[hidden] { display: none !important; }
 
 /* ── Hamburger menu (mobile nav) ──────────────────────────────── */
 .hamburger {

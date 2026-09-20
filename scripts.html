@@ -70,6 +70,14 @@
             title="Curata — scripts the wiki admins have picked out.">Curata only</button>
         </div>
       </div>
+      <!-- Your saved scripts (assets/favorites.js). Shown only once you have
+           saved one; logged-out readers never see it. -->
+      <div class="filter-group" hidden><span class="filter-group-label">Saved</span>
+        <div class="filter-chips">
+          <button type="button" class="filter-chip filter-chip-fav" id="fc-fav"
+            title="Scripts you added to your favorites.">Favorites</button>
+        </div>
+      </div>
       <div class="filter-group"><span class="filter-group-label">Size</span>
         <div class="filter-chips">
           <button type="button" class="filter-chip" id="fc-teensy"
@@ -93,6 +101,7 @@
        catch below reports it as "Could not load scripts." -->
   <script src="assets/render-page.js"></script>
   <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
   <script>
   (function(){
     function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -103,7 +112,7 @@
           grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:rgba(236,225,200,.6);padding:24px">No scripts yet. <a href="script" style="color:#7fb2e6">Create the first one →</a></p>';
           return;
         }
-        var curataOnly = false, teensyOnly = false;
+        var curataOnly = false, teensyOnly = false, favOnly = false, FAV = {};
         /* Teensyville is a small script — the classic shape is 6 townsfolk,
            2 outsiders, 2 minions and 1 demon — so it is judged on the size of
            the roster. It is judged on the WHOLE roster, which is also the
@@ -151,6 +160,7 @@
           var rows = scripts.filter(function(sc){
             if (curataOnly && !sc.curata) return false;
             if (teensyOnly && !isTeensy(sc)) return false;
+            if (favOnly && !FAV[sc.slug]) return false;
             return true;
           });
           // The chips combine, so the empty message cannot name one of them.
@@ -183,6 +193,28 @@
         mountChip('fc-teensy', 'Teensyville',
           scripts.filter(isTeensy).length,
           function(){ return (teensyOnly = !teensyOnly); });
+        // Favorites: the count is only known once the reader's saved list
+        // arrives (assets/favorites.js), so this chip is mounted then rather
+        // than with the two above. ?favorites=1 opens the page on it — the
+        // account page links here that way.
+        if (window.Favorites) {
+          window.Favorites.lists().then(function(fav){
+            FAV = {};
+            ((fav && fav.scripts) || []).forEach(function(s){ FAV[s] = true; });
+            var n = scripts.filter(function(sc){ return FAV[sc.slug]; }).length;
+            var btn = document.getElementById('fc-fav');
+            if (!btn || !n) return;
+            btn.closest('.filter-group').hidden = false;
+            btn.innerHTML = window.Favorites.heartSVG() + ' Favorites (' + n + ')';
+            showBar();
+            btn.addEventListener('click', function(){
+              favOnly = !favOnly;
+              btn.classList.toggle('active', favOnly);
+              draw();
+            });
+            if (/[?&]favorites=1(&|$)/.test(location.search)) btn.click();
+          });
+        }
         if (toggle) {
           toggle.addEventListener('click', function(){
             var open = bar.classList.toggle('open');

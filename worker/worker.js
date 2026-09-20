@@ -155,6 +155,17 @@
  *   GET  /api/suggestions     -> a page's suggestions (?type=&slug=) or ?inbox=1
  *   POST /api/suggestion      -> approve / decline / withdraw one
  *   GET  /api/shared-pages    -> pages this account is an approved editor of
+ *   GET  /api/favorites       -> this account's saved pages: three slug lists,
+ *                                newest first; ?expand=1 adds `items` (name,
+ *                                status, link key per page) and
+ *                                `characterSlugs` — the saved characters PLUS
+ *                                every character on a saved script or
+ *                                collection, which is what the Favorites
+ *                                filter on the browse pages admits
+ *   POST /api/favorite        -> {type, slug, on}: save or unsave one page.
+ *                                Published pages only, capped per account,
+ *                                and not a content write (no feed changes,
+ *                                nothing logged — a bookmark is not an edit)
  *   GET  /api/account-lookup  -> does this username exist? (the editor picker)
  *   POST /api/admin/rollback  -> roll a page back to an earlier revision
  *   POST /api/admin/restore   -> admin: restore a soft-deleted page
@@ -759,9 +770,13 @@ async function uploadSlotDenied(env, sess, key) {
     // Longest matching slug wins: "my-page-header.png" belongs to the
     // page "my-page", not to a page that happens to be called "my".
     const row = await env.DB.prepare(
-      "SELECT slug, owner_id FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
+      "SELECT slug, owner_id, parent_type, parent_slug FROM pages WHERE slug=? OR ? LIKE slug || '-%' ORDER BY length(slug) DESC"
     ).bind(base, base).first().catch(() => null);
-    if (row && !canEditRow(sess, row)) {
+    // ...or an approved editor of its script/collection (wikiPageAccess).
+    const wikiOk = row && (canEditRow(sess, row) || !!(await wikiPageAccess(env, sess, row,
+      await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null))));
+    if (wikiOk) ownedSlot = true;
+    if (row && !wikiOk) {
       return jsonResponse({ error: 'That image slot belongs to a page owned by another account.' }, { status: 403 });
     }
   }
@@ -1307,6 +1322,142 @@ async function ensureSuggestTable(env) {
 const SUGGEST_MAX_OPEN_PER_PAGE = 50;   // per suggester, per page: a queue, not a firehose
 const SUGGEST_NOTE_MAX = 600;
 
+// ---- favorites (a reader's saved pages) ----
+// One row per (account, page). The slug is the page's stable key — a
+// character's IDENTITY (never its address, which moves on rename), a script's
+// slug, a collection's PK slug (not its kebab id; findCollectionRow resolves
+// either on the way in). Nothing is stored on the page itself and nothing
+// public reads the table: who saved what is that reader's business.
+// See "Favorites" in CLAUDE.md.
+let _favoritesReady = false;
+async function ensureFavoritesTable(env) {
+  if (_favoritesReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS favorites (
+       user_id     INTEGER NOT NULL,
+       entity_type TEXT NOT NULL,
+       slug        TEXT NOT NULL,
+       ts          TEXT NOT NULL DEFAULT (datetime('now')),
+       PRIMARY KEY (user_id, entity_type, slug)
+     )`
+  ).run();
+  await env.DB.prepare(
+    'CREATE INDEX IF NOT EXISTS idx_favorites_page ON favorites(entity_type, slug)'
+  ).run();
+  _favoritesReady = true;
+}
+// Per account. Bounds the roster resolution ?expand=1 does, and nobody needs
+// more bookmarks than this to find their way around.
+const FAVORITES_MAX = 500;
+const FAVORITE_TYPES = ['character', 'script', 'collection'];
+
+/* The page a favorite names, resolved the way every other route resolves that
+   type: a character by identity or address (resolveCharacterPath), a script by
+   slug, a collection by PK slug or kebab id (findCollectionRow). Returns
+   {slug, key, name, status} — `slug` is what the table stores and `key` is
+   what a URL wants (a collection's id) — or null. */
+async function favoriteTarget(env, type, key) {
+  key = String(key || '').trim();
+  if (!FAVORITE_TYPES.includes(type) || !key || key.length > 180) return null;
+  if (type === 'character') {
+    const hit = await resolveCharacterPath(env, key);
+    if (!hit) return null;
+    const d = parseData(hit.row);
+    return { slug: hit.row.slug, key: hit.row.slug, name: d.name || hit.row.slug, status: hit.row.status };
+  }
+  const row = type === 'script' ? await getEntityRow(env, 'script', key) : await findCollectionRow(env, key);
+  if (!row) return null;
+  const d = parseData(row);
+  return {
+    slug: row.slug,
+    key: type === 'collection' ? (d.id || row.slug) : row.slug,
+    name: row.name || d.displayName || d.name || row.slug,
+    status: row.status
+  };
+}
+
+/* The whole of one account's favorites: the three slug lists, newest first.
+   With `expand`, also `items` (name, status and link key per page, for the
+   account page's list) and `characterSlugs` — the characters the Favorites
+   filter admits: the ones saved directly PLUS every character on a saved
+   script or collection. Rosters resolve through rosterCharacterSlugs(), the
+   same one rule the owner waterfall uses, with one shared character read
+   across every collection rather than one per collection. Only pages that are
+   still public count toward `characterSlugs`; a saved page that has gone to
+   draft, or was deleted, stays in the table (so it comes back if the page
+   does) but is reported with its status, or dropped once it no longer exists. */
+async function favoritesPayload(env, userId, expand) {
+  await ensureFavoritesTable(env);
+  const { results } = await env.DB.prepare(
+    'SELECT entity_type, slug, ts FROM favorites WHERE user_id=? ORDER BY ts DESC'
+  ).bind(userId).all().catch(() => ({ results: [] }));
+  const rows = results || [];
+  const lists = { characters: [], scripts: [], collections: [] };
+  const listOf = { character: 'characters', script: 'scripts', collection: 'collections' };
+  for (const r of rows) if (listOf[r.entity_type]) lists[listOf[r.entity_type]].push(r.slug);
+  const out = { ...lists, total: rows.length, max: FAVORITES_MAX };
+
+  // A flat 90 per IN (...) chunk, like everything else here that binds
+  // nothing beside the chunk (see D1_MAX_BINDS).
+  async function fetchRows(sql, slugs) {
+    const found = [];
+    for (let i = 0; i < slugs.length; i += 90) {
+      const chunk = slugs.slice(i, i + 90);
+      const q = chunk.map(() => '?').join(',');
+      const { results } = await env.DB.prepare(sql.replace('%IN%', q)).bind(...chunk).all().catch(() => ({ results: [] }));
+      found.push(...(results || []));
+    }
+    return found;
+  }
+  // A collection's URL key is its kebab id, which on a legacy row is not the
+  // PK slug stored here — and the button on a collection page only knows the
+  // id. So the ids ride along even on the plain call, read off the few saved
+  // rows; the button treats either as "saved".
+  const colls = lists.collections.length
+    ? await fetchRows("SELECT slug, display_name AS name, status, data FROM collections WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.collections)
+    : [];
+  out.collectionIds = colls.map(r => { const d = parseData(r); return d.id || r.slug; });
+  if (!expand) return out;
+
+  const savedAt = {};
+  for (const r of rows) savedAt[r.entity_type + ':' + r.slug] = r.ts;
+  if (lists.characters.length) await ensureUrlSlugColumn(env);
+  const [chars, scripts] = await Promise.all([
+    fetchRows("SELECT slug, name, team, status, url_slug FROM characters WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.characters),
+    fetchRows("SELECT slug, name, status, data FROM scripts WHERE slug IN (%IN%) AND status IS NOT 'deleted'", lists.scripts)
+  ]);
+  const bySlug = list => Object.fromEntries(list.map(r => [r.slug, r]));
+  const charMap = bySlug(chars), scriptMap = bySlug(scripts), collMap = bySlug(colls);
+
+  const via = new Set();
+  const cache = {};
+  const items = { characters: [], scripts: [], collections: [] };
+  for (const slug of lists.characters) {
+    const r = charMap[slug]; if (!r) continue;
+    items.characters.push({ slug, key: slug, page: charAddress(r), name: r.name || slug, team: r.team || '',
+      status: r.status, savedAt: savedAt['character:' + slug] });
+  }
+  for (const slug of lists.scripts) {
+    const r = scriptMap[slug]; if (!r) continue;
+    const roster = await rosterCharacterSlugs(env, 'script', r, cache);
+    if (r.status === 'published') roster.forEach(s => via.add(s));
+    items.scripts.push({ slug, key: slug, name: r.name || slug, status: r.status, count: roster.length,
+      savedAt: savedAt['script:' + slug] });
+  }
+  for (const slug of lists.collections) {
+    const r = collMap[slug]; if (!r) continue;
+    const d = parseData(r);
+    const roster = await rosterCharacterSlugs(env, 'collection', r, cache);
+    if (r.status === 'published') roster.forEach(s => via.add(s));
+    items.collections.push({ slug, key: d.id || slug, name: r.name || d.displayName || slug, status: r.status,
+      count: roster.length, savedAt: savedAt['collection:' + slug] });
+  }
+  const direct = items.characters.filter(c => c.status === 'published').map(c => c.slug);
+  out.items = items;
+  out.characterSlugs = [...new Set([...direct, ...via])];
+  return out;
+}
+
 // ---- more lazily-created tables/columns (no manual migrations ever) ----
 let _viewsReady = false;
 async function ensureViewsTable(env) {
@@ -1736,12 +1887,12 @@ async function wikiParentRow(env, type, key) {
     const row = await findCollectionRow(env, key);
     if (!row) return null;
     const d = parseData(row);
-    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status };
+    return { type, slug: row.slug, key: d.id || row.slug, name: row.name || d.displayName || row.slug, ownerId: row.owner_id, status: row.status, data: d };
   }
   if (type !== 'script') return null;
   const row = await getEntityRow(env, 'script', key);
   if (!row) return null;
-  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status };
+  return { type, slug: row.slug, key: row.slug, name: row.name || row.slug, ownerId: row.owner_id, status: row.status, data: parseData(row) };
 }
 
 // Name -> slug map so [[Snake Charmer]] in page text becomes a real link.
@@ -2371,15 +2522,17 @@ function publicEditMode(d) {
   const v = d && d.publicEdit;
   return (typeof v === 'string' && PUBLIC_EDIT_MODES[v]) ? v : '';
 }
-/* What a save may store. A character keeps 'closed' (the owner's explicit
-   "Only me", which switches the default off); a script or collection has no
-   default to switch off, so for them it is nothing, and a character-only mode
-   becomes its nearest equivalent rather than a word their editors never
-   offered. */
+/* What a save may store. 'closed' is the owner's explicit "Only me" and is
+   kept on every type: on a character it switches the tags-open default off,
+   and on a script or collection it is a CHOICE that governs the owner's
+   characters and wiki pages on it (see sharedParentPages), which nothing
+   stored — "not set" — never does. A character-only mode on a script or
+   collection becomes its nearest equivalent rather than a word their editors
+   never offered. */
 function sanitizePublicEdit(v, type) {
   if (typeof v !== 'string') return '';
   const character = !type || type === 'character';
-  if (v === PUBLIC_EDIT_CLOSED) return character ? PUBLIC_EDIT_CLOSED : '';
+  if (v === PUBLIC_EDIT_CLOSED) return PUBLIC_EDIT_CLOSED;
   if (!PUBLIC_EDIT_MODES[v]) return '';
   if (!character && CHARACTER_ONLY_MODES[v]) return v === 'all-but-ability' ? 'all' : '';
   return v;
@@ -2395,6 +2548,18 @@ function defaultTagsOpen(type, d) {
    editPermission()'s. */
 function effectivePublicEdit(type, d) {
   return publicEditMode(d) || (defaultTagsOpen(type, d) ? 'tags' : '');
+}
+/* The same answer with the set's choice applied (characters only), plus where
+   it came from — what /api/page-history reports and what /api/suggest checks.
+   Async because the set has to be looked up; the sync form above is for the
+   callers that already know no set is involved. */
+async function effectiveModeFor(env, type, row, d) {
+  d = d || parseData(row);
+  if (type === 'character') {
+    const gov = await governingParent(env, row, d).catch(() => null);
+    if (gov) return { mode: gov.mode === PUBLIC_EDIT_CLOSED ? '' : gov.mode, via: parentRef(gov) };
+  }
+  return { mode: effectivePublicEdit(type, d), via: null };
 }
 
 /* ---- approved editing: the accounts the owner named ----
@@ -2471,43 +2636,50 @@ async function notifyEditorsAdded(env, opts) {
   } catch { /* a notification must never break a save */ }
 }
 
-/* ---- approved editing, waterfalled from a script or a collection ----
-   Sharing a script or a collection with somebody is almost never a request to
-   share only that one page: the roster IS the work, and an editor who can fix
-   the script's synopsis but not a typo in any of its characters has been given
-   the smaller half. So being an approved editor of a script or a collection
-   carries down to the character pages it lists.
+/* ---- a set's sharing choice governs its owner's pages on it ----
+   Sharing a script or a collection is almost never about that one page: the
+   roster IS the work, and its rules pages are the rest of it. So the "Who can
+   edit" choice on a script or a collection — 'closed', 'approved', 'suggest'
+   or 'all' — is the choice in force on every character and wiki page on it
+   that the SAME account owns. A character's own setting is dormant while a
+   set governs it; a set whose owner chose nothing ("not set") governs nothing,
+   which is what every set on the wiki was before this existed.
 
-   With one boundary, and it is the important part: it reaches only characters
-   owned by the SAME account as the parent page. A collection can list anybody's
-   characters — that is what makes collections useful — so without this rule,
-   naming an editor on a collection would hand them edit rights over other
-   people's pages, which is not the owner's to give. Their own characters in
-   their own collection is exactly what they meant to share.
+   The boundary is the important part: it reaches only pages owned by the same
+   account as the parent. A collection can list anybody's characters — that is
+   what makes collections useful — so without it, a choice on a collection
+   would open or close other people's pages, which is not the owner's to do.
+   Their own characters in their own collection is exactly what they meant.
+
+   A character on two governed sets takes the collection's choice over the
+   script's, then the first in table order — the same precedence
+   characterQualifier() uses to decide which set a character is filed under.
 
    The scan is the whole point of the cache: it asks for the few script and
-   collection rows that name any editor at all (almost always none), keyed on
-   the content version so a change to a roster or an editor list invalidates
-   it, exactly like curataCollections above. */
+   collection rows that carry a `publicEdit` at all (a handful), keyed on the
+   content version so a change to a roster or a choice invalidates it, exactly
+   like curataCollections above. */
 let _sharedParentCache = null;
 async function sharedParentPages(env) {
   const version = await contentVersion(env);
   if (_sharedParentCache && _sharedParentCache.version === version) return _sharedParentCache.rows;
   const rows = [];
   try {
+    // Collections first: see the precedence note above.
     for (const type of ['collection', 'script']) {
       const { results } = await env.DB.prepare(
         `SELECT slug, owner_id, data FROM ${CONTENT[type].table}
          WHERE status IS NOT 'deleted' AND owner_id IS NOT NULL AND data LIKE ?`
-      ).bind('%"editors"%').all();
+      ).bind('%"publicEdit"%').all();
       for (const r of results || []) {
         const d = parseData(r);
-        // The list only means anything in the mode that reads it.
-        if (publicEditMode(d) !== 'approved') continue;
-        const editors = approvedEditors(d)
-          .map(e => Number(e.id)).filter(n => Number.isFinite(n));
-        if (!editors.length) continue;
-        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), editors, data: d });
+        const mode = sanitizePublicEdit(d.publicEdit, type);
+        if (!mode) continue;
+        // The editor list only means anything in the mode that reads it.
+        const editors = mode === 'approved'
+          ? approvedEditors(d).map(e => Number(e.id)).filter(n => Number.isFinite(n))
+          : [];
+        rows.push({ type, slug: r.slug, ownerId: Number(r.owner_id), mode, editors, data: d });
       }
     }
   } catch {
@@ -2520,11 +2692,9 @@ async function sharedParentPages(env) {
   return rows;
 }
 
-/* Does this script/collection list this character? A script says so outright;
-   a collection is resolved by the one membership rule (match[]/include[]/
-   exclude[]) rather than a second copy of it — passing the single character in
-   as the whole corpus asks "is this one a member" with the same code the page
-   itself renders through. */
+// Does this script list the character / does this collection resolve it as a
+// member? Collections go through the ONE membership rule
+// (resolveCollectionMembers) with the single character as the whole corpus.
 function parentListsCharacter(parent, charRow, charData) {
   if (parent.type === 'script') {
     return (parent.data.characters || []).some(x => String(x) === charRow.slug);
@@ -2533,32 +2703,95 @@ function parentListsCharacter(parent, charRow, charData) {
   return PageRender.resolveCollectionMembers(parent.data, [probe]).length > 0;
 }
 
-/* The script or collection that shares this character with this session, or
-   null. Returning the parent rather than a boolean is what lets the editor say
-   WHERE the permission came from — "you were made an editor of this page" is
-   a confusing thing to read on a page nobody named you on. */
-async function waterfallParent(env, sess, charRow) {
-  if (!sess || sess.userId == null || !charRow) return null;
-  // An unowned page (most of the bulk-imported wiki) belongs to no creator, so
-  // there is nobody whose sharing could reach it.
-  if (charRow.owner_id == null) return null;
+/* The set whose choice governs this character, or null: owned by the same
+   account, listing the character, with a mode its owner chose. No session
+   needed — this is a fact about the page, not about who is asking. */
+async function governingParent(env, charRow, charData) {
+  if (!charRow || charRow.owner_id == null) return null;
   if ((charRow.status || 'published') === 'deleted') return null;
   const parents = await sharedParentPages(env);
   if (!parents.length) return null;
-  const d = parseData(charRow);
+  const d = charData || parseData(charRow);
   for (const p of parents) {
     if (p.ownerId !== Number(charRow.owner_id)) continue;
-    if (!p.editors.includes(Number(sess.userId))) continue;
-    if (!parentListsCharacter(p, charRow, d)) continue;
-    // An admin-protected page is nobody's to share, the same as everywhere.
-    if (await isProtected(env, 'character', charRow.slug)) return null;
-    return p;
+    if (parentListsCharacter(p, charRow, d)) return p;
   }
   return null;
 }
+/* {type, key, name} of a set row: the shape the editors take to say where a
+   permission or a setting came from. */
+function parentRef(p) {
+  return {
+    type: p.type,
+    key: p.type === 'collection' ? (p.data.id || p.slug) : p.slug,
+    name: (p.type === 'script' ? p.data.name : p.data.displayName) || p.slug
+  };
+}
 
-async function waterfallEditor(env, sess, charRow) {
-  return !!(await waterfallParent(env, sess, charRow));
+/* The script or collection that shares this character with this session as
+   an approved editor, or null. Returning the parent rather than a boolean is
+   what lets the editor say WHERE the permission came from — "you were made an
+   editor of this page" is a confusing thing to read on a page nobody named
+   you on. */
+async function waterfallParent(env, sess, charRow) {
+  if (!sess || sess.userId == null || !charRow) return null;
+  const p = await governingParent(env, charRow);
+  if (!p || p.mode !== 'approved' || !p.editors.includes(Number(sess.userId))) return null;
+  // An admin-protected page is nobody's to share, the same as everywhere.
+  if (await isProtected(env, 'character', charRow.slug)) return null;
+  return p;
+}
+
+/* ---- ...and to the wiki pages (/p/) that hang off it ----
+   The set's choice reaches its custom wiki pages the same way — its rules
+   page, its lore, its storyteller notes are as much the set as its roster.
+   Same boundary as the characters: only pages owned by the SAME account as
+   the parent, so a page somebody else wrote under it stays theirs.
+
+   A wiki page has no `publicEdit` of its own, so the parent's choice is the
+   whole of its answer: 'approved' admits the named editors (drafts included,
+   and adding new pages), 'all' admits anyone with an account to a PUBLISHED
+   page, and 'closed' or nothing keeps it the owner's. 'suggest' reads as
+   closed here — there is no send path for a suggestion on a wiki page.
+   What stays with the owner whatever the mode: publishing and unpublishing,
+   deleting, and rolling back. A page an editor creates is filed under the
+   PARENT's owner (as a draft), so it is the owner's to publish and stays
+   inside the share.
+
+   `parent` is a wikiParentRow() result. */
+function parentSharingMode(parent) {
+  if (!parent || !parent.data || parent.ownerId == null) return '';
+  if ((parent.status || 'published') === 'deleted') return '';
+  return sanitizePublicEdit(parent.data.publicEdit, parent.type);
+}
+async function isParentApprovedEditor(env, sess, parent) {
+  if (!sess || sess.userId == null) return false;
+  if (parentSharingMode(parent) !== 'approved' || !isApprovedEditor(sess, parent.data)) return false;
+  return !(await isProtected(env, parent.type, parent.slug));
+}
+
+/* 'owner' | 'approved' | 'all' | '' for one wiki page row. */
+async function wikiPageAccess(env, sess, row, parent) {
+  if (!sess || !row) return '';
+  if (canEditRow(sess, row)) return 'owner';
+  if (row.owner_id == null || !parent || parent.ownerId == null) return '';
+  if (Number(row.owner_id) !== Number(parent.ownerId)) return '';
+  const mode = parentSharingMode(parent);
+  if (!mode || mode === PUBLIC_EDIT_CLOSED || mode === 'suggest') return '';
+  if (await isProtected(env, 'wikipage', row.slug)) return '';
+  if (await isProtected(env, parent.type, parent.slug)) return '';
+  if (mode === 'approved') return isApprovedEditor(sess, parent.data) ? 'approved' : '';
+  // 'all' opens a published page; a draft is still its owner's and its named
+  // editors' alone, exactly as a character draft is.
+  return (row.status || 'published') === 'published' ? 'all' : '';
+}
+
+/* May this session add a page under this parent? Its owner, an admin, or an
+   approved editor of it. */
+async function mayAddWikiPage(env, sess, parent) {
+  if (!sess || !parent) return false;
+  if (canEditRow(sess, { owner_id: parent.ownerId })) return true;
+  return isParentApprovedEditor(env, sess, parent);
 }
 
 /* ---- assigning a script or collection carries its characters with it ----
@@ -2719,24 +2952,31 @@ async function editPermission(env, sess, type, row) {
   if (canEditRow(sess, row)) return 'owner';
   if ((row.status || 'published') === 'deleted') return '';
   const d = parseData(row);
-  const mode = publicEditMode(d);
+  /* A character on a set whose owner chose a sharing mode takes THAT mode —
+     the set governs its owner's pages on it (see governingParent). The
+     character's own setting is dormant while it does. */
+  const gov = type === 'character' ? await governingParent(env, row, d) : null;
+  const mode = gov ? gov.mode : publicEditMode(d);
   /* Approved editors are named one account at a time, so they reach a DRAFT
      too — a collaborator is most use before the page goes live, and there is
      no stranger here to hide it from. They still cannot publish it: the save
      handlers carry the stored status forward for everyone but the owner, so
-     what goes live stays the creator's call. */
-  if (mode === 'approved' && isApprovedEditor(sess, d)) {
-    if (await isProtected(env, type, row.slug)) return '';
-    return 'approved';
+     what goes live stays the creator's call. Named on the set rather than on
+     the character itself is the same permission for the same reason: it is
+     the page's owner who named them. */
+  if (mode === 'approved') {
+    const named = isApprovedEditor(sess, d) || !!(gov && gov.editors.includes(Number(sess.userId)));
+    if (named) {
+      if (await isProtected(env, type, row.slug)) return '';
+      return 'approved';
+    }
   }
-  /* Named on the script or collection this character is part of, rather than
-     on the character itself. Same permission, for the same reason: it is the
-     page's owner who named them. Checked here so it applies to a page that
-     opted into nothing of its own — which is most of them. */
-  if (type === 'character' && await waterfallEditor(env, sess, row)) return 'approved';
   // Nothing chosen is not nothing on a character: the tags stay open until
-  // the owner tags the page or picks a mode (see defaultTagsOpen).
-  const eff = mode || (defaultTagsOpen(type, d) ? 'tags' : '');
+  // the owner tags the page or picks a mode (see defaultTagsOpen). A set that
+  // governs the page HAS chosen, so that default never applies under one.
+  const eff = gov
+    ? (mode === PUBLIC_EDIT_CLOSED ? '' : mode)
+    : (mode || (defaultTagsOpen(type, d) ? 'tags' : ''));
   if (!eff) return '';
   if (eff === 'approved') return '';    // named editing, and this is not one of the names
   if ((row.status || 'published') !== 'published') return '';
@@ -2754,15 +2994,18 @@ async function canEditPage(env, sess, type, row) {
   if (canEditRow(sess, row)) return true;
   if (!sess || !row) return false;
   const d = parseData(row);
-  if (publicEditMode(d) === 'approved' && isApprovedEditor(sess, d)) {
-    if ((row.status || 'published') === 'deleted') return false;
-    return !(await isProtected(env, type, row.slug));
-  }
-  // ...or named on the script/collection this character belongs to. Being here
-  // is what lets a shared roster's character pages be SEEN as drafts and take
-  // an art upload, not just be saved.
-  if (type === 'character') return waterfallEditor(env, sess, row);
-  return false;
+  // The same answer editPermission() gives for 'approved': the set's choice
+  // when one governs the character, else the page's own, and the names on
+  // either. Being here is what lets a shared roster's character pages be SEEN
+  // as drafts and take an art upload, not just be saved — so it must not say
+  // yes where the save would say no.
+  const gov = type === 'character' ? await governingParent(env, row, d) : null;
+  const mode = gov ? gov.mode : publicEditMode(d);
+  if (mode !== 'approved') return false;
+  const named = isApprovedEditor(sess, d) || !!(gov && gov.editors.includes(Number(sess.userId)));
+  if (!named) return false;
+  if ((row.status || 'published') === 'deleted') return false;
+  return !(await isProtected(env, type, row.slug));
 }
 
 /* Who may put an IMAGE in a page's own R2 slot.
@@ -3445,7 +3688,11 @@ async function renameCharacter(env, from, to) {
     ['UPDATE comments SET slug=? WHERE entity_type=? AND slug=?', ['character']],
     ['UPDATE OR REPLACE page_views SET slug=? WHERE entity_type=? AND slug=?', ['character']],
     ['UPDATE revisions SET slug=? WHERE entity_type=? AND slug=?', ['character']],
-    ['UPDATE activity_log SET entity_slug=? WHERE entity_type=? AND entity_slug=?', ['character']]
+    ['UPDATE activity_log SET entity_slug=? WHERE entity_type=? AND entity_slug=?', ['character']],
+    // Readers' bookmarks are keyed on the identity, which is exactly what is
+    // moving here. OR REPLACE: an account that had somehow saved both keys
+    // keeps one row rather than tripping the primary key.
+    ['UPDATE OR REPLACE favorites SET slug=? WHERE entity_type=? AND slug=?', ['character']]
   ];
   for (const [sql, extra] of moves) {
     try { await env.DB.prepare(sql).bind(to, ...extra, from).run(); }
@@ -4630,8 +4877,13 @@ function renderCharacterPage(d, origin, isDraft, showPartialNotice, setHref) {
     body, draftBanner, root,
     bootstrap: `window.SSR = true; window.LINK_ROOT = ${JSON.stringify(root)}; window.CHAR_SLUG = ${JSON.stringify(d.slug)};` +
       ` window.PAGE_TYPE = 'character'; window.PAGE_SLUG = ${JSON.stringify(d.slug)};` +
-      (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : ''),
-    scripts: ['reader.js', 'tags.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
+      (setHref !== undefined ? ' window.APPEARS_IN_RESOLVED = true;' : '') +
+      // Only a published page can be saved, so charpage.js draws no
+      // Favorite button on a draft. Private render; never in the public cache.
+      (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
+    // favorites.js before charpage.js: the info card's Favorite button is
+    // mounted by charpage.js through window.Favorites.
+    scripts: ['reader.js', 'tags.js', 'favorites.js', 'charpage.js', 'reading-lazy.js', 'site.js', ...(isDraft || showPartialNotice ? [] : ['page-viewer.js'])]
   });
 }
 
@@ -5105,12 +5357,16 @@ async function renderContentPage(env, ctx, request, url, type, slug) {
     ogImage: img, ogCard: d.header ? 'summary_large_image' : 'summary',
     body, draftBanner,
     bodyClass: ta.cls, bodyStyle: ta.style,
-    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};`,
+    bootstrap: `window.SSR = true; window.LINK_ROOT = '../'; window.PAGE_TYPE = ${JSON.stringify(type)}; window.PAGE_SLUG = ${JSON.stringify(isScript ? d.slug : (d.id || d.slug))};` +
+      // pageview.js draws no Favorite button on a draft (published only).
+      (isDraft ? ' window.PAGE_DRAFT = true;' : ''),
     // sao.js before card-filters.js: the filter box only builds its Steven
     // Approved Order option when window.saoCompare is already there.
+    // favorites.js before both pageview.js (which mounts the page's Favorite
+    // button) and card-filters.js (whose Favorites chip asks it for the list).
     scripts: isScript
-      ? ['reader.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
-      : ['reader.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      ? ['reader.js', 'favorites.js', 'pageview.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
+      : ['reader.js', 'favorites.js', 'pageview.js', 'sao.js', 'card-filters.js', 'reading-lazy.js', 'site.js', ...(isDraft ? [] : ['page-viewer.js'])]
   });
   return htmlPage(html, isDraft ? '' : type + '|' + (row.slug || slug));
 }
@@ -5596,8 +5852,10 @@ export default {
       });
       const key = type === 'collection' ? (d.id || d.slug) : row.slug;
       const editHref = mayEdit ? '/' + (type === 'script' ? 'publish-script?s=' : 'publish-collection?c=') + encodeURIComponent(key) : '';
-      const pages = mayOwn ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
-      const newPageHref = mayOwn ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
+      // Approved editors of the script/collection work on its pages too
+      // (see wikiPageAccess), so they get the drafts and the add button.
+      const pages = mayEdit ? await listWikiPages(env, type, row.slug, { includeDrafts: true }) : null;
+      const newPageHref = mayEdit ? '/publish-page?parentType=' + type + '&parentSlug=' + encodeURIComponent(key) : '';
       return jsonResponse({ editHref, pages: pages
         ? PageRender.pagesSection(WikiRender.renderPageLinks(pages, { linkRoot: '/' }), newPageHref) : null });
     }
@@ -5775,10 +6033,12 @@ export default {
       const parent = await wikiParentRow(env, parentType, parentKey);
       if (!parent) return jsonResponse({ error: 'Unknown parent page' }, { status: 404 });
       const sess = await getSession(env, request);
-      const mayEdit = canEditRow(sess, { owner_id: parent.ownerId });
+      const mayEdit = await mayAddWikiPage(env, sess, parent);
       return jsonResponse({
         parent: { type: parent.type, key: parent.key, name: parent.name },
         canEdit: mayEdit,
+        // An approved editor adds pages but does not publish them.
+        isOwner: canEditRow(sess, { owner_id: parent.ownerId }),
         pages: await listWikiPages(env, parent.type, parent.slug, { includeDrafts: mayEdit })
       });
     }
@@ -5792,11 +6052,12 @@ export default {
         .bind(slug).first().catch(() => null);
       if (!row) return jsonResponse({ error: 'Not found' }, { status: 404 });
       const sess = await getSession(env, request);
-      const editable = canEditRow(sess, row);
+      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
+      const access = await wikiPageAccess(env, sess, row, parent);
+      const editable = !!access;
       if (row.status !== 'published' && !editable) {
         return jsonResponse({ error: 'Not found' }, { status: 404 });
       }
-      const parent = await wikiParentRow(env, row.parent_type, row.parent_slug);
       return jsonResponse({
         page: {
           ...parseData(row), slug: row.slug, title: row.title,
@@ -5806,7 +6067,11 @@ export default {
           author: row.author || null,
           updatedAt: row.updated_at
         },
-        status: row.status, canEdit: editable
+        status: row.status, canEdit: editable,
+        // 'owner' | 'approved' | 'all' | '': the editor hides publish/delete
+        // for anything but 'owner'.
+        access,
+        editVia: access && access !== 'owner' && parent ? { type: parent.type, key: parent.key, name: parent.name } : null
       });
     }
 
@@ -5829,7 +6094,11 @@ export default {
         const isDraft = row.status !== 'published';
         if (isDraft) {
           const sess = await getSession(env, request);
-          if (!canEditRow(sess, row)) return assetsOrNotFound(env, request);
+          const par = canEditRow(sess, row) ? null
+            : await wikiParentRow(env, row.parent_type, row.parent_slug).catch(() => null);
+          if (!canEditRow(sess, row) && !(await wikiPageAccess(env, sess, row, par))) {
+            return assetsOrNotFound(env, request);
+          }
         }
         if (!isDraft && ctx) ctx.waitUntil(bumpView(env, request, 'wikipage', row.slug));
   
@@ -7581,13 +7850,16 @@ export default {
       let editVia = null;
       if (mode === 'approved' && type === 'character' && !isApprovedEditor(sess, parseData(row))) {
         const par = await waterfallParent(env, sess, row).catch(() => null);
-        if (par) {
-          editVia = {
-            type: par.type,
-            key: par.type === 'collection' ? (par.data.id || par.slug) : par.slug,
-            name: (par.type === 'script' ? par.data.name : par.data.displayName) || par.slug
-          };
-        }
+        if (par) editVia = parentRef(par);
+      }
+      /* The set whose sharing choice governs this character, if any: the
+         owner's editor locks its own "Who can edit" control on that choice
+         and says where to change it, and a guest's banner says where the
+         permission came from. */
+      let governedBy = null;
+      if (type === 'character') {
+        const gov = await governingParent(env, row, parseData(row)).catch(() => null);
+        if (gov) governedBy = { ...parentRef(gov), mode: gov.mode };
       }
       /* Who points here: the pages naming this character in their own
          Related list. Relations are one-way by design — nothing shows on a
@@ -7616,7 +7888,7 @@ export default {
       }
       return jsonResponse({
         slug: row.slug, data: pageData,
-        curataFrom, editVia, relatedBy,
+        curataFrom, editVia, governedBy, relatedBy,
         status: row.status || 'published', canEdit: editable,
         editMode: mode || false, editDefault, isOwner: owns,
         // The editor posts this back so the Worker can tell a save based on
@@ -7690,7 +7962,7 @@ export default {
             status: r.status || 'published',
             updatedAt: r.updated_at || null,
             /* Editing a script or a collection carries down to the owner's own
-               characters on it (waterfallEditor). The characters themselves
+               characters on it (waterfallParent). The characters themselves
                are not listed here — a roster of 200 would bury the four pages
                actually shared with this account — so the row says so instead,
                and the parent page is the way to them. */
@@ -7700,6 +7972,18 @@ export default {
       }
       out.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
       return jsonResponse({ pages: out.slice(0, 100) });
+    }
+
+    // ---------- FAVORITES (this account's saved pages) ----------
+    // The three slug lists, newest first. ?expand=1 adds `items` (what the
+    // account page lists) and `characterSlugs` (what the Favorites filter on
+    // the browse pages admits: saved characters plus every character on a
+    // saved script or collection). Private: the lists are one reader's own.
+    if (method === 'GET' && path === '/api/favorites') {
+      const sess = await getSession(env, request);
+      if (!sess) return jsonResponse({ error: 'Not logged in' }, { status: 401 });
+      const expand = url.searchParams.get('expand') === '1';
+      return jsonResponse(await favoritesPayload(env, sess.userId, expand));
     }
 
     // ---------- DISCORD SIGN-IN HEALTH CHECK (admin only) ----------
@@ -8033,6 +8317,7 @@ export default {
           changed: diffFieldLabels(r.data, after)
         };
       }).reverse();
+      const eff = await effectiveModeFor(env, type, row);
       return jsonResponse({
         type, slug: row.slug,
         name: row.name || row.slug,
@@ -8040,7 +8325,9 @@ export default {
         createdAt: row.created_at || null,
         updatedAt: row.updated_at || null,
         canRestore: owns,
-        publicEdit: effectivePublicEdit(type, parseData(row)),
+        publicEdit: eff.mode,
+        // The set the mode comes from, when a script or collection governs it.
+        publicEditVia: eff.via,
         entries
       });
     }
@@ -9256,7 +9543,8 @@ export default {
         if (canEditRow(sess, row)) {
           return jsonResponse({ error: 'This is your own page: save it directly instead.' }, { status: 400 });
         }
-        const mode = publicEditMode(parseData(row));
+        // The set's choice, when one governs the character (see governingParent).
+        const mode = (await effectiveModeFor(env, type, row)).mode;
         if (mode !== 'suggest') {
           return jsonResponse({ error: 'That page is not taking suggestions.' }, { status: 403 });
         }
@@ -9855,6 +10143,44 @@ export default {
       // A jinx is a relationship, so it can be created from either end: you
       // need to own (or admin) just ONE of the two characters. It is stored on
       // the side you own, and the other page shows it mirrored on read.
+      // ---- favorite / unfavorite one page ----
+      // Body: {type, slug, on}. `slug` may be a character's address or a
+      // collection's kebab id — favoriteTarget() resolves it to the stored
+      // key. Only a published page can be saved (a draft is not a page a
+      // reader was shown), and the table is capped per account. Not a content
+      // write: nothing about the page changes, so no feed is invalidated and
+      // no activity is logged — a bookmark is not an edit.
+      if (path === '/api/favorite') {
+        if (await rateLimited(env, request, 'fav', 300, 3600, { sess })) {
+          return tooManyResponse('You have changed a lot of favorites in the last hour. Take a short break and try again.', 3600);
+        }
+        const b = await request.json().catch(() => null);
+        if (!b || !FAVORITE_TYPES.includes(b.type)) return jsonResponse({ error: 'Unknown page type' }, { status: 400 });
+        const target = await favoriteTarget(env, b.type, b.slug);
+        if (!target) return jsonResponse({ error: 'No such page' }, { status: 404 });
+        await ensureFavoritesTable(env);
+        const on = b.on !== false && b.on !== 0 && b.on !== 'false';
+        if (on) {
+          if (target.status !== 'published') {
+            return jsonResponse({ error: 'Only published pages can be added to your favorites.' }, { status: 400 });
+          }
+          const n = await env.DB.prepare('SELECT COUNT(*) AS n FROM favorites WHERE user_id=?')
+            .bind(sess.userId).first().catch(() => null);
+          const already = await env.DB.prepare('SELECT 1 AS x FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
+            .bind(sess.userId, b.type, target.slug).first().catch(() => null);
+          if (!already && n && n.n >= FAVORITES_MAX) {
+            return jsonResponse({ error: 'You have reached the limit of ' + FAVORITES_MAX + ' favorites. Remove some to add more.' }, { status: 400 });
+          }
+          await env.DB.prepare(
+            'INSERT OR IGNORE INTO favorites (user_id, entity_type, slug) VALUES (?,?,?)'
+          ).bind(sess.userId, b.type, target.slug).run();
+        } else {
+          await env.DB.prepare('DELETE FROM favorites WHERE user_id=? AND entity_type=? AND slug=?')
+            .bind(sess.userId, b.type, target.slug).run();
+        }
+        return jsonResponse({ ok: true, on, type: b.type, slug: target.slug, key: target.key, name: target.name });
+      }
+
       if (path === '/api/jinx') {
         {
           const limited = await writeLimited(env, request, sess, 'character');
@@ -10196,18 +10522,23 @@ export default {
           ? await env.DB.prepare('SELECT * FROM pages WHERE slug=?').bind(String(b.slug)).first().catch(() => null)
           : null;
         if (b.slug && !existing) return jsonResponse({ error: 'That page no longer exists.' }, { status: 404 });
-        if (existing && !canEditRow(sess, existing)) {
-          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
-        }
-
         // The parent never changes once a page is created — its URL and the
         // link back to it would both break.
         const parent = existing
           ? await wikiParentRow(env, existing.parent_type, existing.parent_slug)
           : await wikiParentRow(env, String(b.parentType || ''), String(b.parentSlug || ''));
+        // 'owner' | 'approved' — see wikiPageAccess. A new page is the owner's
+        // when its writer owns the parent, and an approved editor's otherwise.
+        const access = existing
+          ? await wikiPageAccess(env, sess, existing, parent)
+          : (parent && canEditRow(sess, { owner_id: parent.ownerId }) ? 'owner'
+            : (await isParentApprovedEditor(env, sess, parent) ? 'approved' : ''));
+        if (existing && !access) {
+          return jsonResponse({ error: 'That page belongs to another account.' }, { status: 403 });
+        }
         if (!parent) return jsonResponse({ error: 'That script or collection could not be found.' }, { status: 404 });
-        if (!existing && !canEditRow(sess, { owner_id: parent.ownerId })) {
-          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" can add pages to it.' }, { status: 403 });
+        if (!existing && !access) {
+          return jsonResponse({ error: 'Only the owner of "' + parent.name + '" (or an editor they named) can add pages to it.' }, { status: 403 });
         }
         if (!sess.isAdmin && await isProtected(env, parent.type, parent.slug)) {
           return jsonResponse({ error: PROTECTED_MSG }, { status: 423 });
@@ -10242,7 +10573,13 @@ export default {
         page.parentSlug = parent.slug;
         if (!page.blurb) page.blurb = WikiRender.autoSummary(page.body, 140);
 
-        const status = b.status === 'published' ? 'published' : 'draft';
+        // Going live stays the owner's call: an approved editor's save keeps
+        // the stored status, and a page they create starts as a draft.
+        let status = b.status === 'published' ? 'published' : 'draft';
+        if (access !== 'owner') status = existing ? (existing.status === 'published' ? 'published' : 'draft') : 'draft';
+        if (access !== 'owner' && publicEditTooBig(page)) {
+          return jsonResponse({ error: 'That edit is too large to save.' }, { status: 413 });
+        }
         if (existing) await saveRevision(env, sess, 'wikipage', existing);
         await env.DB.prepare(
           `INSERT INTO pages (slug,title,parent_type,parent_slug,author,owner_id,data,status,created_at,updated_at)
@@ -10251,8 +10588,17 @@ export default {
              title=excluded.title, author=excluded.author, data=excluded.data,
              status=excluded.status, updated_at=datetime('now')`
         ).bind(slug, title, parent.type, parent.slug, page.author || null,
-               existing ? existing.owner_id : sess.userId, JSON.stringify(page), status).run();
+               existing ? existing.owner_id : (access === 'owner' ? sess.userId : parent.ownerId),
+               JSON.stringify(page), status).run();
         await logActivity(env, sess, existing ? 'update' : 'create', 'wikipage', slug, title);
+        if (access !== 'owner') {
+          ctx.waitUntil(notifyPageEdit(env, {
+            fromId: sess.userId, ownerId: existing ? existing.owner_id : parent.ownerId,
+            type: 'wikipage', slug, what: existing ? 'edited' : 'added the page',
+            name: existing ? title : title + '\u201d (a draft) to \u201c' + parent.name,
+            path: '/p/' + slug, origin: url.origin
+          }));
+        }
         return jsonResponse({
           ok: true, slug, status,
           parentType: parent.type, parentKey: parent.key, parentName: parent.name
@@ -10388,6 +10734,11 @@ export default {
         try {
           await env.DB.prepare('DELETE FROM revisions WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
         } catch { /* revisions table may not exist yet */ }
+        // And the bookmarks pointing at it: a soft-deleted page keeps them
+        // (it can be restored), a purged one has nothing left to come back.
+        try {
+          await env.DB.prepare('DELETE FROM favorites WHERE entity_type=? AND slug=?').bind(type, row.slug).run();
+        } catch { /* favorites table may not exist yet */ }
         await logActivity(env, sess, 'purge', type, row.slug, row.name);
         return jsonResponse({ ok: true, slug: row.slug });
       }

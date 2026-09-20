@@ -1,13 +1,32 @@
 /* Character page enhancements — loaded by every server-rendered /c/{slug}
    page (the Worker renders the HTML from D1; see worker/worker.js).
    Adds the Edit button, the "Add to Script" / "Add to Token Tool" buttons,
-   title auto-fit, and #hash scrolling. */
+   title auto-fit, and #hash scrolling. The two buttons are drawn with the
+   same markup as the Favorites button under them (assets/favorites.js): a
+   .tog-ico glyph that is an outline until the button is on and filled
+   after, a .tog-label, and the .tog-pop swell on toggle — one skin for the
+   three (styles.css), because the owner asked for parity between them. */
 (function () {
   var SLUG = window.CHAR_SLUG;
   if (!document.getElementById('content') || !SLUG) return;
 
+  // One glyph per button, the shape of Favorites.heartSVG(): a 24-box path
+  // stroked in currentColor and left unfilled, which styles.css fills in once
+  // the button is on. A page with a folded corner for the script, a disc for
+  // the token. Both subpaths of the page wind the same way, or the fold would
+  // cut a notch out of the filled shape.
+  function glyphSVG(d) {
+    return '<svg class="tog-ico" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true" focusable="false">' +
+      '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>';
+  }
+  var SCRIPT_GLYPH = 'M7 3h7l4 4v14H7Zm7 0l4 4h-4Z';
+  var TOKEN_GLYPH = 'M12 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 1 1 0-17Z';
+
   // Generic localStorage-backed toggle button appended to the info card.
-  function mountToggleButton(storageKey, extraClass, onLabel, offLabel, onChange) {
+  // Same markup, state class, aria-pressed and swell as the Favorites button
+  // (favorites.js mountButton), so the three stacked buttons look and move
+  // as one set.
+  function mountToggleButton(storageKey, extraClass, glyph, onLabel, offLabel, onChange) {
     var infocard = document.querySelector('.char-infocard');
     if (!infocard) return;
     function getList() {
@@ -19,7 +38,8 @@
     function sync() {
       var on = getList().indexOf(SLUG) !== -1;
       btn.classList.toggle('on', on);
-      btn.textContent = on ? onLabel : offLabel;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.innerHTML = glyph + '<span class="tog-label">' + (on ? onLabel : offLabel) + '</span>';
     }
     btn.addEventListener('click', function () {
       var list = getList();
@@ -27,6 +47,8 @@
       if (i === -1) list.push(SLUG); else list.splice(i, 1);
       try { localStorage.setItem(storageKey, JSON.stringify(list)); } catch (e) {}
       sync();
+      btn.classList.add('tog-pop');
+      setTimeout(function () { btn.classList.remove('tog-pop'); }, 450);
       if (onChange) onChange();
     });
     sync();
@@ -39,9 +61,28 @@
     editBtn.style.display = '';
   }
 
-  mountToggleButton('botc_script', '', '✓ On Your Script', '+ Add to Script',
+  mountToggleButton('botc_script', '', glyphSVG(SCRIPT_GLYPH), 'On Your Script', 'Add to Script',
     function () { if (window.updateScriptBadge) window.updateScriptBadge(); });
-  mountToggleButton('botc_token_set', 'add-to-token-btn', '✓ In Token Tool', '+ Add to Token Tool');
+  mountToggleButton('botc_token_set', 'add-to-token-btn', glyphSVG(TOKEN_GLYPH), 'In Token Tool', 'Add to Token Tool');
+
+  // Favorite — the third button in the same stack, under the JSON bar with
+  // the other two, but this one is stored on the ACCOUNT (assets/favorites.js),
+  // not in localStorage: a saved character is meant to be there on your
+  // phone as well as your laptop, and the Favorites filter on the browse
+  // pages reads the same list. It draws unsaved at once and fills its state
+  // in when the list arrives; logged-out readers are sent to log in and come
+  // straight back. A draft gets no button: only a published page can be
+  // saved.
+  if (window.Favorites && !window.PAGE_DRAFT) {
+    var infocardFav = document.querySelector('.char-infocard');
+    if (infocardFav) {
+      infocardFav.appendChild(window.Favorites.mountButton({
+        type: 'character', slug: SLUG,
+        className: 'add-to-script-btn',
+        onLabel: 'In Your Favorites', offLabel: 'Add to Favorites'
+      }));
+    }
+  }
 
   if (window.fitCharTitle) window.fitCharTitle();
   if (location.hash) {

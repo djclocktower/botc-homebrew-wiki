@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" class="redesign-on">
+<head>
+<meta charset="UTF-8">
+<script src="assets/data.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Favorites — BOTC HomeBrew Wiki</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+<link rel="apple-touch-icon" href="assets/favicon.png">
+<link rel="stylesheet" href="assets/styles.css">
+<link rel="stylesheet" href="assets/header-redesign.css">
+<style>
+  /* Sits on the dark page background, not on parchment — light text, like the
+     .home-hero headers everywhere else. Same furniture as /drafts. */
+  .fav-sub { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    color:rgba(236,225,200,.8); text-align:center; margin:0 0 4px; font-size:.95rem; }
+  .fav-back { display:block; text-align:center; margin:10px 0 0;
+    font-family:'Oswald',sans-serif; letter-spacing:.03em; color:var(--parch); text-decoration:none; }
+  .fav-back:hover { color:#fff; text-decoration:underline; }
+  .fav-count { text-align:center; font-family:'Oswald',sans-serif;
+    letter-spacing:.07em; text-transform:uppercase; font-size:.9rem;
+    color:rgba(236,225,200,.72); margin:0 0 20px; }
+  .fav-gate, .fav-empty {
+    text-align:center; color:rgba(236,225,200,.85); padding:40px 20px;
+    font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+  }
+  .fav-gate a, .fav-empty a { color:#9fc4ee; }
+  .fav-section-note { font-family:'TradeGothicLT','Libre Franklin',sans-serif;
+    color:rgba(236,225,200,.7); font-size:.9rem; margin:-6px 0 16px; }
+  /* Scripts and collections have no card art, so they get the same tile the
+     creator page and /drafts use. */
+  .fav-tiles { display:grid; gap:14px; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); margin-bottom:34px; }
+  .fav-tile {
+    display:block; padding:12px 14px; text-decoration:none;
+    background:rgba(20,7,18,.42); border:1px solid rgba(236,225,200,.22);
+    color:rgba(236,225,200,.92); min-width:0;
+  }
+  .fav-tile:hover { background:rgba(20,7,18,.6); border-color:rgba(236,225,200,.4); }
+  .fav-tile-name { display:block; font-family:'Dumbledor2',serif; font-size:1.05rem;
+    color:var(--parch); overflow-wrap:anywhere; }
+  .fav-tile-meta { display:block; font-size:.78rem; color:rgba(236,225,200,.65); margin-top:3px; }
+  .fav-via { margin-top:34px; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand-group">
+      <a class="brand" href="/">
+        <img class="brand-skull" src="assets/logo_skull.webp" alt="">
+        <img class="brand-header-text" src="assets/headertext.png" alt="BOTC HomeBrew Wiki">
+      </a>
+      <img class="topbar-badge" src="assets/ccc-parchment.webp" alt="Community Created Content">
+    </div>
+    <nav class="crumb" aria-label="Primary">
+      <a href="all-characters">All Characters</a>
+      <a href="scripts">Scripts</a>
+      <a href="all-collections">Collections</a>
+      <a href="script">Script Builder</a>
+    </nav>
+    <div class="search-wrap" id="search-wrap">
+      <input class="search-input" id="search-input" type="search" placeholder="Search characters…" autocomplete="off" aria-label="Search characters" aria-expanded="false" aria-haspopup="listbox">
+      <div class="search-drop" id="search-drop" role="listbox" aria-label="Search results" hidden></div>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Navigation menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+  <nav class="nav-dropdown" id="nav-dropdown" aria-label="Mobile navigation">
+    <div class="nav-dropdown-search">
+      <input type="search" id="nav-search-input" placeholder="Search characters…" autocomplete="off">
+    </div>
+    <a href="/">Home</a>
+    <a href="all-characters">All Characters</a>
+    <a href="scripts">Scripts</a>
+    <a href="all-collections">Collections</a>
+    <a href="script">Script Builder</a>
+  </nav>
+
+  <div class="home-hero">
+    <h1>My Favorites</h1>
+    <p class="fav-sub">The characters, scripts and collections you saved. Only you can see this list.</p>
+    <a class="fav-back" href="account">← Back to my account</a>
+  </div>
+
+  <main class="home-panel" id="panel">
+    <div class="fav-gate" id="loading">Loading your favorites…</div>
+    <div class="fav-gate" id="gate" style="display:none">
+      <p>Log in to see your favorites.</p>
+      <p><a href="login?next=favorites">Log in or create an account</a></p>
+    </div>
+    <div id="favs" style="display:none">
+      <p class="fav-count" id="fav-count"></p>
+      <div id="other-favs"></div>
+      <div id="char-section" style="display:none">
+        <h2 class="type-header">Characters you saved</h2>
+        <div class="type-rule"></div>
+        <div id="char-filters"></div>
+        <p class="fav-count" id="char-count" style="margin:-12px 0 14px"></p>
+        <div id="char-grid"></div>
+      </div>
+      <div id="via-section" class="fav-via" style="display:none">
+        <h2 class="type-header">On your saved scripts &amp; collections</h2>
+        <div class="type-rule"></div>
+        <p class="fav-section-note">These count as favorites too: the <strong>Favorites</strong> filter on
+          <a href="all-characters?favorites=1" style="color:#9fc4ee">All Characters</a> and in the Script Builder shows them alongside the characters above.</p>
+        <div id="via-grid"></div>
+      </div>
+    </div>
+    <div class="fav-empty" id="empty" style="display:none">
+      <p>Nothing saved yet.</p>
+      <p>Every character, script and collection page has an <strong>Add to Favorites</strong> button.
+         Save the ones you want to find again and they will show up here — and behind the
+         Favorites filter on <a href="all-characters">All Characters</a>.</p>
+    </div>
+  </main>
+
+  <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
+
+  <script src="assets/reader.js"></script>
+  <script src="assets/render.js"></script>
+  <script src="assets/render-page.js"></script>
+  <script src="assets/classify.js"></script>
+  <script src="assets/favorites.js"></script>
+  <script src="assets/card-filters.js"></script>
+  <script>
+  /* My Favorites — the same cards the browse pages and /drafts use.
+
+     The account's list comes from /api/favorites?expand=1 (assets/favorites.js
+     caches it): three slug lists, `items` with a name and status per page, and
+     `characterSlugs` — the saved characters plus every character on a saved
+     script or collection, which is what the Favorites filter admits. The
+     cards themselves are drawn from the public grid feed, so a saved page
+     that has gone to draft simply has no card here and is listed as "not
+     public right now" on the account page instead. */
+  (function () {
+    var PR = window.PageRender;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function show(id) { var e = $(id); if (e) e.style.display = ''; }
+    function hide(id) { var e = $(id); if (e) e.style.display = 'none'; }
+
+    function tile(d, href, kind) {
+      var meta = kind + (d.count != null ? ' · ' + d.count + ' character' + (d.count === 1 ? '' : 's') : '') +
+        (d.status !== 'published' ? ' · not public right now' : '');
+      return '<a class="fav-tile" href="' + esc(href) + '">' +
+        '<span class="fav-tile-name">' + esc(d.name || d.slug) + '</span>' +
+        '<span class="fav-tile-meta">' + esc(meta) + '</span></a>';
+    }
+
+    if (!window.Favorites) { hide('loading'); show('gate'); return; }
+    window.Favorites.expanded()
+      .then(function (fav) {
+        if (!fav) { hide('loading'); show('gate'); return; }
+        var items = fav.items || { characters: [], scripts: [], collections: [] };
+        var total = (fav.characters || []).length + (fav.scripts || []).length + (fav.collections || []).length;
+        hide('loading');
+        if (!total) { show('empty'); return; }
+        show('favs');
+        $('fav-count').textContent = total + ' favorite' + (total === 1 ? '' : 's');
+
+        var others = items.scripts.map(function (d) { return tile(d, 's/' + encodeURIComponent(d.slug), 'Script'); })
+          .concat(items.collections.map(function (d) { return tile(d, 'collection/' + encodeURIComponent(d.key || d.slug), 'Collection'); }));
+        if (others.length) {
+          $('other-favs').innerHTML =
+            '<h2 class="type-header">Scripts &amp; collections</h2>' +
+            '<div class="type-rule"></div>' +
+            '<div class="fav-tiles">' + others.join('') + '</div>';
+        }
+
+        var direct = {};
+        (fav.characters || []).forEach(function (s) { direct[s] = true; });
+        var admitted = {};
+        (fav.characterSlugs || []).forEach(function (s) { admitted[s] = true; });
+
+        return BotcData.json('characters.json?fields=grid').then(function (all) {
+          var mine = [], via = [];
+          (all || []).forEach(function (c) {
+            if (!c || !c.slug) return;
+            if (direct[c.slug]) mine.push(c);
+            else if (admitted[c.slug]) via.push(c);
+          });
+          // Newest-saved first, which is the order the API returns them in.
+          var rank = {};
+          (fav.characters || []).forEach(function (s, i) { rank[s] = i; });
+          mine.sort(function (a, b) { return (rank[a.slug] || 0) - (rank[b.slug] || 0); });
+          if (mine.length) {
+            show('char-section');
+            var order = {};
+            mine.forEach(function (c, i) { order[c.slug] = mine.length - i; });
+            $('char-filters').innerHTML = PR.filterBoxHTML('fv', 'Filter favorites');
+            $('char-grid').innerHTML = PR.renderRosterCards(mine, '', order);
+            if (window.mountCardFilters) {
+              var ok = window.mountCardFilters({
+                grid: 'char-grid', bar: 'fv-filter-bar',
+                toggle: 'fv-filter-toggle', count: 'char-count',
+                label: 'Filter favorites', noun: 'character', minCards: 2,
+                partialChip: true, partialOn: true, curataChip: true
+              });
+              if (!ok) $('char-filters').style.display = 'none';
+            }
+          }
+          if (via.length) {
+            show('via-section');
+            $('via-grid').innerHTML = PR.renderRosterCards(via, '', {});
+          }
+        });
+      })
+      .catch(function () { hide('loading'); show('gate'); });
+  })();
+  </script>
+  <script src="assets/site.js"></script>
+</body>
+</html>

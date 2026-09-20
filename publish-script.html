@@ -333,21 +333,23 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
 
     <!-- Who else may edit this page -->
     <details class="sb-details" id="sb-open-sec">
-      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">Yours alone unless you open it up.</span></summary>
+      <summary>Who Can Edit <span class="sb-sum-arrow">&#9662;</span><span class="sb-sum-sub">One choice for this script and your characters and pages on it.</span></summary>
       <div class="sb-details-body">
         <div class="sb-fld">
           <label for="sb-public-edit">Editing</label>
           <select id="sb-public-edit">
-            <option value="">Only me (and the wiki admins)</option>
+            <option value="">Not set: my characters and pages on it keep their own settings</option>
+            <option value="closed">Only me (and the wiki admins)</option>
             <option value="approved">Approved editing: only the people I name below</option>
-            <option value="suggest">Suggestions: anyone can propose an edit, you approve it</option>
-            <option value="all">Anyone with an account can edit this page</option>
+            <option value="suggest">Suggestions: anyone can propose an edit, I approve it</option>
+            <option value="all">Anyone with an account can edit</option>
           </select>
+          <p class="sub" style="margin:8px 0 0">Whatever you choose here applies to this script <strong>and to every character and wiki page on it that belongs to you</strong>, so one choice covers the whole set. Pages belonging to anyone else are not yours to share, so those keep their own settings.</p>
         </div>
         <div class="sb-fld" id="sb-editors-fld" style="display:none">
           <label>Approved editors</label>
           <div id="sb-editors-box"></div>
-          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this script exactly as you would, drafts included — and the character pages on it that belong to you, so they can fix the roster as well as the page. Characters belonging to anyone else are not yours to share, so those stay untouched.</p>
+          <p class="sub" style="margin:8px 0 0">The accounts you name here edit this script exactly as you would, drafts included — and the character pages and wiki pages on it that belong to you, so they can fix the roster and the rules as well as the page. They can add new wiki pages too, which stay drafts until you publish them. Pages belonging to anyone else are not yours to share, so those stay untouched.</p>
         </div>
         <p class="sub" style="margin:0">Every change is listed in the page's history with who made it, and you can put any earlier version back. Publishing, deleting, renaming and this setting stay yours.</p>
       </div>
@@ -601,7 +603,7 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       setMeta(m);
     });
     // Who else may edit this page. Stored on the row, enforced by the Worker.
-    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1 };
+    var PUBLIC_EDIT_MODES = { all: 1, suggest: 1, approved: 1, closed: 1 };
     /* The named-account list that goes with "Approved editing". Mounted
        whatever the mode is, so switching away and back keeps the names; shown
        only while that mode is chosen. onChange writes straight into the stored
@@ -1153,7 +1155,12 @@ details.sb-details > .sb-details-body { padding:4px 20px 18px; }
       // A draft keeps no history — saveRevision() does not snapshot one.
       if (currentStatus !== 'draft') links.push({ href: 'history?' + q, label: 'Edit history' });
       links.push({ href: '#sb-public-edit', label: 'Change this' });
-      host.innerHTML = window.editStatusHTML(mode, { links: links });
+      // A chosen mode reaches the owner's characters and wiki pages on the
+      // set; "not set" leaves each on its own setting, and the bar says which.
+      host.innerHTML = window.editStatusHTML(mode || 'unset', {
+        links: links,
+        what: mode ? 'this script and your characters and wiki pages on it' : 'this script'
+      });
       var change = host.querySelector('a[href="#sb-public-edit"]');
       if (change) change.addEventListener('click', function(e){
         e.preventDefault();
