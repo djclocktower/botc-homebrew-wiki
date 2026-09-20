@@ -18,9 +18,25 @@
   'use strict';
 
   var TARGET = 591;          // output canvas is TARGET x TARGET px (official size)
-  var FILL = 0.70;          // figure's longest side spans FILL * TARGET
-                            // (matches official wiki icons, whose figures fill
-                            // ~62-74% of the 591px frame by their longest side)
+  var FILL = 0.60;           // figure's longest side spans FILL * TARGET
+  /* Why 0.60 and not more: this frame is what every consumer draws the icon
+     INTO, with contain-fit, so the transparent margin IS the icon's size —
+     on the wiki's cards, on the /c/ page, and above all in the official
+     script tool, which prints the file it is handed at the same box size as
+     its own icons. Measured (alpha bounding box, longest side / frame):
+       the 191 official icons in assets/icons/ ....... median 0.63, mean 0.64
+       the script tool's own bundled icons ........... median 0.61, mean 0.62
+     and the tool's PDF then scales every NON-bundled image by a further
+     1.1× (its "Custom Icon Size" default) — so wiki art at the old 0.70
+     printed a quarter larger than the official character beside it, and
+     art that was never standardized (a sixth of the live wiki, some at
+     0.9+) printed at half again the size. 0.60 × 1.1 lands on the tool's
+     own 0.62–0.66, and on the wiki it is within the official icons' own
+     spread. Keep art-adjust.js reading ART_FILL, never a copy of it.
+     ART_FILL_TOLERANCE is how far off the standard an already-square
+     image may be before a re-run of the bulk tool rewrites it. */
+  var FILL_TOLERANCE = 0.02;
+  var CENTER_TOLERANCE = 4;  // px the figure's centre may sit off the frame's
   var ALPHA_THRESHOLD = 16;  // pixels with alpha above this count as "figure"
 
   // Find the bounding box of non-transparent pixels. Returns null if the image
@@ -64,6 +80,21 @@
     }
   }
 
+  /* Is this image already the standard frame with the figure at the standard
+     size? True only for a target×target image whose figure's longest side is
+     within FILL_TOLERANCE of fill×target and whose centre sits on the frame's.
+     Exported so a bulk re-run can leave standard art alone (every pass
+     resamples, and every upload retires a thumbnail). */
+  function isStandardFrame(iw, ih, box, target, fill) {
+    if (iw !== target || ih !== target) return false;
+    var side = Math.max(box.w, box.h) / target;
+    if (Math.abs(side - fill) > FILL_TOLERANCE) return false;
+    var cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    return Math.abs(cx - target / 2) <= CENTER_TOLERANCE && Math.abs(cy - target / 2) <= CENTER_TOLERANCE;
+  }
+
+  /* opts.ifNeeded: resolve null instead of a data URL when the image is
+     already standard (see isStandardFrame). */
   function normalizeArtDataURL(src, opts) {
     opts = opts || {};
     var target = opts.target || TARGET;
@@ -80,6 +111,7 @@
         // Locate the figure (trim transparent padding). An unreadable or
         // fully transparent image comes back as the whole frame, contain-fit.
         var box = artTrimBox(img);
+        if (opts.ifNeeded && isStandardFrame(iw, ih, box, target, fill)) { resolve(null); return; }
 
         // Scale so the figure's longest side spans fill * target, centered.
         var scale = (fill * target) / Math.max(box.w, box.h);
@@ -108,4 +140,5 @@
   global.artTrimBox = artTrimBox;
   global.ART_TARGET = TARGET;
   global.ART_FILL = FILL;
+  global.ART_FILL_TOLERANCE = FILL_TOLERANCE;
 })(typeof window !== 'undefined' ? window : this);

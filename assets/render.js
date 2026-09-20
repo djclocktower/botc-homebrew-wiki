@@ -71,6 +71,22 @@
      against it (jinx-graph.js, dashboard.html). */
   function isTraveller(team) { return /^travell?er$/i.test(String(team == null ? '' : team)); }
 
+  /* The owner's wiki-only display size for the /c/ emblem, as a whole
+     percentage. 100 is "the true size" and is never stored; anything
+     outside the range, or not a number, is the default too. Shared with the
+     Worker's sanitizer through Render.ART_SCALE_MIN/MAX so the editor's
+     slider, the save and the page cannot disagree about the range. */
+  var ART_SCALE_MIN = 50, ART_SCALE_MAX = 200;
+  function artScaleValue(v) {
+    var n = Math.round(Number(v));
+    if (!isFinite(n) || n < ART_SCALE_MIN || n > ART_SCALE_MAX || n === 100) return 0;
+    return n;
+  }
+  function artScaleCSS(v) {
+    var n = artScaleValue(v);
+    return n ? ' style="--art-scale:' + (n / 100) + '"' : '';
+  }
+
   function artVersions(d, root) {
     d = d || {};
     var arr = Array.isArray(d.image) ? d.image : [];
@@ -746,7 +762,14 @@
      credited still gets the Fabled, just without the "by:" half. */
   var CREDITS_FABLED_ID = 'botchomebrewwiki';
   var CREDITS_FABLED_NAME = 'botchomebrew.wiki';
-  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull.png';
+  /* The padded copy, not the topbar's logo_skull.png: that one is cropped
+     to the ink (149×190) and the script tool draws whatever it is handed
+     into the same box as its own icons, so the skull printed half again the
+     size of the Bootlegger beside it. logo_skull_icon.png is the same
+     pixels on a transparent 320px square, the figure at the standard
+     ART_FILL of art-normalize.js. Regenerate it the same way if the skull
+     ever changes. */
+  var CREDITS_FABLED_IMAGE = 'https://botchomebrew.wiki/assets/logo_skull_icon.png';
   var CREDITS_FABLED_LEAD = 'This script was made on botchomebrew.wiki';
 
   /* [{ creator, characters[] }] in order of first appearance on the script.
@@ -1198,9 +1221,18 @@
     // and its own address depth), so let it win where it has an answer.
     if (artVers.length && artSrc) artVers[0].src = artSrc;
     else if (!artVers.length && artSrc) artVers = [{ key: 'main', label: 'Main', rel: '', src: artSrc, url: '' }];
+    /* The owner's "display size": how big the icon is DRAWN on this page,
+       and nowhere else. It is a CSS variable on the emblem, which the
+       stylesheet multiplies into the transform every emblem already has, so
+       the picture file, the JSON export (buildSchema never reads it), the
+       cards, the search rows and the jinx boxes all stay at the true size.
+       Absent, or 100, is the default: the variable is only written when it
+       says something. artScaleCSS() is the one place the number becomes a
+       style, and it re-validates, since a row can carry anything. */
+    var scaleAttr = artScaleCSS(d.artScale);
     var emblem = '';
     if (artVers.length === 1) {
-      emblem = '<img class="emblem" src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
+      emblem = '<img class="emblem"' + scaleAttr + ' src="' + esc(artVers[0].src) + '" alt="' + esc(d.name) + '">';
     } else if (artVers.length) {
       /* Every version is its own <img>, stacked — see the icon gallery
          above for why swapping one src is not good enough. Only the one on
@@ -1208,7 +1240,7 @@
          is quiet, so the picture a reader came for is never held up by
          three they may never ask for. Marked `is-on` in the HTML so the
          right one is showing before a line of script has run. */
-      emblem = '<div class="emblem-stack" data-at="0"' +
+      emblem = '<div class="emblem-stack" data-at="0"' + scaleAttr +
         ' title="Swipe or click to see the other versions of this icon">' +
         artVers.map(function (v, i) {
           return '<img class="emblem' + (i === 0 ? ' is-on' : '') + '" ' +
@@ -1358,6 +1390,7 @@
     window.splitCreators = splitCreators;
     window.editStatusHTML = editStatusHTML;
     window.draftedNoticeHTML = draftedNoticeHTML;
+    window.artScaleValue = artScaleValue;
   }
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1370,6 +1403,7 @@
       SPECIAL_TYPES: SPECIAL_TYPES, SPECIAL_TIMES: SPECIAL_TIMES,
       slugId: slugId, TEAM_LABEL: TEAM_LABEL, TEAM_COLOR: TEAM_COLOR,
       artVersions: artVersions, artVersion: artVersion,
+      artScaleValue: artScaleValue, ART_SCALE_MIN: ART_SCALE_MIN, ART_SCALE_MAX: ART_SCALE_MAX,
       isTraveller: isTraveller, ART_ABS: ART_ABS,
       findScriptJinxes: findScriptJinxes,
       resolveJinxTarget: resolveJinxTarget, normJinxId: normJinxId,

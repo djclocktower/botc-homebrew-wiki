@@ -456,7 +456,26 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
 .json-head { display:block; width:100%; max-width:280px; height:auto; margin:4px auto 12px; }
 .json-qr   { display:block; width:min(90%,230px); height:auto; margin:0 auto 4px; border-radius:0; }
 .char-side { display: flex; flex-direction: column; gap: clamp(16px,2.2vw,26px); }
-.emblem { display: block; width: min(86%, 286px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); }
+/* The emblem draws at 8/6 of its original size. Two pieces make that up:
+   the BOX is 7/6 of what it was (86% -> 100%, 286px -> 334px), which is
+   0.70 / 0.60, the old icon standard over the new one (ART_FILL in
+   art-normalize.js, see "Icon size in the official script tool" in
+   CLAUDE.md) — the standard shrank so exported icons print at the official
+   size, and the box grows by the same factor so the figure on a character
+   page would have stayed the size it was. Then the owner asked for a touch
+   more, so the box is SCALED by a further 8/7. A transform rather than a
+   wider box because on a phone the box is already the full card width:
+   more percent buys nothing there, and a box wider than its column pushes
+   the page sideways. A transform costs no layout, and only transparent
+   margin reaches past the column (the figure is 60% of the picture, 69%
+   of the column after scaling), so nothing is cut off and nothing scrolls.
+   Keep .emblem-stack below in step; its child images take their transform
+   inline from reader.js (emPaint) and must not inherit this one. */
+/* --art-scale is the owner's wiki-only display size (render.js writes it
+   inline as a fraction, 0.5..2, only when one was chosen). It multiplies
+   the 8/7 above rather than replacing it, so "100%" on the slider is
+   exactly the page as drawn with the box switched off. */
+.emblem { display: block; width: min(100%, 334px); aspect-ratio: 1; object-fit: contain; margin: 4px auto 6px; filter: drop-shadow(0 4px 7px rgba(120,20,20,.25)); transform: scale(calc(1.1429 * var(--art-scale, 1))); }
 .quote { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.16rem; text-align: center; color: var(--ink); margin: 6px 6px 16px; }
 /* How to say the name — a quiet labelled line tucked under the flavour quote.
    Takes the wiki's inline marks (**bold**, *italic*) through render-wiki.js,
@@ -2282,7 +2301,8 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
    so a picture cut off here would only look like a bug. */
 .emblem-stack {
   position: relative;
-  width: min(86%, 286px);
+  width: min(100%, 334px);   /* 7/6 of the old box, then 8/7 again: see .emblem above */
+  transform: scale(calc(1.1429 * var(--art-scale, 1)));
   aspect-ratio: 1;
   margin: 4px auto 6px;
   cursor: pointer;
@@ -2299,6 +2319,7 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   margin: 0;
+  transform: none;   /* the stack is scaled; emPaint sets each image's own */
   opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
   -webkit-user-drag: none;

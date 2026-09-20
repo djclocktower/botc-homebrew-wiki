@@ -414,10 +414,17 @@ assets/
                        preview's scroll position. The in-frame script keeps the
                        JSON box, the jinx dropdown and the title fit working;
                        __cpFit() is re-run after each repaint. Browser only.
-  art-normalize.js     The "Resize icon" button: trims the transparent margin
-                       to find the figure and scales it to 70% of the 591×591
-                       frame. artTrimBox() (the trim on its own) is exported
-                       for art-adjust.js. Browser only (canvas).
+  art-normalize.js     The icon standard: trims the transparent margin to
+                       find the figure and scales it to ART_FILL (60%) of the
+                       591×591 frame — see "Icon size in the official script
+                       tool" for why 60 and not more. Runs on every art pick
+                       in create/edit and in mass-upload; the "Resize icon"
+                       button re-runs it. {ifNeeded:true} answers null for
+                       art already on the standard, which is what lets the
+                       bulk tool (/normalize-icons) be re-run cheaply.
+                       artTrimBox() (the trim on its own) is exported for
+                       art-adjust.js, which reads ART_FILL rather than
+                       keeping a copy. Browser only (canvas).
   art-adjust.js        "Adjust by hand": the same frame with the art in your
                        hands. Drag to move (pointer events, so mouse and touch
                        are one path), a slider or a pinch for how much of the
@@ -1650,6 +1657,91 @@ Things worth knowing before touching any of it:
   `art/vampire-good.png`, and a wrong path fails *silently* (the worker
   swallows the fetch error and the Python skips any payload whose file is
   missing).
+
+## Icon size in the official script tool
+
+A script exported from here prints its icons in the official script tool
+(script.bloodontheclocktower.com) **at the same box size as the tool's own
+icons**, contain-fit — its Typst print template and its on-screen preview
+both do that — so the transparent margin inside the file IS the icon's size.
+Nothing in the JSON can set it. Three things decided how big a wiki icon
+came out, and all three were pushing the same way:
+
+- **The tool scales every non-bundled image by 1.1×** in the PDF
+  (`(0.1 + iconScale)` in its `data.typ`; the "Custom Icon Size" slider in
+  its Export Options is that number, default 1). It is the tool's choice and
+  applies to homebrew art from anywhere; a reader who wants it exact sets
+  the slider to 0.9.
+- **The wiki's standard was 70% fill and the official icons are not.**
+  Measured by alpha bounding box, longest side over frame: the 191 official
+  icons in `assets/icons/` sit at median 0.63, the tool's own bundled icons
+  at 0.61. So even a standardized wiki icon printed ~25% larger than the
+  character beside it. `ART_FILL` in `art-normalize.js` is now **0.60**,
+  which lands on the tool's own size after its 1.1× and is inside the
+  official spread on the wiki's own pages (the Token Tool trims alpha itself
+  and is unaffected).
+- **Standardizing was opt-in, so a sixth of the live art never was.** A
+  live sample of 139 icons had 24 above 0.75 and 15 at 0.85+ — a figure
+  cropped to its ink, which then printed at half again the official size.
+  Both character editors, `mass-upload.html` and `/bloodstar` now
+  standardize art as it lands (Adjust by hand still opens on the file as
+  picked, so a deliberate crop is one click away). Bloodstar's server-side
+  copy never passes through a canvas, so `copyArt()` reads the copied file
+  back from our own origin, and uploads a standardized version only when
+  `{ifNeeded: true}` says the file is not already on the frame — the thumb
+  is made from whichever version is stored, in that order, so the two
+  cannot race. Only `art/` keys: a logo or a background is not an icon.
+
+**One file serves every surface**, so this is visible on the wiki too:
+cards, the `/c/` emblem, search results, jinx boxes and the Script Builder
+all contain-fit the same PNG, and a re-standardized icon's figure is
+one-seventh smaller than at the old 0.70 (and much smaller than a
+never-standardized one). **The `/c/` emblem is more than compensated**:
+`.emblem` and `.emblem-stack` in styles.css grew by 0.70/0.60 (86% → 100%,
+286px → 334px), which alone would keep the figure on a character page the
+size it always was, and are then **scaled by a further 8/7** (the owner
+wanted the icon a touch larger than before: 8/6 of the original in all).
+The second step is a `transform`, not a wider box, because on a phone the
+box is already the full card width and a wider one would push the page
+sideways; only transparent margin reaches past the column. The stack's
+child images get `transform: none` so they do not double up before
+`emPaint` writes their inline transform. Cards, search rows
+and the jinx boxes are not, deliberately — there a homebrew icon sits
+beside official ones drawn from `assets/icons/`, and matching them is the
+point. The Token Tool is the one consumer that is not affected, because it
+trims alpha itself. The bulk tool also resets a
+hand-adjusted icon (an owner who chose 80% in Adjust by hand) back to the
+standard — it always did; nothing marks a deliberate crop.
+
+**A creator can still make their icon draw bigger (or smaller) on its own
+page: `artScale`**, the "Change how big the icon is displayed on this page"
+box in both character editors. It is a **display setting and nothing else**:
+a whole percentage (`Render.ART_SCALE_MIN`..`ART_SCALE_MAX`, 50–200) that
+`renderCharacter()` writes onto the `/c/` emblem as an inline `--art-scale`
+variable, which styles.css multiplies into the 8/7 transform the emblem
+already has. The file in the art slot, the JSON box (`buildSchema()` never
+reads it), the cards, the search rows, the jinx boxes and the Token Tool all
+keep the true size, and `artScale` is in `CARD_DROP_FIELDS` so it never
+reaches a card feed. The slider is greyed out until the box is ticked, and an
+unticked box posts nothing; 100 is never stored either (`Render.artScaleValue()`
+answers 0 for it and for anything outside the range, and `/api/character` runs
+it on save), so an untouched page grows no key and keeps following the
+stylesheet. The editors' live preview follows it, since the frame carries the
+same stylesheet.
+
+Existing art is fixed by running the admin page **`/normalize-icons`**
+("Standardize Icons") once after deploy: it now skips anything already on
+the standard (`{ifNeeded: true}`), so a re-run costs only the icons that
+moved. It writes through `/api/upload`, so the wiki must be unlocked, the
+thumbnails follow by themselves, and — because that route now touches the
+row (see "Caching", Images) — the new picture reaches cards and emblems at
+once instead of hiding behind the year-long versioned cache. About 2,100
+icons from the admin's browser, `PARALLEL` (6) in flight at once: expect
+ten to fifteen minutes, and leave the tab open. It cannot run anywhere
+else — the Worker has no image encoder, so the resize is a canvas job. The credits Fabled the Script Builder
+appends had the same problem for the same reason — `logo_skull.png` is
+cropped to the ink — so `buildCreditsFabled()` points at
+`logo_skull_icon.png`, the same pixels on a padded 320px square.
 
 ## The printable token (`tokenArt` / `token`)
 
@@ -3121,7 +3213,16 @@ fields; authenticated `/api/user` responses remain private and uncached.
 
 **3. Images.** Character icons, roster thumbnails, script/collection banners
 and logos carry their row's `v` stamp. Versioned image URLs use immutable
-browser/edge caching; bare URLs revalidate with ETags. Canonical row addresses
+browser/edge caching; bare URLs revalidate with ETags. **An art upload
+touches its row** (`touchArtRow()` in worker.js, called by `/api/upload` and
+`/api/bloodstar-art`): the bulk standardizer, the thumbnail backfill and a
+Bloodstar re-import all replace the picture without saving the page, and
+until this the wiki kept serving the OLD icon and thumbnail at the old `v`
+for up to a year while only the export's bare URL saw the new file. The
+slot names the identity (`-alt`/`-alt2`/`-token` stripped), so it is one
+primary-key write; a legacy path that is not a slug is found by a JSON
+scan, only on a miss. It moves `updated_at`, so a bulk run reorders the
+account page's and dashboard's "recent edits" lists once. Canonical row addresses
 and versions override old roster JSON. Remote image URLs and exported script
 JSON retain their original URLs.
 

@@ -92,8 +92,10 @@
       <p class="norm-sub">
         Re-fits every published character's art onto the standard <strong>591&times;591</strong> frame:
         it trims the empty transparent space around each figure, then scales and centers it so every icon
-        appears at a consistent size — matching the official wiki. The original art is replaced with the
-        standardized version in storage; the site updates as soon as the run finishes.
+        appears at the size the official icons do &mdash; on the wiki, and in the official script tool,
+        which prints a script's icons at whatever size the file's own margin gives them. Art already on
+        the standard is skipped, so a re-run only touches what has changed. The original art is replaced
+        with the standardized version in storage; the site updates as soon as the run finishes.
       </p>
 
       <div class="warn">
@@ -131,7 +133,13 @@
       return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch];
     }); }
 
-    var THROTTLE_MS = 150;   // brief pause between images to be gentle on storage
+    // Several icons in flight at once. One at a time with a pause between
+    // each put a full run of ~2,100 icons at the best part of an hour; the
+    // slow part is the round trip (fetch, upload, thumbnail), not the CPU,
+    // so a handful in parallel finishes in a fraction of that. Admins are
+    // exempt from the upload limiter. Kept modest so the tab stays
+    // responsive and storage is not hammered.
+    var PARALLEL = 6;
     var cancelled = false;
     var running = false;
 
@@ -153,8 +161,6 @@
         return { status: r.status, body: j };
       }); });
     }
-
-    function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
 
     // Build the flat work list: one job per art / artAlt image under art/.
     function buildJobs(chars){
@@ -178,9 +184,17 @@
 
     function processOne(job){
       if (job.skip) { logRow('skip', job.name, job.skip); return Promise.resolve('skip'); }
-      return normalizeArtDataURL(job.url)
-        .then(function(dataUrl){ return apiUpload(job.key, dataUrl); })
+      // ifNeeded: art already on the standard frame at the standard size
+      // comes back null and is left exactly as it is. Every pass resamples
+      // and every upload retires a thumbnail, so a re-run only touches what
+      // moved — a fresh upload, or a standard that changed.
+      return normalizeArtDataURL(job.url, { ifNeeded: true })
+        .then(function(dataUrl){
+          if (dataUrl === null) { logRow('skip', job.name, 'already standard'); return 'skip'; }
+          return apiUpload(job.key, dataUrl);
+        })
         .then(function(res){
+          if (res === 'skip') return res;
           if (res.status === 200 && res.body && res.body.ok) { logRow('ok', job.name); return 'ok'; }
           logRow('err', job.name, (res.body && res.body.error) || ('HTTP ' + res.status)); return 'err';
         })
@@ -205,18 +219,25 @@
           $('c-total').textContent = jobs.length;
           if (!jobs.length) { logRow('skip', 'Nothing to do', 'no character art found'); return null; }
 
-          return jobs.reduce(function(chain, job){
-            return chain.then(function(){
-              if (cancelled) return;
-              return processOne(job).then(function(result){
-                done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
-                $('c-done').textContent = done; $('c-ok').textContent = ok;
-                $('c-skip').textContent = skip; $('c-err').textContent = err;
-                $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
-                return sleep(THROTTLE_MS);
-              });
-            });
-          }, Promise.resolve()).then(function(){ return jobs.length; });
+          // A small pool: each lane takes the next job when it finishes one,
+          // so PARALLEL icons are in flight until the list runs dry or the run
+          // is cancelled (a lane then stops picking up work; what is already
+          // in flight completes, which is why the log may add a few lines
+          // after Cancel).
+          var next = 0;
+          function lane() {
+            if (cancelled || next >= jobs.length) return Promise.resolve();
+            var job = jobs[next++];
+            return processOne(job).then(function(result){
+              done++; if (result === 'ok') ok++; else if (result === 'skip') skip++; else err++;
+              $('c-done').textContent = done; $('c-ok').textContent = ok;
+              $('c-skip').textContent = skip; $('c-err').textContent = err;
+              $('progress-fill').style.width = Math.round(done / jobs.length * 100) + '%';
+            }).then(lane);
+          }
+          var lanes = [];
+          for (var i = 0; i < Math.min(PARALLEL, jobs.length); i++) lanes.push(lane());
+          return Promise.all(lanes).then(function(){ return jobs.length; });
         })
         .then(function(){
           running = false;

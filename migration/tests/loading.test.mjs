@@ -386,6 +386,32 @@ test('uploading derivatives requires the current original ETag and replacing ori
   assert.deepEqual(removed, [[320, 640, 1280].map(width => 'media/' + width + '/scripts/demo.png.webp')]);
 });
 
+test('writing character art into its slot rolls the row version so cached icons refresh', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.db.prepare('UPDATE users SET is_admin=1 WHERE id=1').run();
+  f.insert('characters', 'demo-char', { name: 'Demo Char', team: 'townsfolk', ability: 'x', art: 'art/demo-char.png' });
+  f.insert('characters', 'legacy', { name: 'Legacy', team: 'townsfolk', ability: 'x', art: 'art/legacy-good.png' });
+  f.insert('characters', 'bystander', { name: 'Bystander', team: 'townsfolk', ability: 'x', art: 'art/bystander.png' });
+  f.env.ART.put = async () => ({ etag: 'e' }); f.env.ART.delete = async () => {};
+  const stamps = () => Object.fromEntries(f.db.prepare('SELECT slug, updated_at FROM characters').all().map(r => [r.slug, r.updated_at]));
+  const version = () => f.db.prepare("SELECT value FROM settings WHERE key='content_version'").get().value;
+  const upload = key => f.request('/api/upload', { method: 'POST', headers: { ...member(1).headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, data: 'data:image/png;base64,' + Buffer.alloc(1000, 1).toString('base64') }) });
+  const v0 = version(), t0 = stamps();
+  // The slot names the identity, alternates included: one row moves, the feeds roll.
+  assert.equal((await upload('art/demo-char-alt.png')).status, 200);
+  const t1 = stamps();
+  assert.notEqual(t1['demo-char'], t0['demo-char']); assert.equal(t1.bystander, t0.bystander);
+  assert.notEqual(version(), v0);
+  // A legacy row names a path that is not its slug: found by the path.
+  assert.equal((await upload('art/legacy-good.png')).status, 200);
+  assert.notEqual(stamps().legacy, t0.legacy);
+  // Art for a page that does not exist yet: nothing to touch, nothing bumped.
+  const v1 = version();
+  assert.equal((await upload('art/brand-new.png')).status, 200);
+  assert.equal(version(), v1); assert.equal(stamps().bystander, t0.bystander);
+});
+
 test('data loader shares parsed public objects, keeps private requests separate, and retries failures', async () => {
   let calls = 0, fail = false;
   const context = vm.createContext({ window: {}, URL, location: { origin: 'https://botchomebrew.wiki' },
@@ -514,6 +540,29 @@ test('assigning a collection claims every character page, within D1 bound-parame
   const over = f.calls.slice(before)
     .filter(call => (call.sql.match(/\?/g) || []).length > 100);
   assert.deepEqual(over.map(call => call.sql.replace(/\s+/g, ' ').slice(0, 60)), []);
+});
+
+test('the wiki-only display size scales the /c/ emblem and reaches neither the export nor the cards', async t => {
+  const f = await fixture(); t.after(() => f.finish()); users(f); r2(f);
+  f.env.ART.put = async () => ({ etag: 'e' }); f.env.ART.delete = async () => {};
+  const save = body => f.request('/api/character', { method: 'POST',
+    headers: { ...member(1).headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const base = { slug: 'scaled', name: 'Scaled', team: 'townsfolk', ability: 'Each night, grow.', creator: 'user-1',
+    art: 'art/scaled.png', image: 'https://botchomebrew.wiki/assets/art/scaled.png', tags: 'Information', status: 'published' };
+  const stored = () => JSON.parse(f.db.prepare("SELECT data FROM characters WHERE slug='scaled'").get().data);
+  // A whole percentage inside the range is kept; 100 and anything outside it are the default and store nothing.
+  assert.equal((await save({ ...base, artScale: 130 })).status, 200);
+  assert.equal(stored().artScale, 130);
+  const page = await (await f.request('/c/user-1/scaled')).text();
+  assert.match(page, /class="emblem" style="--art-scale:1\.3"/);
+  assert.ok(!page.includes('artScale'), 'the JSON box never carries the display size');
+  const card = await (await f.request('/characters.json?fields=card')).json();
+  assert.equal(card.find(c => c.slug === 'scaled').artScale, undefined);
+  for (const bad of [100, 49, 201, 'big']) {
+    assert.equal((await save({ ...base, artScale: bad })).status, 200);
+    assert.equal(stored().artScale, undefined, 'artScale ' + bad + ' is the default');
+  }
+  assert.ok(!(await (await f.request('/c/user-1/scaled')).text()).includes('--art-scale'));
 });
 
 test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {

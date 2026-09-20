@@ -4212,7 +4212,7 @@ async function bumpContentVersion(env, entityType) {
 const CARD_DROP_FIELDS = new Set([
   'summaryBullets', 'tips', 'examples', 'howToRun', 'bluffing', 'fighting',
   'customBoxes', 'callout', 'pronunciation', 'ipa', 'respelling', 'custom',
-  'related', 'tagsBy', 'creditUnlinked'
+  'related', 'tagsBy', 'creditUnlinked', 'artScale'
 ]);
 
 // ---- the GRID feed: only what a card needs ----
@@ -5666,6 +5666,36 @@ function dropThumbFor(env, ctx, key) {
     const p = env.ART.delete(THUMB_PREFIX + key.slice(4) + '.webp').catch(() => {});
     if (ctx) ctx.waitUntil(p);
   } catch { /* nothing to do */ }
+}
+
+/* An icon written straight into its R2 slot — the bulk standardizer
+   (/normalize-icons), the thumbnail backfill, a Bloodstar copy over an
+   existing page — replaced the picture without touching the ROW, and every
+   card and emblem loads the picture at `?v={rowVersion}` (see rowVersion()),
+   which is cached immutable for a year at the edge and in every browser. So
+   the wiki went on showing the old icon, and its old thumbnail, until the
+   page happened to be saved; only the bare URL the JSON export carries saw
+   the new file. Touching the row rolls `v` and the feeds re-serve.
+
+   The slot names the identity (art/{identity}[-alt|-alt2|-token].ext), so
+   the row is one primary-key write. A legacy row whose art field names a
+   path that is not its slug (art/vampire-good.png) is found by that path in
+   its JSON — a scan, so only when the key matched no slug, which is also
+   the case for a NEW character whose art is uploaded before its row exists.
+   Fails soft: a miss here costs a stale picture, never the upload. */
+async function touchArtRow(env, key) {
+  if (!key.startsWith('art/')) return false;
+  const slug = key.slice(4).replace(/\.[a-z0-9]+$/i, '').replace(/-(alt2|alt|token)$/, '');
+  try {
+    let r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE slug=? AND status IS NOT 'deleted'`).bind(slug).run();
+    let n = (r && r.meta && r.meta.changes) || 0;
+    if (!n) {
+      r = await env.DB.prepare(`UPDATE characters SET updated_at=datetime('now') WHERE status IS NOT 'deleted' AND data LIKE ?`).bind('%"' + key + '"%').run();
+      n = (r && r.meta && r.meta.changes) || 0;
+    }
+    if (n) await bumpContentVersion(env, 'character');
+    return n > 0;
+  } catch { return false; }
 }
 
 /* Public reading HTML is shared by every viewer. Only cookie-free GET
@@ -9353,8 +9383,11 @@ export default {
         }
         // Uploads were never recorded anywhere, so there was no way to answer
         // "who put this image here" or to see a flood while it was happening.
-        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache.
+        // 'upload' is not in FEED_CHANGING_ACTIONS, so this costs no cache —
+        // except for character art, where touchArtRow() rolls the row's
+        // version so the year-long image cache lets the new picture through.
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB');
+        await touchArtRow(env, key);
         return jsonResponse({ ok: true, path: '/assets/' + key, etag: stored && stored.etag });
       }
 
@@ -9482,6 +9515,7 @@ export default {
         });
         dropThumbFor(env, ctx, key);
         await logActivity(env, sess, 'upload', 'image', key, Math.round(bytes.length / 1024) + ' KB (Bloodstar)');
+        await touchArtRow(env, key);   // a re-import over an existing page: see touchArtRow
         return jsonResponse({ ok: true, path: '/assets/' + key });
       }
 
@@ -9998,6 +10032,12 @@ export default {
         if (!c.jinxes.length) delete c.jinxes;
         c.related = sanitizeRelated(c.related);
         if (!c.related.length) delete c.related;
+        /* The wiki-only display size of the /c/ emblem (render.js draws it,
+           buildSchema never exports it). A whole percentage inside
+           Render's range, or nothing: 100 is the default and is not stored,
+           so an untouched page grows no key. */
+        c.artScale = Render.artScaleValue(c.artScale);
+        if (!c.artScale) delete c.artScale;
         // "Appears in" derived from collection membership is worked out on
         // every read and belongs to no row. A client echoing back a page it
         // read out of characters.json must not freeze it into the record.
