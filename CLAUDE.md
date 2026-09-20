@@ -433,7 +433,10 @@ assets/
                        in create/edit and in mass-upload; the "Resize icon"
                        button re-runs it. {ifNeeded:true} answers null for
                        art already on the standard, which is what lets the
-                       bulk tool (/normalize-icons) be re-run cheaply.
+                       bulk tool (/normalize-icons) be re-run cheaply;
+                       {keepPlaced:true} answers false for art a person
+                       placed on the frame themselves (isPlacedFrame), so
+                       the bulk run never undoes an Adjust by hand.
                        artTrimBox() (the trim on its own) is exported for
                        art-adjust.js, which reads ART_FILL rather than
                        keeping a copy. Browser only (canvas).
@@ -1732,9 +1735,24 @@ child images get `transform: none` so they do not double up before
 and the jinx boxes are not, deliberately — there a homebrew icon sits
 beside official ones drawn from `assets/icons/`, and matching them is the
 point. The Token Tool is the one consumer that is not affected, because it
-trims alpha itself. The bulk tool also resets a
-hand-adjusted icon (an owner who chose 80% in Adjust by hand) back to the
-standard — it always did; nothing marks a deliberate crop.
+trims alpha itself.
+
+**The bulk tool leaves a hand-placed icon alone.** Nothing in the file
+marks a deliberate crop, so `isPlacedFrame()` in art-normalize.js tells
+one apart by elimination: art already on the 591 frame that is on neither
+the current standard nor a legacy one (`LEGACY_FILLS`, the fills the
+wiki's own tools wrote before — 0.70) was put there by a person, with
+Adjust by hand or Icon Forge's own margin, and `normalizeArtDataURL(src,
+{keepPlaced: true})` resolves **false** for it (null is "already standard",
+a string is the re-fitted picture). A 591 square exported from somebody's
+own tool reads as placed too, which is the side to err on: the run exists
+to catch art that was never fitted, not to undo choices. /normalize-icons
+passes it unless its "Also reset icons placed by hand" box is ticked, which
+is the old behaviour and undoes every one of those choices at once. Only
+the bulk tool asks for it — an editor re-fitting a freshly picked file
+wants the answer either way. Adding a future standard means appending the
+one being retired to `LEGACY_FILLS`, or every icon it fitted will read as
+placed and stay where it is.
 
 **A creator can still make their icon draw bigger (or smaller) on its own
 page: `artScale`**, the "Change how big the icon is displayed on this page"
@@ -1754,8 +1772,8 @@ same stylesheet.
 
 Existing art is fixed by running the admin page **`/normalize-icons`**
 ("Standardize Icons") once after deploy: it now skips anything already on
-the standard (`{ifNeeded: true}`), so a re-run costs only the icons that
-moved. It writes through `/api/upload`, so the wiki must be unlocked, the
+the standard (`{ifNeeded: true}`) and anything placed by hand (above), so a
+re-run costs only the icons that moved. It writes through `/api/upload`, so the wiki must be unlocked, the
 thumbnails follow by themselves, and — because that route now touches the
 row (see "Caching", Images) — the new picture reaches cards and emblems at
 once instead of hiding behind the year-long versioned cache. About 2,100

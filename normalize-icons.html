@@ -94,8 +94,11 @@
         it trims the empty transparent space around each figure, then scales and centers it so every icon
         appears at the size the official icons do &mdash; on the wiki, and in the official script tool,
         which prints a script's icons at whatever size the file's own margin gives them. Art already on
-        the standard is skipped, so a re-run only touches what has changed. The original art is replaced
-        with the standardized version in storage; the site updates as soon as the run finishes.
+        the standard is skipped, so a re-run only touches what has changed. <strong>Icons somebody placed
+        by hand are left alone</strong> &mdash; art already on the 591 frame at a size or position the wiki's
+        automatic fitting never produced (Adjust by hand, Icon Forge) counts as a choice, not a mistake.
+        The original art is replaced with the standardized version in storage; the site updates as soon
+        as the run finishes.
       </p>
 
       <div class="warn">
@@ -106,6 +109,10 @@
 
       <section class="panel">
         <h3>Run</h3>
+        <label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;cursor:pointer">
+          <input type="checkbox" id="resetPlaced" style="width:17px;height:17px;margin:2px 0 0;flex:none">
+          <span>Also reset icons placed by hand to the standard <span class="norm-sub" style="display:block;margin:2px 0 0">Off, every icon a person sized or positioned themselves keeps that. On, everything is re-fitted, which undoes those choices.</span></span>
+        </label>
         <div class="btn-row">
           <button class="btn" id="start" type="button">Standardize all icons</button>
           <button class="btn btn-ghost" id="cancel" type="button" style="display:none">Cancel</button>
@@ -188,9 +195,12 @@
       // comes back null and is left exactly as it is. Every pass resamples
       // and every upload retires a thumbnail, so a re-run only touches what
       // moved — a fresh upload, or a standard that changed.
-      return normalizeArtDataURL(job.url, { ifNeeded: true })
+      // keepPlaced: art a person placed on the frame themselves comes back
+      // false and is left alone too, unless the box above asks for it.
+      return normalizeArtDataURL(job.url, { ifNeeded: true, keepPlaced: !$('resetPlaced').checked })
         .then(function(dataUrl){
           if (dataUrl === null) { logRow('skip', job.name, 'already standard'); return 'skip'; }
+          if (dataUrl === false) { logRow('skip', job.name, 'placed by hand — left as is'); return 'skip'; }
           return apiUpload(job.key, dataUrl);
         })
         .then(function(res){
