@@ -1744,8 +1744,16 @@ wanted the icon a touch larger than before: 8/6 of the original in all).
 The second step is a `transform`, not a wider box, because on a phone the
 box is already the full card width and a wider one would push the page
 sideways; only transparent margin reaches past the column. The stack's
-child images get `transform: none` so they do not double up before
-`emPaint` writes their inline transform. The homepage's **Featured
+child images carry only their own dip: `emPaint` writes it as a CSS
+variable (`--em-s`) and `.emblem-stack .emblem` scales by it, so a version
+can fold a base scale of its own into the same rule. **The printable token
+is that version** (`.emblem-token`, a class render.js puts on the token's
+`<img>` in the stack and on a lone one): it is a full-bleed disc with no
+transparent margin, so both growth steps were real growth on it, and on a
+phone it ran a seventh past the card. It is drawn at exactly the size the
+box was before any of this (6/7 of the box: 86%, 286px), and the owner's
+`--art-scale` stays off it, because that setting is how big the **icon** is
+displayed and a token is not an icon. The homepage's **Featured
 Character card** (`.featured-art`) takes the same 8/6 transform: it is the
 other surface that shows one icon on its own. Cards, search rows
 and the jinx boxes are not, deliberately — there a homebrew icon sits
@@ -1813,7 +1821,10 @@ is worth having (the Token Tool prints it) whether or not the page shows it.
   emblem pips pick it up with no new UI code and 1,600 untouched pages change
   nothing. `buildSchema()` indexes versions by `main`/`alt`/`alt2` and never
   exports it — the official schema's `image` positions mean alignment, and a
-  token is not an icon.
+  token is not an icon. In the gallery it is drawn **smaller than the icons**
+  (`.emblem-token`, see "Icon size in the official script tool"): the emblem's
+  8/6 growth is room for an icon's transparent margin, and a full-bleed disc
+  has none.
 - **The editors have a "Printable token" slot** (create.html + edit.html, same
   form): the tick, a thumb, a direct upload (deliberately no Resize/Adjust —
   those fit art into the 591 frame, which would wreck a full-bleed round

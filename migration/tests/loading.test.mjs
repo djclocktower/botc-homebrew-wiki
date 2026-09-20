@@ -598,6 +598,25 @@ test('the wiki-only display size scales the /c/ emblem and reaches neither the e
   assert.ok(!(await (await f.request('/c/user-1/scaled')).text()).includes('--art-scale'));
 });
 
+test('the printable token in the /c/ gallery is marked apart from the icons, so the stylesheet can size it', async t => {
+  // The emblem grows 8/6 to make room for an icon's transparent margin; a
+  // token is a full-bleed disc with none, so styles.css draws .emblem-token
+  // at the old size and keeps the owner's display size off it. The markup
+  // is the contract: the class on exactly the token's <img>, nothing else.
+  const f = await fixture(); t.after(() => f.finish());
+  f.insert('characters', 'disc', { slug: 'disc', name: 'Disc', team: 'townsfolk', ability: 'Each night, roll.',
+    art: 'art/disc.png', token: 'art/disc-token.png', tokenArt: true, artScale: 150 });
+  const page = await (await f.request('/c/test-set/disc')).text();
+  assert.match(page, /<div class="emblem-stack" data-at="0" style="--art-scale:1\.5"/, 'the display size rides the stack, where the token can divide it back out');
+  assert.deepEqual(page.match(/<img class="emblem[^"]*"/g), ['<img class="emblem is-on"', '<img class="emblem emblem-token"']);
+  assert.match(page, /class="emblem emblem-token" data-src="[^"]*art\/disc-token\.png/);
+  // A page that never ticked the token, or has no saved image, grows no such version.
+  f.insert('characters', 'plain', { slug: 'plain', name: 'Plain', team: 'townsfolk', ability: 'Each night, roll.', art: 'art/plain.png', token: 'art/plain-token.png' });
+  const plain = await (await f.request('/c/test-set/plain')).text();
+  assert.ok(!plain.includes('emblem-token'));
+  assert.match(plain, /<img class="emblem" src="[^"]*art\/plain\.png/);
+});
+
 test('a custom page background is a root-absolute URL, whatever stylesheet consumes it', async t => {
   // Chromium resolves a relative url() inside a custom property against the
   // stylesheet where var() is used; the immutable build moved that stylesheet
