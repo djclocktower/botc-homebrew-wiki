@@ -404,6 +404,18 @@ assets/
                        /api/collection and /api/wiki-page. No DOM, no fetch —
                        the page owns the form and the progress table, this owns
                        the rules. Same split as grimforge.js.
+  import-merge.js      What a re-import keeps and what it replaces: the rules
+                       behind mass-upload.html landing a file on a page this
+                       account already has. Mechanics (name, team, ability,
+                       night order, reminders, setup flags, jinxes) come from
+                       the file, the empties included; everything else on the
+                       page stays — tags, almanac text, the printable token,
+                       the art slots, who may edit it, its publish state —
+                       and flavour/edition only when the file carries them.
+                       artPlan() says which art slots the file may write:
+                       none the page already fills unless "Replace the art"
+                       is ticked. No DOM, no fetch (same split as
+                       bloodstar.js); the tests run it in a vm.
   editor-notices.js    Post-save modals for create/edit: "this page is Partial"
                        and "saved as a draft because there's no icon".
   char-preview.js      The live preview iframe on create.html + edit.html.
@@ -694,6 +706,17 @@ mass-upload.html       Bulk import from official-schema JSON. Warns before it
                        follows the "Appears in" box as it is typed — filling
                        that in is what settles most of them (see "Warning
                        about a jinx before it is written" below).
+                       A character landing on a page this account already
+                       has UPDATES it, through assets/import-merge.js: the
+                       page is read back from /api/page and the file merged
+                       into it, so a re-import cannot strip what the file
+                       does not carry, and the icon is kept unless "Replace
+                       the art on pages that already exist" is ticked (or the
+                       page has none). A page that cannot be read is not
+                       written. It used to replace the page outright and
+                       write the file's picture over the icon slot, which is
+                       how one re-import cost a creator 24 Icon Forge icons,
+                       their tags and their printable tokens.
 bloodstar.html         /bloodstar — the Bloodstar importer. Paste a project link,
                        choose what becomes what, and the whole thing lands: every
                        character with its art and its almanac entry, the jinxes,
@@ -1893,6 +1916,19 @@ serving the old addresses.
   extension, and tapping "My Account" opened the blocker's own filter list
   instead of the wiki. It also returned early when no stylesheet was found,
   throwing `LINK_ROOT` away and resolving `account` against `/c/{set}/`.
+- **A redirect whose page has been deleted parks nothing.** An address is
+  taken when a live page has it or a redirect for it points at a live page
+  (`LIVE_REDIRECT_SQL`, used by `freeCharAddress()` and the nest-urls sweep).
+  One pointing at a deleted page is a dead end — the `/c/` route 404s it
+  anyway — so the next page whose name and set ask for that address takes it,
+  and `setCharAddress()` replaces the stale row. It was built because a
+  creator renamed Anthropologist to Cryptographer and back within half an
+  hour, which parked `principia-horologica/cryptographer` for the
+  Anthropologist page; the real Cryptographer they made next was pushed to
+  `-2`, and deleting the Anthropologist page turned the parked address into a
+  404 that nothing could reclaim. A page already settled on a numbered
+  address keeps it (`characterAddress()`), so that one live page was moved
+  onto its unnumbered address by hand, with `-2` left as a redirect.
 - `/api/slug-check` is about the **identity** (the PK and the art slot), not the
   URL. Its suffix ladder still looks like a URL and still matters, because
   identities name the art slot. For scripts and collections the slug **is** still
