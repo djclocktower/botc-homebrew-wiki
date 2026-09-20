@@ -1634,6 +1634,13 @@ Things worth knowing before touching any of it:
     whichever comes first — so the picture everybody wants is never held up
     by three they may not ask for. The idle fetch is skipped on a metered or
     2g connection; the first tap still works, it just pays for itself.
+  - **Only the version on screen is hit-testable** (`pointer-events: none`
+    on the stack's images, `auto` on `.is-on`). The versions all sit in one
+    box and the last in the markup is on top, so a long-press or right-click
+    on the icon used to land on an invisible picture, and "Open image in new
+    tab" opened the alternate art whichever version was showing. The gallery's
+    listeners are on the document and resolve the stack from whatever was
+    hit, so this costs the tap and the swipe nothing.
   - **`mountEmblemGallery(doc)` takes a document** rather than assuming
     `document`, because the editors' live preview is an iframe with one of
     its own. That copy used to be hand-duplicated inside a string in

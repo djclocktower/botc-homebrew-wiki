@@ -2352,7 +2352,18 @@ h1 .dropcap, h2 .dropcap, h3 .dropcap, h4 .dropcap, td .dropcap, th .dropcap {
   opacity: 0;
   transition: opacity .18s ease, transform .18s ease;
   -webkit-user-drag: none;
+  /* Invisible is not the same as absent: the versions all sit in one box
+     and the LAST one in the markup is on top, so a long-press or a
+     right-click on the icon landed on a picture nobody could see, and
+     "Open image in new tab" opened the alternate art (or the token) every
+     time, whichever version was showing. Only the version on screen is
+     hit-testable; the stack's own listeners resolve the stack from
+     whatever was hit, so a tap or a swipe still works — and in the margin
+     around the smaller token they land on the stack itself, which is right:
+     there is no picture there to open. */
+  pointer-events: none;
 }
+.emblem-stack .emblem.is-on { pointer-events: auto; }
 /* The token inside a stack: undo the stack's 8/7 and the owner's display
    size, then 6/7 of the box — see .emblem-token above. --art-scale is
    inherited from the stack, where render.js writes it. */
