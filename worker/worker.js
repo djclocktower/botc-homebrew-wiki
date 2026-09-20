@@ -4465,14 +4465,66 @@ async function appearsInHref(env, ctx, value) {
   return _appearsInLinksCache.links.get(wanted) || '';
 }
 
+// Public news is keyed by its own content version, limit and deploy. Drafts
+// never enter this cache. Failed reads reject so an outage cannot cache emptiness.
+const _newsPending = new Map();
+async function newsList(env, limit, includeDrafts) {
+  await ensureNewsTable(env);
+  const { results } = await env.DB.prepare(
+    includeDrafts
+      ? `SELECT slug, title, status, published_at, updated_at, data FROM news
+         ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
+      : `SELECT slug, title, status, published_at, updated_at, data FROM news
+         WHERE status='published' ORDER BY published_at DESC LIMIT ?`
+  ).bind(limit).all();
+  return {
+    articles: (results || []).map(r => {
+      const d = parseData(r);
+      return {
+        slug: r.slug, title: r.title, status: r.status,
+        publishedAt: r.published_at, updatedAt: r.updated_at,
+        author: d.author || null,
+        summary: d.summary || NewsRender.autoSummary(d.body, 160),
+        image: d.image || null,
+        // Body is only sent on the single-article route — the list stays
+        // small even with a hundred long articles in it.
+        pinned: !!d.pinned
+      };
+    })
+  };
+}
+async function cachedNewsBody(env, ctx, limit, cards, version) {
+  const key = `https://feed.internal/news.json?v=${version}&limit=${limit}&cards=${cards}&build=${BUILD_ID}`;
+  if (_newsPending.has(key)) return _newsPending.get(key);
+  const pending = (async () => {
+    let body = await edgeCacheGet(key);
+    if (body === null) {
+      const data = await newsList(env, limit, false);
+      if (cards) {
+        const articles = data.articles.slice().sort((a, b) =>
+          Number(b.pinned) - Number(a.pinned) || String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+        body = JSON.stringify({ html: articles.map(a => NewsRender.renderCard(a, { linkRoot: '' })).join('') });
+      } else body = JSON.stringify(data);
+      edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
+    }
+    return body;
+  })();
+  _newsPending.set(key, pending);
+  try { return await pending; } finally { _newsPending.delete(key); }
+}
+
 // One compact homepage snapshot per content version and UTC day. Random tile
 // order remains a browser choice, so every collection/script stays eligible.
+const HOME_FORMAT_V = 3;
 const _homePending = new Map();
 let _homeCache = null;
-async function cachedHome(env, ctx) {
+async function cachedHome(env, ctx, request) {
   const version = await contentVersion(env, ['character', 'collection', 'script']);
   const day = Math.floor(Date.now() / 86400000);
-  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${FEED_FORMAT_V}`;
+  const key = `https://feed.internal/home.json?v=${version}&day=${day}&f=${HOME_FORMAT_V}`;
+  const etag = `W/"home-${version}-${day}-${HOME_FORMAT_V}"`;
+  // A returning browser already owns the body, even in a cold Worker isolate.
+  if (request?.headers.get('If-None-Match') === etag) return { etag };
   if (_homeCache?.key === key) return _homeCache;
   if (_homePending.has(key)) return _homePending.get(key);
   const pending = (async () => {
@@ -4486,7 +4538,7 @@ async function cachedHome(env, ctx) {
       body = JSON.stringify(homeData(...bodies.map(JSON.parse), day));
       edgeCachePut(ctx, key, body, INTERNAL_CACHE_CONTROL);
     }
-    return _homeCache = { key, body, etag: `W/"home-${version}-${day}-${FEED_FORMAT_V}"` };
+    return _homeCache = { key, body, etag };
   })();
   _homePending.set(key, pending);
   try { return await pending; } finally { _homePending.delete(key); }
@@ -5871,7 +5923,7 @@ export default {
     }
 
     if (method === 'GET' && path === '/api/home') {
-      const home = await cachedHome(env, ctx);
+      const home = await cachedHome(env, ctx, request);
       const headers = { ...JSON_HEADERS, ETag: home.etag, 'Cache-Control': FEED_CACHE_CONTROL };
       return request.headers.get('If-None-Match') === home.etag
         ? new Response(null, { status: 304, headers })
@@ -5940,34 +5992,15 @@ export default {
     // Public list. ?limit=N for the homepage panel; admins can add
     // ?drafts=1 to see unpublished articles in the editor's list.
     if (method === 'GET' && path === '/api/news') {
-      await ensureNewsTable(env);
       const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '30', 10) || 30, 1), 100);
-      let includeDrafts = false;
-      if (url.searchParams.get('drafts') === '1') {
-        includeDrafts = !!(await adminSession(env, request));
-      }
-      const { results } = await env.DB.prepare(
-        includeDrafts
-          ? `SELECT slug, title, status, published_at, updated_at, data FROM news
-             ORDER BY COALESCE(published_at, updated_at) DESC LIMIT ?`
-          : `SELECT slug, title, status, published_at, updated_at, data FROM news
-             WHERE status='published' ORDER BY published_at DESC LIMIT ?`
-      ).bind(limit).all().catch(() => ({ results: [] }));
-      return jsonResponse({
-        articles: (results || []).map(r => {
-          const d = parseData(r);
-          return {
-            slug: r.slug, title: r.title, status: r.status,
-            publishedAt: r.published_at, updatedAt: r.updated_at,
-            author: d.author || null,
-            summary: d.summary || NewsRender.autoSummary(d.body, 160),
-            image: d.image || null,
-            // Body is only sent on the single-article route — the list stays
-            // small even with a hundred long articles in it.
-            pinned: !!d.pinned
-          };
-        })
-      });
+      const includeDrafts = url.searchParams.get('drafts') === '1' && !!(await adminSession(env, request));
+      if (includeDrafts) return jsonResponse(await newsList(env, limit, true));
+      const cards = url.searchParams.get('format') === 'cards';
+      const version = await contentVersion(env, ['news']);
+      const etag = `W/"news-${version}-${limit}-${cards}-${BUILD_ID}"`;
+      const headers = { ...JSON_HEADERS, ETag: etag, 'Cache-Control': FEED_CACHE_CONTROL };
+      if (request.headers.get('If-None-Match') === etag) return new Response(null, { status: 304, headers });
+      return new Response(await cachedNewsBody(env, ctx, limit, cards, version), { headers });
     }
 
     // One article as JSON. Public for published articles; the admin editor
