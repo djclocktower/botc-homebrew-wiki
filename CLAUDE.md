@@ -3270,7 +3270,16 @@ parsed object per public feed URL in each document. Failed loads retry;
 private `?drafts=` requests are never shared. Browse pages and top-bar search
 use the same URLs. `/api/home` sends counts, compact collection/script tiles,
 eight recent characters and one featured character rather than every
-character. It keeps random tile selection in the browser and keys the daily
+character. The featured lede is flattened by the shared wiki formatter on the
+server. The homepage loads its scripts with `defer` in dependency order, and
+keeps its presentation in the versioned `assets/home.js`; it does not eagerly
+load creators.js or the wiki/news article renderers. News cards come from
+`/api/news?limit=3&format=cards`, rendered with the same NewsRender card helper.
+Public news lists use news-scoped version keys, limit/format/deploy-specific
+ETags, coalesced builds and the internal edge cache. Authorized draft lists
+remain uncached. Failed news reads are never stored as empty lists. Both
+`/api/home` and public news check conditional requests before building bodies.
+It keeps random tile selection in the browser and keys the daily
 featured snapshot by UTC day. `?fields=grid` now omits lede/quote prose;
 script/collection `?fields=browse` omits editor/export payloads. The character
 `card` feed and full feeds retain export fields. All Characters loads both
@@ -3329,8 +3338,8 @@ JSON retain their original URLs.
 Character cards use 192px `thumb/{file}.webp`. Missing or blank thumbnails
 (under 512 bytes) fall back to the original; versioned thumbnail fallbacks
 keep their existing one-hour limit. Writing original art retires its thumb,
-and the browser uploader regenerates it. The featured image loads eagerly;
-secondary gallery images load on approach or interaction, respecting Save-Data.
+and the browser uploader regenerates it. The homepage featured image loads
+lazily below the fold; secondary gallery images load on approach or interaction, respecting Save-Data.
 
 Local script/collection banners and logos use 320/640/1280px WebP `srcset`
 variants under `media/{width}/{source-path}.webp`. The publishing forms generate

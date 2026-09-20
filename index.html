@@ -2,7 +2,7 @@
 <html lang="en" class="redesign-on">
 <head>
 <meta charset="UTF-8">
-<script src="assets/data.js"></script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BOTC HomeBrew Wiki</title>
 <meta name="description" content="A community library of fan-made characters for Blood on the Clocktower. Browse curated collections, read full almanac entries, and export to the official script tool.">
@@ -15,6 +15,12 @@
      for the preload to match a plain fetch(). -->
 <link rel="preload" href="/api/home" as="fetch" crossorigin="anonymous">
 <link rel="stylesheet" href="assets/header-redesign.css">
+<script defer src="assets/data.js"></script>
+<script defer src="assets/render-page.js"></script>
+<script defer src="assets/classify.js"></script>
+<script defer src="assets/rules.js"></script>
+<script defer src="assets/home.js"></script>
+<script defer src="assets/site.js"></script>
 </head>
 <body>
 
@@ -221,153 +227,5 @@
 
   <p class="foot">Fan-made content for <em>Blood on the Clocktower</em> &middot; Not affiliated with The Pandemonium Institute</p>
 
-  <!-- ────────────────────────────────────────────────────────
-       LANDING PAGE DATA — collections, browse counts, recent, featured
-       ──────────────────────────────────────────────────────── -->
-  <script src="assets/render-page.js"></script>
-  <script src="assets/creators.js"></script>
-  <script src="assets/classify.js"></script>
-  <!-- render-news.js formats through render-wiki.js — load the engine first. -->
-  <script src="assets/render-wiki.js"></script>
-  <script src="assets/render-news.js"></script>
-  <script>
-  /* ── News panel ──────────────────────────────────────────────
-     Shows the three most recent published articles. The whole section
-     stays hidden while there are none. */
-  (function(){
-    var sec = document.getElementById('news-section');
-    var grid = document.getElementById('news-grid');
-    if (!sec || !grid) return;
-    fetch('/api/news?limit=3&_=' + Date.now())
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var list = (d && d.articles) || [];
-        if (!list.length) return;
-        list.sort(function(a,b){
-          if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
-          return String(b.publishedAt||'').localeCompare(String(a.publishedAt||''));
-        });
-        grid.innerHTML = list.map(function(a){
-          return window.NewsRender.renderCard(a, { linkRoot: '' });
-        }).join('');
-        sec.hidden = false;
-      })
-      .catch(function(){ /* no news, no panel */ });
-  })();
-  </script>
-  <script>
-  (function(){
-    var TEAM_LABEL = {
-      townsfolk: 'Townsfolk', outsider: 'Outsider', minion: 'Minion',
-      demon: 'Demon', traveller: 'Traveller', fabled: 'Fabled', loric: 'Loric'
-    };
-    var GOOD = { townsfolk: 1, outsider: 1 };
-
-    function esc(s){
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function collectionTileHTML(name, id, count, icons, header, tagline, coll){
-      var href = 'collection/' + encodeURIComponent(id);
-      // Header image, then the author's logo, then the scatter of member
-      // icons — the logo beats the scatter, and matches what the collection's
-      // own page shows at the top.
-      var banner = header || (coll && coll.logo);
-      var topHTML = banner
-        ? '<div class="collection-tile-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', banner, coll.v)) + '"' + PageRender.responsiveAttrs('', banner, coll.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(name) + '"></div>'
-        : '<div class="collection-icons">' + icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">'; }).join('') + '</div>';
-      return '<a class="collection-tile" href="' + esc(href) + '">' +
-        topHTML +
-        '<h3 class="collection-name">' + esc(name) + '</h3>' +
-        (tagline ? '<p class="collection-tile-tagline">' + esc(tagline) + '</p>' : '') +
-        '<div class="collection-footer">' +
-          // Same footer shape as the script tiles below: count, then who made
-          // it, then the Curata wreath behind a hairline.
-          '<span class="collection-count">' + count + ' character' + (count===1?'':'s') +
-            ((coll && coll.author) ? ' · ' + esc(coll.author) : '') +
-            ((coll && coll.curata) ? window.classBadgeHTML('curata', { sep: true }) : '') + '</span>' +
-          '<span class="collection-arrow">Browse →</span>' +
-        '</div>' +
-      '</a>';
-    }
-
-    function recentCardHTML(c){
-      var tc = GOOD[c.team] ? ' good' : '';
-      var label = TEAM_LABEL[c.team] || c.team;
-      return '<a class="recent-card" href="' + esc(c.page) + '">' +
-        '<img loading="lazy" decoding="async" class="recent-thumb" src="' + esc(PageRender.thumbSrc(c, '')) + '" onerror="this.src=\'assets/favicon.png\'" alt="">' +
-        '<div class="recent-name">' + esc(c.name) + '</div>' +
-        '<div class="recent-type' + tc + '">' + esc(label) + '</div>' +
-      '</a>';
-    }
-
-    // The server picks the daily feature; only presentation happens here.
-    function featuredCardHTML(c){
-      var tc = GOOD[c.team] ? ' good' : '';
-      var label = TEAM_LABEL[c.team] || c.team;
-      /* The lede takes the wiki's inline marks ({{red|Imp}}, [[Snake Charmer]],
-         {{drop|T}}) and this card is not the page — it esc()s straight into a
-         strip of markup with no text engine behind it, so a mark typed on a
-         character page printed its braces here. plainText() takes the marks
-         back out and leaves the words, the same call buildSchema() and the
-         meta description already make. */
-      var ledeRaw = c.lede || c.quote || '';
-      var lede = (window.WikiRender && window.WikiRender.plainText)
-        ? window.WikiRender.plainText(ledeRaw) : ledeRaw;
-      var ability = c.ability || '';
-      var creator = c.creator || '';
-      var appears = c.appearsIn || '';
-      return '<a class="featured-card" href="' + esc(c.page) + '">' +
-        '<img decoding="async" width="260" height="260" class="featured-art" src="' + esc(PageRender.artSrc(c, '')) + '" alt="' + esc(c.name) + '">' +
-        '<div class="featured-body">' +
-          '<div class="featured-type' + tc + '">' + esc(label) + '</div>' +
-          '<h3 class="featured-name">' + esc(c.name) +
-            (c.curata ? window.classBadgeHTML('curata', { from: c.curataFrom }) : '') + '</h3>' +
-          (lede ? '<p class="featured-lede">' + esc(lede) + '</p>' : '') +
-          (ability ? '<p class="featured-ability">' + esc(ability) + '</p>' : '') +
-          '<div class="featured-meta">' +
-            (creator ? '<span>by ' + esc(creator) + '</span>' : '') +
-            (appears ? '<span>· ' + esc(appears) + '</span>' : '') +
-          '</div>' +
-          '<span class="featured-link">View Full Page →</span>' +
-        '</div>' +
-      '</a>';
-    }
-
-    BotcData.json('/api/home').then(function(data){
-      var stats = data.stats;
-      document.getElementById('landing-stats').textContent = stats.characters + ' characters · ' + stats.collections + ' collections · ' + stats.creators + ' creators · ' + stats.scripts + ' scripts';
-      document.getElementById('bc-team').textContent = stats.characters + ' characters';
-      document.getElementById('bc-creator').textContent = stats.creators + ' creators';
-      document.getElementById('bc-tag').textContent = stats.tags + ' tags';
-      document.getElementById('bc-jinx').textContent = stats.jinxed ? stats.jinxed + ' jinxed characters' : 'See the map';
-      document.getElementById('recent-strip').innerHTML = data.recent.map(recentCardHTML).join('');
-      document.getElementById('featured-wrap').innerHTML = data.featured ? featuredCardHTML(data.featured) : '<p>No featured character available.</p>';
-      var collections = window.weightedShuffle(data.collections).slice(0, 7);
-      var html = collections.map(function(c){ return collectionTileHTML(c.displayName || c.slug, c.id || c.slug, c.count, c.icons, c.header, c.tagline, c); }).join('');
-      html += '<a class="collection-tile" href="all-collections"><div class="collection-icons">' + data.icons.map(function(c){ return '<img loading="lazy" decoding="async" class="collection-icon" src="' + esc(PageRender.thumbSrc(c, '')) + '" alt="">'; }).join('') + '</div><h3 class="collection-name">All Collections</h3><div class="collection-footer"><span class="collection-count">' + stats.collections + ' collections</span><span class="collection-arrow">Browse →</span></div></a>';
-      document.getElementById('collections-grid').innerHTML = html;
-      document.getElementById('scripts-grid').innerHTML = window.weightedShuffle(data.scripts).slice(0, 7).map(function(sc){
-        var nch = Math.max(String(sc.name || '').replace(/\s+/g, ' ').trim().length, 4);
-        var header = sc.header || sc.logo
-          ? '<div class="script-card-header"><img loading="lazy" decoding="async" src="' + esc(PageRender.imgSrc('', sc.header || sc.logo, sc.v)) + '"' + PageRender.responsiveAttrs('', sc.header || sc.logo, sc.v, '(max-width: 640px) 94vw, 320px') + ' alt="' + esc(sc.name) + '"></div>'
-          : '<div class="script-card-header script-card-header-empty"><span style="--nch:' + nch + '">' + esc(sc.name) + '</span></div>';
-        return '<a class="collection-tile script-tile" href="s/' + encodeURIComponent(sc.slug) + '">' + header + '<h3 class="collection-name">' + esc(sc.name) + '</h3><div class="collection-footer"><span class="collection-count">' + sc.count + ' characters' + (sc.author ? ' · ' + esc(sc.author) : '') + (sc.curata ? window.classBadgeHTML('curata', {sep: true}) : '') + '</span><span class="collection-arrow">Browse →</span></div></a>';
-      }).join('') + '<a class="collection-tile script-tile" href="scripts"><div class="script-card-header script-card-header-empty"><span>All Scripts</span></div><h3 class="collection-name">All Scripts</h3><div class="collection-footer"><span class="collection-count">' + stats.scripts + ' scripts</span><span class="collection-arrow">Browse →</span></div></a>';
-    }).catch(function(){ document.getElementById('landing-stats').textContent = 'Could not load homepage data. Please refresh to retry.'; });
-  })();
-  </script>
-
-  <script src="assets/rules.js"></script>
-  <script>
-  (function () {
-    var box = document.getElementById('home-rules');
-    if (box && typeof window.renderRulesHTML === 'function') {
-      box.innerHTML = window.renderRulesHTML();
-    }
-  })();
-  </script>
-  <script src="assets/site.js"></script>
 </body>
 </html>
