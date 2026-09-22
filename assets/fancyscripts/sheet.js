@@ -108,20 +108,31 @@ function abilityNodes(text, bracketStyle) {
    The recolour runs once per picked colour, in the pixel worker, and is
    cached: renderSheetPage() shows the newest canvas it has and asks for a
    re-render when a fresh one lands, exactly like the icon-ink
-   measurements. */
+   measurements.
+
+   Cached PER COLOUR, a few deep: the classic sheet's ribbon and the app
+   view's red one can both be in one design (a navy sheet with app-view
+   night sheets), and a single slot would have the two pages recolour
+   over each other on every render, each finish asking for the other. */
+const TINT_KEEP = 4;
 const sidebarTint = {
   img: null, imgReady: false,
-  color: '', canvas: null, // the newest finished recolour
-  busy: false, want: '', notify: null,
+  done: new Map(), // colour -> finished canvas, oldest first
+  last: null, // the newest finished canvas of any colour
+  busy: false, queue: [], notify: null,
+  waiters: [], // ribbonReady() callbacks, run after every finished job
 };
 
-/* newest recoloured canvas for `color`, or the best stale one while the
+/* recoloured canvas for `color`, or the newest one of any colour while the
    fresh one is computed off this frame (null = show the plain navy art) */
 function sidebarTintCanvas(color, requestRender) {
   const st = sidebarTint;
   st.notify = requestRender;
-  if (st.color === color && st.canvas) return st.canvas;
-  st.want = color;
+  const hit = st.done.get(color);
+  if (hit) return hit;
+  // newest request first, and only a few: dragging the colour picker asks
+  // for sixty colours a second and only the last one matters
+  st.queue = [color, ...st.queue.filter((c) => c !== color)].slice(0, 3);
   if (!st.img) {
     st.img = new Image();
     st.img.onload = () => { st.imgReady = true; pumpSidebarTint(); };
@@ -129,15 +140,16 @@ function sidebarTintCanvas(color, requestRender) {
   } else {
     pumpSidebarTint();
   }
-  return st.canvas; // possibly a stale colour — better than flashing navy
+  return st.last; // possibly another colour — better than flashing navy
 }
 
 function pumpSidebarTint() {
   const st = sidebarTint;
-  if (st.busy || !st.imgReady || !st.want || st.want === st.color) return;
-  const color = st.want;
+  while (st.queue.length && st.done.has(st.queue[0])) st.queue.shift();
+  if (st.busy || !st.imgReady || !st.queue.length) return;
+  const color = st.queue.shift();
   const t = hexHsl(color);
-  if (!t) { st.want = st.color; return; }
+  if (!t) { pumpSidebarTint(); return; }
   st.busy = true;
   const src = st.img;
   const c = document.createElement('canvas');
@@ -154,13 +166,70 @@ function pumpSidebarTint() {
   };
   runPixelJob(job, [im.data.buffer]).then((buf) => {
     ctx.putImageData(new ImageData(new Uint8ClampedArray(buf), c.width, c.height), 0, 0);
-    st.canvas = c;
-    st.color = color;
-  }).catch(() => { st.want = st.color; }).then(() => {
+    st.done.set(color, c);
+    while (st.done.size > TINT_KEEP) st.done.delete(st.done.keys().next().value);
+    st.last = c;
+  }).catch(() => { /* the art stays navy for this colour */ }).then(() => {
     st.busy = false;
+    for (const w of st.waiters.splice(0)) w();
     if (st.notify) st.notify();
     pumpSidebarTint(); // the wanted colour may have moved on meanwhile
   });
+}
+
+/* an export renders pages the preview may never have shown, so it waits
+   for their ribbon's colour rather than capturing whichever was last */
+export function ribbonReady(color) {
+  if (!color || color.toLowerCase() === SIDEBAR_BASE.hex || !hexHsl(color)) return Promise.resolve();
+  const st = sidebarTint;
+  const t0 = Date.now();
+  return new Promise((resolve) => {
+    setTimeout(resolve, 15000); // an art file that never loads must not hang the export
+    const check = () => {
+      if (st.done.has(color) || Date.now() - t0 > 15000) { resolve(); return; }
+      sidebarTintCanvas(color, st.notify);
+      st.waiters.push(check);
+    };
+    check();
+  });
+}
+
+/* the ribbon down the left edge, shared by both styles: the damask art
+   (recoloured), a flat colour, or an upload, full height from the sheet
+   edge to `widthPct`. `shade` lays the parchment frame's shading over the
+   damask (the classic sheet's slider; 0 elsewhere). */
+export function appendRibbon(sheet, r, ctx) {
+  const style = { position: 'absolute', left: '0', top: '0', width: r.widthPct + '%', height: '100%' };
+  const opacity = String(r.opacity == null ? 1 : r.opacity);
+  if (r.mode === 'none') return;
+  if (r.src) {
+    sheet.append(img(r.src, { ...style, objectFit: 'cover', opacity }));
+    return;
+  }
+  if (r.mode === 'flat') {
+    sheet.append(el('div', { ...style, background: r.color || SIDEBAR_BASE.hex, opacity }));
+    return;
+  }
+  const wantsTint = r.color && r.color.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(r.color);
+  const tinted = wantsTint ? sidebarTintCanvas(r.color, ctx.requestRender) : null;
+  if (tinted) {
+    // the cached canvas is adopted by each new sheet; the old sheet is
+    // already detached, so moving it is safe. An export render that runs
+    // while the preview is up gets a COPY, so the preview keeps its ribbon.
+    let node = tinted;
+    if (tinted.parentNode && ctx.forExport) {
+      node = document.createElement('canvas');
+      node.width = tinted.width; node.height = tinted.height;
+      node.getContext('2d').drawImage(tinted, 0, 0);
+    }
+    Object.assign(node.style, style, { opacity });
+    sheet.append(node);
+  } else {
+    sheet.append(img(ART + 'sidebar-flat.png', { ...style, opacity }));
+  }
+  // only fetched when it is actually asked for — it is a 1.6 MB overlay
+  const shadeAmt = clamp(Number(r.shade) || 0, 0, 1);
+  if (shadeAmt > 0) sheet.append(img(ART + 'sidebar-shade.png', { ...style, opacity: String(shadeAmt) }));
 }
 
 /* title in the swash face: the default keeps the reference's exact
@@ -683,46 +752,15 @@ export function renderSheetPage(script, options, layout, pageIndex, ctx) {
      dials the old blend back in; at 1 it reproduces the baked composite
      exactly, because opacity over black IS the multiply that baked it. */
   const sbT = elGet(options, 'sidebar');
-  const sidebarStyle = {
-    position: 'absolute',
-    left: '0',
-    top: '0',
-    width: (SHEET.sidebarX + SHEET.sidebarW) + '%',
-    height: '100%',
-  };
-  const sidebarMode = options.sidebarMode || 'damask';
-  if (sidebarMode !== 'none' && !sbT.hidden) {
-    const customArt = resolveSrc(sbT.src);
-    if (customArt) {
-      sheet.append(img(customArt, { ...sidebarStyle, objectFit: 'cover', opacity: String(sbT.opacity) }));
-    } else if (sidebarMode === 'flat') {
-      sheet.append(el('div', { ...sidebarStyle, background: options.sidebarColor || SIDEBAR_BASE.hex, opacity: String(sbT.opacity) }));
-    } else {
-      const wantsTint = options.sidebarColor &&
-        options.sidebarColor.toLowerCase() !== SIDEBAR_BASE.hex && hexHsl(options.sidebarColor);
-      const tinted = wantsTint ? sidebarTintCanvas(options.sidebarColor, requestRender) : null;
-      if (tinted) {
-        // the singleton canvas is adopted by each new sheet; the old sheet is
-        // already detached, so moving it is safe. An export render that runs
-        // while the preview is up gets a COPY, so the preview keeps its ribbon.
-        let node = tinted;
-        if (tinted.parentNode && ctx.forExport) {
-          node = document.createElement('canvas');
-          node.width = tinted.width; node.height = tinted.height;
-          node.getContext('2d').drawImage(tinted, 0, 0);
-        }
-        Object.assign(node.style, sidebarStyle, { opacity: String(sbT.opacity) });
-        sheet.append(node);
-      } else {
-        sheet.append(img(ART + 'sidebar-flat.png', { ...sidebarStyle, opacity: String(sbT.opacity) }));
-      }
-    }
-    // only fetched when it is actually asked for — it is a 1.6 MB overlay
-    const shadeAmt = clamp(Number(options.sidebarShade) || 0, 0, 1);
-    if (shadeAmt > 0 && sidebarMode === 'damask') {
-      sheet.append(img(ART + 'sidebar-shade.png',
-        { ...sidebarStyle, opacity: String(shadeAmt) }));
-    }
+  if (!sbT.hidden) {
+    appendRibbon(sheet, {
+      mode: options.sidebarMode || 'damask',
+      color: options.sidebarColor,
+      src: resolveSrc(sbT.src),
+      opacity: sbT.opacity,
+      shade: options.sidebarShade,
+      widthPct: SHEET.sidebarX + SHEET.sidebarW,
+    }, { requestRender, forExport: ctx.forExport });
   }
 
   /* ── header band ── */

@@ -101,5 +101,38 @@ check('bootlegger: name, ability and team off the roster',
 check('bootlegger: does not wake', bootParsed[1].firstNight + bootParsed[1].otherNight, 0);
 check('bootlegger: the default option is off', S.normalizeOptions({}).bootlegger, false);
 
+// the app view: the style switch, its defaults, and the line setting it
+// does itself. The measure here is one unit per character, so the breaks
+// can be read off the strings.
+const unit = (s) => s.length;
+const plain = S.normalizeOptions({});
+check('app view: both pages start classic', [S.pageStyle(plain, 'front'), S.pageStyle(plain, 'night'), S.pageStyle(plain, 'jinx')],
+  ['classic', 'classic', 'classic']);
+const appOn = S.normalizeOptions({ sheetStyle: 'app', night: { style: 'app' } });
+check('app view: each page switches on its own', [S.pageStyle(appOn, 'front'), S.pageStyle(appOn, 'night'), S.pageStyle(appOn, 'jinx'),
+  S.pageStyle(S.normalizeOptions({ night: { style: 'app' } }), 'front')], ['app', 'app', 'classic', 'classic']);
+check('app view: a design saved before it existed gets its defaults',
+  [plain.app.sidebarColor, plain.app.fontName, plain.app.bg.mode, plain.night.appTitle], ['#670818', 'tradebold', 'parchment', false]);
+check('app view: element keys are unique and styled', (() => {
+  const keys = S.ELEMENTS.map((e) => e.key);
+  return keys.length === new Set(keys).size && S.ELEMENTS.every((e) => !e.only || e.only === 'classic' || e.only === 'app');
+})(), true);
+const lineText = (lines) => lines.map((l) => l.items.map((it) => (it.lead ? ' ' : '') + (it.kind === 'dot' ? '●' : it.s)).join(''));
+check('break: words wrap at the width', lineText(S.breakRuns([{ s: 'aaa bbb ccc ddd', font: 'f' }], 7, unit)), ['aaa bbb', 'ccc ddd']);
+check('break: a line never starts with a space', S.breakRuns([{ s: 'aaa bbb ccc', font: 'f' }], 7, unit)[1].items[0].lead || 0, 0);
+check('break: a token run is set in its own font', S.breakRuns([{ s: 'show the ', font: 'f' }, { s: 'YOU ARE', font: 'b', kind: 'token' }], 40, unit)[0].items.map((i) => i.font),
+  ['f', 'f', 'b', 'b']);
+check('break: a bracket goes down with its word', lineText(S.breakRuns(
+  [{ s: 'the (or ', font: 'f' }, { s: 'RED', font: 'b', kind: 'token' }, { s: ').', font: 'f' }], 10, unit)), ['the (or', 'RED).']);
+const dotted = S.breakRuns([{ s: 'chooses.', font: 'f' }, { s: ' ', font: 'f' }, { kind: 'dot', font: 'f' }, { s: ' then more', font: 'f' }], 12, unit, { dotW: 2 });
+check('break: a reminder disc is one item and marks its line', [lineText(dotted), dotted.map((l) => l.dot)], [['chooses. ●', 'then more'], [true, false]]);
+const fontAt = (s) => String(s);
+const scaled = (t, f) => t.length * Number(f);
+check('name: fits on one line', S.fitNameLines('Chef', 10, scaled, fontAt), { scale: 1, lines: ['Chef'] });
+check('name: wraps at its spaces', S.fitNameLines('Fortune Teller', 10, scaled, fontAt).lines, ['Fortune', 'Teller']);
+check('name: one long word shrinks instead of being cut', S.fitNameLines('Washerwoman', 8, scaled, fontAt), { scale: 8 / 11, lines: ['Washerwoman'] });
+check('name: a night name shrinks a little before it wraps', S.fitNameLines('Scarlet Woman', 12, scaled, fontAt, { shrinkFirst: 0.8 }),
+  { scale: 12 / 13, lines: ['Scarlet Woman'] });
+
 console.log(failures ? '\n' + failures + ' failure(s)' : '\nall good');
 process.exit(failures ? 1 : 0);

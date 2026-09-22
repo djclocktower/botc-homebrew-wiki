@@ -48,7 +48,7 @@ const failedArt = new Set();
 /* ── specs ─────────────────────────────────────────────────────────────── */
 
 /* the colour a row's name prints in */
-function rowColor(item, options, cfg) {
+export function rowColor(item, options, cfg) {
   if (item.kind === 'step') return cfg.metaColor || '#1c1c1c';
   if (item.color) return item.color;
   const t = item.team;

@@ -49,6 +49,9 @@
   display: grid; grid-template-columns: 350px minmax(0, 1fr);
   gap: 22px; align-items: start;
 }
+/* a select with a long option would otherwise set the column's width on a
+   phone and push the whole page sideways */
+.fs-layout > aside { min-width: 0; }
 @media (max-width: 940px) {
   .fs-layout { grid-template-columns: 1fr; }
   /* phone: the sheet first, the knobs after — the preview is the product */
@@ -335,6 +338,13 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
           </details>
         </section>
 
+        <section class="fs-card" data-fs-for="front night" data-fs-style="app">
+          <details open>
+            <summary>App view <span class="fs-sum-note">ribbon · fonts · art</span></summary>
+            <div id="fs-app-box"></div>
+          </details>
+        </section>
+
         <section class="fs-card" data-fs-for="front">
           <details>
             <summary>Title &amp; header</summary>
@@ -363,7 +373,7 @@ textarea.fs-field { resize: vertical; min-height: 2.4em; font-size: .88rem; }
           </details>
         </section>
 
-        <section class="fs-card" data-fs-for="front">
+        <section class="fs-card" data-fs-for="front" data-fs-style="classic">
           <details>
             <summary>Background</summary>
             <div id="fs-bg-box"></div>

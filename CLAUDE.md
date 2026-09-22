@@ -582,7 +582,9 @@ assets/
                        element registry — pure, no DOM, node-testable);
                        sheet.js renders the script sheet(s), night.js the
                        night-order and jinx pages, back.js the back cover —
-                       all three captured by the export; elements.js is what
+                       all three captured by the export; appview.js the
+                       second style of the sheet and the night sheets (the
+                       official app's own view); elements.js is what
                        they share (page frame + backgrounds, text/image
                        stickers, the asset resolver); util.js the DOM/colour/
                        measure helpers; drag.js the one pointer layer that
@@ -3078,7 +3080,9 @@ Every element on every page can be moved, sized, turned, faded, hidden or
 replaced with an upload, and free text/image stickers go anywhere.
 Downloadable as a share JPEG, a print PNG, all pages as PNGs, or one PDF.
 Client-side only: no Worker route, no D1, nothing stored server-side (the
-autosave is localStorage; a design file is a download).
+autosave is localStorage; a design file is a download). The script sheet and
+the night sheets each come in two styles, the printed sheet above and the
+**app view** (see below).
 
 ### How the modules fit
 
@@ -3295,6 +3299,69 @@ garland is now capped at twice its own height — on a page the content does
 not reach the foot of, centring it on that run walked the word away from
 the rows it names, and a three-character script printed OUTSIDER halfway
 down a blank sheet.
+
+### The app view (`appview.js`)
+
+A second style for the script sheet (`options.sheetStyle`) and for the night
+sheets (`options.night.style`), each `'classic'` or `'app'` and switched
+separately from the top of the Pages card. It copies the official app's own
+script view off the owner's screenshots: one column, a red damask ribbon with
+the team names turned up it, then icon, name, a coloured bar and the ability;
+the night sheets set the names flush right against the bar, mark each
+`:reminder:` with a plum disc and put the script's logo after the list. The
+jinx page and the back cover have one style.
+
+- **`APP_SHEET` / `APP_NIGHT` in script.js are measurements**, like `SHEET`,
+  taken off the screenshots and scaled by WIDTH onto the 3:4 sheet, so the
+  ability column wraps where the app's does (its width is bounded by where
+  ten of the app's abilities wrap). Same rule: one constant at a time.
+- **`options.app` (`DEFAULT_APP`) is the style's own look**, shared by both
+  app pages: ribbon mode and colour (`#670818`, the app's red), fonts (Trade
+  Gothic Bold Condensed names, Trade Gothic text, Goudy team names), bars,
+  lines, colours and the paper. It has its own card (`data-fs-style="app"`).
+  The name colours, sizes, density, pagination, sort, footnote and team label
+  text are the classic controls, shared. Inside a shared card, controls that
+  mean something in one style only sit in a `styleGroup()` that hides with the
+  other style; `showCardsFor()` also hides whole cards by `data-fs-style`.
+- **It sets its own lines** (`breakRuns()` in script.js, pure and tested).
+  The bar beside a block must be exactly as tall as the block, and a night
+  line carrying a disc is taller than one without, so the layout pass breaks
+  every block and the render pass draws each line as its own nowrap div from
+  the same breaks. Runs with no space between them (`(or the RED HERRING).`)
+  wrap as one word.
+- **Names fit their column** (`fitNameLines()`): wrapped at spaces, shrunk only
+  when one word will not fit (the app cuts it off with "…"; the owner asked for
+  shrink). Night names shrink a little first (`shrinkFirst`) because the app
+  never wraps "Scarlet Woman" there.
+- **A short team grows to hold its name** up the ribbon (the lone Imp's band
+  is as tall as DEMONS), and the name is always the plural, as in the app.
+- **The paper is the aged parchment, drawn 4% high** (`'appfront'` /
+  `'applist'` in `renderBackground()`), which crops the dark band along its top
+  where the title and Dusk sit; the night sheet's copy also runs past the foot,
+  which carries the garland off it. Its burnt right edge stands in for the
+  app's torn edge; its garland and oval hold the footnote as on the classic
+  sheet. **No skull in the text title**: `skull.png` carries a patch of the
+  classic parchment cut to vanish exactly where that sheet puts it, and
+  anywhere else it is a pale box. The flourishes frame the name instead.
+- **Three art slots are empty until something is uploaded**: `appGarland`
+  (flowers along the foot of the sheet) and `nightDecorFirst` /
+  `nightDecorOther` (the corner art top right on each night). They are
+  ordinary image elements, so the Elements panel adds and replaces them, and
+  the App view card has a button for each. The ribbon art is `appSidebar`.
+- **The layouts keep the classic shapes** app.js reads: a sheet page's
+  sections carry `left`/`leftHeights`/`topPx`, a night page's columns carry
+  units with `hEm`, so `reorderFront()` and `reorderNight()` need only know
+  the app view is one column. `layout.style === 'app'` is how app.js picks the
+  renderer and skips `fitTitle()`/`fitListPage()`.
+- **The ribbon recolour is cached per colour now** (`sidebarTint.done`, four
+  deep, newest request first), because a navy classic sheet and a red app
+  night sheet can be in one design, and one slot had the two pages recolour
+  over each other on every render. `appendRibbon()` in sheet.js draws the
+  ribbon for both styles; `ribbonReady()` lets an export wait for a page's
+  colour, since the PDF renders pages the preview may never have shown.
+- The controls column is `min-width: 0`: a select with a long option ("The
+  script's own background image") otherwise set its width on a phone and
+  pushed the whole page sideways once a card holding one was open.
 
 ### The Bootlegger tick
 

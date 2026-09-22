@@ -55,9 +55,10 @@ export function pageFrame(w, h, unit, className) {
 }
 
 /* the background layers for a page. `page` is 'front' (the baked sheet
-   art with its frame and garland) or 'list' (a night/jinx page, which
+   art with its frame and garland), 'list' (a night/jinx page, which
    wants a clean parchment — the same art zoomed to its interior so the
-   frame and garland fall outside the page). */
+   frame and garland fall outside the page), or the app view's 'appfront'
+   and 'applist' (the art with its side edges, see below). */
 export function renderBackground(bg, page, extra) {
   const b = bg || {};
   const nodes = [];
@@ -86,6 +87,16 @@ export function renderBackground(bg, page, extra) {
     nodes.push(img(resolveSrc(b.src), { ...full, objectFit: fit, objectPosition: 'center', filter: f || undefined }));
   } else if (mode === 'light' || (mode === 'custom')) {
     nodes.push(img(LIGHT_PARCHMENT, { ...full, objectFit: 'cover', filter: f || undefined }));
+  } else if (page === 'applist' || page === 'appfront') {
+    // the app view keeps the parchment's burnt side edges (the ribbon
+    // covers the left one) but not the dark band along the top, where the
+    // title and the first step sit: the art starts a little above the page.
+    // A night sheet has no garland either, so its art also runs past the
+    // foot of the page, which carries the garland (from 89.25% down) off it
+    nodes.push(img(ART + 'parchment.jpg', {
+      position: 'absolute', left: '0', top: '-4%', width: '100%', height: page === 'applist' ? '118%' : '104%',
+      objectFit: 'fill', filter: f || undefined,
+    }));
   } else if (page === 'list') {
     // the baked art's clean interior: the frame ends ~9% in on the left,
     // ~4% on the right, and the garland starts at 89.5% down — 150% shows

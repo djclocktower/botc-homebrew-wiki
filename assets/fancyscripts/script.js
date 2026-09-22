@@ -165,6 +165,84 @@ export const NIGHT = {
   colGap: 2.4,
 };
 
+/* ── the app view ────────────────────────────────────────────────────────
+   The official app's own script view, as a second style for the script
+   sheet and the night sheets: one column, a red damask ribbon with the
+   team names turned up it, and each character as icon, name, a coloured
+   bar and the ability. Measured off the owner's screenshots of the app
+   (the script view at 793×1133, the night views at 1024 wide) and scaled
+   by WIDTH onto this sheet, so the ability column wraps where the app's
+   does. Same units as SHEET: em = 1% of sheet height, x in % of width. */
+export const APP_SHEET = {
+  sidebarW: 7.6, // the ribbon, sheet edge to here
+  labelCX: 3.72, // the turned team names' centre line
+  labelSize: 2.13, // em, the app's serif capitals
+  labelPad: 0.66, // em at each end: a short team grows to hold its name
+  iconCX: 12.5,
+  iconSize: 4.54, // em
+  nameX: 16.39,
+  nameW: 12.36, // the name column, to just short of the bar
+  nameSize: 1.665, // em (Trade Gothic Bold Condensed)
+  nameLine: 1.02, // × nameSize, for a name that wraps
+  barX: 29.7,
+  barW: 0.378,
+  textX: 31.78,
+  textRight: 93.02, // bounded by where ten of the app's abilities wrap
+  textSize: 1.475, // em (Trade Gothic)
+  textLine: 1.655, // em
+  rowMin: 3.55, // em, a one-line row
+  rowPad: 0.47, // em under a taller block
+  sectionGap: 1.14, // em between teams; the rule sits in the middle
+  dividerX0: 2.5, // the rule starts on the ribbon…
+  dividerX1: 95.5, // …and fades out here
+  titleCY: 4.07,
+  titleMaxH: 5.39,
+  titleMaxW: 67,
+  titleSize: 4.6, // em, the text title when the script has no logo
+  authorGap: 0.35, // em between the title and the author credit
+  authorSize: 1.2,
+  contentTop: 6.98, // first row top under the title
+  bareTop: 3.2, // first row top on a page without the title
+  contentBottom: 88.6, // the parchment's garland starts at 89.25
+  footnoteCX: 53.21, // inside the garland's oval, where the classic sheet sets it
+  footnoteTop: 95.0, // the paper sits 4% higher in the app view (elements.js)
+  footnoteSize: 1.22,
+  footnoteLine: 1.3,
+  garlandW: 72, // an uploaded garland across the foot of the sheet
+  garlandH: 9.5, // em
+};
+
+export const APP_NIGHT = {
+  sidebarW: 8.2,
+  iconCX: 13.09,
+  iconSize: 4.69, // em
+  nameRight: 32.13, // names are set flush right against the bar
+  nameSize: 1.758, // em (Trade Gothic Bold Condensed)
+  nameLine: 1.02,
+  barX: 33.4,
+  barW: 0.293,
+  textX: 34.96,
+  textRight: 93.6, // short of the parchment's burnt right edge
+  textSize: 1.139, // em (Trade Gothic)
+  textLine: 1.245, // em
+  dotLine: 1.83, // em, a line carrying a reminder disc is taller
+  dotSize: 1.48, // × the text size
+  rowPitch: 4.834, // em: every step the same height, as in the app
+  rowPad: 0.5,
+  listTop: 2.12, // first row top
+  titleTop: 2.4, // the optional page title (the app has none)
+  titleSize: 2.6,
+  logoGap: 1.2, // em between the last step and the script's logo
+  logoMaxH: 5.4,
+  logoMaxW: 70,
+  logoNameSize: 4.4,
+  listBottom: 95.6, // the list (and the logo after it) ends above this
+  decorRight: 1.4, // the corner art at the top right
+  decorW: 17.6,
+  decorMaxH: 8,
+  colGap: 2.4,
+};
+
 /* The non-character steps of a night, in the official app's own wording
    (this is also what the reference sheets print). Positions come from
    assets/night-order.json's `meta` list when it is handed in; these are the
@@ -252,24 +330,35 @@ export const EL_DEFAULT = { dx: 0, dy: 0, scale: 1, rot: 0, opacity: 1, hidden: 
 
 /* every draggable, tunable element the pages draw, with the label the
    Elements panel shows. `page` says which preview it lives on; `kind`
-   says which extra controls apply (image: art upload; text: colour/font). */
+   says which extra controls apply (image: art upload; text: colour/font).
+   `only` ties an element to one style of its page ('classic' or 'app'),
+   and `which` a night element to one night; a page may be several kinds
+   ('front night') when an element is drawn on both. */
 export const ELEMENTS = [
-  { key: 'title', label: 'Title', page: 'front', kind: 'text' },
-  { key: 'author', label: 'Author credit', page: 'front', kind: 'text' },
-  { key: 'skull', label: 'Skull', page: 'front', kind: 'image' },
-  { key: 'fll', label: 'Left flourish', page: 'front', kind: 'image' },
-  { key: 'flr', label: 'Right flourish', page: 'front', kind: 'image' },
-  { key: 'sidebar', label: 'Sidebar ribbon', page: 'front', kind: 'image', fixed: true },
-  { key: 'labels', label: 'Team labels', page: 'front', kind: 'text', fixed: true },
+  { key: 'title', label: 'Title', page: 'front', kind: 'text', only: 'classic' },
+  { key: 'author', label: 'Author credit', page: 'front', kind: 'text', only: 'classic' },
+  { key: 'skull', label: 'Skull', page: 'front', kind: 'image', only: 'classic' },
+  { key: 'fll', label: 'Left flourish', page: 'front', kind: 'image', only: 'classic' },
+  { key: 'flr', label: 'Right flourish', page: 'front', kind: 'image', only: 'classic' },
+  { key: 'sidebar', label: 'Sidebar ribbon', page: 'front', kind: 'image', fixed: true, only: 'classic' },
+  { key: 'labels', label: 'Team labels', page: 'front', kind: 'text', fixed: true, only: 'classic' },
+  { key: 'appTitle', label: 'Title', page: 'front', kind: 'text', only: 'app' },
+  { key: 'appAuthor', label: 'Author credit', page: 'front', kind: 'text', only: 'app' },
+  { key: 'appSidebar', label: 'Ribbon', page: 'front night', kind: 'image', fixed: true, only: 'app' },
+  { key: 'appLabels', label: 'Team names', page: 'front', kind: 'text', fixed: true, only: 'app' },
   { key: 'content', label: 'Character grid', page: 'front', kind: 'block' },
-  { key: 'col1', label: 'Left column', page: 'front', kind: 'block' },
-  { key: 'col2', label: 'Right column', page: 'front', kind: 'block' },
-  { key: 'dividers', label: 'Section dividers', page: 'front', kind: 'image', fixed: true },
+  { key: 'col1', label: 'Left column', page: 'front', kind: 'block', only: 'classic' },
+  { key: 'col2', label: 'Right column', page: 'front', kind: 'block', only: 'classic' },
+  { key: 'dividers', label: 'Section dividers', page: 'front', kind: 'image', fixed: true, only: 'classic' },
+  { key: 'appDividers', label: 'Lines between teams', page: 'front', kind: 'block', fixed: true, only: 'app' },
   { key: 'footnote', label: 'Footnote', page: 'front', kind: 'text' },
+  { key: 'appGarland', label: 'Flowers at the foot', page: 'front', kind: 'image', only: 'app' },
   { key: 'pageno', label: 'Page number', page: 'front', kind: 'text' },
   { key: 'nightTitle', label: 'Night title', page: 'night', kind: 'text' },
   { key: 'nightLogo', label: 'Script logo', page: 'night', kind: 'image' },
   { key: 'nightList', label: 'Night list', page: 'night', kind: 'block' },
+  { key: 'nightDecorFirst', label: 'Corner art', page: 'night', kind: 'image', only: 'app', which: 'first' },
+  { key: 'nightDecorOther', label: 'Corner art', page: 'night', kind: 'image', only: 'app', which: 'other' },
   { key: 'nightFooter', label: 'Footer', page: 'night', kind: 'text' },
   { key: 'nightBadge', label: 'Content badge', page: 'night', kind: 'image' },
   { key: 'jinxTitle', label: 'Jinx page title', page: 'jinx', kind: 'text' },
@@ -296,7 +385,33 @@ export const DEFAULT_BG = {
   fit: 'cover', // custom uploads: cover | contain | stretch
 };
 
+/* the app view's own look (see APP_SHEET), shared by the script sheet and
+   the night sheets when either is set to it. The colours are sampled off
+   the same screenshots; the paper is the aged parchment, whose frame and
+   garland stand in for the app's torn edge and its flowers. */
+export const DEFAULT_APP = {
+  sidebarMode: 'damask', // damask | flat | none
+  sidebarColor: '#670818', // the app's red
+  labelColor: '#dcc0a4',
+  labelSpacing: 0.04, // em
+  fontLabel: 'goudy',
+  fontName: 'tradebold',
+  fontText: 'trade',
+  inkColor: '#271d17',
+  titleColor: '#8b1a23',
+  authorColor: '#5a4632',
+  footnoteColor: '#8b786b',
+  showBars: true,
+  barWidth: 1,
+  showDividers: true,
+  dividerStrength: 1,
+  bg: { ...DEFAULT_BG, mode: 'parchment' },
+};
+
 export const DEFAULT_NIGHT = {
+  style: 'classic', // classic | app — how the night sheets are laid out
+  appTitle: false, // app view: "First Night" at the top (the app has none)
+  appFooter: false, // app view: the footer lines and the badge
   first: false, // the tick boxes — a night page exists only when it is ticked
   other: false,
   combined: false, // both nights on ONE page, two columns
@@ -377,6 +492,8 @@ export const DEFAULT_EXPORT = {
 };
 
 export const DEFAULT_OPTIONS = {
+  sheetStyle: 'classic', // classic (the printed sheet) | app (the official app's view)
+  app: { ...DEFAULT_APP, bg: { ...DEFAULT_APP.bg } },
   sortMode: 'script', // 'script' (as in the JSON) | 'official' | 'sao' | 'alpha'
   columnLayout: 'even', // 'even' (both columns fill the section, official style)
   //                       | 'shared' (classic: col 2 staggered under the title)
@@ -1241,8 +1358,129 @@ export const PRESETS = [
     dividerOpacity: 0.7, iconShadow: 0,
     night: { bg: { mode: 'plain', color: '#ffffff', vignette: 0 } },
     jinxPage: { bg: { mode: 'plain', color: '#ffffff', vignette: 0 } },
+    app: { bg: { mode: 'plain', color: '#ffffff', vignette: 0 }, sidebarMode: 'flat', sidebarColor: '#e9e4d8',
+      labelColor: '#3a3a3a', inkColor: '#111111' },
   } },
 ];
+
+/* which style a page is drawn in: the script sheet and the night sheets
+   each have their own; the jinx page and the back cover have one */
+export function pageStyle(options, kind) {
+  if (kind === 'front') return options.sheetStyle === 'app' ? 'app' : 'classic';
+  if (kind === 'night') return options.night && options.night.style === 'app' ? 'app' : 'classic';
+  return 'classic';
+}
+
+/* ── line breaking for the app view ─────────────────────────────────────
+   The app view sets its own lines rather than leaving the wrap to the
+   browser: the coloured bar beside a block has to be exactly as tall as
+   the block, and a line carrying a reminder disc is taller than one that
+   does not. Pure — `measure(text, font)` is handed in (canvas in the
+   page, a stub in the self-test), so the layout pass and the render pass
+   break a block the same way.
+
+   `runs` is [{s, font, kind}] where kind is 'text' | 'token' | 'dot'; a
+   dot is one atomic item `dotW` wide. Words never split. Returns
+   [{items: [{s, font, kind, w}], w, dot}], one per line. */
+export function breakRuns(runs, maxW, measure, opts) {
+  const o = opts || {};
+  const space = measure(' ', o.baseFont || (runs[0] && runs[0].font) || '');
+  const dotW = o.dotW || 0;
+  const lines = [];
+  const newLine = (items) => ({
+    items,
+    w: items.reduce((n, it) => n + (it.lead || 0) + it.w, 0),
+    dot: items.some((it) => it.kind === 'dot'),
+  });
+  let line = newLine([]);
+  let pendingSpace = false;
+  let chainStart = 0; // where the word being built began (runs with no space between glue)
+  const push = (item) => {
+    const last = line.items[line.items.length - 1];
+    const atomic = (k) => k === 'dot' || k === 'icon';
+    const glued = !pendingSpace && !!last && !atomic(item.kind) && !atomic(last.kind);
+    const gap = !glued && pendingSpace && line.items.length ? space : 0;
+    if (line.items.length && line.w + gap + item.w > maxW + 0.5) {
+      if (!glued) {
+        lines.push(line);
+        line = newLine([]);
+        chainStart = 0;
+      } else if (chainStart > 0) {
+        // "(or the RED HERRING)." — the bracket goes down with its word
+        const carried = line.items.splice(chainStart);
+        carried[0] = { ...carried[0], lead: 0 };
+        lines.push(newLine(line.items));
+        line = newLine(carried);
+        chainStart = 0;
+      }
+      // a glued chain that is the whole line already just overflows
+    } else if (gap) {
+      // the space rides on the item as a leading gap, so a line never
+      // starts with one
+      item = { ...item, lead: gap };
+    }
+    if (!glued) chainStart = line.items.length;
+    line.items.push(item);
+    line.w += (item.lead || 0) + item.w;
+    if (item.kind === 'dot') line.dot = true;
+    pendingSpace = false;
+  };
+  for (const r of runs) {
+    if (r.kind === 'dot' || r.kind === 'icon') {
+      // atomic: a reminder disc, or a jinx partner's icon at the end
+      push({ s: '', font: r.font, kind: r.kind, src: r.src, name: r.name, w: r.kind === 'dot' ? dotW : (r.w || 0) });
+      continue;
+    }
+    for (const p of String(r.s).split(/(\s+)/)) {
+      if (!p) continue;
+      if (/^\s+$/.test(p)) { pendingSpace = true; continue; }
+      push({ s: p, font: r.font, kind: r.kind || 'text', w: measure(p, r.font) });
+    }
+  }
+  if (line.items.length || !lines.length) lines.push(line);
+  return lines;
+}
+
+/* A name in a fixed column: wrapped at its spaces, and shrunk only when a
+   single word will not fit (the app cuts it off with "…"; the sheet never
+   does). Returns {scale, lines: [string]}. `fontAt(scale)` gives the CSS
+   font for a scale, so the measure sees the size it will be drawn at.
+   `shrinkFirst` (a scale) lets a name that nearly fits on one line get
+   that much smaller rather than wrap: the night sheets never wrap a
+   "Scarlet Woman" in the app, however much the type has grown. */
+export function fitNameLines(name, maxW, measure, fontAt, opts) {
+  const o = opts || {};
+  const maxLines = o.maxLines || 2;
+  const minScale = o.minScale || 0.55;
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return { scale: 1, lines: [''] };
+  const one = words.join(' ');
+  const oneW = measure(one, fontAt(1));
+  if (oneW <= maxW) return { scale: 1, lines: [one] };
+  if (o.shrinkFirst && maxW / oneW >= o.shrinkFirst) return { scale: maxW / oneW, lines: [one] };
+  const wrap = (scale) => {
+    const font = fontAt(scale);
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const trial = cur ? cur + ' ' + w : w;
+      if (cur && measure(trial, font) > maxW) { lines.push(cur); cur = w; } else cur = trial;
+    }
+    lines.push(cur);
+    return lines;
+  };
+  let scale = 1;
+  // the widest single word decides whether the type has to shrink at all
+  const widest = Math.max(...words.map((w) => measure(w, fontAt(1))));
+  if (widest > maxW) scale = Math.max(minScale, maxW / widest);
+  let lines = wrap(scale);
+  // too many lines: shrink until it takes maxLines, or the floor
+  for (let k = 0; k < 12 && lines.length > maxLines && scale > minScale; k++) {
+    scale = Math.max(minScale, scale * 0.94);
+    lines = wrap(scale);
+  }
+  return { scale, lines };
+}
 
 /* ── option plumbing ────────────────────────────────────────────────────── */
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);

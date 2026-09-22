@@ -29,9 +29,11 @@ import {
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
   withBootlegger, hasBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
+  pageStyle,
 } from './script.js';
-import { layoutSheet, renderSheetPage, fitTitle } from './sheet.js';
+import { layoutSheet, renderSheetPage, fitTitle, ribbonReady } from './sheet.js';
 import { buildNightSpec, buildJinxSpec, layoutList, renderListPage, fitListPage } from './night.js';
+import { layoutAppSheet, renderAppSheetPage, layoutAppList, renderAppListPage } from './appview.js';
 import { renderBack, backCanvas, backReady } from './back.js';
 import { setAssetResolver } from './elements.js';
 import { mountDrag, snapTo } from './drag.js';
@@ -260,7 +262,13 @@ let layouts = {};
 function computeLayouts() {
   derived = deriveScript(parsed, options, resolveAsset);
   layouts = {};
-  layouts.front = layoutSheet(derived, options, requestRender);
+  layouts.front = pageStyle(options, 'front') === 'app'
+    ? layoutAppSheet(derived, options, requestRender)
+    : layoutSheet(derived, options, requestRender);
+  // the night sheets have a style of their own; the jinx page is classic
+  const nightLayout = (spec) => (pageStyle(options, 'night') === 'app'
+    ? layoutAppList(spec, options, requestRender)
+    : layoutList(spec, options, requestRender));
   const counts = { front: layouts.front.pages.length };
   if (options.jinxPage.enabled) {
     layouts.jinxSpec = buildJinxSpec(derived, options);
@@ -270,17 +278,17 @@ function computeLayouts() {
   const ni = options.night;
   if (ni.combined && (ni.first || ni.other)) {
     layouts.bothSpec = buildNightSpec(derived, options, 'both');
-    layouts.both = layoutList(layouts.bothSpec, options, requestRender);
+    layouts.both = nightLayout(layouts.bothSpec);
     counts.both = 1;
   } else {
     if (ni.first) {
       layouts.firstSpec = buildNightSpec(derived, options, 'first');
-      layouts.first = layoutList(layouts.firstSpec, options, requestRender);
+      layouts.first = nightLayout(layouts.firstSpec);
       counts.first = layouts.first.pages.length;
     }
     if (ni.other) {
       layouts.otherSpec = buildNightSpec(derived, options, 'other');
-      layouts.other = layoutList(layouts.otherSpec, options, requestRender);
+      layouts.other = nightLayout(layouts.otherSpec);
       counts.other = layouts.other.pages.length;
     }
   }
@@ -298,16 +306,29 @@ function renderPageNode(p, ctx) {
   // withPageNode renders offscreen and waits on, draws the originals.
   setHiresIcons(!!ctx.forExport);
   try {
-    if (p.kind === 'front') return renderSheetPage(derived, options, layouts.front, p.index, ctx);
+    if (p.kind === 'front') {
+      return layouts.front.style === 'app'
+        ? renderAppSheetPage(derived, options, layouts.front, p.index, ctx)
+        : renderSheetPage(derived, options, layouts.front, p.index, ctx);
+    }
     if (p.kind === 'jinx') return renderListPage(derived, layouts.jinxSpec, options, layouts.jinx, p.index, ctx);
     if (p.kind === 'night') {
       const lay = layouts[p.which], spec = layouts[p.which + 'Spec'];
-      return renderListPage(derived, spec, options, lay, p.index, ctx);
+      return lay.style === 'app'
+        ? renderAppListPage(derived, spec, options, lay, p.index, ctx)
+        : renderListPage(derived, spec, options, lay, p.index, ctx);
     }
     return renderBack(derived, options, requestRender, { selected: ctx.selected, stickers: ctx.stickers, forExport: ctx.forExport });
   } finally {
     setHiresIcons(false);
   }
+}
+
+/* the steps that need a page in the document: the classic title's width
+   and the decor that hugs it, a long script name on a night page */
+function fitPage(node, p) {
+  if (p.kind === 'front') { if (layouts.front.style !== 'app') fitTitle(node, options); }
+  else if (p.kind !== 'back' && pageStyle(options, p.kind) !== 'app') fitListPage(node);
 }
 
 let lastTabsSig = '';
@@ -321,7 +342,8 @@ function render() {
     selectedId = '';
     buildElementPanel();
   }
-  const sig = pages.map((p) => pageKey(p) + '=' + p.label).join('|') + '#' + currentKey;
+  const sig = pages.map((p) => pageKey(p) + '=' + p.label).join('|') + '#' + currentKey +
+    '#' + pageStyle(options, 'front') + pageStyle(options, 'night');
   if (sig !== lastTabsSig) { buildTabs(); lastTabsSig = sig; showCardsFor(currentPage().kind); }
   const p = currentPage();
   if (p.kind === 'back') {
@@ -335,8 +357,7 @@ function render() {
   wrap.textContent = '';
   const node = renderPageNode(p, {});
   wrap.append(node);
-  if (p.kind === 'front') fitTitle(node, options);
-  else if (p.kind !== 'back') fitListPage(node);
+  fitPage(node, p);
   showSolvedDensity(node, p);
   fitPreview();
   updateSelectionInfo();
@@ -362,12 +383,38 @@ function buildTabs() {
   }
 }
 
-/* control cards carry data-fs-for="front|night|jinx|back|all" */
+/* control cards carry data-fs-for="front|night|jinx|back|all", and a card
+   that belongs to one style of its page data-fs-style="classic|app" */
 function showCardsFor(kind) {
+  const style = pageStyle(options, kind);
   document.querySelectorAll('.fs-card[data-fs-for]').forEach((card) => {
     const f = card.dataset.fsFor.split(' ');
-    card.hidden = !(f.includes('all') || f.includes(kind));
+    const want = card.dataset.fsStyle;
+    card.hidden = !(f.includes('all') || f.includes(kind)) || (!!want && want !== style);
   });
+  refreshStyleGroups();
+}
+
+/* inside a card, the controls that only mean something in one style of a
+   page sit in a group that hides with the other style */
+const styleGroups = [];
+function styleGroup(parent, page, style) {
+  const g = document.createElement('div');
+  g.className = 'fs-style-group';
+  parent.append(g);
+  styleGroups.push({ el: g, page, style });
+  return g;
+}
+function refreshStyleGroups() {
+  for (const g of styleGroups) g.el.hidden = pageStyle(options, g.page) !== g.style;
+}
+
+/* switching a page's style: the cards, the groups and the element list
+   all change with it */
+function styleChanged() {
+  selectedId = '';
+  showCardsFor(currentPage() ? currentPage().kind : 'front');
+  buildElementPanel();
 }
 
 /* One-time colour handoff: the first time the back cover is actually shown
@@ -1065,6 +1112,10 @@ function showSolvedDensity(node, p) {
 /* ── the fixed cards ─────────────────────────────────────────────────── */
 function buildPagesCard() {
   const box = $('fs-pages-box');
+  const styles = [['classic', 'Printed sheet'], ['app', 'App view']];
+  makeSelect(box, 'Script sheet style', styles, bindPath('sheetStyle'), { onChange: styleChanged });
+  makeSelect(box, 'Night sheet style', styles, bindPath('night.style'), { onChange: styleChanged });
+  makeHint(box, 'App view copies the official app: one column, a red ribbon and a bar beside each ability.');
   makeToggle(box, 'First Night sheet', bindPath('night.first'));
   makeToggle(box, 'Other Nights sheet', bindPath('night.other'));
   makeToggle(box, 'Both nights on one page (two columns)', bindPath('night.combined'), {
@@ -1143,14 +1194,15 @@ function buildTitleCard() {
   makeToggle(box, 'Author credit under the title', bindPath('showAuthor'));
   makeToggle(box, 'Skull', bindPath('showSkull'));
   makeToggle(box, 'Flourishes', bindPath('showFlourishes'));
-  makeToggle(box, 'Slide the skull and flourishes in to meet a short title', bindPath('hugDecor'));
-  makeSelect(box, 'Title style', [['classic', 'Classic (indigo emboss)'], ['emboss', 'Emboss from the title colour'],
+  const tc = styleGroup(box, 'front', 'classic');
+  makeToggle(tc, 'Slide the skull and flourishes in to meet a short title', bindPath('hugDecor'));
+  makeSelect(tc, 'Title style', [['classic', 'Classic (indigo emboss)'], ['emboss', 'Emboss from the title colour'],
     ['gradient', 'Two-colour gradient'], ['flat', 'Flat colour']], bindPath('titleStyle'));
-  const colors = makeRow(box, 'fs-colors');
+  const colors = makeRow(tc, 'fs-colors');
   makeColor(colors, 'Title', bindPath('titleColor'));
   makeColor(colors, 'Gradient 2nd', bindPath('titleColor2'));
   makeColor(colors, 'Bronze offset', bindPath('titleShadowColor'));
-  makeSlider(box, 'Offset shadow strength', 0, 3, 0.05, fmtNum(2), bindPath('titleShadow'), { reset: 1 });
+  makeSlider(tc, 'Offset shadow strength', 0, 3, 0.05, fmtNum(2), bindPath('titleShadow'), { reset: 1 });
   makeFont(box, 'Title font', bindPath('fontTitle'));
   makeText(box, 'Footnote text (blank = “*Not the first night”)', bindPath('footnoteText'));
   endCard(box);
@@ -1161,7 +1213,7 @@ function buildLayoutCard() {
   beginCard();
   makeSelect(box, 'Character order', [['script', 'As in the script'], ['official', 'Official style'],
     ['sao', 'Steven Approved Order'], ['alpha', 'Alphabetical']], bindPath('sortMode'));
-  makeSelect(box, 'Columns', [['even', 'Two, even (official)'], ['shared', 'Two, classic (col 2 under the title)'], ['single', 'One wide column']],
+  makeSelect(styleGroup(box, 'front', 'classic'), 'Columns', [['even', 'Two, even (official)'], ['shared', 'Two, classic (col 2 under the title)'], ['single', 'One wide column']],
     bindPath('columnLayout'));
   makeToggle(box, 'Auto-fit text to fill the page', bindPath('fitToContent'), { onChange: () => syncControls() });
   makeToggle(box, 'Continue onto a second sheet when the script is too long', bindPath('paginate'));
@@ -1176,9 +1228,10 @@ function buildLayoutCard() {
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
   makeToggle(box, 'Team labels', bindPath('showLabels'));
-  makeSelect(box, 'Team labels as', [['ribbon', 'Ribbon labels (official)'], ['heading', 'Headings over each team'], ['both', 'Both']], bindPath('labelStyle'));
+  const lc = styleGroup(box, 'front', 'classic');
+  makeSelect(lc, 'Team labels as', [['ribbon', 'Ribbon labels (official)'], ['heading', 'Headings over each team'], ['both', 'Both']], bindPath('labelStyle'));
   makeToggle(box, 'Character counts in the team labels', bindPath('labelCounts'));
-  makeToggle(box, 'Section dividers', bindPath('showDividers'));
+  makeToggle(styleGroup(box, 'front', 'classic'), 'Section dividers', bindPath('showDividers'));
   makeToggle(box, 'Even out icon sizes (ink normalisation)', bindPath('normalizeIcons'));
   makeToggle(box, 'Route off-site icons through a proxy (safer export)', bindPath('proxyIcons'), { onChange: () => reparse() });
   densityBinding = makeSlider(box, 'Text density', 0.5, 1.5, 0.01, pct, bindPath('density'), {
@@ -1193,18 +1246,21 @@ function buildLayoutCard() {
   makeSlider(box, 'Name size', 0.6, 1.5, 0.01, pct, bindPath('nameSize'), { reset: 1 });
   makeSlider(box, 'Jinx icon size', 0.5, 2, 0.01, pct, bindPath('jinxIconSize'), { reset: 1 });
   makeSlider(box, 'Ability line spacing', 0.8, 1.5, 0.01, pct, bindPath('abilityLine'), { reset: 1 });
-  makeSlider(box, 'Name letter spacing', -0.05, 0.2, 0.005, fmtEm, bindPath('nameSpacing'), { reset: 0.02 });
-  makeSlider(box, 'Column text width', 0.7, 1.15, 0.01, pct, bindPath('columnWidth'), { reset: 1 });
+  const sc = styleGroup(box, 'front', 'classic');
+  makeSlider(sc, 'Name letter spacing', -0.05, 0.2, 0.005, fmtEm, bindPath('nameSpacing'), { reset: 0.02 });
+  makeSlider(sc, 'Column text width', 0.7, 1.15, 0.01, pct, bindPath('columnWidth'), { reset: 1 });
   makeSlider(box, 'Team label size', 0.5, 1.6, 0.01, pct, bindPath('labelSize'), { reset: 1 });
-  makeSlider(box, 'Team label spacing', -0.3, 0.3, 0.01, fmtEm, bindPath('labelSpacing'), { reset: -0.15 });
-  makeSlider(box, 'Divider strength', 0, 1, 0.01, pct, bindPath('dividerOpacity'), { reset: 1 });
+  const sc2 = styleGroup(box, 'front', 'classic');
+  makeSlider(sc2, 'Team label spacing', -0.3, 0.3, 0.01, fmtEm, bindPath('labelSpacing'), { reset: -0.15 });
+  makeSlider(sc2, 'Divider strength', 0, 1, 0.01, pct, bindPath('dividerOpacity'), { reset: 1 });
   makeSlider(box, 'Icon shadow', 0, 2, 0.05, fmtNum(2), bindPath('iconShadow'), { reset: 1 });
   makeSelect(box, 'Icon effect', [['none', 'None'], ['vivid', 'Vivid'], ['sepia', 'Sepia'], ['grayscale', 'Grayscale'],
     ['engraved', 'Engraved (ink)']], bindPath('iconEffect'));
   makeSelect(box, 'Icon backing', [['none', 'None'], ['disc', 'Parchment token'], ['ring', 'Ring']], bindPath('iconFrame'));
   makeSelect(box, 'Name style', [['normal', 'As written'], ['smallcaps', 'Small caps'], ['upper', 'CAPITALS']], bindPath('nameCase'));
-  makeSelect(box, 'Ability alignment', [['left', 'Left'], ['justify', 'Justified']], bindPath('abilityAlign'));
-  makeSelect(box, 'Setup notes [+2 Outsiders]', [['plain', 'Plain'], ['italic', 'Italic'], ['bold', 'Bold'], ['muted', 'Muted']], bindPath('bracketStyle'));
+  const sc3 = styleGroup(box, 'front', 'classic');
+  makeSelect(sc3, 'Ability alignment', [['left', 'Left'], ['justify', 'Justified']], bindPath('abilityAlign'));
+  makeSelect(sc3, 'Setup notes [+2 Outsiders]', [['plain', 'Plain'], ['italic', 'Italic'], ['bold', 'Bold'], ['muted', 'Muted']], bindPath('bracketStyle'));
   makeLabel(box, 'Hide a whole team');
   const hide = makeRow(box, 'fs-colors');
   for (const t of TEAM_ORDER) makeToggle(hide, TEAM_NAMES[t], bindPath('hideTeams.' + t));
@@ -1220,23 +1276,25 @@ function buildColorsCard() {
   makeColor(main, 'Good names', bindPath('goodColor'));
   makeColor(main, 'Evil names', bindPath('evilColor'));
   makeColor(main, 'Travellers / Loric', bindPath('neutralColor'));
-  makeColor(main, 'Ability text', bindPath('inkColor'));
-  makeColor(main, 'Author', bindPath('authorColor'));
-  makeColor(main, 'Team labels', bindPath('labelColor'));
-  makeColor(main, 'Team headings', bindPath('headingColor'), { clearable: true, fallback: () => options.goodColor });
-  makeColor(main, 'Footnote', bindPath('footnoteColor'));
+  const cc = makeRow(styleGroup(box, 'front', 'classic'), 'fs-colors');
+  makeColor(cc, 'Ability text', bindPath('inkColor'));
+  makeColor(cc, 'Author', bindPath('authorColor'));
+  makeColor(cc, 'Team labels', bindPath('labelColor'));
+  makeColor(cc, 'Team headings', bindPath('headingColor'), { clearable: true, fallback: () => options.goodColor });
+  makeColor(cc, 'Footnote', bindPath('footnoteColor'));
   makeLabel(box, 'Per team (× = follow good/evil)');
   const teams = makeRow(box, 'fs-colors');
   for (const t of TEAM_ORDER) {
     makeColor(teams, TEAM_NAMES[t], bindPath('teamColors.' + t),
       { clearable: true, fallback: () => (t === 'minion' || t === 'demon' ? options.evilColor : t === 'townsfolk' || t === 'outsider' ? options.goodColor : options.neutralColor) });
   }
-  makeLabel(box, 'Sidebar ribbon');
-  makeSelect(box, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('sidebarMode'));
-  const sb = makeRow(box, 'fs-colors');
+  const rb = styleGroup(box, 'front', 'classic');
+  makeLabel(rb, 'Sidebar ribbon');
+  makeSelect(rb, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('sidebarMode'));
+  const sb = makeRow(rb, 'fs-colors');
   makeColor(sb, 'Ribbon colour', bindPath('sidebarColor'));
-  makeSlider(box, 'Ribbon shading', 0, 1, 0.01, pct, bindPath('sidebarShade'), { reset: 0 });
-  const up = makeRow(box);
+  makeSlider(rb, 'Ribbon shading', 0, 1, 0.01, pct, bindPath('sidebarShade'), { reset: 0 });
+  const up = makeRow(rb);
   makeUpload(up, 'Upload ribbon art', 'image/*', (url) => { elSet(options, 'sidebar', { src: addAsset(url) }); commit(); });
   makeButton(up, 'Built-in art', () => { elSet(options, 'sidebar', { src: '' }); commit(); });
   endCard(box);
@@ -1245,11 +1303,12 @@ function buildColorsCard() {
 function buildFontsCard() {
   const box = $('fs-fonts-box');
   beginCard();
-  makeFont(box, 'Character names', bindPath('fontName'));
-  makeFont(box, 'Ability text', bindPath('fontAbility'));
-  makeFont(box, 'Team labels', bindPath('fontLabel'));
+  const fc = styleGroup(box, 'front', 'classic');
+  makeFont(fc, 'Character names', bindPath('fontName'));
+  makeFont(fc, 'Ability text', bindPath('fontAbility'));
+  makeFont(fc, 'Team labels', bindPath('fontLabel'));
   makeFont(box, 'Author credit', bindPath('fontAuthor'));
-  makeFont(box, 'Footnote', bindPath('fontFootnote'));
+  makeFont(styleGroup(box, 'front', 'classic'), 'Footnote', bindPath('fontFootnote'));
   makeLabel(box, 'Your own font');
   const row = makeRow(box);
   makeUpload(row, 'Upload a font (.ttf / .otf / .woff2)', '.ttf,.otf,.woff,.woff2,font/*', (url, file) => {
@@ -1298,18 +1357,23 @@ function buildNightCard() {
   for (const [k, label] of [['dusk', 'Hide Dusk'], ['minioninfo', 'Hide Minion Info'], ['demoninfo', 'Hide Demon Info'], ['dawn', 'Hide Dawn']]) {
     makeToggle(stepRow, label, bindPath('night.hideSteps.' + k));
   }
-  makeToggle(box, 'Hairline under every step', bindPath('night.rowLines'));
-  makeToggle(box, 'Faint band behind every other step', bindPath('night.zebra'));
+  const nc = styleGroup(box, 'night', 'classic');
+  makeToggle(nc, 'Hairline under every step', bindPath('night.rowLines'));
+  makeToggle(nc, 'Faint band behind every other step', bindPath('night.zebra'));
+  const na = styleGroup(box, 'night', 'app');
+  makeToggle(na, 'Page title (First Night, Other Nights)', bindPath('night.appTitle'));
+  makeToggle(na, 'Footer lines and badge', bindPath('night.appFooter'));
   makeToggle(box, 'Reminder text under each name', bindPath('night.showReminders'));
   makeToggle(box, 'Follow the script’s own night order when the file has one', bindPath('night.useScriptOrder'));
   const ord = makeRow(box);
   makeButton(ord, 'Reset the night order', () => { options.night.order = { first: null, other: null }; commit(); toast('Night order reset'); });
   makeHint(box, 'Drag a step on the night sheet to reorder it. Reset puts the official order back.');
   makeToggle(box, 'Number the steps', bindPath('night.numbered'));
-  makeToggle(box, 'Script logo at the top right', bindPath('night.showLogo'));
+  makeToggle(box, 'Script logo', bindPath('night.showLogo'));
   makeToggle(box, 'Script name when there is no logo', bindPath('night.showName'));
-  makeToggle(box, 'Footer lines', bindPath('night.showFooter'));
-  makeToggle(box, 'Community Created Content badge', bindPath('night.showBadge'));
+  const nf = styleGroup(box, 'night', 'classic');
+  makeToggle(nf, 'Footer lines', bindPath('night.showFooter'));
+  makeToggle(nf, 'Community Created Content badge', bindPath('night.showBadge'));
   makeToggle(box, 'Auto-fit the list to the page', bindPath('night.fit'), { onChange: () => syncControls() });
   nightDensityBinding = makeSlider(box, 'List density', 0.5, 1.5, 0.01, pct, bindPath('night.density'), {
     onInput: () => { if (options.night.fit !== false) { options.night.fit = false; syncControls(); } }, reset: 1,
@@ -1331,9 +1395,10 @@ function buildNightCard() {
   makeColor(colors, 'Reminder text', bindPath('night.textColor'));
   makeColor(colors, 'Page title', bindPath('night.titleColor'));
   makeLabel(box, 'Fonts');
-  makeFont(box, 'Page title', bindPath('night.fontTitle'));
-  makeFont(box, 'Names', bindPath('night.fontName'));
-  makeFont(box, 'Reminder text', bindPath('night.fontText'));
+  const nfo = styleGroup(box, 'night', 'classic');
+  makeFont(nfo, 'Page title', bindPath('night.fontTitle'));
+  makeFont(nfo, 'Names', bindPath('night.fontName'));
+  makeFont(nfo, 'Reminder text', bindPath('night.fontText'));
   makeFont(box, 'Info tokens', bindPath('night.fontToken'));
   makeLabel(box, 'Step icons (upload your own)');
   const steps = makeRow(box);
@@ -1344,8 +1409,53 @@ function buildNightCard() {
   makeLabel(box, 'Footer');
   makeText(box, 'Footer line 1', bindPath('night.footer1'));
   makeText(box, 'Footer line 2', bindPath('night.footer2'));
-  makeLabel(box, 'Background');
-  bgControls(box, 'night.bg', 'list');
+  const nb = styleGroup(box, 'night', 'classic');
+  makeLabel(nb, 'Background');
+  bgControls(nb, 'night.bg', 'list');
+  makeHint(styleGroup(box, 'night', 'app'), 'The app view takes its ribbon, fonts and paper from the App view card.');
+  endCard(box);
+}
+
+/* the app view's own look, for whichever pages use it */
+function buildAppCard() {
+  const box = $('fs-app-box');
+  beginCard();
+  makeSelect(box, 'Ribbon', [['damask', 'Damask art (tinted)'], ['flat', 'Flat colour'], ['none', 'No ribbon']], bindPath('app.sidebarMode'));
+  const rc = makeRow(box, 'fs-colors');
+  makeColor(rc, 'Ribbon colour', bindPath('app.sidebarColor'));
+  makeColor(rc, 'Team names', bindPath('app.labelColor'));
+  const up = makeRow(box);
+  makeUpload(up, 'Upload ribbon art', 'image/*', (url) => { elSet(options, 'appSidebar', { src: addAsset(url) }); commit(); });
+  makeButton(up, 'Built-in art', () => { elSet(options, 'appSidebar', { src: '' }); commit(); });
+  makeLabel(box, 'Colours');
+  const cc = makeRow(box, 'fs-colors');
+  makeColor(cc, 'Ability text', bindPath('app.inkColor'));
+  makeColor(cc, 'Title', bindPath('app.titleColor'));
+  makeColor(cc, 'Author', bindPath('app.authorColor'));
+  makeColor(cc, 'Footnote', bindPath('app.footnoteColor'));
+  makeHint(box, 'Name colours are in the Colours card.');
+  makeLabel(box, 'Fonts');
+  makeFont(box, 'Names', bindPath('app.fontName'));
+  makeFont(box, 'Ability and reminder text', bindPath('app.fontText'));
+  makeFont(box, 'Team names', bindPath('app.fontLabel'));
+  makeSlider(box, 'Team name spacing', -0.1, 0.3, 0.01, fmtEm, bindPath('app.labelSpacing'), { reset: 0.04 });
+  makeLabel(box, 'Bars and lines');
+  makeToggle(box, 'Coloured bar beside the text', bindPath('app.showBars'));
+  makeSlider(box, 'Bar width', 0.5, 3, 0.05, pct, bindPath('app.barWidth'), { reset: 1 });
+  makeToggle(box, 'Lines between the teams', bindPath('app.showDividers'));
+  makeSlider(box, 'Line strength', 0, 1.5, 0.01, pct, bindPath('app.dividerStrength'), { reset: 1 });
+  makeLabel(box, 'Your own art');
+  const art = makeRow(box);
+  for (const [key, label] of [['appGarland', 'Flowers at the foot'], ['nightDecorFirst', 'Corner, first night'], ['nightDecorOther', 'Corner, other nights']]) {
+    makeUpload(art, label, 'image/*', (url) => { elSet(options, key, { src: addAsset(url) }); commit(); buildElementPanel(); });
+  }
+  makeButton(art, 'Remove them', () => {
+    for (const key of ['appGarland', 'nightDecorFirst', 'nightDecorOther']) elSet(options, key, { src: '' });
+    commit();
+  });
+  makeHint(box, 'The flowers go along the foot of the script sheet. Corner art goes top right on a night sheet.');
+  makeLabel(box, 'Paper');
+  bgControls(box, 'app.bg', 'front');
   endCard(box);
 }
 
@@ -1410,9 +1520,12 @@ function selectableOnPage(p) {
   if (p.kind === 'back') {
     (options.back.texts || []).forEach((t, i) => list.push({ id: 'back:' + i, label: 'Word: ' + (t.text || '…').slice(0, 16), kind: 'text' }));
   } else {
+    const style = pageStyle(options, p.kind);
     for (const e of ELEMENTS) {
-      if (e.page !== p.kind) continue;
-      if (p.kind === 'front' && p.index > 0 && !options.repeatHeader && ['title', 'author', 'skull', 'fll', 'flr'].includes(e.key)) continue;
+      if (!e.page.split(' ').includes(p.kind)) continue;
+      if (e.only && e.only !== style) continue;
+      if (e.which && p.kind === 'night' && e.which !== (p.which === 'other' ? 'other' : 'first')) continue;
+      if (p.kind === 'front' && p.index > 0 && !options.repeatHeader && ['title', 'author', 'skull', 'fll', 'flr', 'appTitle', 'appAuthor'].includes(e.key)) continue;
       list.push({ id: 'el:' + e.key, label: e.label, kind: e.kind, fixed: e.fixed, el: e });
     }
   }
@@ -1490,19 +1603,22 @@ function buildElementPanel() {
     if (!it.fixed) {
       track(makeSlider(box, 'Horizontal', -60, 60, 0.1, signed(1, '%'), { get: () => t().dx, set: (v) => w({ dx: v }) }, { reset: 0 }));
       track(makeSlider(box, 'Vertical', -60, 60, 0.1, signed(1, '%'), { get: () => t().dy, set: (v) => w({ dy: v }) }, { reset: 0 }));
-    } else if (key === 'labels' || key === 'dividers') {
+    } else if (['labels', 'dividers', 'appLabels', 'appDividers'].includes(key)) {
       track(makeSlider(box, 'Horizontal', -10, 10, 0.1, signed(1, '%'), { get: () => t().dx, set: (v) => w({ dx: v }) }, { reset: 0 }));
       track(makeSlider(box, 'Vertical', -10, 10, 0.1, signed(1, '%'), { get: () => t().dy, set: (v) => w({ dy: v }) }, { reset: 0 }));
     }
-    if (key !== 'sidebar') track(makeSlider(box, 'Size', 0.3, 2.5, 0.01, pct, { get: () => t().scale, set: (v) => w({ scale: v }) }, { reset: 1 }));
+    if (key !== 'sidebar' && key !== 'appSidebar') track(makeSlider(box, 'Size', 0.3, 2.5, 0.01, pct, { get: () => t().scale, set: (v) => w({ scale: v }) }, { reset: 1 }));
     if (!it.fixed && it.kind !== 'block') track(makeSlider(box, 'Rotation', -180, 180, 1, fmtDeg, { get: () => t().rot, set: (v) => w({ rot: v }) }, { reset: 0 }));
     track(makeSlider(box, 'Opacity', 0, 1, 0.01, pct, { get: () => t().opacity, set: (v) => w({ opacity: v }) }, { reset: 1 }));
     track(makeToggle(box, 'Hidden', { get: () => t().hidden, set: (v) => w({ hidden: v }) }));
-    if (it.kind === 'image' || key === 'title') {
+    const isTitle = key === 'title' || key === 'appTitle';
+    // the app view's decor slots have no art of their own until one is added
+    const emptySlot = ['appGarland', 'nightDecorFirst', 'nightDecorOther'].includes(key);
+    if (it.kind === 'image' || isTitle) {
       const up = makeRow(box);
-      makeUpload(up, key === 'title' ? 'Use an image as the title' : 'Replace with your own image', 'image/*',
+      makeUpload(up, isTitle ? 'Use an image as the title' : emptySlot ? 'Add an image' : 'Replace with your own image', 'image/*',
         (url) => { w({ src: addAsset(url) }); commit(); });
-      makeButton(up, key === 'title' ? 'Text title' : 'Built-in art', () => { w({ src: '' }); commit(); });
+      makeButton(up, isTitle ? 'Text title' : emptySlot ? 'Remove the image' : 'Built-in art', () => { w({ src: '' }); commit(); });
     }
     makeButton(tools, 'Reset this element', () => { if (options.el) delete options.el[key]; commit(); buildElementPanel(); });
   } else if (it.id.startsWith('back:')) {
@@ -1712,7 +1828,8 @@ function reorderFront(cid, d) {
     for (let i = 0; i < idx; i++) y0 += ed(heights[i]);
     const cy = y0 + ed(heights[idx]) / 2 + (d.dy / 100) * SHEET_H;
     const cx = ((inLeft ? SHEET.col1IconX : SHEET.col2IconX) + d.dx) / 100 * SHEET_W;
-    const single = options.columnLayout === 'single';
+    // the app view is one column, like the classic 'single'
+    const single = options.columnLayout === 'single' || layout.style === 'app';
     const toLeft = single || cx < ((SHEET.col1IconX + SHEET.col2IconX) / 2 / 100) * SHEET_W;
     const tHeights = toLeft ? sec.leftHeights : sec.rightHeights;
     const tTop = toLeft ? sec.topPx : sec.rightTopPx;
@@ -1752,16 +1869,16 @@ function reorderNight(list, rid, d) {
   const page = lay.pages[p.index];
   const ed = (em) => em * U * lay.d;
   for (const pc of page.columns) {
-    const units = pc.units.filter((u) => u.type === 'row');
     const idx = pc.units.findIndex((u) => u.type === 'row' && u.row.id === rid && u.row.list === list);
     if (idx < 0) continue;
-    let y = lay.listTop * U, y0 = 0, h0 = 0;
+    // where the page drew them: offset, the rows, and the space between
+    let y = lay.listTop * U + ed(page.offsetEm || 0), y0 = 0, h0 = 0;
     const centres = [];
     pc.units.forEach((u, i) => {
       const h = ed(u.hEm);
       if (i === idx) { y0 = y; h0 = h; }
       if (u.type === 'row') centres.push({ id: u.row.id, c: y + h / 2 });
-      y += h;
+      y += h + ed(page.gapEm || 0);
     });
     const cy = y0 + h0 / 2 + (d.dy / 100) * SHEET_H;
     let slot = 0;
@@ -2160,15 +2277,17 @@ function waitImages(node) {
 
 async function withPageNode(p, fn) {
   if (p.kind === 'back') { seedBackColor(); await waitBackReady(); }
+  // a page the preview never showed may still be recolouring its ribbon
+  if (pageStyle(options, p.kind) === 'app' && options.app.sidebarMode === 'damask') await ribbonReady(options.app.sidebarColor);
+  else if (p.kind === 'front' && options.sidebarMode === 'damask') await ribbonReady(options.sidebarColor);
   const holder = offscreenHolder();
   try {
     computeLayouts();
     const node = renderPageNode(p, { forExport: true });
     holder.append(node);
-    if (p.kind === 'front') fitTitle(node, options);
-    else if (p.kind !== 'back') fitListPage(node);
+    fitPage(node, p);
     await waitImages(node);
-    if (p.kind === 'front') fitTitle(node, options); // the logo's width is known now
+    fitPage(node, p); // the logo's width is known now
     return await fn(node);
   } finally {
     holder.remove();
@@ -2302,6 +2421,7 @@ async function boot() {
   buildFontsCard();
   buildBgCard();
   buildNightCard();
+  buildAppCard();
   buildJinxCard();
   buildExportCard();
   buildBackPanel();
