@@ -27,6 +27,7 @@ import {
   DEFAULT_OPTIONS, DEFAULT_BACK, DEFAULT_NIGHT, DEFAULT_JINX, DEFAULT_BG, PAGE_FORMATS, SHEET, SHEET_W, SHEET_H, U,
   FONTS, PRESETS, ELEMENTS, ELEMENT_BY_KEY, EL_DEFAULT, TEAM_ORDER, TEAM_NAMES,
   parseScript, setOfficialRoster, setSaoCompare, seedBackTexts, deriveScript, normalizeOptions, deepMerge, clone,
+  withBootlegger, hasBootlegger,
   pageList, pageKey, stickerOnPage, elGet, elSet, newTextElement, newImageElement, fontLabel, fontFamily,
 } from './script.js';
 import { layoutSheet, renderSheetPage, fitTitle } from './sheet.js';
@@ -238,7 +239,7 @@ function requestRender() {
 function reparse() {
   if (rawJson == null) return false;
   try {
-    parsed = parseScript(rawJson, options.proxyIcons);
+    parsed = parseScript(withBootlegger(rawJson, options.bootlegger), options.proxyIcons);
     note('');
     showWarnings(parsed.warnings);
     return true;
@@ -423,13 +424,19 @@ function keyFor(json, slug) {
 }
 
 function loadJson(json, label, slug, keepDesign) {
-  const prev = { rawJson, sourceLabel, scriptKey };
+  const prev = { rawJson, sourceLabel, scriptKey, bootlegger: options.bootlegger };
   rawJson = json;
   sourceLabel = label || '';
   scriptKey = keyFor(json, slug);
+  /* The Bootlegger tick answers for the script in front of it, so a fresh
+     load starts it at whether THIS file carries the Fabled already — and it
+     has to be settled before the parse, which is what applies it. A design
+     being restored keeps its own answer. */
+  if (!keepDesign) options.bootlegger = hasBootlegger(json);
   if (!reparse()) {
     // not a script: keep what was loaded, the error note says why
     rawJson = prev.rawJson; sourceLabel = prev.sourceLabel; scriptKey = prev.scriptKey;
+    options.bootlegger = prev.bootlegger;
     return;
   }
   if (!keepDesign) {
@@ -1160,6 +1167,12 @@ function buildLayoutCard() {
   makeToggle(box, 'Continue onto a second sheet when the script is too long', bindPath('paginate'));
   makeToggle(box, 'Title band on every sheet', bindPath('repeatHeader'));
   makeToggle(box, 'Page numbers on a multi-sheet script', bindPath('showPageNumbers'));
+  makeToggle(box, 'Add the Bootlegger', bindPath('bootlegger'), {
+    // it changes the ROSTER, so the script has to be read again — the same
+    // reason the icon proxy toggle does it
+    onChange: () => { reparse(); buildCharPanel(); requestRender(); },
+  });
+  makeHint(box, 'The Bootlegger is the Fabled that says a script has homebrew characters or house rules. Ticking it puts it on the sheet as a Fabled; unticking takes it off, even if the script you loaded came with one.');
   makeToggle(box, 'Jinx icons beside names', bindPath('showJinxes'));
   makeToggle(box, '“*Not the first night” footnote', bindPath('showFootnote'));
   makeToggle(box, 'Team labels', bindPath('showLabels'));
@@ -2353,7 +2366,10 @@ async function boot() {
   // and the sheet re-pressed.
   $('fs-to-builder').addEventListener('click', () => {
     if (rawJson == null) { note('Load a script first.', 'err'); return; }
-    try { localStorage.setItem('botc_builder_incoming', JSON.stringify(rawJson)); }
+    // with the Bootlegger if it is ticked: it is on the roster the reader is
+    // looking at, and a round trip that quietly dropped it would come back
+    // with the box unticked
+    try { localStorage.setItem('botc_builder_incoming', JSON.stringify(withBootlegger(rawJson, options.bootlegger))); }
     catch { note('Could not open the Script Builder. The browser blocked storage.', 'err'); return; }
     window.open('script?from=fancy', '_blank');
   });

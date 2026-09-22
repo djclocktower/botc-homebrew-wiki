@@ -79,6 +79,37 @@ export const SHEET = {
   bareTop: 5.2,
 };
 
+/* ── how a sheet that does not fill its page is settled ─────────────────
+   Unlike everything in SHEET, none of these is a measurement: they are the
+   policy for the two ends of the range, where the auto fit on its own goes
+   wrong.
+
+   A SHORT script (a teensyville, a set of six) used to be dealt with by
+   growing the type until it filled the page, half as big again at the cap.
+   That reads as a poster rather than a script sheet, and it did not even
+   fill the page: the icons are capped by the text gutter, so past about
+   1.2 they stop keeping up with the names beside them and the rows go
+   text-heavy. So growth stops at growMax, and what is left over is dealt
+   out as SPACE — the rows and the gaps between sections stretch, up to
+   spreadMax of their natural height — with whatever is still left after
+   that split above and below the block, a little above centre.
+
+   A LONG script gets the same treatment per page once its page count is
+   settled, which is what stops the last sheet being a third-full
+   straggler under a packed first one. */
+export const FIT = {
+  growMax: 1.25, // the most the auto fit may grow the reference pitch
+  spreadMax: 1.7, // the most the rows and gaps may stretch to take up the rest
+  topShare: 0.42, // of the space still left over, the share that goes above
+  /* ...except on a night list, where that share is capped. A sheet is a
+     framed page and a block sitting off its centre reads as laid out; a
+     night list is a list under a heading, and a hand's breadth of nothing
+     between "First Night" and Dusk reads as a fault. A first night can be
+     four rows (Dusk, the two info steps, Dawn) on a script whose roster is
+     fifty, so this is not a rare shape. */
+  listTopMax: 1.6, // em
+};
+
 /* CSS pixel size of the rendered sheet (3:4, matching the reference trim
    595.57 × 794.05 pt) and the em unit in px. */
 export const SHEET_W = 1242;
@@ -428,6 +459,15 @@ export const DEFAULT_OPTIONS = {
   custom: [],
   // per-character overrides: id -> {hidden, name, ability, icon, team, color, iconScale, iconDX, iconDY}
   chars: {},
+  /* the Bootlegger, the Fabled that says a script carries homebrew. A tick
+     rather than a fixed rule, because it is the author's statement about
+     their own script: loadJson() starts it at whether the file already has
+     one, so a script that carries it keeps it and one that does not is not
+     given it, and either way the tick is what settles it from then on.
+     Applied at PARSE time by withBootlegger(), so the entry goes through
+     the same door as every other character and picks up its name, ability
+     and icon from the official roster. */
+  bootlegger: false,
   proxyIcons: true, // route off-site images through a CORS proxy so export never taints
   useLogo: true, // render _meta.logo as the title when present
   showAuthor: true, // "by <author>" credit under the title
@@ -777,6 +817,46 @@ const num = (v) => { const n = Number(v); return isFinite(n) ? n : 0; };
    that is not an array. Every character carries what every page needs: its
    night positions and reminders, its full jinx list (for the jinx page) and
    the partner icons for the ones also on this script. */
+export const BOOTLEGGER_ID = 'bootlegger';
+
+/* is there a Bootlegger on this script JSON already? */
+export function hasBootlegger(json) {
+  if (!Array.isArray(json)) return false;
+  return json.some((e) => {
+    const id = typeof e === 'string' ? e : (e && e.id);
+    return String(id || '').toLowerCase().trim() === BOOTLEGGER_ID;
+  });
+}
+
+/* the script JSON with the Bootlegger added or taken out. The raw file is
+   never touched — this runs on the way into parseScript(), so unticking
+   the box puts the script back exactly as it was loaded.
+
+   It is filed under FABLED, which is where the official app and the
+   official sheets print it. The wiki's roles.json has it under `loric`
+   instead (the edition the release feed it came from puts it in), and
+   going by that would print a LORIC band for one character. The team is
+   the only thing settled here, and only when the entry does not name one
+   itself: the name, the ability and the icon all still come from the
+   roster, because the id is what parseScript() looks up.
+
+   A file that already carries one is settled the same way rather than left
+   alone, so the box cannot move the character from one band to another by
+   being unticked and ticked again. */
+export function withBootlegger(json, on) {
+  if (!Array.isArray(json)) return json;
+  const isBoot = (e) =>
+    String((typeof e === 'string' ? e : (e && e.id)) || '').toLowerCase().trim() === BOOTLEGGER_ID;
+  const has = hasBootlegger(json);
+  if (!on) return has ? json.filter((e) => !isBoot(e)) : json;
+  if (!has) return [...json, { id: BOOTLEGGER_ID, team: 'fabled' }];
+  return json.map((e) => {
+    if (!isBoot(e)) return e;
+    if (typeof e === 'string') return { id: BOOTLEGGER_ID, team: 'fabled' };
+    return e.team ? e : { ...e, team: 'fabled' };
+  });
+}
+
 export function parseScript(json, proxyIcons) {
   const warnings = [];
   const meta = { name: 'Untitled Script', author: '' };

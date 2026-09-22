@@ -22,7 +22,7 @@
  */
 
 import {
-  NIGHT, SHEET_W, SHEET_H, U, PLACEHOLDER_ICON, STEP_ICONS,
+  NIGHT, FIT, SHEET_W, SHEET_H, U, PLACEHOLDER_ICON, STEP_ICONS,
   nightLists, reminderParts, smartTypography, teamColor, fontFamily, elGet, sortCharacters, proxied,
 } from './script.js';
 import {
@@ -206,10 +206,16 @@ function metrics(cfg) {
 }
 
 /* layoutList(spec, options, requestRender) → {pages, d, cols, m, fonts}
-   Solves the density like the sheet does — the reference pitch (d = 1)
-   is the cap, a short list simply leaves room — and packs rows onto
-   pages when even minFit could not hold them all. Two-column specs never
-   paginate: they shrink instead. */
+   Solves the density like the sheet does, and fills the page the same way:
+   the type grows to FIT.growMax and what is left over is dealt out as SPACE
+   between the rows (`gapEm`), with the remainder split above and below
+   (`offsetEm`). A teensyville's Other Nights is eight rows, and at the
+   reference pitch it stopped not quite halfway down and left the rest of
+   the sheet blank. Rows are spaced further APART rather than made taller:
+   a row's own height is what rowNode() reads its line count, its zebra band
+   and its rule off, so stretching it would have the band grow and the icon
+   drift off its name. Packs rows onto pages when even minFit could not hold
+   them all. Two-column specs never paginate: they shrink instead. */
 export function layoutList(spec, options, requestRender) {
   const cfg = spec.cfg;
   const fonts = fontsOf(cfg, options);
@@ -278,7 +284,7 @@ export function layoutList(spec, options, requestRender) {
     let fit = 1;
     for (let iter = 0; iter < 3; iter++) {
       const need = Math.max(...colUnits.map((_, ci) => needAt(ci, fit)));
-      const f = clamp(availEm / Math.max(need, 0.01), 0.42, 1);
+      const f = clamp(availEm / Math.max(need, 0.01), 0.42, FIT.growMax);
       if (Math.abs(f - fit) < 0.002) { fit = f; break; }
       fit = f;
     }
@@ -333,6 +339,30 @@ export function layoutList(spec, options, requestRender) {
         pages[pi + 1].columns[ci].units.unshift(last);
       }
     });
+  });
+
+  /* take up the rest of the page. The slack is measured off the LONGEST
+     column so no column can be pushed past the foot, and the same spacing
+     goes on every column of the page: two night lists side by side are two
+     lists, but a different row pitch in each reads as a mistake. A page the
+     pack filled has no slack and solves to nothing, so a long script is
+     untouched. */
+  const roomEm = availEm / d;
+  pages.forEach((p) => {
+    let natural = 0;
+    let units = 0;
+    p.columns.forEach((pc) => {
+      natural = Math.max(natural, pc.units.reduce((a, u) => a + u.hEm, 0));
+      units = Math.max(units, pc.units.length);
+    });
+    const slack = roomEm - natural;
+    let gapEm = 0;
+    if (slack > 0.01 && units > 1) {
+      gapEm = Math.min(slack / (units - 1), (FIT.spreadMax - 1) * (natural / units));
+    }
+    p.gapEm = gapEm;
+    const rest = Math.max(0, slack - gapEm * Math.max(0, units - 1));
+    p.offsetEm = Math.min(rest * FIT.topShare, FIT.listTopMax);
   });
 
   return { pages, d, cols, m, fonts, listTop, textXOff, two, extraLeftEm };
@@ -576,7 +606,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         color: cfg.titleColor || '#1c1c1c', whiteSpace: 'nowrap',
       }, spec.columns[ci].heading));
     }
-    let y = 0;
+    let y = page.offsetEm || 0;
     let rowIndex = 0;
     for (const u of pc.units) {
       if (u.type === 'heading') {
@@ -594,7 +624,7 @@ export function renderListPage(script, spec, options, layout, pageIndex, ctx) {
         rn.style.top = px(ed(y));
         col.append(rn);
       }
-      y += u.hEm;
+      y += u.hEm + (page.gapEm || 0);
     }
     listWrap.append(col);
   });
